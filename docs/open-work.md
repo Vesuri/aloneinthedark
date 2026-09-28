@@ -17,13 +17,6 @@ required.
 
 ## M1 Boot to main
 
-- **M1.2 A5 world host model.**
-  - Write `tools/a5world_check.py`, a port of `tmp/plan/a5world.py`. It expands
-    DATA/ZERO and applies DREL exactly as CODE 1+$0118 does.
-  - It compares the result with a gdb dump of the Amiga A5 world at `main` entry.
-
-  *Done when* the tool's self-check passes on the resource bytes. M1.3 uses it as
-  its acceptance check.
 - **M1.3 Original startup path.**
   - Load CODE 1 only. Jump-table entries 0–9 get the loaded form; the rest stay
     unloaded.

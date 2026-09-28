@@ -182,3 +182,32 @@ CurrentA5 $004905F8 minus CurStackBase $0047DE98 is 75,616, matching the origina
 CODE 0 header. Probe and production link audits pass (36/35 retained symbols).
 Low-memory instruction redirection remains M1.4; these values currently live
 in the private shadows. The production game still stops at CODE 3 CREL.
+
+## A5 initializer model
+
+`make a5world-check` validates the original CODE 0 header and hashes the original
+CODE 1+$0118–$0193 initializer before modeling DATA/ZERO and DREL. It checks
+exact input consumption and the planning model's golden digests. `make
+host-tests` includes malformed/truncated streams, zero-length zero runs,
+short/long and STRS-tagged relocations, 32-bit addition wrap and dump mismatch
+checks. This is a host model, never a substitute for running CODE 1.
+
+At the first instruction of Core+$03E4, dump exactly `[A5-75616,A5)` and obtain
+the actual STRS data pointer (CODE 1+$08 after startup). Then compare with:
+
+```sh
+python3 tools/a5world_check.py 'tmp/runtime-data/Alone In The Dark' \
+  --a5 <actual-address> --strs <actual-address> --dump tmp/amiga-a5-globals.bin
+```
+
+The initializer owns the below-A5 globals. Loaded jump entries above A5, the
+CODE 1 trap-patch storage, and the port's shadows are separate M1.3/M1.4 checks.
+No mismatching bytes are ignored. The tool reports each of the first twenty
+mismatching A5 offsets and fails on a wrong dump length or any mismatch.
+
+M1.2 verification: all host checks pass. The original has 11,418 DATA bytes,
+560 ZERO bytes, 280 zero runs, 276 DREL entries (255 A5 / 21 STRS), including
+63 long-form offsets. Both streams consume exactly into 75,616 bytes. A local
+comparison fixture passes at zero mismatches; corrupting one byte reports
+A5−75,516 and exits 1. This fixture is not a live Amiga dump; that evidence is
+still required by M1.3.

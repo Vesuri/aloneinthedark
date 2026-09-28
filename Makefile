@@ -6,7 +6,7 @@ ARCHIVE ?= tmp/AloneInTheDark.img_.sit
 RUNTIME_DATA ?= tmp/runtime-data
 SEGMENTS ?= tmp/segments
 
-.PHONY: all help todo amiga extract-original-data segments m68k-sweep lowmem-scan entrypoints-check trap-census host-tests mac-trap-map regression
+.PHONY: all help todo amiga extract-original-data segments m68k-sweep lowmem-scan entrypoints-check trap-census host-tests mac-trap-map regression a5world-check
 
 all: help
 
@@ -65,7 +65,11 @@ mac-trap-map:
 regression:
 	@./amiga/regression.sh boot
 
+a5world-check:
+	@python3 tools/a5world_check.py "$(RUNTIME_DATA)/Alone In The Dark"
+
 host-tests:
+	@python3 tools/a5world_check.py --selftest
 	@python3 tools/regression_result.py --selftest
 	@python3 tools/fb_to_png.py --selftest
 	@python3 tools/mac_trap_map.py --selftest

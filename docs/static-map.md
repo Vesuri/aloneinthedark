@@ -66,7 +66,8 @@ CODE 1 is the startup and segment runtime; the port runs it unmodified.
   word gives (both consumed exactly). Then `DREL` (276 entries): a negative
   word is an A5 offset, otherwise two words form a negative 32-bit offset;
   bit 0 clear adds A5 (255), set adds the `STRS` base (21). 117 of the
-  relocated longs are jump-table function pointers.
+  relocated longs are jump-table function pointers. The checked host model is
+  `tools/a5world_check.py`; it compares all 75,616 below-A5 bytes without masks.
 - Trap patches (+$043E): old-style `GetTrapAddress`/`SetTrapAddress` stubs
   `JSR handler; JMP original` for `_LoadSeg`, `_UnloadSeg` and `_ExitToShell`;
   the stub block pointer is stored at A5+$68, inside loaded entry 9.
