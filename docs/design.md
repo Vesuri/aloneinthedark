@@ -261,7 +261,8 @@ pointers and 128 handle slots. That is too loose for this game:
 - its heap behaviour must match the 3 MB `SIZE` partition, and blocks must not
   land in chip RAM.
 
-Design (task M1.5):
+The portable allocator core is implemented (`MacHeap`, M1.5a); trap/resource
+integration and reference acceptance remain M1.5b:
 - **One fast-RAM block of `SIZE` preferred** (3,145,728 bytes) as the
   application zone. The A5 world and the Mac stack are allocated separately,
   and the port's own buffers never live in the zone.

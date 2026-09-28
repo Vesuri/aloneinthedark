@@ -319,3 +319,35 @@ mismatches in 75,616 bytes). Both production audits pass (42 probe symbols).
 Address redirection does not supply missing subsystem values: zone/error
 shadows belong to M1.5, system identity to M1.6, and scrap/sound state to their
 services. Initialization still stops explicitly at Engine+$004A NewHandleClear.
+
+
+## Zone allocator core
+
+M1.5 is split into independent core (M1.5a) and runtime integration/reference
+acceptance (M1.5b). `MacHeap` owns no host allocations: the caller supplies an
+aligned arena, and data blocks plus non-moving master-pointer blocks live
+inside it. Pointer and locked-handle barriers bound compaction. Handle flags
+live beside master-pointer arrays, never in address bits. Free/largest-space
+queries account for actual blocks. Resizing preserves payloads; failed
+reallocation preserves the old pointer. Emptying preserves handle identity,
+while disposal makes the master slot reusable.
+
+`make host-tests` includes allocation, zeroing, lock/purge interactions, in-place
+pointer growth, handle growth/shrink, MoveHHi, reusable master slots, overflow
+rejection and 2,500 deterministic fragmentation steps with every live payload
+checked after each step. Interleaved master blocks exercise movement around
+pinned metadata. `python3 tools/check_mac_heap.py --sanitize` additionally runs
+address and undefined-behavior sanitizers; it passes. The core cross-compiles
+but is not yet connected to game allocations, so the current native stop is
+unchanged. No M1.5 memory-usage acceptance is claimed yet.
+
+The API/zone-field reference is Apple's [Inside Macintosh: Memory Manager](https://developer.apple.com/library/archive/documentation/mac/pdf/Memory/Memory_Manager.pdf).
+`tools/mac_traps.lua` now records zone, ApplLimit, zcbFree (the FreeMem value),
+master-block size, MemErr and raw master-pointer data in its existing trap
+action. Using a second breakpoint at the dispatcher would omit game records:
+MAME runs only the first matching breakpoint. The local reference capture
+`tmp/m1.5-reference.log` finishes with an explicit PASS. At the first
+Engine+$004A NewHandleClear, free=$53F8; after MaxApplZone and startup work,
+the next call at that same site has free=$2B0820. The 12 MoreMasters calls
+allocate 64 master pointers apiece, consuming $108 bytes each. These are
+reference observations, not values for the port to return unconditionally.

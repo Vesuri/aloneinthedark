@@ -17,9 +17,10 @@ required.
 
 ## M1 Boot to main
 
-- **M1.5 Application zone.**
-  - Write a Mac-compatible zone allocator (design §4.4), with host tests in
-    `tools/test_mac_heap.cpp`, plus a system zone.
+- **M1.5b Application-zone integration and reference acceptance.**
+  - M1.5a completed the independent arena allocator and host tests in
+    `tools/test_mac_heap.cpp`. Wire it to the 3 MB fast-RAM application zone
+    and a separate system zone (design §4.4).
   - Complete the Memory Manager call set; publish its MemErr ($0220) and
     ApplLimit ($0130) state into the M1.4 shadows.
   - Resources become handles in the zone, with aligned copies where needed.

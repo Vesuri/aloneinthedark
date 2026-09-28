@@ -76,6 +76,14 @@ emu.register_frame_done(function()
  if not armed and u32(0x28)==0xdd60 then
   assert(u32(0xdd60)==0x2f0a2f02 and u32(0xdd64)==0x246f000a,'TRAP LOG / DISPATCHER BYTES')
   local expr={{'ticks','d@16a'},{'pc','d@(sp+2)'},{'sp','sp'},{'d0','d0'},{'d1','d1'},{'a0','a0'},{'a1','a1'},{'a5','a5'},{'trap','w@(d@(sp+2))'}}
+  -- Zone+12 is zcbFree, the FreeMem value. Include it in the existing
+  -- dispatcher action: MAME runs only the first matching breakpoint there.
+  for _,field in ipairs({{'zone','d@118'},{'appzone','d@2aa'},
+   {'applimit','d@130'},{'free','d@((d@118&ffffff)+c)'},
+   {'limit','d@(d@118&ffffff)'},{'masters','w@((d@118&ffffff)+14)'},
+   {'memerr','w@220'},{'master','if(a0>100000 && a0<800000,d@a0,0)'}}) do
+   expr[#expr+1]=field
+  end
   local first={}
   for index,j in ipairs(meta.jt) do
    if not first[j[1]] then
