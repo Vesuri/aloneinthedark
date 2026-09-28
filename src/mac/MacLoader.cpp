@@ -4,6 +4,7 @@
 
 #include "MacLoader.h"
 #include "LowMemory.h"
+#include "MacHeap.h"
 #include "ResourceForks.h"
 #include "platform/amiga/AitdScreen.h"
 #include "platform/amiga/MacInput.h"
@@ -77,6 +78,10 @@ volatile uint16_t g_lowMemoryValidatedSites = 0;
 volatile uint16_t g_lowMemoryAppliedSites = 0;
 volatile uint32_t g_loadedCodeMask = 0;
 uint8_t* g_code3Base = 0;
+uint8_t* g_applicationZoneBase=0;
+uint8_t* g_systemZoneBase=0;
+volatile uint32_t g_heapFree=0, g_heapLargest=0, g_heapSystemFree=0;
+volatile int16_t g_heapError=0;
 volatile uint32_t g_macLineAVectorAddress = 0;
 volatile uint32_t g_macSavedLineAVector = 0;
 volatile uint16_t g_macLineAInstalled = 0;
@@ -85,6 +90,11 @@ volatile uint32_t g_lineAProbe[42] = {};
 void aitd_line_a_probe();
 void aitd_line_a_exit_probe();
 __attribute__((noinline)) void aitdLineAProbeComplete() { __asm__ volatile("" ::: "memory"); }
+#endif
+#ifdef AITD_HEAP_PROBE
+volatile uint32_t g_heapProbeStage=0, g_heapProbeDone=0;
+void aitd_heap_probe();
+__attribute__((noinline)) void aitdHeapProbeComplete() { __asm__ volatile("" ::: "memory"); }
 #endif
 volatile uint16_t g_macExitState = 0;
 #ifdef AITD_PROBE
@@ -129,9 +139,8 @@ static uint32_t s_a5WorldBytes;
 static uint32_t s_jumpTableOffset;
 static AitdScreen* s_loudStopScreen;
 static ResourceForks s_resourceForks;
-static uint8_t* s_resourceMasters[ResourceForks::kMaximumResources];
-static bool s_resourceLocked[ResourceForks::kMaximumResources];
-static bool s_resourcePurgeable[ResourceForks::kMaximumResources];
+static MacHeap::Handle s_resourceHandles[ResourceForks::kMaximumResources];
+static int16_t s_resourceError;
 static uint8_t s_quickDrawScreen[(512 / 8) * 320];
 static uint8_t s_colorScreen[(512 / 2) * 320];
 // The first driving frame expands its roadside panorama as 512x24 8-bit
@@ -310,9 +319,6 @@ static uint32_t probeNonzeroBytes(const uint8_t* data, uint16_t bytes)
 }
 #endif
 
-
-
-
 struct GWorldSlot {
     uint8_t port[108];
     uint8_t pixMap[50];
@@ -380,31 +386,50 @@ struct CursorState {
 };
 static CursorState s_cursor;
 
-struct MemoryManagerState {
-    int16_t error;
-    uint32_t allocationCount;
-    bool applicationZoneMaximized;
-};
-static MemoryManagerState s_memoryManager;
+static MacHeap s_applicationZone, s_systemZone;
+static MacHeap* s_currentZone = &s_applicationZone;
+static const uint32_t kApplicationZoneBytes = 3145728, kSystemZoneBytes = 131072;
+static uint8_t* s_applicationArena;
+static uint8_t* s_systemArena;
+static uint8_t* s_applicationLimit;
+static int16_t s_memoryError;
 
-struct PointerAllocation {
-    uint8_t* pointer;
-    uint8_t* master;
-    uint32_t size;
-};
-// Initialize keeps substantially more than 128 Ptr blocks live.  Every block
-// must remain represented for RecoverHandle identity and final AmigaOS cleanup;
-// silently allocating beyond this table was the source of unreturnable memory.
-static PointerAllocation s_pointerAllocations[1024];
-
-struct HandleAllocation {
-    uint8_t* master;
-    uint32_t size;
-    bool locked;
-    bool purgeable;
-};
-static HandleAllocation s_handleAllocations[128];
-static uint16_t s_handleAllocationCount;
+static void releaseZones()
+{
+    s_applicationZone.reset();s_systemZone.reset();
+    if(s_applicationArena)FreeMem(s_applicationArena,kApplicationZoneBytes);
+    if(s_systemArena)FreeMem(s_systemArena,kSystemZoneBytes);
+    s_applicationArena=s_systemArena=s_applicationLimit=0;
+    g_applicationZoneBase=g_systemZoneBase=0;
+}
+static bool prepareZones()
+{
+    releaseZones();
+    s_applicationArena=(uint8_t*)AllocMem(kApplicationZoneBytes,MEMF_FAST|MEMF_CLEAR);
+    s_systemArena=(uint8_t*)AllocMem(kSystemZoneBytes,MEMF_FAST|MEMF_CLEAR);
+    if(!s_applicationArena || !s_systemArena
+        || !s_applicationZone.init(s_applicationArena,kApplicationZoneBytes)
+        || !s_systemZone.init(s_systemArena,kSystemZoneBytes,32)) {
+        releaseZones();return false;
+    }
+    s_currentZone=&s_applicationZone;
+    s_applicationLimit=s_applicationArena+kApplicationZoneBytes;
+    s_memoryError=0;
+    g_applicationZoneBase=s_applicationArena;g_systemZoneBase=s_systemArena;
+    return true;
+}
+static MacHeap* handleZone(MacHeap::Handle h)
+{
+    if(s_applicationZone.isHandle(h))return &s_applicationZone;
+    if(s_systemZone.isHandle(h))return &s_systemZone;
+    return 0;
+}
+static MacHeap* pointerZone(uint8_t* p)
+{
+    if(s_applicationZone.owns(p))return &s_applicationZone;
+    if(s_systemZone.owns(p))return &s_systemZone;
+    return 0;
+}
 #ifdef AITD_PROBE
 volatile uint16_t g_probeReleasedGWorlds;
 volatile uint16_t g_probeReleasedPointers;
@@ -414,7 +439,7 @@ volatile uint16_t g_probeReleasedHandles;
 // CODE resource IDs index this table directly.  Names are the CODE resource
 // names, so attribution reads (Dark, $0123) rather than a bare number.
 static const uint16_t kMaximumSegments = 32;
-struct Segment { uint8_t* begin; uint8_t* end; char name[24]; uint32_t size; };
+struct Segment { uint8_t* begin; uint8_t* end; char name[24]; uint32_t size; MacHeap::Handle handle; };
 static Segment s_segments[kMaximumSegments];
 static uint16_t s_segmentCount;             // highest loaded CODE ID + 1
 
@@ -424,6 +449,11 @@ static uint32_t read32(const uint8_t* p)
     return ((uint32_t)p[0] << 24) | ((uint32_t)p[1] << 16) | ((uint32_t)p[2] << 8) | p[3];
 }
 static void write16(uint8_t* p, uint16_t v) { p[0] = (uint8_t)(v >> 8); p[1] = (uint8_t)v; }
+static int16_t resourceResult(int16_t error)
+{
+    s_resourceError=error;write16(s_portLowMemory+140,(uint16_t)error);return error;
+}
+static int16_t memoryResult(int16_t error);
 static void writeBoolean(uint8_t* p, bool value) { p[0] = value ? 1 : 0; p[1] = 0; }
 static void write32(uint8_t* p, uint32_t v)
 {
@@ -440,7 +470,9 @@ static void copyString(char* out, const char* in)
 static void clearResidentSegments()
 {
     for (uint16_t i = 0; i < kMaximumSegments; ++i) {
-        delete[] s_segments[i].begin;
+        if(i==0)delete[] s_segments[i].begin;
+        else if(MacHeap* zone=handleZone(s_segments[i].handle))zone->disposeHandle(s_segments[i].handle);
+        s_segments[i].handle=0;
         s_segments[i].begin = s_segments[i].end = 0;
         s_segments[i].name[0] = 0;
         s_segments[i].size = 0;
@@ -482,7 +514,15 @@ static bool loadStartupSegments()
         segment.size = item.size;
         // CODE 0 is metadata; CODE 1 is the only executable loaded at launch.
         if (item.id <= 1) {
-            segment.begin = new uint8_t[item.size];
+            if(item.id==0)segment.begin = new uint8_t[item.size];
+            else {
+                segment.handle=s_applicationZone.newHandle(item.size);
+                if(segment.handle) {
+                    segment.begin=*segment.handle;
+                    s_applicationZone.setState(segment.handle,0x20|((item.attrs&0x10)?0x80:0)|((item.attrs&0x20)?0x40:0));
+                    s_resourceHandles[index]=segment.handle;
+                }
+            }
             if (!segment.begin) { clearResidentSegments(); return false; }
             for (uint32_t byte = 0; byte < item.size; ++byte)
                 segment.begin[byte] = item.data[byte];
@@ -528,6 +568,27 @@ static bool loadStartupSegments()
 
 struct TrapName { uint16_t word; const char* manager; const char* routine; };
 static const TrapName s_trapNames[] = {
+    {0xa11a,"MEMORY MANAGER","GETZONE"},
+    {0xa01b,"MEMORY MANAGER","SETZONE"},
+    {0xa11d,"MEMORY MANAGER","MAXMEM"},
+    {0xa020,"MEMORY MANAGER","SETPTRSIZE"},
+    {0xa021,"MEMORY MANAGER","GETPTRSIZE"},
+    {0xa023,"MEMORY MANAGER","DISPOSEHANDLE"},
+    {0xa126,"MEMORY MANAGER","HANDLEZONE"},
+    {0xa027,"MEMORY MANAGER","REALLOCHANDLE"},
+    {0xa02b,"MEMORY MANAGER","EMPTYHANDLE"},
+    {0xa02d,"MEMORY MANAGER","SETAPPLLIMIT"},
+    {0xa036,"MEMORY MANAGER","MOREMASTERS"},
+    {0xa148,"MEMORY MANAGER","PTRZONE"},
+    {0xa04c,"MEMORY MANAGER","COMPACTMEM"},
+    {0xa166,"MEMORY MANAGER","NEWEMPTYHANDLE"},
+    {0xa06a,"MEMORY MANAGER","HSETSTATE"},
+    {0xa067,"MEMORY MANAGER","HSETRBIT"},
+    {0xa068,"MEMORY MANAGER","HCLRRBIT"},
+    {0xa71e,"MEMORY MANAGER","NEWPTRSYSCLEAR"},
+    {0xa9e3,"MEMORY MANAGER","PTRTOHAND"},
+    {0xa1ad,"OS","GESTALT"},
+    {0xa9af,"RESOURCE MANAGER","RESERROR"}, {0xa992,"RESOURCE MANAGER","DETACHRESOURCE"},
     {0xa055,"OS","STRIPADDRESS"}, {0xa0bd,"OS","VCACHEFLUSH"},
     {0xa198,"OS","HWPRIV"}, {0xa9c9,"OS","SYSERROR"},
     {0xa069,"MEMORY MANAGER","HGETSTATE"},
@@ -663,6 +724,8 @@ static bool buildA5World(uint8_t*& a5)
     write32(s_portLowMemory + MacLowMemory::lo3Bytes, 0xffffffffUL);
     write32(s_portLowMemory + kLowCurrentA5, (uint32_t)a5);
     write32(s_portLowMemory + kLowCurStackBase, (uint32_t)s_a5WorldStorage);
+    write32(s_portLowMemory+80,(uint32_t)s_applicationLimit);
+    write16(s_portLowMemory+100,(uint16_t)s_memoryError);
     s_jumpTableOffset = jumpOffset;
 
     // Preserve the original unloaded entries. CODE 1's installed LoadSeg
@@ -689,7 +752,6 @@ static bool buildA5World(uint8_t*& a5)
     }
     return true;
 }
-
 
 static void blockMove(const uint8_t* source, uint8_t* destination, uint32_t count)
 {
@@ -853,44 +915,50 @@ static void blockFill(uint8_t* destination, uint32_t count, uint8_t value)
     if (count) *destination = value;
 }
 
-static uint8_t** getResource(uint32_t type, int16_t id)
+static void refreshCodeViews()
 {
-    // GetResource searches the current resource file first.  The system resource chain is
-    // absent on the port; the open forks are searched in chain order after it.
-    for (uint16_t pass = 0; pass < s_resourceForks.forkCount(); ++pass) {
-        uint16_t fork = (uint16_t)(s_currentResourceFork + pass);
-        if (fork >= s_resourceForks.forkCount()) fork -= s_resourceForks.forkCount();
-        ResourceForks::Item item;
-        uint32_t index;
-        if (s_resourceForks.find(fork, type, id, item, &index)) {
-            if (!s_resourceMasters[index]) {
-                if (type == 0x434f4445UL && fork == 0) {
-                    if (id < 0 || id >= kMaximumSegments || s_segments[id].size != item.size)
-                        return 0;
-                    Segment& segment = s_segments[id];
-                    if (!segment.begin) {
-                        segment.begin = new uint8_t[item.size];
-                        if (!segment.begin) return 0;
-                        for (uint32_t byte = 0; byte < item.size; ++byte)
-                            segment.begin[byte] = item.data[byte];
-                        if (!MacLowMemory::patch(id, segment.begin, item.size)) {
-                            loaderStop("LOW MEMORY ORIGINAL BYTE MISMATCH", id);
-                            showLoaderStop();
-                        }
-                        g_lowMemoryAppliedSites += MacLowMemory::siteCount(id);
-                        segment.end = segment.begin + item.size;
-                        g_loadedCodeMask |= 1UL << id;
-                        if (id == 3) g_code3Base = segment.begin;
-                    }
-                    s_resourceMasters[index] = segment.begin;
-                } else s_resourceMasters[index] = (uint8_t*)item.data;
-                s_resourceLocked[index] = (item.attrs & 0x10) != 0;
-                s_resourcePurgeable[index] = (item.attrs & 0x20) != 0;
-            }
-            return &s_resourceMasters[index];
-        }
+    g_loadedCodeMask=s_segments[0].begin ? 1 : 0;
+    for(uint16_t n=1;n<s_segmentCount;++n) {
+        Segment& segment=s_segments[n];
+        segment.begin=segment.handle && handleZone(segment.handle) ? *segment.handle : 0;
+        segment.end=segment.begin ? segment.begin+segment.size : 0;
+        if(segment.begin)g_loadedCodeMask|=1UL<<n;
     }
-    return 0;
+    g_startupCode=s_segments[1].begin;g_code3Base=s_segments[3].begin;
+    g_heapFree=s_applicationZone.freeBytes();g_heapLargest=s_applicationZone.largestBlock();
+    g_heapSystemFree=s_systemZone.freeBytes();
+}
+static uint8_t** loadResource(uint32_t index,const ResourceForks::Item& item)
+{
+    MacHeap::Handle& handle=s_resourceHandles[index];
+    MacHeap* zone=(item.attrs&0x40) ? &s_systemZone : &s_applicationZone;
+    if(!handle) { handle=zone->newEmptyHandle();memoryResult(zone->error()); }
+    if(!handle) { resourceResult(zone->error());return 0; }
+    if(!*handle) {
+        if(zone->reallocateHandle(handle,item.size)!=0) { memoryResult(zone->error());resourceResult(zone->error());return 0; }
+        memoryResult(zone->error());
+        for(uint32_t byte=0;byte<item.size;++byte)(*handle)[byte]=item.data[byte];
+        zone->setState(handle,0x20|((item.attrs&0x10)?0x80:0)|((item.attrs&0x20)?0x40:0));
+        if(item.fork==0 && item.type==0x434f4445UL && item.id>0) {
+            if(item.id>=kMaximumSegments || !MacLowMemory::patch(item.id,*handle,item.size)) {
+                loaderStop("LOW MEMORY ORIGINAL BYTE MISMATCH",item.id<kMaximumSegments ? item.id : 0);
+                showLoaderStop();
+            }
+            s_segments[item.id].handle=handle;
+            g_lowMemoryAppliedSites+=MacLowMemory::siteCount(item.id);
+        }
+        refreshCodeViews();
+    }
+    resourceResult(0);return handle;
+}
+static uint8_t** getResource(uint32_t type,int16_t id)
+{
+    for(uint16_t pass=0;pass<s_resourceForks.forkCount();++pass) {
+        uint16_t fork=(s_currentResourceFork+pass)%s_resourceForks.forkCount();
+        ResourceForks::Item item;uint32_t index;
+        if(s_resourceForks.find(fork,type,id,item,&index))return loadResource(index,item);
+    }
+    resourceResult(-192);return 0;
 }
 
 static uint16_t paulaBeamLine()
@@ -1067,14 +1135,12 @@ static uint8_t** getNamedResource(uint32_t type, const uint8_t* name)
             ResourceForks::Item item;
             if (!s_resourceForks.item(i, item)) return 0;
             if (item.fork == fork && item.type == type && resourceNameEquals(item, name)) {
-                s_resourceMasters[i] = (uint8_t*)item.data;
-                return &s_resourceMasters[i];
+                return loadResource(i,item);
             }
         }
     }
     return 0;
 }
-
 
 static bool pascalEquals(const uint8_t* value, const char* expected)
 {
@@ -3697,8 +3763,6 @@ static bool copyBits(const uint8_t* sourceBitmap, const uint8_t* destinationBitm
     return true;
 }
 
-
-
 static bool clipRect(const uint8_t* rectangle)
 {
     uint8_t* port = (uint8_t*)read32(s_qdThePort);
@@ -3720,7 +3784,7 @@ static void paletteToColorTable(uint8_t** paletteHandle, uint8_t* colorTable)
     int16_t resourceID = -32768;
     for (uint32_t i = 0; i < s_resourceForks.resourceCount(); ++i) {
         ResourceForks::Item item;
-        if (&s_resourceMasters[i] == paletteHandle && s_resourceForks.item(i, item)
+        if (s_resourceHandles[i] == paletteHandle && s_resourceForks.item(i, item)
             && item.type == 0x706c7474UL) {
             resourceID = item.id;
             break;
@@ -3884,8 +3948,7 @@ static void initMenus()
         ResourceForks::Item item;
         if (!s_resourceForks.item(i, item)) break;
         if (item.type == 0x6d637462UL) {      // 'mctb'
-            s_resourceMasters[i] = (uint8_t*)item.data;
-            s_menuManager.colorTable = &s_resourceMasters[i];
+            s_menuManager.colorTable = loadResource(i,item);
             break;
         }
     }
@@ -4211,142 +4274,46 @@ static bool exitChordPressed()
         && (aitdInputModifiers() & 0x1000) != 0;
 }
 
-static uint8_t* newPointer(uint32_t size, bool clear)
+static int16_t memoryResult(int16_t error)
 {
-    if (s_memoryManager.allocationCount
-        == sizeof(s_pointerAllocations) / sizeof(s_pointerAllocations[0])) {
-        s_memoryManager.error = -108;        // memFullErr
-        return 0;
-    }
-    uint8_t* pointer = (uint8_t*)AllocMem(size ? size : 1, clear ? MEMF_CLEAR : 0);
-    if (!pointer) {
-        s_memoryManager.error = -108;        // memFullErr
-        return 0;
-    }
-    s_memoryManager.error = 0;
-    PointerAllocation& allocation
-        = s_pointerAllocations[s_memoryManager.allocationCount++];
-    allocation.pointer = pointer;
-    allocation.master = pointer;
-    allocation.size = size ? size : 1;
-    return pointer;
+    s_memoryError=error;g_heapError=error;
+    write16(s_portLowMemory+100,(uint16_t)error);
+    g_heapFree=s_applicationZone.freeBytes();g_heapLargest=s_applicationZone.largestBlock();
+    g_heapSystemFree=s_systemZone.freeBytes();
+    refreshCodeViews();
+    return error;
 }
-
-static uint8_t** recoverHandle(uint8_t* pointer)
+static uint8_t** newHandle(uint32_t size,bool clear)
 {
-    uint32_t address = (uint32_t)pointer;
-    uint32_t recorded = s_memoryManager.allocationCount;
-    if (recorded > sizeof(s_pointerAllocations) / sizeof(s_pointerAllocations[0]))
-        recorded = sizeof(s_pointerAllocations) / sizeof(s_pointerAllocations[0]);
-    for (uint32_t i = 0; i < recorded; ++i) {
-        PointerAllocation& allocation = s_pointerAllocations[i];
-        uint32_t base = (uint32_t)allocation.pointer;
-        if (address >= base && address < base + allocation.size)
-            return &allocation.master;
-    }
-    for (uint32_t i = 0; i < s_resourceForks.resourceCount(); ++i) {
-        ResourceForks::Item item;
-        if (!s_resourceForks.item(i, item)) break;
-        uint32_t base = (uint32_t)s_resourceMasters[i];
-        if (base && address >= base && address < base + item.size) {
-            return &s_resourceMasters[i];
-        }
-    }
-    return 0;
+    MacHeap::Handle handle=s_currentZone->newHandle(size,clear);
+    memoryResult(s_currentZone->error());return handle;
 }
-
-static int16_t disposePointer(uint8_t* pointer)
-{
-    uint32_t recorded = s_memoryManager.allocationCount;
-    if (recorded > sizeof(s_pointerAllocations) / sizeof(s_pointerAllocations[0]))
-        recorded = sizeof(s_pointerAllocations) / sizeof(s_pointerAllocations[0]);
-    for (uint32_t i = 0; i < recorded; ++i) {
-        PointerAllocation& allocation = s_pointerAllocations[i];
-        if (allocation.pointer != pointer || !allocation.master) continue;
-        FreeMem(allocation.master, allocation.size ? allocation.size : 1);
-        allocation.pointer = 0;
-        allocation.master = 0;
-        allocation.size = 0;
-        s_memoryManager.error = 0;
-        return 0;
-    }
-    s_memoryManager.error = -109;            // nilHandleErr / foreign pointer
-    return s_memoryManager.error;
-}
-
-static uint8_t** newHandle(uint32_t size, bool clear)
-{
-    if (s_handleAllocationCount == sizeof(s_handleAllocations) / sizeof(s_handleAllocations[0])) {
-        s_memoryManager.error = -108;
-        return 0;
-    }
-    uint8_t* data = (uint8_t*)AllocMem(size ? size : 1, clear ? MEMF_CLEAR : 0);
-    if (!data) {
-        s_memoryManager.error = -108;
-        return 0;
-    }
-    HandleAllocation& allocation = s_handleAllocations[s_handleAllocationCount++];
-    allocation.master = data;
-    allocation.size = size;
-    allocation.locked = false;
-    allocation.purgeable = false;
-    s_memoryManager.error = 0;
-    return &allocation.master;
-}
-
-static HandleAllocation* handleAllocation(uint8_t** handle)
-{
-    for (uint16_t i = 0; i < s_handleAllocationCount; ++i)
-        if (&s_handleAllocations[i].master == handle) return &s_handleAllocations[i];
-    return 0;
-}
-
 static uint32_t handleSize(uint8_t** handle)
 {
-    if (HandleAllocation* allocation = handleAllocation(handle)) {
-        s_memoryManager.error = 0;
-        return allocation->size;
-    }
-    int32_t index = resourceHandleIndex(handle);
-    ResourceForks::Item item;
-    if (index >= 0 && s_resourceForks.item((uint32_t)index, item)) {
-        s_memoryManager.error = 0;
-        return item.size;
-    }
-    s_memoryManager.error = -109;
-    return 0;
+    MacHeap* zone=handleZone(handle);
+    if(!zone) { memoryResult(MacHeap::nilHandleErr);return 0; }
+    uint32_t bytes=zone->handleSize(handle);memoryResult(zone->error());return bytes;
 }
-
-static int16_t setHandleSize(uint8_t** handle, uint32_t newSize)
+static int16_t setHandleSize(uint8_t** handle,uint32_t bytes)
 {
-    HandleAllocation* allocation = handleAllocation(handle);
-    if (!allocation) return -109;
-    if (allocation->locked) return -117;     // memLockedErr
-    uint8_t* data = (uint8_t*)AllocMem(newSize ? newSize : 1, 0);
-    if (!data) return -108;
-    uint32_t retained = allocation->size < newSize ? allocation->size : newSize;
-    for (uint32_t i = 0; i < retained; ++i) data[i] = allocation->master[i];
-    FreeMem(allocation->master, allocation->size ? allocation->size : 1);
-    allocation->master = data;
-    allocation->size = newSize;
-    return 0;
+    MacHeap* zone=handleZone(handle);
+    return memoryResult(zone ? zone->setHandleSize(handle,bytes) : MacHeap::nilHandleErr);
 }
-
-static int16_t pointerAndHandle(const uint8_t* source, uint8_t** handle, uint32_t size)
+static int16_t pointerAndHandle(const uint8_t* source,uint8_t** handle,uint32_t size)
 {
-    HandleAllocation* allocation = handleAllocation(handle);
-    if (!allocation || (!source && size)) return -109;
-    uint32_t newSize = allocation->size + size;
-    uint8_t* data = (uint8_t*)AllocMem(newSize ? newSize : 1, 0);
-    if (!data) return -108;
-    for (uint32_t i = 0; i < allocation->size; ++i) data[i] = allocation->master[i];
-    for (uint32_t i = 0; i < size; ++i) data[allocation->size + i] = source[i];
-    FreeMem(allocation->master, allocation->size ? allocation->size : 1);
-    allocation->master = data;
-    allocation->size = newSize;
-    return 0;
+    MacHeap* zone=handleZone(handle);
+    if(!zone || (!source && size))return memoryResult(MacHeap::nilHandleErr);
+    uint32_t old=zone->handleSize(handle);
+    if(zone->error())return memoryResult(zone->error());
+    if(size>0x7fffffffUL-old)return memoryResult(MacHeap::memFullErr);
+    bool ownSource=(uint32_t)source>=(uint32_t)*handle
+        && (uint32_t)source-(uint32_t)*handle<old;
+    uint32_t offset=ownSource ? source-*handle : 0;
+    if(zone->setHandleSize(handle,old+size))return memoryResult(zone->error());
+    if(ownSource)source=*handle+offset;
+    for(uint32_t i=0;i<size;++i)(*handle)[old+i]=source[i];
+    return memoryResult(0);
 }
-
 static int16_t installVBLTask(uint8_t* task)
 {
     if (!task) return -50;                   // paramErr
@@ -4622,14 +4589,12 @@ static bool translateAmigaKey(uint8_t raw, KeyTranslation& key)
     }
 }
 
-
 extern "C" void aitdMacRawKeyChanged(uint8_t rawKey, bool down)
 {
     KeyTranslation key;
     if (!translateAmigaKey(rawKey, key)) return;
     setKeyMapState(key.virtualKey, down);
 }
-
 
 static int16_t addClampedMouseDelta(int16_t value, int16_t delta, int16_t maximum)
 {
@@ -4718,7 +4683,6 @@ static bool nextEvent(uint16_t mask, uint8_t* event)
         s_mouseButtonDown = buttonDown;
     }
 
-
     uint32_t message = 0;
     uint16_t modifiers = (uint16_t)(aitdInputModifiers() | (buttonDown ? 0 : 0x0080));
     uint8_t rawKey;
@@ -4749,42 +4713,122 @@ static bool nextEvent(uint16_t mask, uint8_t* event)
 
 static int32_t resourceHandleIndex(uint8_t** handle)
 {
-    uint32_t address = (uint32_t)handle;
-    uint32_t base = (uint32_t)s_resourceMasters;
-    uint32_t bytes = s_resourceForks.resourceCount() * sizeof(s_resourceMasters[0]);
-    if (address < base || address >= base + bytes
-        || (address - base) % sizeof(s_resourceMasters[0]) != 0)
-        return -1;
-    return (int32_t)((address - base) / sizeof(s_resourceMasters[0]));
+    if(!handle)return -1;
+    for(uint32_t i=0;i<s_resourceForks.resourceCount();++i)
+        if(s_resourceHandles[i]==handle)return i;
+    return -1;
 }
-
+static void forgetHandle(uint8_t** handle)
+{
+    for(uint32_t i=0;i<s_resourceForks.resourceCount();++i)
+        if(s_resourceHandles[i]==handle)s_resourceHandles[i]=0;
+    for(uint16_t i=1;i<s_segmentCount;++i)
+        if(s_segments[i].handle==handle)s_segments[i].handle=0;
+}
 static bool releaseResource(uint8_t** handle)
 {
-    int32_t index = resourceHandleIndex(handle);
-    if (index < 0 || !*handle) return false;
-    *handle = 0;
-    s_resourceLocked[index] = false;
-    s_resourcePurgeable[index] = false;
-    return true;
+    int32_t index=resourceHandleIndex(handle);MacHeap* zone=handleZone(handle);
+    if(index<0 || !zone) { resourceResult(-192);return false; }
+    memoryResult(zone->disposeHandle(handle));forgetHandle(handle);refreshCodeViews();
+    resourceResult(0);return true;
 }
-
-static bool isPermanentHandle(uint8_t** handle)
+static bool permanentHandle(uint8_t** handle)
 {
-    // The screen device and its PixMap are permanent system-style handles.  They
-    // cannot move, but HLock on either is still a successful operation.
-    return resourceHandleIndex(handle) >= 0 || handleAllocation(handle) || gWorldForPixMap(handle)
-        || handle == &s_mainDeviceMaster || handle == &s_windowManagerPixMapMaster
-        || handle == &s_mainDeviceITableMaster;
+    return gWorldForPixMap(handle) || handle==&s_mainDeviceMaster
+        || handle==&s_windowManagerPixMapMaster || handle==&s_mainDeviceITableMaster;
 }
-
-static bool validatePermanentHandle(uint8_t** handle)
+static bool dispatchMemoryTrap(uint16_t trap,uint32_t* regs)
 {
-    if (isPermanentHandle(handle)) {
-        s_memoryManager.error = 0;
-        return true;
+    uint16_t op=trap&0xf8ff;
+    MacHeap* zone=(trap&0x400) ? &s_systemZone : s_currentZone;
+    uint8_t* ptr=(uint8_t*)regs[8];MacHeap::Handle handle=(MacHeap::Handle)ptr;
+    MacHeap* owner=0;int16_t error=0;bool resultInD0=true;
+    switch(op) {
+    case 0xa01a: regs[8]=(uint32_t)s_currentZone->base();break;
+    case 0xa01b:
+        if(ptr==s_applicationZone.base())s_currentZone=&s_applicationZone;
+        else if(ptr==s_systemZone.base())s_currentZone=&s_systemZone;
+        else return false;
+        break;
+    case 0xa01c: regs[0]=zone->freeBytes();resultInD0=false;break;
+    case 0xa01d:
+        zone->purge(zone->capacity());regs[0]=zone->compact();regs[8]=0;
+        resultInD0=false;break;
+    case 0xa01e:
+        regs[8]=(uint32_t)zone->newPtr(regs[0],(trap&0x200)!=0);error=zone->error();break;
+    case 0xa01f:
+        owner=pointerZone(ptr);if(!owner)return false;
+        error=owner->disposePtr(ptr);break;
+    case 0xa020:
+        owner=pointerZone(ptr);if(!owner)return false;
+        error=owner->setPtrSize(ptr,regs[0]);break;
+    case 0xa021:
+        owner=pointerZone(ptr);if(!owner)return false;
+        regs[0]=owner->ptrSize(ptr);error=owner->error();resultInD0=false;break;
+    case 0xa022:
+        regs[8]=(uint32_t)zone->newHandle(regs[0],(trap&0x200)!=0);error=zone->error();break;
+    case 0xa023:
+        owner=handleZone(handle);if(!owner)return false;
+        error=owner->disposeHandle(handle);if(!error)forgetHandle(handle);break;
+    case 0xa024:
+        owner=handleZone(handle);if(!owner)return false;
+        error=owner->setHandleSize(handle,regs[0]);break;
+    case 0xa025:
+        owner=handleZone(handle);if(!owner)return false;
+        regs[0]=owner->handleSize(handle);error=owner->error();resultInD0=false;break;
+    case 0xa026:
+        owner=handleZone(handle);if(!owner)return false;
+        regs[8]=(uint32_t)owner->base();break;
+    case 0xa027:
+        owner=handleZone(handle);if(!owner)return false;
+        error=owner->reallocateHandle(handle,regs[0]);break;
+    case 0xa028:
+        regs[8]=(uint32_t)zone->recoverHandle(ptr);error=zone->error();resultInD0=false;break;
+    case 0xa029: case 0xa02a: case 0xa049: case 0xa04a: case 0xa067: case 0xa068: case 0xa069: case 0xa06a:
+        owner=handleZone(handle);
+        if(!owner) {
+            // Permanent manager-owned handles cannot relocate. Other operations
+            // need their manager's implementation and remain named stops.
+            if(permanentHandle(handle) && (op==0xa029 || op==0xa02a))break;
+            return false;
+        }
+        {
+            uint8_t state=owner->state(handle);
+            if(op==0xa069) { regs[0]=state;resultInD0=false;break; }
+            if(op==0xa029)state|=0x80;
+            if(op==0xa02a)state&=~0x80;
+            if(op==0xa049)state|=0x40;
+            if(op==0xa04a)state&=~0x40;
+            if(op==0xa067)state|=0x20;
+            if(op==0xa068)state&=~0x20;
+            if(op==0xa06a)state=regs[0];
+            error=owner->setState(handle,state);
+        }
+        break;
+    case 0xa02b:
+        owner=handleZone(handle);if(!owner)return false;
+        error=owner->emptyHandle(handle);break;
+    case 0xa02d:
+        if(ptr<s_applicationArena || ptr>s_applicationArena+kApplicationZoneBytes)return false;
+        // The zone is already fully reserved. As on the Mac, lowering ApplLimit
+        // does not cut back an existing heap; it only prohibits future growth.
+        s_applicationLimit=ptr;write32(s_portLowMemory+80,(uint32_t)ptr);break;
+    case 0xa036: error=zone->moreMasters();break;
+    case 0xa048:
+        owner=pointerZone(ptr);if(!owner)return false;
+        regs[8]=(uint32_t)owner->base();break;
+    case 0xa04c: regs[0]=zone->compact();resultInD0=false;break;
+    case 0xa04d: error=zone->purge(regs[0]);break;
+    case 0xa063: break; // The full SIZE arena was reserved before takeover.
+    case 0xa064:
+        owner=handleZone(handle);if(!owner)return false;
+        error=owner->moveHigh(handle);break;
+    case 0xa066: regs[8]=(uint32_t)zone->newEmptyHandle();error=zone->error();break;
+    default: return false;
     }
-    s_memoryManager.error = -109;           // nilHandleErr / invalid emulated handle
-    return false;
+    memoryResult(error);
+    if(resultInD0)regs[0]=(uint32_t)(int32_t)error;
+    return true;
 }
 
 // AmigaDOS runs the application in user mode: parameters are on USP, while Line-A creates
@@ -4812,26 +4856,32 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         uint32_t routed = routePatchedTrap(trap, regs, frame, userStack);
         if (routed) return routed;
     }
+    if(!(trap&0x0800) && dispatchMemoryTrap(trap,regs))return 1;
+    if(trap==0xa9af) { write16(userStack,read16(s_portLowMemory+140));return 1; }
+    if(trap==0xa992) {
+        MacHeap::Handle handle=(MacHeap::Handle)read32(userStack);
+        int32_t index=resourceHandleIndex(handle);MacHeap* zone=handleZone(handle);
+        if(index>=0 && zone) {
+            s_resourceHandles[index]=0;zone->setState(handle,zone->state(handle)&~0x20);
+            resourceResult(0);return 5;
+        }
+    }
+    if(trap==0xa9e3) {
+        const uint8_t* source=(const uint8_t*)regs[8];uint32_t bytes=regs[0];
+        MacHeap::Handle handle=newHandle(bytes,false);
+        if(handle)for(uint32_t i=0;i<bytes;++i)(*handle)[i]=source[i];
+        regs[8]=(uint32_t)handle;regs[0]=(uint32_t)(int32_t)s_memoryError;return 1;
+    }
+    if(trap==0xa9ef) {
+        regs[0]=(uint32_t)(int32_t)pointerAndHandle((uint8_t*)regs[8],(uint8_t**)regs[9],regs[0]);return 1;
+    }
     if ((trap & 0xfeff) == 0xa055) return 1; // StripAddress identity: native 32-bit pointers
     if (trap == 0xa0bd || (trap == 0xa198 && (regs[0] == 1 || regs[0] == 3))) {
         CacheClearU();
         regs[0] = 0;
         return 1;
     }
-    if (trap == 0xa069) {
-        uint8_t** handle = (uint8_t**)regs[8];
-        int32_t index = resourceHandleIndex(handle);
-        if (index >= 0 && *handle) {
-            regs[0] = 0x20 | (s_resourceLocked[index] ? 0x80 : 0)
-                | (s_resourcePurgeable[index] ? 0x40 : 0);
-            return 1;
-        }
-        if (HandleAllocation* allocation = handleAllocation(handle)) {
-            regs[0] = (allocation->locked ? 0x80 : 0) | (allocation->purgeable ? 0x40 : 0);
-            return 1;
-        }
-        // Invalid/unimplemented handle kinds remain loud stops.
-    }
+
     if (trap == 0xa9f4) {                    // original ExitToShell after patch cleanup
         g_macVBLCallbackEntry = 0;
         g_macVBLCallbackTask = 0;
@@ -5081,60 +5131,13 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         if (g_stageCDepth < 48) g_stageCDepth = 48;
         return 1;
     }
-    if (trap == 0xa31e) {                    // NewPtrSysClear: D0 size -> A0 pointer
-        regs[8] = (uint32_t)newPointer(regs[0], true);
-        regs[0] = (uint32_t)(int32_t)s_memoryManager.error;
-        if (g_stageCDepth < 12) g_stageCDepth = 12;
-        return 1;
-    }
+
     if (trap == 0xa997) {                    // OpenResFile(name: Str255) -> refNum
         write16(userStack + 4, (uint16_t)openResourceFile((uint8_t*)read32(userStack)));
         if (g_stageCDepth < 13) g_stageCDepth = 13;
         return 5;
     }
-    if (trap == 0xa063) {                    // MaxApplZone()
-        // AllocMem is already one expandable process-wide heap on AmigaOS; retain
-        // the requested zone state so FreeMem reports against that same allocator.
-        s_memoryManager.applicationZoneMaximized = true;
-        if (g_stageCDepth < 14) g_stageCDepth = 14;
-        return 1;
-    }
-    if (trap == 0xa01c) {                    // FreeMem() -> D0
-        regs[0] = AvailMem(MEMF_PUBLIC);
-        if (g_stageCDepth < 15) g_stageCDepth = 15;
-        return 1;
-    }
-    if (trap == 0xa01f) {                    // DisposePtr(A0) -> D0 MemError
-        regs[0] = (uint32_t)(int32_t)disposePointer((uint8_t*)regs[8]);
-        return 1;
-    }
-    if (trap == 0xa04d) {                    // PurgeMem(D0 requested contiguous bytes)
-        uint32_t requested = regs[0];
-        if (AvailMem(MEMF_PUBLIC | MEMF_LARGEST) < requested) {
-            for (uint16_t i = 0; i < s_handleAllocationCount; ++i) {
-                HandleAllocation& allocation = s_handleAllocations[i];
-                if (!allocation.master || allocation.locked || !allocation.purgeable) continue;
-                FreeMem(allocation.master, allocation.size ? allocation.size : 1);
-                allocation.master = 0;       // purged Handle retains its master pointer
-                allocation.size = 0;
-                if (AvailMem(MEMF_PUBLIC | MEMF_LARGEST) >= requested) break;
-            }
-        }
-        s_memoryManager.error
-            = AvailMem(MEMF_PUBLIC | MEMF_LARGEST) >= requested ? 0 : -108;
-        if (g_stageCDepth < 69) g_stageCDepth = 69;
-        return 1;
-    }
-    if (trap == 0xa04c) {                    // CompactMem(D0 requested) -> D0 largest block
-        // Exec's public allocator is process-wide rather than a movable Mac
-        // application zone.  No handle relocation is required while its
-        // largest block already satisfies the request; report that block just
-        // as CompactMem does after attempting compaction.
-        regs[0] = AvailMem(MEMF_PUBLIC | MEMF_LARGEST);
-        s_memoryManager.error = 0;
-        if (g_stageCDepth < 70) g_stageCDepth = 70;
-        return 1;
-    }
+
     if (trap == 0xa874) {                    // GetPort(VAR port)
         write32((uint8_t*)read32(userStack), read32(s_qdThePort));
         if (g_stageCDepth < 16) g_stageCDepth = 16;
@@ -5174,54 +5177,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
             return 11;
         }
     }
-    if (trap == 0xa064) {                    // MoveHHi(Handle in A0)
-        uint8_t** handle = (uint8_t**)regs[8];
-        // Resource data is in the permanently resident archive, already outside
-        // the application A5 world.  Validate the handle; no relocation is needed.
-        validatePermanentHandle(handle);
-        if (g_stageCDepth < 19) g_stageCDepth = 19;
-        return 1;
-    }
-    if (trap == 0xa029) {                    // HLock(Handle in A0)
-        uint8_t** handle = (uint8_t**)regs[8];
-        int32_t index = resourceHandleIndex(handle);
-        if (index >= 0) { s_resourceLocked[index] = true; s_memoryManager.error = 0; }
-        else if (HandleAllocation* allocation = handleAllocation(handle)) {
-            allocation->locked = true; s_memoryManager.error = 0;
-        } else validatePermanentHandle(handle);
-        if (g_stageCDepth < 20) g_stageCDepth = 20;
-        return 1;
-    }
-    if (trap == 0xa02a) {                    // HUnlock(Handle in A0)
-        uint8_t** handle = (uint8_t**)regs[8];
-        int32_t index = resourceHandleIndex(handle);
-        if (index >= 0) { s_resourceLocked[index] = false; s_memoryManager.error = 0; }
-        else if (HandleAllocation* allocation = handleAllocation(handle)) {
-            allocation->locked = false; s_memoryManager.error = 0;
-        } else validatePermanentHandle(handle);
-        if (g_stageCDepth < 46) g_stageCDepth = 46;
-        return 1;
-    }
-    if (trap == 0xa049) {                    // HPurge(Handle in A0)
-        uint8_t** handle = (uint8_t**)regs[8];
-        int32_t index = resourceHandleIndex(handle);
-        if (index >= 0) { s_resourcePurgeable[index] = true; s_memoryManager.error = 0; }
-        else if (HandleAllocation* allocation = handleAllocation(handle)) {
-            allocation->purgeable = true; s_memoryManager.error = 0;
-        } else validatePermanentHandle(handle);
-        if (g_stageCDepth < 65) g_stageCDepth = 65;
-        return 1;
-    }
-    if (trap == 0xa04a) {                    // HNoPurge(Handle in A0)
-        uint8_t** handle = (uint8_t**)regs[8];
-        int32_t index = resourceHandleIndex(handle);
-        if (index >= 0) { s_resourcePurgeable[index] = false; s_memoryManager.error = 0; }
-        else if (HandleAllocation* allocation = handleAllocation(handle)) {
-            allocation->purgeable = false; s_memoryManager.error = 0;
-        } else validatePermanentHandle(handle);
-        if (g_stageCDepth < 52) g_stageCDepth = 52;
-        return 1;
-    }
+
     if (trap == 0xa994) {                    // CurResFile() -> refNum
         write16(userStack, s_currentResourceFork);
         if (g_stageCDepth < 21) g_stageCDepth = 21;
@@ -5231,55 +5187,14 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         uint16_t fork = read16(userStack);
         if (fork < s_resourceForks.forkCount()) {
             s_currentResourceFork = fork;
-            s_memoryManager.error = 0;
+            resourceResult(0);
         } else {
-            s_memoryManager.error = -193;    // resFNotFound
+            resourceResult(-193);    // resFNotFound
         }
         if (g_stageCDepth < 22) g_stageCDepth = 22;
         return 3;
     }
-    if (trap == 0xa11e) {                    // NewPtrClear: D0 size -> A0 pointer
-        regs[8] = (uint32_t)newPointer(regs[0], true);
-        regs[0] = (uint32_t)(int32_t)s_memoryManager.error;
-        if (g_stageCDepth < 23) g_stageCDepth = 23;
-        return 1;
-    }
-    if (trap == 0xa51e) {                    // NewPtrSys: D0 size -> A0 pointer
-        regs[8] = (uint32_t)newPointer(regs[0], false);
-        regs[0] = (uint32_t)(int32_t)s_memoryManager.error;
-        if (g_stageCDepth < 43) g_stageCDepth = 43;
-        return 1;
-    }
-    if (trap == 0xa122) {                    // NewHandle: D0 size -> A0 handle
-        regs[8] = (uint32_t)newHandle(regs[0], false);
-        regs[0] = (uint32_t)(int32_t)s_memoryManager.error;
-        if (g_stageCDepth < 45) g_stageCDepth = 45;
-        return 1;
-    }
-    if (trap == 0xa025) {                    // GetHandleSize(Handle in A0) -> D0 size
-        regs[0] = handleSize((uint8_t**)regs[8]);
-        if (g_stageCDepth < 49) g_stageCDepth = 49;
-        return 1;
-    }
-    if (trap == 0xa024) {                    // SetHandleSize(Handle in A0, D0 size)
-        s_memoryManager.error = setHandleSize((uint8_t**)regs[8], regs[0]);
-        if (g_stageCDepth < 54) g_stageCDepth = 54;
-        return 1;
-    }
-    if (trap == 0xa9ef) {                    // PtrAndHand(A0 source, A1 handle, D0 size)
-        int16_t error = pointerAndHandle((const uint8_t*)regs[8],
-                                         (uint8_t**)regs[9], regs[0]);
-        s_memoryManager.error = error;
-        regs[0] = (uint32_t)(int32_t)error;
-        if (g_stageCDepth < 50) g_stageCDepth = 50;
-        return 1;
-    }
-    if (trap == 0xa128) {                    // RecoverHandle(pointer in A0) -> handle in A0
-        regs[8] = (uint32_t)recoverHandle((uint8_t*)regs[8]);
-        s_memoryManager.error = regs[8] ? 0 : -109;
-        if (g_stageCDepth < 41) g_stageCDepth = 41;
-        return 1;
-    }
+
     if (trap == 0xa03b) {                    // Delay(ticks in A0) -> final ticks in D0
 #ifdef AITD_PROBE
         ++g_probeDelayCalls;
@@ -5831,6 +5746,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         }
     if (trap == 0xa9c9 || trap == 0xa198) g_trapSelector = (uint16_t)regs[0];
     if (trap == 0xab1d) g_trapSelector = (uint16_t)regs[0];
+    if (trap == 0xa1ad) g_trapSelector = (int32_t)regs[0];
     copyString(g_trapManager, manager);
     copyString(g_trapRoutine, routine);
     if (s_loudStopScreen)
@@ -5881,16 +5797,12 @@ bool MacLoader::prepareResourceForks(uint8_t* application, uint32_t applicationS
     s_resourceForks.close();
     clearResidentSegments();
     g_resourceCount = 0;
+    for(uint16_t i=0;i<ResourceForks::kMaximumResources;++i)s_resourceHandles[i]=0;
+    resourceResult(0);
+    if(!prepareZones()) { s_preparationError="MEMORY MANAGER / FAST RAM ZONES";return false; }
     if (!s_resourceForks.open(application, applicationSize, data, dataSize)
         || !loadStartupSegments()) {
-        s_resourceForks.close();
-        clearResidentSegments();
-        return false;
-    }
-    for (uint16_t i = 0; i < ResourceForks::kMaximumResources; ++i) {
-        s_resourceMasters[i] = 0;
-        s_resourceLocked[i] = false;
-        s_resourcePurgeable[i] = false;
+        s_resourceForks.close();clearResidentSegments();releaseZones();return false;
     }
     s_currentResourceFork = 0;
     g_resourceCount = s_resourceForks.resourceCount();
@@ -5920,37 +5832,6 @@ static void releaseRuntimeAllocations()
         world.palette = 0;
     }
 
-    uint32_t pointerCount = s_memoryManager.allocationCount;
-    if (pointerCount > sizeof(s_pointerAllocations) / sizeof(s_pointerAllocations[0]))
-        pointerCount = sizeof(s_pointerAllocations) / sizeof(s_pointerAllocations[0]);
-    for (uint32_t i = 0; i < pointerCount; ++i) {
-        PointerAllocation& allocation = s_pointerAllocations[i];
-        if (allocation.master) {
-            FreeMem(allocation.master, allocation.size ? allocation.size : 1);
-#ifdef AITD_PROBE
-            ++g_probeReleasedPointers;
-#endif
-        }
-        allocation.pointer = 0;
-        allocation.master = 0;
-        allocation.size = 0;
-    }
-    s_memoryManager.allocationCount = 0;
-
-    for (uint16_t i = 0; i < s_handleAllocationCount; ++i) {
-        HandleAllocation& allocation = s_handleAllocations[i];
-        if (allocation.master) {
-            FreeMem(allocation.master, allocation.size ? allocation.size : 1);
-#ifdef AITD_PROBE
-            ++g_probeReleasedHandles;
-#endif
-        }
-        allocation.master = 0;
-        allocation.size = 0;
-        allocation.locked = false;
-        allocation.purgeable = false;
-    }
-    s_handleAllocationCount = 0;
 }
 
 #ifdef AITD_PROBE
@@ -5968,6 +5849,7 @@ void MacLoader::releaseResourceForks()
 #endif
     s_resourceForks.close();
     clearResidentSegments();
+    releaseZones();
     releaseA5World();
     if (g_macStackBase) FreeMem(g_macStackBase, 65536);
     g_macStackBase = 0;
@@ -6044,6 +5926,13 @@ bool MacLoader::run(AitdScreen* screen)
     g_lineAProbe[11] = read32(s_portLowMemory + kLowCurStackBase);
 #endif
     if (!a5Ready) showLoaderStop();
+#ifdef AITD_HEAP_PROBE
+    installLineAVector();
+    aitd_call_mac_code((void*)aitd_heap_probe, (void*)0x12345678,
+                      g_macStackBase + 65536);
+    restoreLineAVector();
+    aitdHeapProbeComplete();
+#endif
     write32(s_portLowMemory + kLowTicks, g_macTicks);
     write32(s_portLowMemory + kLowRndSeed, g_macTicks ? g_macTicks - 1 : 0);
     // The VBI consumes these 32-bit pointers. Publish them atomically with

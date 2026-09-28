@@ -9,7 +9,7 @@ design.md §5.
 **Current state:**
 - The executable builds and loads the original resource fork.
 - Original CODE 1 expands the A5 world, relocates Core and enters `main`, then
-  stops at `MEMORY MANAGER / NEWHANDLECLEAR`, Engine+$004A.
+  stops at `OS / GESTALT` (system version), Core+$3D36.
 - The original runs in MAME on the System 7.5.5 reference volume.
 
 Each item gives the **goal**, then the scope, then *done when*: the evidence
@@ -17,17 +17,6 @@ required.
 
 ## M1 Boot to main
 
-- **M1.5b Application-zone integration and reference acceptance.**
-  - M1.5a completed the independent arena allocator and host tests in
-    `tools/test_mac_heap.cpp`. Wire it to the 3 MB fast-RAM application zone
-    and a separate system zone (design §4.4).
-  - Complete the Memory Manager call set; publish its MemErr ($0220) and
-    ApplLimit ($0130) state into the M1.4 shadows.
-  - Resources become handles in the zone, with aligned copies where needed.
-
-  *Done when* the host tests pass, `FreeMem` after startup is within a documented
-  margin of the MAME value at the same point (read via the trap log), and the boot
-  run proceeds.
 - **M1.6 System identity.**
   - `Gestalt` answers as the reference machine: 'sysv' $0755, 'proc' 68030,
     'qd  ' 32-bit QD, 'qtim' absent, and 'help', 'fold', 'evnt' and 'a/ux' as on

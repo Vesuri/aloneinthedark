@@ -5,12 +5,14 @@ set $startup_main=0
 break AitdScreen::showLoudStop
 commands
  silent
- if $startup_main != 1 || g_stageBState != 3 || g_trapWord != 0xa322 || g_trapSegment != 7 || g_trapOffset != 0x4a
+ if $startup_main != 1 || g_stageBState != 3 || g_trapWord != 0xa1ad || g_trapSegment != 3 || g_trapOffset != 0x3d36
   printf "startup FAIL: %s / %s CODE %u+$%04x\n",g_trapManager,g_trapRoutine,g_trapSegment,g_trapOffset
   detach
   quit 1
  end
- printf "startup PASS: original main, next stop %s / %s CODE 7+$004a\n",g_trapManager,g_trapRoutine
+ dump binary memory ../tmp/amiga-heap.bin g_applicationZoneBase g_applicationZoneBase+3145728
+ printf "heap app=$%08x sys=$%08x free=%u largest=%u system-free=%u error=%d\n",g_applicationZoneBase,g_systemZoneBase,g_heapFree,g_heapLargest,g_heapSystemFree,g_heapError
+ printf "startup PASS: original main, next stop %s / %s CODE 3+$3d36\n",g_trapManager,g_trapRoutine
  detach
  quit 0
 end

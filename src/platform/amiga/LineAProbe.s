@@ -7,17 +7,17 @@ aitd_line_a_probe:
 	move.l a5,g_lineAProbe+4
 	move.l #0x12340000,d0
 	move.w #0x1f,ccr
-	.word 0xa063
+	.word 0xa055
 	move.w ccr,d1
 	move.l d1,g_lineAProbe+8
 	move.l #0x12340001,d0
 	move.w #0x1f,ccr
-	.word 0xa063
+	.word 0xa055
 	move.w ccr,d1
 	move.l d1,g_lineAProbe+12
 	move.l #0x12348000,d0
 	move.w #0x1f,ccr
-	.word 0xa063
+	.word 0xa055
 	move.w ccr,d1
 	move.l d1,g_lineAProbe+16
 	move.w #0x1f,ccr
@@ -34,7 +34,7 @@ aitd_line_a_probe:
 	move.l #0x87654320,g_macVBLCallbackA5
 	move.l #0x12340000,d0
 	move.w #0x1f,ccr
-	.word 0xa063
+	.word 0xa055
 	move.w ccr,d1
 	move.l d1,g_lineAProbe+32
 	move.l a5,g_lineAProbe+4

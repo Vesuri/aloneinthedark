@@ -196,9 +196,8 @@ The original startup path is implemented (M1.1–M1.3):
    aligned copy with header bit 15 intact, so CODE 1 applies CREL once:
    - even offsets add A5;
    - odd offsets add the STRS base.
-   The original alone applies CREL. Aligned CODE copies currently remain
-   allocated until shutdown; zone ownership/purging follows in M1.5, and
-   file-backed resource reads in M2.2.
+   The original alone applies CREL. CODE copies are zone handles with lock/purge/resource flags;
+   file-backed resource reads remain M2.2.
 6. **Trap patching must be real.** `GetTrapAddress` returns, per trap, the address
    of a small stub `dc.w $AFxx, <trap>` that runs the built-in implementation and
    bypasses any patch. CODE 1's `JSR handler; JMP original` then works, and so
@@ -213,7 +212,7 @@ The original startup path is implemented (M1.1–M1.3):
 **Verified:** the host check `tools/a5world_check.py` passes: it runs
 CODE 1's expansion algorithm on the resource bytes and compares, byte for byte,
 with the A5 world the Amiga dumps (via gdb) when it enters `main`. The current
-loud stop is `NewHandleClear` at Engine+$004A during `main` initialization.
+loud stop is `Gestalt` (system version) at Core+$3D36 during `main` initialization.
 
 ### 4.3 Low memory
 
@@ -261,8 +260,8 @@ pointers and 128 handle slots. That is too loose for this game:
 - its heap behaviour must match the 3 MB `SIZE` partition, and blocks must not
   land in chip RAM.
 
-The portable allocator core is implemented (`MacHeap`, M1.5a); trap/resource
-integration and reference acceptance remain M1.5b:
+The allocator and trap/resource integration are implemented (`MacHeap`, M1.5).
+Native trap probes, host fragmentation tests and paired heap captures verify it:
 - **One fast-RAM block of `SIZE` preferred** (3,145,728 bytes) as the
   application zone. The A5 world and the Mac stack are allocated separately,
   and the port's own buffers never live in the zone.
@@ -278,7 +277,7 @@ integration and reference acceptance remain M1.5b:
     this zone.
   - A system zone (`NewPtrSys`) is a small separate zone, for the VBL stub and
     the THINK C exit patch.
-- **Complete the call set.** Add DisposeHandle, NewHandleClear, HGetState,
+- **Implemented call set.** DisposeHandle, NewHandleClear, HGetState,
   HSetState, EmptyHandle, ReallocateHandle, SetPtrSize, GetPtrSize, SetZone,
   GetZone, SetApplLimit, PtrToHand, MemError and ResError.
 - **Host unit tests.** The zone allocator is pure C++ and gets host tests

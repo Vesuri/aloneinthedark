@@ -318,7 +318,7 @@ The original-startup dump remains exact (A5 $00468AF0, STRS $002E92DC, zero
 mismatches in 75,616 bytes). Both production audits pass (42 probe symbols).
 Address redirection does not supply missing subsystem values: zone/error
 shadows belong to M1.5, system identity to M1.6, and scrap/sound state to their
-services. Initialization still stops explicitly at Engine+$004A NewHandleClear.
+services. That low-memory checkpoint reached Engine+$004A; the current stop is listed below.
 
 
 ## Zone allocator core
@@ -337,9 +337,7 @@ pointer growth, handle growth/shrink, MoveHHi, reusable master slots, overflow
 rejection and 2,500 deterministic fragmentation steps with every live payload
 checked after each step. Interleaved master blocks exercise movement around
 pinned metadata. `python3 tools/check_mac_heap.py --sanitize` additionally runs
-address and undefined-behavior sanitizers; it passes. The core cross-compiles
-but is not yet connected to game allocations, so the current native stop is
-unchanged. No M1.5 memory-usage acceptance is claimed yet.
+address and undefined-behavior sanitizers; it passes. The core is connected to Memory Manager traps and resource handles.
 
 The API/zone-field reference is Apple's [Inside Macintosh: Memory Manager](https://developer.apple.com/library/archive/documentation/mac/pdf/Memory/Memory_Manager.pdf).
 `tools/mac_traps.lua` now records zone, ApplLimit, zcbFree (the FreeMem value),
@@ -351,3 +349,61 @@ Engine+$004A NewHandleClear, free=$53F8; after MaxApplZone and startup work,
 the next call at that same site has free=$2B0820. The 12 MoreMasters calls
 allocate 64 master pointers apiece, consuming $108 bytes each. These are
 reference observations, not values for the port to return unconditionally.
+
+
+## Application-zone integration and reference acceptance
+
+The application zone reserves 3,145,728 bytes of fast RAM; a separate 131,072-byte
+system zone serves system allocations. Mac globals and stack remain outside the
+zone. Resource handles now use its master blocks, flags, allocation and disposal;
+whole-fork disk buffering remains the explicitly queued M2.2 replacement.
+MemErr and ApplLimit are published into private low-memory shadows, and ResError
+reads the actual ResErr shadow (including original-code writes).
+
+Clean `HEAPPROBE=1` plus `GDBSCRIPT=heap.gdb EXTRA_ARGS=--warp_mode=1
+./diag_run.sh 30` passes three native Line-A stages: clear allocation, Ptr size,
+handle size/state/lock/movement, Empty/Reallocate/RecoverHandle, system-zone
+selection, PtrToHand contents, MemErr and exact FreeMem recovery. The separate
+LINEAPROBE run passes register, CCR, callback, stack, vector and callable-original
+checks. Production host tests, sanitizers, original-byte checks, boot regression,
+low-memory publication and runtime observer all pass on the pinned 68020.
+The original A5 dump has zero mismatches across 75,616 bytes (A5 $00786E48,
+STRS $00443ED0). The next named stop is Gestalt('sysv'), Core+$3D36.
+
+The paired heap checkpoint is **before the first Core+$3D36 Gestalt('sysv')**.
+MAME's zone header reports FreeMem=2,821,316; native FreeMem=3,096,720. A full
+block walk independently equals each header. The allowed difference at this
+checkpoint is 275,404 bytes, fully accounted for (zero unaccounted margin):
+
+| Source of additional native free space | Bytes |
+| --- | ---: |
+| Zone span: native 3,145,728 versus Mac 3,025,368 | 120,360 |
+| Nine unused Mac CODE blocks, exact original bytes (4–6, 8–13) | 149,260 |
+| Other Mac handle blocks, beyond four common resources and the 132-byte handle | 6,628 |
+| Additional native 32-byte handle, including header | -56 |
+| Larger native headers/alignment for the five common handles | -96 |
+| Mac pointer/master blocks 3,872 versus native 4,536 | -664 |
+| Zone header/trailer 52 versus 80 | -28 |
+| **Total** | **275,404** |
+
+This measures allocation differences; it does not assign guessed purposes to
+unidentified Mac manager blocks. The nine unused CODE payloads total 149,180
+bytes and are byte-identical in the Mac dump; avoiding these copies follows D1.
+The separate native globals/stack and fixed SIZE arena explain the zone-span
+difference. No fake FreeMem constant is returned.
+
+`original_startup.gdb` writes the native heap to `tmp/amiga-heap.bin`. The local
+MAME capture at the byte-checked $DD60 dispatcher saved [AppZone, bkLim) on
+A1AD with D0='sysv' and finished with `PASS heap-dump captured` and
+`PASS heap-reference capture completed`. Recheck the paired evidence with:
+
+```sh
+python3 tools/check_heap_capture.py tmp/m1.5-mac-heap.bin tmp/amiga-heap.bin \
+  'tmp/runtime-data/Alone In The Dark'
+```
+
+The observer requires the measured baseline and verified unused resource bytes;
+any changed allocation balance requires a new explained capture, not a widened
+percentage tolerance. Native master pointers remain clean addresses, with flags
+in side storage. Startup and the native probe exercise StripAddress, HGetState
+and HSetState without relying on the reference's high-byte pointer flags.
