@@ -76,14 +76,28 @@ opcodes/operands before changing binary behavior.
 ## Static analysis
 
 ```sh
+make host-tests         # host analysis fixtures
+make trap-census        # tmp/trap-census.md, live sites and selectors
 make m68k-sweep         # 68020-only instructions on reachable paths
 make lowmem-scan        # reachable absolute Page-0 references
 make entrypoints-check  # ghidra_scripts/entrypoints.csv matches CODE 0
 ```
 
-Until CREL is applied, `lowmem-scan` also lists the unrelocated A5-relative
-`JSR abs.l` operands (jump-table calls); entries whose longword offset appears in
-the segment's CREL are relocations, not Page-0 accesses.
+The census and low-memory scan read the original resource fork directly, including
+CREL, DATA, ZERO and DREL; no scratch scripts or Vette checkout are needed.
+The census checks the 1.0 baseline of 1,115 sites / 242 distinct trap words.
+Its 114 unresolved static transfers/decode stops remain listed for runtime
+verification. D0 selectors are local static evidence, not a data-flow proof.
+
+`lowmem-scan` reports 54 live Page-0 operands at 28 addresses, with original
+encodings. CREL address fields and PEA address constants are excluded; genuine
+memory operands in the same instruction remain visible. This conservative set
+includes fallback paths (such as SysEnvirons glue); M1.4 must reconcile those
+with the implemented system services before producing its patch table.
+
+Trap names come from cxmon through `tools/gen_trap_names.py`, reused from Vette.
+The generated `tmp/trap_names.lua` remains local-only. The generator accepts a
+local cxmon `mon_atraps.h` path for offline use; otherwise it downloads the table.
 
 `ghidra_scripts/` holds the headless Ghidra scripts used by Vette!
 (entry marking, names, trap and call-graph dumps, listing export). Their

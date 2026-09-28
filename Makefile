@@ -6,7 +6,7 @@ ARCHIVE ?= tmp/AloneInTheDark.img_.sit
 RUNTIME_DATA ?= tmp/runtime-data
 SEGMENTS ?= tmp/segments
 
-.PHONY: all help todo amiga extract-original-data segments m68k-sweep lowmem-scan entrypoints-check
+.PHONY: all help todo amiga extract-original-data segments m68k-sweep lowmem-scan entrypoints-check trap-census host-tests
 
 all: help
 
@@ -19,6 +19,8 @@ help:
 	@echo "  make segments                dump the CODE resources into $(SEGMENTS)"
 	@echo "  make m68k-sweep              68020-only instructions on reachable paths"
 	@echo "  make lowmem-scan             reachable absolute Page-0 references"
+	@echo "  make trap-census             generate tmp/trap-census.md"
+	@echo "  make host-tests              run static-analysis fixtures"
 	@echo "  make entrypoints-check       ghidra_scripts/entrypoints.csv matches CODE 0"
 	@echo
 	@echo "There is deliberately no host game build; the Amiga executable is the product."
@@ -47,7 +49,20 @@ m68k-sweep:
 	@cd tools && python3 m68k_sweep.py --selftest >/dev/null && python3 m68k_sweep.py '../$(SEGMENTS)'
 
 lowmem-scan:
-	@cd tools && python3 m68k_lowmem.py '../$(SEGMENTS)'
+	@python3 tools/m68k_lowmem.py '$(RUNTIME_DATA)/Alone In The Dark'
+
+# cxmon names are generated locally, never vendored.
+tmp/trap_names.lua: tools/gen_trap_names.py
+	@python3 tools/gen_trap_names.py
+
+trap-census: tmp/trap_names.lua
+	@python3 tools/trap_census.py --selftest
+	@python3 tools/trap_census.py '$(RUNTIME_DATA)/Alone In The Dark'
+
+host-tests:
+	@python3 tools/trap_census.py --selftest
+	@python3 tools/m68k_lowmem.py --selftest
+	@python3 tools/m68k_sweep.py --selftest
 
 entrypoints-check:
 	@python3 tools/code0_entrypoints.py '$(SEGMENTS)/CODE_0' --check ghidra_scripts/entrypoints.csv

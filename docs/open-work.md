@@ -17,18 +17,6 @@ required.
 
 ## M0 Groundwork
 
-- **M0.1 Trap census tool.**
-  - Promote `tmp/plan/census.py` to `tools/trap_census.py`. It is a CREL-aware
-    recursive descent that starts from main, CODE 1, the DATA function pointers,
-    and jump-table and PC-relative code references, and it decodes selectors.
-  - Generate trap names from the cxmon list, as Vette's `tools/gen_trap_names.py`
-    does.
-  - `make trap-census` writes `tmp/trap-census.md`.
-  - Add `--selftest` fixtures for branch following, CREL JSR and the switch idiom.
-  - Fix `tools/m68k_lowmem.py` to skip CREL-relocated and `PEA #imm.w` operands.
-
-  *Done when* the census reports 1,115 live sites and 242 distinct traps, the
-  self-test passes, and `make lowmem-scan` lists only true Page-0 references.
 - **M0.2 MAME runtime trap log.**
   - Write `tools/mac_traps.lua`, modelled on Vette's `mac_traps.lua`. It taps the
     ROM Line-A dispatch on the 7.5.5 volume and logs:
@@ -83,7 +71,7 @@ required.
 - **M0.7 Regression harness skeleton.**
   - Add `amiga/regression.sh` and `make regression`, with the `boot` case: a PASS
     regex, and any loud stop counts as failure.
-  - Add a `make host-tests` target.
+  - Extend the existing `make host-tests` target as runtime helpers arrive.
 
   *Done when* `make regression` passes `boot` on `a1200-030`.
 
