@@ -1,0 +1,46 @@
+# Alone in the Dark — Amiga
+
+An unofficial, **in-progress** Amiga port of the 1994 Macintosh **Alone In The
+Dark 1.0** by Infogrames and Interplay.
+
+The port follows the approach of the completed Vette! port: run the original
+68k game code with an Amiga implementation of the Macintosh services it uses,
+using native bitplanes, a hardware mouse pointer and Paula sound. The runtime
+and Toolbox layer are carried over from Vette!; see
+[docs/open-work.md](docs/open-work.md) for what works today.
+
+## Current state
+
+The executable builds and passes its link audits. At startup it reads the
+original application resource fork, builds the A5 world described by CODE 0,
+resolves the jump table into resident segments, and stops with a named loud stop
+at the first segment that needs CREL relocation (`SEGMENT LOADER / CREL
+RELOCATION`, CODE 3 "Core"). The game itself does not run yet.
+
+## Requirements (provisional)
+
+The original code uses 68020 instructions and 256-color graphics, so the
+expected target is an AGA Amiga with a 68020 or better. Memory needs are not yet
+measured; the original asks for 3 MB.
+
+No original game code or data, Kickstart image or WHDLoad binary is
+distributed. You need your own copy of the original release.
+
+## Building
+
+The game uses `m68k-amiga-elf-gcc`, `elf2hunk` and vasm.
+
+```sh
+. amiga/env.sh
+make -C amiga
+```
+
+This builds `amiga/out/Alone.exe` without original game data. Extracting your
+original archive, running under FS-UAE and debugging are covered in
+[development.md](docs/development.md). The [documentation index](docs/README.md)
+covers architecture and data formats.
+
+## Credits and licensing
+
+Alone in the Dark and its original assets belong to their respective copyright
+holders. This is an unofficial fan port, not affiliated with or endorsed by them.

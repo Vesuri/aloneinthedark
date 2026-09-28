@@ -1,0 +1,345 @@
+# Alone in the Dark — Amiga cross-build (m68k-amiga-elf-gcc)
+#
+# Usage (from amiga/ with the toolchain on PATH via `. env.sh`):
+#   make                 build out/Alone.exe
+#   make HIRES=1         default to hires interlaced, including standalone launches
+#   make clean           remove obj/ and out/
+#   make PROBES=1        + the timing probes (diag_run.sh needs this)
+#   make FPSCOUNT=1      the HONEST framerate build: one counter, no probe instrumentation
+#   make VERIFY=1 PROBES=1  run every asm twin against its C oracle on each call
+#   make FILLWATCH=1     rolling audit of the planar back buffer against the chunky Mac surface
+#   ./run.sh             boot in FS-UAE (CTRL + left mouse button quits)
+#   ./debug.sh           source-level debug via the FS-UAE GDB stub
+#   ./diag_run.sh [secs] headless probe run (needs PROBES=1)
+#
+# Builds the native runtime and Macintosh service layer; see docs/development.md.
+# Inherited from the Vette! port; its game-specific diagnostic switches were not carried over.
+#
+# ⚠⚠ `make clean` BEFORE any PROBES=1 build and AFTER editing a widely-included header.
+# This Makefile tracks neither the flag nor header deps, so a partial rebuild links stale
+# objects into a WORKING-BUT-WRONG binary with silent runtime breakage.  On the prior ports
+# that trap cost multiple debugging sessions: treat any unexplained regression right after a
+# header edit or a PROBES toggle as a stale build FIRST.  (docs/development.md)
+#
+# Structure: explicit/wildcarded source lists mapped to objects in a flat obj/ (keyed by
+# basename — KEEP BASENAMES UNIQUE across the source trees), sources located via vpath.
+
+OUT      = out/Alone
+CC       = m68k-amiga-elf-gcc
+AS       = m68k-amiga-elf-as
+VASM     = vasmm68k_mot
+OBJDUMP  = m68k-amiga-elf-objdump
+SDKDIR   = $(abspath $(dir $(shell which $(CC)))../m68k-amiga-elf/sys-include)
+SUPPORT  = $(abspath $(dir $(shell which $(CC)))../../support)
+REPO      = ..
+AMIGA_SRC = $(REPO)/src/platform/amiga
+$(shell mkdir -p obj out)
+
+# ---------------------------------------------------------------------------
+# Sources
+# ---------------------------------------------------------------------------
+# C++: the vendored dA JoRMaS hardware framework, then this port's Amiga backend, the shared
+# platform layer, and main().  The framework list is explicit because it is fixed and vendored.
+FRAMEWORK_CXX_SRCS := \
+    $(AMIGA_SRC)/framework/AmigaHardware.cpp \
+    $(AMIGA_SRC)/framework/Bitmap.cpp \
+    $(AMIGA_SRC)/framework/CopperList.cpp \
+    $(AMIGA_SRC)/framework/Palette.cpp \
+    $(AMIGA_SRC)/framework/Sprite.cpp \
+    $(AMIGA_SRC)/framework/Util.cpp
+CXX_SRCS := $(FRAMEWORK_CXX_SRCS) \
+    $(AMIGA_SRC)/GCCRuntime.cpp \
+    $(wildcard $(AMIGA_SRC)/*.cpp) \
+    $(wildcard $(REPO)/src/platform/*.cpp) \
+    $(wildcard $(REPO)/src/mac/*.cpp) \
+    $(wildcard $(REPO)/src/main.cpp)
+# GCCRuntime.cpp is named explicitly AND matched by the wildcard above; de-duplicate.
+CXX_SRCS := $(sort $(CXX_SRCS))
+
+CORE_C_SRCS := \
+    $(wildcard $(REPO)/src/mac/*.c) \
+    $(wildcard $(REPO)/src/platform/*.c)
+
+# Support runtime (freestanding CRT: program entry, memset…). Game CODE and
+# resources are deliberately not link inputs; the executable reads the original
+# raw Macintosh resource fork from disk before hardware takeover.
+SUPPORT_C_SRCS := $(SUPPORT)/gcc8_c_support.c
+ASM_SRCS       := $(SUPPORT)/gcc8_a_support.s $(wildcard $(AMIGA_SRC)/*.s)
+
+# Framework hand-written m68k asm (Motorola syntax, assembled by vasm -> ELF).  The matching
+# GCC register-marshalling bridges live under `#if defined(ASSEMBLER) && !defined(__SASC)` in
+# the corresponding framework .cpp.
+FRAMEWORK_ASM_SRCS := \
+    $(AMIGA_SRC)/framework/UtilAssembler.s \
+    $(AMIGA_SRC)/framework/AmigaHardwareAssembler.s \
+    $(AMIGA_SRC)/framework/BitmapAssembler.s \
+    $(AMIGA_SRC)/framework/CopperListAssembler.s
+
+# ---------------------------------------------------------------------------
+# Build flags / feature toggles
+# ---------------------------------------------------------------------------
+# ⭐ THE ASM-TWIN SEAM TEMPLATE.  Every hand-asm twin gets one of these as it is written:
+#
+#   ifneq ($(<NAME>_C),1)
+#   EXTRA_DEFINES += -DAITD_<NAME>_ASM
+#   ifdef VERIFY
+#   EXTRA_DEFINES += -DAITD_<NAME>_VERIFY
+#   endif
+#   endif
+#
+# `make <NAME>_C=1` falls back to the clean-C oracle; `make VERIFY=1 PROBES=1` runs the asm and
+# the C oracle back-to-back on identical state EVERY CALL and compares.  ⭐ That in-process
+# differential is the ONLY valid way to price an asm twin — a cross-run comparison changes the
+# workload and measures a different thing.  See docs/development.md.
+
+# Palette-remapped packed-pixel copy.  The C implementation remains the oracle;
+# the 68000 twin keeps the 256-byte lookup table in an address register.
+ifneq ($(MAPPED_COPY_C),1)
+EXTRA_DEFINES += -DAITD_MAPPED_COPY_ASM
+ifdef VERIFY
+EXTRA_DEFINES += -DAITD_MAPPED_COPY_VERIFY
+endif
+endif
+
+# Chunky-to-planar rectangle kernel (Vette's four-plane version).  The C table
+# implementation remains the oracle.  ⚠ This game draws 8-bit pixels; the kernel
+# must be replaced, not tuned, when the display moves to eight planes.
+ifneq ($(C2P_C),1)
+EXTRA_DEFINES += -DAITD_C2P_ASM
+ifdef VERIFY
+EXTRA_DEFINES += -DAITD_C2P_VERIFY
+endif
+endif
+
+# Diagnostic only: run each normalized C2P rectangle once to the real chip-RAM
+# back buffer and once to an equivalent fast-RAM buffer, timing both destinations.
+ifeq ($(C2P_SPLIT),1)
+ifndef PROBES
+$(error C2P_SPLIT=1 requires PROBES=1)
+endif
+EXTRA_DEFINES += -DAITD_C2P_SPLIT
+endif
+
+# Startup default only: a WHDLoad slave may override this retained word before entry.
+HIRES ?= 0
+ifneq ($(filter $(HIRES),0 1),$(HIRES))
+$(error HIRES must be 0 or 1)
+endif
+obj/StartupConfig.o: ASFLAGS += --defsym AITD_HIRES=$(HIRES)
+
+# `make PROBES=1` — the sub-frame timing accumulators, read via the gdb stub (amiga/diag_run.sh).
+# OFF by default: the probes read chip registers several times per iteration, which is exactly
+# what a framerate build must not do.  ⚠ NEVER quote a framerate from a PROBES build.
+ifdef PROBES
+EXTRA_DEFINES += -DAITD_PROBE
+endif
+
+# `make FPSCOUNT=1` — the honest framerate build: one increment per painted frame, no
+# instrumentation.  docs/development.md.
+ifdef FPSCOUNT
+EXTRA_DEFINES += -DAITD_FPSCOUNT
+endif
+
+ifeq ($(FILLWATCH),1)
+EXTRA_DEFINES += -DAITD_FILLWATCH
+endif
+
+ifdef PROBEFIELDS
+EXTRA_DEFINES += -DAITD_PROBE_FIELDS=$(PROBEFIELDS)
+endif
+
+CXX_OBJS       := $(addprefix obj/,$(notdir $(CXX_SRCS:.cpp=.o)))
+CORE_C_OBJS    := $(addprefix obj/,$(notdir $(CORE_C_SRCS:.c=.o)))
+SUPPORT_C_OBJS := $(addprefix obj/,$(notdir $(SUPPORT_C_SRCS:.c=.o)))
+ASM_OBJS       := $(addprefix obj/,$(notdir $(ASM_SRCS:.s=.o)))
+FRAMEWORK_ASM_OBJS := $(addprefix obj/,$(notdir $(FRAMEWORK_ASM_SRCS:.s=.o)))
+OBJECTS := $(CXX_OBJS) $(CORE_C_OBJS) $(SUPPORT_C_OBJS) $(ASM_OBJS) $(FRAMEWORK_ASM_OBJS)
+
+vpath %.cpp $(AMIGA_SRC)/framework $(AMIGA_SRC) $(REPO)/src/platform $(REPO)/src/mac $(REPO)/src
+vpath %.c   $(REPO)/src/mac $(REPO)/src/platform
+vpath %.s   $(AMIGA_SRC)/framework $(AMIGA_SRC)
+
+WARN = -Wall -Wno-unused-function -Wno-unused-parameter -Wno-unused-variable
+
+CORE_CINCLUDES = -I"$(AMIGA_SRC)/framework/compat-include" \
+                 -I"$(REPO)/src" \
+                 -I"$(REPO)/src/mac" \
+                 -I"$(REPO)/src/platform"
+
+OPT        ?= -O2 -fomit-frame-pointer
+NATIVE_OPT ?= -O3 -funroll-loops
+
+CORE_CFLAGS = -g -MP -MMD -m68000 -msoft-float $(OPT) -nostdlib \
+              -fno-tree-loop-distribution -ffunction-sections -fdata-sections \
+              $(WARN) -DAITD_PLATFORM_AMIGA \
+              $(CORE_CINCLUDES) $(EXTRA_DEFINES)
+
+CCFLAGS   = -g -MP -MMD -m68000 -msoft-float $(OPT) -nostdlib \
+            -fno-tree-loop-distribution -ffunction-sections -fdata-sections \
+            $(WARN) $(EXTRA_DEFINES)
+CPPFLAGS  = $(CCFLAGS) -fno-rtti -fno-exceptions -fno-use-cxa-atexit -std=gnu++17 \
+            -fpermissive -Wno-write-strings -Wno-pointer-arith \
+            -DAITD_PLATFORM_AMIGA \
+            -include "$(AMIGA_SRC)/framework/SASCCompat.h" \
+            -I"$(AMIGA_SRC)/framework" \
+            -I"$(AMIGA_SRC)/framework/compat-include" \
+            -I"$(AMIGA_SRC)" \
+            -I"$(REPO)/src" \
+            -I"$(REPO)/src/mac" \
+            -I"$(REPO)/src/platform" \
+            -I"$(CURDIR)"
+ASFLAGS   = -mcpu=68000 -g --register-prefix-optional -I"$(SDKDIR)" -I"$(CURDIR)"
+obj/C2P.o: ASFLAGS := $(filter-out -mcpu=68000,$(ASFLAGS)) -mcpu=68020
+VASMFLAGS = -m68010 -Felf -quiet -x -no-opt -nowarn=62 $(EXTRA_VASMDEFS)
+
+# ⚠⚠ Every global a committed .gdb script reads MUST be listed here.  -Wl,--gc-sections drops
+# an unreferenced counter and gdb then resolves the name into .text and prints INSTRUCTION
+# BYTES as a value — a fake measurement, not an obvious zero.  `probe-audit` enforces it.
+PROBE_SYMS = g_vbiCount g_planeChecksum g_screenReady g_laceFields g_longFields g_lofSamples \
+             g_stageBState g_trapWord g_trapSelector g_trapSegment g_trapOffset \
+             g_trapPC g_trapRegisters g_trapUserStack g_resourceCount g_jumpEntryCount \
+             g_blockMoveCount g_trapManager g_trapRoutine
+PROBE_SYMS += g_stageCDepth
+PROBE_SYMS += SysBase
+PROBE_SYMS += g_macTicks
+PROBE_SYMS += g_macFramesQueued g_macFramesPresented
+PROBE_SYMS += g_beamPresentLine g_beamPresentMin g_beamPresentMax \
+              g_beamPresents g_beamPresentsLate
+PROBE_SYMS += g_macVBLCallbackEntry g_macVBLCallbackTask g_macVBLCallbackA5 g_macVBLCallbackReturn
+ifneq ($(MAPPED_COPY_C),1)
+ifdef VERIFY
+PROBE_SYMS += g_mappedCopyAsmTicks g_mappedCopyCTicks g_mappedCopyVerifyCalls \
+              g_mappedCopyVerifyBytes \
+              g_mappedCopyVerifyFailures
+endif
+endif
+ifneq ($(C2P_C),1)
+ifdef VERIFY
+PROBE_SYMS += g_c2pAsmTicks g_c2pCTicks g_c2pVerifyCalls g_c2pVerifyBytes \
+              g_c2pVerifyFailures
+endif
+endif
+ifeq ($(C2P_SPLIT),1)
+PROBE_SYMS += g_c2pSplitChipTicks g_c2pSplitFastTicks g_c2pSplitFrames \
+              g_c2pSplitRects g_c2pSplitPixels
+endif
+ifdef PROBES
+PROBE_SYMS += g_probeSkipC2P g_probeC2PFrames g_probeC2PRects g_probeC2PPixels \
+              g_probeCopyMapIdentity g_probeCopyMapHits g_probeCopyMapMisses \
+              g_probeCopyBitsTicks g_probeCopyBitsCalls \
+              g_probeDelayCalls g_probeDelayRequested \
+              g_probeBlockMoveTicks g_probeBlockMoveCalls \
+              g_probeDrawPictureTicks g_probeDrawPictureCalls \
+              g_probeDrawPictureTrace g_probeDrawPictureTraceTicks \
+              g_probeCopyTraceEnabled g_probeCopyTraceCount g_probeCopyTrace \
+              g_probeCopyModeTicks g_probeCopyModeCalls \
+              g_probePaulaZeroedMask \
+              g_macExitState g_macHostReturnSP \
+              g_restoreSavedDmacon g_restoreActualDmacon \
+              g_restoreSavedIntena g_restoreActualIntena g_restoreViewMatches \
+              g_profileState g_profileGeneration g_profileStartEpoch g_profileStopEpoch \
+              g_profileStartField g_profileStopField g_profileStartFrames g_profileStopFrames \
+              g_profileTicks g_profileCalls
+endif
+ifeq ($(FILLWATCH),1)
+PROBE_SYMS += g_fillWatchFrames g_fillWatchRows g_fillBadFrames g_fillBadPixels \
+              g_fillBadX g_fillBadY g_fillBadExpected g_fillBadActual
+endif
+
+COMMA := ,
+LDFLAGS   = -Wl,--emit-relocs,--gc-sections,-Ttext=0,-Map=$(OUT).map \
+            $(addprefix -Wl$(COMMA)--undefined=,$(PROBE_SYMS))
+
+VERSION_STRING = $$VER: Alone in the Dark $(shell cat $(REPO)/VERSION)
+
+# ---------------------------------------------------------------------------
+# Rules
+# ---------------------------------------------------------------------------
+.PHONY: all clean muldiv-audit probe-audit
+
+all: $(OUT).exe
+
+# Track this loader-patchable word independently of compiler flags. A forced
+# rebuild handles even back-to-back mode changes within one clock tick.
+ifneq ($(shell cat obj/hires.config 2>/dev/null),$(HIRES))
+.PHONY: obj/StartupConfig.o $(OUT).elf $(OUT).exe
+endif
+
+obj/StartupConfig.o: $(AMIGA_SRC)/StartupConfig.s
+	@mkdir -p obj
+	@$(AS) $(ASFLAGS) -o $@ "$(AMIGA_SRC)/StartupConfig.s"
+	@printf '%s\n' '$(HIRES)' > obj/hires.config
+
+$(OUT).exe: $(OUT).elf
+	$(info Elf2Hunk $@)
+	@elf2hunk $(OUT).elf $(OUT).exe -s
+	@grep -qa '$(VERSION_STRING) ' $(OUT).exe || { \
+	  echo "error: the AmigaOS \$$VER: string is missing from $@ or disagrees with VERSION."; \
+	  echo "       See src/platform/amiga/version.s (SHF_GNU_RETAIN)."; \
+	  $(RM) $@; exit 1; }
+
+$(OUT).elf: $(OBJECTS)
+	$(info Linking $@)
+	@$(CC) $(CCFLAGS) $(LDFLAGS) $(OBJECTS) -o $@
+	@$(OBJDUMP) --disassemble --no-show-raw-ins -S $@ > $(OUT).s 2>/dev/null || true
+	@$(MAKE) --no-print-directory muldiv-audit
+	@$(MAKE) --no-print-directory probe-audit
+
+# ⚠ MANDATORY AUDIT: the 68000 has NO 32-bit multiply or divide, so GCC lowers any 32-bit
+# * / / / % into __mulsi3/__divsi3/__udivsi3/__modsi3/__umodsi3 — ~200-600 cycles each.  Use the
+# 16-bit helpers in src/m68k_math.h instead.  This runs on every link so a regression is caught
+# the moment it is introduced, not months later.
+muldiv-audit:
+	@if $(OBJDUMP) -d $(OUT).elf | grep -qE '__(u?div|u?mod|mul)si3'; then \
+	  echo "*** 32-bit software mul/div linked in — see src/m68k_math.h:"; \
+	  $(OBJDUMP) -d $(OUT).elf | grep -E '__(u?div|u?mod|mul)si3' | head; \
+	  exit 1; \
+	else echo "muldiv-audit: clean"; fi
+
+# ⚠ MANDATORY AUDIT: every PROBE_SYMS symbol must be a real data symbol in the linked ELF.
+# A gc-dropped probe counter makes gdb print instruction bytes as a measurement — see PROBE_SYMS.
+probe-audit:
+	@bad=""; for s in $(PROBE_SYMS); do \
+	  $(OBJDUMP) -t $(OUT).elf | grep -qE "[[:space:]]O[[:space:]]+\.(bss|data)[[:space:]].*[[:space:]]$$s$$" \
+	    || bad="$$bad $$s"; \
+	done; \
+	if [ -n "$$bad" ]; then \
+	  echo "*** probe symbol(s) missing from $(OUT).elf (gc-sections ate them):$$bad"; \
+	  echo "    gdb would resolve these into .text and print instruction bytes as values."; \
+	  exit 1; \
+	else echo "probe-audit: clean ($(words $(PROBE_SYMS)) symbols)"; fi
+
+# C++ (framework + the Amiga backend + the shared platform layer).
+obj/%.o : %.cpp
+	$(info C++  $<)
+	@$(CC) $(CPPFLAGS) -c -o $@ "$(abspath $<)"
+
+# The port's plain-C translation units.
+obj/%.o : %.c
+	$(info C    $< [core])
+	@$(CC) $(CORE_CFLAGS) -c -o $@ "$(abspath $<)"
+
+# Support runtime: gcc8_c_support.c needs CCFLAGS (no core include paths).
+obj/gcc8_c_support.o : $(SUPPORT)/gcc8_c_support.c
+	$(info C    $<)
+	@$(CC) $(CCFLAGS) -c -o $@ "$<"
+
+obj/gcc8_a_support.o : $(SUPPORT)/gcc8_a_support.s
+	$(info ASM  $<)
+	@$(AS) $(ASFLAGS) -o $@ "$<"
+
+# Port-authored GAS assembly (68000 exception/trampoline code).
+obj/%.o : $(AMIGA_SRC)/%.s
+	$(info ASM  $<)
+	@$(AS) $(ASFLAGS) -o $@ "$(abspath $<)"
+
+# Framework hand-written asm (vasm, Motorola syntax -> ELF).  Static pattern rule so it does not
+# collide with the gas-assembled gcc8_a_support.s rule.
+$(FRAMEWORK_ASM_OBJS) : obj/%.o : %.s
+	$(info VASM $<)
+	@$(VASM) $(VASMFLAGS) -o $@ "$(abspath $<)"
+
+clean:
+	@$(RM) -r obj/ out/
+
+-include $(wildcard obj/*.d)

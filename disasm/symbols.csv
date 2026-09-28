@@ -1,0 +1,2 @@
+space,segment,offset,name,type,evidence,note
+code,1,0x0014,ApplicationEntry,function,DERIVED,First CODE 0 export; the Segment Loader enters the application here
