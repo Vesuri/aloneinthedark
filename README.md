@@ -18,6 +18,11 @@ at the first segment that needs CREL relocation (`SEGMENT LOADER / CREL
 RELOCATION`, CODE 3 "Core"). The game itself does not run yet. Development currently targets only the
 68020; other processors and performance work are deferred.
 
+The M0 tools checkpoint includes the trap census, original Mac runtime/frame
+evidence and a regression harness. Host checks and link audits pass. The
+`boot` regression correctly **fails** at the CREL stop; positive boot acceptance
+remains queued after the original startup path (M1.3a).
+
 ## Requirements (provisional)
 
 The original code uses 68020 instructions and 256-color graphics, so the target

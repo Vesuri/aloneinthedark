@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Launch FS-UAE gdb-stub, connect gdb, let the game run, SIGINT gdb after a delay so it
-# breaks in and prints the standby-build timing probes.
-set -uo pipefail
+# Run a bounded GDB observer. Timeout returns 124, even if interrupting GDB
+# produces diagnostic output; only normal observer completion can return zero.
+set -euo pipefail
 cd "$(dirname "$0")"
 . "${FSUAE_COMMON:-$HOME/.local/share/amiga/fsuae_common.sh}"
 . ./stage_original_data.sh
@@ -10,6 +10,20 @@ FSUAE="${FSUAE:-fs-uae}"
 GDB="${GDB:-m68k-amiga-elf-gdb}"
 ROM="${KICKSTART:-$HOME/Documents/RetroPie/BIOS/kick31.rom}"
 DELAY="${1:-14}"
+[[ "$DELAY" =~ ^[1-9][0-9]*$ ]] || { echo 'DIAG / INVALID DEADLINE' >&2; exit 2; }
+GDB_PID=
+cleanup() {
+  if [[ -n "$GDB_PID" ]]; then
+    kill -9 "$GDB_PID" 2>/dev/null || true
+    wait "$GDB_PID" 2>/dev/null || true
+  fi
+  fsuae_stop
+  if [[ -n "${FSUAE_PID:-}" ]]; then wait "$FSUAE_PID" 2>/dev/null || true; fi
+  FSUAE_PID=
+}
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 # Extra diagnostic options, such as --warp_mode=1, precede pinned machine flags.
 EXTRA_ARGS="${EXTRA_ARGS:-}"
 
@@ -18,6 +32,8 @@ mkdir -p "$DH0/s" "$DH1" "$RUN/state" "$RUN/logs" "$GDBHOME"
 printf 'cd dh1:\nAlone\n' > "$DH0/s/startup-sequence"
 cp -f out/Alone.exe "$DH1/Alone"
 stage_aitd_original_data "$DH1"
+rm -f "$RUN"/state/*.uss
+: > "$RUN/gdb-out.log"
 
 fsuae_claim_port
 "$FSUAE" \
@@ -39,6 +55,10 @@ for i in $(seq 1 60); do
   lsof -nP -iTCP:"$DEBUG_PORT" -sTCP:LISTEN >/dev/null 2>&1 && break
   sleep 1
 done
+
+lsof -nP -iTCP:"$DEBUG_PORT" -sTCP:LISTEN >/dev/null 2>&1 || {
+  echo 'DIAG / DEBUG STUB TIMEOUT' >&2; exit 124
+}
 
 cat > "$RUN/connect.gdb" <<EOF
 set pagination off
@@ -67,18 +87,21 @@ for i in $(seq 1 "$DELAY"); do
   kill -0 "$GDB_PID" 2>/dev/null || break
   sleep 1
 done
-kill -INT "$GDB_PID" 2>/dev/null || true
-# give gdb time to print + detach
-for i in $(seq 1 20); do kill -0 "$GDB_PID" 2>/dev/null || break; sleep 1; done
-kill -INT "$GDB_PID" 2>/dev/null || true
-sleep 2
-kill -9 "$GDB_PID" 2>/dev/null || true
-fsuae_stop
+status=0
+if kill -0 "$GDB_PID" 2>/dev/null; then
+  echo 'DIAG / GDB TIMEOUT' >&2
+  status=124
+  kill -INT "$GDB_PID" 2>/dev/null || true
+  # Allow a short diagnostic flush; a record after this point cannot pass.
+  for i in $(seq 1 5); do kill -0 "$GDB_PID" 2>/dev/null || break; sleep 1; done
+  kill -9 "$GDB_PID" 2>/dev/null || true
+  wait "$GDB_PID" 2>/dev/null || true
+else
+  wait "$GDB_PID" || status=$?
+fi
+GDB_PID=
+cleanup
 echo "=== gdb output (filtered) ==="
-# ⚠⚠ $GDBTAIL: the default 40 lines is enough for a phase table and NOTHING ELSE — it cuts the
-# `=== vbi=... loopFrames=... ===` header, `phase 0` and `FRAME = ... ms`.  The parked-comparison
-# protocol (amiga/Makefile §SPANFILL) *requires* phase 0, whose tick count is bit-identical
-# across runs of the same trajectory, so raise this for any run you intend to compare:
-#   GDBTAIL=200 EXTRA_ARGS="--warp_mode=1" GDBSCRIPT=driving_phase_profile.gdb ./diag_run.sh 30
-# ⚠ and raise it for BOTH arms — never diff two runs captured with different amounts of output.
-grep -v "Internal error: pc" "$RUN/gdb-out.log" | grep -vE "^warning:" | tail -"${GDBTAIL:-40}"
+# Preserve the observer/timeout exit status even when the filtered log is empty.
+grep -v "Internal error: pc" "$RUN/gdb-out.log" | grep -vE "^warning:" | tail -"${GDBTAIL:-40}" || true
+exit "$status"

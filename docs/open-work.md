@@ -15,15 +15,6 @@ design.md §5.
 Each item gives the **goal**, then the scope, then *done when*: the evidence
 required.
 
-## M0 Groundwork
-
-- **M0.7 Regression harness skeleton.**
-  - Add `amiga/regression.sh` and `make regression`, with the `boot` case: a PASS
-    regex, and any loud stop counts as failure.
-  - Extend the existing `make host-tests` target as runtime helpers arrive.
-
-  *Done when* `make regression` passes `boot` on `a1200-020`.
-
 ## M1 Boot to main
 
 - **M1.1 Line-A correctness.**
@@ -57,6 +48,15 @@ required.
   - CODE 1's `_LoadSeg` handler loads and relocates CODE 3 (gdb: header bit 15
     clear, and a known CREL long equals the original + A5);
   - the next loud stop is inside `main`'s initialisation.
+- **M1.3a Positive boot regression acceptance (remaining M0.7).**
+  - The M0.7 harness is implemented and verified to reject the current CREL
+    stop and timeouts. Its original positive acceptance depends on M1.3;
+    this independent acceptance step is retained here, not waived.
+  - Adapt `boot.gdb` to CODE 3's on-demand handle lifetime before setting the
+    original-byte-checked breakpoint at Core+$03E4.
+
+  *Done when* `make regression` passes `boot` on `a1200-020`, with the original
+  main entry reached and no loud stop before that endpoint.
 - **M1.4 Low-memory shadows.**
   - Patch the live set's `abs.w` references to `d16(A5)` in the shadow area,
     after byte checks (design §4.3). Apply the patches when a CODE handle is

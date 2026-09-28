@@ -145,3 +145,22 @@ at $00200000. It reaches `SEGMENT LOADER / CREL RELOCATION`, CODE 3, state 2,
 10 jump entries, before the 45-second ceiling. Shell syntax checks pass;
 deferred CPU selections and conflicting CPU overrides are rejected. This is
 configuration acceptance only, not the still-unimplemented boot regression.
+
+## Regression
+
+`make regression` (or `amiga/regression.sh boot`) clean-builds, runs a bounded
+68020 observer and requires exactly one `boot PASS: reached CODE 3+$03e4`
+record. Any loud stop, debugger error, nonzero observer exit or deadline expiry
+fails. The observer checks the original main-entry bytes before placing its
+breakpoint. The boot test ends at main entry; it does not claim startup or play.
+
+The runner clears stale logs/state, propagates debugger failures, returns 124
+on timeout and cleans up its owned processes on exit. Build evidence is in
+`amiga/.run/regression-build.log`; the observer log is `amiga/.run/gdb-out.log`.
+
+M0.7 harness verification: host checks pass, including ten acceptance/rejection
+fixtures. The actual 68020 run fails at the CODE 3 CREL stop with observer exit 1;
+`make regression` returns failure. An intentionally nonterminating observer
+returns 124. The clean build passes both link audits (30 probes). Positive boot
+acceptance remains **M1.3a**, immediately after the startup implementation that
+can make it pass. No current run has passed the game-boot test.
