@@ -85,11 +85,11 @@ make entrypoints-check  # ghidra_scripts/entrypoints.csv matches CODE 0
 
 The census and low-memory scan read the original resource fork directly, including
 CREL, DATA, ZERO and DREL; no scratch scripts or Vette checkout are needed.
-The census checks the 1.0 baseline of 1,115 sites / 242 distinct trap words.
-Its 114 unresolved static transfers/decode stops remain listed for runtime
+The census checks the 1.0 baseline of 1,118 sites / 243 distinct trap words.
+Its 115 unresolved static transfers/decode stops remain listed for runtime
 verification. D0 selectors are local static evidence, not a data-flow proof.
 
-`lowmem-scan` reports 54 live Page-0 operands at 28 addresses, with original
+`lowmem-scan` reports 56 live Page-0 operands at 28 addresses, with original
 encodings. CREL address fields and PEA address constants are excluded; genuine
 memory operands in the same instruction remain visible. This conservative set
 includes fallback paths (such as SysEnvirons glue); M1.4 must reconcile those
@@ -102,3 +102,12 @@ local cxmon `mon_atraps.h` path for offline use; otherwise it downloads the tabl
 `ghidra_scripts/` holds the headless Ghidra scripts used by Vette!
 (entry marking, names, trap and call-graph dumps, listing export). Their
 output belongs under ignored `tmp/` or `disasm/`.
+
+The MAME runtime logger and its bounded session are documented in
+[mac-reference-loop.md](mac-reference-loop.md#runtime-trap-evidence).
+`make mac-trap-map` generates local original-byte metadata; the report attributes
+calls using per-record live jump-table targets and rejects missing state proofs.
+M0.2 added the runtime-confirmed CODE 1 cache helper at `$021E`/`$026E` to the
+census: `$A0BD` was the new distinct trap; `$A346`/`$A746` were new sites for
+already-known words. The original bytes are checked before these extra roots
+are walked. The additional low-memory operands both access `CPUFlag` (`$012F`).

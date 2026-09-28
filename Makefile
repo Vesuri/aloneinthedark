@@ -6,7 +6,7 @@ ARCHIVE ?= tmp/AloneInTheDark.img_.sit
 RUNTIME_DATA ?= tmp/runtime-data
 SEGMENTS ?= tmp/segments
 
-.PHONY: all help todo amiga extract-original-data segments m68k-sweep lowmem-scan entrypoints-check trap-census host-tests
+.PHONY: all help todo amiga extract-original-data segments m68k-sweep lowmem-scan entrypoints-check trap-census host-tests mac-trap-map
 
 all: help
 
@@ -59,7 +59,12 @@ trap-census: tmp/trap_names.lua
 	@python3 tools/trap_census.py --selftest
 	@python3 tools/trap_census.py '$(RUNTIME_DATA)/Alone In The Dark'
 
+mac-trap-map:
+	@python3 tools/mac_trap_map.py '$(RUNTIME_DATA)/Alone In The Dark'
+
 host-tests:
+	@python3 tools/mac_trap_map.py --selftest
+	@python3 tools/mac_trap_report.py --selftest
 	@python3 tools/trap_census.py --selftest
 	@python3 tools/m68k_lowmem.py --selftest
 	@python3 tools/m68k_sweep.py --selftest

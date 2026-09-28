@@ -17,25 +17,6 @@ required.
 
 ## M0 Groundwork
 
-- **M0.2 MAME runtime trap log.**
-  - Write `tools/mac_traps.lua`, modelled on Vette's `mac_traps.lua`. It taps the
-    ROM Line-A dispatch on the 7.5.5 volume and logs:
-    - the trap word and selector;
-    - key arguments and results;
-    - the caller (segment, offset), resolved from the live jump table and segment
-      handles.
-  - Log only while `CurApName` is the game.
-  - Script a session: launch, 320×200, intro, new game, first room, Save Game,
-    Open Game, Quit.
-
-  *Done when* the log's distinct trap set is a subset of the census live set (the
-  commit lists any differences), and the log answers these questions:
-  - Is `Pack3` reached?
-  - Which MDRV selectors and arguments does the game use, and when?
-  - Do `LISTSAMP` effects go through MDRV?
-  - Which text is drawn with which Mac font and size?
-  - Does ESC open the engine's own save/load/quit/parameter screen, or the
-    File-menu dialogs? Do the S, M and P keys work?
 - **M0.3 68020 build.**
   - Build C/C++ and gas with `-m68020 -mtune=68030`.
   - Retire the mul/div audit and `m68k_math.h`, add a no-soft-float audit, and

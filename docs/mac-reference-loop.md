@@ -79,3 +79,96 @@ display and need an 8-bit path.
   speed, not emulated-time quantities.
 - The original's storeroom-stairs bug is timing-dependent (see
   [install-original-data.md](install-original-data.md)); compare by game state.
+
+## Runtime trap evidence
+
+Generate the original-byte metadata and use the debugger-enabled reference run:
+
+```sh
+make mac-trap-map
+timeout -k 5 600 env SDL_VIDEODRIVER=dummy \
+  mame maciix -rompath ref/mame/roms -nb9 mdc48 -ramsize 8M \
+  -hard ref/mame/hd/aitd_755.hd -video none -sound none -window \
+  -skip_gameinfo -nothrottle -seconds_to_run 360 \
+  -snapshot_directory ref/mame/snap -cfg_directory ref/mame/cfg \
+  -nvram_directory ref/mame/nvram -debug -debugger none -oslog \
+  -autoboot_script tools/mac_traps.lua > tmp/mac-traps.log 2>&1
+python3 tools/mac_trap_report.py tmp/mac-traps.log
+```
+
+All metadata, logs, screenshots and saves stay local. The script uses the first
+save slot on the disposable reference volume. `AITD_MAC_SCENARIO` can select a
+local diagnostic scenario; it is not a replacement for the acceptance route.
+A normal emulator exit is insufficient: require the report's PASS, every state
+proof, and visual inspection of the named `m0.2-*.png` captures. A timeout or
+`FAIL mac-trap-session` is a failure.
+
+System 7.5.5 replaces the ROM Line-A entry with RAM code at `$DD60`. The logger
+checks `2F0A2F02246F000A` before installing a debugger execution breakpoint;
+ROM read taps miss application execution on this volume. It records only while
+`CurApName` is exactly `Alone In The Dark`. Every trap record contains the live
+jump-table targets. The report masks tagged pointers to 24 bits and verifies the
+original opcode at the resolved segment offset; unattributed OS/driver calls
+remain separate. Trap return probes check original trap bytes before installing.
+MDRV probes check the original `movea.l -$6AC(a5),a0; jsr (a0)` and stack cleanup,
+so initialization cannot be missed by frame polling of the driver pointer.
+These are debugger probes, not modifications of the original game.
+
+The route checks rendered states from `screen:pixels()` against native captures.
+On MAME 0.289, `screen:pixel(x,y)` did not agree with the packed bitmap or PNG;
+the packed bitmap did agree byte for byte at the probe locations. Gameplay input
+probes confirm writes to the original key globals, but modal menus also need
+rendered-state checks. In particular, a consumed ESC event does not prove the
+menu remained open. The script fails with a named state and screenshot when
+it cannot verify a transition.
+
+### M0.2 acceptance (MAME 0.289, System 7.5.5)
+
+The completed local `tmp/m0.2-save-proof.log` run reached 320×200, intro,
+Carnby's first room, ESC save, Command-S, Command-O/load, and Finder after quit.
+The `m0log` slot and loaded attic were visually verified. The report found
+273,416 direct CODE calls at 632 sites, **174 distinct words, all within the
+243-word live census**, 292,604 return records, 4,458 MDRV calls and 292 text
+records. The session ended normally at 182 emulated seconds; no timeout passed.
+Host fixtures, census and low-memory scans pass. No Amiga runtime changed.
+
+- **Pack3:** zero direct CODE `$A9EA` calls on this route. This does not prove
+  unreachable error paths cannot call it.
+- **Menus/keys:** ESC opens the engine's Return/Save/Load/Music/Sound/Details/Quit
+  screen. Command-S and Command-O open its save/load screens too. P displays
+  "The game is paused!" and resumes; S and M produce sound/music feedback and
+  change the engine menu's settings. These observations do not remove D5's
+  requirement to handle any other oversized dialogs that are actually reached.
+- **Fonts:** Times ID 20, size 14 for credits, menus, narrative, save/load labels
+  and S/M feedback; Times 36 for pause. The size chooser uses system font 0,
+  size 12 for controls, with default-size (0) prompt/menu/title records.
+  Separate inventory exploration also observed Times 14 for action labels.
+- **LISTSAMP:** yes. Core+$17FC calls selector 17 with a packet containing the
+  sample pointer, length and `$1F400000` (8000 Hz plus flags). The first packet
+  has length 30,783. Its first 32 sample bytes exactly match decoded LISTSAMP
+  entry 6 at offset 44. The archive entry is at 64,226, implode-compressed
+  24,434 → 30,834 bytes. Comparison used the local FITD `PAK_explode` reference;
+  neither its output nor the original sample is committed. Another packet has
+  length 10,199. Core+$17C8 passes the same packet to selector 20.
+
+Observed MDRV selectors (decimal); offsets include the CODE header. Pointer
+addresses vary by load, so the raw log additionally retains their first words.
+The table describes arguments and timing without guessing undocumented semantics.
+
+| Selector | Core call offset(s) | Argument | Observed timing |
+| --- | --- | --- | --- |
+| 21 | `$1D46` | Init packet, first words `$00060002,$00020001,$00050755` | Startup, before chooser/intro |
+| 24 | `$1D60` | `$10B` | Startup |
+| 17 / 20 | `$17FC` / `$17C8` | Effect packet above | Logo/intro effects; 20 repeatedly between 17 calls |
+| 22 | `$1A74` | No second argument | Startup, scene transitions, toggles and quit |
+| 15 | `$0FC8` | 0 | Narrative/gameplay music transitions and reload |
+| 13 | `$137E` | 0 | Same transitions |
+| 0 | `$138C` | `$87` or `$89` | Narrative/attic music, toggle-on and reload |
+| 4 | `$145C,$1FC8` | No second argument | Repeated during gameplay, menus, save/load and pause |
+| 5 / 7 | `$1400` / `$140C` | No second argument | Transitions, toggle-off, reload and quit |
+| 8 | `$1DCC` | No second argument | Quit |
+
+The caller's checked `ADDQ #8,SP` versus `ADDQ #4,SP` distinguishes two arguments
+from one; an incidental stack word is never reported as a second argument.
+The local report keeps per-phase counts and selector arguments; the raw log
+also retains trap arguments and return values.
