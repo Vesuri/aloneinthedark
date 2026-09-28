@@ -46,6 +46,14 @@ int main() {
     assert(c.entry(c.fork(r)->id)->resourceSize==765);
     assert(!c.fork(d)->resource && !c.fork(d)->writable);
     assert(c.entry(c.fork(d)->id)->dataSize==123456);
+    assert(c.seek(d,1,65530)==0 && c.fork(d)->position==65530);
+    assert(c.seek(d,3,-30)==0 && c.fork(d)->position==65500);
+    assert(c.seek(d,2,-7)==0 && c.fork(d)->position==123449);
+    assert(c.seek(d,1,-1)==-40 && c.fork(d)->position==123449);
+    assert(c.seek(d,3,0x7fffffff)==-39 && c.fork(d)->position==123456);
+    assert(c.seek(d,1,(int32_t)0x80000000)==-40 && c.fork(d)->position==123456);
+    assert(c.seek(d,9,0)==c.unsupported);
+    assert(c.seek(0,1,0)==c.rfNumErr);
     assert(c.close(r)==0 && !c.fork(r) && c.close(r)==c.rfNumErr);
     assert(c.open(c.data,false,false)==c.fnfErr);
     for(int i=1;i<c.maxOpen;++i)assert(c.open(file,false,false)>0);

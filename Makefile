@@ -63,6 +63,7 @@ mac-trap-map:
 	@python3 tools/mac_trap_map.py '$(RUNTIME_DATA)/Alone In The Dark'
 
 regression:
+	@./amiga/regression.sh file-read
 	@./amiga/regression.sh window-core
 	@./amiga/regression.sh boot
 
@@ -73,6 +74,7 @@ lowmem-check:
 	@python3 tools/check_lowmem.py --resource "$(RUNTIME_DATA)/Alone In The Dark"
 
 host-tests:
+	@python3 tools/check_file_read_cache.py
 	@python3 tools/check_mac_files.py
 	@python3 tools/check_file_reference.py --selftest
 	@python3 tools/check_resload_access.py

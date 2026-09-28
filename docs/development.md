@@ -616,3 +616,22 @@ zero metadata OS windows. Rendered screenshot acceptance remains pending.
 M2.1b2b implements the remaining file core before M2.2. The original-game PAK
 read acceptance is explicitly retained at M2.1c after Resource Manager support;
 a native test fixture cannot satisfy that integrated acceptance.
+
+
+## Buffered data-fork regression (M2.1b2b)
+
+`amiga/regression.sh file-read` generates an ignored 200,003-byte fixture,
+clean-builds `FILEPROBE=1`, and runs `file_read.gdb` with the normal bounded
+runner. Native assembly wrappers issue real Open/HOpen, Read, Seek, GetFPos,
+GetEOF and Close Line-A instructions. `FileProbe.cpp` verifies bytes, errors,
+marks, ioActCount, condition codes and exact window counts. The observer also
+continues through OS restoration and checks that the intentionally open final
+stream is closed, with no remaining handles. Missing PASS or a timeout fails.
+
+`make regression` runs file-read, window-core and a clean production boot in
+that order. Host sanitizer tests cover the pure cache and fork-position model.
+The synthetic names exist in the catalog only for the diagnostic build. No
+original data is copied into the executable or committed. Production directory,
+identity and original-startup observers retain the Get1NamedResource boundary;
+M2.1c still requires original PAK reads/checksums. Actual WHDLoad persistent
+streams, writable forks and remaining variants are separate pending work.

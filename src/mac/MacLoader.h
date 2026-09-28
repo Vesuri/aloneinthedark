@@ -14,7 +14,7 @@ public:
     // null: Alone in the Dark keeps its game data in data-fork .PAK files.
     bool prepareResourceForks(uint8_t* application, uint32_t applicationSize,
                               uint8_t* data, uint32_t dataSize);
-    void releaseResourceForks();
+    bool releaseResourceForks();
     const char* preparationError() const;
 
     // Zeroes the CODE 0 A5 world, loads JT 0-9 and enters CODE 1+$14. Original

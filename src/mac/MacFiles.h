@@ -21,6 +21,8 @@ public:
     int16_t open(uint32_t id,bool resource,bool writable);
     const Fork* fork(int16_t ref) const;
     int16_t close(int16_t ref);
+    int16_t seek(int16_t ref,uint16_t mode,int32_t offset);
+    void advance(int16_t ref,uint32_t count);
     int16_t openWD(uint32_t directory,uint32_t process,bool* created=0);
     int16_t closeWD(int16_t ref);
     int16_t directoryFor(int16_t ref,uint32_t& directory) const;

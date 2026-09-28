@@ -43,23 +43,29 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.1b2b Remaining File Manager services and buffered reads.**
+- **M2.1b2c Remaining File Manager metadata, variants and mutations.**
   - Catalog/identity (M2.1b1) and default-directory/Preferences startup
     (M2.1b2a) are independently complete. `file_catalog.gdb` verifies all seven
     direct file calls and FindFolder against the Mac, ending at Get1NamedResource.
+  - M2.1b2b completes synchronous read-only Open/HOpen, Read, GetEOF,
+    GetFPos, SetFPos and Close with persistent DOS handles, 64 KiB per-fork
+    buffers and the native `file-read` regression. Original startup remains at
+    Get1NamedResource; synthetic reads do not complete M2.1c.
   - Finish the census call set over that catalog: GetVol/HGetVol/HSetVol,
-    WD queries/close, indexed FCB queries, transfers and async variants.
+    WD queries/close, indexed FCB queries, create/delete/file info, writes,
+    truncation/flush, open permissions beyond read-only, and async variants.
     Unsupported forms remain named stops; see the [reference contract](file-manager.md).
   - Add Finder metadata and companion resource-fork storage for saves/prefs.
     The current catalog rejects nested directories, companion forks, non-ASCII
     names and capacity overflow explicitly; it must never invent metadata.
-  - Implement the census File Manager set with per-fork chunked read buffers
-    through system windows (design §4.5). Unknown paths are loud stops.
+  - Extend the per-fork table without bypassing system windows (design §4.5).
+    Give unsupported flag variants explicit routine names. Unknown paths and
+    unimplemented permissions/positioning modes must stop loudly.
 
-  *Done when* host fixtures and a bounded native Line-A fixture verify file
-  open/read/seek/EOF/close, chunk reuse and boundary crossings, exact bytes and
-  errors through system windows. Original-game read acceptance remains M2.1c
-  below: the measured startup now stops in Resource Manager before those reads.
+  *Done when* each added census operation passes host and bounded native Line-A
+  fixtures, with Mac-reference argument/result comparisons, and `file-read`,
+  `window-core`, production boot and directory observers still pass. Original
+  PAK reads and their startup window count remain the separate M2.1c acceptance.
 - **M2.2 Resource Manager on demand.**
   - Keep only the resource maps in memory; load data into zone handles on
     `GetResource` through system windows.
@@ -303,6 +309,8 @@ required.
   icons, run against `AloneInTheDark.img_.sit` with the known hashes checked.
 - **M7.2 WHDLoad slave,** from `VetteSlave.s`: EmulLineA, a 64 KB stack, the
   resload file backend (chunked reads, saves), with the WHDLoad test modes.
+  Bind the persistent read-stream API/cache to resload rather than DOS; pass the
+  same read/seek/EOF/cache fixture under WHDLoad with zero OS-window entries.
 - **M7.3 Packaging and 1.0:**
   - a deterministic LHA;
   - `make release-check`;

@@ -174,3 +174,48 @@ all 75,616 bytes (A5 $0078F608, STRS $0044C690); heap accounting has zero
 unexplained bytes. Identity now includes the seventh natural `fold` query from
 Core+$4324 before FindFolder, in addition to the original six and eleven Engine
 capability flags. No original instruction is changed by these services.
+
+## Read-only data-fork core (M2.1b2b)
+
+Synchronous Open ($A000), HOpen ($A200), Read ($A002), GetEOF ($A011),
+GetFPos ($A018), SetFPos ($A044) and Close ($A001) now operate on the shared
+fork table. Only permission 1 (read-only data fork) is implemented. Resource
+forks, other permissions, asynchronous requests and positioning flags beyond
+modes 0–3 remain unsupported; they are not reported as successful transfers.
+The original Misc3 bytes include Open+$0FBE, Read+$111E and GetEOF+$0FFA.
+No original instruction is patched by these services.
+
+An open fork owns a persistent DOS handle and one 65,536-byte fast-RAM buffer.
+Opening does not read payloads. Small reads reuse cached ranges; crossing the
+range refills the remaining part on demand. Large requests bypass the cache,
+with each DOS Read capped at 65,536 bytes, all within one OS window. Files are
+opened, filled and closed in user-mode service windows using the M1.7 mechanism.
+The existing bounded resload adapter is unchanged; actual WHDLoad stream
+binding/integration remains M7.2 and is not claimed by these DOS tests.
+
+The mark follows actual returned bytes. A read crossing EOF reports eofErr (-39)
+with its partial count. A negative seek reports posErr (-40) without changing the
+mark; a seek beyond EOF clamps to EOF and reports eofErr. Bad refs report -51.
+Failed fills are invalidated, so an error cannot become a later cache hit.
+See Apple's [FSRead contract](https://dev.os9.ca/techpubs/mac/Files/Files-127.html)
+and [file-position rules](https://dev.os9.ca/techpubs/mac/pdf/Files/Intro_to_Files.pdf).
+The host sanitizer tests cover all four positioning modes, arithmetic limits,
+cache hits, crossings, direct reads, short/error fills and separate-fork caches.
+
+`make regression` now runs `file-read`, `window-core` and production `boot`.
+The synthetic 200,003-byte fixture is generated in ignored emulator staging.
+Actual native Line-A calls check every returned byte, ioResult/D0, mark/counts
+and OS condition codes. The 131,089-byte direct read takes one window and three
+DOS reads. The complete read fixture uses six DOS reads (262,168 bytes including
+prefetch; maximum transfer 65,536) and ten OS windows, including open/close,
+a missing file, HOpen, reopen and a deliberately retained stream. Cleanup after
+OS restoration closes that last handle; the observer requires an empty handle
+ledger and restored scheduling/Line-A state. Close failure is reported to the
+Shell and makes platform cleanup fail rather than silently succeeding.
+
+All three regressions, the host suite, production directory/startup/identity
+observers and A5/heap comparisons pass. A5 $007909A8 and STRS $0044DA30 match
+75,616 bytes exactly; native free heap remains 3,096,720 with zero unexplained
+reference differences. Startup still stops at Get1NamedResource, Engine+$3CDC.
+These fixture reads do not establish that the original game has read any PAK;
+that acceptance remains M2.1c after the intervening Resource Manager work.

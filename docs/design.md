@@ -304,7 +304,7 @@ Native trap probes, host fragmentation tests and paired heap captures verify it:
   file-table reference shared by CurApRefNum and CurResFile/UseResFile. Original
   GetFCBInfo/OpenWD, SetVol and Preferences FindFolder pass (M2.1b2a).
   Get1NamedResource is the next stop. Finder metadata, companion forks and
-  remaining file selectors are explicitly pending M2.1b2b. Integrated original
+  remaining file selectors are explicitly pending M2.1b2c. Integrated original
   PAK read acceptance is M2.1c after the intervening Resource Manager work.
 - **File Manager calls (task M2.1).** Implement the ones the census lists over
   that catalog:
@@ -323,6 +323,13 @@ Native trap probes, host fragmentation tests and paired heap captures verify it:
   measurement) is served from a per-fork read buffer. A miss fills the buffer in
   one system window. Reads larger than the buffer go straight into the caller's
   buffer, in chunk-sized pieces, in one window.
+  - **Implemented read core (M2.1b2b):** synchronous read-only data-fork
+    Open/HOpen, Read, GetEOF/GetFPos/SetFPos and Close. DOS handles persist until
+    close; each fork allocates one 64 KiB fast-RAM cache. Small cache misses fill
+    on demand; larger reads bypass it and split DOS transfers inside one window.
+    Errors retain actual transferred byte counts and never validate failed cache
+    fills. Remaining handles are closed after full OS restoration on exit.
+    This is verified by native synthetic reads; original PAK acceptance is M2.1c.
   - The game reads whole `.PAK` entries (Dark JT182), so a room change costs a
     few windows, not one per call.
   - Count windows per room change and record the number (M5).
@@ -649,6 +656,8 @@ clean build with its flags, a warp-mode bounded run, a required PASS regex, and
 no loud stop. The cases are added as their milestone lands:
 - `boot`: reaches main, then ends the observer before main executes. The harness
   was introduced in M0; positive acceptance passes on `a1200-020` (M1.3a).
+- `file-read`: actual Line-A data-fork calls, cache reuse/crossing, multi-chunk
+  direct read, exact bytes/CCR/EOF/errors, window counts and restored-OS cleanup.
 - `window-core`: 1 MB chunk reads, DOS errors/save, clock, Paula interrupts,
   keyboard flush, resload ABI and bitplane snapshots. Rendered-picture acceptance
   remains a separate M1.7b2 requirement.

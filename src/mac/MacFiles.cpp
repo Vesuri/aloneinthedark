@@ -128,3 +128,27 @@ int16_t MacFiles::setDefault(int16_t ref,const char* volumeName) {
     if(ref)defaultRef_=ref;
     return noErr;
 }
+
+int16_t MacFiles::seek(int16_t ref,uint16_t mode,int32_t offset) {
+    Fork* f=const_cast<Fork*>(fork(ref));
+    if(!f)return rfNumErr;
+    if(mode>3)return unsupported;
+    if(!mode)return noErr;
+    const Entry* e=entry(f->id);
+    uint32_t size=f->resource ? e->resourceSize : e->dataSize;
+    uint32_t base=mode==1 ? 0 : mode==2 ? size : f->position;
+    if(offset<0) {
+        uint32_t magnitude=0-(uint32_t)offset;
+        if(base<magnitude)return -40; // posErr: unchanged mark.
+        base-=magnitude;
+    } else {
+        if((uint32_t)offset>0x7fffffffUL-base) { f->position=size;return -39; }
+        base+=(uint32_t)offset;
+    }
+    f->position=base>size ? size : base;
+    return base>size ? -39 : noErr;
+}
+void MacFiles::advance(int16_t ref,uint32_t count) {
+    Fork* f=const_cast<Fork*>(fork(ref));
+    if(f)f->position+=count; // Caller supplies the actual bounded transfer count.
+}

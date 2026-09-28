@@ -5,6 +5,10 @@ cd "$(dirname "$0")"
 . ./env.sh
 case "${1:-boot}" in
   boot) flags=(); observer=boot.gdb ;;
+  file-read)
+    flags=(FILEPROBE=1); observer=file_read.gdb
+    python3 ../tools/check_file_read_probe.py --prepare
+    ;;
   window-core)
     flags=(WINDOWPROBE=1 PROBES=1); observer=window.gdb
     python3 ../tools/check_window_capture.py --prepare
@@ -21,7 +25,9 @@ if ! make -j4 "${flags[@]}" >> .run/regression-build.log 2>&1; then
 fi
 status=0
 GDBTAIL=120 EXTRA_ARGS=--warp_mode=1 GDBSCRIPT="$observer" ./diag_run.sh 60 || status=$?
-if [[ "$observer" == window.gdb ]]; then
+if [[ "$observer" == file_read.gdb ]]; then
+  python3 ../tools/check_file_read_probe.py --status "$status"
+elif [[ "$observer" == window.gdb ]]; then
   python3 ../tools/check_window_capture.py --status "$status"
 else
   python3 ../tools/regression_result.py .run/gdb-out.log --status "$status"

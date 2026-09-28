@@ -67,6 +67,12 @@ const char* aitdBuildFileCatalog(MacFiles& catalog,const char* applicationPath,u
     const char* error=scan(catalog,catalog.data,dataPath,false,true);
     if(!error)error=scan(catalog,catalog.saves,"PROGDIR:Saved Games",true,false);
     if(!error)error=scan(catalog,catalog.preferences,"PROGDIR:prefs",true,false);
+#ifdef AITD_FILE_PROBE
+    if(!error && catalog.add(catalog.data,"absent-probe.bin","PROGDIR:absent-probe.bin",false,123)<0)
+        error="CATALOG / ABSENT PROBE";
+    if(!error && catalog.add(catalog.data,"read-probe.bin","PROGDIR:read-probe.bin",false,200003)<0)
+        error="CATALOG / READ PROBE";
+#endif
     if(!error)g_catalogEntries=catalog.count();
     return error;
 }

@@ -6,6 +6,8 @@
 #include "LowMemory.h"
 #include "MacHeap.h"
 #include "MacFiles.h"
+#include "FileReadCache.h"
+#include "platform/amiga/FileAccess.h"
 #include "ResourceForks.h"
 #include "platform/amiga/AitdScreen.h"
 #include "platform/amiga/MacInput.h"
@@ -103,6 +105,9 @@ volatile uint32_t g_identityProbeStage=0;
 void aitd_identity_probe();
 __attribute__((noinline)) void aitdIdentityProbeReturned() { __asm__ volatile("" ::: "memory"); }
 #endif
+#ifdef AITD_FILE_PROBE
+void aitdFileProbe();
+#endif
 #ifdef AITD_WINDOW_PROBE
 bool aitdWindowProbe();
 void aitd_window_probe();
@@ -159,6 +164,13 @@ static uint32_t s_jumpTableOffset;
 static AitdScreen* s_loudStopScreen;
 static ResourceForks s_resourceForks;
 static MacFiles s_files;
+struct ReadFork {
+    int16_t ref=0;
+    FileAccess::ReadStream stream={0};
+    uint8_t* buffer=0;
+    FileReadCache cache;
+};
+static ReadFork s_readForks[MacFiles::maxOpen];
 static int16_t s_resourceFileRefs[ResourceForks::kForkCount];
 MacFiles& MacLoader::files() { return s_files; }
 extern "C" { volatile int16_t g_applicationFileRef=0; }
@@ -622,6 +634,9 @@ static const TrapName s_trapNames[] = {
     {0xa069,"MEMORY MANAGER","HGETSTATE"},
     {0xa322,"MEMORY MANAGER","NEWHANDLECLEAR"},
     {0xa001,"FILE MANAGER","CLOSE"}, {0xa015,"FILE MANAGER","SETVOL"},
+    {0xa000,"FILE MANAGER","OPEN"}, {0xa200,"FILE MANAGER","HOPEN"},
+    {0xa002,"FILE MANAGER","READ"}, {0xa011,"FILE MANAGER","GETEOF"},
+    {0xa018,"FILE MANAGER","GETFPOS"}, {0xa044,"FILE MANAGER","SETFPOS"},
     {0xa014,"FILE MANAGER","GETVOL"}, {0xa823,"FOLDER MANAGER","FINDFOLDER"},
     {0xa81a,"RESOURCE MANAGER","HOPENRESFILE"},
     {0xa820,"RESOURCE MANAGER","GET1NAMEDRESOURCE"},
@@ -4876,6 +4891,72 @@ struct UserService {
     uint32_t toolboxReturn;
 };
 static UserService s_userService;
+static bool isFileReadService(uint16_t trap) {
+    return trap==0xa000 || trap==0xa200 || trap==0xa001 || trap==0xa002
+        || trap==0xa011 || trap==0xa018 || trap==0xa044;
+}
+static bool dispatchFileRead(uint16_t trap,uint32_t* regs) {
+    if(!isFileReadService(trap))return false;
+    uint8_t* pb=(uint8_t*)regs[8];if(!pb)return false;
+    int16_t error=0;
+    if(trap==0xa000 || trap==0xa200) {
+        if(pb[27]!=1)return false; // Only explicitly read-only data forks yet.
+        uint8_t* name=(uint8_t*)read32(pb+18);if(!name)return false;
+        char path[256];for(uint16_t i=0;i<name[0];++i)path[i]=name[i+1];path[name[0]]=0;
+        uint32_t id=0;
+        error=s_files.resolve((int16_t)read16(pb+22),trap==0xa200 ? read32(pb+48) : 0,path,id);
+        if(!error) {
+            const MacFiles::Entry* entry=s_files.entry(id);
+            if(entry->directory)error=MacFiles::fnfErr;
+            else {
+                ReadFork* slot=0;
+                for(uint16_t i=0;i<MacFiles::maxOpen;++i)if(!s_readForks[i].ref) { slot=&s_readForks[i];break; }
+                int16_t ref=slot ? s_files.open(id,false,false) : -42;
+                if(ref<0)error=ref;
+                else {
+                    slot->buffer=(uint8_t*)AllocMem(FileReadCache::capacity,MEMF_FAST);
+                    error=slot->buffer ? FileAccess::openStream(entry->path,slot->stream) : -108;
+                    if(error) {
+                        if(slot->buffer)FreeMem(slot->buffer,FileReadCache::capacity);
+                        slot->buffer=0;s_files.close(ref);
+                    } else {
+                        slot->ref=ref;slot->cache.bind(slot->buffer,entry->dataSize,FileAccess::readStream,&slot->stream);
+                        write16(pb+24,ref);
+                    }
+                }
+            }
+        }
+    } else {
+        int16_t ref=(int16_t)read16(pb+24);
+        const MacFiles::Fork* fork=s_files.fork(ref);
+        ReadFork* slot=0;
+        for(uint16_t i=0;i<MacFiles::maxOpen;++i)if(s_readForks[i].ref==ref && ref) { slot=&s_readForks[i];break; }
+        if(!fork)error=MacFiles::rfNumErr;
+        else if(!slot)return false; // Buffered application/resource fork is not a data stream.
+        else if(trap==0xa001) {
+            error=FileAccess::closeStream(slot->stream);
+            FreeMem(slot->buffer,FileReadCache::capacity);slot->buffer=0;slot->ref=0;s_files.close(ref);
+        } else if(trap==0xa011)write32(pb+28,s_files.entry(fork->id)->dataSize);
+        else if(trap==0xa018) {
+            write32(pb+36,0);write32(pb+40,0);write16(pb+44,0);write32(pb+46,fork->position);
+        } else {
+            if(read16(pb+44)>3)return false; // Newline and other positioning flags pending.
+            uint32_t count=trap==0xa002 ? read32(pb+36) : 0;
+            uint8_t* buffer=(uint8_t*)read32(pb+32);
+            if(trap==0xa002 && (count>0x7fffffffUL || (!buffer && count)))error=MacFiles::paramErr;
+            else error=s_files.seek(ref,read16(pb+44),(int32_t)read32(pb+46));
+            uint32_t actual=0;
+            if(!error && trap==0xa002) {
+                error=slot->cache.read(fork->position,buffer,count,actual);
+                s_files.advance(ref,actual);
+            }
+            if(trap==0xa002)write32(pb+40,actual);
+            write32(pb+46,fork->position);
+        }
+    }
+    if(error==MacFiles::unsupported)return false;
+    write16(pb+16,error);regs[0]=(uint32_t)(int32_t)error;return true;
+}
 static bool isUserService(uint16_t trap)
 {
 #ifdef AITD_WINDOW_PROBE
@@ -4884,7 +4965,7 @@ static bool isUserService(uint16_t trap)
 #ifdef AITD_SERVICE_PROBE
     if((trap&0xfeff)==0xa0fc || trap==0xabfb)return true;
 #endif
-    return (trap&0xf8ff)==0xa060 || trap==0xa015;
+    return (trap&0xf8ff)==0xa060 || trap==0xa015 || isFileReadService(trap);
 }
 // Metadata-only File Manager selectors. Unsupported layouts fall through to
 // the named trap stop; no OS call is made inside this helper.
@@ -5007,6 +5088,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
 #endif
     if(!(trap&0x0800) && dispatchMemoryTrap(trap,regs))return 1;
     if(inUserService && dispatchFileMetadata(trap,regs))return 1;
+    if(inUserService && dispatchFileRead(trap,regs))return 1;
     if(trap==0xa823 && (uint16_t)regs[0]==0) { // FindFolder, catalogued Preferences.
         const uint16_t volume=read16(userStack+14);
         const uint32_t type=read32(userStack+10);
@@ -6074,8 +6156,15 @@ extern "C" __attribute__((noinline)) void aitdRuntimeAllocationsReleased()
 }
 #endif
 
-void MacLoader::releaseResourceForks()
+bool MacLoader::releaseResourceForks()
 {
+    bool closed=true;
+    // Platform has restored OS scheduling, vectors and display before this call.
+    for(uint16_t i=0;i<MacFiles::maxOpen;++i)if(s_readForks[i].ref) {
+        ReadFork& f=s_readForks[i];
+        if(FileAccess::closeRestoredStream(f.stream))closed=false;
+        FreeMem(f.buffer,FileReadCache::capacity);f.buffer=0;f.ref=0;
+    }
     s_files.reset();g_applicationFileRef=0;
     releaseRuntimeAllocations();
 #ifdef AITD_PROBE
@@ -6090,6 +6179,7 @@ void MacLoader::releaseResourceForks()
     g_macTicksAddress = 0;
     g_macRndSeedAddress = 0;
     g_resourceCount = 0;
+    return closed;
 }
 
 // A loader failure is reported like an unimplemented trap: named on screen
@@ -6202,6 +6292,12 @@ bool MacLoader::run(AitdScreen* screen)
     restoreLineAVector();
 #endif
 
+#ifdef AITD_FILE_PROBE
+    installLineAVector();
+    aitd_call_mac_code((void*)aitdFileProbe,a5,g_macStackBase+65536);
+    restoreLineAVector();
+    return true; // Diagnostic exits through normal OS restoration and file cleanup.
+#endif
     g_stageBState = 1;
     uint8_t* firstJump = a5 + s_jumpTableOffset;
     if (read16(firstJump + 2) != 0x4ef9) return false;

@@ -27,11 +27,14 @@ serve memory and resource handles. System identity and all eleven derived
 capability flags match the Mac reference. The user-mode service bridge passes
 its native ABI probe. OS windows and DOS/resload adapters pass the native/host
 core probes; rendered-picture acceptance is owner-deferred (M1.7b2). The next
-implementation item is the remaining File Manager services (M2.1b2b). The
+implementation item is the remaining File Manager services (M2.1b2c). The
 metadata-only catalog and application-fork identity are verified (M2.1b1):
 32 data files, 5,315,994 bytes; no data payload preloading. SetVol, the three
 startup working directories, Preferences lookup and the optional movies error
-are verified against the Mac (M2.1b2a). Final startup
+are verified against the Mac (M2.1b2a). Read-only data forks now use persistent
+DOS handles and per-fork 64 KiB caches. The native `file-read` regression verifies
+bytes, seek/EOF/errors, window counts and shutdown cleanup (M2.1b2b); these are
+synthetic fixture reads, not original-game PAK acceptance. Final startup
 requirements acceptance awaits the file/resource services.
 
 ## Requirements (provisional)

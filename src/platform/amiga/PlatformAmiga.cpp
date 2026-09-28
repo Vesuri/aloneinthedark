@@ -27,6 +27,9 @@
 #include "MacInput.h"
 #include "SystemWindow.h"
 #include "FileCatalog.h"
+#ifdef AITD_FILE_PROBE
+extern "C" void aitdFileCleanupFinished();
+#endif
 #include "AitdScreen.h"
 #include "PerfProbe.h"
 #include "mac/MacLoader.h"
@@ -441,8 +444,12 @@ bool PlatformAmiga::run()
     // interrupts, DMA, the View, and multitasking again (Vette's score file
     // established the rule): disk I/O during the takeover would resume
     // unrelated tasks against partially restored state.
-    loader.releaseResourceForks();
+    bool filesClosed=loader.releaseResourceForks();
+    if(!filesClosed)PutStr((CONST_STRPTR)"Alone: FILE CLOSE ON EXIT FAILED\n");
     releaseOriginalResourceFiles(resourceFiles);
+#ifdef AITD_FILE_PROBE
+    aitdFileCleanupFinished();
+#endif
 
     // Closed here rather than in a destructor -- see the note in PlatformAmiga.h.  ⚠ AFTER
     // the LoadView restore, which needs GfxBase.
@@ -452,5 +459,5 @@ bool PlatformAmiga::run()
         CloseLibrary((struct Library*)DOSBase);
         DOSBase = 0;
     }
-    return true;
+    return filesClosed;
 }
