@@ -493,7 +493,9 @@ nonzero runner status, late display publication or wrong saved-file bytes fails.
 The snapshot SHA-256 is
 `0482278141cfa90510f767999d9e6b5a21c72429ad8d315b68f224fe1c9b81ba`.
 These are chip-memory snapshots, **not captures of rendered video**; M1.7b2
-retains actual-picture acceptance before any File Manager work begins.
+retains actual-picture acceptance. The owner subsequently permitted leaving
+that verification pending when the reference capture methods require access
+that is not granted; see the pending section in `open-work.md`.
 
 The window restores the OS Line-A and keyboard vectors, adds a priority-127
 port VERTB server to the saved OS chain, restores OS interrupt enables while
@@ -541,3 +543,26 @@ clean production boot pass. The next real game stop remains GetWDInfo.
 Original startup also passes at A5 `$00787228`, STRS `$004442B0`: zero
 mismatches across 75,616 bytes, with the paired heap check reporting zero
 unaccounted bytes (Mac 2,821,316; native 3,096,720 free).
+
+
+### Rendered-capture limitation (M1.7b2, owner-deferred)
+
+After the host restart, the committed tree and build were intact. The recovery
+observer completed with explicit PASS and byte-identical before/during/after
+bitplanes; this still does not establish video appearance. A local app bundle
+under ignored `tmp/` made the existing FS-UAE binary discoverable to computer
+use, but access was not approved, and the owner explicitly declined it.
+
+The requested reference review found:
+- Slicks `amiga/diag_capture.gdb` dumps logical pixels; its
+  `src/ui/screen_capture.h` encodes those pixels and a palette as a BMP.
+- Revs `docs/headless-fsuae.md` warns that GDB greys/freezes the display.
+  Its launcher and Vette's use F12+S with `FSEMU_SCREENSHOTS_DIR`.
+- Rescue `docs/boost-cinematic-plan.md` describes live, non-debugger runs
+  captured with host Screen Recording permission. Its SDL PNG writer captures
+  the separate host renderer, not the Amiga emulator output.
+
+None supplies unattended rendered FS-UAE captures within the granted access.
+Do not label a logical export or a paused-debugger image as this acceptance.
+M1.7b2 remains pending by the owner's instruction, while M2.1 is the next active
+implementation item. No new screen permission or synthetic key posting is used.

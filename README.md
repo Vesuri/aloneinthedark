@@ -25,7 +25,8 @@ now use private shadows. The 3 MB application heap and separate system heap
 serve memory and resource handles. System identity and all eleven derived
 capability flags match the Mac reference. The user-mode service bridge passes
 its native ABI probe. OS windows and DOS/resload adapters pass the native/host
-core probes; rendered-picture acceptance remains open (M1.7b2). Final startup
+core probes; rendered-picture acceptance is owner-deferred (M1.7b2). The next
+implementation item is the File Manager (M2.1). Final startup
 requirements acceptance awaits the file/resource services.
 
 ## Requirements (provisional)

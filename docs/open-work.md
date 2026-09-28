@@ -15,24 +15,30 @@ design.md §5.
 Each item gives the **goal**, then the scope, then *done when*: the evidence
 required.
 
-## M1 Boot to main
+## Pending verification (owner-deferred)
 
-- **M1.7b2 Rendered-picture acceptance for system windows.**
-  - M1.7b1 implements the OS window, DOS/resload adapters and `window-core`
-    regression. The 1 MB/64 KB reads, checksum, exact clock, Paula interrupts,
-    keyboard flush, file errors/save/readback, native resload ABI and bitplane
-    snapshots pass on 68020. This is not yet proof of stable rendered output.
-  - Capture actual FS-UAE video before, during and after a window; verify the
-    diagnostic pattern remains visible and unchanged. The current command-line
-    emulator is absent from computer-use app discovery; its GDB stub rejects
-    `monitor help` and `monitor sc`. Do not repeat those as untested guesses.
-  - If OS graphics changes the active copper/display state, instrument the
-    handback and fix it before accepting the snapshot. Keep display and Paula
-    interrupts running; no game-behaviour changes or performance work.
+- **M1.7b2 Rendered-picture acceptance for system windows — pending.**
+  Owner update 2026-09-28: window access is not granted; inspect Slicks,
+  Rescue on Fractalus, Revs and Vette, and leave screenshot verification pending
+  if their methods cannot supply it. This is not a completed acceptance check.
+  The active implementation queue resumes at M2.1 below.
+  - M1.7b1's `window-core` verifies 1 MB/64 KB reads, exact bytes/clock,
+    Paula interrupts, keyboard flush, DOS errors/save/readback, native resload
+    ABI and bitplane snapshots on 68020. Memory snapshots do not prove video.
+  - Slicks exports logical pixels/BMPs, not actual FS-UAE output. Revs/Vette
+    use F12+S. Rescue's rendered captures use host Screen Recording permission.
+    Revs additionally warns that remote-debugger runs grey/freeze the display;
+    paused GDB checkpoints cannot establish appearance.
+  - A local diagnostic app bundle makes the emulator discoverable, but computer
+    use is not approved. Do not retry window access or substitute host event
+    injection/capture for that denied access. GDB `monitor sc` is unsupported.
+  - Future verification needs an authorized live emulator video capture before,
+    during and after a window. If the OS changes the active copper/display,
+    instrument and fix it before accepting the picture.
 
   *Done when* actual rendered snapshots are stable through the 1 MB/64 KB probe,
   `window-core` and production `boot` pass, and the window entry/exit cost is
-  recorded with the full acceptance result. Then M1.7b is complete.
+  recorded with the full acceptance result. Only then is M1.7b complete.
 
 ## M2 Startup to intro
 
