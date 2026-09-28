@@ -407,3 +407,52 @@ any changed allocation balance requires a new explained capture, not a widened
 percentage tolerance. Native master pointers remain clean addresses, with flags
 in side storage. Startup and the native probe exercise StripAddress, HGetState
 and HSetState without relying on the reference's high-byte pointer flags.
+
+
+## System identity (M1.6a)
+
+The original reference capture (`tmp/m1.6-reference.log`, explicit PASS) gives:
+
+| Query | D0 | A0 response |
+| --- | --- | --- |
+| Gestalt `sysv` | 0 | $0755 |
+| `proc` | 0 | 4 (Mac reference 68030) |
+| `qd  ` | 0 | $0230 |
+| `help`, `fold`, `evnt` | 0 | 1 |
+| `qtim` | $0000EA51 (-5551 in D0.W) | 0 |
+| `a/ux` | $0000EA52 (-5550 in D0.W) | 0 |
+
+SysEnvirons version 1 returns the complete 16-byte record
+`00010005 07550004 01010005 003A8053`: version 1, Mac IIx (5), System 7.5.5,
+processor 4, FPU and Color QuickDraw present, keyboard 5, AppleTalk driver $3A,
+system-volume reference $8053. These describe the Mac reference, not native
+Amiga hardware; the Amiga remains 68020 with no FPU. The File Manager catalog
+must map the returned Mac volume reference. SysVersion's shadow is $0755.
+Unsupported SysEnvirons layouts and unmeasured Gestalt selectors remain stops.
+
+The normal game skips QuickTime's Gestalt call because the QuickTime trap is
+absent. A local reference probe queried `qtim` through the original, byte-checked
+Core+$3D36 instruction, then restored D0/A0/SR and re-executed the original
+query. Its caller received the original result. The remaining answers and
+SysEnvRec were captured without intervention. `tools/mac_traps.lua` now
+records all SysEnvRec bytes on the original trap return.
+
+`identity.gdb` validates the actual SysEnvirons record and six natural Gestalt
+returns, then compares the eleven Engine flags at Engine+$43E2 against MAME:
+`01010101 01010100 0101 01` (offsets 4 through 14). This exposed and fixed an
+inherited missing WaitNextEvent entry. Its availability now matches the Mac;
+execution remains a named stop pending M3.1. Unknown Toolbox availability is
+not claimed from this one observation.
+
+A clean `IDENTITYPROBE=1` build with `identity_errors.gdb` executes native
+Line-A instructions: QuickTime and A/UX return the exact captured errors, and
+an unmeasured selector stops explicitly. An initial debugger-register injection
+still executed the original sysv query, so the maintained probe sets arguments
+in actual 68020 instructions. No game instruction is patched. The production
+identity observer and diagnostic error probe both pass in bounded 68020 runs.
+
+The next stop is HFSDispatch selector 8, GetWDInfo, at Core+$4144. File Manager
+work is M2.1 after M1.7's system windows. Full startup's success/requirements-alert
+branches remain beyond that dependency, so **M1.6b retains that acceptance
+check** after file/resource integration; matching identity flags is not reported
+as a successful application launch.

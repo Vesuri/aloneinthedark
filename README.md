@@ -14,7 +14,7 @@ and Toolbox layer are carried over from Vette!; see
 The executable builds and runs the original CODE 1 startup on the 68020. Its
 75,616-byte A5 globals match the host model exactly. The original segment loader
 relocates Core and reaches `main`; initialization then stops explicitly at
-`OS / GESTALT` (system version), Core+$3D36. The game is not playable yet.
+`FILE MANAGER / GETWDINFO`, Core+$4144. The game is not playable yet.
 Other processors and performance work remain deferred.
 
 The M0 tools checkpoint includes the trap census, original Mac runtime/frame
@@ -22,7 +22,9 @@ evidence and a regression harness. Host checks, native Line-A/stack/trap-patch
 probes and link audits pass. `make regression` now passes `boot` on `a1200-020`,
 ending at the original main entry before initialization. All 58 census low-memory accesses
 now use private shadows. The 3 MB application heap and separate system heap
-serve memory and resource handles; the next item is system identity (M1.6).
+serve memory and resource handles. System identity and all eleven derived
+capability flags match the Mac reference. System windows are next (M1.7);
+final startup-requirements acceptance awaits the file/resource services.
 
 ## Requirements (provisional)
 

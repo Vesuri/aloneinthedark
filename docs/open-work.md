@@ -9,7 +9,7 @@ design.md §5.
 **Current state:**
 - The executable builds and loads the original resource fork.
 - Original CODE 1 expands the A5 world, relocates Core and enters `main`, then
-  stops at `OS / GESTALT` (system version), Core+$3D36.
+  stops at `FILE MANAGER / GETWDINFO`, Core+$4144 (selector 8).
 - The original runs in MAME on the System 7.5.5 reference volume.
 
 Each item gives the **goal**, then the scope, then *done when*: the evidence
@@ -17,15 +17,6 @@ required.
 
 ## M1 Boot to main
 
-- **M1.6 System identity.**
-  - `Gestalt` answers as the reference machine: 'sysv' $0755, 'proc' 68030,
-    'qd  ' 32-bit QD, 'qtim' absent, and 'help', 'fold', 'evnt' and 'a/ux' as on
-    the reference.
-  - `SysEnvirons` reports System 7.5.5 on a Mac IIx, and SysVersion $15A = $0755.
-  - Take the values from MAME, not from memory.
-
-  *Done when* the startup checks pass without "requires" alerts, and the commit
-  cites the values from a MAME capture.
 - **M1.7 System windows and user-mode services.**
   - The Line-A handler can divert a trap to a user-mode service trampoline.
   - A system window (design §4.1) hands the machine back to the OS for a bounded
@@ -36,7 +27,7 @@ required.
     backend (resload).
 
   *Done when* a probe case reads a 1 MB file in 64 KB chunks through windows on
-  `a1200-020` and `a1200-030` with the picture stable (snapshot) and the bytes
+  `a1200-020` with the picture stable (snapshot) and the bytes
   correct (checksum), and the entry/exit cost per window is recorded.
 
 ## M2 Startup to intro
@@ -58,6 +49,15 @@ required.
   *Done when* the application no longer loads its whole fork at startup, and the
   run reaches the same point as before with the same resource bytes (gdb checksum
   of a sample).
+- **M1.6b Final startup requirements acceptance (after file/resource services).**
+  - M1.6a implements the measured identity records and verifies all eleven
+    Engine capability flags. Full startup is still stopped in GetWDInfo, before
+    Core's initialization-result/alert branches; it is not a successful launch.
+  - After M2.1/M2.2, verify Core+$0460 is reached with initialization result zero,
+    without taking its failure-alert branches ($0410/$044E).
+
+  *Done when* a bounded original-code observer positively reaches that success
+  branch, no "requires" alert occurs, and identity.gdb still matches MAME.
 - **M2.3 8-bit QuickDraw core.**
   - Generalise the screen, GWorld, PixMap, CTable, ITable, CopyBits and PICT code
     to 8 bpp.

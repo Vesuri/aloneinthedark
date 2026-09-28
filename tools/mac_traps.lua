@@ -65,7 +65,7 @@ local function map_segments()
     -- Byte-check every original site; loaded relocation never changes trap words.
     if mem:read_u16(pc)==t[2] and (t[2]&0x0c00)~=0x0c00 and not return_bps[pc+2] then
      return_bps[pc+2]=breakpoint(pc+2,string.format('RESULT seg=%d offset=%04X trap=%04X',seg,t[1],t[2]),
-      {{'pc','pc'},{'sp','sp'},{'d0','d0'},{'a0','a0'},{'r0','d@sp'},{'r1','d@(sp+4)'},{'r2','d@(sp+8)'}})
+      {{'pc','pc'},{'sp','sp'},{'d0','d0'},{'a0','a0'},{'r0','d@sp'},{'r1','d@(sp+4)'},{'r2','d@(sp+8)'},{'env0','if(w@(pc-2)==a090,d@a0,0)'},{'env1','if(w@(pc-2)==a090,d@(a0+4),0)'},{'env2','if(w@(pc-2)==a090,d@(a0+8),0)'},{'env3','if(w@(pc-2)==a090,d@(a0+c),0)'}})
     end
    end
   end

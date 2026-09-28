@@ -96,6 +96,11 @@ volatile uint32_t g_heapProbeStage=0, g_heapProbeDone=0;
 void aitd_heap_probe();
 __attribute__((noinline)) void aitdHeapProbeComplete() { __asm__ volatile("" ::: "memory"); }
 #endif
+#ifdef AITD_IDENTITY_PROBE
+volatile uint32_t g_identityProbeStage=0;
+void aitd_identity_probe();
+__attribute__((noinline)) void aitdIdentityProbeReturned() { __asm__ volatile("" ::: "memory"); }
+#endif
 volatile uint16_t g_macExitState = 0;
 #ifdef AITD_PROBE
 #endif
@@ -588,6 +593,8 @@ static const TrapName s_trapNames[] = {
     {0xa71e,"MEMORY MANAGER","NEWPTRSYSCLEAR"},
     {0xa9e3,"MEMORY MANAGER","PTRTOHAND"},
     {0xa1ad,"OS","GESTALT"},
+    {0xa860,"EVENT MANAGER","WAITNEXTEVENT"},
+    {0xa260,"FILE MANAGER","HFSDISPATCH"},
     {0xa9af,"RESOURCE MANAGER","RESERROR"}, {0xa992,"RESOURCE MANAGER","DETACHRESOURCE"},
     {0xa055,"OS","STRIPADDRESS"}, {0xa0bd,"OS","VCACHEFLUSH"},
     {0xa198,"OS","HWPRIV"}, {0xa9c9,"OS","SYSERROR"},
@@ -726,6 +733,7 @@ static bool buildA5World(uint8_t*& a5)
     write32(s_portLowMemory + kLowCurStackBase, (uint32_t)s_a5WorldStorage);
     write32(s_portLowMemory+80,(uint32_t)s_applicationLimit);
     write16(s_portLowMemory+100,(uint16_t)s_memoryError);
+    write16(s_portLowMemory+84,0x0755); // M1.6 System 7.5.5 reference
     s_jumpTableOffset = jumpOffset;
 
     // Preserve the original unloaded entries. CODE 1's installed LoadSeg
@@ -4199,8 +4207,10 @@ static void initCursor()
     publishMouseCursor();
 }
 
-static bool isImplementedToolTrap(uint16_t trap)
+static bool isKnownToolTrap(uint16_t trap)
 {
+    // Entry availability and service implementation are separate: a known
+    // reference entry can still stop loudly when its service is first called.
     if (trap == 0xab03) return true;           // Jackson: Color QuickDraw is present
     for (uint16_t i = 0; i < sizeof(s_trapNames) / sizeof(s_trapNames[0]); ++i)
         if (s_trapNames[i].word == trap) return true;
@@ -4221,7 +4231,7 @@ static uint8_t* getTrapAddress(uint16_t trap)
 static uint8_t* getToolTrapAddress(uint16_t trap)
 {
     trap = 0xa800 | (trap & 0x03ff);
-    if (!isImplementedToolTrap(trap)) trap = 0xa89f;
+    if (!isKnownToolTrap(trap)) trap = 0xa89f;
     return getTrapAddress(trap);
 }
 
@@ -5143,22 +5153,32 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         if (g_stageCDepth < 16) g_stageCDepth = 16;
         return 5;
     }
-    if (trap == 0xa090) {                    // SysEnvirons(version in D0, record in A0)
-        uint8_t* environment = (uint8_t*)regs[8];
-        if ((uint16_t)regs[0] != 1 || !environment) {
-            regs[0] = (uint32_t)(int32_t)-5501; // envNotPresent
-            return 1;
+    if (trap == 0xa1ad) {                    // Gestalt: D0 selector -> D0.W error, A0 response
+        // Measured Mac IIx/System 7.5.5 answers; unknown selectors remain stops.
+        uint32_t answer=0,error=0;
+        bool known=true;
+        switch(regs[0]) {
+        case 0x73797376: answer=0x0755;break; // sysv
+        case 0x70726f63: answer=4;break;      // proc: reference 68030
+        case 0x71642020: answer=0x0230;break; // qd  : 32-bit QuickDraw
+        case 0x68656c70:                     // help
+        case 0x666f6c64:                     // fold
+        case 0x65766e74: answer=1;break;      // evnt
+        case 0x7174696d: error=0xea51;break;  // qtim: undefined selector (-5551)
+        case 0x612f7578: error=0xea52;break;  // a/ux: unknown answer (-5550)
+        default: known=false;break;
         }
-        write16(environment + 0, 1);         // environsVersion
-        write16(environment + 2, 4);         // envMacII
-        write16(environment + 4, 0x0608);    // System 6.0.8 reference environment
-        write16(environment + 6, 3);         // env68020
-        environment[8] = 0;                  // hasFPU
-        environment[9] = 1;                  // hasColorQD
-        write16(environment + 10, 5);        // standard ADB keyboard
-        write16(environment + 12, 0);        // AppleTalk driver unavailable
-        write16(environment + 14, 0);        // no Macintosh system volume
-        regs[0] = 0;                         // noErr
+        if(known) { regs[0]=error;regs[8]=answer;return 1; }
+    }
+    if (trap == 0xa090 && (uint16_t)regs[0] == 1 && regs[8]) {
+        // Complete captured SysEnvRec, Core+$3BCE. Volume reference is mapped
+        // by the File Manager catalog (M2.1); it is not an AmigaDOS handle.
+        static const uint8_t environment[16]={
+            0x00,0x01,0x00,0x05,0x07,0x55,0x00,0x04,
+            0x01,0x01,0x00,0x05,0x00,0x3a,0x80,0x53
+        };
+        for(uint16_t i=0;i<16;++i)((uint8_t*)regs[8])[i]=environment[i];
+        regs[0]=0;
         if (g_stageCDepth < 17) g_stageCDepth = 17;
         return 1;
     }
@@ -5747,6 +5767,10 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     if (trap == 0xa9c9 || trap == 0xa198) g_trapSelector = (uint16_t)regs[0];
     if (trap == 0xab1d) g_trapSelector = (uint16_t)regs[0];
     if (trap == 0xa1ad) g_trapSelector = (int32_t)regs[0];
+    if (trap == 0xa260) {
+        g_trapSelector=(uint16_t)regs[0];
+        if(g_trapSelector==8)routine="GETWDINFO";
+    }
     copyString(g_trapManager, manager);
     copyString(g_trapRoutine, routine);
     if (s_loudStopScreen)
@@ -5926,6 +5950,12 @@ bool MacLoader::run(AitdScreen* screen)
     g_lineAProbe[11] = read32(s_portLowMemory + kLowCurStackBase);
 #endif
     if (!a5Ready) showLoaderStop();
+#ifdef AITD_IDENTITY_PROBE
+    installLineAVector();
+    aitd_call_mac_code((void*)aitd_identity_probe, a5, g_macStackBase + 65536);
+    restoreLineAVector();
+    aitdIdentityProbeReturned();
+#endif
 #ifdef AITD_HEAP_PROBE
     installLineAVector();
     aitd_call_mac_code((void*)aitd_heap_probe, (void*)0x12345678,

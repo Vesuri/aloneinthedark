@@ -212,7 +212,7 @@ The original startup path is implemented (M1.1–M1.3):
 **Verified:** the host check `tools/a5world_check.py` passes: it runs
 CODE 1's expansion algorithm on the resource bytes and compares, byte for byte,
 with the A5 world the Amiga dumps (via gdb) when it enters `main`. The current
-loud stop is `Gestalt` (system version) at Core+$3D36 during `main` initialization.
+loud stop is `GetWDInfo` at Core+$4144 during `main` initialization.
 
 ### 4.3 Low memory
 

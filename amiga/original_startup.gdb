@@ -5,14 +5,12 @@ set $startup_main=0
 break AitdScreen::showLoudStop
 commands
  silent
- if $startup_main != 1 || g_stageBState != 3 || g_trapWord != 0xa1ad || g_trapSegment != 3 || g_trapOffset != 0x3d36
+ if $startup_main != 1 || g_stageBState != 3 || g_trapWord != 0xa260 || g_trapSelector != 8 || g_trapSegment != 3 || g_trapOffset != 0x4144
   printf "startup FAIL: %s / %s CODE %u+$%04x\n",g_trapManager,g_trapRoutine,g_trapSegment,g_trapOffset
   detach
   quit 1
  end
- dump binary memory ../tmp/amiga-heap.bin g_applicationZoneBase g_applicationZoneBase+3145728
- printf "heap app=$%08x sys=$%08x free=%u largest=%u system-free=%u error=%d\n",g_applicationZoneBase,g_systemZoneBase,g_heapFree,g_heapLargest,g_heapSystemFree,g_heapError
- printf "startup PASS: original main, next stop %s / %s CODE 3+$3d36\n",g_trapManager,g_trapRoutine
+ printf "startup PASS: original main, next stop %s / %s CODE 3+$4144\n",g_trapManager,g_trapRoutine
  detach
  quit 0
 end
@@ -53,6 +51,16 @@ set $startup_main=1
 set $startup_a5=$a5
 printf "startup A5=$%08x STRS=$%08x bytes=75616\n",$startup_a5,*(unsigned long *)(g_startupCode+8)
 dump binary memory ../tmp/amiga-a5-globals.bin $startup_a5-75616 $startup_a5
+# Preserve M1.5's paired heap checkpoint before the first identity query.
+tbreak *(g_code3Base+0x3d36)
+continue
+if $d0 != 0x73797376
+ echo startup FAIL: heap checkpoint selector\n
+ detach
+ quit 1
+end
+dump binary memory ../tmp/amiga-heap.bin g_applicationZoneBase g_applicationZoneBase+3145728
+printf "heap app=$%08x sys=$%08x free=%u largest=%u system-free=%u error=%d\n",g_applicationZoneBase,g_systemZoneBase,g_heapFree,g_heapLargest,g_heapSystemFree,g_heapError
 continue
 echo startup FAIL: unexpected debugger stop\n
 detach
