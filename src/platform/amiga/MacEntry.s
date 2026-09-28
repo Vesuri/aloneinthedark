@@ -53,6 +53,8 @@ aitd_line_a_handler:
 	move.l a0,-(sp)
 	jsr aitdLineADispatch
 	lea 12(sp),sp
+	cmpi.l #-1,d0
+	beq.w .defer_service
 	tst.l d0
 	beq.s 1f
 	subq.l #1,d0
@@ -72,6 +74,8 @@ aitd_line_a_handler:
 3:
 	movem.l (sp)+,d0-d7/a0-a6
 	addq.l #2,2(sp)
+	tst.w g_macServiceActive
+	bne.s 2f
 	tst.l g_macVBLCallbackEntry
 	beq.s 2f
 	move.l 2(sp),g_macVBLCallbackReturn
@@ -80,6 +84,24 @@ aitd_line_a_handler:
 	rte
 1:
 	bra.s 1b
+
+.defer_service:
+	movem.l (sp)+,d0-d7/a0-a6
+	move.l #aitd_user_service_trampoline,2(sp)
+	rte
+
+| Save every application register before calling the C++ service in user mode.
+	.globl aitd_user_service_trampoline
+aitd_user_service_trampoline:
+	lea -4(sp),sp
+	move.w ccr,-(sp)
+	movem.l d0-d7/a0-a6,-(sp)
+	move.l sp,-(sp)
+	jsr aitdUserServiceDispatch
+	move.l d0,sp
+	movem.l (sp)+,d0-d7/a0-a6
+	move.w (sp)+,ccr
+	rts
 
 | Entered by RTE in user mode, with the original application's registers and
 | USP restored.  Keep those registers parked while draining all Macintosh

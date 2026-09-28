@@ -157,11 +157,17 @@ subsystem with its design decision and the queue tasks that implement it.
     - run the operation from the Mac-code task in **user mode**.
   - **Leave a window:** `Forbid()`, re-take the vectors, flush the keyboard
     state the OS consumed, and correct Ticks for the elapsed fields.
-  - **Line-A dispatch in user mode.** Line-A services that call the OS (File
+  - **Line-A dispatch in user mode (bridge implemented, M1.7a).** Line-A services that call the OS (File
     Manager, Resource Manager misses, durable writes) cannot run in the
     supervisor-mode exception handler. The handler redirects the RTE to a
     user-mode service trampoline, the same mechanism the VBL trampoline
-    uses.
+    uses. The bridge parks all 15 registers plus CCR/resume PC on the Mac
+    stack, runs the service after RTE, then applies its stack cleanup and OS
+    condition codes. Callable originals retain their return-address layout.
+    Nested ordinary traps are allowed; recursive services and unsupported
+    exception frames stop explicitly. Pending VBL callbacks wait until the
+    service is complete. HFSDispatch is routed through the bridge; its file
+    operations remain M2.1, and OS handback is M1.7b.
   - **Measure it.** The window's entry/exit cost and the display and audio
     continuity across a window must be measured (probe counters and a
     snapshot), not assumed.

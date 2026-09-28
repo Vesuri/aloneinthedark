@@ -21,6 +21,7 @@ if $attn & 128
 end
 printf "exec_cpu=%u Exec.AttnFlags=$%04x\n",$cpu,$attn
 printf "state=%u depth=%u fields=%u ticks=%u jump-entries=%u\n", g_stageBState, g_stageCDepth, g_vbiCount, g_macTicks, g_jumpEntryCount
+printf "user-services entered/completed=%u/%u active=%u\n",g_macServiceEntered,g_macServiceCompleted,g_macServiceActive
 printf "frames queued/presented=%u/%u\n", g_macFramesQueued, g_macFramesPresented
 if g_stageBState == 2
   printf "loader stop: %s / %s segment=CODE %u\n", g_trapManager, g_trapRoutine, g_trapSegment

@@ -17,8 +17,9 @@ required.
 
 ## M1 Boot to main
 
-- **M1.7 System windows and user-mode services.**
-  - The Line-A handler can divert a trap to a user-mode service trampoline.
+- **M1.7b System windows and file backends.**
+  - M1.7a completed the user-mode service bridge and native ABI probe. HFSDispatch
+    reaches that bridge, then stops at its pending File Manager implementation.
   - A system window (design §4.1) hands the machine back to the OS for a bounded
     operation, and takes it back afterwards.
   - The display (our copper) and Paula keep running through the window; Ticks are

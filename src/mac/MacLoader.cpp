@@ -18,6 +18,7 @@ void aitd_call_mac_code(void* entry, void* a5, void* stackTop);
 void aitd_user_exit_request();
 void aitd_user_exit_trampoline();
 void aitd_os_patch_return();
+void aitd_user_vbl_trampoline();
 extern volatile uint16_t g_macFramesPresented;
 extern volatile uint16_t g_vbiCount;
 #ifdef AITD_MAPPED_COPY_ASM
@@ -100,6 +101,14 @@ __attribute__((noinline)) void aitdHeapProbeComplete() { __asm__ volatile("" :::
 volatile uint32_t g_identityProbeStage=0;
 void aitd_identity_probe();
 __attribute__((noinline)) void aitdIdentityProbeReturned() { __asm__ volatile("" ::: "memory"); }
+#endif
+volatile uint16_t g_macServiceActive=0;
+volatile uint32_t g_macServiceEntered=0, g_macServiceCompleted=0;
+#ifdef AITD_SERVICE_PROBE
+volatile uint32_t g_serviceProbe[68]={};
+void aitd_service_probe();
+void aitd_service_nested_probe();
+__attribute__((noinline)) void aitdServiceProbeComplete() { __asm__ volatile("" ::: "memory"); }
 #endif
 volatile uint16_t g_macExitState = 0;
 #ifdef AITD_PROBE
@@ -573,6 +582,9 @@ static bool loadStartupSegments()
 
 struct TrapName { uint16_t word; const char* manager; const char* routine; };
 static const TrapName s_trapNames[] = {
+#ifdef AITD_SERVICE_PROBE
+    {0xabfb,"USER SERVICE","TOOLBOX PROBE"},
+#endif
     {0xa11a,"MEMORY MANAGER","GETZONE"},
     {0xa01b,"MEMORY MANAGER","SETZONE"},
     {0xa11d,"MEMORY MANAGER","MAXMEM"},
@@ -4841,11 +4853,43 @@ static bool dispatchMemoryTrap(uint16_t trap,uint32_t* regs)
     return true;
 }
 
+// Deferred services retain only exception metadata; registers are parked on
+// the Mac user stack by MacEntry.s. The single active service cannot recurse.
+struct UserService {
+    uint8_t frame[8];
+    uint8_t* arguments;
+    uint16_t trap;
+    bool builtin;
+    uint32_t toolboxReturn;
+};
+static UserService s_userService;
+static bool isUserService(uint16_t trap)
+{
+#ifdef AITD_SERVICE_PROBE
+    if((trap&0xfeff)==0xa0fc || trap==0xabfb)return true;
+#endif
+    return (trap&0xf8ff)==0xa060; // HFSDispatch; File Manager body follows in M2.1.
+}
+static uint32_t deferUserService(uint16_t trap,bool builtin,uint8_t* frame,uint8_t* arguments)
+{
+    if(g_macServiceActive) {
+        loaderStop("USER SERVICE REENTRY",0);showLoaderStop();
+    }
+    if((read16(frame)&0x2000) || (read16(frame+6)&0xf000)) {
+        loaderStop("USER SERVICE FRAME",0);showLoaderStop();
+    }
+    for(uint16_t i=0;i<8;++i)s_userService.frame[i]=frame[i];
+    s_userService.arguments=arguments;s_userService.trap=trap;
+    s_userService.builtin=builtin;s_userService.toolboxReturn=0;
+    g_macServiceActive=1;
+    return 0xffffffffUL; // Handler RTEs to the service without popping arguments.
+}
+
 // AmigaDOS runs the application in user mode: parameters are on USP, while Line-A creates
 // an eight-byte format-0 frame on the 68020 supervisor stack. The Mac II runs
 // its application in supervisor mode; our Macintosh arguments remain on USP.
 static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
-                               uint8_t* frame, uint8_t* userStack)
+                               uint8_t* frame, uint8_t* userStack, bool inUserService=false)
 {
     uint32_t pc = read32(frame + 2);
 #ifdef AITD_PROBE
@@ -4866,6 +4910,20 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         uint32_t routed = routePatchedTrap(trap, regs, frame, userStack);
         if (routed) return routed;
     }
+    if(isUserService(trap) && !inUserService)
+        return deferUserService(trap,builtin,frame,userStack);
+#ifdef AITD_SERVICE_PROBE
+    if(inUserService && ((trap&0xfeff)==0xa0fc || trap==0xabfb)) {
+        aitd_service_nested_probe(); // Its saved exception SR proves user mode.
+        if(trap==0xabfb) {
+            if(read32(userStack)!=0x10203040 || read16(userStack+4)!=0x5060) {
+                loaderStop("USER SERVICE PROBE ARGUMENTS",0);showLoaderStop();
+            }
+            write16(userStack+6,0x1357);return 7;
+        }
+        regs[0]=0xffffff94;regs[8]=0x2468ace0;return 1;
+    }
+#endif
     if(!(trap&0x0800) && dispatchMemoryTrap(trap,regs))return 1;
     if(trap==0xa9af) { write16(userStack,read16(s_portLowMemory+140));return 1; }
     if(trap==0xa992) {
@@ -5779,12 +5837,50 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     for (;;) { }                             // VBI remains enabled, so the report stays live
 }
 
+// Called by RTE in user mode. Shift the parked register/CCR/PC image over
+// consumed Pascal arguments, then let assembly restore it and RTS normally.
+extern "C" uint8_t* aitdUserServiceDispatch(uint8_t* parked)
+{
+    ++g_macServiceEntered;
+    uint32_t result=dispatchMacTrap(s_userService.trap,s_userService.builtin,
+        (uint32_t*)parked,s_userService.frame,s_userService.arguments,true);
+    if(!result || result>0x7fff) {
+        loaderStop("USER SERVICE RETURN ABI",0);showLoaderStop();
+    }
+    uint32_t cleanup=result-1;
+    if(s_userService.builtin && (s_userService.trap&0x0800))
+        write32(s_userService.arguments-4+cleanup,s_userService.toolboxReturn);
+    uint16_t ccr=read16(s_userService.frame);
+    if(!(s_userService.trap&0x0800)) {
+        ccr&=0xfff0;
+        int16_t d0=(int16_t)read16(parked+2);
+        if(d0<0)ccr|=8;else if(!d0)ccr|=4;
+    }
+    write16(parked+60,ccr);
+    uint32_t returnPC=read32(s_userService.frame+2)+2;
+    g_macServiceActive=0;
+    ++g_macServiceCompleted;
+    if(g_macVBLCallbackEntry) {
+        g_macVBLCallbackReturn=returnPC;
+        returnPC=(uint32_t)aitd_user_vbl_trampoline;
+    }
+    write32(parked+62,returnPC);
+    // The destination may overlap the source when a short parameter list is popped.
+    for(uint16_t i=66;i;--i)parked[cleanup+i-1]=parked[i-1];
+    return parked+cleanup;
+}
+
 // Private callable originals are AFFE, trap word, RTS. Validate their exact
 // range/alignment so original game bytes cannot masquerade as a port stub.
 extern "C" uint32_t aitdLineADispatch(uint32_t* regs, uint8_t* frame, uint8_t* userStack)
 {
     uint32_t pc = read32(frame + 2);
     uint16_t trap = read16((const uint8_t*)pc);
+#ifdef AITD_SERVICE_PROBE
+    if(g_macServiceActive && trap==0xa055) {
+        ++g_serviceProbe[0];g_serviceProbe[1]|=read16(frame)&0x2000;
+    }
+#endif
     uint32_t base = (uint32_t)s_trapBuiltins;
     bool builtin = trap == 0xaffe && pc >= base && pc < base + sizeof(s_trapBuiltins)
         && (pc - base) % 6 == 0;
@@ -5801,8 +5897,10 @@ extern "C" uint32_t aitdLineADispatch(uint32_t* regs, uint8_t* frame, uint8_t* u
         }
     }
     uint32_t result = dispatchMacTrap(trap, builtin, regs, frame, userStack);
-    if (builtin && (trap & 0x0800))
-        write32(userStack - 4 + result - 1, returnPC);
+    if (builtin && (trap & 0x0800)) {
+        if(result==0xffffffffUL)s_userService.toolboxReturn=returnPC;
+        else write32(userStack - 4 + result - 1, returnPC);
+    }
     return result;
 }
 
@@ -5950,6 +6048,12 @@ bool MacLoader::run(AitdScreen* screen)
     g_lineAProbe[11] = read32(s_portLowMemory + kLowCurStackBase);
 #endif
     if (!a5Ready) showLoaderStop();
+#ifdef AITD_SERVICE_PROBE
+    installLineAVector();
+    aitd_call_mac_code((void*)aitd_service_probe,a5,g_macStackBase+65536);
+    restoreLineAVector();
+    aitdServiceProbeComplete();
+#endif
 #ifdef AITD_IDENTITY_PROBE
     installLineAVector();
     aitd_call_mac_code((void*)aitd_identity_probe, a5, g_macStackBase + 65536);

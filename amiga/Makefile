@@ -126,6 +126,11 @@ ifdef PROBES
 EXTRA_DEFINES += -DAITD_PROBE
 endif
 
+ifeq ($(SERVICEPROBE),1)
+EXTRA_DEFINES += -DAITD_SERVICE_PROBE
+PROBE_SYMS_SERVICE = g_serviceProbe
+endif
+
 ifeq ($(IDENTITYPROBE),1)
 EXTRA_DEFINES += -DAITD_IDENTITY_PROBE
 PROBE_SYMS_IDENTITY = g_identityProbeStage
@@ -205,6 +210,7 @@ PROBE_SYMS = g_vbiCount g_planeChecksum g_screenReady \
              g_stageBState g_trapWord g_trapSelector g_trapSegment g_trapOffset \
              g_trapPC g_trapRegisters g_trapUserStack g_resourceCount g_jumpEntryCount \
              g_blockMoveCount g_trapManager g_trapRoutine
+PROBE_SYMS += g_macServiceActive g_macServiceEntered g_macServiceCompleted $(PROBE_SYMS_SERVICE)
 PROBE_SYMS += g_stageCDepth $(PROBE_SYMS_HEAP) $(PROBE_SYMS_IDENTITY)
 PROBE_SYMS += g_loadedCodeMask g_code3Base g_applicationZoneBase g_systemZoneBase g_heapFree g_heapLargest g_heapSystemFree g_heapError g_lowMemoryValidatedSites g_lowMemoryAppliedSites
 PROBE_SYMS += g_macLowMemory g_startupCode g_startupLowMemoryPatches

@@ -456,3 +456,28 @@ work is M2.1 after M1.7's system windows. Full startup's success/requirements-al
 branches remain beyond that dependency, so **M1.6b retains that acceptance
 check** after file/resource integration; matching identity flags is not reported
 as a successful application launch.
+
+
+## User-mode service bridge (M1.7a)
+
+The Line-A handler recognizes a deferred-service result before changing USP or
+CCR. It returns via RTE to a trampoline derived from Vette's existing user-mode
+VBL trampoline. The trampoline parks D0–D7/A0–A6, CCR and the resume PC, calls
+C++ in user mode, then restores the resulting image after moving it over consumed
+Pascal parameters. The bridge preserves callable-original Toolbox return PCs
+and OS flag variants. OS results set CCR from D0.W; Toolbox preserves CCR.
+Nested ordinary traps suppress callback delivery until the outer service ends.
+Recursive services and unsupported supervisor/exception frames are named stops.
+
+Clean `SERVICEPROBE=1`, then `GDBSCRIPT=service.gdb EXTRA_ARGS=--warp_mode=1
+./diag_run.sh 30`, passes: four services, two callable originals, four nested
+ordinary traps, one callback, all 15 registers, OS/Toolbox CCR and balanced stack.
+The nested traps' saved exception SRs positively establish user-mode execution;
+a zero counter cannot pass. Existing LINEAPROBE, clean production boot,
+original startup and identity observers pass. HFSDispatch now enters one user
+service and reaches the same named GetWDInfo stop (zero completed services).
+
+This is independently verified bridge work, not OS-window acceptance. The
+machine is still taken over during services. M1.7b retains the full 1 MB/64 KB
+file-read, checksum, picture, timing and OS-handback acceptance on the 68020.
+No disk-read or display-continuity success is inferred from this ABI probe.
