@@ -379,3 +379,38 @@ startup and the identity observer all pass on 68020. SysEnvRec remains exactly
 16 reference bytes, seven Gestalt calls and eleven Engine flags match, and
 startup still completes seven file services without runtime OS windows. No
 owner decision or original instruction changed.
+
+## Sparse write-buffer helper (M2.1b2c5)
+
+The independently testable `FileWriteBuffer` implements the buffered-write model
+needed by the remaining file traps. It is not wired into native writable forks
+yet. Open permissions, Create/Delete, Write, SetEOF, FlushVol and Finder/fork
+metadata remain M2.1b2c6, including native/Mac argument/result and durable-write
+acceptance. The original Misc3+$11A8 SetEOF and +$11CE Write bytes were checked;
+no original instructions or trap routing changed here.
+
+Binding the helper performs no payload read. A partial write allocates a 64 KiB
+dirty page and fetches its existing prefix on demand; complete-page overwrites
+need no backing read. Dirty pages overlay the unchanged file for reads. Holes
+and truncated-then-extended ranges read as zeroes. Truncation releases pages
+past EOF and clears retained tails so old bytes cannot reappear. This is bounded
+buffering, not a whole-file preload: at most 32 dirty pages are retained, with
+an explicit unsupported result at capacity. Allocation failure reports -108
+and the actual accepted prefix; neither error claims a completed write.
+
+Flush writes dirty pages and zero-filled extension ranges in transfers no
+larger than 65,536 bytes, then requests the logical EOF. Only full success
+clears the dirty ledger and releases pages. Short/error writes or failed resize
+retain all pending state for retry. The caller will own the DOS window around
+those callbacks. Explicit `clear` discards buffers for cleanup; rebinding a live
+buffer is rejected, and copying the owning object is disabled.
+
+`tools/check_file_write_buffer.py`, included in `make host-tests`, compiles the
+actual helper with ASan/UBSan. Byte-vector fixtures cover boundary crossings,
+full-page overwrite without reads, sparse growth, truncation/regrowth, truncate
+to zero, partial/failed reads, short writes, failed EOF updates, retry, allocation
+failure, capacity and complete cleanup. A deterministic 300-operation write/
+resize sequence compares every logical byte after each operation and disk bytes
+after each successful flush. Backend callbacks assert the 64 KiB transfer bound.
+The host suite and clean 68020 build pass, including no-float and probe audits.
+No new original-game progress or native write acceptance is claimed.

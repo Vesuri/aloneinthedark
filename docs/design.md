@@ -333,6 +333,10 @@ Native trap probes, host fragmentation tests and paired heap captures verify it:
   - The game reads whole `.PAK` entries (Dark JT182), so a room change costs a
     few windows, not one per call.
   - Count windows per room change and record the number (M5).
+- **Write-buffer helper (M2.1b2c5).** Sparse 64 KiB dirty pages are verified
+  against a host byte oracle, including truncation, errors and retryable flush.
+  It fetches existing bytes on demand and retains dirty state until all writes
+  and EOF updates succeed. Native writable-fork/window binding remains M2.1b2c6.
 - **Writes (save games, "Alone Prefs").** Writes are buffered per fork and
   written through in a system window at `_Close`/`FlushVol`, so a save the game
   reports as written is on disk (task M3.6). WHDLoad uses `resload_SaveFile`.
