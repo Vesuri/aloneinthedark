@@ -1,0 +1,57 @@
+# Production build. Sourced at MacLoader::run before original execution.
+set pagination off
+set confirm off
+set $startup_main=0
+break AitdScreen::showLoudStop
+commands
+ silent
+ if $startup_main != 1 || g_stageBState != 3 || g_trapWord != 0xa322 || g_trapSegment != 7 || g_trapOffset != 0x4a
+  printf "startup FAIL: %s / %s CODE %u+$%04x\n",g_trapManager,g_trapRoutine,g_trapSegment,g_trapOffset
+  detach
+  quit 1
+ end
+ printf "startup PASS: original main, next stop %s / %s CODE 7+$004a\n",g_trapManager,g_trapRoutine
+ detach
+ quit 0
+end
+if g_loadedCodeMask != 3 || g_startupCode == 0 || g_code3Base != 0
+ echo startup FAIL: initial CODE residency\n
+ detach
+ quit 1
+end
+# Original CODE 1+$AA: JSR $01E6, after CREL and before jump-table fill.
+if *(unsigned long *)(g_startupCode+0xaa) != 0x4eba013a
+ echo startup FAIL: original loader bytes\n
+ detach
+ quit 1
+end
+tbreak *(g_startupCode+0xaa)
+continue
+# Original CODE 3 header $800a/$803c; first CREL $000e contains $ffff3db6.
+if g_loadedCodeMask != 11 || g_code3Base == 0 || *(unsigned short *)g_code3Base != 10 || *(unsigned long *)(g_code3Base+0xe) != (unsigned long)($a5+0xffff3db6)
+ echo startup FAIL: original Core relocation\n
+ detach
+ quit 1
+end
+printf "startup CREL PASS: header=$%04x Core+$000e=$%08x A5=$%08x\n",*(unsigned short *)g_code3Base,*(unsigned long *)(g_code3Base+0xe),$a5
+set $startup_entry=g_code3Base+0x3e4
+if *(unsigned long *)$startup_entry != 0x4e56ff00 || *(unsigned long *)($startup_entry+4) != 0x4ebafd7c
+ echo startup FAIL: original main bytes\n
+ detach
+ quit 1
+end
+tbreak *$startup_entry
+continue
+if $pc != (unsigned long)$startup_entry
+ echo startup FAIL: unexpected debugger stop\n
+ detach
+ quit 1
+end
+set $startup_main=1
+set $startup_a5=$a5
+printf "startup A5=$%08x STRS=$%08x bytes=75616\n",$startup_a5,*(unsigned long *)(g_startupCode+8)
+dump binary memory ../tmp/amiga-a5-globals.bin $startup_a5-75616 $startup_a5
+continue
+echo startup FAIL: unexpected debugger stop\n
+detach
+quit 1

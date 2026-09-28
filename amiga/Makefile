@@ -196,6 +196,7 @@ PROBE_SYMS = g_vbiCount g_planeChecksum g_screenReady \
              g_trapPC g_trapRegisters g_trapUserStack g_resourceCount g_jumpEntryCount \
              g_blockMoveCount g_trapManager g_trapRoutine
 PROBE_SYMS += g_stageCDepth
+PROBE_SYMS += g_loadedCodeMask g_code3Base
 PROBE_SYMS += g_macLowMemory g_startupCode g_startupLowMemoryPatches
 PROBE_SYMS += SysBase g_macStackBase g_macLineAVectorAddress g_macSavedLineAVector g_macLineAInstalled g_macHostReturnSP
 ifeq ($(LINEAPROBE),1)

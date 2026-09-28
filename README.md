@@ -11,17 +11,16 @@ and Toolbox layer are carried over from Vette!; see
 
 ## Current state
 
-The executable builds and passes its link audits. At startup it reads the
-original application resource fork, builds the A5 world described by CODE 0,
-resolves the jump table into resident segments, and stops with a named loud stop
-at the first segment that needs CREL relocation (`SEGMENT LOADER / CREL
-RELOCATION`, CODE 3 "Core"). The game itself does not run yet. Development currently targets only the
-68020; other processors and performance work are deferred.
+The executable builds and runs the original CODE 1 startup on the 68020. Its
+75,616-byte A5 globals match the host model exactly. The original segment loader
+relocates Core and reaches `main`; initialization then stops explicitly at
+`MEMORY MANAGER / NEWHANDLECLEAR`, Engine+$004A. The game is not playable yet.
+Other processors and performance work remain deferred.
 
 The M0 tools checkpoint includes the trap census, original Mac runtime/frame
-evidence and a regression harness. Host checks and link audits pass. The
-`boot` regression correctly **fails** at the CREL stop; positive boot acceptance
-remains queued after the original startup path (M1.3a).
+evidence and a regression harness. Host checks, native Line-A/stack/trap-patch
+probes and link audits pass. Adapting the `boot` regression observer to Core's
+on-demand loading is the next queue item, M1.3a.
 
 ## Requirements (provisional)
 

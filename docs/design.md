@@ -171,8 +171,7 @@ subsystem with its design decision and the queue tasks that implement it.
 
 ### 4.2 Loader: let CODE 1 do its job
 
-Replace the resident pre-resolution with the original startup path (tasks
-M1.1–M1.3):
+The original startup path is implemented (M1.1–M1.3):
 
 1. **Load CODE 1.** Copy it into an aligned block and fill jump-table entries
    0–9 in the loaded form `seg:w, JMP abs.l`, as the Segment Loader does at launch.
@@ -197,20 +196,24 @@ M1.1–M1.3):
    aligned copy with header bit 15 intact, so CODE 1 applies CREL once:
    - even offsets add A5;
    - odd offsets add the STRS base.
-   Because the port never relocates, CREL is no longer a port concern. The
-   `SEGMENT LOADER / CREL RELOCATION` stop is removed.
+   The original alone applies CREL. Aligned CODE copies currently remain
+   allocated until shutdown; zone ownership/purging follows in M1.5, and
+   file-backed resource reads in M2.2.
 6. **Trap patching must be real.** `GetTrapAddress` returns, per trap, the address
    of a small stub `dc.w $AFxx, <trap>` that runs the built-in implementation and
    bypasses any patch. CODE 1's `JSR handler; JMP original` then works, and so
    does the THINK C `exit` patch at Misc3+$084C. A patched trap word (installed
    through `SetTrapAddress`) redirects the PC to the installed address with the
-   Mac's register conventions: OS traps get A0/D0/D1/D2/A1 as on the Mac.
-   Toolbox traps get the stack untouched.
+   Mac's register conventions: OS patches receive D1.W=trap, D2.W=low nine trap bits and A2=return PC;
+   the dispatcher restores D1/D2/A1/A2 and A0 unless trap bit 8 permits an A0
+   result. Toolbox patches receive a return PC above the Pascal parameters
+   (auto-pop traps use the existing return PC). Callable originals bypass
+   patch routing and retain the correct parameter cleanup.
 
-**Done when** the host check `tools/a5world_check.py` (M1.2) passes: it runs
+**Verified:** the host check `tools/a5world_check.py` passes: it runs
 CODE 1's expansion algorithm on the resource bytes and compares, byte for byte,
-with the A5 world the Amiga dumps (via gdb) when it enters `main`. The first new
-loud stop must be inside `main`'s initialisation.
+with the A5 world the Amiga dumps (via gdb) when it enters `main`. The current
+loud stop is `NewHandleClear` at Engine+$004A during `main` initialization.
 
 ### 4.3 Low memory
 

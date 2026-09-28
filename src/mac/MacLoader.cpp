@@ -16,6 +16,7 @@ void aitd_line_a_handler();
 void aitd_call_mac_code(void* entry, void* a5, void* stackTop);
 void aitd_user_exit_request();
 void aitd_user_exit_trampoline();
+void aitd_os_patch_return();
 extern volatile uint16_t g_macFramesPresented;
 extern volatile uint16_t g_vbiCount;
 #ifdef AITD_MAPPED_COPY_ASM
@@ -72,11 +73,13 @@ uint8_t* g_macStackBase = 0;
 uint8_t* g_macLowMemory = 0;
 uint8_t* g_startupCode = 0;
 volatile uint16_t g_startupLowMemoryPatches = 0;
+volatile uint32_t g_loadedCodeMask = 0;
+uint8_t* g_code3Base = 0;
 volatile uint32_t g_macLineAVectorAddress = 0;
 volatile uint32_t g_macSavedLineAVector = 0;
 volatile uint16_t g_macLineAInstalled = 0;
 #ifdef AITD_LINE_A_PROBE
-volatile uint32_t g_lineAProbe[12] = {};
+volatile uint32_t g_lineAProbe[42] = {};
 void aitd_line_a_probe();
 void aitd_line_a_exit_probe();
 __attribute__((noinline)) void aitdLineAProbeComplete() { __asm__ volatile("" ::: "memory"); }
@@ -154,7 +157,7 @@ static uint8_t s_grayRgn[10];
 static uint8_t* s_grayRgnMaster;
 static uint8_t s_textEditScrap[1];
 static uint8_t* s_textEditScrapMaster;
-static uint8_t s_trapTokens[4096];
+static uint8_t s_trapBuiltins[4096][6] __attribute__((aligned(4)));
 static uint8_t* s_trapAddresses[4096];
 static uint8_t* s_qdThePort;
 #ifdef AITD_PROBE
@@ -409,7 +412,7 @@ volatile uint16_t g_probeReleasedHandles;
 // CODE resource IDs index this table directly.  Names are the CODE resource
 // names, so attribution reads (Dark, $0123) rather than a bare number.
 static const uint16_t kMaximumSegments = 32;
-struct Segment { uint8_t* begin; uint8_t* end; char name[24]; };
+struct Segment { uint8_t* begin; uint8_t* end; char name[24]; uint32_t size; };
 static Segment s_segments[kMaximumSegments];
 static uint16_t s_segmentCount;             // highest loaded CODE ID + 1
 
@@ -438,13 +441,16 @@ static void clearResidentSegments()
         delete[] s_segments[i].begin;
         s_segments[i].begin = s_segments[i].end = 0;
         s_segments[i].name[0] = 0;
+        s_segments[i].size = 0;
     }
     s_segmentCount = 0;
     g_startupCode = 0;
+    g_code3Base = 0;
+    g_loadedCodeMask = 0;
     g_startupLowMemoryPatches = 0;
 }
 
-static bool loadResidentSegments()
+static bool loadStartupSegments()
 {
     clearResidentSegments();
     for (uint32_t index = 0; index < s_resourceForks.resourceCount(); ++index) {
@@ -455,24 +461,21 @@ static bool loadResidentSegments()
         }
         if (item.fork != 0 || item.type != 0x434f4445UL) continue;   // 'CODE'
         if (item.id < 0 || item.id >= (int16_t)kMaximumSegments || item.size < 4
-            || s_segments[item.id].begin) {
+            || s_segments[item.id].size) {
             clearResidentSegments();
             return false;
         }
-        // Resource-fork payloads are byte-packed and may begin at odd offsets.
-        // Classic Resource Manager handles relocate them into aligned RAM.  Do
-        // the same here; these private copies are also where the jump-table and
-        // compatibility patches belong, leaving the original file image untouched.
-        uint8_t* resident = new uint8_t[item.size];
-        if (!resident) {
-            clearResidentSegments();
-            return false;
-        }
-        for (uint32_t byte = 0; byte < item.size; ++byte)
-            resident[byte] = item.data[byte];
         Segment& segment = s_segments[item.id];
-        segment.begin = resident;
-        segment.end = resident + item.size;
+        segment.size = item.size;
+        // CODE 0 is metadata; CODE 1 is the only executable loaded at launch.
+        if (item.id <= 1) {
+            segment.begin = new uint8_t[item.size];
+            if (!segment.begin) { clearResidentSegments(); return false; }
+            for (uint32_t byte = 0; byte < item.size; ++byte)
+                segment.begin[byte] = item.data[byte];
+            segment.end = segment.begin + item.size;
+            g_loadedCodeMask |= 1UL << item.id;
+        }
         uint16_t length = item.nameLength < sizeof(segment.name) - 1
             ? item.nameLength : (uint16_t)(sizeof(segment.name) - 1);
         for (uint16_t c = 0; c < length; ++c) segment.name[c] = (char)item.name[c];
@@ -505,6 +508,10 @@ static bool loadResidentSegments()
 
 struct TrapName { uint16_t word; const char* manager; const char* routine; };
 static const TrapName s_trapNames[] = {
+    {0xa055,"OS","STRIPADDRESS"}, {0xa0bd,"OS","VCACHEFLUSH"},
+    {0xa198,"OS","HWPRIV"}, {0xa9c9,"OS","SYSERROR"},
+    {0xa069,"MEMORY MANAGER","HGETSTATE"},
+    {0xa322,"MEMORY MANAGER","NEWHANDLECLEAR"},
     {0xa001,"FILE MANAGER","CLOSE"},
     {0xa007,"FILE MANAGER","GETVOLINFO"}, {0xa861,"QUICKDRAW","RANDOM"},
     {0xa02e,"MEMORY MANAGER","BLOCKMOVE"}, {0xa9f1,"SEGMENT MANAGER","UNLOADSEG"},
@@ -637,28 +644,27 @@ static bool buildA5World(uint8_t*& a5)
     write32(s_portLowMemory + kLowCurStackBase, (uint32_t)s_a5WorldStorage);
     s_jumpTableOffset = jumpOffset;
 
-    // Every segment stays resident, so each _LoadSeg stub is resolved once to
-    // a direct JMP into the aligned copy.  A segment header is its first
-    // jump-table index and entry count.  Bit 15 of the first word marks the
-    // segments that ship a CREL resource: their code contains relocations that
-    // the original loader applies, so they are not executable as copied.
+    // Preserve the original unloaded entries. CODE 1's installed LoadSeg
+    // handler, not the port, will relocate later CODE and resolve their jumps.
     const uint8_t* source = code0 + 16;
     uint8_t* jump = a5 + jumpOffset;
+    g_jumpEntryCount = 0;
     for (uint32_t i = 0; i < jumpBytes / 8; ++i, source += 8, jump += 8) {
         uint16_t offset = read16(source);
         uint16_t segment = read16(source + 4);
         if (read16(source + 2) != 0x3f3c || read16(source + 6) != 0xa9f0)
             return loaderStop("JUMP TABLE ENTRY", 0);
-        if (segment == 0 || segment >= s_segmentCount || !s_segments[segment].begin)
+        if (segment == 0 || segment >= s_segmentCount || !s_segments[segment].size
+            || offset >= s_segments[segment].size - 4)
             return loaderStop("JUMP TABLE SEGMENT", segment);
-        const uint8_t* code = s_segments[segment].begin;
-        uint32_t size = (uint32_t)(s_segments[segment].end - code);
-        if (read16(code) & 0x8000) return loaderStop("CREL RELOCATION", segment);
-        if (offset >= size - 4) return loaderStop("JUMP TABLE OFFSET", segment);
-        write16(jump, segment);             // retained for caller attribution / UnLoadSeg
-        write16(jump + 2, 0x4ef9);          // JMP abs.l
-        write32(jump + 4, (uint32_t)(code + 4 + offset));
-        ++g_jumpEntryCount;
+        for (uint16_t byte = 0; byte < 8; ++byte) jump[byte] = source[byte];
+        if (i < 10) {
+            if (segment != 1) return loaderStop("STARTUP JUMP TABLE", segment);
+            write16(jump, segment);
+            write16(jump + 2, 0x4ef9);
+            write32(jump + 4, (uint32_t)(s_segments[1].begin + 4 + offset));
+            ++g_jumpEntryCount;
+        }
     }
     return true;
 }
@@ -836,7 +842,25 @@ static uint8_t** getResource(uint32_t type, int16_t id)
         ResourceForks::Item item;
         uint32_t index;
         if (s_resourceForks.find(fork, type, id, item, &index)) {
-            s_resourceMasters[index] = (uint8_t*)item.data;
+            if (!s_resourceMasters[index]) {
+                if (type == 0x434f4445UL && fork == 0) {
+                    if (id < 0 || id >= kMaximumSegments || s_segments[id].size != item.size)
+                        return 0;
+                    Segment& segment = s_segments[id];
+                    if (!segment.begin) {
+                        segment.begin = new uint8_t[item.size];
+                        if (!segment.begin) return 0;
+                        for (uint32_t byte = 0; byte < item.size; ++byte)
+                            segment.begin[byte] = item.data[byte];
+                        segment.end = segment.begin + item.size;
+                        g_loadedCodeMask |= 1UL << id;
+                        if (id == 3) g_code3Base = segment.begin;
+                    }
+                    s_resourceMasters[index] = segment.begin;
+                } else s_resourceMasters[index] = (uint8_t*)item.data;
+                s_resourceLocked[index] = (item.attrs & 0x10) != 0;
+                s_resourcePurgeable[index] = (item.attrs & 0x20) != 0;
+            }
             return &s_resourceMasters[index];
         }
     }
@@ -4094,35 +4118,56 @@ static bool isImplementedToolTrap(uint16_t trap)
     return false;
 }
 
-static uint8_t* getToolTrapAddress(uint16_t trap)
+static uint16_t trapIndex(uint16_t trap)
 {
-    uint16_t index = trap & 0x03ff;
-    if (!isImplementedToolTrap(trap)) index = 0x009f; // _Unimplemented's shared address
-    return &s_trapTokens[index];
+    return (trap & 0x0800) ? (0x0800 | (trap & 0x03ff)) : (trap & 0x00ff);
 }
 
 static uint8_t* getTrapAddress(uint16_t trap)
 {
-    uint16_t index = trap & 0x0fff;
-    return s_trapAddresses[index] ? s_trapAddresses[index] : &s_trapTokens[index];
+    uint16_t index = trapIndex(trap);
+    return s_trapAddresses[index] ? s_trapAddresses[index] : s_trapBuiltins[index];
+}
+
+static uint8_t* getToolTrapAddress(uint16_t trap)
+{
+    trap = 0xa800 | (trap & 0x03ff);
+    if (!isImplementedToolTrap(trap)) trap = 0xa89f;
+    return getTrapAddress(trap);
 }
 
 static void setTrapAddress(uint16_t trap, uint8_t* address)
 {
-    s_trapAddresses[trap & 0x0fff] = address;
+    s_trapAddresses[trapIndex(trap)] = address;
 }
 
-static bool routePatchedTrap(uint16_t trap, uint8_t* frame)
+static uint32_t routePatchedTrap(uint16_t trap, uint32_t* regs,
+                                 uint8_t* frame, uint8_t* userStack)
 {
-    uint16_t index = trap & 0x0fff;
+    uint16_t index = trapIndex(trap);
     uint8_t* address = s_trapAddresses[index];
-    if (!address || address == &s_trapTokens[index]) return false;
-    // MacEntry.s advances every handled trap return PC by two.  Bias the
-    // replacement here so RTE lands on the exact address installed by the
-    // application.  Registers and USP retain the original trap calling state.
+    if (!address || address == s_trapBuiltins[index]) return 0;
+    uint32_t returnPC = read32(frame + 2) + 2;
     write32(frame + 2, (uint32_t)address - 2);
-    if (trap == 0xa9f4) g_macExitState = 2;
-    return true;
+    if (trap & 0x0800) {
+        if (trap == 0xa9f4) g_macExitState = 2;
+        if (trap & 0x0400) return 1; // auto-pop: caller's return is already on USP
+        write32(userStack - 4, returnPC);
+        return (uint32_t)-3; // signed USP adjustment -4, plus dispatch sentinel
+    }
+    // System 7.5.5 dispatcher $DDA0-$DDE2: preserve D1/D2/A1/A2,
+    // and A0 unless trap bit 8 requests its result. D1.W carries the trap;
+    // D2.W its low nine bits; A2 points just beyond the original opcode.
+    uint8_t* saved = userStack - 32;
+    write32(saved, (uint32_t)aitd_os_patch_return);
+    write32(saved + 4, regs[8]); write32(saved + 8, regs[9]);
+    write32(saved + 12, regs[1]); write32(saved + 16, regs[2]);
+    write32(saved + 20, regs[10]); write32(saved + 24, returnPC);
+    write32(saved + 28, trap);
+    regs[1] = (regs[1] & 0xffff0000UL) | trap;
+    regs[2] = (regs[2] & 0xffff0000UL) | (trap & 0x01ff);
+    regs[10] = returnPC;
+    return (uint32_t)-31;
 }
 
 static void requestExitAfterTrap(uint8_t* frame)
@@ -4176,9 +4221,8 @@ static uint8_t** recoverHandle(uint8_t* pointer)
     for (uint32_t i = 0; i < s_resourceForks.resourceCount(); ++i) {
         ResourceForks::Item item;
         if (!s_resourceForks.item(i, item)) break;
-        uint32_t base = (uint32_t)item.data;
-        if (address >= base && address < base + item.size) {
-            s_resourceMasters[i] = (uint8_t*)item.data;
+        uint32_t base = (uint32_t)s_resourceMasters[i];
+        if (base && address >= base && address < base + item.size) {
             return &s_resourceMasters[i];
         }
     }
@@ -4720,10 +4764,10 @@ static bool validatePermanentHandle(uint8_t** handle)
 // AmigaDOS runs the application in user mode: parameters are on USP, while Line-A creates
 // an eight-byte format-0 frame on the 68020 supervisor stack. The Mac II runs
 // its application in supervisor mode; our Macintosh arguments remain on USP.
-extern "C" uint32_t aitdLineADispatch(uint32_t* regs, uint8_t* frame, uint8_t* userStack)
+static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
+                               uint8_t* frame, uint8_t* userStack)
 {
     uint32_t pc = read32(frame + 2);
-    uint16_t trap = read16((const uint8_t*)pc);
 #ifdef AITD_PROBE
     // Empty same-rate bracket: its total bounds the profiler's per-dispatch
     // observer cost and catches a timer whose apparent resolution is fiction.
@@ -4738,7 +4782,30 @@ extern "C" uint32_t aitdLineADispatch(uint32_t* regs, uint8_t* frame, uint8_t* u
     // due VBL work, then to present the pixels drawn since the last boundary.
     scheduleVBLTask();
     presentMacRuntime();
-    if (routePatchedTrap(trap, frame)) return 1;
+    if (!builtin) {
+        uint32_t routed = routePatchedTrap(trap, regs, frame, userStack);
+        if (routed) return routed;
+    }
+    if ((trap & 0xfeff) == 0xa055) return 1; // StripAddress identity: native 32-bit pointers
+    if (trap == 0xa0bd || (trap == 0xa198 && (regs[0] == 1 || regs[0] == 3))) {
+        CacheClearU();
+        regs[0] = 0;
+        return 1;
+    }
+    if (trap == 0xa069) {
+        uint8_t** handle = (uint8_t**)regs[8];
+        int32_t index = resourceHandleIndex(handle);
+        if (index >= 0 && *handle) {
+            regs[0] = 0x20 | (s_resourceLocked[index] ? 0x80 : 0)
+                | (s_resourcePurgeable[index] ? 0x40 : 0);
+            return 1;
+        }
+        if (HandleAllocation* allocation = handleAllocation(handle)) {
+            regs[0] = (allocation->locked ? 0x80 : 0) | (allocation->purgeable ? 0x40 : 0);
+            return 1;
+        }
+        // Invalid/unimplemented handle kinds remain loud stops.
+    }
     if (trap == 0xa9f4) {                    // original ExitToShell after patch cleanup
         g_macVBLCallbackEntry = 0;
         g_macVBLCallbackTask = 0;
@@ -4966,16 +5033,25 @@ extern "C" uint32_t aitdLineADispatch(uint32_t* regs, uint8_t* frame, uint8_t* u
     }
     if (trap == 0xa746) {                    // GetToolTrapAddress(D0) -> A0
         regs[8] = (uint32_t)getToolTrapAddress((uint16_t)regs[0]);
+        regs[0] = 0;
         if (g_stageCDepth < 11) g_stageCDepth = 11;
+        return 1;
+    }
+    if (trap == 0xa346) {                    // GetOSTrapAddress
+        uint16_t target = 0xa000 | (regs[0] & 0xff);
+        regs[8] = (uint32_t)getTrapAddress(target);
+        regs[0] = 0;
         return 1;
     }
     if (trap == 0xa146) {                    // GetTrapAddress(D0) -> A0
         regs[8] = (uint32_t)getTrapAddress((uint16_t)regs[0]);
+        regs[0] = 0;
         if (g_stageCDepth < 47) g_stageCDepth = 47;
         return 1;
     }
     if (trap == 0xa047) {                    // SetTrapAddress(A0, D0)
         setTrapAddress((uint16_t)regs[0], (uint8_t*)regs[8]);
+        regs[0] = 0;
         if (g_stageCDepth < 48) g_stageCDepth = 48;
         return 1;
     }
@@ -5727,6 +5803,7 @@ extern "C" uint32_t aitdLineADispatch(uint32_t* regs, uint8_t* frame, uint8_t* u
         if (s_trapNames[i].word == trap) {
             manager = s_trapNames[i].manager; routine = s_trapNames[i].routine; break;
         }
+    if (trap == 0xa9c9 || trap == 0xa198) g_trapSelector = (uint16_t)regs[0];
     if (trap == 0xab1d) g_trapSelector = (uint16_t)regs[0];
     copyString(g_trapManager, manager);
     copyString(g_trapRoutine, routine);
@@ -5736,17 +5813,50 @@ extern "C" uint32_t aitdLineADispatch(uint32_t* regs, uint8_t* frame, uint8_t* u
     for (;;) { }                             // VBI remains enabled, so the report stays live
 }
 
+// Private callable originals are AFFE, trap word, RTS. Validate their exact
+// range/alignment so original game bytes cannot masquerade as a port stub.
+extern "C" uint32_t aitdLineADispatch(uint32_t* regs, uint8_t* frame, uint8_t* userStack)
+{
+    uint32_t pc = read32(frame + 2);
+    uint16_t trap = read16((const uint8_t*)pc);
+    uint32_t base = (uint32_t)s_trapBuiltins;
+    bool builtin = trap == 0xaffe && pc >= base && pc < base + sizeof(s_trapBuiltins)
+        && (pc - base) % 6 == 0;
+    uint32_t returnPC = 0;
+    if (builtin) {
+        trap = read16((const uint8_t*)pc + 2);
+        if (!(trap & 0x0800) && (regs[1] & 0xf800) == 0xa000
+            && (regs[1] & 0xff) == (trap & 0xff))
+            trap = (uint16_t)regs[1]; // retain OS flags passed through a patch
+        write32(frame + 2, pc + 2); // normal handler increment skips the operand
+        if (trap & 0x0800) {
+            returnPC = read32(userStack);
+            userStack += 4; // Pascal parameters lie beyond the native return PC
+        }
+    }
+    uint32_t result = dispatchMacTrap(trap, builtin, regs, frame, userStack);
+    if (builtin && (trap & 0x0800))
+        write32(userStack - 4 + result - 1, returnPC);
+    return result;
+}
+
 const char* MacLoader::preparationError() const { return s_preparationError; }
 
 bool MacLoader::prepareResourceForks(uint8_t* application, uint32_t applicationSize,
                                      uint8_t* data, uint32_t dataSize)
 {
     s_preparationError = "RESOURCE FORK / INVALID OR UNSUPPORTED";
+    for (uint16_t i = 0; i < 4096; ++i) {
+        write16(s_trapBuiltins[i], 0xaffe);
+        write16(s_trapBuiltins[i] + 2, 0xa000 | i);
+        write16(s_trapBuiltins[i] + 4, 0x4e75);
+        s_trapAddresses[i] = 0;
+    }
     s_resourceForks.close();
     clearResidentSegments();
     g_resourceCount = 0;
     if (!s_resourceForks.open(application, applicationSize, data, dataSize)
-        || !loadResidentSegments()) {
+        || !loadStartupSegments()) {
         s_resourceForks.close();
         clearResidentSegments();
         return false;
@@ -5927,9 +6037,9 @@ bool MacLoader::run(AitdScreen* screen)
     // before executing any of them (Exec V37+, our OS 2.04 baseline).
     // Do not disable caches: let Exec use the installed CPU support routines.
     CacheClearU();
-    // The Segment Loader starts an application at its first jump-table entry.
+    // Enter the original runtime, which expands DATA/DREL and installs LoadSeg.
     installLineAVector();
-    aitd_call_mac_code((void*)read32(firstJump + 4), a5, g_macStackBase + 65536);
+    aitd_call_mac_code(s_segments[1].begin + 0x14, a5, g_macStackBase + 65536);
     restoreLineAVector();
     // Leave all four Paula DACs holding signed zero before PlatformAmiga
     // restores the operating system, whichever exit route was taken.

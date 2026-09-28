@@ -8,8 +8,8 @@ design.md §5.
 
 **Current state:**
 - The executable builds and loads the original resource fork.
-- It builds the A5 world with pre-resolved jump entries, then stops at
-  `SEGMENT LOADER / CREL RELOCATION` on CODE 3 "Core".
+- Original CODE 1 expands the A5 world, relocates Core and enters `main`, then
+  stops at `MEMORY MANAGER / NEWHANDLECLEAR`, Engine+$004A.
 - The original runs in MAME on the System 7.5.5 reference volume.
 
 Each item gives the **goal**, then the scope, then *done when*: the evidence
@@ -17,21 +17,6 @@ required.
 
 ## M1 Boot to main
 
-- **M1.3 Original startup path.**
-  - Load CODE 1 only. Jump-table entries 0–9 get the loaded form; the rest stay
-    unloaded.
-  - Zero the A5 world, copy in the jump table, and enter at CODE 1+$14.
-  - Make trap patching real: `GetTrapAddress` returns stubs that run the
-    built-ins, and `SetTrapAddress` routes with the Mac register conventions.
-  - Implement `GetOSTrapAddress`, `StripAddress` (identity), `_vCacheFlush`,
-    `HWPriv` 1/3, `SysError` (as a loud stop) and `LoadTrap` = 0.
-  - Remove the resident pre-resolution and the CREL stop.
-
-  *Done when*:
-  - `a5world_check.py` matches;
-  - CODE 1's `_LoadSeg` handler loads and relocates CODE 3 (gdb: header bit 15
-    clear, and a known CREL long equals the original + A5);
-  - the next loud stop is inside `main`'s initialisation.
 - **M1.3a Positive boot regression acceptance (remaining M0.7).**
   - The M0.7 harness is implemented and verified to reject the current CREL
     stop and timeouts. Its original positive acceptance depends on M1.3;

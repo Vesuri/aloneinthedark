@@ -7,17 +7,17 @@ class MacLoader {
 public:
     // Validate and index the original raw Macintosh resource fork(s) while
     // AmigaDOS and normal process memory are still available. The application
-    // CODE resources are copied to aligned resident storage for patching and
-    // execution; the supplied file images remain untouched.  `data` may be
+    // CODE 1 is copied to aligned storage; later CODE handles are created on demand.
+    // The supplied file images remain untouched.  `data` may be
     // null: Alone in the Dark keeps its game data in data-fork .PAK files.
     bool prepareResourceForks(uint8_t* application, uint32_t applicationSize,
                               uint8_t* data, uint32_t dataSize);
     void releaseResourceForks();
     const char* preparationError() const;
 
-    // Builds the A5 world described by CODE 0, resolves the jump table into
-    // the resident CODE copies, then enters the first jump-table entry.  A
-    // segment layout the loader cannot execute is a named loud stop.
+    // Zeroes the CODE 0 A5 world, loads JT 0-9 and enters CODE 1+$14. Original
+    // startup expands globals and relocates later CODE through its trap patches.
+    // Unsupported layouts and services are named loud stops.
     bool run(AitdScreen* screen);
 };
 

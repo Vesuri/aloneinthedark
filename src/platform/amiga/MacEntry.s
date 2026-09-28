@@ -43,6 +43,10 @@ aitd_line_a_handler:
 	lea 60(sp),a1
 	move.l 2(a1),a3
 	move.w (a3),d7	| Original trap word; C ABI preserves D7.
+	cmpi.w #0xaffe,d7
+	bne.s 5f
+	move.w 2(a3),d7	| Private callable-original stub's trap class.
+5:
 	move.l usp,a2
 	move.l a2,-(sp)
 	move.l a1,-(sp)
@@ -102,4 +106,20 @@ aitd_user_vbl_trampoline:
 	movem.l (sp)+,d0-d7/a0-a6
 	move.l g_macVBLCallbackReturn,2(sp)
 	move.w (sp)+,ccr
+	rts
+
+| RTS from an installed OS patch. Layout follows routePatchedTrap's saved USP
+| record; restore the dispatcher-saved registers and TST.W D0 after all moves.
+	.globl aitd_os_patch_return
+aitd_os_patch_return:
+	btst #0,26(sp)	| Trap bit 8: allow an A0 result when set.
+	bne.s 1f
+	move.l (sp),a0
+1:	move.l 4(sp),a1
+	move.l 8(sp),d1
+	move.l 12(sp),d2
+	move.l 16(sp),a2
+	move.l 20(sp),24(sp)
+	lea 24(sp),sp
+	tst.w d0
 	rts

@@ -38,6 +38,7 @@ aitd_line_a_probe:
 	move.w ccr,d1
 	move.l d1,g_lineAProbe+32
 	move.l a5,g_lineAProbe+4
+	jsr aitd_trap_patch_probe
 	rts
 aitd_line_a_callback_probe:
 	addq.l #1,g_lineAProbe+36

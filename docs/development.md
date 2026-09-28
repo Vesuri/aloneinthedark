@@ -170,7 +170,7 @@ can make it pass. No current run has passed the game-boot test.
 Clean-build with `make -C amiga LINEAPROBE=1`, then run from `amiga/`:
 `EXTRA_ARGS=--warp_mode=1 GDBSCRIPT=line_a.gdb ./diag_run.sh 30`.
 The probe uses real native Line-A instructions on the dedicated 64 KB stack;
-it does not replace original game instructions or bypass the CREL stop.
+it does not replace original game instructions.
 
 M1.1 evidence: vector at VBR+$28 ($00000028 on the tested A1200) changes from
 $00F80ADE to the port handler and is restored after both RTS and ExitToShell.
@@ -181,7 +181,7 @@ $56780001 dispatches as selector 1. The entry SP is exactly stack base+65532.
 CurrentA5 $004905F8 minus CurStackBase $0047DE98 is 75,616, matching the original
 CODE 0 header. Probe and production link audits pass (36/35 retained symbols).
 Low-memory instruction redirection remains M1.4; these values currently live
-in the private shadows. The production game still stops at CODE 3 CREL.
+in the private shadows. Production startup now reaches main (see below).
 
 ## A5 initializer model
 
@@ -242,4 +242,47 @@ resource copy returns false before screen initialization, verified with
 `GDB_ENTRY=MacLoader::prepareResourceForks GDBSCRIPT=startup_reject.gdb`.
 The original file and restored staging copy retain the same SHA-256. Host
 checks, the original A5-model check and both link audits pass (38 probes).
-The current game remains at the CODE 3 CREL stop.
+The current game reaches the initialization stop described below.
+
+
+## Original startup and trap patches
+
+M1.3 replaces resident pre-resolution with CODE 1+$14. Only CODE 0 metadata and
+CODE 1 are copied at launch; JT entries 0–9 are loaded and the other 458 retain
+the original unloaded form. `GetResource(CODE)` creates aligned private copies.
+CODE 1 expands DATA/ZERO, applies DREL, patches LoadSeg/UnloadSeg/ExitToShell,
+and performs every CREL relocation. Resource handle lock state comes from the
+resource attributes. Full zone/purge ownership remains M1.5; disk reads M2.2.
+
+The per-trap callable original is `AFFE, trap-word, RTS`, accepted only within
+the port's stub array. OS patches use the register/return conventions measured
+from the System 7.5.5 dispatcher at $DD60–$DDE2; the local reference capture is
+`tmp/m1.3-dispatch.log` (explicit PASS), with RAM/ROM bytes retained in `tmp/`.
+The M0.2 trap log confirms zero D0 from Get/SetTrapAddress, the locked resource
+state $A0, and cache-flush success. StripAddress intentionally retains native
+32-bit addresses. Unsupported HWPriv selectors and SysError remain named stops.
+
+The expanded `LINEAPROBE=1` / `line_a.gdb` probe verifies callable originals,
+OS patch input registers, preservation of D1/D2/A1/A2, both A0-result variants,
+D0.W-derived CCR, Toolbox Pascal argument/result cleanup and balanced stacks.
+It also exercises vCacheFlush and HWPriv 1/3. All pass, alongside the earlier
+Line-A vector, 64 KB stack, callback CCR and QDExtensions selector checks.
+
+For production startup evidence, run from `amiga/`:
+
+```sh
+GDBSCRIPT=original_startup.gdb EXTRA_ARGS=--warp_mode=1 ./diag_run.sh 30
+```
+
+The observer checks original loader/main bytes, CODE residency and the first
+Core CREL long. It dumps `tmp/amiga-a5-globals.bin` at main and prints the actual
+A5/STRS bases for `a5world_check.py`. It succeeds only at the expected subsequent
+`MEMORY MANAGER / NEWHANDLECLEAR`, Engine+$004A, trap $A322. This stop belongs to
+M1.5, and is not a gameplay pass. `runtime_status.gdb` independently reports it.
+The positive boot regression observer update remains M1.3a.
+
+Production evidence: A5 $004680D8, STRS $002E88C4, zero mismatches across all
+75,616 bytes. Core header becomes $000A; Core+$000E is $0045BE8E, exactly
+$FFFF3DB6 + A5 modulo 32 bits. Initial CODE mask $3 becomes $B at main.
+The independent status observer reports 68020, FPU/MMU/JIT=0, trap $A322 at
+Engine+$004A. Host checks and production link audits pass (40 probe symbols).
