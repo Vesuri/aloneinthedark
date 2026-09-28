@@ -7,6 +7,7 @@ int main() {
     c.application=c.add(2,"Game","PROGDIR:",true);
     c.data=c.add(c.application,"Alone Data","data",true);
     c.system=c.add(2,"System Folder","",true);
+    assert(c.initializeDirectories()==0);
     auto file=c.add(c.data,"ITD_RESS.PAK","data/ITD_RESS.PAK",false,123456,765);
     uint32_t id=999;
     assert(c.resolve(0,0,":Alone Data:itd_ress.pak",id)==0 && id==(uint32_t)file);
@@ -28,7 +29,27 @@ int main() {
     assert(c.wdProcess(wd)==0x41495444);
     assert(c.resolve(wd,0,"itd_ress.pak",id)==0 && id==(uint32_t)file);
     assert(c.openWD(c.data,0x41495444,&created)==wd && !created);
-    assert(c.openWD(c.data,0x41495445)!=wd);
+    assert(c.openWD(c.data,0x41495445)==wd && c.wdProcess(wd)==0x41495444);
+    int16_t queried=c.systemWD;uint32_t process=0,directory=0;
+    assert(c.queryWD(queried,0,process,directory)==0 && directory==c.system && process==0x4552494b);
+    assert(c.closeWD(c.systemWD)==0);
+    assert(c.queryWD(queried,0,process,directory)==c.nsvErr);
+    assert(c.closeWD(c.systemWD)==c.rfNumErr);
+    queried=0;process=0x41495444;
+    assert(c.queryWD(queried,1,process,directory)==0 && queried==wd && directory==c.data);
+    queried=0;process=0x41495445;
+    assert(c.queryWD(queried,1,process,directory)==c.nsvErr && queried==0 && process==0x41495445);
+    queried=0;process=0;
+    assert(c.queryWD(queried,1,process,directory)==0 && queried==c.applicationWD && directory==c.application);
+    assert(c.closeWD(c.applicationWD)==0 && c.directoryFor(c.applicationWD,id)==0);
+    assert(c.openWD(c.application,123,&created)==c.applicationWD && !created);
+    queried=0;process=0;
+    assert(c.queryWD(queried,2,process,directory)==0 && queried==wd);
+    queried=0;process=0;
+    assert(c.queryWD(queried,32767,process,directory)==c.nsvErr);
+    queried=0;
+    assert(c.queryWD(queried,-1,process,directory)==0 && queried==c.volumeRef && directory==2);
+    assert(c.closeWD(c.volumeRef)==0 && c.closeWD(0)==c.rfNumErr);
     assert(c.setDefault(wd)==0 && c.defaultRef()==wd);
     assert(c.resolve(0,0,"itd_ress.pak",id)==0 && id==(uint32_t)file);
     assert(c.setDefault(42)==c.nsvErr && c.defaultRef()==wd);
@@ -50,8 +71,8 @@ int main() {
     assert(c.setDefault(wd)==0 && c.defaultRef()==wd);
     assert(c.setDefault(c.volumeRef)==0 && c.directoryFor(0,id)==0 && id==2);
     assert(c.closeWD(wd)==0 && c.directoryFor(wd,id)==c.nsvErr);
-    assert(c.closeWD(wd)==c.nsvErr);
-    assert(c.openWD(file,0)==c.dirNFErr);
+    assert(c.closeWD(wd)==c.rfNumErr);
+    assert(c.openWD(file,0)==c.fnfErr);
     assert(c.openWD(2,0)==c.volumeRef);
     auto r=c.open(file,true,true), d=c.open(file,false,false);
     assert(r>0 && d>0 && r!=d && c.fork(0)==nullptr);
@@ -96,8 +117,12 @@ int main() {
     for(int i=n;i<c.maxEntries;++i) { char name[32];snprintf(name,sizeof(name),"entry%d",i);assert(c.add(c.data,name,"",false)>0); }
     assert(c.add(c.data,"overflow","",false)==c.unsupported && c.count()==c.maxEntries);
     c.reset();c.application=c.add(2,"Game","",true);
-    for(int i=0;i<c.maxWD;++i) { auto w=c.openWD(c.application,i);assert(c.directoryFor(w,id)==0); }
-    assert(c.openWD(c.application,99)==c.unsupported);
+    for(int i=0;i<c.maxWD;++i) {
+        char name[32];snprintf(name,sizeof(name),"dir%d",i);
+        auto dir=c.add(c.application,name,"",true);auto w=c.openWD(dir,i);assert(c.directoryFor(w,id)==0);
+    }
+    auto extra=c.add(c.application,"extra","",true);
+    assert(c.openWD(extra,99)==-121);
     c.reset();assert(c.count()==1 && c.fork(d)==nullptr && c.directoryFor(wd,id)==c.nsvErr);
     puts("PASS mac-files: paths, fork identity, working directories, errors, atomic capacity limits");
 }

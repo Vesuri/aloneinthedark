@@ -24,16 +24,18 @@ public:
     int16_t close(int16_t ref);
     int16_t seek(int16_t ref,uint16_t mode,int32_t offset);
     void advance(int16_t ref,uint32_t count);
+    int16_t initializeDirectories();
+    int16_t queryWD(int16_t& ref,int16_t index,uint32_t& process,uint32_t& directory) const;
     int16_t openWD(uint32_t directory,uint32_t process,bool* created=0);
     int16_t closeWD(int16_t ref);
     int16_t directoryFor(int16_t ref,uint32_t& directory) const;
     uint32_t wdProcess(int16_t ref) const;
     int16_t setDefault(int16_t ref,const char* volumeName=0);
     int16_t setHierarchicalDefault(int16_t ref,uint32_t directory,const char* path=0);
-    int16_t defaultRef() const { return defaultRef_; }
+    int16_t defaultRef() const { return defaultRef_ ? defaultRef_ : application ? applicationWD : volumeRef; }
     uint16_t count() const { return count_; }
     uint32_t application=0,system=0,preferences=0,saves=0,data=0;
-    static const int16_t volumeRef=-1;
+    static const int16_t volumeRef=-1,applicationWD=-32000,systemWD=(int16_t)0x8053;
 private:
     struct WD { int16_t ref; uint32_t directory,process; };
     Entry entries_[maxEntries]; Fork forks_[maxOpen]; WD wd_[maxWD];

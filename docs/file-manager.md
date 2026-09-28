@@ -332,3 +332,50 @@ All host tests, the 28-stage native file regression, window-core, production
 boot and the original directory observer pass on 68020. Original startup retains
 39 catalog entries, 32 data files, seven completed services and zero runtime
 OS windows, with the same named Get1NamedResource stop.
+
+## Working-directory queries and lifetime (M2.1b2c4)
+
+Synchronous GetWDInfo (HFSDispatch selector 7) and CloseWD (selector 2) now
+operate on the catalog. SysEnvirons' $8053 is a real initial System-directory
+entry with process ID `'ERIK'` ($4552494B), as returned by the reference. The
+application WD (-32000) is always present and survives CloseWD. The System WD
+is ordinary and can be closed. Sixteen ordinary WD slots include that initial
+System entry; exhaustion returns tmwdoErr (-121).
+
+The 27-call reference mode (`AITD_FILE_QUERIES=wd`) checks all original trap
+words, protected application closure, System closure, same-directory reuse,
+positive and negative process filters, ordinary close/errors, and the default
+state after closing its WD. `check_file_queries.py LOG --wd --status STATUS`
+requires every stage and matching D0/ioResult. The fresh local evidence is
+`tmp/m2-wd-index-reference.log`, with normal exit and explicit completion.
+
+Two measured details differ from the manual: OpenWD reuses an existing directory
+regardless of the supplied process ID, retaining the first process ID; and a
+negative GetWDInfo index behaves like exact lookup. Positive indexes enumerate
+live entries, with process zero as a wildcard; nonzero process filters return
+only that owner's entries. Exhaustion or invalid query references return -35.
+Index zero (or negative) with reference zero returns the volume root, even when
+the default directory is elsewhere. Missing CloseWD refs (including zero) return
+-51; closing volume -1 succeeds. Closing the current ordinary WD retains the
+default reference and directory ID, while querying the closed WD fails. Queries
+return the volume name, actual volume, directory ID and stored process ID.
+
+Native indexes enumerate the port's application/System/opened directory table;
+they do not reproduce Finder's unrelated open directories or their numeric
+references. The original first OpenWD now reuses the preexisting application
+WD with created=0, matching the Mac more closely. The original data and
+Preferences refs shift by one table slot; callers use the returned refs.
+`file_catalog.gdb` checks those identities and the corrected creation flag.
+
+The 39-stage native file fixture checks System identity/lifetime, application
+protection, duplicate-open identity, exact/indexed queries, filtered errors,
+negative indexes, volume-root lookup, closed-default state, returned names and
+CCR. Its ten OS windows and six DOS reads are unchanged. Sanitizer tests cover
+slot capacity, query ordering and error-state preservation. Original startup
+still ends at Get1NamedResource; this is not PAK-read or launch acceptance.
+
+Host tests, native file-read, window-core, production boot, original directory
+startup and the identity observer all pass on 68020. SysEnvRec remains exactly
+16 reference bytes, seven Gestalt calls and eleven Engine flags match, and
+startup still completes seven file services without runtime OS windows. No
+owner decision or original instruction changed.

@@ -64,6 +64,7 @@ const char* aitdBuildFileCatalog(MacFiles& catalog,const char* applicationPath,u
     catalog.data=catalog.add(catalog.application,"Alone Data",dataPath,true);
     if(catalog.add(catalog.application,"Alone In The Dark",applicationPath,false,0,resourceBytes)<0)
         return "CATALOG / APPLICATION ENTRY";
+    if(catalog.initializeDirectories())return "CATALOG / SYSTEM WORKING DIRECTORY";
     const char* error=scan(catalog,catalog.data,dataPath,false,true);
     if(!error)error=scan(catalog,catalog.saves,"PROGDIR:Saved Games",true,false);
     if(!error)error=scan(catalog,catalog.preferences,"PROGDIR:prefs",true,false);

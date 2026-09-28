@@ -42,6 +42,7 @@ int16_t MacFiles::directoryFor(int16_t ref,uint32_t& directory) const {
         directory=defaultDirectory_ ? defaultDirectory_ : application;
         return directory ? noErr : dirNFErr;
     }
+    if(ref==applicationWD && application) { directory=application;return noErr; }
     if(ref==volumeRef) { directory=2;return noErr; }
     for(uint16_t i=0;i<maxWD;++i)if(wd_[i].ref==ref) { directory=wd_[i].directory;return noErr; }
     return nsvErr;
@@ -112,20 +113,46 @@ int16_t MacFiles::close(int16_t ref) {
     for(uint16_t i=0;i<maxOpen;++i)if(forks_[i].ref && forks_[i].ref==ref) { forks_[i].ref=0;return noErr; }
     return rfNumErr;
 }
+int16_t MacFiles::initializeDirectories() {
+    if(!entry(application) || !entry(system) || !entry(application)->directory || !entry(system)->directory)return dirNFErr;
+    for(uint16_t i=0;i<maxWD;++i)if(wd_[i].ref)return unsupported;
+    // SysEnvirons reports this reference; System 7.5.5 identifies its owner as ERIK.
+    wd_[0]={systemWD,system,0x4552494b};return noErr;
+}
+int16_t MacFiles::queryWD(int16_t& ref,int16_t index,uint32_t& process,uint32_t& directory) const {
+    if(index<=0) {
+        int16_t actual=ref ? ref : volumeRef;
+        uint32_t found=0;
+        int16_t error=directoryFor(actual,found);
+        if(error)return error;
+        ref=actual;directory=found;process=wdProcess(actual);return noErr;
+    }
+    uint32_t ignored=0;
+    if(ref && directoryFor(ref,ignored))return nsvErr;
+    if(application && !process && !--index) {
+        ref=applicationWD;directory=application;process=0;return noErr;
+    }
+    for(uint16_t i=0;i<maxWD;++i)if(wd_[i].ref && (!process || wd_[i].process==process) && !--index) {
+        ref=wd_[i].ref;process=wd_[i].process;directory=wd_[i].directory;return noErr;
+    }
+    return nsvErr;
+}
 int16_t MacFiles::openWD(uint32_t directory,uint32_t process,bool* created) {
     if(created)*created=false;
-    if(!entry(directory) || !entry(directory)->directory)return dirNFErr;
+    if(!entry(directory) || !entry(directory)->directory)return fnfErr;
+    if(directory==application)return applicationWD;
     if(directory==2)return volumeRef;
     for(uint16_t i=0;i<maxWD;++i)
-        if(wd_[i].ref && wd_[i].directory==directory && wd_[i].process==process)return wd_[i].ref;
+        if(wd_[i].ref && wd_[i].directory==directory)return wd_[i].ref;
     for(uint16_t i=0;i<maxWD;++i)if(!wd_[i].ref) {
-        wd_[i]={(int16_t)(-32000+i),directory,process};if(created)*created=true;return wd_[i].ref;
+        wd_[i]={(int16_t)(-31999+i),directory,process};if(created)*created=true;return wd_[i].ref;
     }
-    return unsupported;
+    return -121; // tmwdoErr
 }
 int16_t MacFiles::closeWD(int16_t ref) {
+    if(ref==volumeRef || (ref==applicationWD && application))return noErr;
     for(uint16_t i=0;i<maxWD;++i)if(wd_[i].ref && wd_[i].ref==ref) { wd_[i].ref=0;return noErr; }
-    return nsvErr;
+    return rfNumErr;
 }
 uint32_t MacFiles::wdProcess(int16_t ref) const {
     for(uint16_t i=0;i<maxWD;++i)if(wd_[i].ref && wd_[i].ref==ref)return wd_[i].process;

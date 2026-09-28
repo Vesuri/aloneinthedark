@@ -5028,6 +5028,18 @@ static bool dispatchFileMetadata(uint16_t trap,uint32_t* regs)
             write32(pb+54,0);write32(pb+58,file->parent);
             error=0;
         }
+    } else if(selector==2) { // PBCloseWD
+        error=s_files.closeWD((int16_t)read16(pb+22));
+    } else if(selector==7) { // PBGetWDInfo: exact (including negative index) or filtered enumeration.
+        int16_t ref=(int16_t)read16(pb+22);
+        uint32_t process=read32(pb+28),directory=0;
+        error=s_files.queryWD(ref,(int16_t)read16(pb+26),process,directory);
+        if(!error) {
+            uint8_t* name=(uint8_t*)read32(pb+18);
+            const char* volume=s_files.entry(2)->name;
+            if(name) { uint8_t n=0;while(volume[n]) { name[n+1]=volume[n];++n; }name[0]=n; }
+            write16(pb+22,ref);write32(pb+28,process);write16(pb+32,MacFiles::volumeRef);write32(pb+48,directory);
+        }
     } else if(selector==1) { // PBOpenWD
         char path[256];uint8_t* name=(uint8_t*)read32(pb+18);
         uint16_t length=name ? name[0] : 0;
@@ -5038,8 +5050,11 @@ static bool dispatchFileMetadata(uint16_t trap,uint32_t* regs)
             bool created=false;
             int16_t ref=s_files.openWD(directory,read32(pb+28),&created);
             uint32_t check=0;
-            if(s_files.directoryFor(ref,check) || check!=directory)return false;
-            write16(pb+22,ref);write16(pb+24,created ? 1 : 0);error=0;
+            if(ref==-121 || ref==MacFiles::fnfErr)error=ref;
+            else {
+                if(s_files.directoryFor(ref,check) || check!=directory)return false;
+                write16(pb+22,ref);write16(pb+24,created ? 1 : 0);error=0;
+            }
         }
     }
     if(error==MacFiles::unsupported)return false;

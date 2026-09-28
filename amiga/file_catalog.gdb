@@ -91,7 +91,10 @@ break *(g_code3Base+0x40e0)
 commands
  silent
  set $pb=(unsigned char*)$a0
- set $expected_ref=-32000+$catalog_wd
+ set $expected_ref=-31999+$catalog_wd
+ if $catalog_wd == 0
+  set $expected_ref=-32000
+ end
  set $expected_error=0
  if $catalog_wd == 3
   set $expected_ref=0
@@ -102,7 +105,7 @@ commands
   detach
   quit 1
  end
- if $catalog_wd < 3 && *(short*)($pb+24) != 1
+ if $catalog_wd < 3 && *(short*)($pb+24) != ($catalog_wd != 0)
   echo FAIL file-catalog: new WD flag\n
   detach
   quit 1

@@ -648,5 +648,6 @@ missing stages, incorrect errors and timeouts fail acceptance.
 Set `AITD_FILE_QUERIES=directories` for the 21-call directory-state reference
 fixture. Its HSetVol/HGetVol and WD measurements are checked with
 `tools/check_file_queries.py LOG --directories --status RUNNER_STATUS`.
-The native `file-read` fixture covers 28 stages including hierarchical defaults;
-WD queries/closure are still pending implementation.
+Set `AITD_FILE_QUERIES=wd` for the 27-call WD lifetime/filtering fixture, and
+check it with `--wd` instead of `--directories`. The native `file-read` fixture
+now covers 39 stages including hierarchical defaults, WD queries and closure.

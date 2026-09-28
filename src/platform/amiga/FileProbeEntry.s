@@ -33,3 +33,17 @@ aitdProbeFCB:
     rts
     filetrap aitdProbeHGetVol,0xa214
     filetrap aitdProbeHSetVol,0xa215
+    .globl aitdProbeGetWD
+aitdProbeGetWD:
+    move.l 4(sp),a0
+    moveq #7,d0
+    .word 0xa260
+    move.w ccr,g_fileProbeCCR
+    rts
+    .globl aitdProbeCloseWD
+aitdProbeCloseWD:
+    move.l 4(sp),a0
+    moveq #2,d0
+    .word 0xa260
+    move.w ccr,g_fileProbeCCR
+    rts

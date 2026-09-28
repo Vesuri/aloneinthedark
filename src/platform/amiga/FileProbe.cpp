@@ -3,6 +3,7 @@ extern "C" {
 extern volatile uint32_t g_systemWindows;
 volatile uint32_t g_fileProbeStage=0,g_fileProbeError=0,g_fileProbeDone=0,g_fileProbeWindows=0;
 volatile uint16_t g_fileProbeCCR=0;
+int32_t aitdProbeGetWD(void*),aitdProbeCloseWD(void*);
 int32_t aitdProbeFCB(void*),aitdProbeHGetVol(void*),aitdProbeHSetVol(void*);
 int32_t aitdProbeGetVol(void*),aitdProbeSetVol(void*),aitdProbeOpenWD(void*);
 int32_t aitdProbeHOpen(void*),aitdProbeOpen(void*),aitdProbeRead(void*),aitdProbeClose(void*),aitdProbeEOF(void*),aitdProbeSeek(void*),aitdProbePosition(void*);
@@ -117,6 +118,39 @@ static bool run() {
     if(!result(aitdProbeHSetVol(pb),0))return false;
     l(18,0);
     if(!result(aitdProbeHGetVol(pb),0) || get(48)!=7 || g_systemWindows!=start+10)return false;
+    g_fileProbeStage=29;w(22,0x8053);w(26,0);
+    if(!result(aitdProbeGetWD(pb),0) || get(48)!=4 || get(28)!=0x4552494b || (get(32)>>16)!=0xffff)return false;
+    g_fileProbeStage=30;
+    if(!result(aitdProbeCloseWD(pb),0) || !result(aitdProbeGetWD(pb),-35) || !result(aitdProbeCloseWD(pb),-51))return false;
+    g_fileProbeStage=31;w(22,0xffff);l(48,7);l(28,0x41495445);
+    if(!result(aitdProbeOpenWD(pb),0) || (get(20)&65535)!=wd || (get(24)>>16)!=0)return false;
+    g_fileProbeStage=32;l(18,(uint32_t)volume);w(26,0);
+    if(!result(aitdProbeGetWD(pb),0) || get(48)!=7 || get(28)!=0x41495444 || volume[0]!=5)return false;
+    g_fileProbeStage=33;l(18,0);w(22,0);w(26,1);l(28,0x41495444);
+    if(!result(aitdProbeGetWD(pb),0) || (get(20)&65535)!=wd || get(48)!=7)return false;
+    w(22,0);l(28,0x41495445);
+    if(!result(aitdProbeGetWD(pb),-35) || (get(20)&65535)!=0 || get(28)!=0x41495445)return false;
+    g_fileProbeStage=34;w(26,0);
+    if(!result(aitdProbeGetWD(pb),0) || (get(20)&65535)!=0xffff || get(48)!=2 || get(28)!=0)return false;
+    g_fileProbeStage=35;w(22,wd);
+    if(!result(aitdProbeSetVol(pb),0) || !result(aitdProbeCloseWD(pb),0))return false;
+    l(28,0xdeadbeef);
+    if(!result(aitdProbeHGetVol(pb),0) || (get(20)&65535)!=wd || get(48)!=7 || get(28)!=0xdeadbeef
+       || !result(aitdProbeGetWD(pb),-35) || !result(aitdProbeCloseWD(pb),-51))return false;
+    g_fileProbeStage=36;w(22,0xffff);
+    if(!result(aitdProbeCloseWD(pb),0))return false;
+    w(22,0);if(!result(aitdProbeCloseWD(pb),-51))return false;
+    w(22,0x1234);if(!result(aitdProbeCloseWD(pb),-51))return false;
+    g_fileProbeStage=37;w(22,0xffff);l(48,3);l(28,0);
+    if(!result(aitdProbeOpenWD(pb),0) || (get(20)&65535)!=(uint16_t)-32000 || (get(24)>>16)!=0
+       || !result(aitdProbeCloseWD(pb),0) || !result(aitdProbeGetWD(pb),0) || get(48)!=3)return false;
+    g_fileProbeStage=38;w(22,0);w(26,1);l(28,0);
+    if(!result(aitdProbeGetWD(pb),0) || (get(20)&65535)!=(uint16_t)-32000 || get(48)!=3)return false;
+    g_fileProbeStage=39;w(22,0);w(26,0xffff);
+    if(!result(aitdProbeGetWD(pb),0) || (get(20)&65535)!=0xffff || get(48)!=2)return false;
+    w(22,0);w(26,0x7fff);if(!result(aitdProbeGetWD(pb),-35))return false;
+    w(22,0x1234);w(26,1);
+    if(!result(aitdProbeGetWD(pb),-35) || g_systemWindows!=start+10)return false;
     g_fileProbeWindows=g_systemWindows-start;return true;
 }
 extern "C" void aitdFileProbe() {
