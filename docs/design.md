@@ -219,8 +219,9 @@ loud stop is `NewHandleClear` at Engine+$004A during `main` initialization.
 
 - **Never map Mac Page 0.** Absolute-word references to Mac globals are patched,
   after byte checks, to the same-length `d16(A5)` form pointing into the shadow
-  area. CODE 1's ten startup sites are implemented (M1.2b); M1.4 covers the
-  remaining 48 sites and full-table agreement.
+  area. All 58 operands in the live census are covered by `LowMemory.h`,
+  including CODE 1's ten startup sites. The 160-byte area begins at A5+$0EC0;
+  $016C aliases the low word of Ticks at $016A.
   - This is Vette's method. The far model does not stop it, because the shadow
     area sits above the jump table.
   - The patch runs when a CODE handle is created, so CODE 1 and every segment
@@ -234,7 +235,10 @@ loud stop is `NewHandleClear` at Engine+$004A during `main` initialization.
 - **Tooling.** `tools/m68k_lowmem.py` must skip CREL-relocated operands and
   `PEA #imm.w`. `make lowmem-scan` must then list exactly the patched sites.
 - **The patcher fails before takeover** if any expected site count differs. A
-  build-time table names each site.
+  build-time table names each site. All 13 original CODE sizes/fingerprints and
+  all 264 site bytes are validated before takeover; each new CODE copy is
+  checked again before patching. Host checks compare the table with the census,
+  including MOVE destination encodings and instructions with trailing operands.
 - **Decrypted code.** MDRV is decrypted at runtime into a heap block. Census its
   low-memory references from `tmp/plan/MDRV_11.bin`:
   - $260 SdVolume on the Sound Manager 3 path;

@@ -17,19 +17,11 @@ required.
 
 ## M1 Boot to main
 
-- **M1.4 Low-memory shadows.**
-  - Patch the live set's `abs.w` references to `d16(A5)` in the shadow area,
-    after byte checks (design §4.3). Apply the patches when a CODE handle is
-    created.
-  - Fail before takeover if any site count differs.
-  - The VBI updates the Ticks shadow.
-
-  *Done when* `make lowmem-scan` and the patch table agree exactly, and no
-  unpatched Page-0 reference remains on reachable paths.
 - **M1.5 Application zone.**
   - Write a Mac-compatible zone allocator (design §4.4), with host tests in
     `tools/test_mac_heap.cpp`, plus a system zone.
-  - Complete the Memory Manager call set.
+  - Complete the Memory Manager call set; publish its MemErr ($0220) and
+    ApplLimit ($0130) state into the M1.4 shadows.
   - Resources become handles in the zone, with aligned copies where needed.
 
   *Done when* the host tests pass, `FreeMem` after startup is within a documented

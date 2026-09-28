@@ -224,12 +224,12 @@ references at 29 addresses. The runtime report now requires every observed
 trap word. Acceptance: all 632 sites in the M0.2 reference log are covered;
 host fixtures reject an unseen site even when its trap word is known.
 
-M1.2b startup low memory: `StartupLowMemory.h` holds ten original-byte-checked
+M1.2b startup low memory: `LowMemory.h` includes ten original-byte-checked
 CODE 1 sites. Patching is atomic and happens before takeover. The A5 allocation
 now includes 80 shadow bytes at A5+$0EC0; CurrentA5 and CurStackBase are real
 allocation addresses, CPUFlag=3 matches the Mac IIx reference, LoadTrap=0, and
 the fallback address mask is $FFFFFFFF (the port's StripAddress identity).
-The other 48 census sites remain M1.4 work.
+M1.4 extends this to the complete live table, described below.
 
 `make startup-lowmem-check` compiles the actual C++ patcher on the host and
 compares its table to the original-resource census. All ten instruction lengths
@@ -287,3 +287,35 @@ Production evidence: A5 $004680D8, STRS $002E88C4, zero mismatches across all
 $FFFF3DB6 + A5 modulo 32 bits. Initial CODE mask $3 becomes $B at main.
 The independent status observer reports 68020, FPU/MMU/JIT=0, trap $A322 at
 Engine+$004A. Host checks and production link audits pass (40 probe symbols).
+
+
+## Complete low-memory redirection
+
+`LowMemory.h` extends the Vette same-length A5 redirection to all 58 live
+operands at 29 addresses. The shadow area is 160 bytes at A5+$0EC0. The $016C
+word shares the low half of $016A Ticks. MOVE destination fields and source
+instructions with a trailing destination extension have distinct encodings;
+the patcher preserves every other operand and all CREL fields.
+
+`make lowmem-check` compiles the actual C++ patcher, compares its complete
+table with `make lowmem-scan`, checks all 13 original CODE fingerprints and
+lengths, and verifies no absolute Page-0 operand remains in the census live set.
+The static census still reports its 115 unresolved indirect transfers; this
+is not a claim that arbitrary unseen code has been proven safe. Modified
+original CODE is rejected, including modifications outside the listed sites.
+Host fixtures reject all 264 single-byte site corruptions without a partial
+patch, wrong lengths, repeat patching and invalid segment IDs. They verify
+shadow bounds and permit only the intentional Ticks overlap.
+
+Native acceptance (`GDBSCRIPT=lowmem.gdb EXTRA_ARGS=--warp_mode=1
+./diag_run.sh 30`) passes: 58 sites validated before takeover, 50 applied to
+CODE 1/Core/Engine at the current stop, ten fields advance Ticks by twelve,
+and the published shadow equals `g_macTicks`. A changed final byte in CODE 3,
+outside every patch site, is rejected before screen takeover using
+`startup_reject.gdb`. Restored original staging passes boot regression.
+
+The original-startup dump remains exact (A5 $00468AF0, STRS $002E92DC, zero
+mismatches in 75,616 bytes). Both production audits pass (42 probe symbols).
+Address redirection does not supply missing subsystem values: zone/error
+shadows belong to M1.5, system identity to M1.6, and scrap/sound state to their
+services. Initialization still stops explicitly at Engine+$004A NewHandleClear.

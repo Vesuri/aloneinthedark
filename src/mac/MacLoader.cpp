@@ -3,7 +3,7 @@
 #include <hardware/dmabits.h>
 
 #include "MacLoader.h"
-#include "StartupLowMemory.h"
+#include "LowMemory.h"
 #include "ResourceForks.h"
 #include "platform/amiga/AitdScreen.h"
 #include "platform/amiga/MacInput.h"
@@ -73,6 +73,8 @@ uint8_t* g_macStackBase = 0;
 uint8_t* g_macLowMemory = 0;
 uint8_t* g_startupCode = 0;
 volatile uint16_t g_startupLowMemoryPatches = 0;
+volatile uint16_t g_lowMemoryValidatedSites = 0;
+volatile uint16_t g_lowMemoryAppliedSites = 0;
 volatile uint32_t g_loadedCodeMask = 0;
 uint8_t* g_code3Base = 0;
 volatile uint32_t g_macLineAVectorAddress = 0;
@@ -108,16 +110,16 @@ static const uint16_t kLowRndSeed = 4;       // $0156
 static const uint16_t kLowWMgrPort = 8;      // $09DE
 static const uint16_t kLowGrayRgn = 12;      // $09EE
 static const uint16_t kLowKeyMap = 16;       // $0174, 16 bytes
-static const uint16_t kLowCurrentA5 = StartupLowMemory::currentA5;    // $0904
+static const uint16_t kLowCurrentA5 = MacLowMemory::currentA5;    // $0904
 static const uint16_t kLowMBState = 36;      // $0172
 static const uint16_t kLowMTempV = 38;       // $0828
 static const uint16_t kLowMTempH = 40;       // $082A
 static const uint16_t kLowRawMouseV = 42;    // $082C
 static const uint16_t kLowRawMouseH = 44;    // $082E
 static const uint16_t kLowMouseV = 46;       // $0830
-static const uint16_t kLowCurStackBase = StartupLowMemory::curStackBase; // $0908: lowest A5 global, not execution stack
+static const uint16_t kLowCurStackBase = MacLowMemory::curStackBase; // $0908: lowest A5 global, not execution stack
 static const uint16_t kLowMouseH = 48;       // $0832
-static uint8_t s_initialLowMemory[StartupLowMemory::size] __attribute__((aligned(4)));
+static uint8_t s_initialLowMemory[MacLowMemory::size] __attribute__((aligned(4)));
 static uint8_t* s_portLowMemory = s_initialLowMemory;
 static const char* s_preparationError = "RESOURCE FORK / INVALID OR UNSUPPORTED";
 // The A5 world is sized by CODE 0, not by a compile-time constant: this
@@ -448,11 +450,13 @@ static void clearResidentSegments()
     g_code3Base = 0;
     g_loadedCodeMask = 0;
     g_startupLowMemoryPatches = 0;
+    g_lowMemoryValidatedSites = g_lowMemoryAppliedSites = 0;
 }
 
 static bool loadStartupSegments()
 {
     clearResidentSegments();
+    uint16_t checkedSegments = 0, checkedSites = 0;
     for (uint32_t index = 0; index < s_resourceForks.resourceCount(); ++index) {
         ResourceForks::Item item;
         if (!s_resourceForks.item(index, item)) {
@@ -464,6 +468,15 @@ static bool loadStartupSegments()
             || s_segments[item.id].size) {
             clearResidentSegments();
             return false;
+        }
+        if (item.id > 0) {
+            if (!MacLowMemory::validate(item.id, item.data, item.size)) {
+                s_preparationError = "LOW MEMORY / ORIGINAL CODE MISMATCH";
+                clearResidentSegments();
+                return false;
+            }
+            ++checkedSegments;
+            checkedSites += MacLowMemory::siteCount(item.id);
         }
         Segment& segment = s_segments[item.id];
         segment.size = item.size;
@@ -483,6 +496,11 @@ static bool loadStartupSegments()
         if (!length) copyString(segment.name, item.id ? "CODE" : "CODE0");
         if ((uint16_t)item.id + 1 > s_segmentCount) s_segmentCount = (uint16_t)(item.id + 1);
     }
+    if (checkedSegments != MacLowMemory::segmentCount || checkedSites != MacLowMemory::count) {
+        s_preparationError = "LOW MEMORY / SITE COUNT";
+        clearResidentSegments();
+        return false;
+    }
     if (!s_segments[0].begin || !s_segments[1].begin) {
         clearResidentSegments();
         return false;
@@ -495,14 +513,16 @@ static bool loadStartupSegments()
         clearResidentSegments();
         return false;
     }
-    if (!StartupLowMemory::patch(s_segments[1].begin,
+    if (!MacLowMemory::patch(1, s_segments[1].begin,
                                   s_segments[1].end - s_segments[1].begin)) {
         s_preparationError = "STARTUP LOW MEMORY / ORIGINAL BYTE MISMATCH";
         clearResidentSegments();
         return false;
     }
     g_startupCode = s_segments[1].begin;
-    g_startupLowMemoryPatches = StartupLowMemory::count;
+    g_startupLowMemoryPatches = MacLowMemory::siteCount(1);
+    g_lowMemoryAppliedSites = g_startupLowMemoryPatches;
+    g_lowMemoryValidatedSites = checkedSites;
     return true;
 }
 
@@ -595,6 +615,7 @@ static const TrapName s_trapNames[] = {
     {0xa874,"QUICKDRAW","GETPORT"}, {0xa871,"QUICKDRAW","GLOBALTOLOCAL"}
 };
 
+static void showLoaderStop();
 static const char* s_loaderStopReason;
 static uint16_t s_loaderStopSegment;
 
@@ -628,18 +649,18 @@ static bool buildA5World(uint8_t*& a5)
         return loaderStop("CODE 0 HEADER", 0);
 
     releaseA5World();
-    s_a5WorldBytes = below + above + StartupLowMemory::size;
+    s_a5WorldBytes = below + above + MacLowMemory::size;
     s_a5WorldStorage = (uint8_t*)AllocMem(s_a5WorldBytes, MEMF_ANY | MEMF_CLEAR);
     if (!s_a5WorldStorage) {
         s_a5WorldBytes = 0;
         return loaderStop("A5 WORLD MEMORY", 0);
     }
     a5 = s_a5WorldStorage + below;
-    s_portLowMemory = a5 + StartupLowMemory::base;
+    s_portLowMemory = a5 + MacLowMemory::base;
     g_macLowMemory = s_portLowMemory;
-    s_portLowMemory[StartupLowMemory::cpuFlag] = 3; // Mac IIx identity (D2/section 4.2)
-    s_portLowMemory[StartupLowMemory::loadTrap] = 0;
-    write32(s_portLowMemory + StartupLowMemory::lo3Bytes, 0xffffffffUL);
+    s_portLowMemory[MacLowMemory::cpuFlag] = 3; // Mac IIx identity (D2/section 4.2)
+    s_portLowMemory[MacLowMemory::loadTrap] = 0;
+    write32(s_portLowMemory + MacLowMemory::lo3Bytes, 0xffffffffUL);
     write32(s_portLowMemory + kLowCurrentA5, (uint32_t)a5);
     write32(s_portLowMemory + kLowCurStackBase, (uint32_t)s_a5WorldStorage);
     s_jumpTableOffset = jumpOffset;
@@ -852,6 +873,11 @@ static uint8_t** getResource(uint32_t type, int16_t id)
                         if (!segment.begin) return 0;
                         for (uint32_t byte = 0; byte < item.size; ++byte)
                             segment.begin[byte] = item.data[byte];
+                        if (!MacLowMemory::patch(id, segment.begin, item.size)) {
+                            loaderStop("LOW MEMORY ORIGINAL BYTE MISMATCH", id);
+                            showLoaderStop();
+                        }
+                        g_lowMemoryAppliedSites += MacLowMemory::siteCount(id);
                         segment.end = segment.begin + item.size;
                         g_loadedCodeMask |= 1UL << id;
                         if (id == 3) g_code3Base = segment.begin;
@@ -6010,7 +6036,7 @@ bool MacLoader::run(AitdScreen* screen)
         && *(volatile uint32_t*)g_macLineAVectorAddress == g_macSavedLineAVector;
     aitdLineAProbeComplete();
 #endif
-    for (uint16_t i = 0; i < StartupLowMemory::size; ++i) s_portLowMemory[i] = 0;
+    for (uint16_t i = 0; i < MacLowMemory::size; ++i) s_portLowMemory[i] = 0;
     uint8_t* a5 = 0;
     bool a5Ready = buildA5World(a5);
 #ifdef AITD_LINE_A_PROBE

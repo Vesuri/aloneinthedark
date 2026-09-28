@@ -20,8 +20,8 @@ Other processors and performance work remain deferred.
 The M0 tools checkpoint includes the trap census, original Mac runtime/frame
 evidence and a regression harness. Host checks, native Line-A/stack/trap-patch
 probes and link audits pass. `make regression` now passes `boot` on `a1200-020`,
-ending at the original main entry before initialization. The next item is the
-remaining low-memory shadows (M1.4).
+ending at the original main entry before initialization. All 58 census low-memory accesses
+now use private shadows; the next item is the application zone (M1.5).
 
 ## Requirements (provisional)
 

@@ -6,7 +6,7 @@ ARCHIVE ?= tmp/AloneInTheDark.img_.sit
 RUNTIME_DATA ?= tmp/runtime-data
 SEGMENTS ?= tmp/segments
 
-.PHONY: all help todo amiga extract-original-data segments m68k-sweep lowmem-scan entrypoints-check trap-census host-tests mac-trap-map regression a5world-check startup-lowmem-check
+.PHONY: all help todo amiga extract-original-data segments m68k-sweep lowmem-scan entrypoints-check trap-census host-tests mac-trap-map regression a5world-check lowmem-check
 
 all: help
 
@@ -68,11 +68,11 @@ regression:
 a5world-check:
 	@python3 tools/a5world_check.py "$(RUNTIME_DATA)/Alone In The Dark"
 
-startup-lowmem-check:
-	@python3 tools/check_startup_lowmem.py --resource "$(RUNTIME_DATA)/Alone In The Dark"
+lowmem-check:
+	@python3 tools/check_lowmem.py --resource "$(RUNTIME_DATA)/Alone In The Dark"
 
 host-tests:
-	@python3 tools/check_startup_lowmem.py --selftest
+	@python3 tools/check_lowmem.py --selftest
 	@python3 tools/a5world_check.py --selftest
 	@python3 tools/regression_result.py --selftest
 	@python3 tools/fb_to_png.py --selftest
@@ -84,3 +84,6 @@ host-tests:
 
 entrypoints-check:
 	@python3 tools/code0_entrypoints.py '$(SEGMENTS)/CODE_0' --check ghidra_scripts/entrypoints.csv
+
+# Compatibility spelling for the earlier CODE 1-only check.
+startup-lowmem-check: lowmem-check
