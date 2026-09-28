@@ -17,6 +17,19 @@ required.
 
 ## M1 Boot to main
 
+- **M1.2b Startup low-memory safety prerequisite.**
+  - Before M1.3 executes CODE 1, redirect its ten census-confirmed absolute
+    low-memory operands into the above-jump-table shadow area (design §4.3).
+    Check original bytes before same-length d16(A5) patches. Initialize the
+    startup fields, including CurrentA5, CurStackBase, CPUFlag and LoadTrap.
+  - This is the startup subset of M1.4, pulled out because original CODE 1
+    otherwise writes Amiga Page 0 before its first Toolbox call. Keep the
+    remaining segment sites and exact full-census agreement in M1.4.
+
+  *Done when* a host check accounts for all ten CODE 1 sites with unchanged
+  instruction lengths, mismatched original bytes fail before takeover, and a
+  bounded Amiga probe confirms the patched operands address the allocated
+  shadows. Never execute an unredirected startup write to Page 0.
 - **M1.3 Original startup path.**
   - Load CODE 1 only. Jump-table entries 0–9 get the loaded form; the rest stay
     unloaded.

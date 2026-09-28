@@ -28,6 +28,10 @@ def caller(pc, word, maps, codes):
     return next(iter(matches)) if len(matches) == 1 else None
 
 
+def missing_sites(calls, live):
+    return set(calls) - {(segment, pc, word) for segment, pc, word, _ in live.traps}
+
+
 def selftest():
     codes = {1: bytes.fromhex('00000000 a9a0 4e75')}
     maps = {(1, 0x400000, 8)}
@@ -35,6 +39,10 @@ def selftest():
     assert caller(0x400006, 0xa9a0, maps, codes) is None
     assert caller(0x500004, 0xa9a0, maps, codes) is None
     assert fields('TRAP pc=80400004 trap=0000A9A0') == {'pc': 0x80400004, 'trap': 0xa9a0}
+    class Live:
+        traps = [(1, 4, 0xa9a0, [])]
+    assert missing_sites({(1, 4, 0xa9a0)}, Live()) == set()
+    assert missing_sites({(1, 6, 0xa9a0)}, Live()) == {(1, 6, 0xa9a0)}
     print('PASS mac-trap-report-selftest tagged_pc=1 byte_mismatch=1 unattributed=1 fields=1')
 
 
@@ -106,10 +114,13 @@ def report(log, resource, output):
         errors.append('STATE PROOFS MISSING: '+', '.join(sorted(missing)))
     words = {word for _, _, word in calls}
     extra = words - allowed
+    uncovered = missing_sites(calls, live)
     lines = ['# MAME runtime trap report', '',
              f'Original CODE: {sum(calls.values())} calls, {len(calls)} sites, {len(words)} trap words.',
              f'Pack3 ($A9EA) direct CODE calls: {sum(n for (_,_,w),n in calls.items() if w==0xa9ea)}.',
              f'Census differences: {", ".join(f"${w:04X}" for w in sorted(extra)) or "none"}.',
+             f'Runtime sites missing from static census: {len(uncovered)}.',
+             *[f'- CODE {s}+${pc:04X}: ${word:04X}' for s, pc, word in sorted(uncovered)],
              f'Result records: {sum(results.values())}. Driver calls: {sum(driver.values())}.',
              f'Unattributed/system/driver trap calls: {sum(unclaimed.values())}; not counted as application CODE.',
              'MDRV is replaced under D8; its internal traps are outside the CODE census.', '',
@@ -130,10 +141,10 @@ def report(log, resource, output):
     lines += ['', '## Script checkpoints (captures still require inspection)', '', *checkpoints,
               '', f'Session completed: {complete}', *errors, '']
     Path(output).write_text('\n'.join(lines))
-    if missing or not calls or not results or not driver or not texts or extra or errors or not complete:
+    if missing or not calls or not results or not driver or not texts or extra or uncovered or errors or not complete:
         raise SystemExit('TRAP REPORT / INCOMPLETE OR MISMATCHED EVIDENCE; inspect ' + str(output))
     print(f'PASS mac-trap-report code_calls={sum(calls.values())} words={len(words)} '
-          f'extra={len(extra)} results={sum(results.values())} mdrv={sum(driver.values())} '
+          f'extra={len(extra)} uncovered_sites={len(uncovered)} results={sum(results.values())} mdrv={sum(driver.values())} '
           f'text={sum(texts.values())}; UI captures require separate verification')
 
 

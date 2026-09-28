@@ -93,11 +93,11 @@ make entrypoints-check  # ghidra_scripts/entrypoints.csv matches CODE 0
 
 The census and low-memory scan read the original resource fork directly, including
 CREL, DATA, ZERO and DREL; no scratch scripts or Vette checkout are needed.
-The census checks the 1.0 baseline of 1,118 sites / 243 distinct trap words.
+The census checks the 1.0 baseline of 1,129 sites / 244 distinct trap words.
 Its 115 unresolved static transfers/decode stops remain listed for runtime
 verification. D0 selectors are local static evidence, not a data-flow proof.
 
-`lowmem-scan` reports 56 live Page-0 operands at 28 addresses, with original
+`lowmem-scan` reports 58 live Page-0 operands at 29 addresses, with original
 encodings. CREL address fields and PEA address constants are excluded; genuine
 memory operands in the same instruction remain visible. This conservative set
 includes fallback paths (such as SysEnvirons glue); M1.4 must reconcile those
@@ -211,3 +211,14 @@ M1.2 verification: all host checks pass. The original has 11,418 DATA bytes,
 comparison fixture passes at zero mismatches; corrupting one byte reports
 A5−75,516 and exits 1. This fixture is not a live Amiga dump; that evidence is
 still required by M1.3.
+
+M1.2a startup-census correction, found while preparing M1.3: explicitly include
+CODE 1+$0060 (LoadSeg) and +$00CC (UnLoadSeg). Their original prologues drop a
+return address, so the ordinary function-prologue heuristic missed them.
+Byte-checked roots add 11 trap sites and the conditional $A9FF Debugger word:
+1,129 sites / 244 words, with 115 unresolved transfers still listed. The
+low-memory scan adds ResLoad at +$006A and LoadTrap at +$00BE, giving 58
+references at 29 addresses. The runtime report now requires every observed
+(segment, offset, trap) site to exist in the static census, not merely its
+trap word. Acceptance: all 632 sites in the M0.2 reference log are covered;
+host fixtures reject an unseen site even when its trap word is known.

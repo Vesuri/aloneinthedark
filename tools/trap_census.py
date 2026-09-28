@@ -272,11 +272,14 @@ def run_live():
         v = v - (1 << 32) if v >= 1 << 31 else v
         j = jt_index(v)
         if j is not None: roots.append(j)
-    # M0.2 System 7.5.5 capture: CODE 1 calls this cached function pointer.
-    # These prologue-free PC-relative targets are not found by the heuristic.
-    for pc, expected in ((0x21e, '203a000a2040'), (0x26e, 'a0bd4e75')):
+    # Original CODE 1+$043E installs LoadSeg/UnLoadSeg through emitted JSR
+    # stubs. Both handlers start by dropping that JSR return address, so the
+    # prologue heuristic misses them. M0.2's log executes their traps too.
+    # The cached flush targets likewise require explicit byte-checked roots.
+    for pc, expected in ((0x60, '588f48e7fff8'), (0xcc, '588f206f0004'),
+                         (0x21e, '203a000a2040'), (0x26e, 'a0bd4e75')):
         if CODE[1][pc:pc + len(expected)//2].hex() != expected:
-            raise ValueError(f'CODE 1 / observed cache helper bytes at {pc:#x}')
+            raise ValueError(f'CODE 1 / runtime-installed entry bytes at {pc:#x}')
         W.walk(1, [pc])
     W.pending.extend(roots)
     done = set()
@@ -459,8 +462,8 @@ def main():
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(report(live, base))
     counts = len(live.traps), len({t[2] for t in live.traps})
-    if counts != (1118, 243):
-        raise ValueError(f'CENSUS BASELINE / expected (1118, 243), got {counts}; inspect {output}')
+    if counts != (1129, 244):
+        raise ValueError(f'CENSUS BASELINE / expected (1129, 244), got {counts}; inspect {output}')
     print(f'PASS trap-census sites={counts[0]} distinct={counts[1]} unresolved={len(live.blind)} report={output}')
 
 
