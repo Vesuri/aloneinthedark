@@ -303,8 +303,9 @@ Native trap probes, host fragmentation tests and paired heap captures verify it:
   and open-fork references are distinct. The application resource fork has a
   file-table reference shared by CurApRefNum and CurResFile/UseResFile. Original
   GetFCBInfo/OpenWD, SetVol and Preferences FindFolder pass (M2.1b2a).
-  Get1NamedResource is the next stop. Finder metadata, companion forks and
-  remaining file selectors are explicitly pending M2.1b2c. Integrated original
+  Get1NamedResource is the next stop. Named Finder metadata and independent
+  data/resource streams are implemented; installed-file metadata and remaining
+  file selectors are pending M2.1b2c9c. Integrated original
   PAK read acceptance is M2.1c after the intervening Resource Manager work.
 - **File Manager calls (task M2.1).** Implement the ones the census lists over
   that catalog:

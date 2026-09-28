@@ -65,3 +65,6 @@ aitdProbeWriteBackend:
     filetrap aitdProbeHInfo,0xa20c
     filetrap aitdProbeSetInfo,0xa00d
     filetrap aitdProbeHSetInfo,0xa20d
+
+    filetrap aitdProbeOpenRF,0xa00a
+    filetrap aitdProbeHOpenRF,0xa20a

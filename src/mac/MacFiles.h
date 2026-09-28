@@ -8,7 +8,7 @@ public:
         paramErr=-50, rfNumErr=-51, nsvErr=-35, dirNFErr=-120, unsupported=-32760 };
     struct Entry {
         uint32_t id,parent,dataSize,resourceSize;
-        bool directory,metadataKnown,metadataDirty;
+        bool directory,metadataKnown,metadataDirty,resourceIsBase;
         FileMetadata::Record metadata;
         char name[32];
         char path[160];
@@ -16,7 +16,8 @@ public:
     struct Fork { int16_t ref; uint32_t id,position; bool resource,writable,shared,locked,modified; };
     void reset();
     int32_t add(uint32_t parent,const char* name,const char* path,bool directory,
-                uint32_t dataSize=0,uint32_t resourceSize=0);
+                uint32_t dataSize=0,uint32_t resourceSize=0,bool resourceIsBase=false);
+    int16_t forkPath(uint32_t id,bool resource,char* path,uint32_t capacity) const;
     const Entry* entry(uint32_t id) const;
     const Entry* child(uint32_t parent,const char* name) const;
     int16_t resolve(int16_t volume,uint32_t directory,const char* path,uint32_t& id) const;
@@ -29,10 +30,11 @@ public:
     int16_t canRemove(uint32_t id) const;
     int16_t remove(uint32_t id);
     int16_t open(uint32_t id,bool resource,bool writable);
-    int16_t openData(uint32_t id,uint8_t permission,bool locked,int16_t& ref);
+    int16_t openFork(uint32_t id,bool resource,uint8_t permission,bool locked,int16_t& ref);
+    int16_t openData(uint32_t id,uint8_t permission,bool locked,int16_t& ref) { return openFork(id,false,permission,locked,ref); }
     int16_t volume(int16_t ref,const char* name) const;
     void modified(int16_t ref);
-    void flushed(uint32_t id);
+    void flushed(uint32_t id,bool resource=false);
     const Fork* fork(int16_t ref) const;
     int16_t queryFork(int16_t volume,int16_t index,int16_t ref,const Fork*& found) const;
     int16_t close(int16_t ref);

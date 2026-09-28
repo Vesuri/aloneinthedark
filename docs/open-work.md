@@ -43,17 +43,6 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.1b2c9a Application and companion fork storage.**
-  - The native application path contains the raw resource fork, while its Mac
-    data fork is empty. Separate those stores before allowing writable data opens.
-  - Add companion resource-fork storage for saves/prefs, including creation,
-    independent open/EOF/bytes, and deletion of both forks plus Finder metadata.
-    Named data-file CRUD and `.finfo` persistence are complete (M2.1b2c9b).
-  - Preserve system-window I/O and named stops for unsupported layouts.
-
-  *Done when* native/Mac fixtures show independent fork EOF/bytes, application
-  data write/close preserves the original resource hash, and companion creation,
-  close, reload and deletion pass host/native checks plus all existing regressions.
 - **M2.1b2c9c Remaining File Manager metadata and variants.**
   - Import installed-file Finder metadata from original inputs; GetFInfo for
     unknown records remains loud. Complete indexed file-info forms, HGetVolParms,

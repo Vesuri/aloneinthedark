@@ -45,12 +45,13 @@ static const char* scan(MacFiles& catalog,uint32_t directory,const char* path,bo
             if(metadataSuffix) {
                 error="CATALOG / UNRESOLVED METADATA TRANSACTION";break;
             }
-            if(suffix && same(suffix,".rsrc")) {
-                error="CATALOG / COMPANION RESOURCE FORK";break;
-            }
-            char file[160];
-            if(!join(file,path,(const char*)info->fib_FileName)
-                || catalog.add(directory,(const char*)info->fib_FileName,file,false,info->fib_Size)<0) {
+            if(suffix && same(suffix,".rsrc"))continue;
+            char file[160],resource[192];uint32_t resourceBytes=0;bool resourceFound=false;
+            if(!join(file,path,name)) { error="CATALOG / FILE PATH";break; }
+            uint16_t n=0;while(file[n]) { resource[n]=file[n];++n; }
+            const char* extension=".rsrc";while(*extension)resource[n++]=*extension++;resource[n]=0;
+            if(FileAccess::forkSizeRestored(resource,resourceBytes,resourceFound)) { error="CATALOG / RESOURCE FORK SIZE";break; }
+            if(catalog.add(directory,name,file,false,info->fib_Size,resourceBytes)<0) {
                 error="CATALOG / UNSUPPORTED NAME OR CAPACITY";break;
             }
             const MacFiles::Entry* entry=catalog.child(directory,name);
@@ -65,11 +66,13 @@ static const char* scan(MacFiles& catalog,uint32_t directory,const char* path,bo
         while(!error && ExNext(lock,info)) {
             char owner[108];const char* name=(const char*)info->fib_FileName;
             uint16_t length=0;while(name[length])++length;
-            if(length>=6 && same(name+length-6,".finfo")) {
-                if(length-6>=sizeof(owner)) { error="CATALOG / METADATA NAME";break; }
-                for(uint16_t i=0;i<length-6;++i)owner[i]=name[i];owner[length-6]=0;
+            bool metadata=length>=6 && same(name+length-6,".finfo");
+            uint16_t suffix=metadata ? 6 : length>=5 && same(name+length-5,".rsrc") ? 5 : 0;
+            if(suffix) {
+                if(length-suffix>=sizeof(owner)) { error="CATALOG / COMPANION NAME";break; }
+                for(uint16_t i=0;i<length-suffix;++i)owner[i]=name[i];owner[length-suffix]=0;
                 const MacFiles::Entry* entry=catalog.child(directory,owner);
-                if(!entry || !entry->metadataKnown)error="CATALOG / ORPHAN METADATA";
+                if(!entry || (metadata && !entry->metadataKnown))error="CATALOG / ORPHAN COMPANION";
             }
         }
         if(!error && IoErr()!=ERROR_NO_MORE_ENTRIES)error="CATALOG / COMPANION ENUMERATION";
@@ -87,8 +90,16 @@ const char* aitdBuildFileCatalog(MacFiles& catalog,const char* applicationPath,u
     // Match the already selected installed/development resource location.
     const char* dataPath=same(applicationPath,"PROGDIR:data/Alone In The Dark") ? "PROGDIR:data/Alone Data" : "PROGDIR:Alone Data";
     catalog.data=catalog.add(catalog.application,"Alone Data",dataPath,true);
-    if(catalog.add(catalog.application,"Alone In The Dark",applicationPath,false,0,resourceBytes)<0)
-        return "CATALOG / APPLICATION ENTRY";
+    char applicationData[192];uint16_t n=0;
+    while(applicationPath[n]) { if(n>=159)return "CATALOG / APPLICATION PATH";applicationData[n]=applicationPath[n];++n; }
+    const char* extension=".data";while(*extension)applicationData[n++]=*extension++;applicationData[n]=0;
+    uint32_t dataBytes=0;bool found=false;
+    if(FileAccess::forkSizeRestored(applicationData,dataBytes,found))return "CATALOG / APPLICATION DATA FORK";
+    int32_t app=catalog.add(catalog.application,"Alone In The Dark",applicationPath,false,dataBytes,resourceBytes,true);
+    if(app<0)return "CATALOG / APPLICATION ENTRY";
+    FileMetadata::Record metadata;
+    if(FileAccess::loadMetadataRestored(applicationPath,metadata,found)
+        || (found && catalog.setMetadata(app,metadata)))return "CATALOG / APPLICATION METADATA";
     if(catalog.initializeDirectories())return "CATALOG / SYSTEM WORKING DIRECTORY";
     const char* error=scan(catalog,catalog.data,dataPath,false,true);
     if(!error)error=scan(catalog,catalog.saves,"PROGDIR:Saved Games",true,false);

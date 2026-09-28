@@ -131,7 +131,7 @@ ifneq ($(FILEPROBE),1)
 $(error FILEWRITEPROBE=1 requires FILEPROBE=1)
 endif
 EXTRA_DEFINES += -DAITD_FILE_WRITE_PROBE
-PROBE_SYMS_FILEWRITE = g_fileWriteCalls g_fileWriteBytes g_fileWriteMax g_fileFlushCalls g_fileWriteProbeStep g_fileCatalogProbeStep
+PROBE_SYMS_FILEWRITE = g_fileWriteCalls g_fileWriteBytes g_fileWriteMax g_fileFlushCalls g_fileWriteProbeStep g_fileCatalogProbeStep g_fileForkProbeStep
 endif
 ifeq ($(FILEPROBE),1)
 EXTRA_DEFINES += -DAITD_FILE_PROBE

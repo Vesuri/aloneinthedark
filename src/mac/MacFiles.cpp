@@ -29,16 +29,26 @@ const MacFiles::Entry* MacFiles::child(uint32_t parent,const char* name) const {
         if(entries_[i].id && entries_[i].parent==parent && equal(entries_[i].name,name))return &entries_[i];
     return 0;
 }
-int32_t MacFiles::add(uint32_t parent,const char* name,const char* path,bool directory,uint32_t ds,uint32_t rs) {
+int32_t MacFiles::add(uint32_t parent,const char* name,const char* path,bool directory,uint32_t ds,uint32_t rs,bool resourceIsBase) {
     if(count_==maxEntries || nextID_>0x7fffffffUL || !name || !*name)return unsupported;
     if(count_ && (!entry(parent) || !entry(parent)->directory || child(parent,name)))return paramErr;
     Entry candidate={};
     if(!copy(candidate.name,name,sizeof(candidate.name)) || !copy(candidate.path,path,sizeof(candidate.path)))return unsupported;
     for(const char* p=name;*p;++p)if(*p==':')return paramErr;
     candidate.id=nextID_;candidate.parent=parent;candidate.directory=directory;
-    candidate.dataSize=ds;candidate.resourceSize=rs;
+    candidate.dataSize=ds;candidate.resourceSize=rs;candidate.resourceIsBase=resourceIsBase;
     uint16_t slot=0;while(slot<used_ && entries_[slot].id)++slot;
     entries_[slot]=candidate;if(slot==used_)++used_;++count_;++nextID_;return candidate.id;
+}
+int16_t MacFiles::forkPath(uint32_t id,bool resource,char* path,uint32_t capacity) const {
+    const Entry* e=entry(id);if(!e || e->directory)return fnfErr;
+    const char* suffix=e->resourceIsBase ? (resource ? "" : ".data") : (resource ? ".rsrc" : "");
+    uint32_t n=0;while(e->path[n])++n;
+    uint32_t extra=0;while(suffix[extra])++extra;
+    if(!path || n+extra>=capacity)return unsupported;
+    for(uint32_t i=0;i<n;++i)path[i]=e->path[i];
+    for(uint32_t i=0;i<=extra;++i)path[n+i]=suffix[i];
+    return noErr;
 }
 int16_t MacFiles::planCreate(int16_t volume,uint32_t directory,const char* path,Entry& candidate) const {
     if(!path)return unsupported; // Null ioNamePtr has not been measured for Create.
@@ -98,7 +108,6 @@ int16_t MacFiles::canRemove(uint32_t id) const {
         for(uint16_t i=0;i<maxWD;++i)if(wd_[i].ref && wd_[i].directory==id)return -47;
         return unsupported; // Virtual/native directory lifetime is not implemented.
     }
-    if(e->resourceSize)return unsupported; // Both fork stores must be removed together.
     return noErr;
 }
 int16_t MacFiles::remove(uint32_t id) {
@@ -161,7 +170,7 @@ int16_t MacFiles::open(uint32_t id,bool resource,bool writable) {
     }
     return -42; // tmfoErr
 }
-int16_t MacFiles::openData(uint32_t id,uint8_t permission,bool locked,int16_t& ref) {
+int16_t MacFiles::openFork(uint32_t id,bool resource,uint8_t permission,bool locked,int16_t& ref) {
     ref=0;
     if(permission>4)return unsupported;
     if(!entry(id) || entry(id)->directory)return fnfErr;
@@ -169,11 +178,11 @@ int16_t MacFiles::openData(uint32_t id,uint8_t permission,bool locked,int16_t& r
     bool writable=permission!=1 && !locked;
     if(writable)for(uint16_t i=0;i<maxOpen;++i) {
         const Fork& f=forks_[i];
-        if(f.ref && f.id==id && !f.resource && f.writable && !(permission==4 && f.shared)) {
+        if(f.ref && f.id==id && f.resource==resource && f.writable && !(permission==4 && f.shared)) {
             ref=f.ref;return -49; // The failed Open returns the existing writer ref.
         }
     }
-    int16_t result=open(id,false,writable);
+    int16_t result=open(id,resource,writable);
     if(result<0)return result;
     ref=result;Fork* f=const_cast<Fork*>(fork(ref));f->shared=permission==4;f->locked=locked;
     return noErr;
@@ -192,8 +201,8 @@ int16_t MacFiles::volume(int16_t ref,const char* name) const {
 void MacFiles::modified(int16_t ref) {
     Fork* f=const_cast<Fork*>(fork(ref));if(f)f->modified=true;
 }
-void MacFiles::flushed(uint32_t id) {
-    for(uint16_t i=0;i<maxOpen;++i)if(forks_[i].ref && forks_[i].id==id && !forks_[i].resource)forks_[i].modified=false;
+void MacFiles::flushed(uint32_t id,bool resource) {
+    for(uint16_t i=0;i<maxOpen;++i)if(forks_[i].ref && forks_[i].id==id && forks_[i].resource==resource)forks_[i].modified=false;
 }
 const MacFiles::Fork* MacFiles::fork(int16_t ref) const {
     for(uint16_t i=0;i<maxOpen;++i)if(forks_[i].ref && forks_[i].ref==ref)return &forks_[i];

@@ -64,17 +64,38 @@ static int32_t save(const char* path,const uint8_t* buffer,uint32_t bytes)
 struct StreamRequest {
     ReadStream* stream;const char* path;uint8_t* buffer;
     uint32_t offset,bytes,actual;
+    bool createEmpty=false;const char* protectionPath=0;
 };
 static int32_t openStreamOperation(void* context) {
     StreamRequest& r=*(StreamRequest*)context;
-    r.stream->handle=Open((CONST_STRPTR)r.path,MODE_OLDFILE);
     r.stream->locked=false;
+    if(r.protectionPath) {
+        BPTR lock=Lock((CONST_STRPTR)r.protectionPath,ACCESS_READ);
+        if(!lock)return IoErr()==ERROR_OBJECT_NOT_FOUND ? notFound : ioError;
+        FileInfoBlock* info=(FileInfoBlock*)AllocDosObject(DOS_FIB,0);
+        int32_t error=!info ? -108 : !Examine(lock,info) ? ioError : info->fib_DirEntryType>=0 ? invalid : ok;
+        if(!error)r.stream->locked=(info->fib_Protection&FIBF_WRITE)!=0;
+        if(info)FreeDosObject(DOS_FIB,info);UnLock(lock);
+        if(error)return error;
+    }
+    r.stream->handle=Open((CONST_STRPTR)r.path,MODE_OLDFILE);
+    // Empty logical forks need no physical companion until first access.
+    // Only an explicit empty-fork catalog entry may create one here.
+    if(!r.stream->handle && IoErr()==ERROR_OBJECT_NOT_FOUND && r.createEmpty) {
+        BPTR created=Open((CONST_STRPTR)r.path,MODE_NEWFILE);
+        if(created) {
+            // MODE_NEWFILE owns an exclusive lock. Reopen the empty companion
+            // in the same window so other Mac references can share the fork.
+            if(!Close(created))return ioError;
+            r.stream->handle=Open((CONST_STRPTR)r.path,MODE_OLDFILE);
+        }
+    }
     if(r.stream->handle) {
         // DOS passes FileInfoBlock as a BPTR: the Mac service stack can be
         // only word-aligned, so a plain stack object is not sufficient.
         FileInfoBlock* info=(FileInfoBlock*)AllocDosObject(DOS_FIB,0);
         int32_t error=!info ? -108 : !ExamineFH(r.stream->handle,info) ? ioError : ok;
-        if(!error)r.stream->locked=(info->fib_Protection&FIBF_WRITE)!=0;
+        if(!error)r.stream->locked=r.stream->locked || (info->fib_Protection&FIBF_WRITE)!=0;
         if(info)FreeDosObject(DOS_FIB,info);
         if(error) { Close(r.stream->handle);r.stream->handle=0;return error; }
     }
@@ -83,9 +104,9 @@ static int32_t openStreamOperation(void* context) {
 #endif
     return r.stream->handle ? ok : IoErr()==ERROR_OBJECT_NOT_FOUND ? notFound : ioError;
 }
-int32_t openStream(const char* path,ReadStream& stream) {
+int32_t openStream(const char* path,ReadStream& stream,bool createEmpty,const char* protectionPath) {
     if(!path || stream.handle)return invalid;
-    StreamRequest r={&stream,path,0,0,0,0};
+    StreamRequest r={&stream,path,0,0,0,0};r.createEmpty=createEmpty;r.protectionPath=protectionPath;
     return aitdSystemWindow(openStreamOperation,&r);
 }
 static int32_t readStreamOperation(void* context) {

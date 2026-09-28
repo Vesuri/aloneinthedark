@@ -510,8 +510,8 @@ creates empty data plus metadata, then publishes a fresh ID. Deletion refuses
 open files (-47) and DOS-locked files (-45), and removes the data and metadata
 before retiring the ID. Freed slots are reusable without reusing IDs during a
 session. Duplicate/empty names return -48; missing catalogued-directory files
-return -43; a bad directory returns -120. Directory deletion and files with
-resource bytes remain loud stops pending the companion-fork work.
+return -43; a bad directory returns -120. Directory deletion remains a loud stop. Companion-fork lifetime is implemented
+below (M2.1b2c9a).
 
 The 36-call System 7.5.5 fixture verifies opaque Finder bytes, creation and
 modification dates, fresh zero Finder records, and open-file attributes: $88
@@ -542,3 +542,45 @@ check all Finder bytes and pending-versus-closed dates; host readback checks the
 data and metadata after exit. File-read, system-window, boot and original-directory
 regressions retain their previous acceptance. Rendered-picture acceptance remains
 owner-deferred. These are API fixtures, not original-game PAK/save/load acceptance.
+
+
+## Independent application and companion forks (M2.1b2c9a)
+
+The existing application resource file keeps its installed name and bytes.
+Its data fork uses `Alone In The Dark.data` alongside it. Ordinary data files
+keep their native names; their resource forks use `.rsrc` companions. `.finfo`
+is shared by both forks. Startup enumerates sizes without reading fork payloads,
+rejects orphan resource companions, and reads a persisted application data size.
+An absent companion represents a known empty fork; first open materializes it
+in a system window. It closes the exclusive DOS MODE_NEWFILE handle and reopens
+MODE_OLDFILE before returning, so a second Mac reference can share it.
+
+OpenRF/HOpenRF now use the same bounded streams as data forks. Shared ledgers,
+permissions, EOF, marks and modified flags are keyed by file ID **and fork**.
+Write conflicts apply only within the selected fork. Read-only references see
+pending writes to that fork; closing/flushing data cannot clear the resource
+fork's modified flag. Protection follows the containing Mac file, including
+an empty resource companion. Delete removes data, resource and Finder records;
+partial native failure remains a loud stop rather than a claimed deletion.
+
+The 60-call System 7.5.5 fixture verifies distinct references, 4-byte data versus
+6-byte resource payloads, $8C file-info attributes while both forks are open,
+independent EOF/marks and $8100/$8300 modified flags. It covers permissions 0–4,
+two shared resource writers, and locked-file resource opens: default/readonly
+succeed with $2200 flags, writable modes return -54. The original HOpenRF glue
+at Core+$4158 is byte-checked ($A20A).
+
+Native `file-write` adds 14 fork checkpoints: pending shared resource reads,
+close/reopen, startup companion-size discovery, complete deletion, all resource
+permissions, and separate durable host bytes. An application data write/close
+leaves its 1,424,934-byte resource at SHA-256
+`b5848c063652b7223e3e350905b3a9054247b8536942753f435b1051a6352db2`;
+a native resource read also checks its original header. Totals are 263 runtime
+windows, 30 stream reads / 866,721 bytes, 23 stream writes / 470,065 bytes and
+17 stream flushes including shutdown. The remaining two streams close after OS
+restoration. Metadata I/O remains separate from stream counters. Host tests,
+file-read, window-core, boot and the original directory observer pass.
+
+The Resource Manager still holds the application fork buffer until M2.2. This
+File Manager work does not claim resource-map editing or original-game PAK/save
+acceptance. Unsupported resource service calls remain named stops.

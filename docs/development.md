@@ -660,8 +660,8 @@ Open/HOpen, Write, SetEOF, GetEOF/GetFCBInfo, Read, FlushVol and Close calls aft
 the read/directory fixture. It requires FILEPROBE=1 and FILEWRITEPROBE=1.
 The case checks exact bytes, marks/EOF, CCR, the 25-pair permission matrix,
 protected-file defaults/errors, shared writes and close order, cached-reader
-coherence and volume-name/reference forms. It requires 203 runtime windows,
-18 DOS writes (65,536 maximum), 12 flushes including shutdown and an empty
+coherence and volume-name/reference forms. It requires 263 runtime windows,
+23 DOS writes (65,536 maximum), 17 flushes including shutdown and an empty
 stream ledger after cleanup. Host readback verifies 17 backend bytes, six
 shared-file bytes, four data bytes plus Finder metadata, and three bytes left dirty
 until shutdown. Diagnostic files are recreated in
@@ -718,3 +718,20 @@ The Finder output test exposed a GCC 15.1 m68k byte-loop miscompile:
 shifting the returned bytes by one. Catalog memory and disk bytes were exact;
 the parameter-block dump and disassembly isolated the error. Four explicit
 endian-safe copies replace that loop, and the native fixture checks all 16 bytes.
+
+
+### Independent fork regression (M2.1b2c9a)
+
+`tools/mac_file_forks.lua` is the owned `AITD Port Fork Probe` reference; run it
+with the documented headless MAME command and check the actual process status
+using `tools/check_file_forks.py LOG --status STATUS`. All 60 ordered results,
+fork bytes, FCB flags, open references and final cleanup are required. It checks
+Core+$4142 and HOpenRF at Core+$4158 before running any diagnostic traps.
+
+Native `file-write` stage 44 covers separate data/resource streams and companion
+lifetime, including loading a seeded companion on the next startup path. Host
+readback compares both durable fork files and hashes the whole application
+resource after a data-fork write. Verified diagnostic outputs are removed before
+production regressions. The application source remains the existing raw fork;
+only its optional `.data` companion stores data-fork changes. Ordinary files
+use `.rsrc` and `.finfo`; companions are never separate virtual catalog files.

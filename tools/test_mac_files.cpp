@@ -3,6 +3,27 @@
 #include <cstring>
 #include <initializer_list>
 #include "../src/mac/MacFiles.h"
+static void dualForks() {
+    MacFiles c;c.reset();c.application=c.add(2,"Game","PROGDIR:",true);
+    auto app=c.add(c.application,"App","PROGDIR:App",false,0,123,true);
+    auto file=c.add(c.application,"Save","PROGDIR:Save",false,0,0);
+    char path[192];
+    assert(!c.forkPath(app,false,path,sizeof(path)) && !strcmp(path,"PROGDIR:App.data"));
+    assert(!c.forkPath(app,true,path,sizeof(path)) && !strcmp(path,"PROGDIR:App"));
+    assert(!c.forkPath(file,false,path,sizeof(path)) && !strcmp(path,"PROGDIR:Save"));
+    assert(!c.forkPath(file,true,path,sizeof(path)) && !strcmp(path,"PROGDIR:Save.rsrc"));
+    assert(c.forkPath(file,true,path,8)==c.unsupported);
+    int16_t data=0,resource=0,conflict=0;
+    assert(!c.openFork(file,false,3,false,data) && !c.openFork(file,true,3,false,resource) && data!=resource);
+    assert(c.openFork(file,true,3,false,conflict)==-49 && conflict==resource);
+    assert(!c.setSize(data,5,true) && !c.setSize(resource,9,true));
+    assert(c.entry(file)->dataSize==5 && c.entry(file)->resourceSize==9);
+    assert(!c.seek(data,1,3) && !c.seek(resource,1,7));
+    assert(c.fork(data)->position==3 && c.fork(resource)->position==7);
+    c.flushed(file,true);assert(c.fork(data)->modified && !c.fork(resource)->modified);
+    assert(c.canRemove(file)==-47 && !c.close(data) && c.canRemove(file)==-47);
+    assert(!c.close(resource) && !c.remove(file));
+}
 static void catalogLifetime() {
     MacFiles c;c.reset();c.application=c.add(2,"Game","PROGDIR:",true);
     c.data=c.add(c.application,"Alone Data","PROGDIR:data",true);
@@ -36,6 +57,7 @@ static void catalogLifetime() {
     assert(c.planCreate(0,0x1234,"new",plan)==c.dirNFErr);
 }
 int main() {
+    dualForks();
     catalogLifetime();
     MacFiles c;c.reset();assert(c.count()==1 && c.entry(2)->parent==1);
     c.application=c.add(2,"Game","PROGDIR:",true);

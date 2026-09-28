@@ -46,6 +46,15 @@ static int32_t writeNewMetadata(const char* path,const FileMetadata::Record& rec
     if(result && !DeleteFile((CONST_STRPTR)path))return unsupported;
     return result;
 }
+int32_t forkSizeRestored(const char* path,uint32_t& size,bool& found) {
+    size=0;BPTR lock=Lock((CONST_STRPTR)path,ACCESS_READ);found=lock!=0;
+    if(!lock)return IoErr()==ERROR_OBJECT_NOT_FOUND ? 0 : error(IoErr());
+    FileInfoBlock* info=(FileInfoBlock*)AllocDosObject(DOS_FIB,0);
+    int32_t result=!info ? -108 : !Examine(lock,info) ? -36
+        : info->fib_DirEntryType>=0 || info->fib_Size<0 ? unsupported : 0;
+    if(!result)size=info->fib_Size;
+    if(info)FreeDosObject(DOS_FIB,info);UnLock(lock);return result;
+}
 int32_t loadMetadataRestored(const char* path,FileMetadata::Record& record,bool& found) {
     char name[192];found=false;
     if(!companion(name,path,".finfo"))return unsupported;
@@ -63,6 +72,8 @@ static int32_t createOperation(void* context) {
     if(result || present)return result ? result : -48;
     char metadata[192];if(!companion(metadata,request.path,".finfo"))return unsupported;
     result=exists(metadata,present);if(result || present)return result ? result : unsupported;
+    char resource[192];if(!companion(resource,request.path,".rsrc"))return unsupported;
+    result=exists(resource,present);if(result || present)return result ? result : unsupported;
     result=exists(request.parent,present);if(result)return result;
     if(!present) {
         if(!request.materialize)return -120;
@@ -94,8 +105,9 @@ int32_t fileProtection(const char* path,bool& locked) {
     ProtectionRequest request={path,false};int32_t result=aitdSystemWindow(protectionOperation,&request);
     if(!result)locked=request.locked;return result;
 }
+struct DeleteRequest { const char* path;bool resourceIsBase; };
 static int32_t deleteOperation(void* context) {
-    const char* path=(const char*)context;
+    DeleteRequest& request=*(DeleteRequest*)context;const char* path=request.path;
     BPTR lock=Lock((CONST_STRPTR)path,ACCESS_READ);if(!lock)return error(IoErr());
     FileInfoBlock* info=(FileInfoBlock*)AllocDosObject(DOS_FIB,0);
     int32_t result=!info ? -108 : !Examine(lock,info) ? -36
@@ -105,12 +117,17 @@ static int32_t deleteOperation(void* context) {
     UnLock(lock);if(result)return result;
     char metadata[192];if(!companion(metadata,path,".finfo"))return unsupported;
     bool present=false;result=exists(metadata,present);if(result)return result;
+    char resource[192];if(!companion(resource,path,request.resourceIsBase ? ".data" : ".rsrc"))return unsupported;
+    bool resourcePresent=false;result=exists(resource,resourcePresent);if(result)return result;
     if(!DeleteFile((CONST_STRPTR)path))return error(IoErr());
+    if(resourcePresent && !DeleteFile((CONST_STRPTR)resource))return unsupported;
     // A partial deletion is a loud stop, never a claimed complete removal.
     if(present && !DeleteFile((CONST_STRPTR)metadata))return unsupported;
     return 0;
 }
-int32_t deleteFile(const char* path) { return path ? aitdSystemWindow(deleteOperation,(void*)path) : -50; }
+int32_t deleteFile(const char* path,bool resourceIsBase) {
+    DeleteRequest request={path,resourceIsBase};return path ? aitdSystemWindow(deleteOperation,&request) : -50;
+}
 struct MetadataRequest { const char* path;const FileMetadata::Record* record; };
 static int32_t storeOperation(void* context) {
     MetadataRequest& request=*(MetadataRequest*)context;
