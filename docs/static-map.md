@@ -34,8 +34,8 @@ and a patch must use an addressing mode that reaches it.
 
 The header's first word is the segment's first jump-table index and the second
 its entry count; the ranges tile all 468 entries exactly. Bit 15 of the first
-word is set on exactly the segments that have a CREL resource (cleared once
-relocated, see below); bit 15 of the
+word is set on exactly the segments that have a CREL resource (CODE 1 clears
+it once relocated); bit 15 of the
 second word is set on every segment except CODE 1 (meaning not yet known).
 Jump-table routine offsets are relative to the end of the four-byte header, as
 in the standard layout. The first entry, CODE 1+$0014, is the application entry.
@@ -46,21 +46,45 @@ Each offset names a longword to relocate:
 
 - **Even offset (7,210): add A5.** The stored values are A5-relative: 1,547
   point at a jump-table `JMP` (A5+34+8n), so `JSR $0DDA.l` in Dark calls entry
-  439; the other 5,663 lie in the far globals (−75,616..−1). Measured under MAME:
-  all 608 intact even sites of a loaded Misc2 held value+A5.
-- **Odd offset (119): add the segment base.** The longword is at offset & ~1;
-  every value is smaller than its segment, often the operand of
-  `MOVE.L #imm,-(SP)`. Base (resource start or after the header) is inferred,
-  not yet measured.
+  439; the other 5,663 lie in the far globals (−75,616..−1). Some are 68020
+  `bd.l` base displacements (`([$FFFF3184],D0.L)`), not only `abs.l`
+  operands. Measured under MAME: all 608 intact even sites of a loaded Misc2
+  held value+A5.
+- **Odd offset (119): add the `STRS` resource base.** The longword is at
+  offset & ~1; every value (0..1,804) indexes a C string in the 1,810-byte
+  `STRS` 0 resource (`"itd_ress.pak"`, `":Alone Data:%s"`, …).
 
-CODE 1 applies it (its loop at CODE 1+$01B0 writes the relocated values) and
-then clears bit 15 of the segment's first header word, so that bit marks a
-segment still to be relocated.
+## CODE 1: the THINK C runtime
 
-The runtime loader resolves every jump-table entry to a JMP into an aligned
-resident copy and stops with `SEGMENT LOADER / CREL RELOCATION` on the first
-segment that needs relocation, because resident loading bypasses the original
-`_LoadSeg` path that would apply it.
+CODE 1 is the startup and segment runtime; the port runs it unmodified.
+
+- Entry (+$14): clear FPState, compute the address mask (`StripAddress`), take
+  the `STRS` base, build the A5 world, patch the segment traps, call `main`
+  (A5+$24A = entry 69 = Core+$03E4), unpatch, `_ExitToShell`.
+- A5 world (+$0118): from `CurStackBase` ($908, = A5−75,616) up to A5, copy
+  `DATA` words; after each zero word clear the number of bytes the next `ZERO`
+  word gives (both consumed exactly). Then `DREL` (276 entries): a negative
+  word is an A5 offset, otherwise two words form a negative 32-bit offset;
+  bit 0 clear adds A5 (255), set adds the `STRS` base (21). 117 of the
+  relocated longs are jump-table function pointers.
+- Trap patches (+$043E): old-style `GetTrapAddress`/`SetTrapAddress` stubs
+  `JSR handler; JMP original` for `_LoadSeg`, `_UnloadSeg` and `_ExitToShell`;
+  the stub block pointer is stored at A5+$68, inside loaded entry 9.
+  - `_LoadSeg` (+$60): `GetResource('CODE')`, `MoveHHi`/`HLock` if unlocked;
+    if header bit 15 is set, clear it and apply `CREL` (base = the CODE
+    master pointer, header included); fill the jump-table entries
+    (`seg, JMP ptr+4+offset`); flush caches; return into the new `JMP`. The
+    system `_LoadSeg` is never called.
+  - `_UnloadSeg` (+$CC): `HUnlock` and restore the unloaded entries; no purge.
+- Cache flush: `_vCacheFlush` ($A0BD) if implemented; only otherwise the
+  privileged `CPUSHA` (CPUFlag ≥ 4) or `MOVEC CACR` (≥ 2) fallback at
+  +$0272/+$0276.
+- Jump-table entries 4–8 are 32-bit multiply/divide helpers; 1–3 (switch
+  helpers) have no callers.
+
+The current runtime loader still resolves every jump-table entry itself and
+stops with `SEGMENT LOADER / CREL RELOCATION`; design.md §4.2 replaces that
+with CODE 1's own path.
 
 ## CPU requirements
 
@@ -71,6 +95,6 @@ memory-indirect addressing, and bitfield instructions. The game requires a 68020
 or better; Vette's 68000 target does not apply. The port's own C++ is still built
 with `-m68000` and the mul/div audit until that choice is revisited.
 
-The unreached residue of CODE 1 contains `MOVEC CACR` at +$0272/+$027A, a
-privileged instruction that traps in Amiga user mode if reached. Confirm when
-bring-up reaches CODE 1's startup code.
+The only privileged instructions are CODE 1's cache-flush fallback (not
+reached when `_vCacheFlush` is implemented) and the music driver's legacy
+output path (not reached with Sound Manager 3).
