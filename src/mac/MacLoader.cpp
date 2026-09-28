@@ -622,6 +622,9 @@ static const TrapName s_trapNames[] = {
     {0xa069,"MEMORY MANAGER","HGETSTATE"},
     {0xa322,"MEMORY MANAGER","NEWHANDLECLEAR"},
     {0xa001,"FILE MANAGER","CLOSE"}, {0xa015,"FILE MANAGER","SETVOL"},
+    {0xa014,"FILE MANAGER","GETVOL"}, {0xa823,"FOLDER MANAGER","FINDFOLDER"},
+    {0xa81a,"RESOURCE MANAGER","HOPENRESFILE"},
+    {0xa820,"RESOURCE MANAGER","GET1NAMEDRESOURCE"},
     {0xa007,"FILE MANAGER","GETVOLINFO"}, {0xa861,"QUICKDRAW","RANDOM"},
     {0xa02e,"MEMORY MANAGER","BLOCKMOVE"}, {0xa9f1,"SEGMENT MANAGER","UNLOADSEG"},
     {0xa86e,"QUICKDRAW","INITGRAF"},
@@ -4881,12 +4884,25 @@ static bool isUserService(uint16_t trap)
 #ifdef AITD_SERVICE_PROBE
     if((trap&0xfeff)==0xa0fc || trap==0xabfb)return true;
 #endif
-    return (trap&0xf8ff)==0xa060; // HFSDispatch; File Manager body follows in M2.1.
+    return (trap&0xf8ff)==0xa060 || trap==0xa015;
 }
 // Metadata-only File Manager selectors. Unsupported layouts fall through to
 // the named trap stop; no OS call is made inside this helper.
 static bool dispatchFileMetadata(uint16_t trap,uint32_t* regs)
 {
+    if(trap==0xa015) { // Synchronous PBSetVol, volume/working-directory identity.
+        uint8_t* pb=(uint8_t*)regs[8];
+        if(!pb)return false;
+        uint8_t* name=(uint8_t*)read32(pb+18);
+        char volume[256];
+        if(name) {
+            for(uint16_t i=0;i<name[0];++i)volume[i]=name[i+1];
+            volume[name[0]]=0;
+        }
+        int16_t error=s_files.setDefault((int16_t)read16(pb+22),name ? volume : 0);
+        if(error==MacFiles::unsupported)return false;
+        write16(pb+16,error);regs[0]=(uint32_t)(int32_t)error;return true;
+    }
     if((trap&0xf8ff)!=0xa060 || (trap&0x0400))return false;
     uint8_t* pb=(uint8_t*)regs[8];
     if(!pb)return false;
@@ -4991,6 +5007,18 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
 #endif
     if(!(trap&0x0800) && dispatchMemoryTrap(trap,regs))return 1;
     if(inUserService && dispatchFileMetadata(trap,regs))return 1;
+    if(trap==0xa823 && (uint16_t)regs[0]==0) { // FindFolder, catalogued Preferences.
+        const uint16_t volume=read16(userStack+14);
+        const uint32_t type=read32(userStack+10);
+        if(type==0x70726566 && (volume==0x8000 || volume==0xffff)
+            && s_files.entry(s_files.preferences) && read32(userStack) && read32(userStack+4)) {
+            // The virtual Preferences directory exists from catalog construction.
+            write32((uint8_t*)read32(userStack),s_files.preferences);
+            write16((uint8_t*)read32(userStack+4),MacFiles::volumeRef);
+            write16(userStack+16,0);
+            return 17;
+        }
+    }
     if(trap==0xa9af) { write16(userStack,read16(s_portLowMemory+140));return 1; }
     if(trap==0xa992) {
         MacHeap::Handle handle=(MacHeap::Handle)read32(userStack);
@@ -5892,6 +5920,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         }
     if (trap == 0xa9c9 || trap == 0xa198) g_trapSelector = (uint16_t)regs[0];
     if (trap == 0xab1d) g_trapSelector = (uint16_t)regs[0];
+    if (trap == 0xa823) g_trapSelector=(uint16_t)regs[0];
     if (trap == 0xa1ad) g_trapSelector = (int32_t)regs[0];
     if (trap == 0xa260) {
         g_trapSelector=(uint16_t)regs[0];

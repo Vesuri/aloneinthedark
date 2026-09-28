@@ -81,6 +81,38 @@ def validate(pairs, size, required=('itd_ress.pak',)):
             f'parent={long(pb,58)} volume=${word(pb,52):04X} EOF={long(pb,40)} '
             f'physical={long(pb,44)} mark={long(pb,48)} data-WD=${data_wd:04X}',read_bytes)
 
+def validate_directories(pairs, folder):
+    """Startup's byte-attributed seven file calls, plus FindFolder's live outputs."""
+    if len(pairs)<7: raise ValueError('incomplete startup directory sequence')
+    expected=[(0xa260,8),(0xa260,1),(0xa015,None),(0xa260,1),
+              (0xa260,1),(0xa015,None),(0xa260,1)]
+    for (_,b,_),(trap,selector) in zip(pairs,expected):
+        if b['trap']!=trap or (selector is not None and b['selector']!=selector):
+            raise ValueError('wrong startup directory call order')
+    if folder.get('folderVolume')!=0xffff or not folder.get('folderID') or 'r0' not in folder or folder['r0']>>16:
+        raise ValueError('FindFolder output absent or failed')
+    parent=long(block(pairs[0][2]),58)
+    app=word(block(pairs[1][2]),22)
+    for index in (2,5):
+        _,before,after=pairs[index]
+        if name(before) is not None or word(block(before),22)!=app or after['d0']:
+            raise ValueError('SetVol did not use application WD')
+    for index,path,directory,volume in ((1,None,parent,0),(3,':Alone Data:',parent,0),
+        (4,None,folder['folderID'],0xffff),(6,':Alone Movies:',parent,0)):
+        _,before,after=pairs[index];raw=block(before)
+        error=0xffd5 if index==6 else 0
+        if name(before)!=path or long(raw,48)!=directory or word(raw,22)!=volume or (after['d0']&65535)!=error:
+            raise ValueError('directory arguments/result mismatch')
+        if not error and not word(block(after),22):raise ValueError('missing WD identity')
+    return 'PASS startup-directories: SetVol=2 OpenWD=3 missing-movies=-43 FindFolder=pref'
+
+def folder_result(lines):
+    found=[]
+    for line in lines:
+        if line.startswith('RESULT seg=3 offset=4356 trap=A823 '):found.append(fields(line))
+    if len(found)!=1: raise ValueError('need one original FindFolder return')
+    return found[0]
+
 class Tests(unittest.TestCase):
     def test_blocks(self):
         r={f'pb{i}':i for i in range(20)}
@@ -112,6 +144,11 @@ class Tests(unittest.TestCase):
         with self.assertRaises(ValueError):validate(pairs[:-1],42,('itd_ress.pak','present.pak'))
         with self.assertRaises(ValueError):validate(pairs,43)
 
+    def test_directory_missing_evidence(self):
+        with self.assertRaises(ValueError):validate_directories([], {})
+        with self.assertRaises(ValueError):folder_result([])
+        with self.assertRaises(ValueError):folder_result(['RESULT seg=3 offset=4356 trap=A823 ']*2)
+
     def test_no_fake_success(self):
         with self.assertRaises(ValueError): validate([],1424934)
 
@@ -120,6 +157,7 @@ def main():
     p.add_argument('log',nargs='?',type=Path)
     p.add_argument('--resource',type=Path,default=Path('tmp/runtime-data/Alone In The Dark'))
     p.add_argument('--require-file',action='append',default=[])
+    p.add_argument('--startup-directories',action='store_true')
     p.add_argument('--selftest',action='store_true');a=p.parse_args()
     if a.selftest: return not unittest.TextTestRunner().run(unittest.defaultTestLoader.loadTestsFromTestCase(Tests)).wasSuccessful()
     if not a.log:p.error('log required')
@@ -127,6 +165,9 @@ def main():
         with a.log.open() as source:pairs=capture(source,str(a.resource))
         required=tuple(a.require_file) or ('itd_ress.pak',)
         summary,reads=validate(pairs,a.resource.stat().st_size,required)
+        if a.startup_directories:
+            with a.log.open() as source:folder=folder_result(source)
+            print(validate_directories(pairs,folder))
     except (ValueError,KeyError) as e: raise SystemExit('FAIL file-reference: '+str(e))
     print(summary)
     for path,count in sorted(reads.items()): print(f'read {path}: {count} bytes')

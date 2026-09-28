@@ -14,7 +14,7 @@ static bool copy(char* out,const char* in,uint32_t capacity) {
     out[i]=0;return true;
 }
 void MacFiles::reset() {
-    count_=0;application=system=preferences=saves=data=0;
+    count_=0;defaultRef_=0;application=system=preferences=saves=data=0;
     for(uint16_t i=0;i<maxOpen;++i)forks_[i].ref=0;
     for(uint16_t i=0;i<maxWD;++i)wd_[i].ref=0;
     add(1,"Alone","",true); // Virtual volume root has the HFS-reserved ID 2.
@@ -38,7 +38,10 @@ int32_t MacFiles::add(uint32_t parent,const char* name,const char* path,bool dir
     entries_[count_++]=candidate;return candidate.id;
 }
 int16_t MacFiles::directoryFor(int16_t ref,uint32_t& directory) const {
-    if(!ref) { directory=application;return application ? noErr : dirNFErr; }
+    if(!ref) {
+        if(defaultRef_)return directoryFor(defaultRef_,directory);
+        directory=application;return application ? noErr : dirNFErr;
+    }
     if(ref==volumeRef) { directory=2;return noErr; }
     for(uint16_t i=0;i<maxWD;++i)if(wd_[i].ref==ref) { directory=wd_[i].directory;return noErr; }
     return nsvErr;
@@ -115,4 +118,13 @@ int16_t MacFiles::closeWD(int16_t ref) {
 uint32_t MacFiles::wdProcess(int16_t ref) const {
     for(uint16_t i=0;i<maxWD;++i)if(wd_[i].ref && wd_[i].ref==ref)return wd_[i].process;
     return 0;
+}
+
+int16_t MacFiles::setDefault(int16_t ref,const char* volumeName) {
+    if(volumeName && !equal(volumeName,entry(2)->name))return unsupported;
+    uint32_t directory=0;
+    int16_t error=directoryFor(ref,directory);
+    if(error)return error;
+    if(ref)defaultRef_=ref;
+    return noErr;
 }

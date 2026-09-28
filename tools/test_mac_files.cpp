@@ -29,6 +29,13 @@ int main() {
     assert(c.resolve(wd,0,"itd_ress.pak",id)==0 && id==(uint32_t)file);
     assert(c.openWD(c.data,0x41495444,&created)==wd && !created);
     assert(c.openWD(c.data,0x41495445)!=wd);
+    assert(c.setDefault(wd)==0 && c.defaultRef()==wd);
+    assert(c.resolve(0,0,"itd_ress.pak",id)==0 && id==(uint32_t)file);
+    assert(c.setDefault(42)==c.nsvErr && c.defaultRef()==wd);
+    assert(c.setDefault(0)==0 && c.defaultRef()==wd);
+    assert(c.setDefault(wd,"Alone")==0 && c.defaultRef()==wd);
+    assert(c.setDefault(c.volumeRef,"Unknown")==c.unsupported && c.defaultRef()==wd);
+    assert(c.setDefault(c.volumeRef)==0 && c.directoryFor(0,id)==0 && id==2);
     assert(c.closeWD(wd)==0 && c.directoryFor(wd,id)==c.nsvErr);
     assert(c.closeWD(wd)==c.nsvErr);
     assert(c.openWD(file,0)==c.dirNFErr);

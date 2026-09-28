@@ -219,8 +219,8 @@ The original startup path is implemented (M1.1–M1.3):
 **Verified:** the host check `tools/a5world_check.py` passes: it runs
 CODE 1's expansion algorithm on the resource bytes and compares, byte for byte,
 with the A5 world the Amiga dumps (via gdb) when it enters `main`. The current
-loud stop is `SetVol` at Core+$4066 during `main` initialization, after the
-original GetFCBInfo/OpenWD calls.
+loud stop is `Get1NamedResource` at Engine+$3CDC during `main` initialization,
+after the original startup directory calls.
 
 ### 4.3 Low memory
 
@@ -302,8 +302,10 @@ Native trap probes, host fragmentation tests and paired heap captures verify it:
   Lock/Examine/ExNext before takeover. Directory IDs, working-directory references
   and open-fork references are distinct. The application resource fork has a
   file-table reference shared by CurApRefNum and CurResFile/UseResFile. Original
-  GetFCBInfo and OpenWD pass; SetVol is the next stop. Finder metadata, companion
-  forks and remaining selectors are explicitly pending M2.1b2, not fabricated.
+  GetFCBInfo/OpenWD, SetVol and Preferences FindFolder pass (M2.1b2a).
+  Get1NamedResource is the next stop. Finder metadata, companion forks and
+  remaining file selectors are explicitly pending M2.1b2b. Integrated original
+  PAK read acceptance is M2.1c after the intervening Resource Manager work.
 - **File Manager calls (task M2.1).** Implement the ones the census lists over
   that catalog:
   - open, read and write: `_Open`, `_Read`, `_Write`, `_Close`;

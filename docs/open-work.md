@@ -9,7 +9,8 @@ design.md §5.
 **Current state:**
 - The executable builds and loads the original resource fork.
 - Original CODE 1 expands the A5 world, relocates Core and enters `main`, then
-  passes GetFCBInfo/OpenWD and stops at `FILE MANAGER / SETVOL`, Core+$4066.
+  passes directory initialization and stops at
+  `RESOURCE MANAGER / GET1NAMEDRESOURCE`, Engine+$3CDC.
 - The original runs in MAME on the System 7.5.5 reference volume.
 
 Each item gives the **goal**, then the scope, then *done when*: the evidence
@@ -42,25 +43,23 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.1b2 Remaining File Manager services and buffered reads.**
-  - M2.1b1 independently completed the metadata catalog and application-fork
-    identity, verified by `file_catalog.gdb` and host sanitizer fixtures. Original
-    GetFCBInfo and OpenWD now pass. Start with SetVol at Core+$4066.
-  - Finish the census call set over that catalog, including default-directory
-    state, WD queries/close, indexed FCB queries and async variants. Unimplemented
-    selectors/layouts remain named stops. See the [reference contract](file-manager.md).
-  - Identify the original PRESENT.PAK read path before claiming that acceptance:
-    the full reference play/save/load route did not open it. Never invent a read
-    or treat a diagnostic-only read as an original game call.
+- **M2.1b2b Remaining File Manager services and buffered reads.**
+  - Catalog/identity (M2.1b1) and default-directory/Preferences startup
+    (M2.1b2a) are independently complete. `file_catalog.gdb` verifies all seven
+    direct file calls and FindFolder against the Mac, ending at Get1NamedResource.
+  - Finish the census call set over that catalog: GetVol/HGetVol/HSetVol,
+    WD queries/close, indexed FCB queries, transfers and async variants.
+    Unsupported forms remain named stops; see the [reference contract](file-manager.md).
   - Add Finder metadata and companion resource-fork storage for saves/prefs.
     The current catalog rejects nested directories, companion forks, non-ASCII
     names and capacity overflow explicitly; it must never invent metadata.
   - Implement the census File Manager set with per-fork chunked read buffers
     through system windows (design §4.5). Unknown paths are loud stops.
 
-  *Done when* the game opens and reads `ITD_RESS.PAK` and `PRESENT.PAK`, the bytes
-  it reads match the host file (gdb checksum), and the window count for startup is
-  recorded.
+  *Done when* host fixtures and a bounded native Line-A fixture verify file
+  open/read/seek/EOF/close, chunk reuse and boundary crossings, exact bytes and
+  errors through system windows. Original-game read acceptance remains M2.1c
+  below: the measured startup now stops in Resource Manager before those reads.
 - **M2.2 Resource Manager on demand.**
   - Keep only the resource maps in memory; load data into zone handles on
     `GetResource` through system windows.
@@ -72,9 +71,21 @@ required.
   *Done when* the application no longer loads its whole fork at startup, and the
   run reaches the same point as before with the same resource bytes (gdb checksum
   of a sample).
+- **M2.1c Original File Manager read acceptance (after M2.2).**
+  - This retains M2.1's original acceptance; diagnostic fixture reads do not count
+    as original-game reads. M2.1b2a measured the intervening Get1NamedResource
+    dependency at Engine+$3CDC. Implement the file core first, then the queued
+    resource services, then return here for their integrated acceptance.
+  - Identify the original PRESENT.PAK path: the full Mac play/save/load route
+    did not open it. Do not synthesize a read or infer one from a diagnostic.
+
+  *Done when* the game opens and reads `ITD_RESS.PAK` and `PRESENT.PAK`, its
+  returned bytes match the host files by debugger checksum, and startup window
+  counts are recorded. If original bytes establish an unused file, document the
+  evidence before revising that requirement; absence from one route is not proof.
 - **M1.6b Final startup requirements acceptance (after file/resource services).**
   - M1.6a implements the measured identity records and verifies all eleven
-    Engine capability flags. Full startup is still stopped in SetVol, before
+    Engine capability flags. Full startup is still stopped in Get1NamedResource, before
     Core's initialization-result/alert branches; it is not a successful launch.
   - After M2.1/M2.2, verify Core+$0460 is reached with initialization result zero,
     without taking its failure-alert branches ($0410/$044E).

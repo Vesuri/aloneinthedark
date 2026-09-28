@@ -596,3 +596,23 @@ owner-deferred; this checkpoint does not imply file-read or video acceptance.
 
 Clean 68020 `make regression` passes both `window-core` (including exact
 bitplane snapshots) and production `boot`. Host tests and link audits pass.
+
+
+## Startup directory sequence (M2.1b2a)
+
+`file_catalog.gdb` now runs through the original three successful OpenWD calls,
+two SetVol calls, Preferences FindFolder and missing-movies fnfErr. It checks
+original bytes, real arguments/results and Pascal stack cleanup, then requires
+the named Get1NamedResource stop at Engine+$3CDC. `identity.gdb` expects seven
+Gestalt calls because the newly reached FindFolder glue queries `fold` again.
+
+The reference logger records FindFolder outputs from byte-checked glue;
+`check_file_reference.py LOG --startup-directories` checks the ordered directory
+sequence as well as the existing file contract. The bounded reference completed
+normally with 98 paired file calls. Production startup, host tests, exact A5/heap
+comparisons and clean 68020 window-core/boot pass. Seven user services complete,
+zero metadata OS windows. Rendered screenshot acceptance remains pending.
+
+M2.1b2b implements the remaining file core before M2.2. The original-game PAK
+read acceptance is explicitly retained at M2.1c after Resource Manager support;
+a native test fixture cannot satisfy that integrated acceptance.

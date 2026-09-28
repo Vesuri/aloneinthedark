@@ -25,6 +25,8 @@ public:
     int16_t closeWD(int16_t ref);
     int16_t directoryFor(int16_t ref,uint32_t& directory) const;
     uint32_t wdProcess(int16_t ref) const;
+    int16_t setDefault(int16_t ref,const char* volumeName=0);
+    int16_t defaultRef() const { return defaultRef_; }
     uint16_t count() const { return count_; }
     uint32_t application=0,system=0,preferences=0,saves=0,data=0;
     static const int16_t volumeRef=-1;
@@ -32,5 +34,6 @@ private:
     struct WD { int16_t ref; uint32_t directory,process; };
     Entry entries_[maxEntries]; Fork forks_[maxOpen]; WD wd_[maxWD];
     uint16_t count_=0;
+    int16_t defaultRef_=0;
 };
 #endif

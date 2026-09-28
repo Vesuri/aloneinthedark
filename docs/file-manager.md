@@ -2,7 +2,7 @@
 
 M2.1a adds full 80-byte parameter blocks to the existing byte-checked MAME
 logger and corrects the initial diagnostic. M2.1b1 implements the catalog/identity subset below; the remaining File Manager
-services and read acceptance are M2.1b2.
+services are M2.1b2b; integrated read acceptance is M2.1c after M2.2.
 
 ## First call: application file control block
 
@@ -126,3 +126,51 @@ not completion of M2.1's original PAK read/checksum acceptance.
 
 Clean 68020 `make regression` passes both `window-core` (including exact
 bitplane snapshots) and production `boot`. Host tests and link audits pass.
+
+## Startup directories (M2.1b2a)
+
+SetVol now changes the default working-directory reference in `MacFiles`.
+Reference zero resolves through that state. Invalid references or unsupported
+volume names leave it unchanged; the host tests check those failures and actual
+relative-path resolution after switching directories. The native handler supports
+synchronous basic SetVol; GetVol, hierarchical and async forms remain pending.
+The mapping follows Apple's [PBSetVol contract](https://leopard-adc.pepas.com/documentation/mac/pdf/Files/File_Manager.pdf),
+with names restricted to the catalogued volume.
+
+FindFolder ($A823, selector 0) implements the original `'pref'` query on the
+system volume ($8000 or the mapped volume -1). It returns the catalogued virtual
+Preferences directory, ID 5, volume -1. That directory already exists in the
+virtual catalog even when the native prefs directory has not been created;
+this is not a claim of a native directory write. Native creation/writes remain
+in the queued file/resource backends. Other folder types/selectors stop loudly.
+See Apple's [FindFolder contract](https://developer.apple.com/documentation/coreservices/1389175-findfolder).
+
+The fresh reference logger byte-checks Core+$4350 (`2F0C 2F0B 7000 A823`) and
+captures the live output pointers retained in A4/A3. Mac Preferences is directory
+920, volume -1; the native directory ID differs, while identity and call results
+agree. The original subsequently passes the returned values to OpenWD.
+Run the reference check with:
+
+```sh
+python3 tools/check_file_reference.py tmp/m2-directory-reference.log --startup-directories
+```
+
+The bounded reference completes normally and yields 98 paired direct file calls.
+Its first seven are GetFCBInfo, application OpenWD, SetVol, data OpenWD,
+Preferences OpenWD, SetVol and missing-movies OpenWD. The checker verifies that
+sequence, arguments and results, plus FindFolder's captured outputs. The native
+`file_catalog.gdb` observes those same original calls: three successful WDs,
+two SetVol returns, FindFolder's output and 16-byte Pascal stack cleanup, and
+fnfErr (-43) for `:Alone Movies:`. Seven user services complete; zero runtime OS
+windows are needed for these metadata operations.
+
+The next named stop is **Get1NamedResource, Engine+$3CDC ($A820)**. This is a
+measured dependency before original PAK reads. The remaining file implementation
+stays first in M2.1b2b; its native fixture acceptance cannot substitute for the
+original-game acceptance, retained as M2.1c after M2.2 resource services.
+
+Clean 68020 window-core/boot and host tests pass. The startup A5 world matches
+all 75,616 bytes (A5 $0078F608, STRS $0044C690); heap accounting has zero
+unexplained bytes. Identity now includes the seventh natural `fold` query from
+Core+$4324 before FindFolder, in addition to the original six and eleven Engine
+capability flags. No original instruction is changed by these services.

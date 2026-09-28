@@ -74,6 +74,13 @@ local function map_segments()
     -- Byte-check every original site; loaded relocation never changes trap words.
     if mem:read_u16(pc)==t[2] and (t[2]&0x0c00)~=0x0c00 and not return_bps[pc+2] then
      local result={{'pc','pc'},{'sp','sp'},{'d0','d0'},{'a0','a0'},{'r0','d@sp'},{'r1','d@(sp+4)'},{'r2','d@(sp+8)'},{'env0','if(w@(pc-2)==a090,d@a0,0)'},{'env1','if(w@(pc-2)==a090,d@(a0+4),0)'},{'env2','if(w@(pc-2)==a090,d@(a0+8),0)'},{'env3','if(w@(pc-2)==a090,d@(a0+c),0)'}}
+     if t[2]==0xa823 then
+      -- Original FindFolder glue keeps the two output pointers live in A3/A4.
+      assert(seg==3 and t[1]==0x4356 and u32(pc-6)==0x2f0c2f0b
+       and mem:read_u16(pc-2)==0x7000,'FOLDER / ORIGINAL CALL BYTES')
+      result[#result+1]={'folderVolume','w@(a4&ffffff)'}
+      result[#result+1]={'folderID','d@(a3&ffffff)'}
+     end
      if is_file_trap(t[2]) then file_fields(result) end
      return_bps[pc+2]=breakpoint(pc+2,string.format('RESULT seg=%d offset=%04X trap=%04X',seg,t[1],t[2]),result)
     end

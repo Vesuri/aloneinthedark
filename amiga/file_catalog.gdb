@@ -3,20 +3,17 @@ set pagination off
 set confirm off
 set $catalog_fcb=0
 set $catalog_wd=0
+set $catalog_setvol=0
+set $catalog_folder=0
 break AitdScreen::showLoudStop
 commands
  silent
- if $catalog_fcb != 1 || $catalog_wd != 1 || g_trapWord != 0xa015 || g_trapSegment != 3 || g_trapOffset != 0x4066 || g_macServiceEntered != 2 || g_macServiceCompleted != 2 || g_systemWindows != 0
+ if $catalog_fcb != 1 || $catalog_wd != 4 || $catalog_setvol != 2 || $catalog_folder != 1 || g_trapWord != 0xa820 || g_trapSegment != 7 || g_trapOffset != 0x3cdc || g_macServiceEntered != 7 || g_macServiceCompleted != 7 || g_systemWindows != 0
   printf "FAIL file-catalog: FCB=%u WD=%u next=%s/%s\n",$catalog_fcb,$catalog_wd,g_trapManager,g_trapRoutine
   detach
   quit 1
  end
- if *(short*)((unsigned char*)g_trapRegisters[8]+22) != $catalog_ref
-  echo FAIL file-catalog: original SetVol must use returned WD reference\n
-  detach
-  quit 1
- end
- printf "PASS file-catalog: entries=%u data-files=%u data-bytes=%u FCB=1 OpenWD=1 windows=%u next=SETVOL\n",g_catalogEntries,g_catalogDataFiles,g_catalogDataBytes,g_systemWindows
+ printf "PASS file-catalog: entries=%u data-files=%u data-bytes=%u FCB=1 OpenWD=3 missing-movies=1 SetVol=2 FindFolder=1 windows=%u next=GET1NAMEDRESOURCE\n",g_catalogEntries,g_catalogDataFiles,g_catalogDataBytes,g_systemWindows
  detach
  quit 0
 end
@@ -27,7 +24,7 @@ if g_catalogEntries != 39 || g_catalogDataFiles != 32 || g_catalogDataBytes != 5
 end
 tbreak *(g_startupCode+0xaa)
 continue
-if *(unsigned long *)(g_code3Base+0x4142) != 0x7008a260 || *(unsigned long *)(g_code3Base+0x40dc) != 0x7001a260 || *(unsigned short *)(g_code3Base+0x4066) != 0xa015
+if *(unsigned long *)(g_code3Base+0x4142) != 0x7008a260 || *(unsigned long *)(g_code3Base+0x40dc) != 0x7001a260 || *(unsigned short *)(g_code3Base+0x4066) != 0xa015 || *(unsigned long*)(g_code3Base+0x4354) != 0x7000a823
  echo FAIL file-catalog: original trap bytes\n
  detach
  quit 1
@@ -61,8 +58,30 @@ break *(g_code3Base+0x40de)
 commands
  silent
  set $pb=(unsigned char*)$a0
- if *(unsigned long*)($pb+18) != 0 || *(short*)($pb+22) != 0 || *(unsigned long*)($pb+48) != 3
-  echo FAIL file-catalog: original application OpenWD request\n
+ set $path=*(unsigned char**)($pb+18)
+ set $expected_dir=3
+ set $expected_volume=0
+ set $path_ok=0
+ if $catalog_wd == 0 && $path == 0
+  set $path_ok=1
+ end
+ if $catalog_wd == 1 && $path != 0
+  if *$path == 12 && *(unsigned long*)($path+1) == 0x3a416c6f && *(unsigned long*)($path+5) == 0x6e652044 && *(unsigned long*)($path+9) == 0x6174613a
+   set $path_ok=1
+  end
+ end
+ if $catalog_wd == 2 && $path == 0
+  set $path_ok=1
+  set $expected_dir=5
+  set $expected_volume=-1
+ end
+ if $catalog_wd == 3 && $path != 0
+  if *$path == 14 && *(unsigned long*)($path+1) == 0x3a416c6f && *(unsigned long*)($path+5) == 0x6e65204d && *(unsigned long*)($path+9) == 0x6f766965 && *(unsigned short*)($path+13) == 0x733a
+   set $path_ok=1
+  end
+ end
+ if $path_ok != 1 || *(short*)($pb+22) != $expected_volume || *(unsigned long*)($pb+48) != $expected_dir
+  echo FAIL file-catalog: original OpenWD request\n
   detach
   quit 1
  end
@@ -72,14 +91,69 @@ break *(g_code3Base+0x40e0)
 commands
  silent
  set $pb=(unsigned char*)$a0
- set $catalog_ref=*(short*)($pb+22)
- if $d0 != 0 || *(short*)($pb+16) != 0 || $catalog_ref != -32000 || *(short*)($pb+24) != 1 || *(unsigned long*)($pb+48) != 3
+ set $expected_ref=-32000+$catalog_wd
+ set $expected_error=0
+ if $catalog_wd == 3
+  set $expected_ref=0
+  set $expected_error=-43
+ end
+ if (short)$d0 != $expected_error || *(short*)($pb+16) != $expected_error || *(short*)($pb+22) != $expected_ref || *(unsigned long*)($pb+48) != $expected_dir
   echo FAIL file-catalog: OpenWD result\n
   detach
   quit 1
  end
+ if $catalog_wd < 3 && *(short*)($pb+24) != 1
+  echo FAIL file-catalog: new WD flag\n
+  detach
+  quit 1
+ end
  set $catalog_wd=$catalog_wd+1
- dump binary memory ../tmp/amiga-wd-result.bin $pb $pb+80
+ continue
+end
+break *(g_code3Base+0x4066)
+commands
+ silent
+ set $pb=(unsigned char*)$a0
+ if *(unsigned long*)($pb+18) != 0 || *(short*)($pb+22) != -32000
+  echo FAIL file-catalog: original SetVol request\n
+  detach
+  quit 1
+ end
+ continue
+end
+break *(g_code3Base+0x4068)
+commands
+ silent
+ if $d0 != 0 || *(short*)((unsigned char*)$a0+16) != 0
+  echo FAIL file-catalog: SetVol result\n
+  detach
+  quit 1
+ end
+ set $catalog_setvol=$catalog_setvol+1
+ continue
+end
+break *(g_code3Base+0x4356)
+commands
+ silent
+ if $d0 != 0 || *(unsigned long*)($sp+10) != 0x70726566 || *(unsigned short*)($sp+14) != 0x8000 || *(unsigned char*)($sp+8) != 1
+  echo FAIL file-catalog: original FindFolder request\n
+  detach
+  quit 1
+ end
+ set $folder_sp=$sp
+ set $folder_dir=*(unsigned long*)$sp
+ set $folder_vol=*(unsigned long*)($sp+4)
+ continue
+end
+break *(g_code3Base+0x4358)
+commands
+ silent
+ if $sp != $folder_sp+16 || *(short*)$sp != 0 || *(short*)$folder_vol != -1 || *(unsigned long*)$folder_dir != 5
+  echo FAIL file-catalog: FindFolder result or stack cleanup\n
+  detach
+  quit 1
+ end
+ set $catalog_folder=$catalog_folder+1
  continue
 end
 continue
