@@ -22,7 +22,8 @@ public:
     const Fork* fork(int16_t ref) const;
     int16_t queryFork(int16_t volume,int16_t index,int16_t ref,const Fork*& found) const;
     int16_t close(int16_t ref);
-    int16_t seek(int16_t ref,uint16_t mode,int32_t offset);
+    int16_t seek(int16_t ref,uint16_t mode,int32_t offset,bool writing=false);
+    int16_t setSize(int16_t ref,uint32_t size,bool clampPosition);
     void advance(int16_t ref,uint32_t count);
     int16_t initializeDirectories();
     int16_t queryWD(int16_t& ref,int16_t index,uint32_t& process,uint32_t& directory) const;

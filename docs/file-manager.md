@@ -401,7 +401,7 @@ and the actual accepted prefix; neither error claims a completed write.
 Flush writes dirty pages and zero-filled extension ranges in transfers no
 larger than 65,536 bytes, then requests the logical EOF. Only full success
 clears the dirty ledger and releases pages. Short/error writes or failed resize
-retain all pending state for retry. The caller will own the DOS window around
+retain all pending state for retry. The caller owns the DOS window around
 those callbacks. Explicit `clear` discards buffers for cleanup; rebinding a live
 buffer is rejected, and copying the owning object is disabled.
 
@@ -413,44 +413,48 @@ failure, capacity and complete cleanup. A deterministic 300-operation write/
 resize sequence compares every logical byte after each operation and disk bytes
 after each successful flush. Backend callbacks assert the 64 KiB transfer bound.
 The host suite and clean 68020 build pass, including no-float and probe audits.
-No new original-game progress or native write acceptance is claimed.
+These host checks alone do not establish native acceptance; see below.
 
-## Native buffered-write backend (M2.1b2c6)
+## Writable data forks and native acceptance (M2.1b2c7)
 
-`FileAccess::flushStream` now commits a dirty `FileWriteBuffer` through the
-existing user-mode system-window mechanism. Each DOS Write is at most 64 KiB;
-the complete operation uses one window. SetFileSize establishes the final EOF,
-then DOS Flush drains the stream. The helper clears its dirty ledger only when
-that whole sequence succeeds. Read/write callbacks use the existing persistent
-DOS handle. A separate restored-OS entry is available for future shutdown
-integration; this checkpoint does not exercise dirty shutdown or game traps.
+Synchronous Open/HOpen permission 3 binds a sparse `FileWriteBuffer` to the
+persistent DOS stream without loading payloads. Read sees its pending changes;
+Write updates actual count, mark and catalog EOF. SetEOF updates logical size
+and clamps the mark. FlushVol flushes dirty data streams; Close flushes before
+closing, retaining the open handle and dirty pages if that flush fails. At
+shutdown dirty forks flush after full OS restoration; any failure is reported.
+Each DOS Write is at most 64 KiB, followed by SetFileSize and DOS Flush, and
+only complete success clears the ledger.
 
-The first live link exposed the SAS/C header's C++ linkage for memcpy/memset;
-explicit C linkage fixes it. The preceding clean build had compiled but
-collected the unused helper, so it had not proved live linkage. Both native
-link audits now pass with the helper retained and executed.
+The original bytes were checked at Misc3+$0FBE (A000 Open), +$11CE (A003 Write),
++$11A8 (A012 SetEOF), +$12EA (A013 FlushVol), Core+$3FA6 (A001 Close), and
+Core+$4142 (`7008 A260 6004`, FCB observer). No original instructions change.
+`mac_file_mutations.lua` uses owned stack memory for a 21-call API fixture,
+starting before the mode dialog. It creates a new named scratch, stops on
+unexpected errors and requires Delete/FlushVol before reporting completion.
+The strict checker rejects missing/duplicate stages, incorrect results,
+timeouts and missing cleanup.
 
-`amiga/regression.sh file-write` builds with FILEPROBE=1 FILEWRITEPROBE=1.
-A diagnostic Line-A service runs the backend in user mode after all 39 existing
-file fixture stages. It overwrites 131,089 bytes crossing four pages of a
-200,003-byte fixture, flushes and checks every returned byte. It then shrinks
-the logical file to 17, regrows it and verifies a zero-filled extension, then
-physically truncates it to 17 and verifies EOF. The host checker requires the
-closed file to contain exactly those 17 original pattern bytes.
+Measured on System 7.5.5: writing four bytes at offset 8 gives EOF/mark 12;
+SetEOF(2) clamps the mark to 2; a zero-count positioned Write at 32 extends
+both EOF and mark to 32. A relative -1 write of four bytes after a 20-byte read
+ends at 23. Read-only Write/SetEOF return -61 without modifying the supplied
+actual-count sentinel. Unwritten/re-exposed bytes on HFS are unspecified (the
+probe sees reused disk contents); the port fills them with deterministic zeros.
+Only explicitly written data is used for cross-platform byte fidelity.
 
-The complete case uses 20 OS windows (ten from the original read fixture,
-ten from the write backend), eight DOS writes totaling 399,989 bytes, three
-flushes, and a maximum transfer of 65,536. It performs 17 DOS reads totaling
-731,122 bytes, including both fixture paths and readback. The stream ledger
-and restored-OS cleanup checks remain mandatory. The diagnostic owns only
-ignored `amiga/.run/dh1/write-probe.bin`; original input data is untouched.
+`file-write` executes real Line-A calls with CCR/ioResult checks, plus the
+independent DOS backend fixture. It verifies the above EOF/position cases,
+zero-filled gaps, flush/readback, a 70,000-byte write flushed on Close, and a
+three-byte truncation/write left dirty for shutdown. Host readback checks those
+three bytes and the backend fixture's 17-byte final file after normal exit.
+Totals: 33 runtime OS windows, 20 DOS reads / 801,145 bytes, 12 writes /
+470,015 bytes and six flushes (including shutdown), maximum transfer 65,536.
+Both remaining handles close after OS restoration, and the ledger is empty.
 
-This verifies the independently usable DOS adapter and native helper execution.
-Writable permissions, per-fork binding, Write/SetEOF/FlushVol dispatch and
-close/shutdown integration remain M2.1b2c7. No new original-game progress or
-Mac mutation-call acceptance is claimed here.
-
-Host tests and all four native regression cases (file-write, file-read,
-window-core and production boot) pass on 68020. The original directory observer
-also retains seven completed services, zero OS windows and the unchanged
-Get1NamedResource stop. No owner decision is needed.
+Permission 1 remains unchanged. Other permissions, shared opens involving a
+writer, named-volume FlushVol, resource writes, async/flag variants and metadata
+operations remain named stops in M2.1b2c8–c9. Simultaneous writable/read handles
+need coherent cached state before they can be supported. No original-game
+save/load acceptance is claimed. Production remains at Get1NamedResource after
+seven directory services and zero runtime OS windows.

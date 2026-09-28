@@ -628,13 +628,14 @@ marks, ioActCount, condition codes and exact window counts. The observer also
 continues through OS restoration and checks that the intentionally open final
 stream is closed, with no remaining handles. Missing PASS or a timeout fails.
 
-`make regression` runs file-read, window-core and a clean production boot in
-that order. Host sanitizer tests cover the pure cache and fork-position model.
+`make regression` runs file-write, file-read, window-core and a clean
+production boot in that order. Host sanitizer tests cover the pure cache and fork-position model.
 The synthetic names exist in the catalog only for the diagnostic build. No
 original data is copied into the executable or committed. Production directory,
 identity and original-startup observers retain the Get1NamedResource boundary;
 M2.1c still requires original PAK reads/checksums. Actual WHDLoad persistent
-streams, writable forks and remaining variants are separate pending work.
+streams and remaining variants are separate pending work. Writable data forks
+are covered by the file-write regression below.
 
 ### File Manager query reference
 
@@ -652,11 +653,23 @@ Set `AITD_FILE_QUERIES=wd` for the 27-call WD lifetime/filtering fixture, and
 check it with `--wd` instead of `--directories`. The native `file-read` fixture
 now covers 39 stages including hierarchical defaults, WD queries and closure.
 
-### Buffered-write backend regression
+### Buffered-write and mutation regression
 
-`amiga/regression.sh file-write` adds the native DOS write-buffer fixture after
-the read/directory fixture. It requires FILEPROBE=1 and FILEWRITEPROBE=1,
-byte-exact readbacks, measured window/transfer counts, EOF 17, an empty stream
-ledger after cleanup, and exact host-file bytes after the runner exits. The
-fixture is recreated in ignored staging for each run. `make regression` now
-includes this case. It tests the backend, not game Write/SetEOF/FlushVol traps.
+`amiga/regression.sh file-write` adds a DOS backend fixture and real Line-A
+Open/HOpen, Write, SetEOF, GetEOF/GetFCBInfo, Read, FlushVol and Close calls after
+the read/directory fixture. It requires FILEPROBE=1 and FILEWRITEPROBE=1.
+The case checks exact bytes, marks/EOF, CCR, permission errors, 33 runtime
+windows, 12 DOS writes (65,536 maximum), six flushes including shutdown, and
+an empty stream ledger after cleanup. Host readback verifies 17 backend bytes
+and three bytes left dirty until shutdown. Both fixtures are recreated in
+ignored staging for each run. `make regression` includes this case.
+
+Run `tools/mac_file_mutations.lua` with the documented headless MAME command,
+then `python3 tools/check_file_mutations.py LOG --status RUNNER_STATUS`.
+The bounded reference fixture checks the original startup observer bytes,
+runs File Manager traps from owned stack memory, creates only `AITD Port Write
+Probe`, and requires successful delete/flush before its PASS. It never selects
+a display mode or uses host window access. A failed Create stops without
+opening or overwriting an existing file. On any later failure, inspect the log
+and stopped disk for that named scratch before retrying. These API fixtures do
+not constitute original-game save/load or PAK acceptance.

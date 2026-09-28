@@ -88,6 +88,16 @@ int main() {
     assert(c.seek(d,1,(int32_t)0x80000000)==-40 && c.fork(d)->position==123456);
     assert(c.seek(d,9,0)==c.unsupported);
     assert(c.seek(0,1,0)==c.rfNumErr);
+    assert(c.setSize(d,0,true)==-61);
+    assert(c.seek(r,1,200000,true)==0 && c.fork(r)->position==200000);
+    assert(c.setSize(r,210000,false)==0 && c.entry(file)->resourceSize==210000 && c.fork(r)->position==200000);
+    assert(c.setSize(r,12,true)==0 && c.fork(r)->position==12);
+    assert(c.seek(r,1,32,true)==0 && c.setSize(r,32,false)==0 && c.fork(r)->position==32);
+    assert(c.setSize(r,20,true)==0 && c.fork(r)->position==20);
+    assert(c.seek(r,3,0x7fffffff,true)==c.paramErr && c.fork(r)->position==20);
+    assert(c.setSize(r,0x80000000UL,true)==c.paramErr && c.entry(file)->resourceSize==20);
+    assert(c.setSize(0,0,true)==c.rfNumErr);
+    assert(c.setSize(r,765,true)==0);
     const MacFiles::Fork* found=nullptr;
     assert(c.queryFork(0,1,999,found)==0 && found==c.fork(r));
     assert(c.queryFork(-1,2,999,found)==0 && found==c.fork(d));

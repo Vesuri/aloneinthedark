@@ -445,7 +445,7 @@ bool PlatformAmiga::run()
     // established the rule): disk I/O during the takeover would resume
     // unrelated tasks against partially restored state.
     bool filesClosed=loader.releaseResourceForks();
-    if(!filesClosed)PutStr((CONST_STRPTR)"Alone: FILE CLOSE ON EXIT FAILED\n");
+    if(!filesClosed)PutStr((CONST_STRPTR)"Alone: FILE FLUSH/CLOSE ON EXIT FAILED\n");
     releaseOriginalResourceFiles(resourceFiles);
 #ifdef AITD_FILE_PROBE
     aitdFileCleanupFinished();

@@ -27,8 +27,8 @@ serve memory and resource handles. System identity and all eleven derived
 capability flags match the Mac reference. The user-mode service bridge passes
 its native ABI probe. OS windows and DOS/resload adapters pass the native/host
 core probes; rendered-picture acceptance is owner-deferred (M1.7b2). The next
-implementation item is the remaining File Manager services (M2.1b2c7). The
-metadata-only catalog and application-fork identity are verified (M2.1b1):
+implementation item is the remaining File Manager permissions and variants
+(M2.1b2c8). The metadata-only catalog and application-fork identity are verified (M2.1b1):
 32 data files, 5,315,994 bytes; no data payload preloading. SetVol, the three
 startup working directories, Preferences lookup and the optional movies error
 are verified against the Mac (M2.1b2a). Read-only data forks now use persistent
@@ -38,10 +38,11 @@ synthetic fixture reads, not original-game PAK acceptance. Synchronous GetVol
 now preserves SetVol working-directory identity and passes native/Mac round-trip
 checks. Indexed open-file queries and hierarchical default-directory
 state also pass native and Mac-reference checks. Working-directory queries,
-closure and System-folder identity now use the same catalog. A sparse write-buffer
-helper and its DOS flush backend pass host/native tests; game write traps still
-await integration. Final startup
-requirements acceptance awaits the file/resource services.
+closure and System-folder identity now use the same catalog. Synchronous
+writable data forks, Write, SetEOF and FlushVol now use sparse
+64 KiB buffers and pass Mac/native fixtures, including close and dirty-shutdown
+disk readback. Other permissions, sharing, metadata and resource forks remain.
+Final startup requirements acceptance awaits the file/resource services.
 
 ## Requirements (provisional)
 

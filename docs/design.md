@@ -336,8 +336,11 @@ Native trap probes, host fragmentation tests and paired heap captures verify it:
 - **Write-buffer helper (M2.1b2c5).** Sparse 64 KiB dirty pages are verified
   against a host byte oracle, including truncation, errors and retryable flush.
   It fetches existing bytes on demand and retains dirty state until all writes
-  and EOF updates succeed. The DOS window/flush adapter passes the native
-  file-write regression (M2.1b2c6); game writable-fork binding remains M2.1b2c7.
+  and EOF updates succeed. Synchronous Open/HOpen permission 3, Write, SetEOF,
+  FlushVol and Close now bind this helper per data fork. Failed flushes retain
+  the open fork and dirty ledger for retry. Shutdown flushes dirty forks after
+  full OS restoration and reports failures. The native file-write fixture
+  verifies both paths; other permissions/sharing and resource forks are pending.
 - **Writes (save games, "Alone Prefs").** Writes are buffered per fork and
   written through in a system window at `_Close`/`FlushVol`, so a save the game
   reports as written is on disk (task M3.6). WHDLoad uses `resload_SaveFile`.
@@ -661,8 +664,9 @@ clean build with its flags, a warp-mode bounded run, a required PASS regex, and
 no loud stop. The cases are added as their milestone lands:
 - `boot`: reaches main, then ends the observer before main executes. The harness
   was introduced in M0; positive acceptance passes on `a1200-020` (M1.3a).
-- `file-write`: native buffered DOS writes, zero-filled growth, truncation,
-  exact readback and host-file verification; game write traps remain pending.
+- `file-write`: native Line-A and DOS backend writes, zero-count extension,
+  truncation/mark updates, read-only errors, exact readback, close and dirty
+  shutdown; host-file bytes and bounded transfer/window counts are required.
 - `file-read`: actual Line-A data-fork calls, cache reuse/crossing, multi-chunk
   direct read, exact bytes/CCR/EOF/errors, window counts and restored-OS cleanup.
 - `window-core`: 1 MB chunk reads, DOS errors/save, clock, Paula interrupts,

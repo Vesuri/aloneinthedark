@@ -52,3 +52,7 @@ aitdProbeWriteBackend:
     .word 0xa0fb
     move.w ccr,g_fileProbeCCR
     rts
+
+    filetrap aitdProbeWrite,0xa003
+    filetrap aitdProbeSetEOF,0xa012
+    filetrap aitdProbeFlush,0xa013

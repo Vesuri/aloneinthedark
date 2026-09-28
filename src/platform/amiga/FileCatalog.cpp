@@ -74,6 +74,10 @@ const char* aitdBuildFileCatalog(MacFiles& catalog,const char* applicationPath,u
     if(!error && catalog.add(catalog.data,"read-probe.bin","PROGDIR:read-probe.bin",false,200003)<0)
         error="CATALOG / READ PROBE";
 #endif
+#ifdef AITD_FILE_WRITE_PROBE
+    if(!error && catalog.add(catalog.data,"mutation-probe.bin","PROGDIR:mutation-probe.bin",false,0)<0)
+        error="CATALOG / MUTATION PROBE";
+#endif
     if(!error)g_catalogEntries=catalog.count();
     return error;
 }

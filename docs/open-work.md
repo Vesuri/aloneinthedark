@@ -43,34 +43,37 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.1b2c7 Remaining File Manager metadata, variants and mutations.**
-  - Catalog/identity (M2.1b1) and default-directory/Preferences startup
-    (M2.1b2a) are independently complete. `file_catalog.gdb` verifies all seven
-    direct file calls and FindFolder against the Mac, ending at Get1NamedResource.
-  - M2.1b2b completes synchronous read-only Open/HOpen, Read, GetEOF,
-    GetFPos, SetFPos and Close with persistent DOS handles, 64 KiB per-fork
-    buffers and the native `file-read` regression. Original startup remains at
-    Get1NamedResource; synthetic reads do not complete M2.1c.
-  - Connect the verified sparse `FileWriteBuffer` and DOS flush/resize adapter
-    to writable forks and the game traps. The native `file-write` backend
-    regression proves exact writes/readback/truncation, bounded DOS calls,
-    system windows and post-close host bytes. It does not implement or count
-    as original-game Write/SetEOF/FlushVol or durable-save acceptance.
-  - Finish the census call set over that catalog: create/delete/file info, writes,
-    truncation/flush, open permissions beyond read-only, HGetVolParms,
-    FSDispatch PBHOpenDF, and async variants.
-    Unsupported forms remain named stops; see the [reference contract](file-manager.md).
+- **M2.1b2c8 Remaining open permissions, sharing and volume forms.**
+  - Synchronous explicit read-only (1) and read/write (3) data forks now work,
+    including Write, SetEOF, FlushVol, Close and restored-OS shutdown.
+  - Implement default (0), write (2), shared permissions and native protection
+    errors from reference evidence. Unsupported permissions remain named stops.
+  - **M2.1b2c8a Shared-fork coherence:** one writable fork currently excludes
+    other opens with a loud stop. Add a shared data/dirty state or equivalent
+    coherent mechanism so readers cannot return stale bytes, while preserving
+    per-reference marks and the Mac's writer-exclusion rules.
+    *Acceptance:* reference-matched simultaneous read/write opens, marks,
+    truncate visibility, conflict errors and close order pass native fixtures.
+  - Finish named-volume FlushVol and drive-reference forms; currently only
+    null/empty-name default, volume and live-WD references are implemented.
+
+  *Done when* Mac-reference argument/results and host/native fixtures cover each
+  permission, conflict, sharing and volume form, and file-write, file-read,
+  window-core, boot and the directory observer pass on 68020.
+- **M2.1b2c9 Remaining File Manager metadata and variants.**
+  - Finish create/delete/file info, HGetVolParms, FSDispatch PBHOpenDF, and
+    async variants over the catalog. Unsupported forms remain named stops;
+    see the [reference contract](file-manager.md).
   - Add Finder metadata and companion resource-fork storage for saves/prefs.
-    The current catalog rejects nested directories, companion forks, non-ASCII
-    names and capacity overflow explicitly; it must never invent metadata.
+    The catalog rejects nested directories, companion forks, non-ASCII names
+    and capacity overflow explicitly; never invent metadata.
   - Extend the per-fork table without bypassing system windows (design §4.5).
-    Give unsupported flag variants explicit routine names. Unknown paths and
-    unimplemented permissions/positioning modes must stop loudly.
+    Unknown paths and unimplemented flags/positioning modes must stop loudly.
 
   *Done when* each added census operation passes host and bounded native Line-A
-  fixtures, with Mac-reference argument/result comparisons, and `file-read`,
-  `window-core`, production boot and directory observers still pass. Original
-  PAK reads and their startup window count remain the separate M2.1c acceptance.
+  fixtures with Mac-reference argument/result comparisons, and file-write,
+  file-read, window-core, production boot and directory observers still pass.
+  Original PAK reads and their window count remain M2.1c acceptance.
 - **M2.2 Resource Manager on demand.**
   - Keep only the resource maps in memory; load data into zone handles on
     `GetResource` through system windows.

@@ -182,7 +182,7 @@ int16_t MacFiles::setHierarchicalDefault(int16_t ref,uint32_t directory,const ch
     return noErr;
 }
 
-int16_t MacFiles::seek(int16_t ref,uint16_t mode,int32_t offset) {
+int16_t MacFiles::seek(int16_t ref,uint16_t mode,int32_t offset,bool writing) {
     Fork* f=const_cast<Fork*>(fork(ref));
     if(!f)return rfNumErr;
     if(mode>3)return unsupported;
@@ -195,11 +195,21 @@ int16_t MacFiles::seek(int16_t ref,uint16_t mode,int32_t offset) {
         if(base<magnitude)return -40; // posErr: unchanged mark.
         base-=magnitude;
     } else {
-        if((uint32_t)offset>0x7fffffffUL-base) { f->position=size;return -39; }
+        if((uint32_t)offset>0x7fffffffUL-base) { if(writing)return paramErr;f->position=size;return -39; }
         base+=(uint32_t)offset;
     }
-    f->position=base>size ? size : base;
-    return base>size ? -39 : noErr;
+    f->position=!writing && base>size ? size : base;
+    return !writing && base>size ? -39 : noErr;
+}
+int16_t MacFiles::setSize(int16_t ref,uint32_t size,bool clampPosition) {
+    Fork* f=const_cast<Fork*>(fork(ref));
+    if(!f)return rfNumErr;
+    if(!f->writable)return -61;
+    if(size>0x7fffffffUL)return paramErr;
+    Entry* e=const_cast<Entry*>(entry(f->id));
+    if(f->resource)e->resourceSize=size;else e->dataSize=size;
+    if(clampPosition && f->position>size)f->position=size;
+    return noErr;
 }
 void MacFiles::advance(int16_t ref,uint32_t count) {
     Fork* f=const_cast<Fork*>(fork(ref));
