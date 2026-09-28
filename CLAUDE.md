@@ -4,8 +4,9 @@ This repository is an in-progress Amiga port of the Macintosh **Alone In The
 Dark 1.0** (Interplay, 1994). It reuses the runtime of the completed Vette!
 port (`~/Documents/Vette`), which is the reference for conventions and for
 solutions already paid for. Read [README.md](README.md),
+[docs/design.md](docs/design.md) (architecture, owner decisions, workflow),
 [docs/development.md](docs/development.md) and
-[docs/open-work.md](docs/open-work.md), a short queue rather than a stage log.
+[docs/open-work.md](docs/open-work.md), the ordered work queue.
 
 ## Scope and correctness
 
@@ -22,7 +23,8 @@ solutions already paid for. Read [README.md](README.md),
 - The game is 68020 code (see [static map](docs/static-map.md)); do not plan
   around a 68000 target.
 - Native presentation/input and maximum-rate pacing are intentional port
-  behavior. See [architecture](docs/amiga-arch.md).
+  behavior, within the gameplay frame cap (design.md D3). See
+  [architecture](docs/amiga-arch.md).
 
 ## Build and hardware
 
@@ -58,6 +60,11 @@ solutions already paid for. Read [README.md](README.md),
 
 ## Changes
 
+- Work [docs/open-work.md](docs/open-work.md) top down, one item at a time
+  (design.md §8). Delete the item in the commit that completes it and add
+  newly found work, with an ID and acceptance check, at its place in the queue.
+- Owner decisions (design.md §5) and anything that changes game behaviour go
+  to the owner; everything else proceeds on the documented defaults.
 - Commit directly to `main`, one verified cohesive change per commit.
 - Preserve unrelated worktree edits. Do not add hooks, signing or coauthor lines.
   Use the existing Vesuri identity and repository-local Git configuration.
