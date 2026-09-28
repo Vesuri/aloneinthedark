@@ -584,3 +584,29 @@ file-read, window-core, boot and the original directory observer pass.
 The Resource Manager still holds the application fork buffer until M2.2. This
 File Manager work does not claim resource-map editing or original-game PAK/save
 acceptance. Unsupported resource service calls remain named stops.
+
+
+## Installed metadata from original inputs (M2.1b2c9c1)
+
+The extractor now emits a validated `.finfo` for the application and all 32 data
+files. Types, creators and Finder flags are cross-checked between the raw StuffIt
+header, lsar entry and unar's AppleDouble/native Finder record. Remaining Finder
+bytes come from that extracted record. Creation/modification dates retain the
+original big-endian Mac integers; no current timestamps or inferred metadata
+are substituted. Missing Finder records, ambiguous entries and unhandled fork
+layouts stop extraction explicitly. Payload bytes remain unchanged.
+
+A read-only original Mac fixture compares four representative installed files.
+Types, creators, fork lengths and open attributes agree with native GetFInfo.
+The existing reference installation has dates 7200 seconds below the archive
+headers (the host extraction/MacBinary timezone conversion), cleared initialized
+flags on data files, and application icon x=128. These installation differences
+are explicitly checked and documented, not silently normalized in the port.
+Native metadata retains the original archive timestamps and extracted Finder
+record. The opaque metadata round-trip fixtures separately verify Mac API
+preservation of all 16 Finder bytes and both timestamp fields.
+
+Host import validation, actual archive extraction, native installed-file info,
+read/write, window-core, production boot and original-directory checks pass.
+Unknown metadata on user-provided files still causes a named GetFInfo stop.
+Indexed file queries and other census variants remain M2.1b2c9c2.

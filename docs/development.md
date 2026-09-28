@@ -660,7 +660,7 @@ Open/HOpen, Write, SetEOF, GetEOF/GetFCBInfo, Read, FlushVol and Close calls aft
 the read/directory fixture. It requires FILEPROBE=1 and FILEWRITEPROBE=1.
 The case checks exact bytes, marks/EOF, CCR, the 25-pair permission matrix,
 protected-file defaults/errors, shared writes and close order, cached-reader
-coherence and volume-name/reference forms. It requires 263 runtime windows,
+coherence and volume-name/reference forms. It requires 268 runtime windows,
 23 DOS writes (65,536 maximum), 17 flushes including shutdown and an empty
 stream ledger after cleanup. Host readback verifies 17 backend bytes, six
 shared-file bytes, four data bytes plus Finder metadata, and three bytes left dirty
@@ -735,3 +735,31 @@ resource after a data-fork write. Verified diagnostic outputs are removed before
 production regressions. The application source remains the existing raw fork;
 only its optional `.data` companion stores data-fork changes. Ordinary files
 use `.rsrc` and `.finfo`; companions are never separate virtual catalog files.
+
+
+### Installed-file metadata (M2.1b2c9c1)
+
+Re-run `tools/extract_original_data.py` to create the 33 `.finfo` companions.
+Extraction requires `lsar` and `xattr` alongside the existing unar/hfsutils tools.
+It compares the archive entry name, fork layout, sizes, compression method,
+type/creator/flags and extracted Finder record before emitting a companion.
+Original Mac timestamp integers come directly from the checked 112-byte StuffIt
+header. Displayed lsar dates and host filesystem timestamps are not substituted.
+The current development staging helper requires the application companion and
+copies the data-folder companions alongside their unchanged payloads.
+
+Run `tools/mac_file_installed.lua` with the headless reference command, then
+`tools/check_file_installed.py LOG tmp/runtime-data --status STATUS`. It is
+read-only and compares application, Camera00.PAK, ITD_Ress.PAK and Present.PAK.
+The current reference volume's MacBinary import shifted creation/modification
+dates by -7200 seconds; Finder also cleared the data files' initialized flag and
+placed the application icon at x=128. The checker verifies those exact measured
+differences instead of treating all fields as identical. The port preserves the
+archive metadata and extraction's Finder bytes; it does not reproduce incidental
+host-timezone conversions or the reference Finder's icon placement.
+
+Native `file-write` stage 44 checks all returned Finder fields, original dates,
+logical fork sizes and open attributes for the same four files before the fork
+mutation fixture (now stage 45). The regression uses 268 runtime windows; stream
+read/write/flush counters remain those of the fork fixture. The additional
+application metadata is also persisted when its diagnostic data write closes.

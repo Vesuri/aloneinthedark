@@ -16,6 +16,7 @@ then verifies.  The output directory receives:
 
   Alone In The Dark   the application's raw resource fork (not AppleDouble)
   Alone Data/         the .PAK/.ITD data-fork files, unchanged
+  *.finfo             validated Finder records and original Mac timestamps
 
 Development/diagnostic helper for a local checkout only.  Requires `unar` and
 `hfsutils` (hmount/hcopy/humount) on PATH.  Nothing extracted here may be
@@ -37,6 +38,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from resource_fork import parse_resource_fork  # noqa: E402
+from installed_metadata import archive_entries, metadata_for
 
 APPLICATION = "Alone In The Dark"
 DATA_FOLDER = "Alone Data"
@@ -67,7 +69,7 @@ def unpack_payload(archive: Path, scratch: Path, visible: bool) -> Path:
     visible=True writes resource forks as AppleDouble `*.rsrc` files; False
     writes native macOS forks and Finder info (what tools/macbin.py reads).
     """
-    for tool in ("unar", "hmount", "hcopy", "humount"):
+    for tool in ("unar", "lsar", "xattr", "hmount", "hcopy", "humount"):
         if not shutil.which(tool):
             raise SystemExit(f"{tool} is required on PATH")
     fork_mode = ("-k", "visible") if visible else ()
@@ -117,8 +119,11 @@ def main() -> int:
             print(f"warning: {APPLICATION} resource fork sha256 {digest} "
                   "is not the known 1.0 release", file=sys.stderr)
 
+        entries,archive=archive_entries(scratch / "payload.sit")
+        app_metadata=metadata_for(archive,entries,APPLICATION,root / APPLICATION)
         args.destination.mkdir(parents=True, exist_ok=True)
         (args.destination / APPLICATION).write_bytes(fork)
+        (args.destination / (APPLICATION+".finfo")).write_bytes(app_metadata)
         target = args.destination / DATA_FOLDER
         if target.exists():
             shutil.rmtree(target)
@@ -127,7 +132,9 @@ def main() -> int:
         for source in sorted((root / DATA_FOLDER).iterdir()):
             if source.suffix == ".rsrc" or not source.is_file():
                 continue
+            info=metadata_for(archive,entries,DATA_FOLDER+"/"+source.name,source)
             shutil.copyfile(source, target / source.name)
+            (target / (source.name+".finfo")).write_bytes(info)
             count += 1
     print(f"{args.destination / APPLICATION}: {len(fork)} bytes; {count} files in {target}")
     return 0

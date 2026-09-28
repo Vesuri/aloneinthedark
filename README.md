@@ -27,8 +27,8 @@ serve memory and resource handles. System identity and all eleven derived
 capability flags match the Mac reference. The user-mode service bridge passes
 its native ABI probe. OS windows and DOS/resload adapters pass the native/host
 core probes; rendered-picture acceptance is owner-deferred (M1.7b2). The next
-implementation item is the remaining File Manager metadata and variants
-(M2.1b2c9c). The metadata-only catalog and application-fork identity are verified (M2.1b1):
+implementation item is the remaining File Manager variants
+(M2.1b2c9c2). The metadata-only catalog and application-fork identity are verified (M2.1b1):
 32 data files, 5,315,994 bytes; no data payload preloading. SetVol, the three
 startup working directories, Preferences lookup and the optional movies error
 are verified against the Mac (M2.1b2a). Read-only data forks now use persistent
@@ -44,8 +44,8 @@ writable data forks, Write, SetEOF and FlushVol now use sparse
 disk readback. Permissions 0–4, protected files, shared writes with independent
 positions, and FlushVol name/reference forms now pass Mac/native checks.
 Named Create/Delete and Finder-info calls now pass Mac/native fixtures, with
-checksummed metadata companions and durable close. Installed-file metadata
-and async variants remain. Data and resource forks now use independent streams;
+checksummed metadata companions and durable close. Installed-file metadata now comes from validated original archive fields;
+indexed queries and async variants remain. Data and resource forks now use independent streams;
 companion creation/reload/deletion and application resource preservation pass
 Mac/native/host checks.
 Final startup requirements acceptance awaits the file/resource services.

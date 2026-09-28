@@ -43,9 +43,8 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.1b2c9c Remaining File Manager metadata and variants.**
-  - Import installed-file Finder metadata from original inputs; GetFInfo for
-    unknown records remains loud. Complete indexed file-info forms, HGetVolParms,
+- **M2.1b2c9c2 Remaining File Manager variants.**
+  - Complete indexed file-info forms, HGetVolParms,
     FSDispatch PBHOpenDF and async variants from the census/reference contract.
   - Finish application-directory missing-path resolution without hiding native
     files outside its deliberately partial catalog. Unknown paths, names,

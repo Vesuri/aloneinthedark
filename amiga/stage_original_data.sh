@@ -18,7 +18,12 @@ stage_aitd_original_data()
     echo "Alone Data folder not found: $AITD_DATA_DIR" >&2
     return 1
   }
+  [ -f "$AITD_APP_RSRC.finfo" ] || {
+    echo "Original Finder metadata missing; rerun tools/extract_original_data.py" >&2
+    return 1
+  }
   cp -f "$AITD_APP_RSRC" "$destination/Alone In The Dark"
+  cp -f "$AITD_APP_RSRC.finfo" "$destination/Alone In The Dark.finfo"
   rm -rf "$destination/Alone Data"
   cp -R "$AITD_DATA_DIR" "$destination/Alone Data"
 }

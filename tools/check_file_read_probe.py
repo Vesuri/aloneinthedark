@@ -36,7 +36,7 @@ if a.prepare:
 else:
     log=(root/'amiga/.run/gdb-out.log').read_text()
     marker='PASS file-read: Line-A open/read/seek/EOF/position/close bytes=exact CCR=checked windows=10 DOS-reads=6 max=65536 cleanup=1 GetVol=WD/root/null-name FCB=index/exact/errors HVol=directory/state/errors WD=query/close/filter'
-    if a.write:marker='PASS file-write: Line-A/backend bytes=exact windows=263 writes=23 max=65536 flushes=17 EOF=17/3 cleanup=2 sharing=coherent permissions=0-4/locked volume=name/ref catalog=metadata/durable forks=independent'
+    if a.write:marker='PASS file-write: Line-A/backend bytes=exact windows=268 writes=23 max=65536 flushes=17 EOF=17/3 cleanup=2 sharing=coherent permissions=0-4/locked volume=name/ref catalog=metadata/durable forks=independent installed=original'
     if a.status or re.search(r'FAIL|Error in sourced command file|Program received signal',log) or log.count(marker)!=1:
         raise SystemExit('FAIL file-read: missing completion or runner/observer failure')
     if a.write and (drive/'write-probe.bin').read_bytes()!=bytes((i*37+(i>>8))&255 for i in range(17)):
