@@ -24,8 +24,9 @@ ending at the original main entry before initialization. All 58 census low-memor
 now use private shadows. The 3 MB application heap and separate system heap
 serve memory and resource handles. System identity and all eleven derived
 capability flags match the Mac reference. The user-mode service bridge passes
-its native ABI probe. OS windows and file backends are next (M1.7b);
-final startup-requirements acceptance awaits the file/resource services.
+its native ABI probe. OS windows and DOS/resload adapters pass the native/host
+core probes; rendered-picture acceptance remains open (M1.7b2). Final startup
+requirements acceptance awaits the file/resource services.
 
 ## Requirements (provisional)
 

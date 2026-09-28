@@ -481,3 +481,63 @@ This is independently verified bridge work, not OS-window acceptance. The
 machine is still taken over during services. M1.7b retains the full 1 MB/64 KB
 file-read, checksum, picture, timing and OS-handback acceptance on the 68020.
 No disk-read or display-continuity success is inferred from this ABI probe.
+
+
+## System-window core (M1.7b1)
+
+`make regression` runs `window-core` followed by a clean production `boot`.
+The window case generates its 1 MiB fixture in ignored staging, clean-builds
+`WINDOWPROBE=1 PROBES=1`, runs a bounded observer, and checks all three 98,304-byte
+bitplane snapshots against the generated pattern. A stale file, missing PASS,
+nonzero runner status, late display publication or wrong saved-file bytes fails.
+The snapshot SHA-256 is
+`0482278141cfa90510f767999d9e6b5a21c72429ad8d315b68f224fe1c9b81ba`.
+These are chip-memory snapshots, **not captures of rendered video**; M1.7b2
+retains actual-picture acceptance before any File Manager work begins.
+
+The window restores the OS Line-A and keyboard vectors, adds a priority-127
+port VERTB server to the saved OS chain, restores OS interrupt enables while
+retaining the port's enables, and permits scheduling. The operation runs in
+the user-service task. On return it forbids scheduling, flushes stale keyboard
+state while interrupts still run, then briefly masks interrupts to retake the
+vectors. Copper/display DMA and Paula vectors are never deliberately replaced.
+The existing 50-field/60-tick VBI clock continues through OS windows; the probe
+checks the exact field/tick ratio and the private Ticks shadow.
+
+The diagnostic sends a silent 1 KiB chip-memory loop through Paula AUD0 and
+counts actual completion interrupts both inside and outside windows. Every one
+of the sixteen primary reads must include an audio interrupt. Extra DOS checks
+cover missing files, short reads, EOF, a 32-byte save and byte-exact native/host
+readback, plus oversized requests rejected without entering a window. The
+primary read checksum is FNV-1a `$59BC1DC5`. No original instruction is patched.
+
+The first expanded test exposed a late display update (line 72) when the
+128-key flush ran with interrupts disabled. Keeping that loop under the OS
+keyboard vector with interrupts enabled removed the measured failure; the
+maintained observer now rejects any late update. Window costs include this
+flush and scheduler work; the beam epoch uses 256 units per raster line, with
+313 PAL lines per field. These are functional-boundary measurements, not an
+optimisation profile or a claim about real-time host speed.
+
+`FileAccess::dos` opens/seeks/reads/closes each bounded request inside a window.
+`FileAccess::whdload` uses a bound resload table, GetFileSize plus IOERR to
+separate an empty file from a missing one, LoadFileOffset, and SaveFile.
+Neither backend accepts a transfer above 64 KiB; whole-file saves above that
+limit fail explicitly until persistent durable writes (M3.6). An unbound
+resload backend returns unavailable. M7.2 must bind the real slave table and
+run actual WHDLoad integration tests; this checkpoint makes no claim of an
+actual WHDLoad launch. Host sanitizer fixtures exercise adapter outcomes;
+a native fixture checks D0/D1/A0/A1 marshalling and preservation of all eleven
+C callee-saved registers while the fake entry deliberately clobbers them.
+
+Final core regression: zero late publications, maximum line 4; the primary
+reads span 400 fields and 480 ticks. There are 230 Paula interrupts overall,
+37 inside windows, and positive audio observations in all 19 successful read
+windows (16 primary plus short/EOF/readback). All 21 OS windows together cost
+16,059 beam-epoch units entering and 591,506 leaving: about 2.99 and 110.03
+raster-line equivalents per window, respectively. Exit includes the interruptible
+keyboard flush; it is not 110 lines with interrupts masked. Host checks and
+clean production boot pass. The next real game stop remains GetWDInfo.
+Original startup also passes at A5 `$00787228`, STRS `$004442B0`: zero
+mismatches across 75,616 bytes, with the paired heap check reporting zero
+unaccounted bytes (Mac 2,821,316; native 3,096,720 free).

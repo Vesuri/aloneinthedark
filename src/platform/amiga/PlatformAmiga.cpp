@@ -25,6 +25,7 @@
 #include "framework/CopperList.h"
 #include "PlatformAmiga.h"
 #include "MacInput.h"
+#include "SystemWindow.h"
 #include "AitdScreen.h"
 #include "PerfProbe.h"
 #include "mac/MacLoader.h"
@@ -142,6 +143,15 @@ static bool     s_vertbTaken  = false;
 static uint16_t s_savedDmacon = 0;
 static uint16_t s_savedIntena = 0;
 static uint16_t s_macTickRemainder = 0;
+static struct Interrupt s_windowVbi;
+extern "C" {
+volatile uint32_t g_systemWindows=0, g_windowFields=0;
+volatile uint16_t g_systemWindowActive=0;
+#ifdef AITD_WINDOW_PROBE
+volatile uint32_t g_windowEnterTicks=0,g_windowExitTicks=0;
+#endif
+}
+
 
 // exec puts IntVects[] at ExecBase+84, so VERTB (bit 5) is ExecBase+144 -- exactly the
 // offset Kickstart's level-3 autovector stub dispatches through.  If this stops compiling,
@@ -159,6 +169,7 @@ static uint32_t vbiHandler()
     // bracket around this increment appears one whole field long even when the
     // handler used only a few scanlines.
     g_vbiCount++;
+    if(g_systemWindowActive)++g_windowFields;
 #ifdef AITD_PROBE
     AitdProfileScope profileVBI(kProfileVBI);
 #endif
@@ -182,6 +193,57 @@ static uint32_t vbiHandler()
 
     aitdProfileOnVBI();
     return 0;
+}
+
+// Keep the port's display/time update in the OS server chain during DOS work.
+// The OS owns all other restored vectors; Paula vectors and DMA are untouched.
+int32_t aitdSystemWindow(int32_t (*operation)(void*),void* context)
+{
+    if(!operation || !s_vertbTaken || g_systemWindowActive
+        || SysBase->TDNestCnt!=0 || SysBase->IDNestCnt!=-1)return -50;
+#ifdef AITD_WINDOW_PROBE
+    uint32_t begin=aitdProfileBeamEpoch();
+#endif
+    Disable();
+    if(!aitdMacSuspendLineA()) { Enable();return -50; }
+    uint16_t portMask=AmigaHardware::enabledInterrupts();
+    struct IntVector portVertb=SysBase->IntVects[INTB_VERTB];
+    aitdInputSuspend();
+    SysBase->IntVects[INTB_VERTB]=s_savedVertb;
+    s_windowVbi.is_Node.ln_Type=NT_INTERRUPT;
+    s_windowVbi.is_Node.ln_Pri=127;
+    s_windowVbi.is_Node.ln_Name=(char*)"Alone window VBI";
+    s_windowVbi.is_Data=0;
+    s_windowVbi.is_Code=(void(*)())vbiHandler;
+    AddIntServer(INTB_VERTB,&s_windowVbi);
+    g_systemWindowActive=1;
+    *intenaPointer=0x7fff;
+    *intenaPointer=(uint16_t)(INTF_SETCLR|INTF_INTEN|s_savedIntena|portMask);
+    Enable();
+    Permit();
+#ifdef AITD_WINDOW_PROBE
+    g_windowEnterTicks+=aitdProfileBeamEpoch()-begin;
+#endif
+    int32_t result=operation(context);
+#ifdef AITD_WINDOW_PROBE
+    begin=aitdProfileBeamEpoch();
+#endif
+    Forbid();
+    aitdInputFlush();
+    Disable();
+    RemIntServer(INTB_VERTB,&s_windowVbi);
+    SysBase->IntVects[INTB_VERTB]=portVertb;
+    aitdInputResume();
+    aitdMacResumeLineA();
+    *intenaPointer=0x7fff;
+    *intenaPointer=(uint16_t)(INTF_SETCLR|INTF_INTEN|portMask);
+    g_systemWindowActive=0;
+    ++g_systemWindows;
+    Enable();
+#ifdef AITD_WINDOW_PROBE
+    g_windowExitTicks+=aitdProfileBeamEpoch()-begin;
+#endif
+    return result;
 }
 
 // ---------------------------------------------------------------------------
@@ -277,7 +339,20 @@ bool PlatformAmiga::run()
     // Start black.  No captured Macintosh framebuffer is embedded or displayed:
     // every non-black pixel seen from here on comes from the original Mac code
     // drawing into its emulated QuickDraw surface and our planar conversion of it.
+#ifdef AITD_WINDOW_PROBE
+    static uint8_t pattern[AitdScreen::kPictureBytes];
+    static const uint16_t colors[16]={0x000,0x00a,0x0a0,0x0aa,0xa00,0xa0a,0xa50,0xaaa,
+        0x555,0x55f,0x5f5,0x5ff,0xf55,0xf5f,0xff5,0xfff};
+    for(uint32_t y=0;y<AitdScreen::kHeight;++y)
+        for(uint32_t x=0;x<AitdScreen::kBytesPerRow;++x)
+            for(uint32_t plane=0;plane<4;++plane)
+                pattern[y*256+plane*64+x]=(((x/2+y/16)&15)&(1<<plane)) ? 255 : 0;
+    bool ok=screen.initialize(pattern,colors);
+    extern uint8_t* g_windowProbePicture;
+    g_windowProbePicture=screen.picture();
+#else
     bool ok = screen.initialize(0, 0);
+#endif
     g_screenReady   = ok ? 1 : 0;
     g_planeChecksum = ok ? screen.pictureChecksum() : 0;
 

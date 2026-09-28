@@ -112,3 +112,26 @@ void aitdInputInjectProbeKey(uint8_t rawKey, bool down)
     recordKey(rawKey, down);
     Enable();
 }
+
+
+void aitdInputSuspend()
+{
+    if(!s_ciaaBase)return;
+    RemICRVector(s_ciaaBase,CIAICRB_SP,&s_keyboardInterrupt);
+    if(s_savedVector)AddICRVector(s_ciaaBase,CIAICRB_SP,s_savedVector);
+}
+// Only call while the OS owns the keyboard vector: no port ISR can race
+// these stores, so display/audio interrupts need not be masked for the loop.
+void aitdInputFlush()
+{
+    for(uint16_t i=0;i<128;++i) {
+        s_keyDown[i]=0;aitdMacRawKeyChanged(i,false);
+    }
+    s_head=s_tail=0;
+}
+void aitdInputResume()
+{
+    if(!s_ciaaBase)return;
+    if(s_savedVector)RemICRVector(s_ciaaBase,CIAICRB_SP,s_savedVector);
+    AddICRVector(s_ciaaBase,CIAICRB_SP,&s_keyboardInterrupt);
+}

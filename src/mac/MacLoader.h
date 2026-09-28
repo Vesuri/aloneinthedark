@@ -30,5 +30,7 @@ extern "C" void aitdMacRawKeyChanged(uint8_t rawKey, bool down);
 // by GetNextEvent.  The Amiga VBI calls this after the time-critical bitplane
 // pointer update and before sprite 0 is built for the upcoming field.
 extern "C" void aitdMacMouseVBI();
+bool aitdMacSuspendLineA();
+void aitdMacResumeLineA();
 
 #endif

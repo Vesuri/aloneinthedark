@@ -63,6 +63,7 @@ mac-trap-map:
 	@python3 tools/mac_trap_map.py '$(RUNTIME_DATA)/Alone In The Dark'
 
 regression:
+	@./amiga/regression.sh window-core
 	@./amiga/regression.sh boot
 
 a5world-check:
@@ -72,6 +73,7 @@ lowmem-check:
 	@python3 tools/check_lowmem.py --resource "$(RUNTIME_DATA)/Alone In The Dark"
 
 host-tests:
+	@python3 tools/check_resload_access.py
 	@python3 tools/check_mac_heap.py
 	@python3 tools/check_lowmem.py --selftest
 	@python3 tools/a5world_check.py --selftest

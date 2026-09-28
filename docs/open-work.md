@@ -17,19 +17,22 @@ required.
 
 ## M1 Boot to main
 
-- **M1.7b System windows and file backends.**
-  - M1.7a completed the user-mode service bridge and native ABI probe. HFSDispatch
-    reaches that bridge, then stops at its pending File Manager implementation.
-  - A system window (design §4.1) hands the machine back to the OS for a bounded
-    operation, and takes it back afterwards.
-  - The display (our copper) and Paula keep running through the window; Ticks are
-    corrected; the keyboard state is flushed.
-  - A file-interface abstraction with a DOS backend (in a window) and a WHDLoad
-    backend (resload).
+- **M1.7b2 Rendered-picture acceptance for system windows.**
+  - M1.7b1 implements the OS window, DOS/resload adapters and `window-core`
+    regression. The 1 MB/64 KB reads, checksum, exact clock, Paula interrupts,
+    keyboard flush, file errors/save/readback, native resload ABI and bitplane
+    snapshots pass on 68020. This is not yet proof of stable rendered output.
+  - Capture actual FS-UAE video before, during and after a window; verify the
+    diagnostic pattern remains visible and unchanged. The current command-line
+    emulator is absent from computer-use app discovery; its GDB stub rejects
+    `monitor help` and `monitor sc`. Do not repeat those as untested guesses.
+  - If OS graphics changes the active copper/display state, instrument the
+    handback and fix it before accepting the snapshot. Keep display and Paula
+    interrupts running; no game-behaviour changes or performance work.
 
-  *Done when* a probe case reads a 1 MB file in 64 KB chunks through windows on
-  `a1200-020` with the picture stable (snapshot) and the bytes
-  correct (checksum), and the entry/exit cost per window is recorded.
+  *Done when* actual rendered snapshots are stable through the 1 MB/64 KB probe,
+  `window-core` and production `boot` pass, and the window entry/exit cost is
+  recorded with the full acceptance result. Then M1.7b is complete.
 
 ## M2 Startup to intro
 

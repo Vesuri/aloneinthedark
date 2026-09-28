@@ -102,6 +102,10 @@ volatile uint32_t g_identityProbeStage=0;
 void aitd_identity_probe();
 __attribute__((noinline)) void aitdIdentityProbeReturned() { __asm__ volatile("" ::: "memory"); }
 #endif
+#ifdef AITD_WINDOW_PROBE
+bool aitdWindowProbe();
+void aitd_window_probe();
+#endif
 volatile uint16_t g_macServiceActive=0;
 volatile uint32_t g_macServiceEntered=0, g_macServiceCompleted=0;
 #ifdef AITD_SERVICE_PROBE
@@ -4865,6 +4869,9 @@ struct UserService {
 static UserService s_userService;
 static bool isUserService(uint16_t trap)
 {
+#ifdef AITD_WINDOW_PROBE
+    if(trap==0xa1fc)return true;
+#endif
 #ifdef AITD_SERVICE_PROBE
     if((trap&0xfeff)==0xa0fc || trap==0xabfb)return true;
 #endif
@@ -4910,6 +4917,12 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         uint32_t routed = routePatchedTrap(trap, regs, frame, userStack);
         if (routed) return routed;
     }
+#ifdef AITD_WINDOW_PROBE
+    if(inUserService && trap==0xa1fc) {
+        if(!aitdWindowProbe()) { loaderStop("SYSTEM WINDOW PROBE",0);showLoaderStop(); }
+        regs[0]=0;return 1;
+    }
+#endif
     if(isUserService(trap) && !inUserService)
         return deferUserService(trap,builtin,frame,userStack);
 #ifdef AITD_SERVICE_PROBE
@@ -6014,6 +6027,13 @@ static void restoreLineAVector()
     Enable();
 }
 
+bool aitdMacSuspendLineA()
+{
+    if(!g_macLineAInstalled || !g_macServiceActive)return false;
+    restoreLineAVector();return true;
+}
+void aitdMacResumeLineA() { installLineAVector(); }
+
 bool MacLoader::run(AitdScreen* screen)
 {
     s_loudStopScreen = screen;
@@ -6077,6 +6097,11 @@ bool MacLoader::run(AitdScreen* screen)
     g_macRndSeedAddress = (volatile uint32_t*)(s_portLowMemory + kLowRndSeed);
     s_currentA5 = a5;
     Enable();
+#ifdef AITD_WINDOW_PROBE
+    installLineAVector();
+    aitd_call_mac_code((void*)aitd_window_probe,a5,g_macStackBase+65536);
+    restoreLineAVector();
+#endif
 
     g_stageBState = 1;
     uint8_t* firstJump = a5 + s_jumpTableOffset;

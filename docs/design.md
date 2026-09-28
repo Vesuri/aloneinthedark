@@ -167,7 +167,8 @@ subsystem with its design decision and the queue tasks that implement it.
     Nested ordinary traps are allowed; recursive services and unsupported
     exception frames stop explicitly. Pending VBL callbacks wait until the
     service is complete. HFSDispatch is routed through the bridge; its file
-    operations remain M2.1, and OS handback is M1.7b.
+    operations remain M2.1. OS handback is implemented (M1.7b1); actual rendered
+    picture acceptance remains M1.7b2.
   - **Measure it.** The window's entry/exit cost and the display and audio
     continuity across a window must be measured (probe counters and a
     snapshot), not assumed.
@@ -639,6 +640,9 @@ clean build with its flags, a warp-mode bounded run, a required PASS regex, and
 no loud stop. The cases are added as their milestone lands:
 - `boot`: reaches main, then ends the observer before main executes. The harness
   was introduced in M0; positive acceptance passes on `a1200-020` (M1.3a).
+- `window-core`: 1 MB chunk reads, DOS errors/save, clock, Paula interrupts,
+  keyboard flush, resload ABI and bitplane snapshots. Rendered-picture acceptance
+  remains a separate M1.7b2 requirement.
 - `intro`: logo and intro complete.
 - `newgame`: first room playable.
 - `saveload`: save, reload, same state.
