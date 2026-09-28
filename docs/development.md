@@ -579,3 +579,20 @@ Core+$4144 instruction selects **GetFCBInfo**, not GetWDInfo; the runtime label
 is corrected. The native request's reference 0 exposes the inherited internal
 Resource Manager index and must be replaced with an open-fork identity in M2.1b.
 No File Manager service is claimed implemented by this diagnostic change.
+
+
+## Catalog and application-fork identity (M2.1b1)
+
+Production `GDBSCRIPT=file_catalog.gdb EXTRA_ARGS=--warp_mode=1 ./diag_run.sh 60`
+checks the original GetFCBInfo/OpenWD calls and stops positively at SetVol,
+Core+$4066. It requires the 39-entry catalog, 32 data files totaling 5,315,994
+bytes, correct application fork/name and the WD reference consumed by SetVol.
+See [file-manager.md](file-manager.md) for the Mac comparison and limits.
+`make host-tests` includes sanitizer tests of paths, refs and exhaustion.
+`original_startup.gdb`, `identity.gdb` and `runtime_status.gdb` retain their
+checks at the new stop; two user services complete, with zero OS windows.
+A5 and heap comparisons remain exact. Rendered-picture acceptance is still
+owner-deferred; this checkpoint does not imply file-read or video acceptance.
+
+Clean 68020 `make regression` passes both `window-core` (including exact
+bitplane snapshots) and production `boot`. Host tests and link audits pass.

@@ -1,0 +1,36 @@
+#ifndef AITD_MAC_FILES_H
+#define AITD_MAC_FILES_H
+// Portable metadata/open-fork model. File payloads and host allocation are external.
+class MacFiles {
+public:
+    enum { maxEntries=128, maxOpen=16, maxWD=16, noErr=0, fnfErr=-43,
+        paramErr=-50, rfNumErr=-51, nsvErr=-35, dirNFErr=-120, unsupported=-32760 };
+    struct Entry {
+        uint32_t id,parent,dataSize,resourceSize;
+        bool directory;
+        char name[32];
+        char path[160];
+    };
+    struct Fork { int16_t ref; uint32_t id,position; bool resource,writable; };
+    void reset();
+    int32_t add(uint32_t parent,const char* name,const char* path,bool directory,
+                uint32_t dataSize=0,uint32_t resourceSize=0);
+    const Entry* entry(uint32_t id) const;
+    const Entry* child(uint32_t parent,const char* name) const;
+    int16_t resolve(int16_t volume,uint32_t directory,const char* path,uint32_t& id) const;
+    int16_t open(uint32_t id,bool resource,bool writable);
+    const Fork* fork(int16_t ref) const;
+    int16_t close(int16_t ref);
+    int16_t openWD(uint32_t directory,uint32_t process,bool* created=0);
+    int16_t closeWD(int16_t ref);
+    int16_t directoryFor(int16_t ref,uint32_t& directory) const;
+    uint32_t wdProcess(int16_t ref) const;
+    uint16_t count() const { return count_; }
+    uint32_t application=0,system=0,preferences=0,saves=0,data=0;
+    static const int16_t volumeRef=-1;
+private:
+    struct WD { int16_t ref; uint32_t directory,process; };
+    Entry entries_[maxEntries]; Fork forks_[maxOpen]; WD wd_[maxWD];
+    uint16_t count_=0;
+};
+#endif

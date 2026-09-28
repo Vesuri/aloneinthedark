@@ -2,9 +2,11 @@
 #define AITD_MAC_LOADER_H
 
 class AitdScreen;
+class MacFiles;
 
 class MacLoader {
 public:
+    MacFiles& files();
     // Validate and index the original raw Macintosh resource fork(s) while
     // AmigaDOS and normal process memory are still available. The application
     // CODE 1 is copied to aligned storage; later CODE handles are created on demand.

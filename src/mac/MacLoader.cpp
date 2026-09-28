@@ -5,6 +5,7 @@
 #include "MacLoader.h"
 #include "LowMemory.h"
 #include "MacHeap.h"
+#include "MacFiles.h"
 #include "ResourceForks.h"
 #include "platform/amiga/AitdScreen.h"
 #include "platform/amiga/MacInput.h"
@@ -157,6 +158,10 @@ static uint32_t s_a5WorldBytes;
 static uint32_t s_jumpTableOffset;
 static AitdScreen* s_loudStopScreen;
 static ResourceForks s_resourceForks;
+static MacFiles s_files;
+static int16_t s_resourceFileRefs[ResourceForks::kForkCount];
+MacFiles& MacLoader::files() { return s_files; }
+extern "C" { volatile int16_t g_applicationFileRef=0; }
 static MacHeap::Handle s_resourceHandles[ResourceForks::kMaximumResources];
 static int16_t s_resourceError;
 static uint8_t s_quickDrawScreen[(512 / 8) * 320];
@@ -616,7 +621,7 @@ static const TrapName s_trapNames[] = {
     {0xa198,"OS","HWPRIV"}, {0xa9c9,"OS","SYSERROR"},
     {0xa069,"MEMORY MANAGER","HGETSTATE"},
     {0xa322,"MEMORY MANAGER","NEWHANDLECLEAR"},
-    {0xa001,"FILE MANAGER","CLOSE"},
+    {0xa001,"FILE MANAGER","CLOSE"}, {0xa015,"FILE MANAGER","SETVOL"},
     {0xa007,"FILE MANAGER","GETVOLINFO"}, {0xa861,"QUICKDRAW","RANDOM"},
     {0xa02e,"MEMORY MANAGER","BLOCKMOVE"}, {0xa9f1,"SEGMENT MANAGER","UNLOADSEG"},
     {0xa86e,"QUICKDRAW","INITGRAF"},
@@ -749,6 +754,7 @@ static bool buildA5World(uint8_t*& a5)
     write32(s_portLowMemory + kLowCurStackBase, (uint32_t)s_a5WorldStorage);
     write32(s_portLowMemory+80,(uint32_t)s_applicationLimit);
     write16(s_portLowMemory+100,(uint16_t)s_memoryError);
+    write16(s_portLowMemory+132,g_applicationFileRef); // CurApRefNum ($0900), Engine+$4092
     write16(s_portLowMemory+84,0x0755); // M1.6 System 7.5.5 reference
     s_jumpTableOffset = jumpOffset;
 
@@ -4877,6 +4883,52 @@ static bool isUserService(uint16_t trap)
 #endif
     return (trap&0xf8ff)==0xa060; // HFSDispatch; File Manager body follows in M2.1.
 }
+// Metadata-only File Manager selectors. Unsupported layouts fall through to
+// the named trap stop; no OS call is made inside this helper.
+static bool dispatchFileMetadata(uint16_t trap,uint32_t* regs)
+{
+    if((trap&0xf8ff)!=0xa060 || (trap&0x0400))return false;
+    uint8_t* pb=(uint8_t*)regs[8];
+    if(!pb)return false;
+    uint16_t selector=(uint16_t)regs[0];
+    int16_t error=MacFiles::unsupported;
+    if(selector==8) { // PBGetFCBInfo: exact reference lookup, index enumeration pending.
+        if(read16(pb+28)!=0)return false;
+        const MacFiles::Fork* fork=s_files.fork((int16_t)read16(pb+24));
+        if(!fork)error=MacFiles::rfNumErr;
+        else {
+            const MacFiles::Entry* file=s_files.entry(fork->id);
+            uint8_t* name=(uint8_t*)read32(pb+18);
+            if(name) {
+                uint8_t n=0;while(file->name[n]) { name[n+1]=file->name[n];++n; }name[0]=n;
+            }
+            uint32_t length=fork->resource ? file->resourceSize : file->dataSize;
+            write32(pb+32,file->id);
+            write16(pb+36,(fork->resource ? 0x0200 : 0)|(fork->writable ? 0x0100 : 0));
+            write16(pb+38,0); // Virtual files have no HFS allocation blocks.
+            write32(pb+40,length);write32(pb+44,length);
+            write32(pb+48,fork->position);write16(pb+52,MacFiles::volumeRef);
+            write32(pb+54,0);write32(pb+58,file->parent);
+            error=0;
+        }
+    } else if(selector==1) { // PBOpenWD
+        char path[256];uint8_t* name=(uint8_t*)read32(pb+18);
+        uint16_t length=name ? name[0] : 0;
+        for(uint16_t i=0;i<length;++i)path[i]=name[i+1];path[length]=0;
+        uint32_t directory=0;
+        error=s_files.resolve((int16_t)read16(pb+22),read32(pb+48),path,directory);
+        if(!error) {
+            bool created=false;
+            int16_t ref=s_files.openWD(directory,read32(pb+28),&created);
+            uint32_t check=0;
+            if(s_files.directoryFor(ref,check) || check!=directory)return false;
+            write16(pb+22,ref);write16(pb+24,created ? 1 : 0);error=0;
+        }
+    }
+    if(error==MacFiles::unsupported)return false;
+    write16(pb+16,(uint16_t)error);regs[0]=(uint32_t)(int32_t)error;return true;
+}
+
 static uint32_t deferUserService(uint16_t trap,bool builtin,uint8_t* frame,uint8_t* arguments)
 {
     if(g_macServiceActive) {
@@ -4938,6 +4990,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     }
 #endif
     if(!(trap&0x0800) && dispatchMemoryTrap(trap,regs))return 1;
+    if(inUserService && dispatchFileMetadata(trap,regs))return 1;
     if(trap==0xa9af) { write16(userStack,read16(s_portLowMemory+140));return 1; }
     if(trap==0xa992) {
         MacHeap::Handle handle=(MacHeap::Handle)read32(userStack);
@@ -5270,12 +5323,14 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     }
 
     if (trap == 0xa994) {                    // CurResFile() -> refNum
-        write16(userStack, s_currentResourceFork);
+        write16(userStack, s_resourceFileRefs[s_currentResourceFork]);
         if (g_stageCDepth < 21) g_stageCDepth = 21;
         return 1;
     }
     if (trap == 0xa998) {                    // UseResFile(refNum)
-        uint16_t fork = read16(userStack);
+        int16_t ref=(int16_t)read16(userStack);
+        uint16_t fork=0;
+        while(fork<s_resourceForks.forkCount() && s_resourceFileRefs[fork]!=ref)++fork;
         if (fork < s_resourceForks.forkCount()) {
             s_currentResourceFork = fork;
             resourceResult(0);
@@ -5840,6 +5895,8 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     if (trap == 0xa1ad) g_trapSelector = (int32_t)regs[0];
     if (trap == 0xa260) {
         g_trapSelector=(uint16_t)regs[0];
+        if(g_trapSelector==1)routine="OPENWD";
+        if(g_trapSelector==2)routine="CLOSEWD";
         if(g_trapSelector==7)routine="GETWDINFO";
         if(g_trapSelector==8)routine="GETFCBINFO";
     }
@@ -5941,6 +5998,17 @@ bool MacLoader::prepareResourceForks(uint8_t* application, uint32_t applicationS
         s_resourceForks.close();clearResidentSegments();releaseZones();return false;
     }
     s_currentResourceFork = 0;
+    const MacFiles::Entry* app=s_files.child(s_files.application,"Alone In The Dark");
+    if(!app || s_resourceForks.forkCount()!=1) {
+        s_preparationError="CATALOG / APPLICATION FORK";
+        s_resourceForks.close();clearResidentSegments();releaseZones();return false;
+    }
+    s_resourceFileRefs[0]=s_files.open(app->id,true,true);
+    if(s_resourceFileRefs[0]<0) {
+        s_preparationError="FILE TABLE / APPLICATION FORK";
+        s_resourceForks.close();clearResidentSegments();releaseZones();return false;
+    }
+    g_applicationFileRef=s_resourceFileRefs[0];
     g_resourceCount = s_resourceForks.resourceCount();
     return true;
 }
@@ -5979,6 +6047,7 @@ extern "C" __attribute__((noinline)) void aitdRuntimeAllocationsReleased()
 
 void MacLoader::releaseResourceForks()
 {
+    s_files.reset();g_applicationFileRef=0;
     releaseRuntimeAllocations();
 #ifdef AITD_PROBE
     aitdRuntimeAllocationsReleased();

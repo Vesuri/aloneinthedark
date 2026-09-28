@@ -1,8 +1,8 @@
 # File Manager reference contract
 
 M2.1a adds full 80-byte parameter blocks to the existing byte-checked MAME
-logger and corrects the initial diagnostic. The File Manager implementation
-is still M2.1b; none of these observations is a fabricated runtime response.
+logger and corrects the initial diagnostic. M2.1b1 implements the catalog/identity subset below; the remaining File Manager
+services and read acceptance are M2.1b2.
 
 ## First call: application file control block
 
@@ -37,12 +37,14 @@ of `:Alone Data:` succeeds with working-directory reference $8063; the optional
 `:Alone Movies:` lookup returns fnfErr (-43). Preserve ordinary missing-file
 errors for known optional paths; unknown/unimplemented path handling stays loud.
 
-The native observer captures the same caller's request with **ioRefNum=0,
-ioFCBIndx=0**. `CurResFile` currently exposes `s_currentResourceFork`, an internal
-array index. M2.1b must assign an actual pre-opened application-fork identity
-and make Resource Manager references consistent with that File Manager table.
-Returning fixed folder numbers at the current stop would hide this mismatch.
-The resource data can remain buffered until M2.2 changes its loading policy.
+The pre-implementation native observer captured the same caller's request with **ioRefNum=0,
+ioFCBIndx=0**. Engine+$4092 (`3178 0900 0072`) reads CurApRefNum ($0900)
+into its object, then Engine+$40B2 copies that value to the FCB request. The
+existing byte-checked low-memory rewrite already redirects it to shadow offset
+132. CurResFile separately supplies the object's next field. M2.1b1 initializes
+both from one real open-fork reference; merely changing CurResFile left the
+request at zero and correctly produced rfNumErr (-51) in the first probe.
+No new game instruction patch is needed.
 
 ## Reproducible evidence
 
@@ -77,3 +79,50 @@ reports the corrected `FILE MANAGER / GETFCBINFO`, Core+$4144 stop. A5 $00787240
 and STRS $004442C8 give zero mismatches in 75,616 bytes. Heap accounting retains
 zero unexplained bytes. This is a diagnostic/reference checkpoint, not progress
 past the File Manager stop or a successful game launch.
+
+## Implemented catalog checkpoint (M2.1b1)
+
+The independent catalog/identity portion of M2.1b is complete. `MacFiles` models
+128 catalog entries, 16 open forks and 16 working directories. ASCII names are
+case-insensitive; unsupported names, unknown application paths, nested native
+directories, `.rsrc` companions and capacity exhaustion stop explicitly. The
+measured optional `Alone Movies` lookup and absent files inside known directories
+return fnfErr. Finder information and resource companions remain M2.1b2.
+
+The native builder enumerates names and sizes with Lock/Examine/ExNext before
+takeover, without Read. The original data directory contains 32 files totaling
+5,315,994 bytes; the complete virtual catalog has 39 entries. Application,
+System, Preferences, saves and data directories have distinct IDs. Missing
+optional save/prefs directories are represented as empty; other DOS errors fail
+startup. The application still uses its existing whole-fork buffer until M2.2.
+
+The application resource fork is ref 128, catalog ID 8, parent 3. CurApRefNum,
+CurResFile and UseResFile share its identity. GetFCBInfo returns the exact
+1,424,934-byte length, name, resource/writable flags $0300 and volume -1.
+Virtual physical length equals logical length; allocation block/clump and
+position are zero because this buffered resource implementation has performed
+no file-table seeks. Those fields differ from HFS allocation and Resource
+Manager disk-read position on the Mac; the original caller uses parent/volume.
+Resource writes remain unsupported; $0100 describes the writable application
+fork, not a claim that write traps are implemented.
+
+The first original OpenWD has null name, vRefNum **0**, process 0, and the
+application parent ID. The Mac returns its already-open WD ($8043, created=0);
+the native table creates -32000 (created=1), preserving the input directory ID.
+The original passes that returned reference directly to SetVol, which remains
+`FILE MANAGER / SETVOL`, Core+$4066. No original data PAK has been read yet.
+
+`file_catalog.gdb` checks original caller bytes and both real returns, including
+the full Pascal application name and the subsequent SetVol argument. It requires
+one FCB and one OpenWD result, two completed user services and zero runtime OS
+windows. Unsupported selectors, indexed FCB requests and async operations remain
+stops. Host ASan/UBSan tests cover paths, errors, separate fork identities, WD
+reuse/close and atomic capacity limits through `make host-tests`.
+
+The startup observer and all identity checks pass. A5 $0078F1B0 and STRS
+$0044C238 match all 75,616 globals; paired heap accounting has zero unexplained
+bytes (Mac 2,821,316 free; native 3,096,720). This is progress past the old stop,
+not completion of M2.1's original PAK read/checksum acceptance.
+
+Clean 68020 `make regression` passes both `window-core` (including exact
+bitplane snapshots) and production `boot`. Host tests and link audits pass.

@@ -214,7 +214,7 @@ VASMFLAGS = -m68010 -Felf -quiet -x -no-opt -nowarn=62 $(EXTRA_VASMDEFS)
 # ⚠⚠ Every global a committed .gdb script reads MUST be listed here.  -Wl,--gc-sections drops
 # an unreferenced counter and gdb then resolves the name into .text and prints INSTRUCTION
 # BYTES as a value — a fake measurement, not an obvious zero.  `probe-audit` enforces it.
-PROBE_SYMS = g_vbiCount g_planeChecksum g_screenReady \
+PROBE_SYMS = g_catalogEntries g_catalogDataFiles g_catalogDataBytes g_applicationFileRef g_vbiCount g_planeChecksum g_screenReady \
              g_stageBState g_trapWord g_trapSelector g_trapSegment g_trapOffset \
              g_trapPC g_trapRegisters g_trapUserStack g_resourceCount g_jumpEntryCount \
              g_blockMoveCount g_trapManager g_trapRoutine

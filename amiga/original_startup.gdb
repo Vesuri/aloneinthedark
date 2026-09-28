@@ -5,15 +5,12 @@ set $startup_main=0
 break AitdScreen::showLoudStop
 commands
  silent
- if g_macServiceEntered != 1 || g_macServiceCompleted != 0 || g_macServiceActive != 1 || $startup_main != 1 || g_stageBState != 3 || g_trapWord != 0xa260 || g_trapSelector != 8 || g_trapSegment != 3 || g_trapOffset != 0x4144
+ if g_macServiceEntered != 2 || g_macServiceCompleted != 2 || g_macServiceActive != 0 || $startup_main != 1 || g_stageBState != 3 || g_trapWord != 0xa015 || g_trapSegment != 3 || g_trapOffset != 0x4066
   printf "startup FAIL: %s / %s CODE %u+$%04x\n",g_trapManager,g_trapRoutine,g_trapSegment,g_trapOffset
   detach
   quit 1
  end
- set $file_pb=(unsigned char*)g_trapRegisters[8]
- printf "startup file PB: ref=%d index=%d name=$%08x\n",*(short*)($file_pb+24),*(short*)($file_pb+28),*(unsigned long*)($file_pb+18)
- dump binary memory ../tmp/amiga-file-pb.bin $file_pb $file_pb+80
- printf "startup PASS: original main, next stop %s / %s CODE 3+$4144\n",g_trapManager,g_trapRoutine
+ printf "startup PASS: original main, next stop %s / %s CODE 3+$4066\n",g_trapManager,g_trapRoutine
  detach
  quit 0
 end

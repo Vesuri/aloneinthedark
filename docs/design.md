@@ -219,7 +219,8 @@ The original startup path is implemented (M1.1–M1.3):
 **Verified:** the host check `tools/a5world_check.py` passes: it runs
 CODE 1's expansion algorithm on the resource bytes and compares, byte for byte,
 with the A5 world the Amiga dumps (via gdb) when it enters `main`. The current
-loud stop is `GetFCBInfo` at Core+$4144 during `main` initialization.
+loud stop is `SetVol` at Core+$4066 during `main` initialization, after the
+original GetFCBInfo/OpenWD calls.
 
 ### 4.3 Low memory
 
@@ -297,6 +298,12 @@ Native trap probes, host fragmentation tests and paired heap captures verify it:
   sizes, types and directory structure of `Alone Data/`, `Alone Saved Games/`
   and the prefs file. This gives an HFS-like view with directory IDs, names,
   both forks (`.rsrc` companions or the port's fork storage) and Finder info.
+- **Current catalog core (M2.1b1).** Metadata enumeration uses only
+  Lock/Examine/ExNext before takeover. Directory IDs, working-directory references
+  and open-fork references are distinct. The application resource fork has a
+  file-table reference shared by CurApRefNum and CurResFile/UseResFile. Original
+  GetFCBInfo and OpenWD pass; SetVol is the next stop. Finder metadata, companion
+  forks and remaining selectors are explicitly pending M2.1b2, not fabricated.
 - **File Manager calls (task M2.1).** Implement the ones the census lists over
   that catalog:
   - open, read and write: `_Open`, `_Read`, `_Write`, `_Close`;

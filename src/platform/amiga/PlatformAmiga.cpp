@@ -26,6 +26,7 @@
 #include "PlatformAmiga.h"
 #include "MacInput.h"
 #include "SystemWindow.h"
+#include "FileCatalog.h"
 #include "AitdScreen.h"
 #include "PerfProbe.h"
 #include "mac/MacLoader.h"
@@ -33,6 +34,7 @@
 extern struct GfxBase* GfxBase;         // opened below; the global lives in GCCRuntime.cpp
 
 struct OriginalResourceFiles {
+    const char* applicationPath;
     uint8_t* application;
     uint32_t applicationSize;
     uint8_t* data;
@@ -92,10 +94,10 @@ static bool loadOriginalResourceFiles(OriginalResourceFiles& files)
 {
     files.application = files.data = 0;
     files.applicationSize = files.dataSize = 0;
-    if (!readOriginalResourceFork("PROGDIR:data/Alone In The Dark",
-                                  files.application, files.applicationSize) &&
-        !readOriginalResourceFork("PROGDIR:Alone In The Dark",
-                                  files.application, files.applicationSize)) {
+    files.applicationPath="PROGDIR:data/Alone In The Dark";
+    if(!readOriginalResourceFork(files.applicationPath,files.application,files.applicationSize))
+        files.applicationPath="PROGDIR:Alone In The Dark";
+    if(!files.application && !readOriginalResourceFork(files.applicationPath,files.application,files.applicationSize)) {
         PutStr((CONST_STRPTR)
             "Alone: cannot read Alone In The Dark in PROGDIR:data/ or PROGDIR:\n");
         return false;
@@ -273,11 +275,12 @@ bool PlatformAmiga::run()
         DOSBase = 0;
         return false;
     }
-    if (!loader.prepareResourceForks(resourceFiles.application,
+    const char* catalogError=aitdBuildFileCatalog(loader.files(),resourceFiles.applicationPath,resourceFiles.applicationSize);
+    if (catalogError || !loader.prepareResourceForks(resourceFiles.application,
                                      resourceFiles.applicationSize,
                                      resourceFiles.data, resourceFiles.dataSize)) {
         PutStr((CONST_STRPTR)"Alone: ");
-        PutStr((CONST_STRPTR)loader.preparationError());
+        PutStr((CONST_STRPTR)(catalogError ? catalogError : loader.preparationError()));
         PutStr((CONST_STRPTR)"\n");
         releaseOriginalResourceFiles(resourceFiles);
         CloseLibrary((struct Library*)GfxBase);
