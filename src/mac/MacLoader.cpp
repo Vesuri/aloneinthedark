@@ -9,6 +9,7 @@
 #include "FileReadCache.h"
 #include "FileWriteBuffer.h"
 #include "platform/amiga/FileAccess.h"
+#include "platform/amiga/FileMetadataIO.h"
 #include "ResourceForks.h"
 #include "platform/amiga/AitdScreen.h"
 #include "platform/amiga/MacInput.h"
@@ -4906,6 +4907,86 @@ struct UserService {
 static UserService s_userService;
 static uint8_t* allocateFilePage(uint32_t size) { return (uint8_t*)AllocMem(size,MEMF_FAST); }
 static void releaseFilePage(uint8_t* bytes,uint32_t size) { FreeMem(bytes,size); }
+static int16_t flushDataSource(DataSource& source,FileAccess::ReadStream& stream,bool restored=false) {
+    bool changed=source.writes.dirty();
+    int16_t error=restored ? FileAccess::flushRestoredStream(stream,source.writes) : FileAccess::flushStream(stream,source.writes);
+    if(!error && changed)s_files.touchMetadata(source.id,FileAccess::metadataTime());
+    const MacFiles::Entry* entry=s_files.entry(source.id);
+    if(!error && entry->metadataDirty) {
+        error=FileAccess::storeMetadata(entry->path,entry->metadata,restored);
+        if(!error)s_files.metadataFlushed(entry->id);
+    }
+    return error;
+}
+static bool isFileCatalogService(uint16_t trap) {
+    return trap==0xa008 || trap==0xa208 || trap==0xa009 || trap==0xa209
+        || trap==0xa00c || trap==0xa20c || trap==0xa00d || trap==0xa20d;
+}
+static bool dispatchFileCatalog(uint16_t trap,uint32_t* regs) {
+    if(!isFileCatalogService(trap))return false;
+    uint8_t* pb=(uint8_t*)regs[8];if(!pb)return false;
+    uint8_t* name=(uint8_t*)read32(pb+18);if(!name)return false;
+    char path[256];for(uint16_t i=0;i<name[0];++i)path[i]=name[i+1];path[name[0]]=0;
+    uint16_t operation=trap&0xff;
+    uint32_t directory=(trap&0x200) ? read32(pb+48) : 0,id=0;
+    int16_t error=0;
+    if(operation==8) {
+        if(pb[27])return false; // Unmeasured legacy version-number form.
+        MacFiles::Entry plan;
+        error=s_files.planCreate((int16_t)read16(pb+22),directory,path,plan);
+        if(!error) {
+            FileMetadata::Record metadata;
+            error=FileAccess::createFile(plan.path,s_files.entry(plan.parent)->path,
+                plan.parent==s_files.preferences || plan.parent==s_files.saves,metadata);
+            if(!error) {
+                int32_t created=s_files.add(plan.parent,plan.name,plan.path,false);
+                if(created<0)return false; // Preflight made this impossible without reentry.
+                error=s_files.setMetadata(created,metadata);
+            }
+        }
+    } else {
+        if(operation==12 && (int16_t)read16(pb+28)>0)return false;
+        error=s_files.resolve((int16_t)read16(pb+22),directory,path,id);
+        const MacFiles::Entry* entry=error ? 0 : s_files.entry(id);
+        if(!error && operation==9) {
+            error=s_files.canRemove(id);
+            if(!error)error=FileAccess::deleteFile(entry->path);
+            if(!error)error=s_files.remove(id);
+        } else if(!error) {
+            if(entry->directory || (operation==12 && !entry->metadataKnown))return false;
+            bool locked=false;error=FileAccess::fileProtection(entry->path,locked);
+            if(!error && operation==13) {
+                {
+                    FileMetadata::Record metadata;
+                    for(uint16_t i=0;i<16;++i)metadata.finder[i]=pb[32+i];
+                    metadata.created=read32(pb+72);metadata.modified=read32(pb+76);
+                    error=FileAccess::storeMetadata(entry->path,metadata);
+                    if(!error)error=s_files.setMetadata(id,metadata);
+                }
+            } else if(!error) {
+                const MacFiles::Fork* first=0;uint8_t attributes=locked ? 1 : 0;
+                for(int16_t i=1;i<=MacFiles::maxOpen;++i) {
+                    const MacFiles::Fork* fork=0;
+                    if(s_files.queryFork(0,i,0,fork))break;
+                    if(fork->id==id) { if(!first)first=fork;attributes|=0x80|(fork->resource ? 4 : 8); }
+                }
+                write16(pb+24,first ? first->ref : 0);pb[30]=attributes;pb[31]=0;
+                // GCC 15.1 m68k combines the byte loop into MOVE.B (a0)+,(a0,d0),
+                // shifting its destination by one. Explicit fixed words avoid that form.
+                write32(pb+32,read32(entry->metadata.finder));
+                write32(pb+36,read32(entry->metadata.finder+4));
+                write32(pb+40,read32(entry->metadata.finder+8));
+                write32(pb+44,read32(entry->metadata.finder+12));
+                write32(pb+48,id);write16(pb+52,0);write32(pb+54,entry->dataSize);write32(pb+58,entry->dataSize);
+                write16(pb+62,0);write32(pb+64,entry->resourceSize);write32(pb+68,entry->resourceSize);
+                write32(pb+72,entry->metadata.created);write32(pb+76,entry->metadata.modified);
+                uint16_t n=0;while(entry->name[n]) { name[n+1]=entry->name[n];++n; }name[0]=n;
+            }
+        }
+    }
+    if(error==MacFiles::unsupported)return false;
+    write16(pb+16,error);regs[0]=(uint32_t)(int32_t)error;return true;
+}
 static bool isFileDataService(uint16_t trap) {
     return trap==0xa000 || trap==0xa200 || trap==0xa001 || trap==0xa002
         || trap==0xa011 || trap==0xa018 || trap==0xa044
@@ -4922,7 +5003,7 @@ static bool dispatchFileData(uint16_t trap,uint32_t* regs) {
         error=s_files.volume((int16_t)read16(pb+22),volume);
         if(!error)for(uint16_t i=0;i<MacFiles::maxOpen;++i)if(s_dataSources[i].id) {
             DataSource& source=s_dataSources[i];
-            int16_t flushed=FileAccess::flushStream(*source.backing,source.writes);
+            int16_t flushed=flushDataSource(source,*source.backing);
             if(!flushed)s_files.flushed(source.id);else if(!error)error=flushed;
         }
     } else if(trap==0xa000 || trap==0xa200) {
@@ -4993,7 +5074,7 @@ static bool dispatchFileData(uint16_t trap,uint32_t* regs) {
         if(!fork)error=MacFiles::rfNumErr;
         else if(!slot)return false; // Buffered application/resource fork is not a data stream.
         else if(trap==0xa001) {
-            error=slot->source && fork->writable && fork->modified ? FileAccess::flushStream(slot->stream,slot->source->writes) : 0;
+            error=slot->source && fork->writable && fork->modified ? flushDataSource(*slot->source,slot->stream) : 0;
             if(!error) {
                 DataSource* source=slot->source;
                 if(source) {
@@ -5011,7 +5092,9 @@ static bool dispatchFileData(uint16_t trap,uint32_t* regs) {
             if(!fork->writable)error=-61;
             else {
                 error=slot->source->writes.resize(read32(pb+28));
-                if(!error)error=s_files.setSize(ref,slot->source->writes.size(),true);
+                if(!error) {
+                    error=s_files.setSize(ref,slot->source->writes.size(),true);
+                }
             }
         } else if(trap==0xa003 && !fork->writable)error=-61;
         else if(trap==0xa011)write32(pb+28,s_files.entry(fork->id)->dataSize);
@@ -5057,7 +5140,7 @@ static bool isUserService(uint16_t trap)
 #ifdef AITD_SERVICE_PROBE
     if((trap&0xfeff)==0xa0fc || trap==0xabfb)return true;
 #endif
-    return (trap&0xf8ff)==0xa060 || trap==0xa014 || trap==0xa015 || trap==0xa214 || trap==0xa215 || isFileDataService(trap);
+    return (trap&0xf8ff)==0xa060 || trap==0xa014 || trap==0xa015 || trap==0xa214 || trap==0xa215 || isFileDataService(trap) || isFileCatalogService(trap);
 }
 // Metadata-only File Manager selectors. Unsupported layouts fall through to
 // the named trap stop; no OS call is made inside this helper.
@@ -5222,6 +5305,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     if(!(trap&0x0800) && dispatchMemoryTrap(trap,regs))return 1;
     if(inUserService && dispatchFileMetadata(trap,regs))return 1;
     if(inUserService && dispatchFileData(trap,regs))return 1;
+    if(inUserService && dispatchFileCatalog(trap,regs))return 1;
     if(trap==0xa823 && (uint16_t)regs[0]==0) { // FindFolder, catalogued Preferences.
         const uint16_t volume=read16(userStack+14);
         const uint32_t type=read32(userStack+10);
@@ -6295,7 +6379,7 @@ bool MacLoader::releaseResourceForks()
     // Platform has restored OS scheduling, vectors and display before this call.
     for(uint16_t i=0;i<MacFiles::maxOpen;++i)if(s_dataSources[i].id) {
         DataSource& source=s_dataSources[i];
-        if(FileAccess::flushRestoredStream(*source.backing,source.writes))closed=false;
+        if(flushDataSource(source,*source.backing,true))closed=false;
         source.writes.clear();source.id=0;source.backing=0;
     }
     for(uint16_t i=0;i<MacFiles::maxOpen;++i)if(s_dataForks[i].ref) {

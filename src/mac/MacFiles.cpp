@@ -14,28 +14,96 @@ static bool copy(char* out,const char* in,uint32_t capacity) {
     out[i]=0;return true;
 }
 void MacFiles::reset() {
-    count_=0;defaultRef_=0;defaultDirectory_=0;application=system=preferences=saves=data=0;
+    count_=used_=0;nextID_=2;defaultRef_=0;defaultDirectory_=0;application=system=preferences=saves=data=0;
     for(uint16_t i=0;i<maxOpen;++i)forks_[i].ref=0;
     for(uint16_t i=0;i<maxWD;++i)wd_[i].ref=0;
     add(1,"Alone","",true); // Virtual volume root has the HFS-reserved ID 2.
 }
 const MacFiles::Entry* MacFiles::entry(uint32_t id) const {
-    return id>=2 && id-2<count_ ? &entries_[id-2] : 0;
+    if(id<2)return 0;
+    for(uint16_t i=0;i<used_;++i)if(entries_[i].id==id)return &entries_[i];
+    return 0;
 }
 const MacFiles::Entry* MacFiles::child(uint32_t parent,const char* name) const {
-    for(uint16_t i=0;i<count_;++i)
-        if(entries_[i].parent==parent && equal(entries_[i].name,name))return &entries_[i];
+    for(uint16_t i=0;i<used_;++i)
+        if(entries_[i].id && entries_[i].parent==parent && equal(entries_[i].name,name))return &entries_[i];
     return 0;
 }
 int32_t MacFiles::add(uint32_t parent,const char* name,const char* path,bool directory,uint32_t ds,uint32_t rs) {
-    if(count_==maxEntries || !name || !*name)return unsupported;
+    if(count_==maxEntries || nextID_>0x7fffffffUL || !name || !*name)return unsupported;
     if(count_ && (!entry(parent) || !entry(parent)->directory || child(parent,name)))return paramErr;
     Entry candidate={};
     if(!copy(candidate.name,name,sizeof(candidate.name)) || !copy(candidate.path,path,sizeof(candidate.path)))return unsupported;
     for(const char* p=name;*p;++p)if(*p==':')return paramErr;
-    candidate.id=count_+2;candidate.parent=parent;candidate.directory=directory;
+    candidate.id=nextID_;candidate.parent=parent;candidate.directory=directory;
     candidate.dataSize=ds;candidate.resourceSize=rs;
-    entries_[count_++]=candidate;return candidate.id;
+    uint16_t slot=0;while(slot<used_ && entries_[slot].id)++slot;
+    entries_[slot]=candidate;if(slot==used_)++used_;++count_;++nextID_;return candidate.id;
+}
+int16_t MacFiles::planCreate(int16_t volume,uint32_t directory,const char* path,Entry& candidate) const {
+    if(!path)return unsupported; // Null ioNamePtr has not been measured for Create.
+    if(!*path) { uint32_t existing=0;int16_t error=resolve(volume,directory,0,existing);return error ? error : -48; }
+    const char* leaf=path;const char* last=0;
+    for(const char* p=path;*p;++p)if(*p==':')last=p;
+    uint32_t parent=0;
+    if(last) {
+        if(!last[1])return unsupported; // Directory-shaped Create needs reference evidence.
+        char prefix[256];uint16_t n=0;
+        for(const char* p=path;p<=last;++p) { if(n==255)return unsupported;prefix[n++]=*p; }
+        prefix[n]=0;bool full=*path!=':';
+        int16_t error=resolve(full ? volumeRef : volume,full ? 0 : directory,prefix,parent);
+        if(error)return error;
+        leaf=last+1;
+    } else {
+        int16_t error=resolve(volume,directory,0,parent);if(error)return error;
+    }
+    if(child(parent,leaf))return -48;
+    if(count_==maxEntries || nextID_>0x7fffffffUL)return unsupported;
+    Entry planned={};planned.parent=parent;
+    if(!copy(planned.name,leaf,sizeof(planned.name)))return unsupported;
+    // Mac slashes cannot pass through as native DOS path separators. Reserved
+    // companion suffixes need the explicit fork/metadata storage layer.
+    const char* suffix=0;
+    for(const char* p=leaf;*p;++p) {
+        if(*p=='/')return unsupported;
+        if(*p=='.') {
+            if(equal(p,".finfo.new") || equal(p,".finfo.old"))return unsupported;
+            suffix=p;
+        }
+    }
+    if(equal(leaf,".") || equal(leaf,"..") || (suffix && (equal(suffix,".rsrc") || equal(suffix,".finfo"))))return unsupported;
+    const char* folder=entry(parent)->path;if(!*folder)return unsupported;
+    uint16_t n=0;
+    while(*folder) { if(n==158)return unsupported;planned.path[n++]=*folder++; }
+    if(planned.path[n-1]!=':' && planned.path[n-1]!='/')planned.path[n++]='/';
+    for(const char* p=leaf;*p;++p) { if(n==159)return unsupported;planned.path[n++]=*p; }
+    planned.path[n]=0;candidate=planned;return noErr;
+}
+int16_t MacFiles::setMetadata(uint32_t id,const FileMetadata::Record& metadata,bool dirty) {
+    Entry* e=const_cast<Entry*>(entry(id));if(!e)return fnfErr;
+    if(e->directory)return unsupported;
+    e->metadata=metadata;e->metadataKnown=true;e->metadataDirty=dirty;return noErr;
+}
+void MacFiles::touchMetadata(uint32_t id,uint32_t date) {
+    Entry* e=const_cast<Entry*>(entry(id));if(e && e->metadataKnown) { e->metadata.modified=date;e->metadataDirty=true; }
+}
+void MacFiles::metadataFlushed(uint32_t id) {
+    Entry* e=const_cast<Entry*>(entry(id));if(e)e->metadataDirty=false;
+}
+int16_t MacFiles::canRemove(uint32_t id) const {
+    const Entry* e=entry(id);if(!e)return fnfErr;
+    for(uint16_t i=0;i<maxOpen;++i)if(forks_[i].ref && forks_[i].id==id)return -47;
+    if(e->directory) {
+        for(uint16_t i=0;i<used_;++i)if(entries_[i].id && entries_[i].parent==id)return -47;
+        for(uint16_t i=0;i<maxWD;++i)if(wd_[i].ref && wd_[i].directory==id)return -47;
+        return unsupported; // Virtual/native directory lifetime is not implemented.
+    }
+    if(e->resourceSize)return unsupported; // Both fork stores must be removed together.
+    return noErr;
+}
+int16_t MacFiles::remove(uint32_t id) {
+    int16_t error=canRemove(id);if(error)return error;
+    Entry* e=const_cast<Entry*>(entry(id));e->id=0;--count_;return noErr;
 }
 int16_t MacFiles::directoryFor(int16_t ref,uint32_t& directory) const {
     if(!ref) {

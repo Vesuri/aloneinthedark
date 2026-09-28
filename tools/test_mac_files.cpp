@@ -1,8 +1,42 @@
 #include <cassert>
 #include <cstdio>
 #include <cstring>
+#include <initializer_list>
 #include "../src/mac/MacFiles.h"
+static void catalogLifetime() {
+    MacFiles c;c.reset();c.application=c.add(2,"Game","PROGDIR:",true);
+    c.data=c.add(c.application,"Alone Data","PROGDIR:data",true);
+    MacFiles::Entry plan={};
+    assert(c.planCreate(0,0,":Alone Data:Save.ITD",plan)==0);
+    assert(plan.parent==c.data && !strcmp(plan.name,"Save.ITD") && !strcmp(plan.path,"PROGDIR:data/Save.ITD"));
+    uint16_t before=c.count();
+    auto id=c.add(plan.parent,plan.name,plan.path,false);
+    assert(id>0 && c.count()==before+1 && c.entry(id)->dataSize==0 && c.entry(id)->resourceSize==0);
+    assert(!c.entry(id)->metadataKnown);
+    FileMetadata::Record info={};info.created=0xabcd0102;info.modified=0xabcd0304;info.finder[0]='T';
+    assert(c.setMetadata(id,info)==0 && c.entry(id)->metadataKnown && c.entry(id)->metadata.modified==0xabcd0304);
+    assert(c.planCreate(0,c.data,"save.itd",plan)==-48);
+    auto ref=c.open(id,false,true);assert(ref>0 && c.remove(id)==-47 && c.entry(id));
+    assert(c.close(ref)==0 && c.remove(id)==0 && c.count()==before && !c.entry(id) && !c.child(c.data,"Save.ITD"));
+    assert(c.remove(id)==c.fnfErr && c.close(ref)==c.rfNumErr);
+    assert(c.planCreate(0x1234,0,"Alone:Game:Alone Data:Save.ITD",plan)==0);
+    auto replacement=c.add(plan.parent,plan.name,plan.path,false);
+    assert(replacement>id && !c.entry(id) && c.entry(replacement) && !c.entry(replacement)->metadataKnown);
+    assert(c.remove(c.application)==-47 && c.remove(c.data)==-47);
+    assert(c.remove(replacement)==0 && c.canRemove(c.data)==c.unsupported);
+    for(int i=0;i<300;++i) {
+        auto file=c.add(c.data,"cycled","PROGDIR:data/cycled",false);
+        assert(file>replacement && c.remove(file)==0 && !c.entry(file));replacement=file;
+    }
+    assert(c.count()==before);
+    for(const char* path:{"a/b",".","..","file.rsrc","file.finfo","file.finfo.new","file.FINFO.OLD",":Alone Data:"})
+        assert(c.planCreate(0,c.data,path,plan)==c.unsupported);
+    assert(c.planCreate(0,c.data,"",plan)==-48);
+    assert(c.planCreate(0x1234,0,"new",plan)==c.nsvErr);
+    assert(c.planCreate(0,0x1234,"new",plan)==c.dirNFErr);
+}
 int main() {
+    catalogLifetime();
     MacFiles c;c.reset();assert(c.count()==1 && c.entry(2)->parent==1);
     c.application=c.add(2,"Game","PROGDIR:",true);
     c.data=c.add(c.application,"Alone Data","data",true);

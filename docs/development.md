@@ -660,10 +660,11 @@ Open/HOpen, Write, SetEOF, GetEOF/GetFCBInfo, Read, FlushVol and Close calls aft
 the read/directory fixture. It requires FILEPROBE=1 and FILEWRITEPROBE=1.
 The case checks exact bytes, marks/EOF, CCR, the 25-pair permission matrix,
 protected-file defaults/errors, shared writes and close order, cached-reader
-coherence and volume-name/reference forms. It requires 172 runtime windows,
-17 DOS writes (65,536 maximum), 11 flushes including shutdown and an empty
+coherence and volume-name/reference forms. It requires 203 runtime windows,
+18 DOS writes (65,536 maximum), 12 flushes including shutdown and an empty
 stream ledger after cleanup. Host readback verifies 17 backend bytes, six
-shared-file bytes and three bytes left dirty until shutdown. Both fixtures are recreated in
+shared-file bytes, four data bytes plus Finder metadata, and three bytes left dirty
+until shutdown. Diagnostic files are recreated in
 ignored staging for each run. `make regression` includes this case.
 
 Run `tools/mac_file_mutations.lua` with the documented headless MAME command,
@@ -691,3 +692,29 @@ file through this stream backend. All files and FS-UAE `.uaem` metadata remain
 ignored staging inputs. A scratch FileInfoBlock on the word-aligned Mac stack
 was observed at alignment 2 and yielded shifted fields; runtime open metadata
 uses the catalog's AllocDosObject/FreeDosObject pattern instead.
+
+
+### Named catalog mutations and Finder metadata (M2.1b2c9b)
+
+`tools/mac_file_catalog_mutations.lua` uses the same headless CPU-only protocol.
+Check its 36 calls with `python3 tools/check_file_catalog.py LOG --status STATUS`;
+the process must exit normally. The sole created/deleted file is `AITD Port
+Catalog Probe`. This measures Create/HCreate, Delete/HDelete, named Get/SetFInfo
+and hierarchical variants, duplicate/busy/locked/missing errors, fresh file IDs,
+Finder bytes, dates and modification-date publication at FlushVol. Original
+Core+$4142 is byte-checked before installing the owned stack stub.
+
+Native `file-write` stage 43 adds 15 catalog checkpoints. It validates normal
+startup decoding of a seeded companion, deletion of data plus companion,
+locked-file metadata, initially absent Preferences-directory creation, and independent host readback of a created file's four
+bytes and checksummed Finder record. The modification date stays unchanged
+while data is pending and advances when Close flushes it. Metadata writes use
+OS windows and staged replacement; malformed/orphan companions and incomplete
+transactions fail explicitly. The host checker removes only verified diagnostic
+output before subsequent production runs.
+
+The Finder output test exposed a GCC 15.1 m68k byte-loop miscompile:
+`MOVE.B (a0)+,(a0,d0.l)` used the incremented register for its destination,
+shifting the returned bytes by one. Catalog memory and disk bytes were exact;
+the parameter-block dump and disassembly isolated the error. Four explicit
+endian-safe copies replace that loop, and the native fixture checks all 16 bytes.

@@ -2,6 +2,7 @@
 #include <dos/dos.h>
 #include "mac/MacFiles.h"
 #include "FileCatalog.h"
+#include "FileMetadataIO.h"
 extern "C" {
 volatile uint32_t g_catalogEntries=0,g_catalogDataFiles=0,g_catalogDataBytes=0;
 }
@@ -38,6 +39,12 @@ static const char* scan(MacFiles& catalog,uint32_t directory,const char* path,bo
             const char* name=(const char*)info->fib_FileName;
             const char* suffix=0;
             for(const char* p=name;*p;++p)if(*p=='.')suffix=p;
+            if(suffix && same(suffix,".finfo"))continue;
+            const char* metadataSuffix=0;
+            for(const char* p=name;*p;++p)if(*p=='.' && (same(p,".finfo.new") || same(p,".finfo.old")))metadataSuffix=p;
+            if(metadataSuffix) {
+                error="CATALOG / UNRESOLVED METADATA TRANSACTION";break;
+            }
             if(suffix && same(suffix,".rsrc")) {
                 error="CATALOG / COMPANION RESOURCE FORK";break;
             }
@@ -46,14 +53,32 @@ static const char* scan(MacFiles& catalog,uint32_t directory,const char* path,bo
                 || catalog.add(directory,(const char*)info->fib_FileName,file,false,info->fib_Size)<0) {
                 error="CATALOG / UNSUPPORTED NAME OR CAPACITY";break;
             }
+            const MacFiles::Entry* entry=catalog.child(directory,name);
+            FileMetadata::Record metadata;bool found=false;
+            if(FileAccess::loadMetadataRestored(entry->path,metadata,found)
+                || (found && catalog.setMetadata(entry->id,metadata))) { error="CATALOG / FILE METADATA";break; }
             if(data) { ++g_catalogDataFiles;g_catalogDataBytes+=info->fib_Size; }
         }
         if(!error && IoErr()!=ERROR_NO_MORE_ENTRIES)error="CATALOG / ENUMERATION";
+        // Companions must belong to a catalogued file, regardless of enumeration order.
+        if(!error && !Examine(lock,info))error="CATALOG / ENUMERATION RESTART";
+        while(!error && ExNext(lock,info)) {
+            char owner[108];const char* name=(const char*)info->fib_FileName;
+            uint16_t length=0;while(name[length])++length;
+            if(length>=6 && same(name+length-6,".finfo")) {
+                if(length-6>=sizeof(owner)) { error="CATALOG / METADATA NAME";break; }
+                for(uint16_t i=0;i<length-6;++i)owner[i]=name[i];owner[length-6]=0;
+                const MacFiles::Entry* entry=catalog.child(directory,owner);
+                if(!entry || !entry->metadataKnown)error="CATALOG / ORPHAN METADATA";
+            }
+        }
+        if(!error && IoErr()!=ERROR_NO_MORE_ENTRIES)error="CATALOG / COMPANION ENUMERATION";
     }
     if(info)FreeDosObject(DOS_FIB,info);
     UnLock(lock);return error;
 }
 const char* aitdBuildFileCatalog(MacFiles& catalog,const char* applicationPath,uint32_t resourceBytes) {
+    FileAccess::initializeMetadataClock();
     catalog.reset();g_catalogEntries=g_catalogDataFiles=g_catalogDataBytes=0;
     catalog.application=catalog.add(2,"Alone in the Dark","PROGDIR:",true);
     catalog.system=catalog.add(2,"System Folder","",true);

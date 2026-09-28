@@ -500,3 +500,45 @@ stores before allowing such writes. Metadata, resource forks and async/other
 flag variants remain M2.1b2c9. Production still reaches Get1NamedResource after
 seven directory services and zero runtime OS windows; these API fixtures do
 not claim original-game PAK or save/load acceptance.
+
+
+## Named catalog mutations and Finder records (M2.1b2c9b)
+
+Synchronous Create/HCreate, Delete/HDelete, named GetFInfo/HGetFInfo and
+SetFInfo/HSetFInfo operate on the catalog. Creation preflights capacity and paths,
+creates empty data plus metadata, then publishes a fresh ID. Deletion refuses
+open files (-47) and DOS-locked files (-45), and removes the data and metadata
+before retiring the ID. Freed slots are reusable without reusing IDs during a
+session. Duplicate/empty names return -48; missing catalogued-directory files
+return -43; a bad directory returns -120. Directory deletion and files with
+resource bytes remain loud stops pending the companion-fork work.
+
+The 36-call System 7.5.5 fixture verifies opaque Finder bytes, creation and
+modification dates, fresh zero Finder records, and open-file attributes: $88
+for an open data fork, $01 for a locked closed file. SetFInfo succeeds on a
+locked file, including changing its date. Write changes EOF immediately but
+publishes the modification date only when FlushVol or Close flushes the data.
+The port follows that timing. HSetFInfo takes the parent directory in its input
+PB; HGetFInfo returns the file ID in the same field. The caller must restore the
+parent before the next hierarchical named operation.
+
+A port-owned `name.finfo` stores exactly 32 bytes: `AFI1`, the 16 opaque Finder
+bytes, creation/modification Mac-epoch seconds as big-endian longs, and an
+FNV-1a checksum of the first 28 bytes. Startup reads and validates companions
+without loading payloads; orphan/malformed records and leftover `.finfo.new` or
+`.finfo.old` transactions stop loudly. Replacement writes and flushes `.new`,
+renames the previous record to `.old`, installs the new record, then removes the
+backup. Recoverable failures preserve the pending metadata; incomplete rollback
+or cleanup never reports success. Creation dates use DOS time converted from
+1978 to 1904 (2,335,305,600 seconds) plus corrected Mac ticks during takeover.
+Files without a known Finder record still stop on GetFInfo: installed-file
+metadata must come from original inputs, not invented dates or type/creator.
+
+Host sanitizer tests cover slot lifetime/capacity and corruption-safe metadata
+decoding. Native `file-write` passes 203 OS windows, 27 stream reads / 801,173
+bytes, 18 stream writes / 470,041 bytes, and 12 stream flushes including shutdown;
+small metadata I/O is separate from those stream counters. Native assertions
+check all Finder bytes and pending-versus-closed dates; host readback checks the
+data and metadata after exit. File-read, system-window, boot and original-directory
+regressions retain their previous acceptance. Rendered-picture acceptance remains
+owner-deferred. These are API fixtures, not original-game PAK/save/load acceptance.

@@ -11,6 +11,19 @@ if a.prepare:
     (drive/'read-probe.bin').write_bytes(bytes((i*37+(i>>8))&255 for i in range(200003)))
     (drive/'absent-probe.bin').unlink(missing_ok=True)
     if a.write:
+        import struct
+        def metadata():
+            body=b'AFI1'+bytes.fromhex('54455354414954440400001200340000')+struct.pack('>II',0xabcd0102,0xabcd0304)
+            checksum=2166136261
+            for byte in body:checksum=((checksum^byte)*16777619)&0xffffffff
+            return body+struct.pack('>I',checksum)
+        prefs=drive/'prefs'
+        if prefs.exists():prefs.rmdir() # Fail rather than remove any pre-existing contents.
+        saves=drive/'Saved Games';saves.mkdir(exist_ok=True)
+        for basename in ['catalog-probe.bin','metadata-seed.bin','metadata-durable.bin']:
+            for suffix in ['', '.finfo','.finfo.new','.finfo.old']:(saves/(basename+suffix)).unlink(missing_ok=True)
+        (saves/'metadata-seed.bin').write_bytes(b'')
+        (saves/'metadata-seed.bin.finfo').write_bytes(metadata())
         (drive/'write-probe.bin').write_bytes(bytes((i*37+(i>>8))&255 for i in range(200003)))
         (drive/'mutation-probe.bin').write_bytes(b'')
         (drive/'sharing-probe.bin').write_bytes(b'')
@@ -20,7 +33,7 @@ if a.prepare:
 else:
     log=(root/'amiga/.run/gdb-out.log').read_text()
     marker='PASS file-read: Line-A open/read/seek/EOF/position/close bytes=exact CCR=checked windows=10 DOS-reads=6 max=65536 cleanup=1 GetVol=WD/root/null-name FCB=index/exact/errors HVol=directory/state/errors WD=query/close/filter'
-    if a.write:marker='PASS file-write: Line-A/backend bytes=exact windows=172 writes=17 max=65536 flushes=11 EOF=17/3 cleanup=2 sharing=coherent permissions=0-4/locked volume=name/ref'
+    if a.write:marker='PASS file-write: Line-A/backend bytes=exact windows=203 writes=18 max=65536 flushes=12 EOF=17/3 cleanup=2 sharing=coherent permissions=0-4/locked volume=name/ref catalog=metadata/durable'
     if a.status or re.search(r'FAIL|Error in sourced command file|Program received signal',log) or log.count(marker)!=1:
         raise SystemExit('FAIL file-read: missing completion or runner/observer failure')
     if a.write and (drive/'write-probe.bin').read_bytes()!=bytes((i*37+(i>>8))&255 for i in range(17)):
@@ -29,4 +42,19 @@ else:
         raise SystemExit('FAIL file-write: dirty shutdown file length/bytes')
     if a.write and (drive/'sharing-probe.bin').read_bytes()!=bytes.fromhex('abcdef015678'):
         raise SystemExit('FAIL file-write: shared-writer host bytes after close')
+    if a.write:
+        import struct
+        saves=drive/'Saved Games';file=saves/'metadata-durable.bin'
+        metadata=(saves/'metadata-durable.bin.finfo').read_bytes()
+        checksum=2166136261
+        for byte in metadata[:28]:checksum=((checksum^byte)*16777619)&0xffffffff
+        if file.read_bytes()!=bytes.fromhex('12345678') or len(metadata)!=32 or metadata[:24]!=b'AFI1'+bytes.fromhex('54455354414954440400001200340000abcd0102') or struct.unpack('>I',metadata[28:])[0]!=checksum or struct.unpack('>I',metadata[24:28])[0] in [0,0xabcd0304]:
+            raise SystemExit('FAIL file-write: durable metadata/data bytes')
+        for basename in ['catalog-probe.bin','metadata-seed.bin']:
+            if (saves/basename).exists() or (saves/(basename+'.finfo')).exists():raise SystemExit('FAIL file-write: delete left a fork/metadata companion')
+        prefs=drive/'prefs'
+        if not prefs.is_dir() or any(prefs.iterdir()):raise SystemExit('FAIL file-write: optional prefs creation/deletion')
+        prefs.rmdir()
+        # Remove only this fixture's verified output, keeping production runs clean.
+        for suffix in ['', '.finfo','.uaem','.finfo.uaem']:(saves/('metadata-durable.bin'+suffix)).unlink(missing_ok=True)
     print(marker)

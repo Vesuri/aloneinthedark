@@ -43,7 +43,9 @@ writable data forks, Write, SetEOF and FlushVol now use sparse
 64 KiB buffers and pass Mac/native fixtures, including close and dirty-shutdown
 disk readback. Permissions 0–4, protected files, shared writes with independent
 positions, and FlushVol name/reference forms now pass Mac/native checks.
-Metadata, async variants and separate data/resource storage remain.
+Named Create/Delete and Finder-info calls now pass Mac/native fixtures, with
+checksummed metadata companions and durable close. Installed-file metadata,
+async variants and separate data/resource storage remain.
 Final startup requirements acceptance awaits the file/resource services.
 
 ## Requirements (provisional)

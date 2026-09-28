@@ -1,5 +1,6 @@
 #ifndef AITD_MAC_FILES_H
 #define AITD_MAC_FILES_H
+#include "FileMetadata.h"
 // Portable metadata/open-fork model. File payloads and host allocation are external.
 class MacFiles {
 public:
@@ -7,7 +8,8 @@ public:
         paramErr=-50, rfNumErr=-51, nsvErr=-35, dirNFErr=-120, unsupported=-32760 };
     struct Entry {
         uint32_t id,parent,dataSize,resourceSize;
-        bool directory;
+        bool directory,metadataKnown,metadataDirty;
+        FileMetadata::Record metadata;
         char name[32];
         char path[160];
     };
@@ -18,6 +20,14 @@ public:
     const Entry* entry(uint32_t id) const;
     const Entry* child(uint32_t parent,const char* name) const;
     int16_t resolve(int16_t volume,uint32_t directory,const char* path,uint32_t& id) const;
+    // Validate a creation without touching the catalog or disk. add commits it
+    // only after the backend has created the complete native representation.
+    int16_t planCreate(int16_t volume,uint32_t directory,const char* path,Entry& candidate) const;
+    int16_t setMetadata(uint32_t id,const FileMetadata::Record& metadata,bool dirty=false);
+    void touchMetadata(uint32_t id,uint32_t date);
+    void metadataFlushed(uint32_t id);
+    int16_t canRemove(uint32_t id) const;
+    int16_t remove(uint32_t id);
     int16_t open(uint32_t id,bool resource,bool writable);
     int16_t openData(uint32_t id,uint8_t permission,bool locked,int16_t& ref);
     int16_t volume(int16_t ref,const char* name) const;
@@ -44,7 +54,8 @@ public:
 private:
     struct WD { int16_t ref; uint32_t directory,process; };
     Entry entries_[maxEntries]; Fork forks_[maxOpen]; WD wd_[maxWD];
-    uint16_t count_=0;
+    uint16_t count_=0,used_=0;
+    uint32_t nextID_=2;
     int16_t defaultRef_=0;
     uint32_t defaultDirectory_=0;
 };

@@ -56,3 +56,12 @@ aitdProbeWriteBackend:
     filetrap aitdProbeWrite,0xa003
     filetrap aitdProbeSetEOF,0xa012
     filetrap aitdProbeFlush,0xa013
+
+    filetrap aitdProbeCreate,0xa008
+    filetrap aitdProbeHCreate,0xa208
+    filetrap aitdProbeDelete,0xa009
+    filetrap aitdProbeHDelete,0xa209
+    filetrap aitdProbeInfo,0xa00c
+    filetrap aitdProbeHInfo,0xa20c
+    filetrap aitdProbeSetInfo,0xa00d
+    filetrap aitdProbeHSetInfo,0xa20d

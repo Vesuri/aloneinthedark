@@ -43,25 +43,30 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.1b2c9 Remaining File Manager metadata and variants.**
-  - Finish create/delete/file info, HGetVolParms, FSDispatch PBHOpenDF, and
-    async variants over the catalog. Unsupported forms remain named stops;
-    see the [reference contract](file-manager.md).
-  - **M2.1b2c9a Application fork storage:** its native path currently contains
-    the raw resource fork, while the Mac data fork is empty. Writable data opens
-    stop explicitly until those stores are separated. *Acceptance:* data-fork
-    open/write/close preserves the original resource hash, and independent
-    data/resource EOF and bytes match reference fixtures.
-  - Add Finder metadata and companion resource-fork storage for saves/prefs.
-    The catalog rejects nested directories, companion forks, non-ASCII names
-    and capacity overflow explicitly; never invent metadata.
-  - Extend the per-fork table without bypassing system windows (design §4.5).
-    Unknown paths and unimplemented flags/positioning modes must stop loudly.
+- **M2.1b2c9a Application and companion fork storage.**
+  - The native application path contains the raw resource fork, while its Mac
+    data fork is empty. Separate those stores before allowing writable data opens.
+  - Add companion resource-fork storage for saves/prefs, including creation,
+    independent open/EOF/bytes, and deletion of both forks plus Finder metadata.
+    Named data-file CRUD and `.finfo` persistence are complete (M2.1b2c9b).
+  - Preserve system-window I/O and named stops for unsupported layouts.
 
-  *Done when* each added census operation passes host and bounded native Line-A
+  *Done when* native/Mac fixtures show independent fork EOF/bytes, application
+  data write/close preserves the original resource hash, and companion creation,
+  close, reload and deletion pass host/native checks plus all existing regressions.
+- **M2.1b2c9c Remaining File Manager metadata and variants.**
+  - Import installed-file Finder metadata from original inputs; GetFInfo for
+    unknown records remains loud. Complete indexed file-info forms, HGetVolParms,
+    FSDispatch PBHOpenDF and async variants from the census/reference contract.
+  - Finish application-directory missing-path resolution without hiding native
+    files outside its deliberately partial catalog. Unknown paths, names,
+    flags and layouts must remain explicit stops.
+  - Keep per-fork state and system-window boundaries (design §4.5).
+
+  *Done when* every added census operation passes host and bounded native Line-A
   fixtures with Mac-reference argument/result comparisons, and file-write,
   file-read, window-core, production boot and directory observers still pass.
-  Original PAK reads and their window count remain M2.1c acceptance.
+  Original PAK reads and window counts remain M2.1c acceptance.
 - **M2.2 Resource Manager on demand.**
   - Keep only the resource maps in memory; load data into zone handles on
     `GetResource` through system windows.
@@ -94,6 +99,15 @@ required.
 
   *Done when* a bounded original-code observer positively reaches that success
   branch, no "requires" alert occurs, and identity.gdb still matches MAME.
+- **M2.3a QuickDraw pattern-copy compiler defect.**
+  - The M2.1b2c9b audit found the same GCC 15.1 m68k post-increment/base-register
+    copy form in `initGraf`'s five default patterns. Diagnose with a native dump
+    before changing it; the metadata fixture already proves the byte-shift defect.
+  - Replace affected copies and audit the linked program for that instruction form.
+
+  *Done when* all five native QDGlobals patterns match the source/Mac bytes,
+  the instruction audit is clear or every remaining occurrence is explained,
+  and startup regressions pass.
 - **M2.3 8-bit QuickDraw core.**
   - Generalise the screen, GWorld, PixMap, CTable, ITable, CopyBits and PICT code
     to 8 bpp.
