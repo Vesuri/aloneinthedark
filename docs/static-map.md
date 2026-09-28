@@ -34,19 +34,28 @@ and a patch must use an addressing mode that reaches it.
 
 The header's first word is the segment's first jump-table index and the second
 its entry count; the ranges tile all 468 entries exactly. Bit 15 of the first
-word is set on exactly the segments that have a CREL resource; bit 15 of the
+word is set on exactly the segments that have a CREL resource (cleared once
+relocated, see below); bit 15 of the
 second word is set on every segment except CODE 1 (meaning not yet known).
 Jump-table routine offsets are relative to the end of the four-byte header, as
 in the standard layout. The first entry, CODE 1+$0014, is the application entry.
 
-CREL is a list of 16-bit offsets into the CODE resource (header included).
-Measured in Core, Dark and Dan2: every `JSR abs.l` whose target lies inside its
-own segment (42, 262 and 202 sites) has its longword operand's offset in that
-segment's CREL, and those unrelocated operands are small segment-relative
-values (for example `JSR $0522.l`). CREL therefore marks longwords to relocate
-by the segment's load address. Not yet known: whether the base includes the
-four-byte header, what the non-JSR entries are, and why some lists are not
-sorted (Dark, Dan2).
+CREL is a list of 16-bit offsets into the CODE resource (header included),
+7,329 entries in all; the Dark, Dark3, Dan1 and Dan2 lists are not sorted.
+Each offset names a longword to relocate:
+
+- **Even offset (7,210): add A5.** The stored values are A5-relative: 1,547
+  point at a jump-table `JMP` (A5+34+8n), so `JSR $0DDA.l` in Dark calls entry
+  439; the other 5,663 lie in the far globals (−75,616..−1). Measured under MAME:
+  all 608 intact even sites of a loaded Misc2 held value+A5.
+- **Odd offset (119): add the segment base.** The longword is at offset & ~1;
+  every value is smaller than its segment, often the operand of
+  `MOVE.L #imm,-(SP)`. Base (resource start or after the header) is inferred,
+  not yet measured.
+
+CODE 1 applies it (its loop at CODE 1+$01B0 writes the relocated values) and
+then clears bit 15 of the segment's first header word, so that bit marks a
+segment still to be relocated.
 
 The runtime loader resolves every jump-table entry to a JMP into an aligned
 resident copy and stops with `SEGMENT LOADER / CREL RELOCATION` on the first

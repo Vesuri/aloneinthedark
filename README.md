@@ -19,9 +19,10 @@ RELOCATION`, CODE 3 "Core"). The game itself does not run yet.
 
 ## Requirements (provisional)
 
-The original code uses 68020 instructions and 256-color graphics, so the
-expected target is an AGA Amiga with a 68020 or better. Memory needs are not yet
-measured; the original asks for 3 MB.
+The original code uses 68020 instructions and 256-color graphics, so the target
+is an AGA Amiga with a 68020 or better and, provisionally, 4 MB of fast RAM (the
+original asks for 3 MB). The port supports only the 320×200 low-resolution
+mode.
 
 No original game code or data, Kickstart image or WHDLoad binary is
 distributed. You need your own copy of the original release.

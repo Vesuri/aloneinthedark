@@ -81,9 +81,9 @@ make lowmem-scan        # reachable absolute Page-0 references
 make entrypoints-check  # ghidra_scripts/entrypoints.csv matches CODE 0
 ```
 
-Until CREL is applied, `lowmem-scan` also lists the unrelocated in-segment
-`JSR abs.l` operands; entries whose longword offset appears in the segment's CREL
-are relocations, not Page-0 accesses.
+Until CREL is applied, `lowmem-scan` also lists the unrelocated A5-relative
+`JSR abs.l` operands (jump-table calls); entries whose longword offset appears in
+the segment's CREL are relocations, not Page-0 accesses.
 
 `ghidra_scripts/` holds the headless Ghidra scripts used by Vette!
 (entry marking, names, trap and call-graph dumps, listing export). Their
