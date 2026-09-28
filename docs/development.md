@@ -222,3 +222,24 @@ references at 29 addresses. The runtime report now requires every observed
 (segment, offset, trap) site to exist in the static census, not merely its
 trap word. Acceptance: all 632 sites in the M0.2 reference log are covered;
 host fixtures reject an unseen site even when its trap word is known.
+
+M1.2b startup low memory: `StartupLowMemory.h` holds ten original-byte-checked
+CODE 1 sites. Patching is atomic and happens before takeover. The A5 allocation
+now includes 80 shadow bytes at A5+$0EC0; CurrentA5 and CurStackBase are real
+allocation addresses, CPUFlag=3 matches the Mac IIx reference, LoadTrap=0, and
+the fallback address mask is $FFFFFFFF (the port's StripAddress identity).
+The other 48 census sites remain M1.4 work.
+
+`make startup-lowmem-check` compiles the actual C++ patcher on the host and
+compares its table to the original-resource census. All ten instruction lengths
+and operations are preserved; all 44 original-byte mutations are rejected with
+no partial patch. `make host-tests` includes the input-free patcher fixtures.
+
+Bounded native check: `GDBSCRIPT=startup_lowmem.gdb EXTRA_ARGS=--warp_mode=1
+./diag_run.sh 30` from `amiga/` passes for all ten operands (A5 $00490610,
+shadows $004914D0, CurStackBase $0047DEB0). A deliberately corrupted local
+resource copy returns false before screen initialization, verified with
+`GDB_ENTRY=MacLoader::prepareResourceForks GDBSCRIPT=startup_reject.gdb`.
+The original file and restored staging copy retain the same SHA-256. Host
+checks, the original A5-model check and both link audits pass (38 probes).
+The current game remains at the CODE 3 CREL stop.

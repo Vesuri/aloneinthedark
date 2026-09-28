@@ -216,7 +216,8 @@ loud stop must be inside `main`'s initialisation.
 
 - **Never map Mac Page 0.** Absolute-word references to Mac globals are patched,
   after byte checks, to the same-length `d16(A5)` form pointing into the shadow
-  area (task M1.4).
+  area. CODE 1's ten startup sites are implemented (M1.2b); M1.4 covers the
+  remaining 48 sites and full-table agreement.
   - This is Vette's method. The far model does not stop it, because the shadow
     area sits above the jump table.
   - The patch runs when a CODE handle is created, so CODE 1 and every segment

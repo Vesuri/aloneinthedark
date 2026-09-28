@@ -3,6 +3,7 @@
 #include <hardware/dmabits.h>
 
 #include "MacLoader.h"
+#include "StartupLowMemory.h"
 #include "ResourceForks.h"
 #include "platform/amiga/AitdScreen.h"
 #include "platform/amiga/MacInput.h"
@@ -68,6 +69,9 @@ volatile uint32_t g_macVBLCallbackReturn = 0;
 volatile uint16_t g_macVBLCallbackActive = 0;
 volatile uint32_t g_macHostReturnSP = 0;
 uint8_t* g_macStackBase = 0;
+uint8_t* g_macLowMemory = 0;
+uint8_t* g_startupCode = 0;
+volatile uint16_t g_startupLowMemoryPatches = 0;
 volatile uint32_t g_macLineAVectorAddress = 0;
 volatile uint32_t g_macSavedLineAVector = 0;
 volatile uint16_t g_macLineAInstalled = 0;
@@ -94,23 +98,25 @@ char g_trapRoutine[24] = "";
 // Private shadows for the classic-Mac Page-0 globals the original code reads
 // or writes directly.  Page 0 holds exception vectors and Exec state on the
 // Amiga, so byte-verified absolute-address accesses are redirected here
-// instead. M1.4 moves these shadows above the jump table into d16(A5) reach;
-// the large below-A5 globals do not prevent that layout.
+// instead. The shadows follow the jump table within d16(A5) reach; M1.4
+// extends the currently implemented CODE 1 startup patch set.
 static const uint16_t kLowTicks = 0;         // $016A
 static const uint16_t kLowRndSeed = 4;       // $0156
 static const uint16_t kLowWMgrPort = 8;      // $09DE
 static const uint16_t kLowGrayRgn = 12;      // $09EE
 static const uint16_t kLowKeyMap = 16;       // $0174, 16 bytes
-static const uint16_t kLowCurrentA5 = 32;    // $0904
+static const uint16_t kLowCurrentA5 = StartupLowMemory::currentA5;    // $0904
 static const uint16_t kLowMBState = 36;      // $0172
 static const uint16_t kLowMTempV = 38;       // $0828
 static const uint16_t kLowMTempH = 40;       // $082A
 static const uint16_t kLowRawMouseV = 42;    // $082C
 static const uint16_t kLowRawMouseH = 44;    // $082E
 static const uint16_t kLowMouseV = 46;       // $0830
-static const uint16_t kLowCurStackBase = 52; // $0908: lowest A5 global, not execution stack
+static const uint16_t kLowCurStackBase = StartupLowMemory::curStackBase; // $0908: lowest A5 global, not execution stack
 static const uint16_t kLowMouseH = 48;       // $0832
-static uint8_t s_portLowMemory[64] __attribute__((aligned(4)));
+static uint8_t s_initialLowMemory[StartupLowMemory::size] __attribute__((aligned(4)));
+static uint8_t* s_portLowMemory = s_initialLowMemory;
+static const char* s_preparationError = "RESOURCE FORK / INVALID OR UNSUPPORTED";
 // The A5 world is sized by CODE 0, not by a compile-time constant: this
 // application's 75616 bytes below A5 would not fit Vette's static layout.
 static uint8_t* s_a5WorldStorage;
@@ -434,6 +440,8 @@ static void clearResidentSegments()
         s_segments[i].name[0] = 0;
     }
     s_segmentCount = 0;
+    g_startupCode = 0;
+    g_startupLowMemoryPatches = 0;
 }
 
 static bool loadResidentSegments()
@@ -476,6 +484,22 @@ static bool loadResidentSegments()
         clearResidentSegments();
         return false;
     }
+    const uint8_t* header = s_segments[0].begin;
+    if (s_segments[0].end - header != 3760 || read32(header) != 3776
+        || read32(header + 4) != 75616 || read32(header + 8) != 3744
+        || read32(header + 12) != 32) {
+        s_preparationError = "STARTUP LOW MEMORY / CODE 0 LAYOUT";
+        clearResidentSegments();
+        return false;
+    }
+    if (!StartupLowMemory::patch(s_segments[1].begin,
+                                  s_segments[1].end - s_segments[1].begin)) {
+        s_preparationError = "STARTUP LOW MEMORY / ORIGINAL BYTE MISMATCH";
+        clearResidentSegments();
+        return false;
+    }
+    g_startupCode = s_segments[1].begin;
+    g_startupLowMemoryPatches = StartupLowMemory::count;
     return true;
 }
 
@@ -579,6 +603,8 @@ static void releaseA5World()
     if (s_a5WorldStorage) FreeMem(s_a5WorldStorage, s_a5WorldBytes);
     s_a5WorldStorage = 0;
     s_a5WorldBytes = 0;
+    s_portLowMemory = s_initialLowMemory;
+    g_macLowMemory = 0;
 }
 
 static bool buildA5World(uint8_t*& a5)
@@ -595,13 +621,18 @@ static bool buildA5World(uint8_t*& a5)
         return loaderStop("CODE 0 HEADER", 0);
 
     releaseA5World();
-    s_a5WorldBytes = below + above;
+    s_a5WorldBytes = below + above + StartupLowMemory::size;
     s_a5WorldStorage = (uint8_t*)AllocMem(s_a5WorldBytes, MEMF_ANY | MEMF_CLEAR);
     if (!s_a5WorldStorage) {
         s_a5WorldBytes = 0;
         return loaderStop("A5 WORLD MEMORY", 0);
     }
     a5 = s_a5WorldStorage + below;
+    s_portLowMemory = a5 + StartupLowMemory::base;
+    g_macLowMemory = s_portLowMemory;
+    s_portLowMemory[StartupLowMemory::cpuFlag] = 3; // Mac IIx identity (D2/section 4.2)
+    s_portLowMemory[StartupLowMemory::loadTrap] = 0;
+    write32(s_portLowMemory + StartupLowMemory::lo3Bytes, 0xffffffffUL);
     write32(s_portLowMemory + kLowCurrentA5, (uint32_t)a5);
     write32(s_portLowMemory + kLowCurStackBase, (uint32_t)s_a5WorldStorage);
     s_jumpTableOffset = jumpOffset;
@@ -5705,9 +5736,12 @@ extern "C" uint32_t aitdLineADispatch(uint32_t* regs, uint8_t* frame, uint8_t* u
     for (;;) { }                             // VBI remains enabled, so the report stays live
 }
 
+const char* MacLoader::preparationError() const { return s_preparationError; }
+
 bool MacLoader::prepareResourceForks(uint8_t* application, uint32_t applicationSize,
                                      uint8_t* data, uint32_t dataSize)
 {
+    s_preparationError = "RESOURCE FORK / INVALID OR UNSUPPORTED";
     s_resourceForks.close();
     clearResidentSegments();
     g_resourceCount = 0;
@@ -5866,7 +5900,7 @@ bool MacLoader::run(AitdScreen* screen)
         && *(volatile uint32_t*)g_macLineAVectorAddress == g_macSavedLineAVector;
     aitdLineAProbeComplete();
 #endif
-    for (uint16_t i = 0; i < sizeof(s_portLowMemory); ++i) s_portLowMemory[i] = 0;
+    for (uint16_t i = 0; i < StartupLowMemory::size; ++i) s_portLowMemory[i] = 0;
     uint8_t* a5 = 0;
     bool a5Ready = buildA5World(a5);
 #ifdef AITD_LINE_A_PROBE

@@ -13,6 +13,7 @@ public:
     bool prepareResourceForks(uint8_t* application, uint32_t applicationSize,
                               uint8_t* data, uint32_t dataSize);
     void releaseResourceForks();
+    const char* preparationError() const;
 
     // Builds the A5 world described by CODE 0, resolves the jump table into
     // the resident CODE copies, then enters the first jump-table entry.  A

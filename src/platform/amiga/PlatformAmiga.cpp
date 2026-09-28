@@ -214,8 +214,9 @@ bool PlatformAmiga::run()
     if (!loader.prepareResourceForks(resourceFiles.application,
                                      resourceFiles.applicationSize,
                                      resourceFiles.data, resourceFiles.dataSize)) {
-        PutStr((CONST_STRPTR)
-            "Alone: the original application resource fork is invalid or unsupported.\n");
+        PutStr((CONST_STRPTR)"Alone: ");
+        PutStr((CONST_STRPTR)loader.preparationError());
+        PutStr((CONST_STRPTR)"\n");
         releaseOriginalResourceFiles(resourceFiles);
         CloseLibrary((struct Library*)GfxBase);
         GfxBase = 0;
