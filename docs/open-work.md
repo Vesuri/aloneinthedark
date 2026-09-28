@@ -17,13 +17,6 @@ required.
 
 ## M0 Groundwork
 
-- **M0.5 8-bit reference framebuffer probe.**
-  - Make `tools/mac_probe_fb.lua` and `tools/fb_to_png.py` handle the mdc48 8-bit
-    mode and its 256-entry CLUT.
-  - Capture the game window after the palette is active.
-
-  *Done when* a PNG of the Infogrames logo from MAME matches a snapshot by eye,
-  and the CLUT dump shows clut 128's colours at the expected indices.
 - **M0.6 Pinned emulator configurations.**
   - Add `AMIGA_CONFIG=a1200-020|a1200-030|a4000-040|a1200-060` to
     `amiga/run.sh`, `diag_run.sh` and `debug.sh`.
@@ -142,7 +135,8 @@ required.
   the run proceeds past GWorld creation.
 - **M2.4 Mac screen model and 320×200 only.**
   - A 640×480×8 main screen with a GDevice list, and windows over it.
-  - A fixed viewport on WIND 128's content rectangle.
+  - A fixed viewport on WIND 128's live content rectangle; M0.5 measures
+    (160,150)–(480,350) after positioning, not the initial resource bounds.
   - No screen-size dialog (D4): pick the seam by byte check (a port-supplied
     `PREF`, or `ModalDialog` for DLOG 1000) and document it.
 
@@ -166,7 +160,15 @@ required.
   ActivatePalette, GetCTable and PaletteDispatch as on the 8-bit reference.
 
   *Done when* the device CLUT equals the MAME capture (M0.5) after the game
-  activates clut 128.
+  activates clut 128, including the three duplicate endpoint slots observed
+  in M0.5 (1, 15, 191).
+- **M2.7a Reference video colour transfer.**
+  - Reproduce the measured mapping from logical RGB16 to mdc48 output colours
+    in the AGA palette, using a verified integer lookup/transfer (no guessed gamma).
+  - Preserve the distinct logical CLUT for original QuickDraw/Palette calls.
+
+  *Done when* host fixtures cover the measured channel mapping, and the
+  Infogrames palette and a 256-level reference ramp match the MAME video palette.
 - **M2.8 Regions and polygons.** Implement real QuickDraw regions and polygons,
   with host fixtures.
 

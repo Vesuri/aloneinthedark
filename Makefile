@@ -63,6 +63,7 @@ mac-trap-map:
 	@python3 tools/mac_trap_map.py '$(RUNTIME_DATA)/Alone In The Dark'
 
 host-tests:
+	@python3 tools/fb_to_png.py --selftest
 	@python3 tools/mac_trap_map.py --selftest
 	@python3 tools/mac_trap_report.py --selftest
 	@python3 tools/trap_census.py --selftest

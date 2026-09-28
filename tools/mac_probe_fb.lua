@@ -1,116 +1,87 @@
--- ⭐⭐ WHERE the pixels are and HOW they are packed -- proved, not read off a field.
---
--- ⚠⚠ THE TRAP THIS SCRIPT EXISTS TO DOCUMENT: the Mac II boots in 24-BIT MODE, so
--- a Memory Manager master pointer carries FLAG BITS IN ITS HIGH BYTE (bit 7 =
--- locked, 6 = purgeable, 5 = resource).  Dereferencing a handle without masking
--- to 24 bits does not fail -- it reads a wild address and formats whatever is
--- there.  The first version of this probe printed "12730 x -17543 px, 18923 bpp"
--- with total confidence.  MASK EVERY POINTER THAT CAME OUT OF A HANDLE.
---
--- Proof strategy: dump the live framebuffer and the live CLUT to files, snapshot
--- the same frame, and let tools/fb_to_png.py re-render the dump and diff it
--- against MAME's screenshot.  A pixel-exact match proves the base address, the
--- rowBytes, the 2-pixels-per-byte packing, the nibble order AND the palette all
--- at once; any guess that is wrong shows up as a mangled image.
-
-local mac = dofile(os.getenv("AITD_MAC_LIB") or "tools/mame_mac_input.lua")
-
-local prog = manager.machine.devices[":maincpu"].spaces["program"]
-local function u8(a) return prog:read_u8(a) end
-local function u16(a) return prog:read_u16(a) end
-local function u32(a) return prog:read_u32(a) end
-local function i16(a) return prog:read_i16(a) end
-local M = 0xFFFFFF                                  -- 24-bit mode: mask master pointers
-local function deref(h) return u32(h) & M end
-
-local OUT = os.getenv("AITD_FB_OUT") or "ref/mame/snap/fb"
-
-local function dump_clut(pm, path)
-	local cth = u32(pm + 42) & M
-	if cth == 0 then print("VP no CLUT"); return end
-	local ct = deref(cth)
-	local size = i16(ct + 6)                        -- ctSize is the LAST index
-	local f = assert(io.open(path, "wb"))
-	print(string.format("VP CLUT %d entries (seed %08X) -> %s", size + 1, u32(ct), path))
-	for i = 0, size do
-		local e = ct + 8 + i * 8
-		local r, g, b = u16(e + 2), u16(e + 4), u16(e + 6)
-		f:write(string.format("%d %d %d %d %d\n", i, u16(e), r, g, b))
-		print(string.format("VP   %2d value=%5d  %04X %04X %04X   8-bit %3d,%3d,%3d   Amiga $%X%X%X",
-			i, u16(e), r, g, b, r >> 8, g >> 8, b >> 8, r >> 12, g >> 12, b >> 12))
-	end
-	f:close()
+-- Dump the original game's indexed screen and CLUT beside a same-frame PNG.
+-- Handle/master pointers are tagged in 24-bit mode; video baseAddr is a full
+-- NuBus address and must NOT be truncated to 24 bits.
+local mac=dofile(os.getenv('AITD_MAC_LIB') or 'tools/mame_mac_input.lua')
+local mem=manager.machine.devices[':maincpu'].spaces.program
+local function ptr(a) return mem:read_u32(a)&0xffffff end
+local out=os.getenv('AITD_FB_OUT') or 'ref/mame/snap/fb'
+local screen
+for _,s in pairs(manager.machine.screens) do screen=s end
+local function pixmap()
+ local gd=ptr(ptr(0x8a4))
+ return ptr(ptr(gd+22))
 end
-
-local function dump_pixels(base, rowB, rows, path)
-	local f = assert(io.open(path, "wb"))
-	for y = 0, rows - 1 do
-		local row, a = {}, base + y * rowB
-		for x = 0, rowB - 1 do row[#row + 1] = string.char(u8(a + x)) end
-		f:write(table.concat(row))
-	end
-	f:close()
-	print(string.format("VP pixels %08X %d rows x %d bytes -> %s", base, rows, rowB, path))
+local function palette(pm)
+ local ct=ptr(ptr(pm+42))
+ assert(ct~=0,'FRAMEBUFFER / NO CLUT')
+ return ct
 end
-
+local function capture()
+ local pm=pixmap()
+ local base=mem:read_u32(pm)
+ local rowbytes=mem:read_u16(pm+4)&0x3fff
+ local top,left,bottom,right=mem:read_i16(pm+6),mem:read_i16(pm+8),mem:read_i16(pm+10),mem:read_i16(pm+12)
+ local width,height=right-left,bottom-top
+ local depth=mem:read_u16(pm+32)
+ assert(width==640 and height==480 and depth==8,'FRAMEBUFFER / EXPECTED 640x480x8')
+ assert(rowbytes>=width,'FRAMEBUFFER / INVALID STRIDE')
+ local ct=palette(pm)
+ local entries=mem:read_u16(ct+6)+1
+ assert(entries==256,'FRAMEBUFFER / EXPECTED 256 COLOURS')
+ local device=assert(manager.machine.palettes[':nb9:mdc48'],'FRAMEBUFFER / MDC48 PALETTE MISSING')
+ assert(device.entries==256,'FRAMEBUFFER / MDC48 PALETTE SIZE')
+ local pf=assert(io.open(out..'-hardware.clut','w'))
+ for i=0,255 do
+  local c=device:pen_color(i)
+  pf:write(string.format('%d %d %d %d %d\n',i,i,((c>>16)&255)*257,((c>>8)&255)*257,(c&255)*257))
+ end
+ pf:close()
+ local f=assert(io.open(out..'.clut','wb'))
+ for i=0,entries-1 do
+  local e=ct+8+i*8
+  f:write(string.format('%d %d %d %d %d\n',i,mem:read_u16(e),mem:read_u16(e+2),mem:read_u16(e+4),mem:read_u16(e+6)))
+ end
+ f:close()
+ f=assert(io.open(out..'.raw','wb'))
+ for y=0,height-1 do
+  local row={}
+  for x=0,rowbytes-1 do row[#row+1]=string.char(mem:read_u8(base+y*rowbytes+x)) end
+  f:write(table.concat(row))
+ end
+ f:close()
+ -- screen:snapshot interprets relative paths under snapshot_directory.
+ local path=assert(os.getenv('PWD'),'FRAMEBUFFER / PWD REQUIRED')..'/'..out..'-reference.png'
+ if out:sub(1,1)=='/' then path=out..'-reference.png' end
+ assert(not screen:snapshot(path),'FRAMEBUFFER / SNAPSHOT FAILED')
+ f=assert(io.open(out..'.json','w'))
+ f:write(string.format('{"width":%d,"height":%d,"rowbytes":%d,"bpp":%d,"base":%d,"frame":%d}\n',width,height,rowbytes,depth,base,mac.frames()))
+ f:close()
+ print(string.format('FRAMEBUFFER_CAPTURE width=%d height=%d rowbytes=%d bpp=%d base=%08X clut=%d frame=%d',width,height,rowbytes,depth,base,entries,mac.frames()))
+end
 mac.run(function()
-	mac.launch()
-	-- ⚠⚠ PARK THE POINTER OUTSIDE THE CROP FIRST.  On a Mac II the cursor is
-	-- SOFTWARE-COMPOSITED into the framebuffer by the Cursor Manager's VBL task, so
-	-- it is part of the pixels this probe dumps -- not an overlay the emulator draws
-	-- on top.  The first intro capture had the Finder's arrow baked into the Amiga
-	-- asset at (32,8) of the 512x320 window, which then looked like an Amiga sprite
-	-- bug on the port.  The screen is 640x480 and the game window is
-	-- 64,92..576,412, so the bottom-right corner is outside it.
-	-- ⚠ Mouse MOTION changes nothing the game times off (the intro polls Button), and
-	-- $AITD_FB_AT is an absolute frame, so this only has to finish before that frame
-	-- -- which is why the parked position and the frame are printed.
-	mac.mouse_to(620, 460, 8)
-	mac.step("pointer parked")
-	-- ⚠ Wait past the INTRO ANIMATION, not just "a while": a dump taken during the
-	-- wipe differs from the snapshot beside it by 40% of the screen, and that reads
-	-- as a broken pixel-format guess rather than as two different moments in time.
-	-- The garage screen is static, so snapshotting either side of the dump proves
-	-- nothing moved while it was being read.
-	-- ⭐ WHICH MOMENT: $AITD_FB_AT is an ABSOLUTE frame number, the same clock
-	-- used by the reference runner; pair captures by game state, not frame alone.
-	--   4218 = the garage screen (static, the default, and what the pixel-format
-	--          proof was taken on)
-	--   1770 = the INTRO art complete and the overlay not yet drawn (art done at
-	--          1758, first overlay DrawPicture at 1782) -- Target 1's own frame
-	-- ⚠ The window between 1758 and 1782 is 24 frames wide.  The two mac.shot()
-	-- calls bracketing the dump are what prove nothing moved during it; if they
-	-- disagree with the re-render, the moment is wrong, not the format.
-	local at = tonumber(os.getenv("AITD_FB_AT") or "4218")
-	mac.wait_for(string.format("frame %d", at), function() return mac.frames() >= at end, 9000)
-	mac.shot()                                       -- the frame we will diff against
-
-	local gd = deref(u32(0x8A4))                     -- MainDevice
-	local pm = deref(u32(gd + 22) & M)               -- gdPMap
-	local rowB = u16(pm + 4) & 0x3FFF
-	local t, l, b, r = i16(pm + 6), i16(pm + 8), i16(pm + 10), i16(pm + 12)
-	local base, px = u32(pm), u16(pm + 32)
-	print(string.format("VP SCREEN GDevice@%06X gdType=%d PixMap@%06X", gd, i16(gd + 4), pm))
-	print(string.format("VP SCREEN %dx%d  pixelSize=%d bpp  pixelType=%d  rowBytes=%d  baseAddr=%08X",
-		r - l, b - t, px, u16(pm + 30), rowB, base))
-	print(string.format("VP SCREEN ScrnBase($824)=%08X  (%d bytes/row for %d px = %d px/byte)",
-		u32(0x824), rowB, r - l, (r - l) // rowB))
-	dump_clut(pm, OUT .. "_screen.clut")
-	dump_pixels(base, rowB, b - t, OUT .. "_screen.raw")
-	print(string.format("VP GEOM %d %d %d %d", r - l, b - t, rowB, px))
-
-	-- The game's own drawing surface, for comparison with the screen.
-	local port = u32(u32(u32(0x904)))                -- CurrentA5 -> QD globals -> thePort
-	if (u16(port + 6) & 0xC000) == 0xC000 then
-		local gpm = deref(u32(port + 2) & M)
-		local growB = u16(gpm + 4) & 0x3FFF
-		local gt, gl, gb, gr = i16(gpm + 6), i16(gpm + 8), i16(gpm + 10), i16(gpm + 12)
-		print(string.format("VP GAME PORT %dx%d pixelSize=%d rowBytes=%d baseAddr=%08X (offscreen=%s)",
-			gr - gl, gb - gt, u16(gpm + 32), growB, u32(gpm),
-			tostring((u32(gpm) & M) ~= (base & M))))
-		dump_clut(gpm, OUT .. "_port.clut")
-		dump_pixels(u32(gpm) & M, growB, gb - gt, OUT .. "_port.raw")
-		print(string.format("VP PORTGEOM %d %d %d %d", gr - gl, gb - gt, growB, u16(gpm + 32)))
-	end
-	mac.shot()                                       -- second bracket: still the same frame?
+ local ok,err=pcall(function()
+  assert(mac.launch(),'FRAMEBUFFER / LAUNCH FAILED')
+  mac.wait(300)
+  assert(mac.mouse_to(256,274),'FRAMEBUFFER / SIZE POINTER');mac.click(1)
+  assert(mac.mouse_to(620,460),'FRAMEBUFFER / CURSOR PARK')
+  -- Colour 20 is non-grey in original clut 128. Wait for palette activation,
+  -- not just an arbitrary post-launch delay. The report checks all indices.
+  assert(mac.wait_for('game palette',function()
+   local pm=pixmap()
+   if mem:read_u16(pm+32)~=8 then return false end
+   local ct=palette(pm)
+   local e=ct+8+20*8
+   return mem:read_u16(ct+6)==255 and mem:read_u16(e+2)==41891
+     and mem:read_u16(e+4)==32639 and mem:read_u16(e+6)==26471
+  end,3600),'FRAMEBUFFER / GAME PALETTE NOT ACTIVE')
+  local prefix=out
+  local count=tonumber(os.getenv('AITD_FB_COUNT') or '1')
+  for i=1,count do
+   out=count==1 and prefix or prefix..'-'..i
+   mac.wait(tonumber(os.getenv('AITD_FB_DELAY') or '900'))
+   capture()
+  end
+ end)
+ if not ok then print('FAIL framebuffer '..tostring(err)) end
+ manager.machine:exit()
 end)

@@ -347,8 +347,9 @@ Design (task M1.5):
     `HasDepth` (8 bits: yes) describe it. A single device means the monitor picker
     (DLOG 2000) never appears.
 - **Viewport.** The Amiga shows a fixed 320×200 viewport of the Mac screen: the
-  content rectangle of the game window, WIND 128, at (82,168)–(402,368) in global
-  coordinates [M]. Nothing outside it is ever shown:
+  live content rectangle of WIND 128. Its resource starts at (82,168)–(402,368);
+  original window positioning moves it to (160,150)–(480,350) in the M0.5
+  reference [M]. Use the live content bounds. Nothing outside it is ever shown:
   - there is no screen-size dialog (D4);
   - dialogs are laid out inside the viewport (D5);
   - the menu bar is never drawn (D7).
@@ -359,6 +360,8 @@ Design (task M1.5):
     the CPU once C2P is on the budget (M5).
   - `AitdScreen` stays the only owner of display registers. Copper lists and
     bitplane/sprite pointers are published first in the VBI.
+  - Keep the logical Mac RGB16 CLUT distinct from the measured mdc48 output
+    colours (M0.5); reproduce that colour transfer without guessed gamma (M2.7a).
   - The sprite pointer uses a sprite palette bank (BPLCON4) that the game's colours
     do not need, and gets its own colours.
 - **One display mode.** No alternate-mode build option or loader-patchable mode

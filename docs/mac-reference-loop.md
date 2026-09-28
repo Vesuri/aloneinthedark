@@ -68,8 +68,7 @@ application to launch. On the 7.5.5 volume the desktop folder opens at
 (598,98) and the application icon is at (166,90); Finder menus do not yet
 respond to its press-drag, but double-clicks do. `mac_launch.lua` launches and snapshots, `mame_snap.lua` takes
 frame-numbered snapshots, and `mac_probe_fb.lua` with `fb_to_png.py` dumps and
-verifies the live framebuffer and CLUT. Both were written for Vette's 4-bit
-display and need an 8-bit path.
+verifies the live 8-bit framebuffer, logical CLUT and video palette.
 
 ## Address and timing cautions
 
@@ -172,3 +171,51 @@ The caller's checked `ADDQ #8,SP` versus `ADDQ #4,SP` distinguishes two argument
 from one; an incidental stack word is never reported as a second argument.
 The local report keeps per-phase counts and selector arguments; the raw log
 also retains trap arguments and return values.
+
+## 8-bit framebuffer proof (M0.5)
+
+Run the same headless MAME command without debugger logging, with
+`-autoboot_script tools/mac_probe_fb.lua`, `-seconds_to_run 120` and a 180-second
+host bound. The default output prefix is `ref/mame/snap/fb`; `AITD_FB_OUT` can
+change it. The script waits for game palette activation, then captures after
+900 fields (the measured Infogrames logo). `AITD_FB_DELAY` and `AITD_FB_COUNT`
+select diagnostic capture intervals/counts; frame timing is not itself a pass.
+Require `FRAMEBUFFER_CAPTURE` with no `FAIL framebuffer` or timeout in the run
+log, inspect the new PNG, and require the converter's comparison result:
+
+```sh
+python3 tools/fb_to_png.py --bpp 8 \
+  --resource 'tmp/runtime-data/Alone In The Dark' \
+  --hardware-clut ref/mame/snap/fb-hardware.clut \
+  ref/mame/snap/fb.raw ref/mame/snap/fb.clut 640 480 640 \
+  ref/mame/snap/fb-rendered.png ref/mame/snap/fb-reference.png
+```
+
+The default remains 4 bpp for older captures; `--bpp 8` uses one byte per pixel.
+Stride, padding, palette size and data size are checked; any pixel mismatch
+exits nonzero. `make host-tests` covers both depths and invalid geometry.
+
+The accepted original Infogrames capture (`m05-final`, frame 3778, MAME 0.289)
+has screen base `$F9000A00`, 640×480×8, rowBytes 640, and a 256-entry logical
+CLUT. Handle/master pointers are masked to 24 bits; the NuBus framebuffer base
+must retain its high byte. The rendered PNG matches the MAME snapshot exactly:
+**0 differing pixels of 307,200**. The window content in this live capture is
+(160,150)–(480,350), after original window positioning; the WIND resource's
+initial bounds alone are not the final viewport.
+
+Two palette layers must remain distinct. The logical GDevice CLUT contains the
+Mac RGB16 requests. The mdc48 device palette contains the colours actually sent
+to the screen (including the reference's colour transfer). Using the logical
+CLUT's high bytes directly is visibly darker and fails the exact comparison;
+using `pen_color` from the read-only video palette gives the exact match.
+No guessed gamma exponent is used.
+
+253 logical RGB16 entries equal original `clut` 128 at their original indices.
+Three duplicate black/white slots retain values from the preceding MacPlay
+logo: index 1 `$F7F7/$F7F7/$F7F7`, index 15 `$6363/$6363/$6363`, index 191
+`$0808/$1818/$2121`. The original has black at 1/191 and white at 15, duplicated
+at the endpoints. The converter reports these three differences explicitly,
+checks their original resource values, and rejects differences at all other
+indices. Palette Manager allocation details and the display colour transfer
+are carried into M2.7/M2.7a; the capture does not justify replacing those slots
+with guessed colours.
