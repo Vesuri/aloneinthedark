@@ -18,16 +18,14 @@ services they call, AGA display, Paula audio, and Amiga input.
 
 | | Minimum | Also tested |
 | --- | --- | --- |
-| CPU | 68020 | 68030, 68040, 68060 |
+| CPU | 68020 | Other processors deferred |
 | Chipset | AGA | AGA |
 | Fast RAM | about 4–6 MB, measured in M5 | 8 MB, 16 MB |
 | OS | Kickstart 3.1 | WHDLoad |
 
-- **68020 is the floor and must boot and play** (D2). The game uses 68020
-  instructions [M: 319 on reachable paths], and the original Mac recommended
-  a 68040 [external: Inside Mac Games listing]. Make it run as well as
-  possible everywhere: every performance change is measured on the A1200
-  68020 configuration as well as on the 68030.
+- **68020 is the sole active Amiga target** (D2, owner update 2026-09-28).
+  The game uses 68020 instructions [M: 319 on reachable paths]. Other CPU
+  configurations and performance work are deferred; first make this target work.
 - **No preloading** (D1). Data and resources are read on demand, in chunks,
   with the operating system allowed to run for the read (4.5), so fast RAM
   holds only the 3 MB application zone, the port and the display.
@@ -131,7 +129,7 @@ subsystem with its design decision and the queue tasks that implement it.
 
 ### 4.1 CPU, build and machine takeover
 
-- **Build flags.** Build the port with `-m68020 -mtune=68030`.
+- **Build flags.** Build the port with `-m68020 -mtune=68020`.
   - The 68000 mul/div audit and `m68k_math.h` are retired; use native integer arithmetic.
   - Keep the probe audit, and a no-float audit so libgcc soft-float never links.
 - **Line-A vector.** Install the handler through VBR (`getVBR()` already exists),
@@ -586,7 +584,7 @@ the owner.
 | ID | Decision |
 | --- | --- |
 | D1 | **No preloading.** Load in reasonable chunks, letting the OS run (multitasking, DOS) when needed: 4.1 system windows, 4.5 files, 4.6 resources. |
-| D2 | **Run as well as possible.** A 68020 must boot and play. Measure on the 68020 and 68030 configurations. |
+| D2 | **68020 first.** A 68020 must boot and play. It is the sole active target; 68030/040/060 support and performance work are deferred (owner update 2026-09-28). |
 | D3 | **No frame cap** unless bug-free gameplay requires one. Such a bug, for example the stairs, is addressed separately. |
 | D4 | **No screen-size dialog;** only 320×200. |
 | D5 | **Dialogs reimplemented within 320×200:** port overlay layouts, with the game's dialog code unchanged. |
@@ -606,16 +604,12 @@ the owner.
 | Performance | `PROBES=1` full-accounting profile on `a1200-020` and `a1200-030`, run twice, ms per frame by phase |
 | Release | `make release-check` and WHDLoad smoke/boot/load/quit tests |
 
-**Emulator configurations** (FS-UAE via `amiga/diag_run.sh`, `AMIGA_CONFIG=`,
-task M0.6). Pin them explicitly: today the scripts leave the CPU to the model
-default, and run.sh contradicts its own comment.
-
-| Name | Model | CPU | Chip / fast | Use |
-| --- | --- | --- | --- | --- |
-| `a1200-020` | A1200 | 68EC020 14 MHz | 2 MB / 8 MB | Minimum: boot and play regression, profiling |
-| `a1200-030` | A1200 + 68030/50 | 68030 50 MHz, MMU off | 2 MB / 16 MB | **Default for development**; profiling together with `a1200-020` |
-| `a4000-040` | A4000 | 68040 25 MHz | 2 MB / 16 MB | Cache and CPUSHA behaviour, pacing |
-| `a1200-060` | A1200 + 68060/50 | 68060 | 2 MB / 16 MB | Pacing and stairs, fast-machine bugs |
+**Emulator configuration** (FS-UAE via the three launch scripts).
+`amiga/config.sh` pins `AMIGA_CONFIG=a1200-020`, the default and sole active
+configuration: A1200, 68EC020 at 14 MHz, AGA, 2 MB chip and 8 MB fast RAM,
+no FPU, MMU or JIT. Other CPU selections fail explicitly as deferred (M5.0).
+`runtime_status.gdb` reports the emulator CPU tuple and Exec CPU flags.
+These settings establish a functional baseline, not a performance result.
 
 **MAME reference loop.**
 - `tools/mac_launch.lua` launches the game on the 7.5.5 volume.
@@ -645,10 +639,10 @@ state". Task-level detail and acceptance checks are in
 
 | Phase | Goal | Exit criterion |
 | --- | --- | --- |
-| **M0 Groundwork** | Tools, emulator configs, build flags, reference probes | Trap census and runtime trap log committed; 030 config default; `-m68020` build clean with audits |
+| **M0 Groundwork** | Tools, emulator configs, build flags, reference probes | Trap census and runtime trap log committed; 020 config default; `-m68020` build clean with audits |
 | **M1 Boot to main** | Original startup path | CODE 1 runs unmodified; A5 world byte-identical to the host model; loud stop inside `main` init |
 | **M2 Startup to intro** | Files, resources, Mac screen, AGA 8-bit, palette, fonts, dialogs | Infogrames logo and intro play, state-pair frames match MAME |
-| **M3 Playable** | Input, menus, save/load, gameplay loop | New game → first room → walk, fight, pick up, save, load, quit, on the 030 config |
+| **M3 Playable** | Input, menus, save/load, gameplay loop | New game → first room → walk, fight, pick up, save, load, quit, on the 020 config |
 | **M4 Audio** | Native SoundMusicSys driver on Paula voices | Music and effects in intro and play; event log matches MAME |
 | **M5 Performance** | Profile and optimise on 68020 and 68030 | Documented ms/frame by phase; no remaining optimisation the profile justifies; minimum fast RAM measured |
 | **M6 Completion** | Whole-game fidelity | Scripted and manual play-through of all floors and the ending; stairs regression; no loud stop anywhere |
@@ -672,7 +666,8 @@ state". Task-level detail and acceptance checks are in
    what, and the evidence (numbers, PASS records). Use the repository identity. No
    signing, hooks or co-author lines.
 7. **After each milestone**, run `make regression` for the cases so far on
-   `a1200-030`, plus `boot` on `a1200-020`. Record the checkpoint in README.
+   `a1200-020`. Other CPU regressions remain deferred until M5.0. Record the
+   checkpoint in README.
 8. **Escalate to the owner** only for decisions in section 5, or for anything that
    would change game behaviour. Otherwise proceed.
 

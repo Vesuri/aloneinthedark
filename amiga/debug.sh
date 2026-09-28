@@ -7,24 +7,24 @@ set -uo pipefail
 cd "$(dirname "$0")"
 . "${FSUAE_COMMON:-$HOME/.local/share/amiga/fsuae_common.sh}"
 . ./stage_original_data.sh
+. ./config.sh || exit 1
 
 FSUAE="${FSUAE:-fs-uae}"
 GDB="${GDB:-m68k-amiga-elf-gdb}"
-MODEL="${AMIGA_MODEL:-A1200}"
 ROM="${1:-${KICKSTART:-$HOME/Documents/RetroPie/BIOS/kick31.rom}}"
 [ -f "$ROM" ] || { echo "Kickstart ROM not found: $ROM  (pass as \$1 or set \$KICKSTART)"; exit 1; }
 [ -f out/Alone.elf ] || { echo "build first: make"; exit 1; }
 
 RUN=.run; DH0="$RUN/dh0"; DH1="$RUN/dh1"; GDBHOME="$RUN/gdbhome"
-mkdir -p "$DH0/s" "$DH1" "$RUN/state" "$GDBHOME"
+mkdir -p "$DH0/s" "$DH1" "$RUN/state" "$RUN/logs" "$GDBHOME"
 printf 'cd dh1:\nAlone\n' > "$DH0/s/startup-sequence"
 cp -f out/Alone.exe "$DH1/Alone"
 stage_aitd_original_data "$DH1"
 
 fsuae_claim_port
 "$FSUAE" \
-  --amiga_model="$MODEL" --chip_memory=2048 --fast_memory=8192 \
-  --kickstart_file="$ROM" \
+  "${AITD_MACHINE_ARGS[@]}" \
+  --logs_dir="$PWD/$RUN/logs" --kickstart_file="$ROM" \
   --hard_drive_0="$DH0" --hard_drive_1="$DH1" \
   --joystick_port_0=mouse --joystick_port_1=nothing \
   --full_keyboard=1 \

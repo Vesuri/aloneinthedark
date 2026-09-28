@@ -24,7 +24,7 @@ The output is `amiga/out/Alone.exe`. The build needs no copyrighted input.
 Always clean when changing build flags or shared headers. Every link runs two audits:
 `no-float-audit` (no libgcc floating-point helpers) and `probe-audit` (every
 debugger-read global survives `--gc-sections`). C/C++ uses
-`-m68020 -mtune=68030 -msoft-float`; GNU as uses `-mcpu=68020 -mno-float`
+`-m68020 -mtune=68020 -msoft-float`; GNU as uses `-mcpu=68020 -mno-float`
 (it has no `-mtune` option). Integer multiplication/division uses native C/C++;
 the 68000 helper header is retired.
 
@@ -49,6 +49,12 @@ cd amiga
 . ./env.sh
 ./run.sh
 ```
+
+The default and sole active configuration is `a1200-020`: A1200, 68EC020,
+AGA, 2 MB chip / 8 MB fast, no FPU/MMU/JIT. Other CPU configurations fail
+with `CONFIG / DEFERRED CPU TARGET`; their support is deferred to M5.0.
+All three launchers share these settings and write the emulator core log to
+`amiga/.run/logs/fs-uae.log.txt`.
 
 `stage_original_data.sh` copies the extracted files next to the executable on
 the emulated hard drive; override `AITD_APP_RSRC` and `AITD_DATA_DIR` for other
@@ -126,3 +132,16 @@ The bounded 68020 run still reaches the CODE 3 CREL relocation stop. Captures
 made immediately after drawing that same stop compare byte-for-byte equal:
 98,304 planar bytes. The launcher now matches its documented A1200, 2 MB chip /
 8 MB fast configuration. The eight-plane game display remains M2.4 work.
+
+The Shell message `cannot read Alone In The Dark` / returncode 20 is a startup
+failure, not the expected CREL stop. It covers file open, size, allocation and
+read failures. Check the staged file and OS-visible memory; the exploratory
+68040 configuration produced this failure with its fast RAM unconfigured.
+
+M0.6 verification (68020-only scope per owner): clean build and both audits
+pass (30 probes). The bounded default run reports emulator CPU=68020,
+FPU/MMU/JIT=0, 24-bit addressing, Exec.AttnFlags=$0003, and 8 MB Z2 fast RAM
+at $00200000. It reaches `SEGMENT LOADER / CREL RELOCATION`, CODE 3, state 2,
+10 jump entries, before the 45-second ceiling. Shell syntax checks pass;
+deferred CPU selections and conflicting CPU overrides are rejected. This is
+configuration acceptance only, not the still-unimplemented boot regression.

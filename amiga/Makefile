@@ -161,12 +161,12 @@ CORE_CINCLUDES = -I"$(AMIGA_SRC)/framework/compat-include" \
 OPT        ?= -O2 -fomit-frame-pointer
 NATIVE_OPT ?= -O3 -funroll-loops
 
-CORE_CFLAGS = -g -MP -MMD -m68020 -mtune=68030 -msoft-float $(OPT) -nostdlib \
+CORE_CFLAGS = -g -MP -MMD -m68020 -mtune=68020 -msoft-float $(OPT) -nostdlib \
               -fno-tree-loop-distribution -ffunction-sections -fdata-sections \
               $(WARN) -DAITD_PLATFORM_AMIGA \
               $(CORE_CINCLUDES) $(EXTRA_DEFINES)
 
-CCFLAGS   = -g -MP -MMD -m68020 -mtune=68030 -msoft-float $(OPT) -nostdlib \
+CCFLAGS   = -g -MP -MMD -m68020 -mtune=68020 -msoft-float $(OPT) -nostdlib \
             -fno-tree-loop-distribution -ffunction-sections -fdata-sections \
             $(WARN) $(EXTRA_DEFINES)
 CPPFLAGS  = $(CCFLAGS) -fno-rtti -fno-exceptions -fno-use-cxa-atexit -std=gnu++17 \

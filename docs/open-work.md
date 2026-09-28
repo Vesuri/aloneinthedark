@@ -17,21 +17,12 @@ required.
 
 ## M0 Groundwork
 
-- **M0.6 Pinned emulator configurations.**
-  - Add `AMIGA_CONFIG=a1200-020|a1200-030|a4000-040|a1200-060` to
-    `amiga/run.sh`, `diag_run.sh` and `debug.sh`.
-  - Each config sets the CPU, AGA chipset and chip/fast sizes explicitly (design
-    §6). The default is `a1200-030`; `a1200-020` is the minimum that must also
-    play.
-
-  *Done when* each config boots to the current loud stop in a bounded run, and
-  `runtime_status.gdb` prints the CPU type it saw.
 - **M0.7 Regression harness skeleton.**
   - Add `amiga/regression.sh` and `make regression`, with the `boot` case: a PASS
     regex, and any loud stop counts as failure.
   - Extend the existing `make host-tests` target as runtime helpers arrive.
 
-  *Done when* `make regression` passes `boot` on `a1200-030`.
+  *Done when* `make regression` passes `boot` on `a1200-020`.
 
 ## M1 Boot to main
 
@@ -262,6 +253,15 @@ required.
 
 ## M5 Performance
 
+- **M5.0 Deferred CPU compatibility configurations.**
+  - Revisit 68030/68040/68060 only after the functional milestones on 68020.
+    Add explicit configurations and verify ROM compatibility, actual CPU and
+    OS-visible RAM before using them for later profiling/stairs checks.
+  - The exploratory 68040 run failed before the loader, with Z3 fast RAM not
+    configured by the selected ROM; it is not a supported configuration.
+
+  *Done when* each added configuration reports its intended CPU and available
+  memory, and passes all regression cases implemented so far in bounded runs.
 - **M5.1 Full-accounting profile.**
   - A PROBES build and a gameplay scene, on `a1200-020` and `a1200-030`, run
     twice.

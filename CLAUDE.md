@@ -30,7 +30,7 @@ solutions already paid for. Read [README.md](README.md),
 
 - Source `amiga/env.sh` in the same shell as builds/runs. Clean before changing
   build flags or widely included headers; the makefile does not track those.
-- Build C/C++ with `-m68020 -mtune=68030 -msoft-float`; GNU assembly targets
+- Build C/C++ with `-m68020 -mtune=68020 -msoft-float`; GNU assembly targets
   the 68020 ISA. Preserve the no-float and probe-symbol link audits.
   Use native integer arithmetic; the 68000-only math helpers are retired.
 - `AitdScreen` owns display registers. Publish complete copper lists and

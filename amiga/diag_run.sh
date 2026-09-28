@@ -5,32 +5,30 @@ set -uo pipefail
 cd "$(dirname "$0")"
 . "${FSUAE_COMMON:-$HOME/.local/share/amiga/fsuae_common.sh}"
 . ./stage_original_data.sh
+. ./config.sh || exit 1
 FSUAE="${FSUAE:-fs-uae}"
 GDB="${GDB:-m68k-amiga-elf-gdb}"
 ROM="${KICKSTART:-$HOME/Documents/RetroPie/BIOS/kick31.rom}"
 DELAY="${1:-14}"
-# Production target: A1200, 2 MiB chip RAM and 8 MiB fast RAM.
-MODEL="${AMIGA_MODEL:-A1200}"
-# Optional extra fs-uae args, e.g. EXTRA_ARGS="--cpu=68040 --jit_compiler=1".
+# Extra diagnostic options, such as --warp_mode=1, precede pinned machine flags.
 EXTRA_ARGS="${EXTRA_ARGS:-}"
 
 RUN=.run; DH0="$RUN/dh0"; DH1="$RUN/dh1"; GDBHOME="$RUN/gdbhome"
-mkdir -p "$DH0/s" "$DH1" "$RUN/state" "$GDBHOME"
+mkdir -p "$DH0/s" "$DH1" "$RUN/state" "$RUN/logs" "$GDBHOME"
 printf 'cd dh1:\nAlone\n' > "$DH0/s/startup-sequence"
 cp -f out/Alone.exe "$DH1/Alone"
 stage_aitd_original_data "$DH1"
 
 fsuae_claim_port
 "$FSUAE" \
-  --amiga_model="$MODEL" --chip_memory="${CHIP_MEMORY:-2048}" --fast_memory="${FAST_MEMORY:-8192}" \
-  --kickstart_file="$ROM" \
+  $EXTRA_ARGS "${AITD_MACHINE_ARGS[@]}" \
+  --logs_dir="$PWD/$RUN/logs" --kickstart_file="$ROM" \
   --hard_drive_0="$DH0" --hard_drive_1="$DH1" \
   --joystick_port_0=mouse --joystick_port_1=nothing \
   --full_keyboard=1 \
   --keyboard_key_up=action_key_cursor_up --keyboard_key_down=action_key_cursor_down \
   --keyboard_key_left=action_key_cursor_left --keyboard_key_right=action_key_cursor_right \
   --automatic_input_grab=0 --fullscreen=0 --window_width=720 --window_height=568 \
-  $EXTRA_ARGS \
   --remote_debugger=20 --remote_debugger_port="$DEBUG_PORT" --remote_debugger_trigger=Alone \
   --ntsc_mode=0 --state_dir="$RUN/state" > "$RUN/fsuae-dbg.log" 2>&1 &
 FSUAE_PID=$!

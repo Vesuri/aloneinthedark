@@ -15,7 +15,8 @@ The executable builds and passes its link audits. At startup it reads the
 original application resource fork, builds the A5 world described by CODE 0,
 resolves the jump table into resident segments, and stops with a named loud stop
 at the first segment that needs CREL relocation (`SEGMENT LOADER / CREL
-RELOCATION`, CODE 3 "Core"). The game itself does not run yet.
+RELOCATION`, CODE 3 "Core"). The game itself does not run yet. Development currently targets only the
+68020; other processors and performance work are deferred.
 
 ## Requirements (provisional)
 
