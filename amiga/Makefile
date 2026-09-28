@@ -126,6 +126,13 @@ ifdef PROBES
 EXTRA_DEFINES += -DAITD_PROBE
 endif
 
+ifeq ($(FILEWRITEPROBE),1)
+ifneq ($(FILEPROBE),1)
+$(error FILEWRITEPROBE=1 requires FILEPROBE=1)
+endif
+EXTRA_DEFINES += -DAITD_FILE_WRITE_PROBE
+PROBE_SYMS_FILEWRITE = g_fileWriteCalls g_fileWriteBytes g_fileWriteMax g_fileFlushCalls g_fileWriteProbeStep
+endif
 ifeq ($(FILEPROBE),1)
 EXTRA_DEFINES += -DAITD_FILE_PROBE
 PROBE_SYMS_FILE = g_fileCloseErrors g_fileOpenHandles g_fileRestoredCloses g_fileReadCalls g_fileReadBytes g_fileReadMax g_fileProbeStage g_fileProbeError g_fileProbeDone g_fileProbeCCR g_fileProbeWindows
@@ -223,7 +230,7 @@ PROBE_SYMS = g_catalogEntries g_catalogDataFiles g_catalogDataBytes g_applicatio
              g_stageBState g_trapWord g_trapSelector g_trapSegment g_trapOffset \
              g_trapPC g_trapRegisters g_trapUserStack g_resourceCount g_jumpEntryCount \
              g_blockMoveCount g_trapManager g_trapRoutine
-PROBE_SYMS += $(PROBE_SYMS_FILE)
+PROBE_SYMS += $(PROBE_SYMS_FILE) $(PROBE_SYMS_FILEWRITE)
 PROBE_SYMS += g_systemWindows g_windowFields g_systemWindowActive $(PROBE_SYMS_WINDOW)
 PROBE_SYMS += g_macServiceActive g_macServiceEntered g_macServiceCompleted $(PROBE_SYMS_SERVICE)
 PROBE_SYMS += g_stageCDepth $(PROBE_SYMS_HEAP) $(PROBE_SYMS_IDENTITY)

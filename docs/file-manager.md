@@ -414,3 +414,43 @@ resize sequence compares every logical byte after each operation and disk bytes
 after each successful flush. Backend callbacks assert the 64 KiB transfer bound.
 The host suite and clean 68020 build pass, including no-float and probe audits.
 No new original-game progress or native write acceptance is claimed.
+
+## Native buffered-write backend (M2.1b2c6)
+
+`FileAccess::flushStream` now commits a dirty `FileWriteBuffer` through the
+existing user-mode system-window mechanism. Each DOS Write is at most 64 KiB;
+the complete operation uses one window. SetFileSize establishes the final EOF,
+then DOS Flush drains the stream. The helper clears its dirty ledger only when
+that whole sequence succeeds. Read/write callbacks use the existing persistent
+DOS handle. A separate restored-OS entry is available for future shutdown
+integration; this checkpoint does not exercise dirty shutdown or game traps.
+
+The first live link exposed the SAS/C header's C++ linkage for memcpy/memset;
+explicit C linkage fixes it. The preceding clean build had compiled but
+collected the unused helper, so it had not proved live linkage. Both native
+link audits now pass with the helper retained and executed.
+
+`amiga/regression.sh file-write` builds with FILEPROBE=1 FILEWRITEPROBE=1.
+A diagnostic Line-A service runs the backend in user mode after all 39 existing
+file fixture stages. It overwrites 131,089 bytes crossing four pages of a
+200,003-byte fixture, flushes and checks every returned byte. It then shrinks
+the logical file to 17, regrows it and verifies a zero-filled extension, then
+physically truncates it to 17 and verifies EOF. The host checker requires the
+closed file to contain exactly those 17 original pattern bytes.
+
+The complete case uses 20 OS windows (ten from the original read fixture,
+ten from the write backend), eight DOS writes totaling 399,989 bytes, three
+flushes, and a maximum transfer of 65,536. It performs 17 DOS reads totaling
+731,122 bytes, including both fixture paths and readback. The stream ledger
+and restored-OS cleanup checks remain mandatory. The diagnostic owns only
+ignored `amiga/.run/dh1/write-probe.bin`; original input data is untouched.
+
+This verifies the independently usable DOS adapter and native helper execution.
+Writable permissions, per-fork binding, Write/SetEOF/FlushVol dispatch and
+close/shutdown integration remain M2.1b2c7. No new original-game progress or
+Mac mutation-call acceptance is claimed here.
+
+Host tests and all four native regression cases (file-write, file-read,
+window-core and production boot) pass on 68020. The original directory observer
+also retains seven completed services, zero OS windows and the unchanged
+Get1NamedResource stop. No owner decision is needed.

@@ -651,3 +651,12 @@ fixture. Its HSetVol/HGetVol and WD measurements are checked with
 Set `AITD_FILE_QUERIES=wd` for the 27-call WD lifetime/filtering fixture, and
 check it with `--wd` instead of `--directories`. The native `file-read` fixture
 now covers 39 stages including hierarchical defaults, WD queries and closure.
+
+### Buffered-write backend regression
+
+`amiga/regression.sh file-write` adds the native DOS write-buffer fixture after
+the read/directory fixture. It requires FILEPROBE=1 and FILEWRITEPROBE=1,
+byte-exact readbacks, measured window/transfer counts, EOF 17, an empty stream
+ledger after cleanup, and exact host-file bytes after the runner exits. The
+fixture is recreated in ignored staging for each run. `make regression` now
+includes this case. It tests the backend, not game Write/SetEOF/FlushVol traps.

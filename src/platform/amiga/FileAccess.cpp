@@ -2,11 +2,15 @@
 #include <dos/dos.h>
 #include "FileAccess.h"
 #include "SystemWindow.h"
+#include "mac/FileWriteBuffer.h"
 #ifdef AITD_WINDOW_PROBE
 extern "C" void aitdWindowProbeInside();
 #endif
 #ifdef AITD_FILE_PROBE
 extern "C" { volatile uint32_t g_fileReadCalls=0,g_fileReadBytes=0,g_fileReadMax=0,g_fileOpenHandles=0,g_fileRestoredCloses=0,g_fileCloseErrors=0; }
+#endif
+#ifdef AITD_FILE_WRITE_PROBE
+extern "C" { volatile uint32_t g_fileWriteCalls=0,g_fileWriteBytes=0,g_fileWriteMax=0,g_fileFlushCalls=0; }
 #endif
 namespace FileAccess {
 struct Request {
@@ -40,8 +44,8 @@ static int32_t readAt(const char* path,uint32_t offset,uint8_t* buffer,uint32_t 
     int32_t error=aitdSystemWindow(readOperation,&request);
     actual=request.actual;return error;
 }
-// Whole-file replacement is bounded to one chunk here; larger durable writes
-// need a persistent file session (M3.6), not a partial success.
+// This whole-file replacement utility is capped at one chunk. Larger buffered
+// updates use the persistent stream flush below.
 static int32_t saveOperation(void* context)
 {
     Request& r=*(Request*)context;
@@ -120,6 +124,45 @@ int32_t closeRestoredStream(ReadStream& stream) {
     ++g_fileRestoredCloses;
 #endif
     return closeStreamOperation(&stream);
+}
+static int32_t writeStreamInside(void* context,uint32_t offset,const uint8_t* buffer,uint32_t bytes,uint32_t& actual) {
+    ReadStream& stream=*(ReadStream*)context;actual=0;
+    if(bytes>chunkBytes || offset>0x7fffffffUL-bytes)return invalid;
+    if(Seek(stream.handle,offset,OFFSET_BEGINNING)<0)return ioError;
+#ifdef AITD_FILE_WRITE_PROBE
+    ++g_fileWriteCalls;if(bytes>g_fileWriteMax)g_fileWriteMax=bytes;
+#endif
+    LONG wrote=Write(stream.handle,(APTR)buffer,bytes);
+    if(wrote<0)return ioError;
+    actual=wrote;
+#ifdef AITD_FILE_WRITE_PROBE
+    g_fileWriteBytes+=actual;
+#endif
+    return actual==bytes ? ok : ioError;
+}
+static int32_t resizeStreamInside(void* context,uint32_t bytes) {
+    ReadStream& stream=*(ReadStream*)context;
+    if(SetFileSize(stream.handle,bytes,OFFSET_BEGINNING)!=(LONG)bytes)return ioError;
+    // Keep the buffer dirty unless both EOF and DOS buffer flush complete.
+    return Flush(stream.handle) ? ok : ioError;
+}
+struct FlushRequest { ReadStream* stream;FileWriteBuffer* buffer; };
+static int32_t flushStreamOperation(void* context) {
+    FlushRequest& r=*(FlushRequest*)context;
+#ifdef AITD_FILE_WRITE_PROBE
+    ++g_fileFlushCalls;
+#endif
+    return r.buffer->flush(writeStreamInside,resizeStreamInside,r.stream);
+}
+int32_t flushStream(ReadStream& stream,FileWriteBuffer& buffer) {
+    if(!stream.handle)return invalid;
+    if(!buffer.dirty())return ok;
+    FlushRequest r={&stream,&buffer};return aitdSystemWindow(flushStreamOperation,&r);
+}
+int32_t flushRestoredStream(ReadStream& stream,FileWriteBuffer& buffer) {
+    if(!stream.handle)return invalid;
+    if(!buffer.dirty())return ok;
+    FlushRequest r={&stream,&buffer};return flushStreamOperation(&r);
 }
 const Backend dos={readAt,save};
 }

@@ -1,4 +1,6 @@
+extern "C" {
 #include <string.h>
+}
 #include "FileWriteBuffer.h"
 void FileWriteBuffer::clear() {
     for(uint16_t i=0;i<maxPages;++i)if(pages_[i].bytes) {

@@ -47,3 +47,8 @@ aitdProbeCloseWD:
     .word 0xa260
     move.w ccr,g_fileProbeCCR
     rts
+    .globl aitdProbeWriteBackend
+aitdProbeWriteBackend:
+    .word 0xa0fb
+    move.w ccr,g_fileProbeCCR
+    rts

@@ -63,6 +63,7 @@ mac-trap-map:
 	@python3 tools/mac_trap_map.py '$(RUNTIME_DATA)/Alone In The Dark'
 
 regression:
+	@./amiga/regression.sh file-write
 	@./amiga/regression.sh file-read
 	@./amiga/regression.sh window-core
 	@./amiga/regression.sh boot

@@ -4960,6 +4960,9 @@ static bool dispatchFileRead(uint16_t trap,uint32_t* regs) {
 }
 static bool isUserService(uint16_t trap)
 {
+#ifdef AITD_FILE_WRITE_PROBE
+    if(trap==0xa0fb)return true;
+#endif
 #ifdef AITD_WINDOW_PROBE
     if(trap==0xa1fc)return true;
 #endif
@@ -5105,6 +5108,12 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     if(inUserService && trap==0xa1fc) {
         if(!aitdWindowProbe()) { loaderStop("SYSTEM WINDOW PROBE",0);showLoaderStop(); }
         regs[0]=0;return 1;
+    }
+#endif
+#ifdef AITD_FILE_WRITE_PROBE
+    if(inUserService && trap==0xa0fb) {
+        extern int32_t aitdFileWriteBackendProbe();
+        regs[0]=(uint32_t)aitdFileWriteBackendProbe();return 1;
     }
 #endif
     if(isUserService(trap) && !inUserService)

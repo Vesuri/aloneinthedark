@@ -9,6 +9,10 @@ case "${1:-boot}" in
     flags=(FILEPROBE=1); observer=file_read.gdb
     python3 ../tools/check_file_read_probe.py --prepare
     ;;
+  file-write)
+    flags=(FILEPROBE=1 FILEWRITEPROBE=1); observer=file_write.gdb
+    python3 ../tools/check_file_read_probe.py --prepare --write
+    ;;
   window-core)
     flags=(WINDOWPROBE=1 PROBES=1); observer=window.gdb
     python3 ../tools/check_window_capture.py --prepare
@@ -27,6 +31,8 @@ status=0
 GDBTAIL=120 EXTRA_ARGS=--warp_mode=1 GDBSCRIPT="$observer" ./diag_run.sh 60 || status=$?
 if [[ "$observer" == file_read.gdb ]]; then
   python3 ../tools/check_file_read_probe.py --status "$status"
+elif [[ "$observer" == file_write.gdb ]]; then
+  python3 ../tools/check_file_read_probe.py --write --status "$status"
 elif [[ "$observer" == window.gdb ]]; then
   python3 ../tools/check_window_capture.py --status "$status"
 else

@@ -43,7 +43,7 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.1b2c6 Remaining File Manager metadata, variants and mutations.**
+- **M2.1b2c7 Remaining File Manager metadata, variants and mutations.**
   - Catalog/identity (M2.1b1) and default-directory/Preferences startup
     (M2.1b2a) are independently complete. `file_catalog.gdb` verifies all seven
     direct file calls and FindFolder against the Mac, ending at Get1NamedResource.
@@ -51,9 +51,11 @@ required.
     GetFPos, SetFPos and Close with persistent DOS handles, 64 KiB per-fork
     buffers and the native `file-read` regression. Original startup remains at
     Get1NamedResource; synthetic reads do not complete M2.1c.
-  - Connect the verified sparse `FileWriteBuffer` helper to writable forks and
-    DOS system-window flush/resize callbacks. It is not yet used by game traps;
-    its host tests do not count as native write or durable-save acceptance.
+  - Connect the verified sparse `FileWriteBuffer` and DOS flush/resize adapter
+    to writable forks and the game traps. The native `file-write` backend
+    regression proves exact writes/readback/truncation, bounded DOS calls,
+    system windows and post-close host bytes. It does not implement or count
+    as original-game Write/SetEOF/FlushVol or durable-save acceptance.
   - Finish the census call set over that catalog: create/delete/file info, writes,
     truncation/flush, open permissions beyond read-only, HGetVolParms,
     FSDispatch PBHOpenDF, and async variants.
