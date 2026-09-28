@@ -30,8 +30,9 @@ solutions already paid for. Read [README.md](README.md),
 
 - Source `amiga/env.sh` in the same shell as builds/runs. Clean before changing
   build flags or widely included headers; the makefile does not track those.
-- Preserve the software mul/div and probe-symbol link audits. Use
-  `src/m68k_math.h` for suitable 16-bit arithmetic.
+- Build C/C++ with `-m68020 -mtune=68030 -msoft-float`; GNU assembly targets
+  the 68020 ISA. Preserve the no-float and probe-symbol link audits.
+  Use native integer arithmetic; the 68000-only math helpers are retired.
 - `AitdScreen` owns display registers. Publish complete copper lists and
   bitplane/sprite pointers first in VBI, before input or audio work.
 - Keep explicit dirty rectangles; no shadow framebuffer or tile-diff machinery.

@@ -8,7 +8,6 @@
 #include "platform/amiga/MacInput.h"
 #include "platform/amiga/PerfProbe.h"
 #include "platform/amiga/framework/AmigaHardware.h"
-#include "../m68k_math.h"
 #include "PaulaSample.h"
 
 extern "C" {
@@ -840,7 +839,7 @@ static void disablePaulaChannel(uint16_t channel)
     // RKM 5-2-7: DMA must remain off for at least two SAMPLE periods.
     // PAL lines contain at least 227 colour clocks. Add a full line because
     // the first observed raster transition can occur immediately.
-    uint16_t lines = (uint16_t)(aitd_divu16((uint32_t)s_paulaPeriodCeiling[channel] << 1, 227) + 2);
+    uint16_t lines = (uint16_t)((((uint32_t)s_paulaPeriodCeiling[channel] << 1) / 227U) + 2);
     waitPaulaDmaLines(lines);
     s_paulaPeriodCeiling[channel] = 0;
 }

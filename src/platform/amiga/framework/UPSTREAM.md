@@ -18,8 +18,8 @@ Support files: `SASCCompat.h`, `compat-include/`.
 
 **Local changes on vendoring into this repo (all mechanical):**
 - `REVS_*` macros → `VETTE_*` (`VETTE_SASC_ALIAS`, `VETTE_BLIT_IRQ`).
-- `revs_mulu16`/`muls16`/`divu16`/`modu16`/`divs16`/`mods16` → `vette_*`, and `m68k_math.h` moved
-  from `src/cpu/` (which this port has no use for — there is no CPU to emulate) to `src/`.
+- The `revs_*` arithmetic helpers were renamed on vendoring. AitD has since
+  retired those helpers and their header for its 68020 target.
 - `BitmapAssembler.s`'s two non-interleaved arms were inherited silent no-ops. Vette now makes
   row-interleaving a construction invariant: the layout selector was removed from `Bitmap` and
   `allocate()`, the member is `const true`, and both impossible assembler arms execute `ILLEGAL`
@@ -65,11 +65,10 @@ at which point it fails, or worse, fails an audit for a reason that looks unrela
    error, and only an interlaced display needs the field parity, so it stayed dormant for years.
    **Fix:** `isLongFrame()` is out of the bridged set on both compilers and always the C++ body —
    one `VPOSR` bit-15 test, which the bridge could not improve on. ⭐ Feed this upstream.
-2. **`Bitmap::patternWithMask()` pulls in `__mulsi3`** — a 32-bit software multiply, which the
-   68000 does not have and which `make muldiv-audit` fails the link over by design.
-   ⇒ **the first call to `patternWithMask()` breaks the mandatory audit**, and the audit message
-   will name `__mulsi3`, not the caller. If the port needs that method, convert its arithmetic to
-   `src/m68k_math.h`'s 16-bit helpers first.
+2. **68000 arithmetic constraint retired for AitD.** Vette's `patternWithMask()`
+   could pull in `__mulsi3`; AitD targets 68020 and uses native integer arithmetic.
+   `m68k_math.h` and the software mul/div audit are removed. The no-float audit
+   and probe-symbol audit remain mandatory.
 
 ## ⭐⭐ `setPlayfield()` — THREE DEFECTS FIXED, and they are upstream's to take (2026-09-17)
 

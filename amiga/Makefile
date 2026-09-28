@@ -169,12 +169,12 @@ CORE_CINCLUDES = -I"$(AMIGA_SRC)/framework/compat-include" \
 OPT        ?= -O2 -fomit-frame-pointer
 NATIVE_OPT ?= -O3 -funroll-loops
 
-CORE_CFLAGS = -g -MP -MMD -m68000 -msoft-float $(OPT) -nostdlib \
+CORE_CFLAGS = -g -MP -MMD -m68020 -mtune=68030 -msoft-float $(OPT) -nostdlib \
               -fno-tree-loop-distribution -ffunction-sections -fdata-sections \
               $(WARN) -DAITD_PLATFORM_AMIGA \
               $(CORE_CINCLUDES) $(EXTRA_DEFINES)
 
-CCFLAGS   = -g -MP -MMD -m68000 -msoft-float $(OPT) -nostdlib \
+CCFLAGS   = -g -MP -MMD -m68020 -mtune=68030 -msoft-float $(OPT) -nostdlib \
             -fno-tree-loop-distribution -ffunction-sections -fdata-sections \
             $(WARN) $(EXTRA_DEFINES)
 CPPFLAGS  = $(CCFLAGS) -fno-rtti -fno-exceptions -fno-use-cxa-atexit -std=gnu++17 \
@@ -188,8 +188,8 @@ CPPFLAGS  = $(CCFLAGS) -fno-rtti -fno-exceptions -fno-use-cxa-atexit -std=gnu++1
             -I"$(REPO)/src/mac" \
             -I"$(REPO)/src/platform" \
             -I"$(CURDIR)"
-ASFLAGS   = -mcpu=68000 -g --register-prefix-optional -I"$(SDKDIR)" -I"$(CURDIR)"
-obj/C2P.o: ASFLAGS := $(filter-out -mcpu=68000,$(ASFLAGS)) -mcpu=68020
+# GNU as has no scheduling/tuning flag; hand-written code targets the 68020 ISA.
+ASFLAGS   = -mcpu=68020 -mno-float -g --register-prefix-optional -I"$(SDKDIR)" -I"$(CURDIR)"
 VASMFLAGS = -m68010 -Felf -quiet -x -no-opt -nowarn=62 $(EXTRA_VASMDEFS)
 
 # ⚠⚠ Every global a committed .gdb script reads MUST be listed here.  -Wl,--gc-sections drops
@@ -255,7 +255,7 @@ VERSION_STRING = $$VER: Alone in the Dark $(shell cat $(REPO)/VERSION)
 # ---------------------------------------------------------------------------
 # Rules
 # ---------------------------------------------------------------------------
-.PHONY: all clean muldiv-audit probe-audit
+.PHONY: all clean no-float-audit probe-audit
 
 all: $(OUT).exe
 
@@ -282,19 +282,17 @@ $(OUT).elf: $(OBJECTS)
 	$(info Linking $@)
 	@$(CC) $(CCFLAGS) $(LDFLAGS) $(OBJECTS) -o $@
 	@$(OBJDUMP) --disassemble --no-show-raw-ins -S $@ > $(OUT).s 2>/dev/null || true
-	@$(MAKE) --no-print-directory muldiv-audit
+	@$(MAKE) --no-print-directory no-float-audit
 	@$(MAKE) --no-print-directory probe-audit
 
-# ⚠ MANDATORY AUDIT: the 68000 has NO 32-bit multiply or divide, so GCC lowers any 32-bit
-# * / / / % into __mulsi3/__divsi3/__udivsi3/__modsi3/__umodsi3 — ~200-600 cycles each.  Use the
-# 16-bit helpers in src/m68k_math.h instead.  This runs on every link so a regression is caught
-# the moment it is introduced, not months later.
-muldiv-audit:
-	@if $(OBJDUMP) -d $(OUT).elf | grep -qE '__(u?div|u?mod|mul)si3'; then \
-	  echo "*** 32-bit software mul/div linked in — see src/m68k_math.h:"; \
-	  $(OBJDUMP) -d $(OUT).elf | grep -E '__(u?div|u?mod|mul)si3' | head; \
-	  exit 1; \
-	else echo "muldiv-audit: clean"; fi
+# No FPU is required, and libgcc soft-float must not enter the native runtime.
+# Inspect symbols (including undefined references), not disassembly text.
+no-float-audit:
+	@$(OBJDUMP) -t $(OUT).elf > obj/float-audit.symbols
+	@if awk '{print $$NF}' obj/float-audit.symbols | grep -E '^__[a-z0-9_]*(sf|df|xf|tf)[a-z0-9_]*$$' > obj/float-audit.bad; then \
+	  echo "*** software floating-point helper(s) linked in:"; \
+	  cat obj/float-audit.bad; exit 1; \
+	else echo "no-float-audit: clean"; fi
 
 # ⚠ MANDATORY AUDIT: every PROBE_SYMS symbol must be a real data symbol in the linked ELF.
 # A gc-dropped probe counter makes gdb print instruction bytes as a measurement — see PROBE_SYMS.

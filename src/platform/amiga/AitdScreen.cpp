@@ -766,8 +766,6 @@ bool AitdScreen::presentMacFrame(const uint8_t* chunky, const uint8_t* colorTabl
                             groups, (uint16_t)(dirty.bottom - dirty.top));
             g_c2pSplitFastTicks += aitdProfileBeamEpoch() - splitStart;
             ++g_c2pSplitRects;
-            // Keep the diagnostic out of libgcc's very costly 32-bit multiply;
-            // the production audit deliberately rejects that runtime helper.
             uint16_t splitWidth = (uint16_t)(dirty.right - dirty.left);
             for (int16_t splitY = dirty.top; splitY < dirty.bottom; ++splitY)
                 g_c2pSplitPixels += splitWidth;

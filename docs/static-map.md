@@ -92,8 +92,11 @@ with CODE 1's own path.
 decode, 74.1% of CODE bytes reached) finds **319 68020-only instructions on
 reachable paths** in 12 of the 13 segments: `EXTB.L`, `MULU.L`, scaled-index and
 memory-indirect addressing, and bitfield instructions. The game requires a 68020
-or better; Vette's 68000 target does not apply. The port's own C++ is still built
-with `-m68000` and the mul/div audit until that choice is revisited.
+or better; Vette's 68000 target does not apply. The port's C/C++ uses
+`-m68020 -mtune=68030 -msoft-float`; GNU as uses `-mcpu=68020 -mno-float`
+(no scheduling option exists in this assembler). The no-float link audit rejects
+libgcc floating-point helpers; the probe audit remains mandatory. The inherited
+vasm framework glue retains its 68010 instruction limit, a subset of the target.
 
 The only privileged instructions are CODE 1's cache-flush fallback (not
 reached when `_vCacheFlush` is implemented) and the music driver's legacy

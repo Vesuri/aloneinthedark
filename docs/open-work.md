@@ -17,14 +17,6 @@ required.
 
 ## M0 Groundwork
 
-- **M0.3 68020 build.**
-  - Build C/C++ and gas with `-m68020 -mtune=68030`.
-  - Retire the mul/div audit and `m68k_math.h`, add a no-soft-float audit, and
-    keep the probe audit.
-  - Update CLAUDE.md, development.md and static-map.md "CPU requirements".
-
-  *Done when* a clean build links with both audits passing and the boot run still
-  reaches the same loud stop.
 - **M0.4 Remove HIRES and Vette display residue.**
   - Drop `HIRES`, `StartupConfig.s`/`aitd_hires_value`, and the interlace and LOF
     code and probes.

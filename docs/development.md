@@ -23,8 +23,11 @@ make -C amiga -j4
 The output is `amiga/out/Alone.exe`. The build needs no copyrighted input.
 `make -C amiga HIRES=1` selects the hires-interlaced default. Always clean when
 changing other build flags or shared headers. Every link runs two audits:
-`muldiv-audit` (no 32-bit software multiply/divide) and `probe-audit` (every
-debugger-read global survives `--gc-sections`).
+`no-float-audit` (no libgcc floating-point helpers) and `probe-audit` (every
+debugger-read global survives `--gc-sections`). C/C++ uses
+`-m68020 -mtune=68030 -msoft-float`; GNU as uses `-mcpu=68020 -mno-float`
+(it has no `-mtune` option). Integer multiplication/division uses native C/C++;
+the 68000 helper header is retired.
 
 ## Original data
 
@@ -111,3 +114,9 @@ M0.2 added the runtime-confirmed CODE 1 cache helper at `$021E`/`$026E` to the
 census: `$A0BD` was the new distinct trap; `$A346`/`$A746` were new sites for
 already-known words. The original bytes are checked before these extra roots
 are walked. The additional low-memory operands both access `CPUFlag` (`$012F`).
+
+M0.3 verification: clean 68020 build linked with `no-float-audit: clean` and
+`probe-audit: clean (33 symbols)`. A real soft-float compilation fixture was
+rejected for `__addsf3` and `__floatsidf`. A bounded A1200/68020 diagnostic run
+reached the unchanged `SEGMENT LOADER / CREL RELOCATION`, CODE 3, state 2,
+10 jump entries. This is the expected current stop, not a gameplay/boot pass.

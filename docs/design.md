@@ -131,8 +131,8 @@ subsystem with its design decision and the queue tasks that implement it.
 
 ### 4.1 CPU, build and machine takeover
 
-- **Build flags.** Build the port with `-m68020 -mtune=68030` (task M0.3).
-  - Retire the 68000 mul/div audit and `m68k_math.h` for new code.
+- **Build flags.** Build the port with `-m68020 -mtune=68030`.
+  - The 68000 mul/div audit and `m68k_math.h` are retired; use native integer arithmetic.
   - Keep the probe audit, and a no-float audit so libgcc soft-float never links.
 - **Line-A vector.** Install the handler through VBR (`getVBR()` already exists),
   not at absolute $28. Save and restore the old vector.
