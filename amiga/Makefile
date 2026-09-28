@@ -2,7 +2,6 @@
 #
 # Usage (from amiga/ with the toolchain on PATH via `. env.sh`):
 #   make                 build out/Alone.exe
-#   make HIRES=1         default to hires interlaced, including standalone launches
 #   make clean           remove obj/ and out/
 #   make PROBES=1        + the timing probes (diag_run.sh needs this)
 #   make FPSCOUNT=1      the HONEST framerate build: one counter, no probe instrumentation
@@ -120,13 +119,6 @@ endif
 EXTRA_DEFINES += -DAITD_C2P_SPLIT
 endif
 
-# Startup default only: a WHDLoad slave may override this retained word before entry.
-HIRES ?= 0
-ifneq ($(filter $(HIRES),0 1),$(HIRES))
-$(error HIRES must be 0 or 1)
-endif
-obj/StartupConfig.o: ASFLAGS += --defsym AITD_HIRES=$(HIRES)
-
 # `make PROBES=1` — the sub-frame timing accumulators, read via the gdb stub (amiga/diag_run.sh).
 # OFF by default: the probes read chip registers several times per iteration, which is exactly
 # what a framerate build must not do.  ⚠ NEVER quote a framerate from a PROBES build.
@@ -195,7 +187,7 @@ VASMFLAGS = -m68010 -Felf -quiet -x -no-opt -nowarn=62 $(EXTRA_VASMDEFS)
 # ⚠⚠ Every global a committed .gdb script reads MUST be listed here.  -Wl,--gc-sections drops
 # an unreferenced counter and gdb then resolves the name into .text and prints INSTRUCTION
 # BYTES as a value — a fake measurement, not an obvious zero.  `probe-audit` enforces it.
-PROBE_SYMS = g_vbiCount g_planeChecksum g_screenReady g_laceFields g_longFields g_lofSamples \
+PROBE_SYMS = g_vbiCount g_planeChecksum g_screenReady \
              g_stageBState g_trapWord g_trapSelector g_trapSegment g_trapOffset \
              g_trapPC g_trapRegisters g_trapUserStack g_resourceCount g_jumpEntryCount \
              g_blockMoveCount g_trapManager g_trapRoutine
@@ -258,17 +250,6 @@ VERSION_STRING = $$VER: Alone in the Dark $(shell cat $(REPO)/VERSION)
 .PHONY: all clean no-float-audit probe-audit
 
 all: $(OUT).exe
-
-# Track this loader-patchable word independently of compiler flags. A forced
-# rebuild handles even back-to-back mode changes within one clock tick.
-ifneq ($(shell cat obj/hires.config 2>/dev/null),$(HIRES))
-.PHONY: obj/StartupConfig.o $(OUT).elf $(OUT).exe
-endif
-
-obj/StartupConfig.o: $(AMIGA_SRC)/StartupConfig.s
-	@mkdir -p obj
-	@$(AS) $(ASFLAGS) -o $@ "$(AMIGA_SRC)/StartupConfig.s"
-	@printf '%s\n' '$(HIRES)' > obj/hires.config
 
 $(OUT).exe: $(OUT).elf
 	$(info Elf2Hunk $@)

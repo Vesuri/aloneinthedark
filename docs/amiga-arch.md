@@ -31,7 +31,9 @@ Alone in the Dark makes arrives as a loud stop.
 
 ## Display
 
-`AitdScreen` is Vette's display owner: four bitplanes / 16 colors from a packed
+`AitdScreen` retains the bootstrap four-plane crop with a single cursor sprite
+buffer; the alternate display mode and field-parity probes are removed. It
+currently draws 16 colors from a packed
 4-bit 512×320 Macintosh surface, with a double-buffered chip-RAM bitmap, copper
 lists published in VBI, an explicit dirty-rectangle list and a hardware-sprite
 mouse pointer. Alone in the Dark draws 8-bit pixels through a 256-entry `clut`,

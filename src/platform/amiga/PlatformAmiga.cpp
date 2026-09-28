@@ -108,15 +108,11 @@ static bool loadOriginalResourceFiles(OriginalResourceFiles& files)
 // .text and prints INSTRUCTION BYTES as a value -- a fake measurement, not an obvious
 // zero.  `make probe-audit` enforces it on every link.  (CLAUDE.md)
 //
-// These five are Stage A's whole acceptance test: they say the display came up, in the
-// mode that was asked for, showing the bytes that were meant to be there.
+// Bootstrap diagnostics: field count, allocation status and chip-RAM checksum.
 extern "C" {
 volatile uint16_t g_vbiCount      = 0;   // real PAL fields, the only honest timebase
 volatile uint32_t g_planeChecksum = 0;   // of the blob IN CHIP RAM (AitdScreen)
 volatile uint16_t g_screenReady   = 0;   // 0 = allocation failed, 1 = displaying
-volatile uint16_t g_laceFields    = 0;   // fields SINCE the display came up (the denominator)
-volatile uint16_t g_longFields    = 0;   // ...of which long; ~half if LACE took
-volatile uint16_t g_lofSamples[8];       // those fields' raw VPOSR, for the parity check
 extern volatile uint32_t g_macTicks;
 extern volatile uint32_t* g_macTicksAddress;
 extern volatile uint32_t* g_macRndSeedAddress;
@@ -137,26 +133,6 @@ extern "C" __attribute__((noinline)) void aitdRestoreComplete()
     __asm__ volatile ("" ::: "memory");
 }
 #endif
-
-/* ⚠⚠ THE FIELD-PARITY RATIO HAS TO BE MEASURED FROM WHEN THE MODE IS SET, NOT FROM BOOT,
- * and getting that wrong produced a confident wrong answer twice in a row.
- *
- * The VERTB vector is taken over ~40 lines before screen.initialize() runs, so the handler
- * is already counting while the display is still the OS's non-interlaced one -- where LOF is
- * always 1.  Measured over the whole run that gave long/total = 0.636 (159 of 250): about 68
- * boot fields all long, then a correctly alternating remainder.  0.636 is not 1.0, so it does
- * not read as "interlace is dead", and it is not 0.5, so it does not read as working either.
- * It reads as a subtly broken display -- which is the most expensive kind of wrong number.
- *
- * So the counters below only advance once s_screen is published, and 0.5 means 0.5.  */
-
-// ⚠⚠ THERE IS NO `g_bplcon0Read`, AND THE REASON IS WORTH KEEPING.  This file had one, on
-// the argument that reading a register back beats trusting the write.  It cannot: BPLCON0 is
-// WRITE-ONLY, and a write-only custom register reads as 0xFFFF (measured under FS-UAE --
-// the probe printed `bplcon0(read) = 0xFFFF` against an expected 0xC205).  A readback that
-// always returns 0xFFFF is not a weak test, it is a test that can never fail, which is worse
-// than none.  What replaced it: a static_assert on the derived constant (AitdScreen.cpp,
-// compile time) plus g_lofSamples below (run time, and the hardware's own answer).
 
 static AitdScreen* s_screen = 0;
 
@@ -193,12 +169,6 @@ static uint32_t vbiHandler()
     // (docs/amiga-arch.md)
     if (s_screen) s_screen->vbiUpdate();
 
-    // ⭐ Sample the RAW VPOSR for the first 8 fields.  The long/total ratio alone cannot
-    // distinguish "LACE is not working" from "the LOF read is wrong" -- both pin it to 1.0.
-    // The raw words separate them: a non-interlaced display reads a constant high byte with
-    // LOF set, a working interlaced one alternates it, and a bad ADDRESS reads 0xFFFF.
-    uint16_t vp = *vposrPointer;
-
     // Macintosh Ticks advances at ~60 Hz; PAL VERTB is 50 Hz.  Four fields add
     // one tick and every fifth adds two, preserving real-time animation speed.
     uint16_t tickDelta = 1;
@@ -210,11 +180,6 @@ static uint32_t vbiHandler()
     // Vette copies it into qd.randSeed once during startup.
     if (g_macRndSeedAddress) *g_macRndSeedAddress = g_macTicks - 1;
 
-    if (s_screen) {                    // non-null only once the mode registers are set
-        if (g_laceFields < 8) g_lofSamples[g_laceFields] = vp;
-        g_laceFields++;
-        if (vp & 0x8000) g_longFields++;   // LOF; see AitdScreen::vbiUpdate()
-    }
     aitdProfileOnVBI();
     return 0;
 }

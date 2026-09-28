@@ -21,8 +21,7 @@ make -C amiga -j4
 ```
 
 The output is `amiga/out/Alone.exe`. The build needs no copyrighted input.
-`make -C amiga HIRES=1` selects the hires-interlaced default. Always clean when
-changing other build flags or shared headers. Every link runs two audits:
+Always clean when changing build flags or shared headers. Every link runs two audits:
 `no-float-audit` (no libgcc floating-point helpers) and `probe-audit` (every
 debugger-read global survives `--gc-sections`). C/C++ uses
 `-m68020 -mtune=68030 -msoft-float`; GNU as uses `-mcpu=68020 -mno-float`
@@ -120,3 +119,10 @@ M0.3 verification: clean 68020 build linked with `no-float-audit: clean` and
 rejected for `__addsf3` and `__floatsidf`. A bounded A1200/68020 diagnostic run
 reached the unchanged `SEGMENT LOADER / CREL RELOCATION`, CODE 3, state 2,
 10 jump entries. This is the expected current stop, not a gameplay/boot pass.
+
+M0.4 verification: clean build and both link audits pass (30 retained probes);
+the `PROBES=1 FILLWATCH=1` clean build also passes (78 probes).
+The bounded 68020 run still reaches the CODE 3 CREL relocation stop. Captures
+made immediately after drawing that same stop compare byte-for-byte equal:
+98,304 planar bytes. The launcher now matches its documented A1200, 2 MB chip /
+8 MB fast configuration. The eight-plane game display remains M2.4 work.

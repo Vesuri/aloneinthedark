@@ -21,7 +21,7 @@ ROM="${1:-${KICKSTART:-$HOME/Documents/RetroPie/BIOS/kick31.rom}}"
 EXE="${AITD_EXE:-out/Alone.exe}"
 # Production target: A1200, 2 MiB chip RAM and 8 MiB fast RAM.  AMIGA_MODEL
 # remains overridable for compatibility checks on slower machines.
-MODEL="${AMIGA_MODEL:-A4000}"
+MODEL="${AMIGA_MODEL:-A1200}"
 [ -f "$EXE" ] || { echo "not found: $EXE  (build first: make, or set \$AITD_EXE)"; exit 1; }
 
 RUN=.run; DH0="$RUN/dh0"; DH1="$RUN/dh1"
@@ -52,7 +52,7 @@ fsuae_track_self
 # host cursor keys before they can become Amiga keyboard events.
 exec "$FSUAE" \
   --amiga_model="$MODEL" \
-  --chip_memory=1024 --fast_memory=4096 \
+  --chip_memory=2048 --fast_memory=8192 \
   --kickstart_file="$ROM" \
   --hard_drive_0="$DH0" --hard_drive_1="$DH1" \
   --joystick_port_0=mouse --joystick_port_1=nothing \

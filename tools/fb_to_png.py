@@ -2,8 +2,7 @@
 """Re-render a raw Macintosh framebuffer dump through its own CLUT, and diff it
 against MAME's screenshot of the same frame.
 
-⭐ This is the PROOF behind the pixel-format claims in docs/mac-hardware.md.  A
-pixel-exact diff against the emulator's own output validates, in one shot: the
+A pixel-exact diff against the emulator's own output validates, in one shot: the
 base address, rowBytes, that 4 bpp means two pixels per byte, that the HIGH
 nibble is the LEFT pixel, and that the CLUT index order is what the docs say.
 Guess any one of them wrong and the image comes out visibly mangled -- which is

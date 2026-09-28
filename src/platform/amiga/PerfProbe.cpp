@@ -32,9 +32,8 @@ uint32_t aitdProfileBeamEpoch()
     // The field counter changes beside the beam wrap in the VBI handler.  Read
     // around VPOSR/VHPOSR so an interrupt between the two cannot manufacture a
     // one-field error.  Each scanline is divided into 256 horizontal beam units;
-    // 313 lines per field is deliberately monotonic. PAL interlace's alternating
-    // half-line makes its absolute scale differ by less than 0.2%, while every
-    // category and the denominator share it.
+    // 313 lines per field keeps the inherited profiling epoch monotonic; every
+    // category and its denominator share this scale.
     uint16_t before, after;
     uint32_t position;
     do {

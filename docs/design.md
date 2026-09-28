@@ -361,8 +361,8 @@ Design (task M1.5):
     bitplane/sprite pointers are published first in the VBI.
   - The sprite pointer uses a sprite palette bank (BPLCON4) that the game's colours
     do not need, and gets its own colours.
-- **Remove HIRES.** Remove the HIRES build option, StartupConfig's HIRE word, and
-  the interlace code (task M0.4).
+- **One display mode.** No alternate-mode build option or loader-patchable mode
+  word remains. M2.4 replaces the bootstrap crop with the target display.
 - **C2P (task M2.6).**
   - Convert the Mac screen's dirty rectangles inside the viewport: 8-bit chunky to
     8 planes, x aligned to 32 pixels. Start from Kalms' public-domain `c2p1x1_8_c5_030`

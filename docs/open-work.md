@@ -17,14 +17,6 @@ required.
 
 ## M0 Groundwork
 
-- **M0.4 Remove HIRES and Vette display residue.**
-  - Drop `HIRES`, `StartupConfig.s`/`aitd_hires_value`, and the interlace and LOF
-    code and probes.
-  - Remove references to the non-existent `docs/mac-hardware.md`.
-  - Fix run.sh's model/memory contradiction.
-
-  *Done when* the clean build and boot run are unchanged apart from the removed
-  code, and `git grep -i hires` is empty outside the framework.
 - **M0.5 8-bit reference framebuffer probe.**
   - Make `tools/mac_probe_fb.lua` and `tools/fb_to_png.py` handle the mdc48 8-bit
     mode and its 256-entry CLUT.

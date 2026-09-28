@@ -16,7 +16,6 @@
 #include "mac/MacLoader.h"
 
 extern "C" {
-extern volatile uint16_t aitd_hires_value;
 #ifdef AITD_C2P_ASM
 void aitdC2PRectAsm(const uint8_t* source, uint8_t* destination,
                      const uint32_t* table, uint16_t groups, uint16_t rows);
@@ -134,89 +133,13 @@ static void initializePairToPlanes()
     s_pairToPlanesReady = true;
 }
 
-/* ---------------------------------------------------------------------------
- * The mode, DERIVED — every value below comes from the two facts above it.
- *
- * [MEASURED] the Macintosh game surface is 512x320 (docs/mac-hardware.md).  The Amiga
- * display is 512x384 with that surface centred between 32-line black bars.  It is four
- * bitplanes, hires INTERLACED, so each PAL field carries 192 of the 384 display rows.
- *
- * Horizontal.  The standard 320-lores window is [129, 449); ours is 512 hires = 256 lores
- * wide, centred in it: HSTART = 129 + (320-256)/2 = 161 = 0xA1, HSTOP = 161 + 256 = 417,
- * and DIWSTOP's H field drops bit 8 (the hardware forces it), so 417 -> 0xA1 as well.
- * Vertical.  192 field lines centred at line 172: VSTART=76=$4C, VSTOP=268=$10C.
- *
- * ⚠ DDF IS NOT THE SAME FORMULA IN HIRES.  DDFSTRT = (HSTART - 9) / 2 for hires, (HSTART - 17) / 2 for lores;
- * the fetch step is 4 colour clocks per word in hires and 8 in lores, so
- * DDFSTOP = DDFSTRT + 4*(words - 2).  (Amiga Hardware Reference Manual ch. 3, §Telling the
- * System How to Fetch and Display Data: the normal pairs are $38/$D0 lores, $3C/$D4 hires.)
- * AmigaHardware::setPlayfield() used the LORES step for hires; that is fixed, and the
- * VS_* constants below are static_asserted against its formulas so the two cannot drift.
- */
-#define VS_DIWSTRT  0x4CA1
-#define VS_DIWSTOP  0x0CA1
-#define VS_DDFSTRT  0x004C          /* (161 - 9) / 2                            */
-#define VS_DDFSTOP  0x00C4          /* 0x4C + 4 * (32 - 2)                      */
-#define VS_WORDS    (AitdScreen::kWidth / 16)                    /* 32         */
-
-/* ⚠⚠ DIWHIGH IS WRITTEN, NOT LEFT ALONE.  On ECS/AGA it carries the ninth horizontal and
- * the upper vertical bits of both display-window corners, and it OVERRIDES the old rules
- * that DIWSTOP's H8 is forced to 1 and its V8 to the complement of V7 -- and once anything
- * has written it, it stays written.  Kickstart's own copper list writes it ($2100, a
- * 200-line NTSC-style window whose VSTOP is above 255), so a takeover that only writes
- * DIWSTRT/DIWSTOP inherits a stale VSTOP high bit and the window stays open to the bottom
- * of the frame.  Ours: HSTOP 417 has H8 set (0x2000), VSTOP 268 has upper bit 1, while HSTART
- * 161 and VSTART 76 fit in their low bits.  On plain OCS the register does not exist and this is
- * a no-op;
- * the legacy rules force HSTOP bit 8 to one and VSTOP bit 8 to !V7, which produces these exact
- * HSTOP=$1A1 and VSTOP=$10C corners.  OCS is not the package target, but it does not require a
- * cropped or squeezed display mode. */
-#define VS_DIWHIGH  0x2100
-
-/* BPLCON0: HIRES | 4 planes | COLOR | LACE | ECSENA.
- * ⚠⚠ THE LACE BIT (0x0004) IS THE ONE THE FRAMEWORK DROPS.  Without it the display shows
- * one field's 160 rows as a whole picture -- a plausible, half-resolution, WRONG image. */
-#define VS_BPLCON0  (0x8000 | (AitdScreen::kPlanes << 12) | 0x0200 | 0x0004 | 0x0001)
-
-/* BPLCON2 PF1P/PF2P encode how many sprite pairs win over each playfield.
- * Priority 4 puts all four sprite pairs in front.  Keep both fields explicit
- * even though the current four-plane mode uses only PF1. */
-#define VS_BPLCON2  0x0024
-
-// ⭐ The mode word is DERIVED above, so assert what it derives to.  This is the honest
-// replacement for the BPLCON0 readback that could not work (PlatformAmiga.cpp says why):
-// it verifies the arithmetic, at compile time, and claims nothing about the hardware.
-static_assert(VS_BPLCON0 == 0xC205, "BPLCON0 no longer derives to HIRES|4 planes|COLOR|LACE|ECSENA");
-static_assert(VS_BPLCON2 == ((4 << 3) | 4), "mouse sprite must remain ahead of both playfields");
-static_assert(VS_DDFSTOP == VS_DDFSTRT + 4 * (VS_WORDS - 2), "hires DDF window inconsistent");
-
-/* ⭐⭐ THE CROSS-CHECK AGAINST THE FRAMEWORK.  AmigaHardware::setPlayfield() can express
- * this mode now, and this file keeps the writes (AitdScreen.h says why) -- so the one
- * thing that must not happen is the two derivations disagreeing.  Below are the framework's
- * own formulas, evaluated at compile time for THIS mode with centerY = 172, asserted
- * against the measured constants above.  ⚠ If a future framework change moves a formula,
- * this is what fails, at build time, instead of the picture drifting sideways on the glass.
- */
-#define VS_CENTER_Y     172                                      /* (92 + 252) / 2        */
-#define VS_LORES_WIDTH  (AitdScreen::kWidth / 2)                /* DIW is lores units    */
-#define VS_FIELD_LINES  (AitdScreen::kHeight / 2)               /* ...and non-interlaced */
-#define VS_HSTART       (0x81 + ((320 - VS_LORES_WIDTH) / 2))
-#define VS_HSTOP        (VS_HSTART + VS_LORES_WIDTH)
-#define VS_VSTART       (VS_CENTER_Y - VS_FIELD_LINES / 2)
-#define VS_VSTOP        (VS_CENTER_Y + VS_FIELD_LINES / 2)
-static_assert(VS_DIWSTRT == ((VS_VSTART << 8) | (VS_HSTART & 0xff)), "DIWSTRT != the framework's");
-static_assert(VS_DIWSTOP == (((VS_VSTOP & 0xff) << 8) | (VS_HSTOP & 0xff)),
-              "DIWSTOP != the framework's");
-static_assert(VS_DDFSTRT == ((VS_HSTART - 9) / 2), "DDFSTRT != the framework's hires formula");
-static_assert(VS_DIWHIGH == ((((VS_HSTOP & 0x100) ? 0x2000 : 0) | (((VS_VSTOP >> 8) & 7) << 8)
-                              | ((VS_HSTART & 0x100) ? 0x20 : 0) | ((VS_VSTART >> 8) & 7))),
-              "DIWHIGH != the framework's");
-
-/* ⭐ The interlaced row modulo.  A bitplane pointer advances by kBytesPerRow (64) as it
- * fetches one line; to reach the SAME plane of the row two rows down (the next row of THIS
- * field) it must land at +2*kRowStride.  modulo = 2*256 - 64 = 448.  Same expression the
- * framework now uses: (interlace ? 2 : 1) * rowBytes - bytesPerRow. */
-#define VS_BPLMOD   (2 * AitdScreen::kRowStride - AitdScreen::kBytesPerRow)
+// Bootstrap four-plane crop. M2.4 installs the target 320x200 eight-plane mode.
+// DIWHIGH must be written: HSTOP/VSTOP both have bit 8 set; OS state is not valid.
+#define VS_DIWHIGH 0x2100
+#define VS_BPLCON0 ((AitdScreen::kPlanes << 12) | 0x0201)
+#define VS_BPLCON2 0x0024
+static_assert(VS_BPLCON0 == 0x4201, "bootstrap four-plane mode");
+static_assert(VS_BPLCON2 == ((4 << 3) | 4), "sprite priority");
 
 static_assert(AitdScreen::kLoresLeft % 16 == 0 && AitdScreen::kLoresWidth % 16 == 0,
               "lores crop must be word aligned");
@@ -239,7 +162,7 @@ static_assert(kLoresVStop == 312, "lores PAL window height");
 #define VS_CL_END        (VS_CL_SPRCOLORS + 3)
 #define VS_CL_LONGS  (VS_CL_END + 1)
 
-// Allocate all sixteen cursor rows for lores; hires uses eight per field.
+// Allocate all sixteen cursor rows.
 // Include the control pair and a mandatory zero terminator.
 static const uint16_t kMouseSpriteFieldRows = 16;
 static const uint32_t kMouseSpriteBytes = (kMouseSpriteFieldRows + 2) * 4;
@@ -262,7 +185,6 @@ static uint32_t rotXorChecksum(const uint8_t* p, uint32_t n)
 
 bool AitdScreen::initialize(const uint8_t* picture, const uint16_t* palette16)
 {
-    m_hires = aitd_hires_value != 0;
     initializePairToPlanes();
     // ⚠ The picture MUST live in chip RAM: FS-UAE runs this port with --fast_memory=8192, so
     // a linked-in blob lands in fast RAM, which the display DMA cannot reach.  The failure is
@@ -273,24 +195,15 @@ bool AitdScreen::initialize(const uint8_t* picture, const uint16_t* palette16)
     m_back = (uint8_t*)AllocMem(kPictureBytes, MEMF_CHIP);
     if (!m_back) { FreeMem(m_chip, kPictureBytes); m_chip = 0; return false; }
 
-    m_mouseSprite[0] = (uint16_t*)AllocMem(kMouseSpriteBytes, MEMF_CHIP | MEMF_CLEAR);
-    if (!m_mouseSprite[0]) {
+    m_mouseSprite = (uint16_t*)AllocMem(kMouseSpriteBytes, MEMF_CHIP | MEMF_CLEAR);
+    if (!m_mouseSprite) {
         FreeMem(m_back, kPictureBytes); m_back = 0;
         FreeMem(m_chip, kPictureBytes); m_chip = 0;
         return false;
     }
-    m_mouseSprite[1] = (uint16_t*)AllocMem(kMouseSpriteBytes, MEMF_CHIP | MEMF_CLEAR);
-    if (!m_mouseSprite[1]) {
-        FreeMem(m_mouseSprite[0], kMouseSpriteBytes); m_mouseSprite[0] = 0;
-        FreeMem(m_back, kPictureBytes); m_back = 0;
-        FreeMem(m_chip, kPictureBytes); m_chip = 0;
-        return false;
-    }
-
     m_emptySprite = (uint16_t*)AllocMem(kEmptySpriteBytes, MEMF_CHIP | MEMF_CLEAR);
     if (!m_emptySprite) {
-        FreeMem(m_mouseSprite[1], kMouseSpriteBytes); m_mouseSprite[1] = 0;
-        FreeMem(m_mouseSprite[0], kMouseSpriteBytes); m_mouseSprite[0] = 0;
+        FreeMem(m_mouseSprite, kMouseSpriteBytes); m_mouseSprite = 0;
         FreeMem(m_back, kPictureBytes); m_back = 0;
         FreeMem(m_chip, kPictureBytes); m_chip = 0;
         return false;
@@ -300,8 +213,7 @@ bool AitdScreen::initialize(const uint8_t* picture, const uint16_t* palette16)
     m_copper = m_copperAllocation;
     if (!m_copper) {
         FreeMem(m_emptySprite, kEmptySpriteBytes); m_emptySprite = 0;
-        FreeMem(m_mouseSprite[1], kMouseSpriteBytes); m_mouseSprite[1] = 0;
-        FreeMem(m_mouseSprite[0], kMouseSpriteBytes); m_mouseSprite[0] = 0;
+        FreeMem(m_mouseSprite, kMouseSpriteBytes); m_mouseSprite = 0;
         FreeMem(m_back, kPictureBytes); m_back = 0;
         FreeMem(m_chip, kPictureBytes); m_chip = 0;
         return false;
@@ -320,7 +232,7 @@ bool AitdScreen::initialize(const uint8_t* picture, const uint16_t* palette16)
         m_copper[VS_CL_PTRS + k * 2 + 1] = copperMove(bpl1ptl + k * 4, 0);
     }
     for (uint16_t channel = 0; channel < 8; ++channel) {
-        uint32_t sprite = (uint32_t)(channel == 0 ? m_mouseSprite[0] : m_emptySprite);
+        uint32_t sprite = (uint32_t)(channel == 0 ? m_mouseSprite : m_emptySprite);
         m_copper[VS_CL_SPRITES + channel * 2]
             = copperMove(spr1pth + channel * 4, (uint16_t)(sprite >> 16));
         m_copper[VS_CL_SPRITES + channel * 2 + 1]
@@ -334,9 +246,7 @@ bool AitdScreen::initialize(const uint8_t* picture, const uint16_t* palette16)
     m_copper[VS_CL_SPRCOLORS + 2] = copperMove(color00 + 19 * 2, 0xfff); // white
     m_copper[VS_CL_END] = 0xfffffffe;
 
-    // Fill in a valid set of bitplane pointers for whichever field is next, before anything
-    // displays, so the first field out of the gate is a whole picture rather than four
-    // dangling pointers.  Which row set that is comes from vbiUpdate()'s LOF test.
+    // Publish valid bitplane pointers before enabling display DMA.
     vbiUpdate(false);
 
     writeModeRegisters();
@@ -352,20 +262,20 @@ void AitdScreen::writeModeRegisters()
 {
     // Lores: window (97,29)..(465,312), 23 fetched words per plane.
     // Word-aligned pointers select each scene's 368-pixel crop without scrolling.
-    // Both modes have HSTOP/VSTOP bit 8 set (DIWHIGH=$2100).
+    // HSTOP/VSTOP both have bit 8 set (DIWHIGH=$2100).
     // ⭐⭐ ONE PLACE, ONE TIME.  Nothing else in the port writes any of these.
     *fmodePointer   = 0x0000;      // OCS fetch mode, so an AGA machine behaves like an A500
-    *bplcon0Pointer = m_hires ? VS_BPLCON0 : 0x4201;
-    *bplcon1Pointer = 0; // no scrolling in either mode
+    *bplcon0Pointer = VS_BPLCON0;
+    *bplcon1Pointer = 0; // no scrolling
     *bplcon2Pointer = VS_BPLCON2;  // all sprite pairs in front of both playfields
-    *bplcon3Pointer = m_hires ? 0x0c80 : 0x0c40; // AGA SPRRES: hires / lores (ECS ignores these bits)
-    *diwstrtPointer = m_hires ? VS_DIWSTRT : (kLoresVStart << 8) | 0x61;
-    *diwstopPointer = m_hires ? VS_DIWSTOP : ((kLoresVStop & 0xff) << 8) | 0xd1;
+    *bplcon3Pointer = 0x0c40; // AGA SPRRES: low resolution
+    *diwstrtPointer = (kLoresVStart << 8) | 0x61;
+    *diwstopPointer = ((kLoresVStop & 0xff) << 8) | 0xd1;
     *diwhighPointer = VS_DIWHIGH;  // ⚠ must be written, not inherited -- see above
-    *ddfstrtPointer = m_hires ? VS_DDFSTRT : 0x0028;
-    *ddfstopPointer = m_hires ? VS_DDFSTOP : 0x00d8;
-    *bpl1modPointer = m_hires ? VS_BPLMOD : kRowStride - kLoresWidth / 8;
-    *bpl2modPointer = m_hires ? VS_BPLMOD : kRowStride - kLoresWidth / 8;
+    *ddfstrtPointer = 0x0028;
+    *ddfstopPointer = 0x00d8;
+    *bpl1modPointer = kRowStride - kLoresWidth / 8;
+    *bpl2modPointer = kRowStride - kLoresWidth / 8;
 }
 
 void AitdScreen::vbiUpdate(bool install)
@@ -390,12 +300,8 @@ void AitdScreen::vbiUpdate(bool install)
             m_copper[VS_CL_COLORS + i] = copperMove(color00 + i * 2, m_nextPalette[i]);
     }
 
-    // COPJMP1 below makes this list serve the CURRENT field, independent of
-    // CPU speed. LOF names that field: long = even rows, short = odd rows.
-    bool oddField = m_hires && !AmigaHardware::isLongFrame();
-    uint32_t base = (uint32_t)m_chip;
-    if (oddField) base += kRowStride;
-    if (!m_hires) base += (uint32_t)(kMacTop + m_cropTop) * kRowStride + m_cropLeft / 8;
+    uint32_t base = (uint32_t)m_chip
+        + (uint32_t)(kMacTop + m_cropTop) * kRowStride + m_cropLeft / 8;
 
     for (uint16_t k = 0; k < kPlanes; k++) {
         uint32_t p = base + (uint32_t)k * kBytesPerRow;
@@ -408,7 +314,7 @@ void AitdScreen::vbiUpdate(bool install)
     // built, so every field sees the newest hardware counters even when the
     // game has not called GetNextEvent (or any Toolbox trap) for a long time.
     aitdMacMouseVBI();
-    updateMouseSprite(oddField);
+    updateMouseSprite();
     if (install) {
         // Measure the actual handoff on EVERY field, not merely entry to
         // the handler on fields that happen to have a new game frame.
@@ -454,8 +360,8 @@ void AitdScreen::setMouseCursor(const uint8_t* cursor, int16_t x, int16_t y,
 
 void AitdScreen::updateMouseCoordinates(int16_t& x, int16_t& y, int16_t dx, int16_t dy)
 {
-    int16_t left = m_hires ? 0 : m_cropLeft;
-    int16_t top = m_hires ? 0 : m_cropTop;
+    int16_t left = m_cropLeft;
+    int16_t top = m_cropTop;
     if (m_mouseCoordinatesInitialized) {
         dx += left - m_mouseCropLeft;
         dy += top - m_mouseCropTop;
@@ -463,8 +369,8 @@ void AitdScreen::updateMouseCoordinates(int16_t& x, int16_t& y, int16_t dx, int1
     m_mouseCoordinatesInitialized = true;
     m_mouseCropLeft = left;
     m_mouseCropTop = top;
-    int16_t right = left + (m_hires ? kWidth : kLoresWidth) - 1;
-    int16_t bottom = top + (m_hires ? kMacHeight : kLoresHeight) - 1;
+    int16_t right = left + kLoresWidth - 1;
+    int16_t bottom = top + kLoresHeight - 1;
     x += dx;
     y += dy;
     if (x < left) x = left;
@@ -479,37 +385,24 @@ void AitdScreen::setMousePositionFromVBI(int16_t x, int16_t y)
     m_cursorY = y;
 }
 
-// Pack source columns 0,2,...,14 into the left eight sprite pixels. On
-// OCS/ECS each sprite pixel spans two hires pixels, so this restores the
-// cursor's original width without changing its logical hotspot.
-static uint16_t halfWidthCursorRow(uint16_t row)
+void AitdScreen::updateMouseSprite()
 {
-    uint16_t result = 0;
-    for (uint16_t column = 0; column < 8; ++column)
-        result |= (uint16_t)((row & (0x8000u >> (column * 2))) << column);
-    return result;
-}
-
-void AitdScreen::updateMouseSprite(bool oddField)
-{
-    uint16_t* sprite = m_mouseSprite[oddField ? 1 : 0];
+    uint16_t* sprite = m_mouseSprite;
     if (!sprite) return;
 
-    int16_t left = (int16_t)(m_cursorX - m_cursorHotX - (m_hires ? 0 : m_cropLeft));
-    int16_t top = (int16_t)((m_hires ? (int16_t)kMacTop : -(int16_t)m_cropTop) + m_cursorY - m_cursorHotY);
-    uint16_t shift = m_hires ? 1 : 0;
-    uint16_t step = (uint16_t)(1u << shift);
-    uint16_t firstSourceRow = m_hires && ((top & 1) != (oddField ? 1 : 0)) ? 1 : 0;
-    while (firstSourceRow < 16 && top + firstSourceRow < 0) firstSourceRow += step;
+    int16_t left = (int16_t)(m_cursorX - m_cursorHotX - m_cropLeft);
+    int16_t top = (int16_t)(m_cursorY - m_cursorHotY - (int16_t)m_cropTop);
+    uint16_t firstSourceRow = 0;
+    while (firstSourceRow < 16 && top + firstSourceRow < 0) ++firstSourceRow;
     uint16_t rows = 0;
-    int16_t height = m_hires ? kHeight : kLoresHeight;
-    while (firstSourceRow + (rows << shift) < 16
-           && top + firstSourceRow + (rows << shift) < height) ++rows;
+    int16_t height = kLoresHeight;
+    while (firstSourceRow + rows < 16
+           && top + firstSourceRow + rows < height) ++rows;
     bool visible = m_mouseAllowed && m_cursorVisible
-        && left < (m_hires ? (int16_t)kWidth : (int16_t)kLoresWidth)
+        && left < (int16_t)kLoresWidth
         && left + 16 > 0 && rows;
-    uint16_t hstart = (uint16_t)((m_hires ? VS_HSTART : 97) + ((left > 0 ? left : 0) >> shift));
-    uint16_t vstart = (uint16_t)((m_hires ? VS_VSTART : kLoresVStart) + ((top + firstSourceRow) >> shift));
+    uint16_t hstart = (uint16_t)(97 + (left > 0 ? left : 0));
+    uint16_t vstart = (uint16_t)(kLoresVStart + top + firstSourceRow);
     uint16_t vstop = (uint16_t)(vstart + rows);
     uint8_t* control = (uint8_t*)sprite;
     control[0] = visible ? (uint8_t)vstart : 0;
@@ -520,14 +413,10 @@ void AitdScreen::updateMouseSprite(bool oddField)
                                    | (hstart & 1)) : 0;
 
     for (uint16_t fieldRow = 0; fieldRow < rows; ++fieldRow) {
-        uint16_t sourceRow = (uint16_t)(firstSourceRow + (fieldRow << shift));
+        uint16_t sourceRow = (uint16_t)(firstSourceRow + fieldRow);
         uint16_t image = m_cursorImage[sourceRow];
         uint16_t mask = m_cursorMask[sourceRow];
         if (left < 0 && left > -16) { image <<= -left; mask <<= -left; }
-        if (m_hires && !AmigaHardware::hasAGAChipSet) {
-            image = halfWidthCursorRow(image);
-            mask = halfWidthCursorRow(mask);
-        }
         uint16_t black = (uint16_t)(image & mask);
         uint16_t white = (uint16_t)(~image & mask);
         uint16_t invert = (uint16_t)(image & ~mask);
@@ -545,20 +434,19 @@ void AitdScreen::updateMouseSprite(bool oddField)
 }
 
 #ifdef AITD_FILLWATCH
-static void validateConvertedFrame(const uint8_t* chunky, const uint8_t* planar, bool hires, uint16_t cropLeft, uint16_t cropTop)
+static void validateConvertedFrame(const uint8_t* chunky, const uint8_t* planar, uint16_t cropLeft, uint16_t cropTop)
 {
     static uint16_t nextRow = 0;
     bool bad = false;
-    // Decode eight visible rows per frame: a complete lores crop in 36
-    // frames, or the full HIRES game image in 40, without dominating runtime.
+    // Decode eight visible rows per frame: a complete crop in 36 frames.
     for (uint16_t checked = 0; checked < 8; ++checked) {
-        uint16_t y = (hires ? 0 : cropTop) + nextRow++;
-        if (nextRow >= (hires ? AitdScreen::kMacHeight : AitdScreen::kLoresHeight)) nextRow = 0;
+        uint16_t y = cropTop + nextRow++;
+        if (nextRow >= AitdScreen::kLoresHeight) nextRow = 0;
         const uint8_t* source = chunky + (uint32_t)y * (AitdScreen::kWidth / 2);
         const uint8_t* row = planar
             + (uint32_t)(y + AitdScreen::kMacTop) * AitdScreen::kRowStride;
-        for (uint16_t x = hires ? 0 : cropLeft;
-             x < (hires ? AitdScreen::kWidth : cropLeft + AitdScreen::kLoresWidth); ++x) {
+        for (uint16_t x = cropLeft;
+             x < (cropLeft + AitdScreen::kLoresWidth); ++x) {
             uint8_t packed = source[x >> 1];
             uint8_t expected = (x & 1) ? (packed & 15) : (packed >> 4);
             uint8_t mask = (uint8_t)(0x80u >> (x & 7));
@@ -662,12 +550,10 @@ bool AitdScreen::presentMacFrame(const uint8_t* chunky, const uint8_t* colorTabl
         rectangle.left &= (int16_t)~15;
         rectangle.right = (int16_t)((rectangle.right + 15) & ~15);
         // Clip AFTER alignment so neither edge converts outside the lores crop.
-        if (!m_hires) {
-            if (rectangle.left < fullCrop.left) rectangle.left = fullCrop.left;
-            if (rectangle.right > fullCrop.right) rectangle.right = fullCrop.right;
-            if (rectangle.top < fullCrop.top) rectangle.top = fullCrop.top;
-            if (rectangle.bottom > fullCrop.bottom) rectangle.bottom = fullCrop.bottom;
-        }
+        if (rectangle.left < fullCrop.left) rectangle.left = fullCrop.left;
+        if (rectangle.right > fullCrop.right) rectangle.right = fullCrop.right;
+        if (rectangle.top < fullCrop.top) rectangle.top = fullCrop.top;
+        if (rectangle.bottom > fullCrop.bottom) rectangle.bottom = fullCrop.bottom;
         if (rectangle.top >= rectangle.bottom || rectangle.left >= rectangle.right) continue;
 
         // Horizontal C2P alignment can make two source rectangles overlap.
@@ -832,7 +718,7 @@ bool AitdScreen::presentMacFrame(const uint8_t* chunky, const uint8_t* colorTabl
     // Rolling validation is intentionally diagnostic: it proves that dirty
     // synchronization plus the converted rectangle leave the back buffer an
     // exact planar encoding of the visible part of the 4-bit chunky surface.
-    validateConvertedFrame(chunky, m_back, m_hires, cropLeft, cropTop);
+    validateConvertedFrame(chunky, m_back, cropLeft, cropTop);
 #endif
     m_nextCropLeft = cropLeft;
     m_nextCropTop = cropTop;
@@ -850,8 +736,7 @@ void AitdScreen::shutdown()
         m_copper = 0;
     }
     if (m_emptySprite) { FreeMem(m_emptySprite, kEmptySpriteBytes); m_emptySprite = 0; }
-    if (m_mouseSprite[1]) { FreeMem(m_mouseSprite[1], kMouseSpriteBytes); m_mouseSprite[1] = 0; }
-    if (m_mouseSprite[0]) { FreeMem(m_mouseSprite[0], kMouseSpriteBytes); m_mouseSprite[0] = 0; }
+    if (m_mouseSprite) { FreeMem(m_mouseSprite, kMouseSpriteBytes); m_mouseSprite = 0; }
     if (m_back)   { FreeMem(m_back, kPictureBytes); m_back = 0; }
     if (m_chip)   { FreeMem(m_chip, kPictureBytes); m_chip = 0; }
 }

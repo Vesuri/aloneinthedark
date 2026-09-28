@@ -6,18 +6,9 @@
  * two files happen to hold matching literals.  Every one of them is derived here
  * from the constants below and written in one place.  (See docs/amiga-arch.md.)
  *
- * ⚠ THE FRAMEWORK CAN NOW EXPRESS THIS MODE -- IT COULD NOT BEFORE, AND SILENTLY.
- * AmigaHardware::setPlayfield() and CopperList::setPlayfield() both took an `interlace`
- * argument and both `(void)`d it, so LACE was never written and an interlaced request
- * came out as a plausible half-height picture; the display window was hardcoded to the
- * full 320-lores screen whatever the width; and the hires DDFSTRT branch produced the
- * LORES value.  All three are FIXED (framework/UPSTREAM.md, docs/amiga-arch.md).
- * ⭐ This file still owns the WRITES, for two reasons that survive the fix: the values
- * below are derived from the [MEASURED] Macintosh window rather than from a centerY
- * magic number, and this port pins FMODE to 0 so an AGA machine fetches like an A500,
- * which the framework's AGA branch deliberately does not.  The two derivations are
- * cross-checked against each other by static_assert in AitdScreen.cpp, so they cannot
- * drift apart in silence.
+ * The current bootstrap display retains the inherited four-plane crop until
+ * M2.4 replaces it with the 320x200 eight-plane target. This class owns all mode
+ * register writes and publishes complete copper lists during blanking.
  */
 #ifndef AITD_SCREEN_H
 #define AITD_SCREEN_H
@@ -32,7 +23,7 @@ public:
     };
     static const uint16_t kMaxDirtyRects = 32;
 
-    // The Macintosh surface the port has to reproduce, [MEASURED] (docs/mac-hardware.md).
+    // Inherited bootstrap surface; the 320x200 eight-plane conversion is M2.4.
     static const uint16_t kWidth  = 512;
     static const uint16_t kHeight = 384;
     static const uint16_t kMacHeight = 320;
@@ -53,10 +44,8 @@ public:
     bool initialize(const uint8_t* picture, const uint16_t* palette16);
     void shutdown();
 
-    // ⭐ Called FIRST in the VERTB handler, before any other work: an interlaced
-    // display needs the bitplane pointers re-pointed at the other field's rows
-    // every field, and a torn pointer garbages the whole viewport for a frame
-    // (CLAUDE.md). Builds the inactive list and restarts the Copper in blanking.
+    // Called first in VERTB: publish the complete inactive copper list before
+    // input/audio work, then restart the Copper during blanking.
     void vbiUpdate(bool install = true);
 
     // Convert a Macintosh 4-bpp chunky surface and ColorTable into the Amiga's
@@ -68,7 +57,7 @@ public:
                          bool mouseAllowed = false);
 
     bool matchesViewport(uint16_t left, uint16_t top) const {
-        return m_hires || (m_cropLeft == left && m_cropTop == top);
+        return m_cropLeft == left && m_cropTop == top;
     }
 
     bool matchesMouseVisibility(bool allowed) const { return m_mouseAllowed == allowed; }
@@ -104,9 +93,8 @@ private:
     uint16_t m_mouseCropLeft = kLoresLeft, m_mouseCropTop = 0;
     bool m_mouseCoordinatesInitialized = false;
     bool m_mouseAllowed = false, m_nextMouseAllowed = false;
-    bool m_hires = false; // Snapshotted from the loader word at startup.
     void writeModeRegisters();
-    void updateMouseSprite(bool oddField);
+    void updateMouseSprite();
 
     uint32_t* m_copper = 0;
     uint32_t* m_copperAllocation = 0;
@@ -116,7 +104,7 @@ private:
     uint16_t  m_ptrIndex = 0;      // copper-list index of the first BPLxPT move
     uint16_t  m_nextPalette[16] = {0};
     volatile bool m_framePending = false;
-    uint16_t* m_mouseSprite[2] = {0, 0}; // even/long-field rows, odd/short-field rows
+    uint16_t* m_mouseSprite = 0;
     uint16_t* m_emptySprite = 0;
     uint16_t  m_cursorImage[16] = {0};
     uint16_t  m_cursorMask[16] = {0};
