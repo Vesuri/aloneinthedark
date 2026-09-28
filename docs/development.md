@@ -739,7 +739,7 @@ use `.rsrc` and `.finfo`; companions are never separate virtual catalog files.
 
 ### Installed-file metadata (M2.1b2c9c1)
 
-Re-run `tools/extract_original_data.py` to create the 33 `.finfo` companions.
+Re-run `tools/extract_original_data.py` to create the 36 `.finfo` companions.
 Extraction requires `lsar` and `xattr` alongside the existing unar/hfsutils tools.
 It compares the archive entry name, fork layout, sizes, compression method,
 type/creator/flags and extracted Finder record before emitting a companion.
@@ -784,3 +784,24 @@ sanitizer tests cover all 67 characters and reverse insertion order. `file-write
 now requires 289 runtime windows; stream counters are unchanged. Partial
 application/System/root namespaces still stop on indexed access until their
 separately queued completeness work is verified.
+
+
+### Original application-folder files (M2.1b2c9c2b1)
+
+The extractor also preserves `ListBod2.PAK` (268,430 data bytes),
+`Quick Reference` (4,973 data / 712 resource bytes), and
+`Register Triple A Pack` (0 data / 87,427 resource bytes). Ordinary resource
+forks use raw `.rsrc` companions; the application retains its existing raw-fork
+layout. Both fork records must agree with the shared original StuffIt header,
+including resource-first offsets, lengths, methods and Finder fields. Missing
+or duplicate records and invalid AppleDouble extents fail explicitly.
+
+All four nonempty forks compare byte-for-byte with read-only MacBinary exports
+from the System 7.5.5 reference application folder. The three full file
+(data then resource) SHA-256 values are respectively
+`5c552161db462f80e82346494a304d133ca502c92ab299a77b82ca988fd1893e`,
+`6173b910b6b572a00bfef3ca40b7e738112ef7a1f533c90c4bc549a200696e69`, and
+`a90c4bbebe9615a900ddfbd8f5c5d845ec8e304970a558aea0a663a0c8b7c870`.
+The metadata tests cover two-fork records and reject incomplete/mismatched
+pairs. These extractor outputs are not yet integrated into development staging
+or the native catalog; that remains M2.1b2c9c2b.

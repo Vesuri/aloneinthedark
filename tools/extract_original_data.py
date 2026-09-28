@@ -16,6 +16,8 @@ then verifies.  The output directory receives:
 
   Alone In The Dark   the application's raw resource fork (not AppleDouble)
   Alone Data/         the .PAK/.ITD data-fork files, unchanged
+  ListBod2.PAK, Quick Reference, Register Triple A Pack: original root files
+  *.rsrc              raw resource companions for ordinary files
   *.finfo             validated Finder records and original Mac timestamps
 
 Development/diagnostic helper for a local checkout only.  Requires `unar` and
@@ -42,6 +44,7 @@ from installed_metadata import archive_entries, metadata_for
 
 APPLICATION = "Alone In The Dark"
 DATA_FOLDER = "Alone Data"
+ROOT_FILES = ("ListBod2.PAK", "Quick Reference", "Register Triple A Pack")
 INSTALLER = "Alone in the Dark Installer"
 # Measured from the one known release (Alone In The Dark 1.0, vers 1.0).
 APPLICATION_SHA256 = "b5848c063652b7223e3e350905b3a9054247b8536942753f435b1051a6352db2"
@@ -54,13 +57,22 @@ def run(*command: str, cwd: Path | None = None) -> None:
 def apple_double_resource_fork(path: Path) -> bytes:
     """Return entry 2 (resource fork) of an AppleDouble file written by unar."""
     raw = path.read_bytes()
-    if raw[:4] != b"\x00\x05\x16\x07":
-        raise ValueError(f"{path}: not an AppleDouble file")
-    for index in range(struct.unpack_from(">H", raw, 24)[0]):
+    if len(raw) < 26 or raw[:8] != bytes.fromhex('0005160700020000'):
+        raise ValueError(f"{path}: not an AppleDouble v2 file")
+    count = struct.unpack_from('>H', raw, 24)[0]
+    table_end = 26+12*count
+    if table_end > len(raw):
+        raise ValueError(f"{path}: truncated AppleDouble table")
+    forks = []
+    for index in range(count):
         entry, offset, length = struct.unpack_from(">III", raw, 26 + 12 * index)
+        if offset < table_end or offset+length > len(raw):
+            raise ValueError(f"{path}: invalid AppleDouble extent")
         if entry == 2:
-            return raw[offset:offset + length]
-    raise ValueError(f"{path}: no resource fork entry")
+            forks.append(raw[offset:offset + length])
+    if len(forks) != 1:
+        raise ValueError(f"{path}: missing or duplicate resource fork entry")
+    return forks[0]
 
 
 def unpack_payload(archive: Path, scratch: Path, visible: bool) -> Path:
@@ -124,6 +136,22 @@ def main() -> int:
         args.destination.mkdir(parents=True, exist_ok=True)
         (args.destination / APPLICATION).write_bytes(fork)
         (args.destination / (APPLICATION+".finfo")).write_bytes(app_metadata)
+        for name in ROOT_FILES:
+            source = root / name
+            info = metadata_for(archive, entries, name, source)
+            records = [e for e in entries if e['XADFileName'] == name]
+            sizes = {bool(e.get('XADIsResourceFork')): e['XADFileSize'] for e in records}
+            data = source.read_bytes() if source.exists() else b''
+            resource = (apple_double_resource_fork(Path(str(source)+'.rsrc'))
+                        if sizes.get(True, 0) else b'')
+            if len(data) != sizes.get(False, 0) or len(resource) != sizes.get(True, 0):
+                raise ValueError('EXTRACT / FORK SIZE: '+name)
+            (args.destination / name).write_bytes(data)
+            if resource:
+                (args.destination / (name+'.rsrc')).write_bytes(resource)
+            elif (args.destination / (name+'.rsrc')).exists():
+                raise ValueError('EXTRACT / UNEXPECTED RESOURCE COMPANION: '+name)
+            (args.destination / (name+'.finfo')).write_bytes(info)
         target = args.destination / DATA_FOLDER
         if target.exists():
             shutil.rmtree(target)

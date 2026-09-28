@@ -41,23 +41,48 @@ def encode(finder,created,modified):
     for byte in body:checksum=((checksum^byte)*16777619)&0xffffffff
     return body+struct.pack('>I',checksum)
 
-def from_entry(archive,entry,finder):
-    offset=entry['XADDataOffset'];name=entry['XADFileName'].split('/')[-1]
-    if offset<134 or offset>len(archive) or entry.get('XADIsDirectory'):raise ValueError('METADATA / ENTRY OFFSET')
-    header=archive[offset-112:offset]
-    if not 0<header[2]<=63 or header[3:3+header[2]].decode('mac_roman')!=name:raise ValueError('METADATA / HEADER NAME OR FORK LAYOUT')
-    resource=bool(entry.get('XADIsResourceFork'))
-    size,other=struct.unpack_from('>II',header,84)
-    packed,other_packed=struct.unpack_from('>II',header,92)
-    method=header[0]
-    if not resource:size,other,packed,other_packed,method=other,size,other_packed,packed,header[1]
-    if other or other_packed or size!=entry['XADFileSize'] or packed!=entry['XADDataLength'] or method!=entry['StuffItCompressionMethod'] or offset+packed>len(archive):raise ValueError('METADATA / FORK LAYOUT')
-    declared=struct.pack('>IIH',entry['XADFileType'],entry['XADFileCreator'],entry['XADFinderFlags'])
-    if len(finder)!=16 or header[66:76]!=declared or finder[:10]!=declared:raise ValueError('METADATA / FINDER SOURCE DISAGREEMENT')
-    created,modified=struct.unpack_from('>II',header,76)
-    return encode(finder,created,modified)
+def from_entries(archive, entries, finder):
+    """Validate the shared header and both resource-first StuffIt fork records."""
+    if not 1 <= len(entries) <= 2:
+        raise ValueError('METADATA / AMBIGUOUS OR MISSING ENTRY')
+    forks = {}
+    for entry in entries:
+        resource = bool(entry.get('XADIsResourceFork'))
+        if resource in forks or entry.get('XADIsDirectory'):
+            raise ValueError('METADATA / DUPLICATE FORK')
+        forks[resource] = entry
+    first = forks.get(True, forks.get(False))
+    offset = first['XADDataOffset']
+    if offset < 134 or offset > len(archive):
+        raise ValueError('METADATA / ENTRY OFFSET')
+    header = archive[offset-112:offset]
+    name = first['XADFileName'].split('/')[-1]
+    if not 0 < header[2] <= 63 or header[3:3+header[2]].decode('mac_roman') != name:
+        raise ValueError('METADATA / HEADER NAME OR FORK LAYOUT')
+    for resource, position in ((True, 0), (False, 1)):
+        size = struct.unpack_from('>I', header, 84+4*position)[0]
+        packed = struct.unpack_from('>I', header, 92+4*position)[0]
+        entry = forks.get(resource)
+        if entry is None:
+            if size or packed:
+                raise ValueError('METADATA / MISSING FORK')
+        else:
+            if (entry['XADFileName'] != first['XADFileName'] or
+                    entry['XADDataOffset'] != offset or
+                    size != entry['XADFileSize'] or packed != entry['XADDataLength'] or
+                    header[position] != entry['StuffItCompressionMethod'] or
+                    offset+packed > len(archive)):
+                raise ValueError('METADATA / FORK LAYOUT')
+            declared = struct.pack('>IIH', entry['XADFileType'], entry['XADFileCreator'], entry['XADFinderFlags'])
+            if len(finder) != 16 or header[66:76] != declared or finder[:10] != declared:
+                raise ValueError('METADATA / FINDER SOURCE DISAGREEMENT')
+        offset += packed
+    created, modified = struct.unpack_from('>II', header, 76)
+    return encode(finder, created, modified)
+
+def from_entry(archive, entry, finder):
+    return from_entries(archive, [entry], finder)
 
 def metadata_for(archive,entries,relative,source):
     selected=[e for e in entries if e['XADFileName']==relative and not e.get('XADIsDirectory')]
-    if len(selected)!=1:raise ValueError('METADATA / AMBIGUOUS OR MISSING ENTRY: '+relative)
-    return from_entry(archive,selected[0],finder_info(source))
+    return from_entries(archive,selected,finder_info(source))

@@ -48,6 +48,8 @@ required.
     files outside its deliberately partial catalog. Application/System/root
     indexed listings currently stop explicitly; establish complete supported
     namespace boundaries before returning entries or end-of-directory there.
+  - Original root-file extraction is complete (M2.1b2c9c2b1); staging and
+    native application catalog integration remain in this item.
   - Data/save/prefs indexed file queries are complete (M2.1b2c9c2a).
     Preserve original metadata and distinguish port files from Mac-visible files.
 

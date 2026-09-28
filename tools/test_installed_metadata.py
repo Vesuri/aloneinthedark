@@ -2,7 +2,10 @@
 """Host fixtures for source-metadata validation, including timezone independence."""
 import struct
 import unittest
-from installed_metadata import from_entry, encode
+from pathlib import Path
+from unittest.mock import patch
+from extract_original_data import apple_double_resource_fork
+from installed_metadata import from_entry, from_entries, encode
 class Tests(unittest.TestCase):
     def fixture(self):
         header=bytearray(112);header[1]=13;header[2]=4;header[3:7]=b'Test'
@@ -18,6 +21,40 @@ class Tests(unittest.TestCase):
         # Displayed lsar dates are deliberately irrelevant: original integers win.
         entry['XADCreationDate']='1904-01-01 00:00:00 +0000'
         self.assertEqual(record,from_entry(archive,entry,finder))
+    def test_two_forks(self):
+        archive, data, finder = self.fixture()
+        raw = bytearray(archive[:134])
+        raw[22] = 13
+        struct.pack_into('>I', raw, 22+84, 3)
+        struct.pack_into('>I', raw, 22+92, 3)
+        raw += b'xyzabcd'
+        resource = dict(data, XADIsResourceFork=True, XADFileSize=3, XADDataLength=3)
+        data = dict(data, XADDataOffset=137)
+        self.assertEqual(from_entries(raw, [data, resource], finder), encode(finder, 0xa701add8, 0xaa77d6fb))
+        for entries in ([data], [resource], [data, data], [resource, resource],
+                        [resource, dict(data, XADDataOffset=136)],
+                        [resource, dict(data, XADFileName='Else')],
+                        [resource, dict(data, XADFinderFlags=0)]):
+            with self.subTest(entries=entries), self.assertRaises(ValueError):
+                from_entries(raw, entries, finder)
+        with self.assertRaises(ValueError): from_entries(raw[:-1], [data, resource], finder)
+
+    def test_appledouble_extents(self):
+        header = bytearray(26)
+        header[:8] = bytes.fromhex('0005160700020000')
+        struct.pack_into('>H', header, 24, 1)
+        valid = header+struct.pack('>III', 2, 38, 3)+b'abc'
+        with patch.object(Path, 'read_bytes', return_value=valid):
+            self.assertEqual(apple_double_resource_fork(Path('fixture')), b'abc')
+        duplicate = bytearray(header)
+        struct.pack_into('>H', duplicate, 24, 2)
+        duplicate += struct.pack('>IIIIII', 2, 50, 3, 2, 50, 3)+b'abc'
+        for raw in (valid[:25], valid[:37], valid[:-1], duplicate,
+                    header+struct.pack('>III', 2, 26, 3)+b'abc',
+                    header+struct.pack('>III', 9, 38, 3)+b'abc'):
+            with patch.object(Path, 'read_bytes', return_value=raw), self.assertRaises(ValueError):
+                apple_double_resource_fork(Path('fixture'))
+
     def test_reject(self):
         archive,entry,finder=self.fixture()
         for key,value in [('XADDataOffset',133),('XADFileName','Else'),('XADFileSize',5),('XADDataLength',5),('StuffItCompressionMethod',0),('XADFileType',0),('XADFinderFlags',0)]:
