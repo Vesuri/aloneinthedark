@@ -11,7 +11,7 @@ struct Backend {
 };
 // Persistent DOS fork. Runtime operations enter a bounded system window;
 // the File Manager enforces caller permissions before using write callbacks.
-struct ReadStream { uint32_t handle; };
+struct ReadStream { uint32_t handle; bool locked; };
 int32_t openStream(const char* path,ReadStream& stream);
 int32_t readStream(void* stream,uint32_t offset,uint8_t* buffer,uint32_t bytes,uint32_t& actual);
 int32_t closeStream(ReadStream& stream);

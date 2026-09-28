@@ -658,10 +658,12 @@ now covers 39 stages including hierarchical defaults, WD queries and closure.
 `amiga/regression.sh file-write` adds a DOS backend fixture and real Line-A
 Open/HOpen, Write, SetEOF, GetEOF/GetFCBInfo, Read, FlushVol and Close calls after
 the read/directory fixture. It requires FILEPROBE=1 and FILEWRITEPROBE=1.
-The case checks exact bytes, marks/EOF, CCR, permission errors, 33 runtime
-windows, 12 DOS writes (65,536 maximum), six flushes including shutdown, and
-an empty stream ledger after cleanup. Host readback verifies 17 backend bytes
-and three bytes left dirty until shutdown. Both fixtures are recreated in
+The case checks exact bytes, marks/EOF, CCR, the 25-pair permission matrix,
+protected-file defaults/errors, shared writes and close order, cached-reader
+coherence and volume-name/reference forms. It requires 172 runtime windows,
+17 DOS writes (65,536 maximum), 11 flushes including shutdown and an empty
+stream ledger after cleanup. Host readback verifies 17 backend bytes, six
+shared-file bytes and three bytes left dirty until shutdown. Both fixtures are recreated in
 ignored staging for each run. `make regression` includes this case.
 
 Run `tools/mac_file_mutations.lua` with the documented headless MAME command,
@@ -673,3 +675,19 @@ a display mode or uses host window access. A failed Create stops without
 opening or overwriting an existing file. On any later failure, inspect the log
 and stopped disk for that named scratch before retrying. These API fixtures do
 not constitute original-game save/load or PAK acceptance.
+
+`tools/mac_file_sharing.lua` is a second scratch-only headless reference fixture;
+check it with `tools/check_file_sharing.py LOG --status RUNNER_STATUS`. Its 222
+calls cover permissions, shared data/independent marks, modified flags, both
+close orders, file locks and volume lookup. The checker requires the actual
+debugger stage register to match each row, the existing reference on a failed
+conflicting Open, and successful scratch deletion/flush. Stage constants use
+`0x` prefixes so values such as D0 cannot be parsed as register names. The
+fixture's `AITD Port Sharing Probe` is its only created/deleted file.
+
+The native fixture applies DOS protection to `locked-probe.bin` in a system
+window. Host chmod alone is unsuitable: FS-UAE cannot open that read-only host
+file through this stream backend. All files and FS-UAE `.uaem` metadata remain
+ignored staging inputs. A scratch FileInfoBlock on the word-aligned Mac stack
+was observed at alignment 2 and yielded shifted fields; runtime open metadata
+uses the catalog's AllocDosObject/FreeDosObject pattern instead.

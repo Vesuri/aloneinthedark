@@ -43,27 +43,15 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.1b2c8 Remaining open permissions, sharing and volume forms.**
-  - Synchronous explicit read-only (1) and read/write (3) data forks now work,
-    including Write, SetEOF, FlushVol, Close and restored-OS shutdown.
-  - Implement default (0), write (2), shared permissions and native protection
-    errors from reference evidence. Unsupported permissions remain named stops.
-  - **M2.1b2c8a Shared-fork coherence:** one writable fork currently excludes
-    other opens with a loud stop. Add a shared data/dirty state or equivalent
-    coherent mechanism so readers cannot return stale bytes, while preserving
-    per-reference marks and the Mac's writer-exclusion rules.
-    *Acceptance:* reference-matched simultaneous read/write opens, marks,
-    truncate visibility, conflict errors and close order pass native fixtures.
-  - Finish named-volume FlushVol and drive-reference forms; currently only
-    null/empty-name default, volume and live-WD references are implemented.
-
-  *Done when* Mac-reference argument/results and host/native fixtures cover each
-  permission, conflict, sharing and volume form, and file-write, file-read,
-  window-core, boot and the directory observer pass on 68020.
 - **M2.1b2c9 Remaining File Manager metadata and variants.**
   - Finish create/delete/file info, HGetVolParms, FSDispatch PBHOpenDF, and
     async variants over the catalog. Unsupported forms remain named stops;
     see the [reference contract](file-manager.md).
+  - **M2.1b2c9a Application fork storage:** its native path currently contains
+    the raw resource fork, while the Mac data fork is empty. Writable data opens
+    stop explicitly until those stores are separated. *Acceptance:* data-fork
+    open/write/close preserves the original resource hash, and independent
+    data/resource EOF and bytes match reference fixtures.
   - Add Finder metadata and companion resource-fork storage for saves/prefs.
     The catalog rejects nested directories, companion forks, non-ASCII names
     and capacity overflow explicitly; never invent metadata.

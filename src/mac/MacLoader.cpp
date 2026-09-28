@@ -165,12 +165,22 @@ static uint32_t s_jumpTableOffset;
 static AitdScreen* s_loudStopScreen;
 static ResourceForks s_resourceForks;
 static MacFiles s_files;
+struct DataSource {
+    uint32_t id=0;
+    FileAccess::ReadStream* backing=0;
+    FileWriteBuffer writes;
+};
+static DataSource s_dataSources[MacFiles::maxOpen];
+static int32_t readDataSource(void* context,uint32_t offset,uint8_t* bytes,uint32_t count,uint32_t& actual) {
+    DataSource* source=(DataSource*)context;
+    return FileAccess::readStream(source->backing,offset,bytes,count,actual);
+}
 struct DataFork {
     int16_t ref=0;
     FileAccess::ReadStream stream={0};
     uint8_t* buffer=0;
     FileReadCache cache;
-    FileWriteBuffer writes;
+    DataSource* source=0;
 };
 static DataFork s_dataForks[MacFiles::maxOpen];
 static int16_t s_resourceFileRefs[ResourceForks::kForkCount];
@@ -4906,46 +4916,70 @@ static bool dispatchFileData(uint16_t trap,uint32_t* regs) {
     uint8_t* pb=(uint8_t*)regs[8];if(!pb)return false;
     int16_t error=0;
     if(trap==0xa013) {
-        // The catalog has one native volume. Names must identify that volume.
-        uint8_t* name=(uint8_t*)read32(pb+18);
-        if(name && name[0])return false; // Named-volume lookup remains explicit work.
-        uint32_t directory=0;
-        error=s_files.directoryFor((int16_t)read16(pb+22),directory);
-        if(!error)for(uint16_t i=0;i<MacFiles::maxOpen;++i)if(s_dataForks[i].ref) {
-            int16_t flushed=s_dataForks[i].writes.dirty() ? FileAccess::flushStream(s_dataForks[i].stream,s_dataForks[i].writes) : 0;
-            if(flushed && !error)error=flushed;
+        uint8_t* name=(uint8_t*)read32(pb+18);char volume[256];
+        uint16_t length=name ? name[0] : 0;
+        for(uint16_t i=0;i<length;++i)volume[i]=name[i+1];volume[length]=0;
+        error=s_files.volume((int16_t)read16(pb+22),volume);
+        if(!error)for(uint16_t i=0;i<MacFiles::maxOpen;++i)if(s_dataSources[i].id) {
+            DataSource& source=s_dataSources[i];
+            int16_t flushed=FileAccess::flushStream(*source.backing,source.writes);
+            if(!flushed)s_files.flushed(source.id);else if(!error)error=flushed;
         }
     } else if(trap==0xa000 || trap==0xa200) {
-        if(pb[27]!=1 && pb[27]!=3)return false;
-        bool writable=pb[27]==3;
+        if(pb[27]>4)return false;
         uint8_t* name=(uint8_t*)read32(pb+18);if(!name)return false;
         char path[256];for(uint16_t i=0;i<name[0];++i)path[i]=name[i+1];path[name[0]]=0;
         uint32_t id=0;
         error=s_files.resolve((int16_t)read16(pb+22),trap==0xa200 ? read32(pb+48) : 0,path,id);
         if(!error) {
             const MacFiles::Entry* entry=s_files.entry(id);
+            // The application's current native path is its raw resource fork.
+            // Writable data-fork storage must be separate (M2.1b2c9a).
+            const MacFiles::Fork* app=s_files.fork(g_applicationFileRef);
+            if(app && id==app->id && pb[27]!=1)return false;
             if(entry->directory)error=MacFiles::fnfErr;
             else {
-                // Shared writable forks need a common cache/dirty ledger. Until
-                // that contract is implemented, stop instead of serving stale bytes.
-                for(uint16_t i=0;i<MacFiles::maxOpen;++i)if(s_dataForks[i].ref) {
-                    const MacFiles::Fork* other=s_files.fork(s_dataForks[i].ref);
-                    if(other && other->id==id && (writable || other->writable))return false;
+                DataFork* slot=0;DataSource* source=0;
+                for(uint16_t i=0;i<MacFiles::maxOpen;++i) {
+                    if(!s_dataForks[i].ref && !slot)slot=&s_dataForks[i];
+                    if(s_dataSources[i].id==id)source=&s_dataSources[i];
                 }
-                DataFork* slot=0;
-                for(uint16_t i=0;i<MacFiles::maxOpen;++i)if(!s_dataForks[i].ref) { slot=&s_dataForks[i];break; }
-                int16_t ref=slot ? s_files.open(id,false,writable) : -42;
-                if(ref<0)error=ref;
+                if(!slot)error=-42;
                 else {
-                    slot->buffer=writable ? 0 : allocateFilePage(FileReadCache::capacity);
-                    error=(writable || slot->buffer) ? FileAccess::openStream(entry->path,slot->stream) : -108;
-                    if(!error && writable)error=slot->writes.bind(entry->dataSize,FileAccess::readStream,&slot->stream,allocateFilePage,releaseFilePage);
+                    // Open/Examine happens in one window, before deciding default
+                    // permission. No payload is read, even for a protected file.
+                    error=FileAccess::openStream(entry->path,slot->stream);
+                    int16_t ref=0;
+                    if(!error)error=s_files.openData(id,pb[27],slot->stream.locked,ref);
+                    if(error==-49)write16(pb+24,ref);
+                    bool writable=!error && s_files.fork(ref)->writable;
+                    bool newSource=false;
+                    if(!error && writable && !source) {
+                        for(uint16_t i=0;i<MacFiles::maxOpen;++i)if(!s_dataSources[i].id) { source=&s_dataSources[i];break; }
+                        if(!source)error=MacFiles::unsupported;
+                        else {
+                            source->backing=&slot->stream;
+                            error=source->writes.bind(entry->dataSize,readDataSource,source,allocateFilePage,releaseFilePage);
+                            if(!error) { source->id=id;newSource=true; }
+                        }
+                    }
+                    if(!error && !source) {
+                        slot->buffer=allocateFilePage(FileReadCache::capacity);
+                        if(!slot->buffer)error=-108;
+                    }
                     if(error) {
-                        if(slot->buffer)FreeMem(slot->buffer,FileReadCache::capacity);
                         if(slot->stream.handle)FileAccess::closeStream(slot->stream);
-                        slot->writes.clear();slot->buffer=0;s_files.close(ref);
+                        if(error!=-49 && ref)s_files.close(ref);
                     } else {
-                        slot->ref=ref;if(!writable)slot->cache.bind(slot->buffer,entry->dataSize,FileAccess::readStream,&slot->stream);
+                        slot->ref=ref;slot->source=source;
+                        if(!source)slot->cache.bind(slot->buffer,entry->dataSize,FileAccess::readStream,&slot->stream);
+                        if(newSource)for(uint16_t i=0;i<MacFiles::maxOpen;++i)if(s_dataForks[i].ref) {
+                            DataFork& other=s_dataForks[i];
+                            if(s_files.fork(other.ref)->id==id) {
+                                other.source=source;
+                                if(other.buffer)FreeMem(other.buffer,FileReadCache::capacity);other.buffer=0;
+                            }
+                        }
                         write16(pb+24,ref);
                     }
                 }
@@ -4959,17 +4993,25 @@ static bool dispatchFileData(uint16_t trap,uint32_t* regs) {
         if(!fork)error=MacFiles::rfNumErr;
         else if(!slot)return false; // Buffered application/resource fork is not a data stream.
         else if(trap==0xa001) {
-            error=fork->writable ? FileAccess::flushStream(slot->stream,slot->writes) : 0;
+            error=slot->source && fork->writable && fork->modified ? FileAccess::flushStream(slot->stream,slot->source->writes) : 0;
             if(!error) {
+                DataSource* source=slot->source;
+                if(source) {
+                    source->backing=0;
+                    for(uint16_t i=0;i<MacFiles::maxOpen;++i)if(&s_dataForks[i]!=slot && s_dataForks[i].ref && s_dataForks[i].source==source) {
+                        source->backing=&s_dataForks[i].stream;break;
+                    }
+                    if(!source->backing) { source->writes.clear();source->id=0; }
+                }
                 error=FileAccess::closeStream(slot->stream);
                 if(slot->buffer)FreeMem(slot->buffer,FileReadCache::capacity);
-                slot->writes.clear();slot->buffer=0;slot->ref=0;s_files.close(ref);
+                slot->source=0;slot->buffer=0;slot->ref=0;s_files.close(ref);
             }
         } else if(trap==0xa012) {
             if(!fork->writable)error=-61;
             else {
-                error=slot->writes.resize(read32(pb+28));
-                if(!error)error=s_files.setSize(ref,slot->writes.size(),true);
+                error=slot->source->writes.resize(read32(pb+28));
+                if(!error)error=s_files.setSize(ref,slot->source->writes.size(),true);
             }
         } else if(trap==0xa003 && !fork->writable)error=-61;
         else if(trap==0xa011)write32(pb+28,s_files.entry(fork->id)->dataSize);
@@ -4984,16 +5026,17 @@ static bool dispatchFileData(uint16_t trap,uint32_t* regs) {
             else error=s_files.seek(ref,read16(pb+44),(int32_t)read32(pb+46),trap==0xa003);
             uint32_t actual=0;
             if(!error && trap==0xa002) {
-                error=fork->writable ? slot->writes.read(fork->position,buffer,count,actual)
+                error=slot->source ? slot->source->writes.read(fork->position,buffer,count,actual)
                                      : slot->cache.read(fork->position,buffer,count,actual);
                 s_files.advance(ref,actual);
             }
             if(!error && trap==0xa003) {
-                error=slot->writes.write(fork->position,buffer,count,actual);
+                error=slot->source->writes.write(fork->position,buffer,count,actual);
                 // Mac PBWrite with a zero count still extends EOF to its mark.
-                if(!error && !count && fork->position>slot->writes.size())error=slot->writes.resize(fork->position);
+                if(!error && !count && fork->position>slot->source->writes.size())error=slot->source->writes.resize(fork->position);
                 s_files.advance(ref,actual);
-                int16_t resized=s_files.setSize(ref,slot->writes.size(),false);
+                if(actual)s_files.modified(ref);
+                int16_t resized=s_files.setSize(ref,slot->source->writes.size(),false);
                 if(!error)error=resized;
             }
             if(transfer)write32(pb+40,actual);
@@ -5069,7 +5112,8 @@ static bool dispatchFileMetadata(uint16_t trap,uint32_t* regs)
             }
             uint32_t length=fork->resource ? file->resourceSize : file->dataSize;
             write32(pb+32,file->id);
-            write16(pb+36,(fork->resource ? 0x0200 : 0)|(fork->writable ? 0x0100 : 0));
+            write16(pb+36,(fork->resource ? 0x0200 : 0)|(fork->writable ? 0x0100 : 0)|(fork->shared ? 0x1000 : 0)
+                    |(fork->locked ? 0x2000 : 0)|(fork->modified ? 0x8000 : 0));
             write16(pb+38,0); // Virtual files have no HFS allocation blocks.
             write32(pb+40,length);write32(pb+44,length);
             write32(pb+48,fork->position);write16(pb+52,MacFiles::volumeRef);
@@ -6249,11 +6293,15 @@ bool MacLoader::releaseResourceForks()
 {
     bool closed=true;
     // Platform has restored OS scheduling, vectors and display before this call.
+    for(uint16_t i=0;i<MacFiles::maxOpen;++i)if(s_dataSources[i].id) {
+        DataSource& source=s_dataSources[i];
+        if(FileAccess::flushRestoredStream(*source.backing,source.writes))closed=false;
+        source.writes.clear();source.id=0;source.backing=0;
+    }
     for(uint16_t i=0;i<MacFiles::maxOpen;++i)if(s_dataForks[i].ref) {
         DataFork& f=s_dataForks[i];
-        if(f.writes.dirty() && FileAccess::flushRestoredStream(f.stream,f.writes))closed=false;
         if(FileAccess::closeRestoredStream(f.stream))closed=false;
-        f.writes.clear();
+        f.source=0;
         if(f.buffer)FreeMem(f.buffer,FileReadCache::capacity);f.buffer=0;f.ref=0;
     }
     s_files.reset();g_applicationFileRef=0;

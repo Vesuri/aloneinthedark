@@ -89,9 +89,43 @@ int16_t MacFiles::resolve(int16_t volume,uint32_t directory,const char* path,uin
 int16_t MacFiles::open(uint32_t id,bool resource,bool writable) {
     if(!entry(id) || entry(id)->directory)return fnfErr;
     for(uint16_t i=0;i<maxOpen;++i)if(!forks_[i].ref) {
-        forks_[i]={(int16_t)(128+i),id,0,resource,writable};return forks_[i].ref;
+        forks_[i]={(int16_t)(128+i),id,0,resource,writable,false,false,false};return forks_[i].ref;
     }
     return -42; // tmfoErr
+}
+int16_t MacFiles::openData(uint32_t id,uint8_t permission,bool locked,int16_t& ref) {
+    ref=0;
+    if(permission>4)return unsupported;
+    if(!entry(id) || entry(id)->directory)return fnfErr;
+    if(locked && permission>1)return -54; // permErr, measured local HFS Open.
+    bool writable=permission!=1 && !locked;
+    if(writable)for(uint16_t i=0;i<maxOpen;++i) {
+        const Fork& f=forks_[i];
+        if(f.ref && f.id==id && !f.resource && f.writable && !(permission==4 && f.shared)) {
+            ref=f.ref;return -49; // The failed Open returns the existing writer ref.
+        }
+    }
+    int16_t result=open(id,false,writable);
+    if(result<0)return result;
+    ref=result;Fork* f=const_cast<Fork*>(fork(ref));f->shared=permission==4;f->locked=locked;
+    return noErr;
+}
+int16_t MacFiles::volume(int16_t ref,const char* name) const {
+    // A full pathname's volume prefix overrides the reference. A bare name
+    // is ignored by the reference FlushVol; ref zero then selects the default.
+    if(name && *name!=':')for(const char* end=name;*end;++end)if(*end==':') {
+        const char* expected=entry(2)->name;const char* p=name;
+        while(p<end && *expected && fold(*p)==fold(*expected)) { ++p;++expected; }
+        return p==end && !*expected ? noErr : nsvErr;
+    }
+    if(ref==1)return noErr; // Single native volume is virtual drive 1.
+    uint32_t directory=0;return directoryFor(ref,directory);
+}
+void MacFiles::modified(int16_t ref) {
+    Fork* f=const_cast<Fork*>(fork(ref));if(f)f->modified=true;
+}
+void MacFiles::flushed(uint32_t id) {
+    for(uint16_t i=0;i<maxOpen;++i)if(forks_[i].ref && forks_[i].id==id && !forks_[i].resource)forks_[i].modified=false;
 }
 const MacFiles::Fork* MacFiles::fork(int16_t ref) const {
     for(uint16_t i=0;i<maxOpen;++i)if(forks_[i].ref && forks_[i].ref==ref)return &forks_[i];
@@ -207,6 +241,7 @@ int16_t MacFiles::setSize(int16_t ref,uint32_t size,bool clampPosition) {
     if(!f->writable)return -61;
     if(size>0x7fffffffUL)return paramErr;
     Entry* e=const_cast<Entry*>(entry(f->id));
+    if(size!=(f->resource ? e->resourceSize : e->dataSize))f->modified=true;
     if(f->resource)e->resourceSize=size;else e->dataSize=size;
     if(clampPosition && f->position>size)f->position=size;
     return noErr;

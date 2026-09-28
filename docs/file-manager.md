@@ -452,9 +452,51 @@ Totals: 33 runtime OS windows, 20 DOS reads / 801,145 bytes, 12 writes /
 470,015 bytes and six flushes (including shutdown), maximum transfer 65,536.
 Both remaining handles close after OS restoration, and the ledger is empty.
 
-Permission 1 remains unchanged. Other permissions, shared opens involving a
-writer, named-volume FlushVol, resource writes, async/flag variants and metadata
-operations remain named stops in M2.1b2c8–c9. Simultaneous writable/read handles
-need coherent cached state before they can be supported. No original-game
-save/load acceptance is claimed. Production remains at Get1NamedResource after
-seven directory services and zero runtime OS windows.
+## Permissions and coherent shared forks (M2.1b2c8)
+
+Synchronous Open/HOpen now support permissions 0–4 on ordinary data files.
+The 222-call System 7.5.5 scratch fixture measures the complete two-open matrix:
+readers coexist with any writer; only shared permission 4 coexists with another
+writer granted 4. Conflicting opens return -49 **and the existing writer's
+reference**, including permission 0. No second reference is created. Permissions
+0, 2 and 3 otherwise grant exclusive read/write access; 1 grants read access.
+A locked file opens read-only with 0 or 1, while 2–4 return -54. This is the
+measured low-level Open behavior, not an assumed fallback from the high-level
+API description. DOS write protection maps to that locked state.
+
+All handles for a file use one sparse write ledger once a writer opens. Existing
+read caches are released, so readers see writes and EOF changes immediately.
+Each open reference retains its own mark: truncation clamps only the caller's
+mark. Closing a reader does not flush or clear a writer's modified flag. A
+modified writer flushes on close, and the shared backing pointer transfers to
+another live stream; that stream can still read or write. FlushVol clears the
+modified flags after success. GetFCBInfo reports writable/shared/locked/modified
+bits separately, matching the reference's $0100/$1000/$2000/$8000 flags.
+
+FlushVol uses a full pathname's volume prefix in preference to ioVRefNum.
+Bare names and partial paths (leading colon) use ioVRefNum instead. Invalid
+volumes return -35; case-insensitive `Alone:` names, default/live WD references
+and virtual drive 1 select the port's one volume. The reference disk reports
+actual drive 8, then accepts that value in FlushVol; the drive identity itself
+is intentionally not copied to the Amiga catalog.
+
+Native `file-write` checks the permission matrix, lock errors, cross-reference
+bytes and marks, both close orders, writes after the first writer closes,
+upgrading a populated read cache, FCB flags and FlushVol paths. DOS protection
+is set inside a system window; the stream queries it without reading payloads.
+FileInfoBlock must be allocated with AllocDosObject: a stack instance at
+alignment 2 was measured returning fields shifted by two bytes. The port's
+existing catalog already uses the correct allocation pattern.
+
+The expanded regression totals 172 runtime OS windows, 27 DOS reads / 801,173
+bytes, 17 writes / 470,037 bytes and 11 flushes including shutdown. Maximum
+transfer remains 65,536. Host readback verifies final backend, shared and
+shutdown files; two remaining handles close after OS restoration. Host tests,
+file-read, window-core, boot and the directory observer retain their acceptance.
+
+Application data-fork writes remain an explicit Open/HOpen stop: the current
+native application path holds its raw resource bytes. M2.1b2c9a separates those
+stores before allowing such writes. Metadata, resource forks and async/other
+flag variants remain M2.1b2c9. Production still reaches Get1NamedResource after
+seven directory services and zero runtime OS windows; these API fixtures do
+not claim original-game PAK or save/load acceptance.

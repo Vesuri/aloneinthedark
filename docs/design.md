@@ -336,11 +336,16 @@ Native trap probes, host fragmentation tests and paired heap captures verify it:
 - **Write-buffer helper (M2.1b2c5).** Sparse 64 KiB dirty pages are verified
   against a host byte oracle, including truncation, errors and retryable flush.
   It fetches existing bytes on demand and retains dirty state until all writes
-  and EOF updates succeed. Synchronous Open/HOpen permission 3, Write, SetEOF,
-  FlushVol and Close now bind this helper per data fork. Failed flushes retain
-  the open fork and dirty ledger for retry. Shutdown flushes dirty forks after
-  full OS restoration and reports failures. The native file-write fixture
-  verifies both paths; other permissions/sharing and resource forks are pending.
+  and EOF updates succeed. Synchronous Open/HOpen permissions 0–4, Write,
+  SetEOF, FlushVol and Close bind one coherent dirty state per native data file,
+  with separate marks and permission/modified flags per open reference. Readers
+  switch from their caches to that state when a writer opens. Closing a reader
+  leaves writers dirty; writable closes flush, and the backing handle remains
+  valid until the last reference closes. Failed flushes retain the open fork
+  and dirty ledger for retry. Shutdown flushes after full OS restoration and
+  reports failures. Native protection is queried in the existing open window
+  using a DOS-allocated, longword-aligned FileInfoBlock. Resource storage and
+  remaining variants are pending.
 - **Writes (save games, "Alone Prefs").** Writes are buffered per fork and
   written through in a system window at `_Close`/`FlushVol`, so a save the game
   reports as written is on disk (task M3.6). WHDLoad uses `resload_SaveFile`.

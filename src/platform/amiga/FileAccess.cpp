@@ -68,6 +68,16 @@ struct StreamRequest {
 static int32_t openStreamOperation(void* context) {
     StreamRequest& r=*(StreamRequest*)context;
     r.stream->handle=Open((CONST_STRPTR)r.path,MODE_OLDFILE);
+    r.stream->locked=false;
+    if(r.stream->handle) {
+        // DOS passes FileInfoBlock as a BPTR: the Mac service stack can be
+        // only word-aligned, so a plain stack object is not sufficient.
+        FileInfoBlock* info=(FileInfoBlock*)AllocDosObject(DOS_FIB,0);
+        int32_t error=!info ? -108 : !ExamineFH(r.stream->handle,info) ? ioError : ok;
+        if(!error)r.stream->locked=(info->fib_Protection&FIBF_WRITE)!=0;
+        if(info)FreeDosObject(DOS_FIB,info);
+        if(error) { Close(r.stream->handle);r.stream->handle=0;return error; }
+    }
 #ifdef AITD_FILE_PROBE
     if(r.stream->handle)++g_fileOpenHandles;
 #endif

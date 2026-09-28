@@ -1,5 +1,8 @@
 #ifdef AITD_FILE_WRITE_PROBE
 #include <proto/exec.h>
+#include <proto/dos.h>
+#include <dos/dos.h>
+#include "SystemWindow.h"
 #include <exec/memory.h>
 #include "FileAccess.h"
 #include "mac/FileWriteBuffer.h"
@@ -8,9 +11,13 @@ static uint8_t payload[131089],readback[200003];
 static uint8_t pattern(uint32_t i) { return (i*37+(i>>8))&255; }
 static uint8_t* allocate(uint32_t size) { return (uint8_t*)AllocMem(size,MEMF_FAST); }
 static void release(uint8_t* p,uint32_t size) { FreeMem(p,size); }
+static int32_t protectFixture(void*) {
+    return SetProtection((CONST_STRPTR)"PROGDIR:locked-probe.bin",FIBF_WRITE) ? 0 : -36;
+}
 int32_t aitdFileWriteBackendProbe() {
     FileAccess::ReadStream stream={0};FileWriteBuffer buffer;uint32_t actual=0;
     g_fileWriteProbeStep=1;
+    if(aitdSystemWindow(protectFixture,0))return -1;
     if(FileAccess::openStream("PROGDIR:write-probe.bin",stream))return -1;
     int32_t result=-1;
     do {

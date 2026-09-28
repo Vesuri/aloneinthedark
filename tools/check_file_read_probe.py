@@ -13,14 +13,20 @@ if a.prepare:
     if a.write:
         (drive/'write-probe.bin').write_bytes(bytes((i*37+(i>>8))&255 for i in range(200003)))
         (drive/'mutation-probe.bin').write_bytes(b'')
+        (drive/'sharing-probe.bin').write_bytes(b'')
+        locked=drive/'locked-probe.bin'
+        if locked.exists():locked.chmod(0o644)
+        locked.write_bytes(b'') # The native fixture applies DOS write protection.
 else:
     log=(root/'amiga/.run/gdb-out.log').read_text()
     marker='PASS file-read: Line-A open/read/seek/EOF/position/close bytes=exact CCR=checked windows=10 DOS-reads=6 max=65536 cleanup=1 GetVol=WD/root/null-name FCB=index/exact/errors HVol=directory/state/errors WD=query/close/filter'
-    if a.write:marker='PASS file-write: Line-A/backend bytes=exact windows=33 writes=12 max=65536 flushes=6 EOF=17/3 cleanup=2'
+    if a.write:marker='PASS file-write: Line-A/backend bytes=exact windows=172 writes=17 max=65536 flushes=11 EOF=17/3 cleanup=2 sharing=coherent permissions=0-4/locked volume=name/ref'
     if a.status or re.search(r'FAIL|Error in sourced command file|Program received signal',log) or log.count(marker)!=1:
         raise SystemExit('FAIL file-read: missing completion or runner/observer failure')
     if a.write and (drive/'write-probe.bin').read_bytes()!=bytes((i*37+(i>>8))&255 for i in range(17)):
         raise SystemExit('FAIL file-write: host file length/bytes after close')
     if a.write and (drive/'mutation-probe.bin').read_bytes()!=bytes(((i*37+(i>>8))&255)^0xa5 for i in range(3)):
         raise SystemExit('FAIL file-write: dirty shutdown file length/bytes')
+    if a.write and (drive/'sharing-probe.bin').read_bytes()!=bytes.fromhex('abcdef015678'):
+        raise SystemExit('FAIL file-write: shared-writer host bytes after close')
     print(marker)

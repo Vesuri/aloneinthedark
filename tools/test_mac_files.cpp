@@ -74,6 +74,27 @@ int main() {
     assert(c.closeWD(wd)==c.rfNumErr);
     assert(c.openWD(file,0)==c.fnfErr);
     assert(c.openWD(2,0)==c.volumeRef);
+    for(uint8_t first=0;first<5;++first)for(uint8_t second=0;second<5;++second) {
+        int16_t a=0,b=0;assert(c.openData(file,first,false,a)==0);
+        bool conflict=first!=1 && second!=1 && !(first==4 && second==4);
+        assert(c.openData(file,second,false,b)==(conflict ? -49 : 0));
+        if(conflict)assert(a==b);else { assert(a!=b);assert(c.fork(b)->writable==(second!=1));assert(c.close(b)==0); }
+        assert(c.close(a)==0);
+    }
+    for(uint8_t perm=0;perm<5;++perm) {
+        int16_t ref=0;assert(c.openData(file,perm,true,ref)==(perm<2 ? 0 : -54));
+        if(perm<2) { assert(c.fork(ref)->locked && !c.fork(ref)->writable);assert(c.close(ref)==0); }
+    }
+    assert(c.volume(0x1234,"Alone")==-35 && c.volume(0,"Alone")==0);
+    assert(c.volume(0x1234,"aLoNe:")==0 && c.volume(-1,"Other:")==-35);
+    assert(c.volume(1,0)==0);
+    assert(c.volume(0x1234,"Alone:X")==0 && c.volume(-1,":X")==0 && c.volume(0x1234,":X")==-35);
+    int16_t reader=0,writer=0;
+    assert(c.openData(file,1,false,reader)==0 && c.openData(file,3,false,writer)==0);
+    c.advance(reader,4);assert(c.setSize(writer,2,true)==0);
+    assert(c.fork(reader)->position==4 && c.fork(writer)->position==0 && c.fork(writer)->modified);
+    c.flushed(file);assert(!c.fork(writer)->modified);
+    assert(c.setSize(writer,123456,true)==0 && c.close(reader)==0 && c.close(writer)==0);
     auto r=c.open(file,true,true), d=c.open(file,false,false);
     assert(r>0 && d>0 && r!=d && c.fork(0)==nullptr);
     assert(c.fork(r)->resource && c.fork(r)->writable && c.fork(r)->position==0);

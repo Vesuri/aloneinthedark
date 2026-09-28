@@ -77,6 +77,9 @@ const char* aitdBuildFileCatalog(MacFiles& catalog,const char* applicationPath,u
 #ifdef AITD_FILE_WRITE_PROBE
     if(!error && catalog.add(catalog.data,"mutation-probe.bin","PROGDIR:mutation-probe.bin",false,0)<0)
         error="CATALOG / MUTATION PROBE";
+    if(!error && (catalog.add(catalog.data,"sharing-probe.bin","PROGDIR:sharing-probe.bin",false,0)<0
+            || catalog.add(catalog.data,"locked-probe.bin","PROGDIR:locked-probe.bin",false,0)<0))
+        error="CATALOG / SHARING PROBE";
 #endif
     if(!error)g_catalogEntries=catalog.count();
     return error;
