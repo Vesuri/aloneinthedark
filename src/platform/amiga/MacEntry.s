@@ -4,10 +4,13 @@
 aitd_call_mac_code:
 	move.l 4(sp),a0
 	move.l 8(sp),a1
+	move.l 12(sp),d0
 	movem.l d2-d7/a2-a6,-(sp)
 	move.l sp,g_macHostReturnSP
 	move.l a1,a5
+	move.l d0,sp
 	jsr (a0)
+	move.l g_macHostReturnSP,sp
 	clr.l g_macHostReturnSP
 	movem.l (sp)+,d2-d7/a2-a6
 	rts
@@ -38,6 +41,8 @@ aitd_line_a_handler:
 	movem.l d0-d7/a0-a6,-(sp)
 	move.l sp,a0
 	lea 60(sp),a1
+	move.l 2(a1),a3
+	move.w (a3),d7	| Original trap word; C ABI preserves D7.
 	move.l usp,a2
 	move.l a2,-(sp)
 	move.l a1,-(sp)
@@ -50,6 +55,17 @@ aitd_line_a_handler:
 	move.l usp,a0
 	adda.w d0,a0
 	move.l a0,usp
+	btst #11,d7
+	bne.s 3f
+	| OS return: TST.W D0 semantics, retaining X and all saved SR high bits.
+	andi.w #0xfff0,60(sp)
+	tst.w 2(sp)	| Low word of saved D0, not the dispatcher cleanup result.
+	bmi.s 4f
+	bne.s 3f
+	ori.w #4,60(sp)
+	bra.s 3f
+4:	ori.w #8,60(sp)
+3:
 	movem.l (sp)+,d0-d7/a0-a6
 	addq.l #2,2(sp)
 	tst.l g_macVBLCallbackEntry
@@ -68,6 +84,8 @@ aitd_line_a_handler:
 | leak scratch registers into the next.
 	.globl aitd_user_vbl_trampoline
 aitd_user_vbl_trampoline:
+	lea -4(sp),sp	| Reserve resume PC without changing CCR.
+	move.w ccr,-(sp)
 	movem.l d0-d7/a0-a6,-(sp)
 1:
 	movem.l (sp),d0-d7/a0-a6
@@ -82,5 +100,6 @@ aitd_user_vbl_trampoline:
 	tst.l g_macVBLCallbackEntry
 	bne.s 1b
 	movem.l (sp)+,d0-d7/a0-a6
-	move.l g_macVBLCallbackReturn,-(sp)
+	move.l g_macVBLCallbackReturn,2(sp)
+	move.w (sp)+,ccr
 	rts

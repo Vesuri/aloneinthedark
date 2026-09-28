@@ -12,7 +12,7 @@
 
 extern "C" {
 void aitd_line_a_handler();
-void aitd_call_mac_code(void* entry, void* a5);
+void aitd_call_mac_code(void* entry, void* a5, void* stackTop);
 void aitd_user_exit_request();
 void aitd_user_exit_trampoline();
 extern volatile uint16_t g_macFramesPresented;
@@ -67,6 +67,16 @@ volatile uint32_t g_macVBLCallbackA5 = 0;
 volatile uint32_t g_macVBLCallbackReturn = 0;
 volatile uint16_t g_macVBLCallbackActive = 0;
 volatile uint32_t g_macHostReturnSP = 0;
+uint8_t* g_macStackBase = 0;
+volatile uint32_t g_macLineAVectorAddress = 0;
+volatile uint32_t g_macSavedLineAVector = 0;
+volatile uint16_t g_macLineAInstalled = 0;
+#ifdef AITD_LINE_A_PROBE
+volatile uint32_t g_lineAProbe[12] = {};
+void aitd_line_a_probe();
+void aitd_line_a_exit_probe();
+__attribute__((noinline)) void aitdLineAProbeComplete() { __asm__ volatile("" ::: "memory"); }
+#endif
 volatile uint16_t g_macExitState = 0;
 #ifdef AITD_PROBE
 #endif
@@ -84,8 +94,8 @@ char g_trapRoutine[24] = "";
 // Private shadows for the classic-Mac Page-0 globals the original code reads
 // or writes directly.  Page 0 holds exception vectors and Exec state on the
 // Amiga, so byte-verified absolute-address accesses are redirected here
-// instead (Vette used d16(A5) slots; Alone in the Dark's A5 world exceeds
-// the 16-bit displacement range, see docs/static-map.md).
+// instead. M1.4 moves these shadows above the jump table into d16(A5) reach;
+// the large below-A5 globals do not prevent that layout.
 static const uint16_t kLowTicks = 0;         // $016A
 static const uint16_t kLowRndSeed = 4;       // $0156
 static const uint16_t kLowWMgrPort = 8;      // $09DE
@@ -98,6 +108,7 @@ static const uint16_t kLowMTempH = 40;       // $082A
 static const uint16_t kLowRawMouseV = 42;    // $082C
 static const uint16_t kLowRawMouseH = 44;    // $082E
 static const uint16_t kLowMouseV = 46;       // $0830
+static const uint16_t kLowCurStackBase = 52; // $0908: lowest A5 global, not execution stack
 static const uint16_t kLowMouseH = 48;       // $0832
 static uint8_t s_portLowMemory[64] __attribute__((aligned(4)));
 // The A5 world is sized by CODE 0, not by a compile-time constant: this
@@ -591,6 +602,8 @@ static bool buildA5World(uint8_t*& a5)
         return loaderStop("A5 WORLD MEMORY", 0);
     }
     a5 = s_a5WorldStorage + below;
+    write32(s_portLowMemory + kLowCurrentA5, (uint32_t)a5);
+    write32(s_portLowMemory + kLowCurStackBase, (uint32_t)s_a5WorldStorage);
     s_jumpTableOffset = jumpOffset;
 
     // Every segment stays resident, so each _LoadSeg stub is resolved once to
@@ -4674,7 +4687,8 @@ static bool validatePermanentHandle(uint8_t** handle)
 }
 
 // AmigaDOS runs the application in user mode: parameters are on USP, while Line-A creates
-// a six-byte frame on the supervisor stack.  This differs from the supervisor-mode Mac II.
+// an eight-byte format-0 frame on the 68020 supervisor stack. The Mac II runs
+// its application in supervisor mode; our Macintosh arguments remain on USP.
 extern "C" uint32_t aitdLineADispatch(uint32_t* regs, uint8_t* frame, uint8_t* userStack)
 {
     uint32_t pc = read32(frame + 2);
@@ -5638,7 +5652,7 @@ extern "C" uint32_t aitdLineADispatch(uint32_t* regs, uint8_t* frame, uint8_t* u
         if (g_stageCDepth < 55) g_stageCDepth = 55;
         return 5;
     }
-    if (trap == 0xab1d && regs[0] == 0) {    // QDExtensions: NewGWorld
+    if (trap == 0xab1d && (uint16_t)regs[0] == 0) {    // QDExtensions: NewGWorld
         const uint8_t* bounds = (const uint8_t*)read32(userStack + 12);
         uint8_t* world = newGWorld(bounds, read16(userStack + 16));
         write32((uint8_t*)read32(userStack + 18), (uint32_t)world);
@@ -5646,14 +5660,14 @@ extern "C" uint32_t aitdLineADispatch(uint32_t* regs, uint8_t* frame, uint8_t* u
         if (g_stageCDepth < 40) g_stageCDepth = 40;
         return 23;
     }
-    if (trap == 0xab1d && regs[0] == 1) {    // QDExtensions: LockPixels
+    if (trap == 0xab1d && (uint16_t)regs[0] == 1) {    // QDExtensions: LockPixels
         GWorldSlot* world = gWorldForPixMap((uint8_t**)read32(userStack));
         if (world) world->locked = true;
         userStack[4] = world ? 1 : 0;
         if (g_stageCDepth < 40) g_stageCDepth = 40;
         return 5;
     }
-    if (trap == 0xab1d && regs[0] == 12) {   // QDExtensions: NoPurgePixels
+    if (trap == 0xab1d && (uint16_t)regs[0] == 12) {   // QDExtensions: NoPurgePixels
         GWorldSlot* world = gWorldForPixMap((uint8_t**)read32(userStack));
         if (world) world->purgeable = false;
         return 5;
@@ -5682,7 +5696,7 @@ extern "C" uint32_t aitdLineADispatch(uint32_t* regs, uint8_t* frame, uint8_t* u
         if (s_trapNames[i].word == trap) {
             manager = s_trapNames[i].manager; routine = s_trapNames[i].routine; break;
         }
-    if (trap == 0xab1d) g_trapSelector = (int32_t)regs[0];
+    if (trap == 0xab1d) g_trapSelector = (uint16_t)regs[0];
     copyString(g_trapManager, manager);
     copyString(g_trapRoutine, routine);
     if (s_loudStopScreen)
@@ -5785,6 +5799,8 @@ void MacLoader::releaseResourceForks()
     s_resourceForks.close();
     clearResidentSegments();
     releaseA5World();
+    if (g_macStackBase) FreeMem(g_macStackBase, 65536);
+    g_macStackBase = 0;
     g_macTicksAddress = 0;
     g_macRndSeedAddress = 0;
     g_resourceCount = 0;
@@ -5805,17 +5821,61 @@ static void showLoaderStop()
     for (;;) { }                             // VBI remains enabled, so the report stays live
 }
 
+static void installLineAVector()
+{
+    g_macLineAVectorAddress = (uint32_t)AmigaHardware::getVBR() + 0x28;
+    Disable();
+    volatile uint32_t* vector = (volatile uint32_t*)g_macLineAVectorAddress;
+    g_macSavedLineAVector = *vector;
+    *vector = (uint32_t)aitd_line_a_handler;
+    g_macLineAInstalled = 1;
+    Enable();
+}
+
+static void restoreLineAVector()
+{
+    Disable();
+    *(volatile uint32_t*)g_macLineAVectorAddress = g_macSavedLineAVector;
+    g_macLineAInstalled = 0;
+    Enable();
+}
+
 bool MacLoader::run(AitdScreen* screen)
 {
     s_loudStopScreen = screen;
     if (!s_resourceForks.resourceCount()) return false;
 
-    uint8_t* a5 = 0;
-    if (!buildA5World(a5)) showLoaderStop();
+    if (!g_macStackBase) g_macStackBase = (uint8_t*)AllocMem(65536, MEMF_ANY);
+    if (!g_macStackBase) {
+        loaderStop("MAC STACK MEMORY", 0);
+        showLoaderStop();
+    }
+#ifdef AITD_LINE_A_PROBE
+    // Native unit-style trap calls: no original code or game decisions replaced.
+    installLineAVector();
+    aitd_call_mac_code((void*)aitd_line_a_probe, (void*)0x12345678,
+                      g_macStackBase + 65536);
+    restoreLineAVector();
+    g_lineAProbe[6] = g_macLineAInstalled == 0
+        && *(volatile uint32_t*)g_macLineAVectorAddress == g_macSavedLineAVector;
+    installLineAVector();
+    aitd_call_mac_code((void*)aitd_line_a_exit_probe, (void*)0x12345678,
+                      g_macStackBase + 65536);
+    restoreLineAVector();
+    g_lineAProbe[7] = g_macLineAInstalled == 0 && g_macHostReturnSP == 0
+        && *(volatile uint32_t*)g_macLineAVectorAddress == g_macSavedLineAVector;
+    aitdLineAProbeComplete();
+#endif
     for (uint16_t i = 0; i < sizeof(s_portLowMemory); ++i) s_portLowMemory[i] = 0;
+    uint8_t* a5 = 0;
+    bool a5Ready = buildA5World(a5);
+#ifdef AITD_LINE_A_PROBE
+    g_lineAProbe[10] = read32(s_portLowMemory + kLowCurrentA5);
+    g_lineAProbe[11] = read32(s_portLowMemory + kLowCurStackBase);
+#endif
+    if (!a5Ready) showLoaderStop();
     write32(s_portLowMemory + kLowTicks, g_macTicks);
     write32(s_portLowMemory + kLowRndSeed, g_macTicks ? g_macTicks - 1 : 0);
-    write32(s_portLowMemory + kLowCurrentA5, (uint32_t)a5);
     // The VBI consumes these 32-bit pointers. Publish them atomically with
     // respect to the level-3 handler; a torn 68000 longword would point the
     // ISR at arbitrary memory.
@@ -5825,9 +5885,6 @@ bool MacLoader::run(AitdScreen* screen)
     s_currentA5 = a5;
     Enable();
 
-    Disable();
-    *(void (**)())0x28 = aitd_line_a_handler;
-    Enable();
     g_stageBState = 1;
     uint8_t* firstJump = a5 + s_jumpTableOffset;
     if (read16(firstJump + 2) != 0x4ef9) return false;
@@ -5837,7 +5894,9 @@ bool MacLoader::run(AitdScreen* screen)
     // Do not disable caches: let Exec use the installed CPU support routines.
     CacheClearU();
     // The Segment Loader starts an application at its first jump-table entry.
-    aitd_call_mac_code((void*)read32(firstJump + 4), a5);
+    installLineAVector();
+    aitd_call_mac_code((void*)read32(firstJump + 4), a5, g_macStackBase + 65536);
+    restoreLineAVector();
     // Leave all four Paula DACs holding signed zero before PlatformAmiga
     // restores the operating system, whichever exit route was taken.
     for (uint16_t channel = 0; channel < 4; ++channel) quiescePaulaChannel(channel);

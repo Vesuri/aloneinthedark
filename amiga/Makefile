@@ -126,6 +126,10 @@ ifdef PROBES
 EXTRA_DEFINES += -DAITD_PROBE
 endif
 
+ifeq ($(LINEAPROBE),1)
+EXTRA_DEFINES += -DAITD_LINE_A_PROBE
+endif
+
 # `make FPSCOUNT=1` — the honest framerate build: one increment per painted frame, no
 # instrumentation.  docs/development.md.
 ifdef FPSCOUNT
@@ -192,7 +196,10 @@ PROBE_SYMS = g_vbiCount g_planeChecksum g_screenReady \
              g_trapPC g_trapRegisters g_trapUserStack g_resourceCount g_jumpEntryCount \
              g_blockMoveCount g_trapManager g_trapRoutine
 PROBE_SYMS += g_stageCDepth
-PROBE_SYMS += SysBase
+PROBE_SYMS += SysBase g_macStackBase g_macLineAVectorAddress g_macSavedLineAVector g_macLineAInstalled g_macHostReturnSP
+ifeq ($(LINEAPROBE),1)
+PROBE_SYMS += g_lineAProbe
+endif
 PROBE_SYMS += g_macTicks
 PROBE_SYMS += g_macFramesQueued g_macFramesPresented
 PROBE_SYMS += g_beamPresentLine g_beamPresentMin g_beamPresentMax \

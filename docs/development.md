@@ -164,3 +164,21 @@ fixtures. The actual 68020 run fails at the CODE 3 CREL stop with observer exit 
 returns 124. The clean build passes both link audits (30 probes). Positive boot
 acceptance remains **M1.3a**, immediately after the startup implementation that
 can make it pass. No current run has passed the game-boot test.
+
+## Line-A and stack probe
+
+Clean-build with `make -C amiga LINEAPROBE=1`, then run from `amiga/`:
+`EXTRA_ARGS=--warp_mode=1 GDBSCRIPT=line_a.gdb ./diag_run.sh 30`.
+The probe uses real native Line-A instructions on the dedicated 64 KB stack;
+it does not replace original game instructions or bypass the CREL stop.
+
+M1.1 evidence: vector at VBR+$28 ($00000028 on the tested A1200) changes from
+$00F80ADE to the port handler and is restored after both RTS and ExitToShell.
+D0.W zero/positive/negative returns produce CCR $14/$10/$18 from input $1F;
+Toolbox retains $1F. A callback deliberately overwrites CCR and A5, and the
+caller still receives CCR $14 and A5 $12345678. QDExtensions selector
+$56780001 dispatches as selector 1. The entry SP is exactly stack base+65532.
+CurrentA5 $004905F8 minus CurStackBase $0047DE98 is 75,616, matching the original
+CODE 0 header. Probe and production link audits pass (36/35 retained symbols).
+Low-memory instruction redirection remains M1.4; these values currently live
+in the private shadows. The production game still stops at CODE 3 CREL.

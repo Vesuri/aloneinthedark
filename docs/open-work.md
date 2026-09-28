@@ -17,15 +17,6 @@ required.
 
 ## M1 Boot to main
 
-- **M1.1 Line-A correctness.**
-  - Install the vector through VBR, saving and restoring the old one.
-  - On OS-trap return (trap bit 11 clear), set the CCR from D0.W.
-  - Dispatch `$AB1D` on D0's low word.
-  - Give the Mac code a 64 KB stack.
-  - Set `CurStackBase` and `CurrentA5` as in design §4.2.
-
-  *Done when* a gdb check shows the handler at VBR+$28 and the old vector restored
-  on exit, and a unit-style probe confirms the CCR after an OS trap.
 - **M1.2 A5 world host model.**
   - Write `tools/a5world_check.py`, a port of `tmp/plan/a5world.py`. It expands
     DATA/ZERO and applies DREL exactly as CODE 1+$0118 does.

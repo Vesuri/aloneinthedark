@@ -137,7 +137,8 @@ subsystem with its design decision and the queue tasks that implement it.
 - **Trap return (CCR).** The Mac OS dispatcher returns from OS traps with the CCR
   set from D0.W, and original code tests it with a bare `BNE`/`BMI`. Line-A returns
   must set the CCR the same way for OS traps (bit 11 of the trap word clear),
-  and leave it untouched for Toolbox traps.
+  and leave it untouched for Toolbox traps. The callback trampoline preserves
+  the returned CCR while draining callbacks.
 - **Mac stack.** Run the Mac code on its own 64 KB stack, set up with StackSwap
   or the entry trampoline, not the Shell stack. `CurStackBase` ($908) =
   A5 − 75,616, the lowest global, as on the Mac.
