@@ -128,6 +128,9 @@ local acc_x, acc_y = 0, 0
 function mac.mouse_to(target_h, target_v, tol, tries)
 	tol = tol or 3
 	local fx, fy = find_field("Mouse X"), find_field("Mouse Y")
+	-- Per-axis gain, halved whenever an axis overshoots: System 7's steeper
+	-- tracking curve otherwise makes a fixed gain oscillate around the target.
+	local gain, last = { 1.5, 1.5 }, { 0, 0 }
 	for _ = 1, tries or 400 do
 		local h, v = mac.mouse()
 		local dh, dv = target_h - h, target_v - v
@@ -143,13 +146,15 @@ function mac.mouse_to(target_h, target_v, tol, tries)
 				return true
 			end
 		end
-		local step = function(d)
+		local step = function(axis, d)
+			if last[axis] * d < 0 then gain[axis] = math.max(0.2, gain[axis] / 2) end
+			last[axis] = d
 			if math.abs(d) <= tol then return 0 end
-			local mag = math.max(2, math.min(40, math.floor(math.abs(d) * 1.5)))
+			local mag = math.max(1, math.min(40, math.floor(math.abs(d) * gain[axis])))
 			return d > 0 and mag or -mag
 		end
-		acc_x = (acc_x + step(dh)) % 256
-		acc_y = (acc_y + step(dv)) % 256
+		acc_x = (acc_x + step(1, dh)) % 256
+		acc_y = (acc_y + step(2, dv)) % 256
 		fx:set_value(acc_x); fy:set_value(acc_y)
 		mac.wait(1)
 	end
@@ -226,20 +231,17 @@ end
 
 -- Boot to the Finder and launch the application named by $AITD_MAC_APP.
 --
--- ⚠ Navigation is MOUSE, by coordinate, because System 6's Finder has no
--- type-select (that is a System 7 feature).  The coordinates are only stable
--- because the icons were put on a grid once with Special > Clean Up Window; the
--- positions then live in the volume's own catalog and survive reboots.
+-- ⚠ Navigation is MOUSE, by coordinate: Finder menus do not respond to the
+-- press-drag in mac.menu() under System 7.5.5, but double-clicks do.  The
+-- coordinates are the System 7.5.5 reference volume built by
+-- tools/install_reference_volume.py, which puts the game folder in the Desktop
+-- Folder (docs/mac-reference-loop.md).
 --
 -- Completion is read from CurApName, never from a screenshot: a launch that
 -- silently did nothing shows up as "Finder" where the application was expected.
---
--- ⚠ The coordinates below are Vette's System 6 reference volume, kept as the
--- template.  Re-measure them (or use System 7 type-select) once the Alone in
--- the Dark reference volume exists; see docs/mac-reference-loop.md.
-local APP_NAME      = os.getenv("AITD_MAC_APP") or "Alone In The Dark"
-local VOLUME_FOLDER = { 135, 160 }   -- game folder in the volume window [UNMEASURED]
-local APP           = { 104, 105 }   -- application in that folder [UNMEASURED]
+local APP_NAME    = os.getenv("AITD_MAC_APP") or "Alone In The Dark"
+local DESK_FOLDER = { 598, 98 }    -- "Alone in the Dark" folder on the desktop
+local APP         = { 166, 90 }    -- application in that folder's window
 
 function mac.step(label)
 	print(string.format("VP %-22s frame=%-6d front=%-16s mouse=(%d,%d)",
@@ -247,22 +249,20 @@ function mac.step(label)
 end
 
 function mac.launch()
-	mac.wait_for("Finder", function() return mac.frontmost() == "Finder" end, 3600)
+	mac.wait_for("Finder", function() return mac.frontmost() == "Finder" end, 7200)
 	mac.step("booted")
-	mac.wait(240)
+	mac.wait(900)                            -- System 7 keeps drawing the desktop
 
-	-- ⭐ The Finder reopens whatever windows were open at shutdown, so the folder is
-	-- usually already on screen: try the application directly, and only navigate if
+	-- ⭐ The Finder reopens whatever windows were open at shutdown, so the folder may
+	-- already be on screen: try the application directly, and only navigate if
 	-- that did nothing.  Checking rather than assuming is the whole point -- a blind
 	-- double-click into the desktop is indistinguishable from a slow launch.
 	mac.mouse_to(APP[1], APP[2]); mac.click(2)
 	mac.wait(240)
 	if mac.frontmost() ~= APP_NAME then
 		mac.step("direct click missed; navigating")
-		mac.press("o", { mac.CMD })              -- the volume icon is selected at boot
-		mac.wait(180)
-		mac.mouse_to(VOLUME_FOLDER[1], VOLUME_FOLDER[2]); mac.click(2)
-		mac.wait(240)
+		mac.mouse_to(DESK_FOLDER[1], DESK_FOLDER[2]); mac.click(2)
+		mac.wait(400)
 		mac.step("folder opened")
 		mac.mouse_to(APP[1], APP[2]); mac.click(2)
 	end

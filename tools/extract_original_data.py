@@ -61,47 +61,55 @@ def apple_double_resource_fork(path: Path) -> bytes:
     raise ValueError(f"{path}: no resource fork entry")
 
 
+def unpack_payload(archive: Path, scratch: Path, visible: bool) -> Path:
+    """Unpack the installer payload into scratch and return its root folder.
+
+    visible=True writes resource forks as AppleDouble `*.rsrc` files; False
+    writes native macOS forks and Finder info (what tools/macbin.py reads).
+    """
+    for tool in ("unar", "hmount", "hcopy", "humount"):
+        if not shutil.which(tool):
+            raise SystemExit(f"{tool} is required on PATH")
+    fork_mode = ("-k", "visible") if visible else ()
+    run("unar", "-q", "-k", "visible", "-o", str(scratch / "sit"), str(archive.resolve()))
+    images = list((scratch / "sit").rglob("*.img"))
+    if len(images) != 1:
+        raise SystemExit(f"expected one HFS image in {archive}, found {len(images)}")
+    volume = scratch / "volume.hfs"
+    shutil.copyfile(images[0], volume)
+    if volume.read_bytes()[1024:1026] != b"BD":
+        raise SystemExit(f"{images[0].name}: no HFS master directory block")
+
+    installer = scratch / "installer.bin"
+    run("hmount", str(volume))
+    try:
+        run("hcopy", "-m", f":{INSTALLER}", str(installer))
+    finally:
+        run("humount")
+
+    run("unar", "-q", "-k", "visible", "-o", str(scratch / "installer"), str(installer))
+    payload = scratch / "installer" / INSTALLER
+    data = bytearray(payload.read_bytes())
+    if data[:4] != b"STi2" or data[10:14] != b"rLau":
+        raise SystemExit(f"{INSTALLER}: data fork is not an STi2 StuffIt payload")
+    if struct.unpack_from(">I", data, 6)[0] != len(data):
+        raise SystemExit(f"{INSTALLER}: payload length does not match its header")
+    data[:4] = b"SIT!"
+    patched = scratch / "payload.sit"
+    patched.write_bytes(data)
+    run("unar", "-q", *fork_mode, "-o", str(scratch / "payload"), str(patched))
+    return next((scratch / "payload").iterdir())
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("archive", type=Path, help="AloneInTheDark.img_.sit")
     parser.add_argument("destination", type=Path)
     args = parser.parse_args()
 
-    for tool in ("unar", "hmount", "hcopy", "humount"):
-        if not shutil.which(tool):
-            parser.error(f"{tool} is required on PATH")
-
     with tempfile.TemporaryDirectory(prefix="aitd-extract-") as scratch_name:
         scratch = Path(scratch_name)
-        run("unar", "-q", "-k", "visible", "-o", str(scratch / "sit"), str(args.archive.resolve()))
-        images = list((scratch / "sit").rglob("*.img"))
-        if len(images) != 1:
-            raise SystemExit(f"expected one HFS image in {args.archive}, found {len(images)}")
-        volume = scratch / "volume.hfs"
-        shutil.copyfile(images[0], volume)
-        if volume.read_bytes()[1024:1026] != b"BD":
-            raise SystemExit(f"{images[0].name}: no HFS master directory block")
-
-        installer = scratch / "installer.bin"
-        run("hmount", str(volume))
-        try:
-            run("hcopy", "-m", f":{INSTALLER}", str(installer))
-        finally:
-            run("humount")
-
-        run("unar", "-q", "-k", "visible", "-o", str(scratch / "installer"), str(installer))
-        payload = scratch / "installer" / INSTALLER
-        data = bytearray(payload.read_bytes())
-        if data[:4] != b"STi2" or data[10:14] != b"rLau":
-            raise SystemExit(f"{INSTALLER}: data fork is not an STi2 StuffIt payload")
-        if struct.unpack_from(">I", data, 6)[0] != len(data):
-            raise SystemExit(f"{INSTALLER}: payload length does not match its header")
-        data[:4] = b"SIT!"
-        patched = scratch / "payload.sit"
-        patched.write_bytes(data)
-        run("unar", "-q", "-k", "visible", "-o", str(scratch / "payload"), str(patched))
-
-        root = next((scratch / "payload").iterdir())
+        root = unpack_payload(args.archive, scratch, visible=True)
         fork = apple_double_resource_fork(root / f"{APPLICATION}.rsrc")
         parse_resource_fork(fork, APPLICATION)
         digest = hashlib.sha256(fork).hexdigest()
