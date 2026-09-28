@@ -8,7 +8,7 @@ static bool copy(char* out,const char* in,uint32_t capacity) {
     if(!in)return false;
     uint32_t i=0;
     for(;in[i];++i) {
-        if(i+1>=capacity || (uint8_t)in[i]>=128)return false;
+        if(i+1>=capacity || (uint8_t)in[i]<32 || (uint8_t)in[i]>=127)return false;
         out[i]=in[i];
     }
     out[i]=0;return true;
@@ -39,6 +39,35 @@ int32_t MacFiles::add(uint32_t parent,const char* name,const char* path,bool dir
     candidate.dataSize=ds;candidate.resourceSize=rs;candidate.resourceIsBase=resourceIsBase;
     uint16_t slot=0;while(slot<used_ && entries_[slot].id)++slot;
     entries_[slot]=candidate;if(slot==used_)++used_;++count_;++nextID_;return candidate.id;
+}
+// Measured HFS ordering for supported printable ASCII. Case folds to capitals;
+// grave accent lies between A and B, rather than at its ASCII position.
+static uint16_t weight(char c) {
+    if(c>='a' && c<='z')c-='a'-'A';
+    return c=='`' ? ('A'*2+1) : (uint8_t)c*2;
+}
+static bool precedes(const char* a,const char* b) {
+    while(*a && weight(*a)==weight(*b)) { ++a;++b; }
+    return weight(*a)<weight(*b);
+}
+int16_t MacFiles::indexedFile(int16_t volume,uint32_t directory,int16_t index,uint32_t& id) const {
+    if(index<=0)return unsupported;
+    uint32_t parent=0;int16_t error=resolve(volume,directory,0,parent);
+    if(error)return error==dirNFErr ? fnfErr : error;
+    // Application/System namespaces deliberately omit unimplemented native files.
+    // Never turn an incomplete enumeration into a false end-of-directory result.
+    if(parent==2 || parent==application || parent==system)return unsupported;
+    for(uint16_t i=0;i<used_;++i) {
+        const Entry& candidate=entries_[i];
+        if(!candidate.id || candidate.directory || candidate.parent!=parent)continue;
+        uint16_t rank=1;
+        for(uint16_t j=0;j<used_;++j) {
+            const Entry& other=entries_[j];
+            if(other.id && !other.directory && other.parent==parent && precedes(other.name,candidate.name))++rank;
+        }
+        if(rank==(uint16_t)index) { id=candidate.id;return noErr; }
+    }
+    return fnfErr;
 }
 int16_t MacFiles::forkPath(uint32_t id,bool resource,char* path,uint32_t capacity) const {
     const Entry* e=entry(id);if(!e || e->directory)return fnfErr;

@@ -3,6 +3,27 @@
 #include <cstring>
 #include <initializer_list>
 #include "../src/mac/MacFiles.h"
+static void indexedFiles() {
+    MacFiles c;c.reset();c.application=c.add(2,"Game","PROGDIR:",true);
+    c.data=c.add(c.application,"Alone Data","PROGDIR:data",true);
+    // Reverse ASCII insertion makes catalog allocation order irrelevant.
+    for(int ch=126;ch>=32;--ch)if(!(ch>='a' && ch<='z') && ch!='/' && ch!=':') {
+        char name[]={'i',(char)ch,'x',0};assert(c.add(c.data,name,"PROGDIR:fixture",false)>0);
+    }
+    assert(c.add(c.data,"iBdir","",true)>0);
+    const char* order=" !\"#$%&'()*+,-.0123456789;<=>?@A`BCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_{|}~";
+    uint32_t id=0;int n=0;
+    for(;order[n];++n) {
+        assert(!c.indexedFile(-1,c.data,n+1,id));assert(c.entry(id)->name[1]==order[n]);
+    }
+    assert(n==67 && c.indexedFile(-1,c.data,68,id)==-43);
+    assert(c.indexedFile(-1,9999,1,id)==-43 && c.indexedFile(99,c.data,1,id)==-35);
+    assert(c.indexedFile(-1,c.application,1,id)==c.unsupported);
+    assert(c.indexedFile(-1,c.data,0,id)==c.unsupported);
+    auto first=c.child(c.data,"i x")->id;assert(!c.remove(first));
+    assert(!c.indexedFile(-1,c.data,1,id) && c.entry(id)->name[1]=='!');
+    assert(c.add(c.data,"control\x1f","",false)==c.unsupported);
+}
 static void dualForks() {
     MacFiles c;c.reset();c.application=c.add(2,"Game","PROGDIR:",true);
     auto app=c.add(c.application,"App","PROGDIR:App",false,0,123,true);
@@ -57,6 +78,7 @@ static void catalogLifetime() {
     assert(c.planCreate(0,0x1234,"new",plan)==c.dirNFErr);
 }
 int main() {
+    indexedFiles();
     dualForks();
     catalogLifetime();
     MacFiles c;c.reset();assert(c.count()==1 && c.entry(2)->parent==1);

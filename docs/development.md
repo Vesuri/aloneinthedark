@@ -660,7 +660,7 @@ Open/HOpen, Write, SetEOF, GetEOF/GetFCBInfo, Read, FlushVol and Close calls aft
 the read/directory fixture. It requires FILEPROBE=1 and FILEWRITEPROBE=1.
 The case checks exact bytes, marks/EOF, CCR, the 25-pair permission matrix,
 protected-file defaults/errors, shared writes and close order, cached-reader
-coherence and volume-name/reference forms. It requires 268 runtime windows,
+coherence and volume-name/reference forms. It requires 289 runtime windows,
 23 DOS writes (65,536 maximum), 17 flushes including shutdown and an empty
 stream ledger after cleanup. Host readback verifies 17 backend bytes, six
 shared-file bytes, four data bytes plus Finder metadata, and three bytes left dirty
@@ -763,3 +763,24 @@ logical fork sizes and open attributes for the same four files before the fork
 mutation fixture (now stage 45). The regression uses 268 runtime windows; stream
 read/write/flush counters remain those of the fork fixture. The additional
 application metadata is also persisted when its diagnostic data write closes.
+
+
+### Indexed file-info queries (M2.1b2c9c2a)
+
+`tools/mac_file_index.lua` creates only `AITD Port Index Probe` beneath the
+reference application directory, populates it in reverse order with 67 supported
+printable-ASCII names plus a subdirectory, queries it, and removes everything.
+Run headless and validate with `tools/check_file_index.py LOG --status STATUS`.
+The 218-call fixture verifies all returned names/IDs and excludes directories.
+It also covers null output-name pointers, negative named indices, classic/default
+selection, bad volume/directory and a WD plus bad explicit directory. Successful
+cleanup and normal process exit are required; an existing scratch directory is
+never reused or overwritten.
+
+Native stage 46 checks ordering against known existing save files, the grave
+accent's special position, canonical name outputs, null-name identity, errors,
+classic/default selection, WD precedence and reindexing after deletion. Host
+sanitizer tests cover all 67 characters and reverse insertion order. `file-write`
+now requires 289 runtime windows; stream counters are unchanged. Partial
+application/System/root namespaces still stop on indexed access until their
+separately queued completeness work is verified.

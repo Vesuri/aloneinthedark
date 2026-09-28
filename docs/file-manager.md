@@ -610,3 +610,28 @@ Host import validation, actual archive extraction, native installed-file info,
 read/write, window-core, production boot and original-directory checks pass.
 Unknown metadata on user-provided files still causes a named GetFInfo stop.
 Indexed file queries and other census variants remain M2.1b2c9c2.
+
+
+## Indexed file info in complete directories (M2.1b2c9c2a)
+
+Positive GetFInfo/HGetFInfo indices now select one-based ordinary-file entries,
+excluding directories and independent of native enumeration/insertion order.
+The Mac's supported printable-ASCII collation folds letters to capitals and
+places the grave accent between A and B. A 67-character original-Mac fixture
+establishes that order; control/non-ASCII catalog names remain unsupported.
+Deleted slots are omitted, so subsequent indices close the gap without changing
+remaining file IDs.
+
+The name input is ignored for positive indices. A null output-name pointer is
+allowed; other outputs still return the selected file. Negative indices retain
+named lookup. Out-of-range indices and bad directory IDs return -43; bad volumes
+return -35. An explicit bad directory still fails when a valid WD is supplied.
+Classic GetFInfo uses the current default directory and ignores the hierarchical
+PB directory field. These cases match the 218-call System 7.5.5 fixture.
+
+The native fixture passes all corresponding Line-A cases and exact returned
+names, metadata and lifetime checks. Enumeration of the deliberately incomplete
+application/System/root namespaces remains a named stop, not a fabricated empty
+listing; their boundaries are queued in M2.1b2c9c2b. All regression gates pass,
+with 289 runtime windows in the expanded file-write case and unchanged stream
+read/write/flush totals. Production still stops at Get1NamedResource.

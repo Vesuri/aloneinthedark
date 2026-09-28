@@ -43,13 +43,21 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.1b2c9c2 Remaining File Manager variants.**
-  - Complete indexed file-info forms, HGetVolParms,
-    FSDispatch PBHOpenDF and async variants from the census/reference contract.
+- **M2.1b2c9c2b Application namespace completeness.**
   - Finish application-directory missing-path resolution without hiding native
-    files outside its deliberately partial catalog. Unknown paths, names,
-    flags and layouts must remain explicit stops.
-  - Keep per-fork state and system-window boundaries (design §4.5).
+    files outside its deliberately partial catalog. Application/System/root
+    indexed listings currently stop explicitly; establish complete supported
+    namespace boundaries before returning entries or end-of-directory there.
+  - Data/save/prefs indexed file queries are complete (M2.1b2c9c2a).
+    Preserve original metadata and distinguish port files from Mac-visible files.
+
+  *Done when* named missing/existing paths and indexed listings in each supported
+  namespace have Mac/native comparisons, unknown native layouts remain loud,
+  and all existing regression cases pass.
+- **M2.1b2c9c2c Remaining File Manager dispatch variants.**
+  - Complete HGetVolParms, FSDispatch PBHOpenDF and async census variants.
+    Keep per-fork state and system-window boundaries (design §4.5).
+  - Unknown flags, paths and unsupported layouts remain named stops.
 
   *Done when* every added census operation passes host and bounded native Line-A
   fixtures with Mac-reference argument/result comparisons, and file-write,

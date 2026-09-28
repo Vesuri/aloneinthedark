@@ -305,7 +305,7 @@ Native trap probes, host fragmentation tests and paired heap captures verify it:
   GetFCBInfo/OpenWD, SetVol and Preferences FindFolder pass (M2.1b2a).
   Get1NamedResource is the next stop. Named Finder metadata and independent
   data/resource streams and installed-file metadata are implemented; remaining
-  file selectors are pending M2.1b2c9c2. Integrated original
+  namespaces/dispatch variants are pending M2.1b2c9c2b/c. Integrated original
   PAK read acceptance is M2.1c after the intervening Resource Manager work.
 - **File Manager calls (task M2.1).** Implement the ones the census lists over
   that catalog:

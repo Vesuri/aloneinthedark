@@ -4925,9 +4925,11 @@ static bool isFileCatalogService(uint16_t trap) {
 static bool dispatchFileCatalog(uint16_t trap,uint32_t* regs) {
     if(!isFileCatalogService(trap))return false;
     uint8_t* pb=(uint8_t*)regs[8];if(!pb)return false;
-    uint8_t* name=(uint8_t*)read32(pb+18);if(!name)return false;
-    char path[256];for(uint16_t i=0;i<name[0];++i)path[i]=name[i+1];path[name[0]]=0;
     uint16_t operation=trap&0xff;
+    bool indexed=operation==12 && (int16_t)read16(pb+28)>0;
+    uint8_t* name=(uint8_t*)read32(pb+18);if(!name && !indexed)return false;
+    char path[256];uint16_t length=name && !indexed ? name[0] : 0;
+    for(uint16_t i=0;i<length;++i)path[i]=name[i+1];path[length]=0;
     uint32_t directory=(trap&0x200) ? read32(pb+48) : 0,id=0;
     int16_t error=0;
     if(operation==8) {
@@ -4945,8 +4947,8 @@ static bool dispatchFileCatalog(uint16_t trap,uint32_t* regs) {
             }
         }
     } else {
-        if(operation==12 && (int16_t)read16(pb+28)>0)return false;
-        error=s_files.resolve((int16_t)read16(pb+22),directory,path,id);
+        error=indexed ? s_files.indexedFile((int16_t)read16(pb+22),directory,(int16_t)read16(pb+28),id)
+                      : s_files.resolve((int16_t)read16(pb+22),directory,path,id);
         const MacFiles::Entry* entry=error ? 0 : s_files.entry(id);
         if(!error && operation==9) {
             error=s_files.canRemove(id);
@@ -4980,7 +4982,7 @@ static bool dispatchFileCatalog(uint16_t trap,uint32_t* regs) {
                 write32(pb+48,id);write16(pb+52,0);write32(pb+54,entry->dataSize);write32(pb+58,entry->dataSize);
                 write16(pb+62,0);write32(pb+64,entry->resourceSize);write32(pb+68,entry->resourceSize);
                 write32(pb+72,entry->metadata.created);write32(pb+76,entry->metadata.modified);
-                uint16_t n=0;while(entry->name[n]) { name[n+1]=entry->name[n];++n; }name[0]=n;
+                if(name) { uint16_t n=0;while(entry->name[n]) { name[n+1]=entry->name[n];++n; }name[0]=n; }
             }
         }
     }
