@@ -81,7 +81,12 @@ local function map_segments()
       result[#result+1]={'folderVolume','w@(a4&ffffff)'}
       result[#result+1]={'folderID','d@(a3&ffffff)'}
      end
-     if is_file_trap(t[2]) then file_fields(result) end
+     if is_file_trap(t[2]) then
+      file_fields(result)
+      if t[2]==0xa014 then
+       for i=0,7 do result[#result+1]={'volume'..i,string.format('d@((d@(a0+12)&ffffff)+%x)',4*i)} end
+      end
+     end
      return_bps[pc+2]=breakpoint(pc+2,string.format('RESULT seg=%d offset=%04X trap=%04X',seg,t[1],t[2]),result)
     end
    end

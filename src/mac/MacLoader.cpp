@@ -4965,12 +4965,27 @@ static bool isUserService(uint16_t trap)
 #ifdef AITD_SERVICE_PROBE
     if((trap&0xfeff)==0xa0fc || trap==0xabfb)return true;
 #endif
-    return (trap&0xf8ff)==0xa060 || trap==0xa015 || isFileReadService(trap);
+    return (trap&0xf8ff)==0xa060 || trap==0xa014 || trap==0xa015 || isFileReadService(trap);
 }
 // Metadata-only File Manager selectors. Unsupported layouts fall through to
 // the named trap stop; no OS call is made inside this helper.
 static bool dispatchFileMetadata(uint16_t trap,uint32_t* regs)
 {
+    if(trap==0xa014) { // Synchronous PBGetVol; retain a SetVol working-directory ref.
+        uint8_t* pb=(uint8_t*)regs[8];
+        if(!pb)return false;
+        uint32_t directory=0;
+        int16_t error=s_files.directoryFor(0,directory);
+        if(!error) {
+            uint8_t* name=(uint8_t*)read32(pb+18);
+            const char* volume=s_files.entry(2)->name;
+            if(name) {
+                uint8_t n=0;while(volume[n]) { name[n+1]=volume[n];++n; }name[0]=n;
+            }
+            write16(pb+22,s_files.defaultRef() ? s_files.defaultRef() : MacFiles::volumeRef);
+        }
+        write16(pb+16,error);regs[0]=(uint32_t)(int32_t)error;return true;
+    }
     if(trap==0xa015) { // Synchronous PBSetVol, volume/working-directory identity.
         uint8_t* pb=(uint8_t*)regs[8];
         if(!pb)return false;

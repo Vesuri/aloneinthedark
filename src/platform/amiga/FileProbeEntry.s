@@ -15,3 +15,12 @@
     filetrap aitdProbeEOF,0xa011
     filetrap aitdProbeSeek,0xa044
     filetrap aitdProbePosition,0xa018
+    filetrap aitdProbeGetVol,0xa014
+    filetrap aitdProbeSetVol,0xa015
+    .globl aitdProbeOpenWD
+aitdProbeOpenWD:
+    move.l 4(sp),a0
+    moveq #1,d0
+    .word 0xa260
+    move.w ccr,g_fileProbeCCR
+    rts

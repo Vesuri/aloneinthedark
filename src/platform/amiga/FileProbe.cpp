@@ -3,6 +3,7 @@ extern "C" {
 extern volatile uint32_t g_systemWindows;
 volatile uint32_t g_fileProbeStage=0,g_fileProbeError=0,g_fileProbeDone=0,g_fileProbeWindows=0;
 volatile uint16_t g_fileProbeCCR=0;
+int32_t aitdProbeGetVol(void*),aitdProbeSetVol(void*),aitdProbeOpenWD(void*);
 int32_t aitdProbeHOpen(void*),aitdProbeOpen(void*),aitdProbeRead(void*),aitdProbeClose(void*),aitdProbeEOF(void*),aitdProbeSeek(void*),aitdProbePosition(void*);
 __attribute__((noinline)) void aitdFileCleanupFinished() { __asm__ volatile("" ::: "memory"); }
 __attribute__((noinline)) void aitdFileProbeFinished() { __asm__ volatile("" ::: "memory"); }
@@ -62,6 +63,24 @@ static bool run() {
     // Leave one read-only session for shutdown after the OS has been restored.
     g_fileProbeStage=15;
     if(!result(aitdProbeHOpen(pb),0) || g_systemWindows!=start+10)return false;
+    // Metadata calls must return the selected WD, not silently its volume root.
+    g_fileProbeStage=16;l(18,0);w(22,0xffff);
+    if(!result(aitdProbeSetVol(pb),0))return false;
+    uint8_t volume[32]={};l(18,(uint32_t)volume);w(22,0x1234);
+    if(!result(aitdProbeGetVol(pb),0) || (get(20)&65535)!=0xffff
+       || volume[0]!=5 || volume[1]!='A' || volume[2]!='l' || volume[3]!='o'
+       || volume[4]!='n' || volume[5]!='e')return false;
+    g_fileProbeStage=17;l(18,0);w(22,0xffff);l(48,7);l(28,0x41495444);
+    if(!result(aitdProbeOpenWD(pb),0))return false;
+    uint16_t wd=get(20)&65535;
+    if(wd==0xffff || !result(aitdProbeSetVol(pb),0))return false;
+    l(18,(uint32_t)volume);w(22,0);
+    if(!result(aitdProbeGetVol(pb),0) || (get(20)&65535)!=wd || volume[0]!=5)return false;
+    g_fileProbeStage=18;l(18,0);w(22,42);
+    if(!result(aitdProbeSetVol(pb),-35) || !result(aitdProbeGetVol(pb),0)
+       || (get(20)&65535)!=wd)return false;
+    w(22,0xffff);
+    if(!result(aitdProbeSetVol(pb),0) || g_systemWindows!=start+10)return false;
     g_fileProbeWindows=g_systemWindows-start;return true;
 }
 extern "C" void aitdFileProbe() {

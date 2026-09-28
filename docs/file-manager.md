@@ -219,3 +219,29 @@ observers and A5/heap comparisons pass. A5 $007909A8 and STRS $0044DA30 match
 reference differences. Startup still stops at Get1NamedResource, Engine+$3CDC.
 These fixture reads do not establish that the original game has read any PAK;
 that acceptance remains M2.1c after the intervening Resource Manager work.
+
+## Default-volume query (M2.1b2c1)
+
+Synchronous GetVol ($A014) returns the selected SetVol working-directory
+reference and the virtual volume name `Alone`; a null name pointer is supported.
+It makes no OS call. The original Core+$403E trap and its surrounding parameter
+setup were checked before implementation; no original instructions changed.
+Hierarchical default-directory state and asynchronous forms remain M2.1b2c.
+
+The fresh bounded Mac capture `tmp/m2-getvol-reference.log` completes with 98
+paired direct file calls. `check_file_reference.py --getvol` requires a successful
+original GetVol, the preceding SetVol identity, the output name and unchanged
+pointer, and reuse of that name/reference by a subsequent named SetVol. This
+resolves the manual's ambiguous description of the returned name: System 7.5.5
+returns the volume name, not the working directory's name. The virtual volume's
+name differs intentionally from the reference disk's `7.5.5 2GB (D)`.
+
+The native file fixture now has 18 stages, checking root and WD returns, a null
+name pointer, CCR/ioResult, and preservation after a failed SetVol. Read bytes,
+six DOS reads, ten OS windows and restored-OS cleanup remain unchanged. Host
+fixtures reject missing name round-trips and a substituted volume-root ref.
+
+All host checks, file-read, window-core and production boot pass on 68020.
+The original directory observer still reports 39 entries, 32 data files,
+5,315,994 bytes, seven successful service completions, zero runtime OS windows
+and the unchanged Get1NamedResource stop. No owner decision is required.

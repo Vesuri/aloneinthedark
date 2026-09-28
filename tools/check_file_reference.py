@@ -106,6 +106,24 @@ def validate_directories(pairs, folder):
         if not error and not word(block(after),22):raise ValueError('missing WD identity')
     return 'PASS startup-directories: SetVol=2 OpenWD=3 missing-movies=-43 FindFolder=pref'
 
+def validate_getvol(pairs):
+    default=None;observed=[]
+    for at,b,r in pairs:
+        before,after=block(b),block(r)
+        if b['trap']==0xa015 and r['d0']==0:
+            if observed and word(before,22)==observed[-1][0] and name(b)==observed[-1][1]:
+                return f'PASS GetVol: WD=${observed[-1][0]:04X} name={observed[-1][1]!r} reused by SetVol'
+            default=word(before,22)
+        elif b['trap']==0xa014:
+            if at!=(3,0x403e) or r['d0'] or default is None or word(after,22)!=default:
+                raise ValueError('GetVol lost the SetVol working-directory identity')
+            if not long(before,18) or long(before,18)!=long(after,18):
+                raise ValueError('GetVol output name pointer changed or absent')
+            raw=b''.join(r[f'volume{i}'].to_bytes(4,'big') for i in range(8))
+            if not 0<raw[0]<=31:raise ValueError('GetVol volume name absent or truncated')
+            observed.append((default,raw[1:1+raw[0]].decode('mac_roman')))
+    raise ValueError('GetVol name/reference round-trip through SetVol not observed')
+
 def folder_result(lines):
     found=[]
     for line in lines:
@@ -149,6 +167,25 @@ class Tests(unittest.TestCase):
         with self.assertRaises(ValueError):folder_result([])
         with self.assertRaises(ValueError):folder_result(['RESULT seg=3 offset=4356 trap=A823 ']*2)
 
+    def test_getvol_evidence(self):
+        def record(trap,ref,path=None):
+            raw=bytearray(80);raw[22:24]=ref.to_bytes(2,'big')
+            if path is not None:raw[18:22]=(0x1000).to_bytes(4,'big')
+            r={'trap':trap,'d0':0,**{f'pb{i}':long(raw,4*i) for i in range(20)}}
+            text=(bytes([len(path or '')])+(path or '').encode()).ljust(48,b'\0')
+            r.update({f'name{i}':long(text,4*i) for i in range(12)})
+            r.update({f'volume{i}':long(text,4*i) for i in range(8)})
+            return r
+        setvol=record(0xa015,0x8043)
+        before=record(0xa014,0,'Reference');after=record(0xa014,0x8043,'Reference')
+        restore=record(0xa015,0x8043,'Reference')
+        pairs=[((3,0x4066),setvol,setvol),((3,0x403e),before,after),((3,0x4066),restore,restore)]
+        self.assertIn('PASS GetVol',validate_getvol(pairs))
+        with self.assertRaises(ValueError):validate_getvol(pairs[:-1])
+        after['pb5']=(after['pb5']&0xffff0000)|0xffff
+        with self.assertRaises(ValueError):validate_getvol(pairs)
+        with self.assertRaises(ValueError):validate_getvol([])
+
     def test_no_fake_success(self):
         with self.assertRaises(ValueError): validate([],1424934)
 
@@ -158,6 +195,7 @@ def main():
     p.add_argument('--resource',type=Path,default=Path('tmp/runtime-data/Alone In The Dark'))
     p.add_argument('--require-file',action='append',default=[])
     p.add_argument('--startup-directories',action='store_true')
+    p.add_argument('--getvol',action='store_true')
     p.add_argument('--selftest',action='store_true');a=p.parse_args()
     if a.selftest: return not unittest.TextTestRunner().run(unittest.defaultTestLoader.loadTestsFromTestCase(Tests)).wasSuccessful()
     if not a.log:p.error('log required')
@@ -165,6 +203,7 @@ def main():
         with a.log.open() as source:pairs=capture(source,str(a.resource))
         required=tuple(a.require_file) or ('itd_ress.pak',)
         summary,reads=validate(pairs,a.resource.stat().st_size,required)
+        if a.getvol:print(validate_getvol(pairs))
         if a.startup_directories:
             with a.log.open() as source:folder=folder_result(source)
             print(validate_directories(pairs,folder))
