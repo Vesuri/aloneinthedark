@@ -16,17 +16,21 @@ A complete, faithful Amiga version of Alone In The Dark 1.0 for the Macintosh.
 The original 68k instructions run unchanged; the port supplies the Macintosh
 services they call, AGA display, Paula audio, and Amiga input.
 
-| | Minimum | Recommended | Also tested |
-| --- | --- | --- | --- |
-| CPU | 68020 | 68030/50 | 68040, 68060 |
-| Chipset | AGA | AGA | AGA |
-| Fast RAM | see D1 | 16 MB | 8 MB |
-| OS | Kickstart 3.1 | 3.1+ | WHDLoad |
+| | Minimum | Also tested |
+| --- | --- | --- |
+| CPU | 68020 | 68030, 68040, 68060 |
+| Chipset | AGA | AGA |
+| Fast RAM | about 4–6 MB, measured in M5 | 8 MB, 16 MB |
+| OS | Kickstart 3.1 | WHDLoad |
 
-- **68020 is the floor** because the game uses 68020 instructions [M: 319 on
-  reachable paths]. Expect it to be slow there. The original Mac recommended a
-  68040 [external: Inside Mac Games listing]. A 68030/50 is the performance
-  target every phase is measured on.
+- **68020 is the floor and must boot and play** (D2). The game uses 68020
+  instructions [M: 319 on reachable paths], and the original Mac recommended
+  a 68040 [external: Inside Mac Games listing]. Make it run as well as
+  possible everywhere: every performance change is measured on the A1200
+  68020 configuration as well as on the 68030.
+- **No preloading** (D1). Data and resources are read on demand, in chunks,
+  with the operating system allowed to run for the read (4.5), so fast RAM
+  holds only the 3 MB application zone, the port and the display.
 - **Display: 320×200, lores, 8 bitplanes, 256 colours.** Only the game's
   320×200 mode is supported (WIND 128); the 640×400 mode (WIND 132) is not.
 - **Reference machine.** The emulated Mac IIx (68030), System 7.5.5, 8-bit
@@ -59,7 +63,7 @@ Measured facts the design depends on. Details are in
     `_Open`, `_Read`, `_GetEOF`, `_SetFPos` and `_Close`.
   - `.PAK` is the PC container (little-endian offset table; stored, implode or
     deflate entries); the game decompresses it itself [external: FITD].
-- **Music: Halestorm SoundMusicSys.**
+- **Music: Halestorm SoundMusicSys** (replaced by a native driver, 4.10).
   - The driver is `MDRV` 11 "MIDI Synth 3.32". It is encrypted and
     LZSS-compressed, and the game unpacks it at Core+$10CC.
   - It mixes 8-bit mono audio at 22,254.5 Hz into two 370-byte buffers through
@@ -141,8 +145,29 @@ subsystem with its design decision and the queue tasks that implement it.
 - **Caches.** Implement `$A0BD _vCacheFlush` and `HWPriv` selectors 1 and 3 as
   `CacheClearU()`. CODE 1 then never reaches its privileged `MOVEC CACR`/`CPUSHA`
   fallback [M: code1 analysis]. Never run privileged 68k code in user mode.
-- **No OS during takeover.** DOS is unavailable while the machine is taken over,
-  as in Vette. See D1 and 4.5 for file access.
+- **System windows (task M1.7).** The machine stays taken over, as in Vette,
+  but the port can hand it back to the OS for a bounded operation (a file
+  read, a save) and take it again. That is how files are read without
+  preloading (D1).
+  - **Enter a window:**
+    - restore the OS interrupt vectors and INTENA, keeping the port's audio
+      interrupt and a VERTB server that keeps the port's copper list, so the
+      picture and Paula keep going;
+    - `Permit()`;
+    - run the operation from the Mac-code task in **user mode**.
+  - **Leave a window:** `Forbid()`, re-take the vectors, flush the keyboard
+    state the OS consumed, and correct Ticks for the elapsed fields.
+  - **Line-A dispatch in user mode.** Line-A services that call the OS (File
+    Manager, Resource Manager misses, durable writes) cannot run in the
+    supervisor-mode exception handler. The handler redirects the RTE to a
+    user-mode service trampoline, the same mechanism the VBL trampoline
+    uses.
+  - **Measure it.** The window's entry/exit cost and the display and audio
+    continuity across a window must be measured (probe counters and a
+    snapshot), not assumed.
+  - **WHDLoad.** The same file interface is backed by `resload_LoadFileOffset`
+    and `resload_SaveFile`, which work without the OS, so no window is
+    needed there.
 
 ### 4.2 Loader: let CODE 1 do its job
 
@@ -251,49 +276,63 @@ Design (task M1.5):
   (`tools/test_mac_heap.cpp`): allocate, lock, purge, compact, and fragmentation
   patterns.
 
-### 4.5 Files: a preloaded, read-mostly volume
+### 4.5 Files: on-demand reads through system windows
 
-- **Preload (task M2.1).** Before takeover, read `Alone Data/` (5.2 MB) and the
-  prefs/saves folders into fast RAM as an in-memory volume: an HFS-like catalog
-  with directory IDs, names, both forks and Finder info.
-  - The application's resource fork is already loaded.
-  - This follows Vette's rule that all DOS I/O happens outside takeover, and
-    keeps the File Manager deterministic.
-- **File Manager calls.** Implement the ones the census lists over this volume:
-  `_Open`, `_Read`, `_Write`, `_Close`, `_GetEOF`, `_SetEOF`, `_SetFPos`,
-  `_GetFPos`, `_Create`, `_Delete`, `_Get`/`_SetFileInfo`, `_GetVol`, `_SetVol`,
-  `HGetVol`, `HSetVol`, the H- and async-flag variants, `FSDispatch`/`HFSDispatch`
-  (`GetFCBInfo`, `OpenWD`, `GetWDInfo`, `CloseWD`, `HGetVolParms`) and `HGetVInfo`.
-  - Paths are Mac partial paths (`:Alone Data:CAMERA06.PAK`), resolved against
-    the default directory.
-  - Error codes follow Inside Macintosh.
-- **Writes (save games, "Alone Prefs").** Changes go to the in-memory volume at
-  once and are persisted to AmigaDOS:
-  - standalone: in a short, controlled OS-return window when the game closes a
-    written file;
-  - WHDLoad: with `resload_SaveFile`.
-  - A crash must not lose a save that the game reported as written (task M3.6).
+- **Nothing is preloaded (D1).** At startup, read only the catalog: the names,
+  sizes, types and directory structure of `Alone Data/`, `Alone Saved Games/`
+  and the prefs file. This gives an HFS-like view with directory IDs, names,
+  both forks (`.rsrc` companions or the port's fork storage) and Finder info.
+- **File Manager calls (task M2.1).** Implement the ones the census lists over
+  that catalog:
+  - open, read and write: `_Open`, `_Read`, `_Write`, `_Close`;
+  - position and length: `_GetEOF`, `_SetEOF`, `_SetFPos`, `_GetFPos`;
+  - create, delete and file info: `_Create`, `_Delete`, `_Get`/`_SetFileInfo`;
+  - volume and default directory: `_GetVol`, `_SetVol`, `HGetVol`, `HSetVol`;
+  - the H- and async-flag variants;
+  - `FSDispatch`/`HFSDispatch` (`GetFCBInfo`, `OpenWD`, `GetWDInfo`, `CloseWD`,
+    `HGetVolParms`) and `HGetVInfo`.
+
+  Paths are Mac partial paths (`:Alone Data:CAMERA06.PAK`), resolved against the
+  default directory. Error codes follow Inside Macintosh.
+- **Reads come in chunks.** An open fork keeps an AmigaDOS handle, opened in a
+  system window. A `_Read` of up to the chunk size (start at 64 KB, tuned by
+  measurement) is served from a per-fork read buffer. A miss fills the buffer in
+  one system window. Reads larger than the buffer go straight into the caller's
+  buffer, in chunk-sized pieces, in one window.
+  - The game reads whole `.PAK` entries (Dark JT182), so a room change costs a
+    few windows, not one per call.
+  - Count windows per room change and record the number (M5).
+- **Writes (save games, "Alone Prefs").** Writes are buffered per fork and
+  written through in a system window at `_Close`/`FlushVol`, so a save the game
+  reports as written is on disk (task M3.6). WHDLoad uses `resload_SaveFile`.
 - **Where files live.** "Alone Prefs" is in the System Folder's Preferences
   (`FindFolder`). Map that to `PROGDIR:prefs/`. `:Alone Saved Games:` maps to
   `PROGDIR:Saved Games/`.
 - **Resource files.** `HOpenResFile`, `CreateResFile`, `OpenRFPerm`,
   `UseResFile`, `CloseResFile`, `AddResource`, `RmveResource`, `WriteResource`
-  and `ChangedResource` work on resource forks in that volume (prefs and saves).
+  and `ChangedResource` work on the prefs and save-game resource forks.
   - This extends `ResourceForks.cpp` from a read-only parser to a writable fork
-    model, with full rewrite on `UpdateResFile`/close.
+    model, rewritten at `UpdateResFile`/close.
 
 ### 4.6 Resource Manager
 
-- **Resource data.**
-  - Return aligned copies for any resource the game may write or relocate (CODE,
-    `MDRV`, `SMOD`, `snd `, `DATA`).
-  - Treat the image in place as read-only for the rest.
-  - `DetachResource` hands the block to the zone. `ReleaseResource` frees it.
+- **Resource data is read on demand (D1).** Keep only each fork's resource
+  map in memory; the application's map is about 7 KB. `GetResource` reads the
+  data into a zone handle, through a system window, when the handle is empty,
+  exactly as the Mac's Resource Manager does. Purgeable resources may be
+  purged and reloaded (`LoadResource`).
+  - `DetachResource` hands the block over to the caller. `ReleaseResource`
+    frees it.
+  - This replaces today's whole-fork load (`PlatformAmiga.cpp`, capped at 4 MB).
+- **Port overlay resources.** A small resource fork of the port's own resources
+  comes first in the search order: the 320×200 dialog layouts (D5) and the
+  placeholder fonts (D6).
 - **Calls to add.** `Get1Resource`, `Get1NamedResource`, `DetachResource`,
   `ResError`, `SetResLoad`, `GetResInfo`, `CountResources`/`Count1Resources`,
   `Get1IndResource` (if reached), and the writable-file calls in 4.5.
-- **Search order.** Open resource files first, then the application. There is no
-  system file. Resources the game expects from the System file (fonts, `snd `
+- **Search order.** Open resource files first, then the application, then the
+  port overlay, which stands in for the System file. The one exception is the
+  dialog layouts, which the overlay supplies ahead of the application. Resources the game expects from the System file (fonts, `snd `
   beeps, `CURS`) are listed and supplied by the port (4.11). A missing one is a
   loud stop.
 
@@ -306,11 +345,12 @@ Design (task M1.5):
   - `GetMainDevice`, `GetDeviceList`, `GetNextDevice`, `TestDeviceAttribute` and
     `HasDepth` (8 bits: yes) describe it. A single device means the monitor picker
     (DLOG 2000) never appears.
-- **Viewport.** A 320×200 viewport of the Mac screen is shown. It follows the
-  front window's content rectangle. WIND 128's content is at (82,168)–(402,368) in
-  global coordinates [M].
-  - Dialogs larger than 320×200 are handled by D5.
-  - Menus are handled by D7.
+- **Viewport.** The Amiga shows a fixed 320×200 viewport of the Mac screen: the
+  content rectangle of the game window, WIND 128, at (82,168)–(402,368) in global
+  coordinates [M]. Nothing outside it is ever shown:
+  - there is no screen-size dialog (D4);
+  - dialogs are laid out inside the viewport (D5);
+  - the menu bar is never drawn (D7).
 - **AGA output (task M2.5).**
   - Lores, 8 planes, 320×200 centred in the PAL or NTSC field, with double-buffered
     chip bitmaps.
@@ -381,25 +421,47 @@ Design (task M1.5):
   screen: `SetWTitle`, `SizeWindow`, `BringToFront`, `SendBehind`, `TrackGoAway`,
   and the rest. The "Background Hider" (WIND 131) is a full-screen black window.
   It stays; the viewport shows the game window over it.
-- **Menus.**
-  - `MenuSelect` is real: it tracks the pointer in the menu bar and returns
-    (menu, item).
-  - `MenuKey` maps Command-keys. Right-Amiga acts as Command. File menu: Open
-    Game ⌘O, Save Game ⌘S, Quit ⌘Q. Options: Sound Effects, Music, Hide Background.
-  - Presentation is D7.
-- **Dialogs.** `GetNewDialog`, `ModalDialog` with the standard filter behaviour,
-  `DialogSelect`, `GetDialogItem`/`SetDialogItemText`, `ParamText`, `Alert`,
-  `StopAlert`, `UpdateDialog`, `HiliteControl`, and simple buttons, radio buttons
-  and static and edit text as the DITLs need.
-  - Load and save (DLOG 200/201/212, 348×218 and 493×272) are the largest; see D5.
-  - The screen-size dialog (DLOG 1000) is D4.
+- **Screen size (D4).** Only 320×200 is supported, and the screen-size dialog
+  (DLOG 1000) is never shown.
+  - Find the cleanest seam before implementing (task M2.4). Candidates: a
+    port-supplied "Alone Prefs" `PREF` that already holds the 320×200 choice, so
+    the game never asks; or `ModalDialog` returning item 2 for DLOG 1000.
+  - Either way the game's own code picks WIND 128 (Misc1+$107E).
+- **Menus (D7): no menu bar.** The DOS version had none, and the menus hold
+  nothing the keyboard lacks:
+  - Apple: About (credits);
+  - File: Open Game ⌘O, Save Game ⌘S, Quit ⌘Q;
+  - Edit: desk-accessory editing, always disabled;
+  - Options: Sound Effects, Music, Hide Background.
+
+  The manual lists game keys for sound (S), music (M), pause (P), inventory (I),
+  and ESC for "the save, load, quit and parameter screen". Whether the Mac build
+  still has that ESC screen, or routes it to the File-menu dialogs, is task M0.2's
+  question.
+  - Menus stay as data (`InitMenus`, `InsertMenu`, `GetRMenu`, and so on) so the
+    game's setup runs, but `DrawMenuBar` draws nothing.
+  - `MenuSelect` is never reached, because no click lands in a menu bar.
+  - `MenuKey` maps Right-Amiga+key to the game's own Command-key items, so ⌘O,
+    ⌘S and ⌘Q work if the ESC screen does not cover them.
+  - Hide Background and About get a key only if the owner asks.
+- **Dialogs (D5): reimplemented inside 320×200.**
+  - The Dialog Manager (`GetNewDialog`, `ModalDialog` with standard filter
+    behaviour, `DialogSelect`, `GetDialogItem`/`SetDialogItemText`, `ParamText`,
+    `Alert`, `StopAlert`, `UpdateDialog`, `HiliteControl`) runs the game's
+    dialogs unchanged.
+  - Any `DLOG`/`ALRT` whose rectangle does not fit the viewport gets a port
+    overlay `DLOG`/`DITL` with the same item numbers, kinds and meaning, laid out
+    inside WIND 128's content rectangle. The game's dialog code is unaffected.
+    Candidates: DLOG 200/201 (348×218) and 212 (493×272); 128 and 131 fit.
+  - The overlay is a committed, generated resource file, built by a tool that
+    records each layout.
   - StandardFile (`Pack3`) appears only in unreached code [M]. Confirm with the
     runtime trap log (M0.2) before implementing it.
 - **Events.**
   - `WaitNextEvent` (sleep ignored) and `GetNextEvent` deliver key, mouse,
     update and activate events.
-  - `GetKeys` returns the live KeyMap. Shift is run, arrows move, Space is action,
-    as on the Mac [external: VOGONS; confirm in the manual `tmp/manual.pdf`].
+  - `GetKeys` returns the live KeyMap. The manual's keys: arrows, Shift (run),
+    Space (action), Return (inventory), ESC, F, J, O, Z, U, T, S, M, P, I.
   - `Button`, `StillDown`, `GetMouse`, `FlushEvents`, `SystemTask`, `SystemClick`
     (no desk accessories: return) and `ObscureCursor`.
   - Apple Events (`Pack8`): install handlers and succeed; `AEProcessAppleEvent`
@@ -408,56 +470,76 @@ Design (task M1.5):
 - **Keyboard mapping.** Amiga raw keys map to Mac virtual keys through the
   existing table, extended for the keys the game reads.
 
-### 4.10 Audio: SoundMusicSys on Paula
+### 4.10 Audio: Paula voices instead of software mixing
 
-The music driver is original 68k code and stays so (the fidelity rule). The port
-implements the Sound Manager 3 surface it uses (tasks M4.1–M4.3):
+D8: play sound on Paula's four hardware channels instead of SoundMusicSys's
+22 kHz software mixer. The mixer is also the largest CPU cost the original has
+on a 68020/030.
 
-- **Version and channel.** `SndSoundManagerVersion` returns 3.x, which avoids the
-  legacy hardware path. `SndNewChannel(sampledSynth, initMono…)` creates a channel.
-  `SndDoImmediate`, `SndDoCommand` and `SndDisposeChannel` cover the commands the
-  census finds.
-- **`SndPlayDoubleBuffer`.**
-  - Keep a ring of N driver-sized buffers (N≈6, 370 bytes each, about 100 ms).
-  - At every safe user-mode point (trap boundary, as for VBL tasks), refill empty
-    ring slots by calling the driver's doubleBack procedure. It runs the sequencer
-    and the mixer.
-  - The Paula audio interrupt only advances pointers through the ring. No Mac code
-    runs at interrupt time (CLAUDE.md).
-  - Play mono on two channels at period 161, which is 22,030 Hz on PAL and 22,222
-    Hz on NTSC. Either correct the rate or accept a measured sub-1% pitch shift,
-    and record which (M4.2).
-- **Underruns.** If safe points are ever more than about 100 ms apart, the ring
-  runs dry. Log it (probe counter) and repeat silence rather than stall. M5
-  measures the worst gap. Add a safe point in the renderer only through a verified
-  hook, and only if measurement demands it.
-- **Sound Manager volume.** SdVolume/`GetSoundVol` feeds the driver's volume
-  scaling. Options > Sound Effects and Music toggle through the driver's own
-  selectors.
-- **MIDI Manager.** `MIDISignIn` and the related calls answer "not installed", so
-  there is no external MIDI.
-- **Sample effects.** Check the runtime trap log to see whether the game plays
-  `LISTSAMP.PAK` samples through the driver's sound-effect selectors (the census
-  shows no other Snd traps [M]). If so, they mix in the same stream.
-- **CPU cost.** A 22 kHz software synth is the largest CPU unknown on a 68030
-  (risk R2). Measure it in M4.3. SoundMusicSys picks a lower quality or rate on
-  slow machines (`jxAnalyzeQuality`) [external: SoundMusicSystem.h]. Find out
-  which selector and argument the game passes before considering any change;
-  changing the rate is a game decision and needs the owner (D8).
+- **The seam is the driver interface, not the game.** The game talks to the
+  driver only through `D0 = entry(long selector, long arg)`, with the entry
+  pointer stored at A5−$6AC. It uses selectors 1, 2, 4–9 and 12–25 [M].
+  - The port provides a native SoundMusicSys-compatible driver behind that
+    entry. The entry is a 68k stub of a private Line-A trap in a zone block.
+  - Install the stub at one verified point, chosen in task M4.1 by byte check:
+    either a port-supplied `Jnth` resource (the game looks for `Jnth` before
+    `MDRV`; check what it does with it), or a hook where Core+$1CC6 stores the
+    entry pointer.
+  - The game code stays unchanged. The original `MDRV` is never run.
+- **The API (task M4.1).** Decode every selector the game uses from the unpacked
+  driver (`tmp/plan/MDRV_11.bin`, its 27-way dispatch table) and from Halestorm's
+  public `SoundMusicSystem.h`. Selectors cover opening the driver, starting and
+  stopping songs, and sound effects, volume, pause and resume. Each selector is
+  implemented to the driver's semantics, or is a named loud stop.
+- **Music (task M4.2).**
+  - A native sequencer plays the `SONG`/`MIDI` (Standard MIDI File) data with
+    the `INST` instrument mapping onto `snd ` samples.
+  - Notes become Paula voices: period from the MIDI note, the instrument's base
+    note and the sample rate; volume from velocity and channel volume; loops from
+    the `snd ` loop points.
+  - Tempo is driven by the VBI's tick counter, but the sequencer runs at safe
+    user-mode points, never in the interrupt. It schedules ahead, so a late safe
+    point shifts events, not pitch.
+- **Voices and effects.** Four channels, allocated by priority: sound effects
+  (the `snd `/`LISTSAMP` samples the game requests through the driver) take a
+  channel, and music takes the rest. Voice stealing drops the oldest or quietest
+  music note first. Record the policy and measure its effect on the songs, which
+  have up to N simultaneous notes (count it in M4.2).
+  - "Where available": if a song regularly needs more than the free channels,
+    the owner may allow mixing two voices on one channel. That is a later,
+    measured option, not the default.
+- **Sound Manager.** Only what remains once the driver is native: `SysBeep`,
+  and any direct `snd ` playback the trap log shows. `SndSoundManagerVersion`
+  still reports 3.x. The MIDI Manager calls answer "not installed".
+- **Fidelity.** Compare against the MAME reference by events: song, note on and
+  off, instrument, order. Audio will not match sample for sample, and does not
+  need to.
+- **Options.** The S and M keys and the game's own sound and music toggles go
+  through the driver selectors, so they work unchanged.
 
 ### 4.11 Text and fonts
 
-The Mac layer draws text in dialogs, menus and the in-game messages ("You're
-ready to fight!", "The game is paused!"). It uses the System font (Chicago 12),
-Geneva, and Times, which the startup check requires [M: STRS]. The port may not
-ship Apple fonts.
-- Supply bitmap fonts as port resources (`FONT`/`NFNT` family records) generated
-  from freely licensed outlines that match the metrics (for example Liberation
-  Serif for Times), by a committed generator tool (task M2.9, see D6).
-- `GetFNum`, `TextFont`, `TextSize`, `TextFace` (bold and italic synthesized
-  where no strike exists) and `DrawText` use them.
-- The engine's own in-game font (ITD_RESS.PAK) is drawn by the original code and
-  needs nothing.
+D6: most text is drawn by the game engine with its own font from
+`ITD_RESS.PAK`, which needs nothing from the port. Some text goes through
+QuickDraw with Mac fonts:
+- dialogs;
+- probably the in-game messages ("You're ready to fight!", "The game is
+  paused!" in `STRS`);
+- the "Times" font the startup check requires [M].
+
+The port may not ship Apple fonts.
+
+1. **Find out (task M2.9).** Use the MAME trap log (`TextFont`/`GetFNum`/
+   `DrawText` with the strings) to see exactly which text uses which Mac font and
+   size.
+2. **Placeholder fonts.** Supply them for those uses as port overlay `FONT`/`NFNT`
+   resources: one simple committed bitmap font per required family and size,
+   drawn for the port. `GetFNum`, `TextFont`, `TextSize`, `TextFace` (synthesized
+   bold and italic) and `DrawText` use them.
+3. **Eventually (a later queue item):** render those texts with the game engine's
+   own font instead. It exists in the Mac `ITD_RESS.PAK` and in the PC version,
+   so the Amiga looks like the DOS game. Check the PC data's font entry against
+   the Mac one first.
 
 ### 4.12 Time, VBL, pacing
 
@@ -466,10 +548,14 @@ ship Apple fonts.
 - **VBL tasks.** Keep them at safe points. Core's task runs through the generated
   system-heap stub, and the dispatcher calls the stub, not a guessed target, so
   the game's own A5 handling applies. Dark's re-arming task runs the same way.
-- **Pacing.** Present at most once per field. The engine is tick-driven, but its
-  track and animation steps advance once per frame [external: speedrun KB]. Too
-  high a frame rate breaks the attic-stairs descent on the PC and the Mac alike,
-  so D3 decides the cap. Regression R-stairs (M6.3) guards it either way.
+- **Pacing (D3).** No frame cap. Present at most once per field, as fast as the
+  machine allows.
+  - A frame-rate bug is known on the PC and the Mac: too high a frame rate makes
+    the attic-stairs descent turn back, because track and animation steps
+    advance once per frame [external: speedrun KB].
+  - Whether the Amiga reaches that rate is tested by the `stairs` regression on
+    the 68060 configuration (M6.3). If the bug occurs, it becomes its own queue
+    item with its own fix, owner-approved, and not a global cap.
 
 ### 4.13 Lifecycle and release
 
@@ -482,27 +568,26 @@ ship Apple fonts.
   LHA, and a WHDLoad slave adapted from `VetteSlave.s`. The slave needs:
   - `WHDLF_EmulLineA`;
   - a 64 KB stack;
-  - preloaded data;
-  - saves through resload.
+  - chunked reads with `resload_LoadFileOffset`;
+  - saves through `resload_SaveFile`.
 
   No original data, ROM, System software or WHDLoad binary is distributed.
 
 ## 5. Owner decisions
 
-These change scope or behaviour. Each has a recommended default. The
-implementing agent works to the default until the owner changes it, and records
-the answer in the relevant section.
+Decided by the owner on 2026-09-28. Anything that changes these goes back to
+the owner.
 
-| ID | Decision | Default | Why |
-| --- | --- | --- | --- |
-| D1 | Memory strategy | **Preload all data; 16 MB fast recommended, about 12 MB minimum** | 3 MB zone + 5.2 MB data + 1.4 MB app fork + screens ≈ 10.5 MB. On-demand streaming would mean keeping DOS alive during play (a new takeover model) to get down to about 8 MB. 4 MB is not reachable without also streaming resources. |
-| D2 | Performance target | **68030/50 is where performance is judged; 68020 must boot and play, however slowly** | The Mac recommended a 68040. A 386DX-20 already ran the DOS version choppily [external]. |
-| D3 | Frame-rate cap | **Cap presentation at 25 Hz (every second PAL field) during gameplay** until M6.3 measures the stairs threshold, then set the cap from that measurement | The stairs bug is a frame-rate bug. A cap preserves fidelity on 040/060 without affecting a 030, which runs below it. |
-| D4 | Screen-size dialog | **Answer "320 X 200" (item 2) in `ModalDialog` for DLOG 1000 without showing it**, as a documented fixed configuration | 640×400 is unsupported. Showing an option that cannot work would mislead. The choice is saved in PREF as on the Mac. |
-| D5 | Dialogs wider than 320 | **Pan: while a dialog wider or taller than the viewport is frontmost, the viewport follows the pointer** | Keeps lores only and shows the Mac dialog unmodified. The alternative, a hires or overscan dialog mode, conflicts with the lores-only decision. |
-| D6 | Fonts | **Generated bitmap fonts from freely licensed outlines (Liberation Serif/Sans, SIL OFL: ship the licence, and rename the derivative because "Liberation" is a Reserved Font Name), shipped with the port** | Apple fonts cannot be shipped. Metric-compatible fonts keep dialog layout. |
-| D7 | Menus | **Right-Amiga shortcuts always, plus the Mac menu bar shown while the right mouse button is held** (the viewport scrolls to include it) | Load and save exist only in the File menu. The RMB menu is the Amiga idiom. |
-| D8 | Music quality | **Run MDRV exactly as the game configures it**; revisit only with M4.3 numbers | Fidelity first. |
+| ID | Decision |
+| --- | --- |
+| D1 | **No preloading.** Load in reasonable chunks, letting the OS run (multitasking, DOS) when needed: 4.1 system windows, 4.5 files, 4.6 resources. |
+| D2 | **Run as well as possible.** A 68020 must boot and play. Measure on the 68020 and 68030 configurations. |
+| D3 | **No frame cap** unless bug-free gameplay requires one. Such a bug, for example the stairs, is addressed separately. |
+| D4 | **No screen-size dialog;** only 320×200. |
+| D5 | **Dialogs reimplemented within 320×200:** port overlay layouts, with the game's dialog code unchanged. |
+| D6 | **Fonts:** most are game-provided (the engine font). For Mac-font text, placeholder fonts first; eventually the game's own font, from the PC version if needed. |
+| D7 | **No menus** (the DOS version had none). Keys only: the game's keys, plus Right-Amiga for its Command-key items. |
+| D8 | **Paula channels instead of software mixing:** a native driver behind the SoundMusicSys interface. |
 
 ## 6. Verification
 
@@ -512,8 +597,8 @@ the answer in the relevant section.
 | Loader / low-memory patch | Original-byte checks. `a5world_check.py`. Bounded diag run reaching the next loud stop, reported by `runtime_status.gdb` |
 | New trap | Bounded run past the old loud stop. Where the result is observable, compare with the MAME trap log (M0.2) for the same call's arguments and results |
 | Display / QuickDraw | State-pair frame compare with MAME: same game state, same RNG seed, 8-bit framebuffer + CLUT from both sides (`tools/compare_frames.py`, M2.10) |
-| Audio | Event log (selector, song, note, instrument) against MAME. Paula ring underrun counter = 0 over the regression |
-| Performance | `PROBES=1` full-accounting profile on the 68030/50 config, run twice, ms per frame by phase |
+| Audio | Driver event log (selector, song, note, instrument) against MAME |
+| Performance | `PROBES=1` full-accounting profile on `a1200-020` and `a1200-030`, run twice, ms per frame by phase |
 | Release | `make release-check` and WHDLoad smoke/boot/load/quit tests |
 
 **Emulator configurations** (FS-UAE via `amiga/diag_run.sh`, `AMIGA_CONFIG=`,
@@ -522,8 +607,8 @@ default, and run.sh contradicts its own comment.
 
 | Name | Model | CPU | Chip / fast | Use |
 | --- | --- | --- | --- | --- |
-| `a1200-020` | A1200 | 68EC020 14 MHz | 2 MB / 8 MB | Minimum. Boot and play regression |
-| `a1200-030` | A1200 + 68030/50 | 68030 50 MHz, MMU off | 2 MB / 16 MB | **Default for development and profiling** |
+| `a1200-020` | A1200 | 68EC020 14 MHz | 2 MB / 8 MB | Minimum: boot and play regression, profiling |
+| `a1200-030` | A1200 + 68030/50 | 68030 50 MHz, MMU off | 2 MB / 16 MB | **Default for development**; profiling together with `a1200-020` |
 | `a4000-040` | A4000 | 68040 25 MHz | 2 MB / 16 MB | Cache and CPUSHA behaviour, pacing |
 | `a1200-060` | A1200 + 68060/50 | 68060 | 2 MB / 16 MB | Pacing and stairs, fast-machine bugs |
 
@@ -544,7 +629,7 @@ no loud stop. The cases are added as their milestone lands:
 - `saveload`: save, reload, same state.
 - `attic`: scripted route through the attic.
 - `stairs`: the descent completes.
-- `audio`: music plays, 0 underruns.
+- `audio`: music and effects play; driver event log as expected.
 - `quit`: clean exit, all ledgers empty.
 
 ## 7. Phases
@@ -559,8 +644,8 @@ state". Task-level detail and acceptance checks are in
 | **M1 Boot to main** | Original startup path | CODE 1 runs unmodified; A5 world byte-identical to the host model; loud stop inside `main` init |
 | **M2 Startup to intro** | Files, resources, Mac screen, AGA 8-bit, palette, fonts, dialogs | Infogrames logo and intro play, state-pair frames match MAME |
 | **M3 Playable** | Input, menus, save/load, gameplay loop | New game → first room → walk, fight, pick up, save, load, quit, on the 030 config |
-| **M4 Audio** | Sound Manager 3 on Paula; MDRV runs | Music and effects in intro and play; event log matches MAME; 0 underruns in `audio` |
-| **M5 Performance** | Profile and optimise on 68030/50 | Documented ms/frame by phase; gameplay frame rate at or above the D3 cap in the first rooms |
+| **M4 Audio** | Native SoundMusicSys driver on Paula voices | Music and effects in intro and play; event log matches MAME |
+| **M5 Performance** | Profile and optimise on 68020 and 68030 | Documented ms/frame by phase; no remaining optimisation the profile justifies; minimum fast RAM measured |
 | **M6 Completion** | Whole-game fidelity | Scripted and manual play-through of all floors and the ending; stairs regression; no loud stop anywhere |
 | **M7 Release** | Installer, WHDLoad, packaging | 1.0 LHA; installer and WHDLoad tests pass on the test matrix |
 
@@ -590,13 +675,13 @@ state". Task-level detail and acceptance checks are in
 
 | ID | Risk | Mitigation |
 | --- | --- | --- |
-| R1 | Game too slow on a 68030 (3D engine + CopyBits + C2P) | Profile from the first playable frame (M3). Dirty-box C2P; fast srcCopy; FMODE; asm hot traps. Keep the original rasteriser |
-| R2 | SoundMusicSys mixing cost | Measure in M4.3. The ring hides jitter, not cost. D8 escalates |
-| R3 | Audio underruns from long trap-free stretches | Measure the worst safe-point gap. Add a verified hook only if needed |
-| R4 | Stairs bug on fast CPUs | D3 cap + `stairs` regression |
-| R5 | Memory (D1) | Zone sized by SIZE; preload measured; 12 MB minimum documented |
-| R6 | Font metrics change dialog layouts | Metric-compatible generation; state-pair compare of dialogs |
-| R7 | Save-game loss (deferred writes) | Write-through at close (4.5), WHDLoad resload |
+| R1 | Game too slow on 68020/030 (3D engine + CopyBits + C2P) | Profile from the first playable frame (M3), on both configs. Dirty-box C2P; fast srcCopy; FMODE; asm hot traps. Keep the original rasteriser |
+| R2 | System windows disturb display, audio or timing, or are too slow | Measure entry/exit cost and continuity (M1.7); chunk size and read buffer tuned by counts per room change |
+| R3 | Native driver mis-reads the SoundMusicSys API or songs need more than 4 voices | Selector-by-selector decoding with loud stops; MAME event compare; measured voice counts (M4.2) |
+| R4 | Stairs bug on fast CPUs | `stairs` regression on 060; separate fix only if it occurs (D3) |
+| R5 | Memory | Zone sized by SIZE; on-demand files and resources; measure the minimum fast RAM (M5) |
+| R6 | Placeholder fonts or 320×200 dialog layouts look wrong | Overlay layouts reviewed against MAME frames; engine-font follow-up |
+| R7 | Save-game loss | Write-through at close in a system window (4.5), WHDLoad resload |
 | R8 | Hidden reliance on 24-bit master-pointer flags or on handle movement | Census found none. Zone allocator tests; M1.5 checks for `StripAddress`-free flag reads |
 | R9 | Unreached-code surprises (StandardFile, desk accessories) | Runtime trap log across a full manual session in MAME (M0.2, repeated in M6) |
 
@@ -610,7 +695,7 @@ state". Task-level detail and acceptance checks are in
 | Live trap sites / distinct | 1,115 / 242 (census, M0.1) |
 | `SIZE` | 3,145,728 preferred and minimum |
 | Data files | `Alone Data` 5.2 MB; app resource fork 1.4 MB |
-| MDRV | 12,630 packed → 29,256 bytes; 22,254.5 Hz, 2×370-byte buffers |
+| MDRV (not run, D8) | 12,630 packed → 29,256 bytes; 22,254.5 Hz, 2×370-byte buffers |
 
 ## 11. Trap census (live walk)
 

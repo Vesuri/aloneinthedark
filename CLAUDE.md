@@ -23,7 +23,7 @@ solutions already paid for. Read [README.md](README.md),
 - The game is 68020 code (see [static map](docs/static-map.md)); do not plan
   around a 68000 target.
 - Native presentation/input and maximum-rate pacing are intentional port
-  behavior, within the gameplay frame cap (design.md D3). See
+  behavior; there is no frame cap (design.md D3). See
   [architecture](docs/amiga-arch.md).
 
 ## Build and hardware

@@ -41,10 +41,13 @@ required.
     Open Game, Quit.
 
   *Done when* the log's distinct trap set is a subset of the census live set (the
-  commit lists any differences), and the log answers three questions:
+  commit lists any differences), and the log answers these questions:
   - Is `Pack3` reached?
-  - Which MDRV selectors and arguments does the game use?
+  - Which MDRV selectors and arguments does the game use, and when?
   - Do `LISTSAMP` effects go through MDRV?
+  - Which text is drawn with which Mac font and size?
+  - Does ESC open the engine's own save/load/quit/parameter screen, or the
+    File-menu dialogs? Do the S, M and P keys work?
 - **M0.3 68020 build.**
   - Build C/C++ and gas with `-m68020 -mtune=68030`.
   - Retire the mul/div audit and `m68k_math.h`, add a no-soft-float audit, and
@@ -72,7 +75,8 @@ required.
   - Add `AMIGA_CONFIG=a1200-020|a1200-030|a4000-040|a1200-060` to
     `amiga/run.sh`, `diag_run.sh` and `debug.sh`.
   - Each config sets the CPU, AGA chipset and chip/fast sizes explicitly (design
-    §6). The default is `a1200-030`.
+    §6). The default is `a1200-030`; `a1200-020` is the minimum that must also
+    play.
 
   *Done when* each config boots to the current loud stop in a bounded run, and
   `runtime_status.gdb` prints the CPU type it saw.
@@ -143,23 +147,38 @@ required.
 
   *Done when* the startup checks pass without "requires" alerts, and the commit
   cites the values from a MAME capture.
+- **M1.7 System windows and user-mode services.**
+  - The Line-A handler can divert a trap to a user-mode service trampoline.
+  - A system window (design §4.1) hands the machine back to the OS for a bounded
+    operation, and takes it back afterwards.
+  - The display (our copper) and Paula keep running through the window; Ticks are
+    corrected; the keyboard state is flushed.
+  - A file-interface abstraction with a DOS backend (in a window) and a WHDLoad
+    backend (resload).
+
+  *Done when* a probe case reads a 1 MB file in 64 KB chunks through windows on
+  `a1200-020` and `a1200-030` with the picture stable (snapshot) and the bytes
+  correct (checksum), and the entry/exit cost per window is recorded.
 
 ## M2 Startup to intro
 
-- **M2.1 In-memory volume and File Manager.**
-  - Preload `Alone Data`, prefs and saves (design §4.5).
-  - Implement the census File Manager set and path handling. Unknown paths are
-    loud stops.
+- **M2.1 Catalog and File Manager.**
+  - Build the startup catalog of `Alone Data`, saves and prefs (no data read).
+  - Implement the census File Manager set with per-fork chunked read buffers
+    through system windows (design §4.5). Unknown paths are loud stops.
 
-  *Done when* the game opens and reads `ITD_RESS.PAK` and `PRESENT.PAK`, and the
-  bytes it reads match the host file (gdb checksum).
-- **M2.2 Resource Manager completion.**
-  - Implement the design §4.6 call set and resource files in the volume.
-  - The `MDRV` load/decrypt/unpack path runs; the driver does not produce sound
-    yet.
+  *Done when* the game opens and reads `ITD_RESS.PAK` and `PRESENT.PAK`, the bytes
+  it reads match the host file (gdb checksum), and the window count for startup is
+  recorded.
+- **M2.2 Resource Manager on demand.**
+  - Keep only the resource maps in memory; load data into zone handles on
+    `GetResource` through system windows.
+  - Implement the design §4.6 call set, the writable prefs/save forks, and the
+    port overlay fork (empty at first) first in the search order.
 
-  *Done when* the game's MDRV entry pointer at A5−$6AC points at a block whose
-  bytes equal `tmp/plan/MDRV_11.bin`.
+  *Done when* the application no longer loads its whole fork at startup, and the
+  run reaches the same point as before with the same resource bytes (gdb checksum
+  of a sample).
 - **M2.3 8-bit QuickDraw core.**
   - Generalise the screen, GWorld, PixMap, CTable, ITable, CopyBits and PICT code
     to 8 bpp.
@@ -168,13 +187,14 @@ required.
 
   *Done when* host checks of 8-bit CopyBits (srcCopy and colour mapping) pass, and
   the run proceeds past GWorld creation.
-- **M2.4 Mac screen model.**
+- **M2.4 Mac screen model and 320×200 only.**
   - A 640×480×8 main screen with a GDevice list, and windows over it.
-  - The viewport follows the front window.
-  - Handle DLOG 1000 as in D4.
+  - A fixed viewport on WIND 128's content rectangle.
+  - No screen-size dialog (D4): pick the seam by byte check (a port-supplied
+    `PREF`, or `ModalDialog` for DLOG 1000) and document it.
 
-  *Done when* the game creates WIND 128 and the viewport rectangle equals its
-  content rectangle.
+  *Done when* a fresh start (no prefs) never shows DLOG 1000, the game creates
+  WIND 128, and the viewport equals its content rectangle.
 - **M2.5 AGA 8-plane display.**
   - Lores 320×200×8 in `AitdScreen`.
   - A 256-colour copper palette through BPLCON3 banks, plus the sprite bank.
@@ -199,11 +219,13 @@ required.
 
   *Done when* the host tests pass and region-clipped draws in the screens reached
   so far match MAME.
-- **M2.9 Fonts.** A generator tool for bitmap font families (D6), plus the Font
-  Manager and text calls.
+- **M2.9 Placeholder fonts.**
+  - Placeholder bitmap fonts in the overlay for the Mac-font uses found in M0.2
+    (D6).
+  - The Font Manager and text calls.
 
-  *Done when* the About box and the "paused" message render with glyph metrics
-  matching MAME's within the documented tolerance.
+  *Done when* every Mac-font text reached so far renders legibly and in the right
+  place (compared with MAME frames), and no font loud stop remains.
 - **M2.10 Frame compare.**
   - Write `tools/compare_frames.py`.
   - Add the fixed-seed hook on both sides and the state keys for the intro.
@@ -221,22 +243,23 @@ required.
 
   *Done when* a new game can be started, and Carnby walks, runs (Shift) and acts
   in the first room.
-- **M3.2 Menus.** Implement MenuSelect, MenuKey and the census menu set, with the
-  D7 presentation.
+- **M3.2 Menus without a menu bar.**
+  - Keep menus as data and never draw the menu bar (D7).
+  - `MenuKey` maps Right-Amiga to the game's Command-key items. Rely on the game's
+    keys for everything M0.2 showed they cover.
 
-  *Done when* ⌘O, ⌘S, ⌘Q and the Options items work from both the Right-Amiga keys
-  and the RMB menu.
-- **M3.3 Dialogs.**
-  - ModalDialog, alerts, and item handling for DLOG 128/131/200/201/212 and ALRT
-    128.
-  - D5 panning.
+  *Done when* load, save, quit, sound and music are reachable from the keyboard,
+  and nothing draws outside the viewport.
+- **M3.3 Dialogs within 320×200.**
+  - ModalDialog, alerts, and item handling for the dialogs the game reaches.
+  - Overlay `DLOG`/`DITL` layouts inside WIND 128's content for those that do not
+    fit (D5; 200, 201 and 212 so far), generated by a committed tool.
 
-  *Done when* the new-game, save-warning, save and load dialogs work and match
-  MAME frames.
+  *Done when* the new-game, save-warning, save and load dialogs work entirely
+  inside the viewport, and their behaviour matches MAME.
 - **M3.4 Apple Events and misc Toolbox.**
   - Pack8 handler installation.
   - The SANE ops at Engine $47C2–$4852; identify each one.
-  - SysBeep as a Paula click.
   - The remaining Window Manager calls.
 
   *Done when* no loud stop occurs in a 10-minute manual session covering the first
@@ -248,8 +271,7 @@ required.
 
   *Done when* both cases pass on `a1200-030`.
 - **M3.6 Durable writes.**
-  - Write-through of closed written files (saves, prefs), through a controlled
-    OS-return window.
+  - Write-through of closed written files (saves, prefs) in a system window.
   - A ledger of pending writes.
 
   *Done when* a save survives an emulator reset made immediately after the game
@@ -257,34 +279,39 @@ required.
 
 ## M4 Audio
 
-- **M4.1 Sound Manager 3 surface.**
-  - SndSoundManagerVersion, SndNewChannel, SndDoCommand/SndDoImmediate and
-    SndDisposeChannel.
-  - MIDI Manager answers "not installed".
-  - SdVolume and GetSoundVol.
+- **M4.1 Driver interface.**
+  - Decode every SoundMusicSys selector the game uses (M0.2 log,
+    `tmp/plan/MDRV_11.bin`, `SoundMusicSystem.h`).
+  - Choose the install point by byte check (`Jnth` resource or the Core+$1CC6
+    store) and install a native driver stub. Unimplemented selectors are loud
+    stops. The original MDRV never runs.
 
-  *Done when* MDRV takes the Sound Manager 3 path (gdb: `SndPlayDoubleBuffer` is
-  reached, the legacy VInstall path is not).
-- **M4.2 Double buffer on Paula.**
-  - A ring of driver buffers, refilled at safe points.
-  - The Paula interrupt only advances pointers.
-  - Record the sample-rate decision.
+  *Done when* the game runs through the intro with the native driver answering
+  every selector it calls, with no loud stop and no sound yet.
+- **M4.2 Music on Paula voices.**
+  - A native SONG/MIDI sequencer and INST→`snd ` mapping on the four channels.
+  - Tempo from the VBI tick counter, run at safe points.
+  - Measure the songs' maximum simultaneous notes; record the voice-allocation
+    policy.
 
-  *Done when* the intro music plays and the underrun counter stays at 0 over the
-  `audio` case.
-- **M4.3 Audio fidelity and cost.**
-  - Compare the event log with MAME: song, instrument, note order.
-  - Measure the driver's CPU cost per second on `a1200-030` and `a1200-020`.
+  *Done when* all 8 songs play recognisably, and their event logs (note, instrument
+  and order) match the MAME reference within the documented voice-stealing
+  differences.
+- **M4.3 Sound effects and toggles.**
+  - Effects through the driver's selectors take priority on the channels.
+  - The S/M keys and the game's toggles work.
+  - `SysBeep` becomes a short Paula click.
 
-  *Done when* the logs match and the cost is recorded in amiga-arch.md. If the cost
-  threatens the frame budget, raise D8 with the numbers.
+  *Done when* the `audio` regression passes and effects in the first rooms match
+  MAME by event.
 
 ## M5 Performance
 
 - **M5.1 Full-accounting profile.**
-  - A PROBES build and a gameplay scene, on `a1200-030`, run twice.
+  - A PROBES build and a gameplay scene, on `a1200-020` and `a1200-030`, run
+    twice.
   - Report ms/frame by phase: game code, drawing traps, CopyBits, C2P, palette,
-    audio refill.
+    audio sequencer, system windows.
 
   *Done when* the table is in amiga-arch.md.
 - **M5.2 Optimise by the profile.**
@@ -297,13 +324,19 @@ required.
     - a fast path for the SetGWorld/GetGWorld traps (138 sites);
     - a TickCount fast path.
 
-  *Done when* gameplay meets the D3 cap in the first rooms, or the owner accepts
-  the measured rate.
+  *Done when* the profile shows no remaining optimisation worth its risk, and the
+  frame rates on both configs are recorded in README.
 - **M5.3 Safe-point gap audit.**
-  - Measure the worst interval between trap boundaries during gameplay.
-  - Add a hook only if the gap exceeds the ring length.
+  - Measure the worst interval between trap boundaries during gameplay; the
+    sequencer and VBL tasks only run at those points.
+  - Add a verified hook only if audible timing suffers.
 
-  *Done when* the gap is recorded and underruns stay at 0.
+  *Done when* the gap is recorded, and music timing is steady by event log.
+- **M5.4 Memory minimum.**
+  - Measure the peak zone use and the port's fast/chip use through a full session.
+  - Find the smallest fast RAM that plays.
+
+  *Done when* README states the measured requirement.
 
 ## M6 Completion
 
@@ -315,24 +348,30 @@ required.
   inventory, book/reading views, fights, death and the ending.
 
   *Done when* all of them pass.
-- **M6.3 Stairs and pacing.**
-  - Measure the frame-rate threshold of the attic-stairs bug, on MAME at different
-    speeds and on the Amiga configs.
-  - Set D3 from that measurement.
-  - Add the `stairs` regression on `a1200-060`.
+- **M6.3 Stairs check.**
+  - Add the `stairs` regression (attic → storeroom descent) on every config,
+    including `a1200-060`.
+  - No frame cap (D3). If the descent fails anywhere, file a separate item for
+    the owner, with the measured frame rate.
 
-  *Done when* the descent completes on every config.
+  *Done when* the case runs on all configs and its result is recorded.
 - **M6.4 Quit and cleanup.** A `quit` regression: all ledgers empty, the OS
   restored, and both Workbench and Shell starts work.
 
   *Done when* it passes on all configs.
+- **M6.5 Engine font for Mac-font text** (D6, eventually). Replace the
+  placeholder fonts with the game's own font, from `ITD_RESS.PAK` or the PC
+  version, for the texts M2.9 covers.
+
+  *Done when* the texts render in the game's font and match the layout of MAME
+  frames.
 
 ## M7 Release
 
 - **M7.1 Installer:** Vette's `install-data` extractor, an Installer script and
   icons, run against `AloneInTheDark.img_.sit` with the known hashes checked.
-- **M7.2 WHDLoad slave,** from `VetteSlave.s`: EmulLineA, a 64 KB stack, preload,
-  and saves through resload, with the WHDLoad test modes.
+- **M7.2 WHDLoad slave,** from `VetteSlave.s`: EmulLineA, a 64 KB stack, the
+  resload file backend (chunked reads, saves), with the WHDLoad test modes.
 - **M7.3 Packaging and 1.0:**
   - a deterministic LHA;
   - `make release-check`;
