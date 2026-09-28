@@ -10,6 +10,9 @@ commands
   detach
   quit 1
  end
+ set $file_pb=(unsigned char*)g_trapRegisters[8]
+ printf "startup file PB: ref=%d index=%d name=$%08x\n",*(short*)($file_pb+24),*(short*)($file_pb+28),*(unsigned long*)($file_pb+18)
+ dump binary memory ../tmp/amiga-file-pb.bin $file_pb $file_pb+80
  printf "startup PASS: original main, next stop %s / %s CODE 3+$4144\n",g_trapManager,g_trapRoutine
  detach
  quit 0

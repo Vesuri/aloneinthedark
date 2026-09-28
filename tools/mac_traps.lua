@@ -14,6 +14,15 @@ local appcond=table.concat(guard,' && ')
 local function u32(a) return mem:read_u32(a & 0xffffff) end
 local function ptr(a) return u32(a) & 0xffffff end
 local known, return_bps, armed = {}, {}, false
+local function is_file_trap(trap)
+ local code=trap & 0x08ff
+ return code<=0x18 or code==0x44 or code==0x60
+end
+local function file_fields(args)
+ -- Preserve the raw 80-byte parameter block: selectors reuse field offsets.
+ for i=0,19 do args[#args+1]={'pb'..i,string.format('d@((a0&ffffff)+%x)',4*i)} end
+ return args
+end
 local function action(label, expressions)
  local fmt, args = label, ''
  for _, pair in ipairs(expressions) do
@@ -64,8 +73,9 @@ local function map_segments()
     local pc=base+t[1]
     -- Byte-check every original site; loaded relocation never changes trap words.
     if mem:read_u16(pc)==t[2] and (t[2]&0x0c00)~=0x0c00 and not return_bps[pc+2] then
-     return_bps[pc+2]=breakpoint(pc+2,string.format('RESULT seg=%d offset=%04X trap=%04X',seg,t[1],t[2]),
-      {{'pc','pc'},{'sp','sp'},{'d0','d0'},{'a0','a0'},{'r0','d@sp'},{'r1','d@(sp+4)'},{'r2','d@(sp+8)'},{'env0','if(w@(pc-2)==a090,d@a0,0)'},{'env1','if(w@(pc-2)==a090,d@(a0+4),0)'},{'env2','if(w@(pc-2)==a090,d@(a0+8),0)'},{'env3','if(w@(pc-2)==a090,d@(a0+c),0)'}})
+     local result={{'pc','pc'},{'sp','sp'},{'d0','d0'},{'a0','a0'},{'r0','d@sp'},{'r1','d@(sp+4)'},{'r2','d@(sp+8)'},{'env0','if(w@(pc-2)==a090,d@a0,0)'},{'env1','if(w@(pc-2)==a090,d@(a0+4),0)'},{'env2','if(w@(pc-2)==a090,d@(a0+8),0)'},{'env3','if(w@(pc-2)==a090,d@(a0+c),0)'}}
+     if is_file_trap(t[2]) then file_fields(result) end
+     return_bps[pc+2]=breakpoint(pc+2,string.format('RESULT seg=%d offset=%04X trap=%04X',seg,t[1],t[2]),result)
     end
    end
   end
@@ -95,7 +105,7 @@ emu.register_frame_done(function()
   for i=0,7 do expr[#expr+1]={'p'..i,string.format('d@(sp+%x)',8+4*i)} end
   local trapword='w@(d@(sp+2))'
   local base=appcond..' && (d@(sp+2)&ffffff)>100000 && (d@(sp+2)&ffffff)<800000'
-  local excluded=' && '..trapword..'!=a884 && '..trapword..'!=a885 && '..trapword..'!=a900 && ('..trapword..'&8ff)>18'
+  local excluded=' && '..trapword..'!=a884 && '..trapword..'!=a885 && '..trapword..'!=a900 && ('..trapword..'&8ff)>18 && ('..trapword..'&8ff)!=44 && ('..trapword..'&8ff)!=60'
   breakpoint(0xdd60,'TRAP',expr,base..excluded)
   local function detail(label,args,condition)
    local both=action('TRAP',expr):gsub(';g$',';')..action(label,args)
@@ -113,11 +123,11 @@ emu.register_frame_done(function()
   local font={{'pc','d@(sp+2)'},{'resultptr','d@(sp+8)'}}
   for i=0,7 do font[#font+1]={'name'..i,string.format('d@((d@(sp+c)&ffffff)+%x)',4*i)} end
   detail('FONT',font,trapword..'==a900')
-  local file={{'pc','d@(sp+2)'},{'trap','w@(d@(sp+2))'},
+  local file={{'pc','d@(sp+2)'},{'trap','w@(d@(sp+2))'},{'selector','d0'},{'pb','a0'},
    {'ref','w@(a0+18)'},{'buffer','d@(a0+20)'},{'requested','d@(a0+24)'},
    {'actual','d@(a0+28)'},{'position','d@(a0+2e)'}}
   for i=0,11 do file[#file+1]={'name'..i,string.format('d@((d@(a0+12)&ffffff)+%x)',4*i)} end
-  detail('FILE',file,'('..trapword..'&8ff)<=18')
+  detail('FILE',file_fields(file),'(('..trapword..'&8ff)<=18 || ('..trapword..'&8ff)==44 || ('..trapword..'&8ff)==60)')
   armed=true
   print('ARM dispatcher=0000DD60 bytes=2f0a2f02246f000a')
  end

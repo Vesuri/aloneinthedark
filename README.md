@@ -14,7 +14,7 @@ and Toolbox layer are carried over from Vette!; see
 The executable builds and runs the original CODE 1 startup on the 68020. Its
 75,616-byte A5 globals match the host model exactly. The original segment loader
 relocates Core and reaches `main`; initialization then stops explicitly at
-`FILE MANAGER / GETWDINFO`, Core+$4144. The game is not playable yet.
+`FILE MANAGER / GETFCBINFO`, Core+$4144. The game is not playable yet.
 Other processors and performance work remain deferred.
 
 The M0 tools checkpoint includes the trap census, original Mac runtime/frame

@@ -9,7 +9,7 @@ design.md §5.
 **Current state:**
 - The executable builds and loads the original resource fork.
 - Original CODE 1 expands the A5 world, relocates Core and enters `main`, then
-  stops at `FILE MANAGER / GETWDINFO`, Core+$4144 (selector 8).
+  stops at `FILE MANAGER / GETFCBINFO`, Core+$4144 (selector 8).
 - The original runs in MAME on the System 7.5.5 reference volume.
 
 Each item gives the **goal**, then the scope, then *done when*: the evidence
@@ -42,7 +42,14 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.1 Catalog and File Manager.**
+- **M2.1b Catalog and File Manager implementation.**
+  - M2.1a captured and checked the [File Manager contract](file-manager.md).
+    The first stop is GetFCBInfo (selector 8), not GetWDInfo (selector 7).
+  - Register the pre-opened application resource fork in the file table; map
+    CurResFile/UseResFile to file references rather than exposing array indices.
+  - Identify the original PRESENT.PAK read path before claiming that acceptance:
+    the full reference play/save/load route did not open it. Never invent a read
+    or treat a diagnostic-only read as an original game call.
   - Build the startup catalog of `Alone Data`, saves and prefs (no data read).
   - Implement the census File Manager set with per-fork chunked read buffers
     through system windows (design §4.5). Unknown paths are loud stops.
@@ -61,7 +68,7 @@ required.
   of a sample).
 - **M1.6b Final startup requirements acceptance (after file/resource services).**
   - M1.6a implements the measured identity records and verifies all eleven
-    Engine capability flags. Full startup is still stopped in GetWDInfo, before
+    Engine capability flags. Full startup is still stopped in GetFCBInfo, before
     Core's initialization-result/alert branches; it is not a successful launch.
   - After M2.1/M2.2, verify Core+$0460 is reached with initialization result zero,
     without taking its failure-alert branches ($0410/$044E).

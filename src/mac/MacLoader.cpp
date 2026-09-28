@@ -5840,7 +5840,8 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     if (trap == 0xa1ad) g_trapSelector = (int32_t)regs[0];
     if (trap == 0xa260) {
         g_trapSelector=(uint16_t)regs[0];
-        if(g_trapSelector==8)routine="GETWDINFO";
+        if(g_trapSelector==7)routine="GETWDINFO";
+        if(g_trapSelector==8)routine="GETFCBINFO";
     }
     copyString(g_trapManager, manager);
     copyString(g_trapRoutine, routine);

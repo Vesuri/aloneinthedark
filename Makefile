@@ -73,6 +73,7 @@ lowmem-check:
 	@python3 tools/check_lowmem.py --resource "$(RUNTIME_DATA)/Alone In The Dark"
 
 host-tests:
+	@python3 tools/check_file_reference.py --selftest
 	@python3 tools/check_resload_access.py
 	@python3 tools/check_mac_heap.py
 	@python3 tools/check_lowmem.py --selftest

@@ -219,3 +219,9 @@ checks their original resource values, and rejects differences at all other
 indices. Palette Manager allocation details and the display colour transfer
 are carried into M2.7/M2.7a; the capture does not justify replacing those slots
 with guessed colours.
+
+
+File Manager parameter-block evidence is checked separately with
+`python3 tools/check_file_reference.py <log>`; see [file-manager.md](file-manager.md).
+The logger includes HFSDispatch selectors and SetFPos as well as the basic
+file calls, and records 80 parameter-block bytes on original-code returns.

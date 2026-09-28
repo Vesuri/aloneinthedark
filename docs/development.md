@@ -451,7 +451,7 @@ still executed the original sysv query, so the maintained probe sets arguments
 in actual 68020 instructions. No game instruction is patched. The production
 identity observer and diagnostic error probe both pass in bounded 68020 runs.
 
-The next stop is HFSDispatch selector 8, GetWDInfo, at Core+$4144. File Manager
+The next stop is HFSDispatch selector 8, GetFCBInfo, at Core+$4144. File Manager
 work is M2.1 after M1.7's system windows. Full startup's success/requirements-alert
 branches remain beyond that dependency, so **M1.6b retains that acceptance
 check** after file/resource integration; matching identity flags is not reported
@@ -475,7 +475,7 @@ ordinary traps, one callback, all 15 registers, OS/Toolbox CCR and balanced stac
 The nested traps' saved exception SRs positively establish user-mode execution;
 a zero counter cannot pass. Existing LINEAPROBE, clean production boot,
 original startup and identity observers pass. HFSDispatch now enters one user
-service and reaches the same named GetWDInfo stop (zero completed services).
+service and reaches the same named GetFCBInfo stop (zero completed services).
 
 This is independently verified bridge work, not OS-window acceptance. The
 machine is still taken over during services. M1.7b retains the full 1 MB/64 KB
@@ -539,7 +539,7 @@ windows (16 primary plus short/EOF/readback). All 21 OS windows together cost
 16,059 beam-epoch units entering and 591,506 leaving: about 2.99 and 110.03
 raster-line equivalents per window, respectively. Exit includes the interruptible
 keyboard flush; it is not 110 lines with interrupts masked. Host checks and
-clean production boot pass. The next real game stop remains GetWDInfo.
+clean production boot pass. The next real game stop remains GetFCBInfo.
 Original startup also passes at A5 `$00787228`, STRS `$004442B0`: zero
 mismatches across 75,616 bytes, with the paired heap check reporting zero
 unaccounted bytes (Mac 2,821,316; native 3,096,720 free).
@@ -566,3 +566,16 @@ None supplies unattended rendered FS-UAE captures within the granted access.
 Do not label a logical export or a paused-debugger image as this acceptance.
 M1.7b2 remains pending by the owner's instruction, while M2.1 is the next active
 implementation item. No new screen permission or synthetic key posting is used.
+
+
+## File Manager contract (M2.1a)
+
+The expanded byte-checked reference logger records complete parameter blocks
+on both sides of direct File Manager calls. The maintained
+`check_file_reference.py` validates the pairing and required positive/negative
+controls. See [file-manager.md](file-manager.md) for the measured FCB fields,
+reference counts and outstanding implementation requirements. The original
+Core+$4144 instruction selects **GetFCBInfo**, not GetWDInfo; the runtime label
+is corrected. The native request's reference 0 exposes the inherited internal
+Resource Manager index and must be replaced with an open-fork identity in M2.1b.
+No File Manager service is claimed implemented by this diagnostic change.

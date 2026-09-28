@@ -11,7 +11,7 @@ commands
   detach
   quit 1
  end
- printf "PASS identity: SysEnvRec=16 Gestalt=6 Engine-flags=11 next=GETWDINFO\n"
+ printf "PASS identity: SysEnvRec=16 Gestalt=6 Engine-flags=11 next=GETFCBINFO\n"
  detach
  quit 0
 end
