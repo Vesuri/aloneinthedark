@@ -3,6 +3,7 @@ extern "C" {
 extern volatile uint32_t g_systemWindows;
 volatile uint32_t g_fileProbeStage=0,g_fileProbeError=0,g_fileProbeDone=0,g_fileProbeWindows=0;
 volatile uint16_t g_fileProbeCCR=0;
+int32_t aitdProbeFCB(void*);
 int32_t aitdProbeGetVol(void*),aitdProbeSetVol(void*),aitdProbeOpenWD(void*);
 int32_t aitdProbeHOpen(void*),aitdProbeOpen(void*),aitdProbeRead(void*),aitdProbeClose(void*),aitdProbeEOF(void*),aitdProbeSeek(void*),aitdProbePosition(void*);
 __attribute__((noinline)) void aitdFileCleanupFinished() { __asm__ volatile("" ::: "memory"); }
@@ -81,6 +82,21 @@ static bool run() {
        || (get(20)&65535)!=wd)return false;
     w(22,0xffff);
     if(!result(aitdProbeSetVol(pb),0) || g_systemWindows!=start+10)return false;
+    g_fileProbeStage=19;l(18,(uint32_t)volume);w(22,0);w(24,0);w(28,1);
+    if(!result(aitdProbeFCB(pb),0) || ((get(24)>>16)&65535)!=128
+       || get(40)!=1424934 || (get(36)>>16)!=0x300 || volume[0]!=17)return false;
+    g_fileProbeStage=20;w(28,2);w(22,wd);
+    if(!result(aitdProbeFCB(pb),0) || ((get(24)>>16)&65535)!=129
+       || get(40)!=200003 || (get(36)>>16)!=0 || volume[0]!=14)return false;
+    uint32_t fileID=get(32),parent=get(58);
+    g_fileProbeStage=21;w(28,0);w(22,0x1234);l(18,0);
+    if(!result(aitdProbeFCB(pb),0) || get(32)!=fileID || get(58)!=parent || get(40)!=200003)return false;
+    g_fileProbeStage=22;w(28,0x7fff);w(22,0);
+    if(!result(aitdProbeFCB(pb),-38) || get(32)!=fileID)return false;
+    w(28,1);w(22,0x1234);
+    if(!result(aitdProbeFCB(pb),-35))return false;
+    w(28,0);w(24,0);
+    if(!result(aitdProbeFCB(pb),-51) || g_systemWindows!=start+10)return false;
     g_fileProbeWindows=g_systemWindows-start;return true;
 }
 extern "C" void aitdFileProbe() {

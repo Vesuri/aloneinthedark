@@ -96,6 +96,18 @@ const MacFiles::Fork* MacFiles::fork(int16_t ref) const {
     for(uint16_t i=0;i<maxOpen;++i)if(forks_[i].ref && forks_[i].ref==ref)return &forks_[i];
     return 0;
 }
+int16_t MacFiles::queryFork(int16_t volume,int16_t index,int16_t ref,const Fork*& found) const {
+    found=0;
+    if(index<0)return unsupported;
+    if(!index) { found=fork(ref);return found ? noErr : rfNumErr; }
+    uint32_t directory=0;
+    if(volume && volume!=1 && directoryFor(volume,directory))return nsvErr;
+    // Single catalogued volume, drive 1. Index only live forks, not table holes.
+    for(uint16_t i=0;i<maxOpen;++i)if(forks_[i].ref && !--index) {
+        found=&forks_[i];return noErr;
+    }
+    return -38; // fnOpnErr, measured on System 7.5.5 for an exhausted index.
+}
 int16_t MacFiles::close(int16_t ref) {
     for(uint16_t i=0;i<maxOpen;++i)if(forks_[i].ref && forks_[i].ref==ref) { forks_[i].ref=0;return noErr; }
     return rfNumErr;

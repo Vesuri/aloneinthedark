@@ -12,7 +12,7 @@ if a.prepare:
     (drive/'absent-probe.bin').unlink(missing_ok=True)
 else:
     log=(root/'amiga/.run/gdb-out.log').read_text()
-    marker='PASS file-read: Line-A open/read/seek/EOF/position/close bytes=exact CCR=checked windows=10 DOS-reads=6 max=65536 cleanup=1 GetVol=WD/root/null-name'
+    marker='PASS file-read: Line-A open/read/seek/EOF/position/close bytes=exact CCR=checked windows=10 DOS-reads=6 max=65536 cleanup=1 GetVol=WD/root/null-name FCB=index/exact/errors'
     if a.status or re.search(r'FAIL|Error in sourced command file|Program received signal',log) or log.count(marker)!=1:
         raise SystemExit('FAIL file-read: missing completion or runner/observer failure')
     print(marker)

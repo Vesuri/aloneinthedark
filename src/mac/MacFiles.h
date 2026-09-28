@@ -20,6 +20,7 @@ public:
     int16_t resolve(int16_t volume,uint32_t directory,const char* path,uint32_t& id) const;
     int16_t open(uint32_t id,bool resource,bool writable);
     const Fork* fork(int16_t ref) const;
+    int16_t queryFork(int16_t volume,int16_t index,int16_t ref,const Fork*& found) const;
     int16_t close(int16_t ref);
     int16_t seek(int16_t ref,uint16_t mode,int32_t offset);
     void advance(int16_t ref,uint32_t count);

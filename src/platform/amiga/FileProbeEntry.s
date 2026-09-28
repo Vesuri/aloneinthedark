@@ -24,3 +24,10 @@ aitdProbeOpenWD:
     .word 0xa260
     move.w ccr,g_fileProbeCCR
     rts
+    .globl aitdProbeFCB
+aitdProbeFCB:
+    move.l 4(sp),a0
+    moveq #8,d0
+    .word 0xa260
+    move.w ccr,g_fileProbeCCR
+    rts

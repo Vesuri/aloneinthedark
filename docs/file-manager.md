@@ -245,3 +245,42 @@ All host checks, file-read, window-core and production boot pass on 68020.
 The original directory observer still reports 39 entries, 32 data files,
 5,315,994 bytes, seven successful service completions, zero runtime OS windows
 and the unchanged Get1NamedResource stop. No owner decision is required.
+
+## Indexed open-fork queries (M2.1b2c2)
+
+PBGetFCBInfo selector 8 now accepts positive one-based indexes over live open
+forks. Closed slots are skipped. Zero indexes retain exact-reference lookup,
+which ignores the volume input. Indexed requests accept the single virtual
+volume (-1), its drive (1), and any live working-directory reference; zero
+indexes all volumes. Unknown volumes return -35, an exhausted positive index
+returns -38, and a bad exact reference returns -51. Negative indexes remain a
+named GetFCBInfo stop. Errors leave the output identity/length fields unchanged.
+
+`tools/mac_file_queries.lua` is a bounded read-only API fixture. It checks
+original Core+$4142–$4147 (`7008 A260 6004`), lets the initial application FCB
+query complete, then re-enters that original trap with diagnostic parameters.
+It patches no original instructions and terminates after its sixth recorded
+return; it does not claim original-game progress. On System 7.5.5, index 1
+returned ref 2; exact ref 2 returned the same file ID, flags, EOF and parent.
+Index 32767 returned -38, volume $1234 returned -35, and exact ref 0 returned
+-51 even with that invalid volume. The reusable checker requires every stage,
+matching D0/ioResult, those arguments/results, byte proof and normal completion:
+
+```sh
+python3 tools/check_file_queries.py tmp/m2-fcb-query-reference.log --status 0
+```
+
+Run the documented headless MAME command with `tools/mac_file_queries.lua` as
+its autoboot script; preserve the runner's actual status when checking the log.
+The host suite includes rejected-capture fixtures and sanitizer tests of live
+fork enumeration, closed-slot skipping, volume/WD lookup and all measured
+errors. The native `file-read` fixture now has 22 stages and checks indexed
+application/resource and data forks, exact lookup, null output names, returned
+lengths/flags, preserved error outputs and CCR. Its six DOS reads, ten windows
+and restored-OS cleanup are unchanged. Original startup still stops at
+Get1NamedResource, before original-game PAK reads.
+
+The host suite, native file-read, window-core, production boot and original
+directory observer all pass on 68020. The directory observer retains all seven
+completed services and zero OS windows, ending at the unchanged Resource
+Manager stop. No game instruction or owner decision changed.

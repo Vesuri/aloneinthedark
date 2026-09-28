@@ -5004,11 +5004,12 @@ static bool dispatchFileMetadata(uint16_t trap,uint32_t* regs)
     if(!pb)return false;
     uint16_t selector=(uint16_t)regs[0];
     int16_t error=MacFiles::unsupported;
-    if(selector==8) { // PBGetFCBInfo: exact reference lookup, index enumeration pending.
-        if(read16(pb+28)!=0)return false;
-        const MacFiles::Fork* fork=s_files.fork((int16_t)read16(pb+24));
-        if(!fork)error=MacFiles::rfNumErr;
-        else {
+    if(selector==8) { // PBGetFCBInfo: exact reference or one-based live-fork index.
+        const MacFiles::Fork* fork=0;
+        error=s_files.queryFork((int16_t)read16(pb+22),(int16_t)read16(pb+28),
+                               (int16_t)read16(pb+24),fork);
+        if(!error) {
+            write16(pb+24,fork->ref);
             const MacFiles::Entry* file=s_files.entry(fork->id);
             uint8_t* name=(uint8_t*)read32(pb+18);
             if(name) {

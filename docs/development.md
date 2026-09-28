@@ -635,3 +635,12 @@ original data is copied into the executable or committed. Production directory,
 identity and original-startup observers retain the Get1NamedResource boundary;
 M2.1c still requires original PAK reads/checksums. Actual WHDLoad persistent
 streams, writable forks and remaining variants are separate pending work.
+
+### File Manager query reference
+
+`tools/mac_file_queries.lua` uses the documented headless MAME configuration
+with debugger logging to measure indexed/exact PBGetFCBInfo returns. It verifies
+original trap bytes and exits positively after six diagnostic calls; it never
+counts as original-game PAK-read evidence. Check its log with
+`tools/check_file_queries.py LOG --status RUNNER_STATUS`. Capture failures,
+missing stages, incorrect errors and timeouts fail acceptance.
