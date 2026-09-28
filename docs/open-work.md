@@ -17,15 +17,6 @@ required.
 
 ## M1 Boot to main
 
-- **M1.3a Positive boot regression acceptance (remaining M0.7).**
-  - The M0.7 harness is implemented and verified to reject the current CREL
-    stop and timeouts. Its original positive acceptance depends on M1.3;
-    this independent acceptance step is retained here, not waived.
-  - Adapt `boot.gdb` to CODE 3's on-demand handle lifetime before setting the
-    original-byte-checked breakpoint at Core+$03E4.
-
-  *Done when* `make regression` passes `boot` on `a1200-020`, with the original
-  main entry reached and no loud stop before that endpoint.
 - **M1.4 Low-memory shadows.**
   - Patch the live set's `abs.w` references to `d16(A5)` in the shadow area,
     after byte checks (design §4.3). Apply the patches when a CODE handle is

@@ -158,12 +158,13 @@ The runner clears stale logs/state, propagates debugger failures, returns 124
 on timeout and cleans up its owned processes on exit. Build evidence is in
 `amiga/.run/regression-build.log`; the observer log is `amiga/.run/gdb-out.log`.
 
-M0.7 harness verification: host checks pass, including ten acceptance/rejection
-fixtures. The actual 68020 run fails at the CODE 3 CREL stop with observer exit 1;
-`make regression` returns failure. An intentionally nonterminating observer
-returns 124. The clean build passes both link audits (30 probes). Positive boot
-acceptance remains **M1.3a**, immediately after the startup implementation that
-can make it pass. No current run has passed the game-boot test.
+Harness verification includes ten host acceptance/rejection fixtures and an
+intentionally nonterminating observer that returns 124. M1.3a updates the boot
+observer to wait for CODE 1+$AA, after the original Core relocation, then checks
+the unchanged main bytes before placing its breakpoint. `make regression`
+passes on `a1200-020`: exactly one `boot PASS: reached CODE 3+$03e4`, no loud
+stop before that endpoint, normal observer exit and both clean-build audits.
+Initialization beyond that point still has the named NewHandleClear stop.
 
 ## Line-A and stack probe
 
@@ -279,7 +280,7 @@ Core CREL long. It dumps `tmp/amiga-a5-globals.bin` at main and prints the actua
 A5/STRS bases for `a5world_check.py`. It succeeds only at the expected subsequent
 `MEMORY MANAGER / NEWHANDLECLEAR`, Engine+$004A, trap $A322. This stop belongs to
 M1.5, and is not a gameplay pass. `runtime_status.gdb` independently reports it.
-The positive boot regression observer update remains M1.3a.
+The boot observer independently reaches main and passes (M1.3a).
 
 Production evidence: A5 $004680D8, STRS $002E88C4, zero mismatches across all
 75,616 bytes. Core header becomes $000A; Core+$000E is $0045BE8E, exactly

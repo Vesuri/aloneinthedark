@@ -19,8 +19,9 @@ Other processors and performance work remain deferred.
 
 The M0 tools checkpoint includes the trap census, original Mac runtime/frame
 evidence and a regression harness. Host checks, native Line-A/stack/trap-patch
-probes and link audits pass. Adapting the `boot` regression observer to Core's
-on-demand loading is the next queue item, M1.3a.
+probes and link audits pass. `make regression` now passes `boot` on `a1200-020`,
+ending at the original main entry before initialization. The next item is the
+remaining low-memory shadows (M1.4).
 
 ## Requirements (provisional)
 

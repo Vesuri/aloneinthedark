@@ -628,7 +628,7 @@ These settings establish a functional baseline, not a performance result.
 clean build with its flags, a warp-mode bounded run, a required PASS regex, and
 no loud stop. The cases are added as their milestone lands:
 - `boot`: reaches main, then ends the observer before main executes. The harness
-  is available from M0; positive acceptance is M1.3a because it depends on M1.3.
+  was introduced in M0; positive acceptance passes on `a1200-020` (M1.3a).
 - `intro`: logo and intro complete.
 - `newgame`: first room playable.
 - `saveload`: save, reload, same state.
