@@ -3,7 +3,7 @@ extern "C" {
 extern volatile uint32_t g_systemWindows;
 volatile uint32_t g_fileProbeStage=0,g_fileProbeError=0,g_fileProbeDone=0,g_fileProbeWindows=0;
 volatile uint16_t g_fileProbeCCR=0;
-int32_t aitdProbeFCB(void*);
+int32_t aitdProbeFCB(void*),aitdProbeHGetVol(void*),aitdProbeHSetVol(void*);
 int32_t aitdProbeGetVol(void*),aitdProbeSetVol(void*),aitdProbeOpenWD(void*);
 int32_t aitdProbeHOpen(void*),aitdProbeOpen(void*),aitdProbeRead(void*),aitdProbeClose(void*),aitdProbeEOF(void*),aitdProbeSeek(void*),aitdProbePosition(void*);
 __attribute__((noinline)) void aitdFileCleanupFinished() { __asm__ volatile("" ::: "memory"); }
@@ -97,6 +97,26 @@ static bool run() {
     if(!result(aitdProbeFCB(pb),-35))return false;
     w(28,0);w(24,0);
     if(!result(aitdProbeFCB(pb),-51) || g_systemWindows!=start+10)return false;
+    g_fileProbeStage=23;l(18,0);w(22,0xffff);l(48,7);
+    if(!result(aitdProbeHSetVol(pb),0) || !result(aitdProbeGetVol(pb),0) || (get(20)&65535)!=0xffff)return false;
+    g_fileProbeStage=24;l(18,(uint32_t)volume);l(28,0xdeadbeef);l(48,0);
+    if(!result(aitdProbeHGetVol(pb),0) || get(48)!=7 || (get(20)&65535)!=0xffff
+       || (get(32)>>16)!=0xffff || get(28)!=0xdeadbeef || volume[0]!=5)return false;
+    g_fileProbeStage=25;l(18,0);w(22,wd);
+    if(!result(aitdProbeSetVol(pb),0) || !result(aitdProbeHGetVol(pb),0)
+       || (get(20)&65535)!=wd || get(48)!=7 || get(28)!=0xdeadbeef)return false;
+    g_fileProbeStage=26;l(48,0);
+    if(!result(aitdProbeHSetVol(pb),0) || !result(aitdProbeHGetVol(pb),0)
+       || (get(20)&65535)!=0xffff || get(48)!=7 || get(28)!=0xdeadbeef)return false;
+    g_fileProbeStage=27;w(22,wd);l(48,0x9999);
+    if(!result(aitdProbeHSetVol(pb),-43) || !result(aitdProbeHGetVol(pb),0)
+       || (get(20)&65535)!=0xffff || get(48)!=7)return false;
+    g_fileProbeStage=28;
+    static uint8_t directoryName[]="\014:Alone Data:";
+    w(22,0xffff);l(48,3);l(18,(uint32_t)directoryName);
+    if(!result(aitdProbeHSetVol(pb),0))return false;
+    l(18,0);
+    if(!result(aitdProbeHGetVol(pb),0) || get(48)!=7 || g_systemWindows!=start+10)return false;
     g_fileProbeWindows=g_systemWindows-start;return true;
 }
 extern "C" void aitdFileProbe() {

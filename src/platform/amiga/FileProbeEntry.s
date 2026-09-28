@@ -31,3 +31,5 @@ aitdProbeFCB:
     .word 0xa260
     move.w ccr,g_fileProbeCCR
     rts
+    filetrap aitdProbeHGetVol,0xa214
+    filetrap aitdProbeHSetVol,0xa215

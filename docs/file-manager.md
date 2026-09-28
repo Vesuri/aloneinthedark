@@ -284,3 +284,51 @@ The host suite, native file-read, window-core, production boot and original
 directory observer all pass on 68020. The directory observer retains all seven
 completed services and zero OS windows, ending at the unchanged Resource
 Manager stop. No game instruction or owner decision changed.
+
+## Hierarchical default directory (M2.1b2c3)
+
+HSetVol ($A215) now stores a directory ID separately from its returned default
+volume reference. HGetVol ($A214) returns the selected directory ID and actual
+volume in ioWDDirID/ioWDVRefNum. SetVol retains its working-directory reference;
+HSetVol converts it to the volume reference while retaining the resolved
+directory. GetVol uses the same state. Relative and full catalog paths resolve
+through the existing model; unsupported names/paths remain loud. Missing
+directories return -43 and failed changes preserve the previous default.
+
+The expanded `mac_file_queries.lua` directory mode verifies every original
+Core trap word before re-entering the corresponding trap directly. It makes
+only transient directory-table changes, then exits after 21 recorded returns.
+It does not resume the game or claim startup progress. Reproduce with the
+usual headless MAME command and `AITD_FILE_QUERIES=directories`, then:
+
+```sh
+python3 tools/check_file_queries.py tmp/m2-directory-fields-reference.log --directories --status 0
+```
+
+The System 7.5.5 capture establishes two details more precisely than the
+manual. HGetVol **leaves ioWDProcID unchanged**, verified with $DEADBEEF input
+for both SetVol and HSetVol state; only GetWDInfo returned the WD process ID.
+HSetVol with a WD and directory ID zero resolves that WD, then GetVol/HGetVol
+return volume -1 with the original directory retained. A nonzero invalid ID
+($9999) returns -43 even with a valid WD; the manual's blanket “ID ignored”
+description does not match this reference. The implementation follows the
+measured behavior.
+
+The native file fixture now has 28 stages. It verifies volume versus WD
+returns, retained directory IDs, untouched process fields, missing-directory
+errors and relative paths; queries add no OS windows. Host sanitizer tests
+also cover full-path volume selection, parent traversal, file-as-directory
+rejection and unchanged state after failed calls. The reference checker rejects
+wrong process fields, references, arguments, errors and incomplete captures.
+
+The probe also records pending WD work: a freshly opened data WD closes;
+subsequent exact GetWDInfo returns -35 and repeated CloseWD returns -51.
+The existing application WD instead survived close, so that special identity
+must be modeled explicitly before calling WD support complete. Those calls
+remain queued and unsupported on native; these reference observations are not
+implementation acceptance.
+
+All host tests, the 28-stage native file regression, window-core, production
+boot and the original directory observer pass on 68020. Original startup retains
+39 catalog entries, 32 data files, seven completed services and zero runtime
+OS windows, with the same named Get1NamedResource stop.

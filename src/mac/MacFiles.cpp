@@ -14,7 +14,7 @@ static bool copy(char* out,const char* in,uint32_t capacity) {
     out[i]=0;return true;
 }
 void MacFiles::reset() {
-    count_=0;defaultRef_=0;application=system=preferences=saves=data=0;
+    count_=0;defaultRef_=0;defaultDirectory_=0;application=system=preferences=saves=data=0;
     for(uint16_t i=0;i<maxOpen;++i)forks_[i].ref=0;
     for(uint16_t i=0;i<maxWD;++i)wd_[i].ref=0;
     add(1,"Alone","",true); // Virtual volume root has the HFS-reserved ID 2.
@@ -39,8 +39,8 @@ int32_t MacFiles::add(uint32_t parent,const char* name,const char* path,bool dir
 }
 int16_t MacFiles::directoryFor(int16_t ref,uint32_t& directory) const {
     if(!ref) {
-        if(defaultRef_)return directoryFor(defaultRef_,directory);
-        directory=application;return application ? noErr : dirNFErr;
+        directory=defaultDirectory_ ? defaultDirectory_ : application;
+        return directory ? noErr : dirNFErr;
     }
     if(ref==volumeRef) { directory=2;return noErr; }
     for(uint16_t i=0;i<maxWD;++i)if(wd_[i].ref==ref) { directory=wd_[i].directory;return noErr; }
@@ -138,6 +138,20 @@ int16_t MacFiles::setDefault(int16_t ref,const char* volumeName) {
     int16_t error=directoryFor(ref,directory);
     if(error)return error;
     if(ref)defaultRef_=ref;
+    defaultDirectory_=directory;
+    return noErr;
+}
+
+int16_t MacFiles::setHierarchicalDefault(int16_t ref,uint32_t directory,const char* path) {
+    // Full paths select their own volume/root, including with an invalid input ref.
+    bool absolute=false;
+    if(path && *path!=':')for(const char* p=path;*p;++p)if(*p==':')absolute=true;
+    uint32_t resolved=0;
+    int16_t error=resolve(absolute ? volumeRef : ref,absolute ? 2 : directory,path,resolved);
+    if(error==dirNFErr)return fnfErr; // HSetVol's missing-directory result on 7.5.5.
+    if(error)return error;
+    if(!entry(resolved)->directory)return fnfErr;
+    defaultDirectory_=resolved;defaultRef_=volumeRef;
     return noErr;
 }
 

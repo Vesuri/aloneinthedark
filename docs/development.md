@@ -644,3 +644,9 @@ original trap bytes and exits positively after six diagnostic calls; it never
 counts as original-game PAK-read evidence. Check its log with
 `tools/check_file_queries.py LOG --status RUNNER_STATUS`. Capture failures,
 missing stages, incorrect errors and timeouts fail acceptance.
+
+Set `AITD_FILE_QUERIES=directories` for the 21-call directory-state reference
+fixture. Its HSetVol/HGetVol and WD measurements are checked with
+`tools/check_file_queries.py LOG --directories --status RUNNER_STATUS`.
+The native `file-read` fixture covers 28 stages including hierarchical defaults;
+WD queries/closure are still pending implementation.

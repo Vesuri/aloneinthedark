@@ -43,7 +43,7 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.1b2c3 Remaining File Manager metadata, variants and mutations.**
+- **M2.1b2c4 Remaining File Manager metadata, variants and mutations.**
   - Catalog/identity (M2.1b1) and default-directory/Preferences startup
     (M2.1b2a) are independently complete. `file_catalog.gdb` verifies all seven
     direct file calls and FindFolder against the Mac, ending at Get1NamedResource.
@@ -51,10 +51,13 @@ required.
     GetFPos, SetFPos and Close with persistent DOS handles, 64 KiB per-fork
     buffers and the native `file-read` regression. Original startup remains at
     Get1NamedResource; synthetic reads do not complete M2.1c.
-  - Finish the census call set over that catalog: HGetVol/HSetVol,
-    WD queries/close, create/delete/file info, writes,
+  - Finish the census call set over that catalog: WD queries/close,
+    create/delete/file info, writes,
     truncation/flush, open permissions beyond read-only, and async variants.
     Unsupported forms remain named stops; see the [reference contract](file-manager.md).
+    The directory reference probe now covers new-WD close/errors; distinguish
+    protected application/System WDs and reconcile SysEnvirons' System WD
+    identity before exposing those queries. Verify indexed WD filtering too.
   - Add Finder metadata and companion resource-fork storage for saves/prefs.
     The current catalog rejects nested directories, companion forks, non-ASCII
     names and capacity overflow explicitly; it must never invent metadata.

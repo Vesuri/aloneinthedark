@@ -637,6 +637,7 @@ static const TrapName s_trapNames[] = {
     {0xa000,"FILE MANAGER","OPEN"}, {0xa200,"FILE MANAGER","HOPEN"},
     {0xa002,"FILE MANAGER","READ"}, {0xa011,"FILE MANAGER","GETEOF"},
     {0xa018,"FILE MANAGER","GETFPOS"}, {0xa044,"FILE MANAGER","SETFPOS"},
+    {0xa214,"FILE MANAGER","HGETVOL"}, {0xa215,"FILE MANAGER","HSETVOL"},
     {0xa014,"FILE MANAGER","GETVOL"}, {0xa823,"FOLDER MANAGER","FINDFOLDER"},
     {0xa81a,"RESOURCE MANAGER","HOPENRESFILE"},
     {0xa820,"RESOURCE MANAGER","GET1NAMEDRESOURCE"},
@@ -4965,13 +4966,13 @@ static bool isUserService(uint16_t trap)
 #ifdef AITD_SERVICE_PROBE
     if((trap&0xfeff)==0xa0fc || trap==0xabfb)return true;
 #endif
-    return (trap&0xf8ff)==0xa060 || trap==0xa014 || trap==0xa015 || isFileReadService(trap);
+    return (trap&0xf8ff)==0xa060 || trap==0xa014 || trap==0xa015 || trap==0xa214 || trap==0xa215 || isFileReadService(trap);
 }
 // Metadata-only File Manager selectors. Unsupported layouts fall through to
 // the named trap stop; no OS call is made inside this helper.
 static bool dispatchFileMetadata(uint16_t trap,uint32_t* regs)
 {
-    if(trap==0xa014) { // Synchronous PBGetVol; retain a SetVol working-directory ref.
+    if(trap==0xa014 || trap==0xa214) { // Synchronous volume/default-directory queries.
         uint8_t* pb=(uint8_t*)regs[8];
         if(!pb)return false;
         uint32_t directory=0;
@@ -4983,10 +4984,11 @@ static bool dispatchFileMetadata(uint16_t trap,uint32_t* regs)
                 uint8_t n=0;while(volume[n]) { name[n+1]=volume[n];++n; }name[0]=n;
             }
             write16(pb+22,s_files.defaultRef() ? s_files.defaultRef() : MacFiles::volumeRef);
+            if(trap==0xa214) { write16(pb+32,MacFiles::volumeRef);write32(pb+48,directory); }
         }
         write16(pb+16,error);regs[0]=(uint32_t)(int32_t)error;return true;
     }
-    if(trap==0xa015) { // Synchronous PBSetVol, volume/working-directory identity.
+    if(trap==0xa015 || trap==0xa215) { // Synchronous volume/default-directory setters.
         uint8_t* pb=(uint8_t*)regs[8];
         if(!pb)return false;
         uint8_t* name=(uint8_t*)read32(pb+18);
@@ -4995,7 +4997,9 @@ static bool dispatchFileMetadata(uint16_t trap,uint32_t* regs)
             for(uint16_t i=0;i<name[0];++i)volume[i]=name[i+1];
             volume[name[0]]=0;
         }
-        int16_t error=s_files.setDefault((int16_t)read16(pb+22),name ? volume : 0);
+        int16_t error=trap==0xa215
+            ? s_files.setHierarchicalDefault((int16_t)read16(pb+22),read32(pb+48),name ? volume : 0)
+            : s_files.setDefault((int16_t)read16(pb+22),name ? volume : 0);
         if(error==MacFiles::unsupported)return false;
         write16(pb+16,error);regs[0]=(uint32_t)(int32_t)error;return true;
     }

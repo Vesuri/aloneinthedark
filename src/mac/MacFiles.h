@@ -29,6 +29,7 @@ public:
     int16_t directoryFor(int16_t ref,uint32_t& directory) const;
     uint32_t wdProcess(int16_t ref) const;
     int16_t setDefault(int16_t ref,const char* volumeName=0);
+    int16_t setHierarchicalDefault(int16_t ref,uint32_t directory,const char* path=0);
     int16_t defaultRef() const { return defaultRef_; }
     uint16_t count() const { return count_; }
     uint32_t application=0,system=0,preferences=0,saves=0,data=0;
@@ -38,5 +39,6 @@ private:
     Entry entries_[maxEntries]; Fork forks_[maxOpen]; WD wd_[maxWD];
     uint16_t count_=0;
     int16_t defaultRef_=0;
+    uint32_t defaultDirectory_=0;
 };
 #endif
