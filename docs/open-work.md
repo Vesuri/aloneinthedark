@@ -44,7 +44,11 @@ required.
 ## M2 Startup to intro
 
 - **M2.1b2c9c2c Remaining File Manager dispatch variants.**
-  - Complete the async census variants.
+  - Complete the async census variants against the 30-call paired Mac fixture
+    (reference contract M2.1b2c9c2c4a is measured in file-manager.md).
+    Include early completion, callback D0/register semantics, the protected
+    application-WD exception, synchronous ioCompletion clearing and safe
+    user-mode nested-service handling.
     Synchronous HGetVolParms, FSDispatch OpenDF and HGetVInfo are complete
     (M2.1b2c9c2c1/c2/c3).
     Keep per-fork state and system-window boundaries (design §4.5).

@@ -896,3 +896,22 @@ production boot and the original 42-entry directory observer remain required;
 rendered-picture verification is still owner-deferred. Original initialization
 still stops at Engine+$3CDC Get1NamedResource, with seven directory services and
 zero runtime OS windows. This does not establish original PAK-read acceptance.
+
+
+### Async reference fixture (M2.1b2c9c2c4a)
+
+Run `tools/mac_file_async.lua` with the standard headless MAME command twice,
+setting `AITD_ASYNC_CLOBBER=0` then `1`. Check each actual runner status using
+`python3 tools/check_file_async.py LOG --status STATUS`. Both modes pass 30 calls
+and 23 early callbacks. The checker requires all eleven original caller byte
+checks, callback-before-return ordering, PB/result identity, register restoration,
+D0/CCR behavior, scratch metadata readback, cleanup and explicit completion.
+A normal emulator exit without the completion marker fails.
+
+The clobber mode intentionally changes the callback scratch registers. Its D0
+must survive the trap, while D1/D2/A0/A1 must not leak to the caller. The normal
+mode checks final errors directly. These paired runs distinguish callback ABI
+from ordinary file-service behavior. The reference files remain local-only;
+only the fixture and checker are tracked. Native async dispatch remains the
+first open item, including synchronous ioCompletion clearing and nested-service
+safety at the user-mode callback boundary.
