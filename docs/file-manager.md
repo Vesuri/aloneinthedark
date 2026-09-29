@@ -629,8 +629,8 @@ Classic GetFInfo uses the current default directory and ignores the hierarchical
 PB directory field. These cases match the 218-call System 7.5.5 fixture.
 
 The native fixture passes the corresponding Line-A cases and exact returned
-names, metadata and lifetime checks. File-write uses 296 runtime windows with
-unchanged stream read/write/flush totals. Production still stops at Get1NamedResource.
+names, metadata and lifetime checks. The current File-write regression uses 345 runtime windows, including the
+later OpenDF fixture. Production still stops at Get1NamedResource.
 
 ## Application namespace boundary (M2.1b2c9c2b)
 
@@ -681,3 +681,26 @@ so the caller proceeds to HGetVInfo at +$4424; that remaining service stays queu
 The maintained 22-call Mac fixture measures lengths 0–32, name/reference/WD
 selection, untouched tails and missing-volume outputs. Host and native fixtures
 check every count 0–32, exact bytes, errors and null zero-length buffers.
+
+
+## OpenDF dispatch forms (M2.1b2c9c2c2)
+
+Selector `$1A` is implemented for synchronous `A060` and `A260`. Both use the
+existing independent data-fork stream, permission, cache and buffered-write
+services through the user-mode bridge. A060 follows classic default/WD lookup
+and ignores ioDirID; A260 uses ioDirID. Original Core+$3F78 uses `701A A060`.
+Both accept ordinary filenames beginning with a period. Bare leading-dot
+Open/HOpen still address the unimplemented driver namespace and stop loudly;
+resource-fork opens and colon-prefixed ordinary paths remain file operations.
+
+Measured Open errors differ from generic directory lookup: an invalid starting
+directory ID, a file used as a directory ID, or a file used as an intermediate
+parent returns -43; a missing intermediate directory returns -120. Missing files
+return -43 and invalid volumes -35. Failed file opens clear ioRefNum, apart from
+-49 writer conflicts which return the existing writer reference. These rules
+also apply to HOpen/HOpenRF, as verified against original Mac calls. Directory
+queries retain their previous separately measured error semantics.
+
+The 69-call Mac fixture and native stage 48 cover permissions, locked files,
+conflicting/shared opens, independent marks, exact data and cleanup. Host tests
+cover open-specific path errors; all native regression gates remain in place.

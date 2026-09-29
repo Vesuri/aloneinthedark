@@ -135,6 +135,11 @@ int main() {
     assert(c.resolve(0,0,"\xff:Game:",id)==c.unsupported);
     assert(c.resolve(22,0,"",id)==c.nsvErr);
     assert(c.resolve(0,file,"",id)==c.dirNFErr);
+    assert(c.resolve(0,file,"",id,true)==c.fnfErr);
+    assert(c.resolve(0,9999,"anything",id,true)==c.fnfErr);
+    assert(c.resolve(0,c.data,":ITD_RESS.PAK:child",id,true)==c.fnfErr);
+    assert(c.resolve(0,c.data,":MISSING:child",id,true)==c.dirNFErr);
+    assert(c.resolve(0,c.data,"MISSING.PAK",id,true)==c.fnfErr);
     assert(c.resolve(-1,0,"",id)==0 && id==2);
     bool created=false;
     auto wd=c.openWD(c.data,0x41495444,&created);assert(created);

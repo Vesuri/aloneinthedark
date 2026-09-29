@@ -4,7 +4,7 @@ extern volatile uint32_t g_systemWindows;
 volatile uint32_t g_fileProbeStage=0,g_fileProbeError=0,g_fileProbeDone=0,g_fileProbeWindows=0;
 volatile uint16_t g_fileProbeCCR=0;
 int32_t aitdProbeWriteBackend();
-bool aitdFileMutationProbe(),aitdFileSharingProbe(),aitdFileCatalogProbe(),aitdFileForkProbe(),aitdFileInstalledProbe(),aitdFileIndexProbe(),aitdFileVolumeProbe();
+bool aitdFileMutationProbe(),aitdFileSharingProbe(),aitdFileCatalogProbe(),aitdFileForkProbe(),aitdFileInstalledProbe(),aitdFileIndexProbe(),aitdFileVolumeProbe(),aitdFileOpenDFProbe();
 int32_t aitdProbeGetWD(void*),aitdProbeCloseWD(void*);
 int32_t aitdProbeFCB(void*),aitdProbeHGetVol(void*),aitdProbeHSetVol(void*);
 int32_t aitdProbeGetVol(void*),aitdProbeSetVol(void*),aitdProbeOpenWD(void*);
@@ -170,6 +170,8 @@ static bool run() {
     if(!aitdFileIndexProbe())return false;
     g_fileProbeStage=47;
     if(!aitdFileVolumeProbe())return false;
+    g_fileProbeStage=48;
+    if(!aitdFileOpenDFProbe())return false;
 #endif
     g_fileProbeWindows=g_systemWindows-start;return true;
 }

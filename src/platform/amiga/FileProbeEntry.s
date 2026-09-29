@@ -76,3 +76,18 @@ aitdProbeVolParms:
     .word 0xa260
     move.w ccr,g_fileProbeCCR
     rts
+
+    .globl aitdProbeOpenDF
+aitdProbeOpenDF:
+    move.l 4(sp),a0
+    moveq #0x1a,d0
+    .word 0xa060
+    move.w ccr,g_fileProbeCCR
+    rts
+    .globl aitdProbeHOpenDF
+aitdProbeHOpenDF:
+    move.l 4(sp),a0
+    moveq #0x1a,d0
+    .word 0xa260
+    move.w ccr,g_fileProbeCCR
+    rts

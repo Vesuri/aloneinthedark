@@ -153,11 +153,11 @@ int16_t MacFiles::directoryFor(int16_t ref,uint32_t& directory) const {
     for(uint16_t i=0;i<maxWD;++i)if(wd_[i].ref==ref) { directory=wd_[i].directory;return noErr; }
     return nsvErr;
 }
-int16_t MacFiles::resolve(int16_t volume,uint32_t directory,const char* path,uint32_t& id) const {
+int16_t MacFiles::resolve(int16_t volume,uint32_t directory,const char* path,uint32_t& id,bool fileOpen) const {
     uint32_t base;
     if(directoryFor(volume,base))return nsvErr;
     if(directory)base=directory;
-    if(!entry(base) || !entry(base)->directory)return dirNFErr;
+    if(!entry(base) || !entry(base)->directory)return fileOpen ? fnfErr : dirNFErr;
     if(!path || !*path) { id=base;return noErr; }
     const char* p=path;
     bool absolute=false;
@@ -185,10 +185,10 @@ int16_t MacFiles::resolve(int16_t volume,uint32_t directory,const char* path,uin
         if(!found) {
             // Partial namespaces cannot establish absence beyond the measured optional Movies path.
             if(base==2 || base==system || (base==application && !applicationComplete && !equal(component,"Alone Movies")))return unsupported;
-            return fnfErr;
+            return fileOpen && *p==':' && p[1] ? dirNFErr : fnfErr;
         }
         base=found->id;
-        if(*p==':') { if(!found->directory)return dirNFErr;++p; }
+        if(*p==':') { if(!found->directory)return fileOpen ? fnfErr : dirNFErr;++p; }
     }
     id=base;return noErr;
 }

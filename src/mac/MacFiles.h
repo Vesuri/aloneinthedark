@@ -20,7 +20,7 @@ public:
     int16_t forkPath(uint32_t id,bool resource,char* path,uint32_t capacity) const;
     const Entry* entry(uint32_t id) const;
     const Entry* child(uint32_t parent,const char* name) const;
-    int16_t resolve(int16_t volume,uint32_t directory,const char* path,uint32_t& id) const;
+    int16_t resolve(int16_t volume,uint32_t directory,const char* path,uint32_t& id,bool fileOpen=false) const;
     int16_t indexedFile(int16_t volume,uint32_t directory,int16_t index,uint32_t& id) const;
     // Validate a creation without touching the catalog or disk. add commits it
     // only after the backend has created the complete native representation.

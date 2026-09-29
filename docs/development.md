@@ -663,8 +663,8 @@ Open/HOpen, Write, SetEOF, GetEOF/GetFCBInfo, Read, FlushVol and Close calls aft
 the read/directory fixture. It requires FILEPROBE=1 and FILEWRITEPROBE=1.
 The case checks exact bytes, marks/EOF, CCR, the 25-pair permission matrix,
 protected-file defaults/errors, shared writes and close order, cached-reader
-coherence and volume-name/reference forms. It requires 296 runtime windows,
-23 DOS writes (65,536 maximum), 17 flushes including shutdown and an empty
+coherence and volume-name/reference forms. It requires 345 runtime windows,
+24 DOS writes (65,536 maximum), 18 flushes including shutdown and an empty
 stream ledger after cleanup. Host readback verifies 17 backend bytes, six
 shared-file bytes, four data bytes plus Finder metadata, and three bytes left dirty
 until shutdown. Diagnostic files are recreated in
@@ -784,7 +784,7 @@ Native stage 46 checks ordering against known existing save files, the grave
 accent's special position, canonical name outputs, null-name identity, errors,
 classic/default selection, WD precedence and reindexing after deletion. Host
 sanitizer tests cover all 67 characters and reverse insertion order. `file-write`
-now requires 296 runtime windows; stream counters are unchanged. The dedicated application directory also supports indexed queries; System/root
+is included in the current 345-window regression. The dedicated application directory also supports indexed queries; System/root
 and the legacy mixed native directory remain explicit unsupported boundaries.
 
 
@@ -818,7 +818,7 @@ files retain their Finder flags on the reference disk, with icon coordinates
 Native stage 44 checks their original metadata, fork sizes, canonical indexed
 names and both -43 results, finishing at step 10. The complete production catalog
 contains 42 entries and still performs zero runtime windows during original
-directory initialization. File-write uses 296 windows; stream totals are unchanged.
+directory initialization. Current File-write totals include the later OpenDF fixture below.
 
 After the production boot build, run `python3 tools/check_file_namespace.py` with
 `amiga/env.sh` sourced. Its three bounded native startup runs require normal exit:
@@ -839,7 +839,34 @@ supplies an actual working-directory reference for the round-trip case.
 No mode selection, original-code patch or host-window access is used.
 
 Native `file-write` stage 47 finishes with `g_fileVolumeProbeStep=35`; the marker
-includes `volparms=exact`. The full fixture still uses 296 system windows, since
-these catalog-only queries open none. Record bytes, untouched buffer tails,
+includes `volparms=exact`. These catalog-only queries add no system windows. Record bytes, untouched buffer tails,
 ioActCount, D0/ioResult and CCR are checked. File-read, window-core, boot and the
 42-entry original-directory observer remain regression gates.
+
+
+### OpenDF dispatch regression (M2.1b2c9c2c2)
+
+Run `tools/mac_file_opendf.lua` headless and check the actual process status with
+`python3 tools/check_file_opendf.py LOG --status STATUS`. It owns only
+`.AITD Port DF Probe`; failed Create stops before any open. The 69-call fixture
+checks Core+$3F78 (`701A A060`), both synchronous dispatch encodings, a leading-dot
+filename, permissions 0–4, writer conflicts, independent shared marks, locks,
+classic/HFS directory selection, errors and deletion/flush before completion.
+
+A060 ignores ioDirID and resolves an explicit volume reference at its root.
+The fixture proves it uses the default directory with reference zero and ignores
+an invalid ioDirID, while A260 validates the directory ID. The immediate catalog
+query and captured name bytes establish the scratch file before either open.
+Error probes additionally distinguish bad starting IDs/file parents (-43) from
+missing intermediate directories (-120), and prove failed opens clear ioRefNum
+except the existing reference returned for a writer conflict. A bare leading-dot
+HOpen addresses drivers; the ordinary-file HOpen error probe uses a leading colon.
+
+Native stage 48 reaches `g_fileOpenDFProbeStep=17`, including matching errors for
+HOpen/HOpenRF, dot-name read/write, both aliases and protected files. Host checks
+verify open-specific path resolution without changing directory-query semantics.
+The current file-write totals are 345 windows, 33 reads / 866,733 bytes, and
+24 writes / 470,069 bytes with 18 flushes including shutdown. All owned scratch
+forks/companions must be absent afterward; the restored stream ledger is empty.
+File-read, window-core, production boot and the 42-entry original directory
+observer remain required. Original game PAK reads remain separate acceptance.

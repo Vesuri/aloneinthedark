@@ -640,6 +640,7 @@ static const TrapName s_trapNames[] = {
     {0xa9e3,"MEMORY MANAGER","PTRTOHAND"},
     {0xa1ad,"OS","GESTALT"},
     {0xa860,"EVENT MANAGER","WAITNEXTEVENT"},
+    {0xa060,"FILE MANAGER","FSDISPATCH"},
     {0xa260,"FILE MANAGER","HFSDISPATCH"},
     {0xa9af,"RESOURCE MANAGER","RESERROR"}, {0xa992,"RESOURCE MANAGER","DETACHRESOURCE"},
     {0xa055,"OS","STRIPADDRESS"}, {0xa0bd,"OS","VCACHEFLUSH"},
@@ -4995,6 +4996,10 @@ static bool isFileDataService(uint16_t trap) {
         || trap==0xa003 || trap==0xa012 || trap==0xa013;
 }
 static bool dispatchFileData(uint16_t trap,uint32_t* regs) {
+    // OpenDF preserves the trap's classic/HFS directory selection.
+    // Its names are ordinary file paths, including a leading period.
+    bool openDF=(trap==0xa060 || trap==0xa260) && (uint16_t)regs[0]==0x1a;
+    if(openDF)trap=(trap&0x200) ? 0xa200 : 0xa000;
     if(!isFileDataService(trap))return false;
     uint8_t* pb=(uint8_t*)regs[8];if(!pb)return false;
     int16_t error=0;
@@ -5014,7 +5019,11 @@ static bool dispatchFileData(uint16_t trap,uint32_t* regs) {
         uint8_t* name=(uint8_t*)read32(pb+18);if(!name)return false;
         char path[256];for(uint16_t i=0;i<name[0];++i)path[i]=name[i+1];path[name[0]]=0;
         uint32_t id=0;
-        error=s_files.resolve((int16_t)read16(pb+22),(trap&0x200) ? read32(pb+48) : 0,path,id);
+        // Open/HOpen with a leading period address Mac drivers; only OpenDF
+        // and resource-fork opens may treat that name as an ordinary file.
+        if(!resource && !openDF && path[0]=='.')return false;
+        write16(pb+24,0); // Measured failed opens clear ioRefNum, except writer conflicts.
+        error=s_files.resolve((int16_t)read16(pb+22),(trap&0x200) ? read32(pb+48) : 0,path,id,true);
         if(!error) {
             const MacFiles::Entry* entry=s_files.entry(id);
             if(entry->directory)error=MacFiles::fnfErr;
@@ -6231,12 +6240,14 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     if (trap == 0xab1d) g_trapSelector = (uint16_t)regs[0];
     if (trap == 0xa823) g_trapSelector=(uint16_t)regs[0];
     if (trap == 0xa1ad) g_trapSelector = (int32_t)regs[0];
-    if (trap == 0xa260) {
+    if (trap == 0xa060 || trap == 0xa260) {
         g_trapSelector=(uint16_t)regs[0];
         if(g_trapSelector==1)routine="OPENWD";
         if(g_trapSelector==2)routine="CLOSEWD";
         if(g_trapSelector==7)routine="GETWDINFO";
         if(g_trapSelector==8)routine="GETFCBINFO";
+        if(g_trapSelector==0x1a)routine="OPENDF";
+        if(g_trapSelector==0x30)routine="HGETVOLPARMS";
     }
     copyString(g_trapManager, manager);
     copyString(g_trapRoutine, routine);

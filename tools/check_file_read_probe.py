@@ -20,7 +20,7 @@ if a.prepare:
         prefs=drive/'prefs'
         if prefs.exists():prefs.rmdir() # Fail rather than remove any pre-existing contents.
         saves=drive/'Saved Games';saves.mkdir(exist_ok=True)
-        for basename in ['catalog-probe.bin','metadata-seed.bin','metadata-durable.bin','fork-probe.bin','fork-seed.bin','fork-durable.bin','iZx','i_x','iAx','i0x','i`x']:
+        for basename in ['.opendf-probe','catalog-probe.bin','metadata-seed.bin','metadata-durable.bin','fork-probe.bin','fork-seed.bin','fork-durable.bin','iZx','i_x','iAx','i0x','i`x']:
             for suffix in ['', '.finfo','.finfo.new','.finfo.old','.rsrc']:(saves/(basename+suffix)).unlink(missing_ok=True)
         (drive/'data'/'Alone In The Dark.data').unlink(missing_ok=True)
         (saves/'fork-seed.bin').write_bytes(bytes.fromhex('12345678'))
@@ -36,7 +36,7 @@ if a.prepare:
 else:
     log=(root/'amiga/.run/gdb-out.log').read_text()
     marker='PASS file-read: Line-A open/read/seek/EOF/position/close bytes=exact CCR=checked windows=10 DOS-reads=6 max=65536 cleanup=1 GetVol=WD/root/null-name FCB=index/exact/errors HVol=directory/state/errors WD=query/close/filter'
-    if a.write:marker='PASS file-write: Line-A/backend bytes=exact windows=296 writes=23 max=65536 flushes=17 EOF=17/3 cleanup=2 sharing=coherent permissions=0-4/locked volume=name/ref catalog=metadata/durable forks=independent installed=original index=HFS volparms=exact'
+    if a.write:marker='PASS file-write: Line-A/backend bytes=exact windows=345 writes=24 max=65536 flushes=18 EOF=17/3 cleanup=2 sharing=coherent permissions=0-4/locked volume=name/ref catalog=metadata/durable forks=independent installed=original index=HFS volparms=exact opendf=dot/aliases'
     if a.status or re.search(r'FAIL|Error in sourced command file|Program received signal',log) or log.count(marker)!=1:
         raise SystemExit('FAIL file-read: missing completion or runner/observer failure')
     if a.write and (drive/'write-probe.bin').read_bytes()!=bytes((i*37+(i>>8))&255 for i in range(17)):
@@ -53,14 +53,14 @@ else:
         for byte in metadata[:28]:checksum=((checksum^byte)*16777619)&0xffffffff
         if file.read_bytes()!=bytes.fromhex('12345678') or len(metadata)!=32 or metadata[:24]!=b'AFI1'+bytes.fromhex('54455354414954440400001200340000abcd0102') or struct.unpack('>I',metadata[28:])[0]!=checksum or struct.unpack('>I',metadata[24:28])[0] in [0,0xabcd0304]:
             raise SystemExit('FAIL file-write: durable metadata/data bytes')
-        for basename in ['catalog-probe.bin','metadata-seed.bin']:
+        for basename in ['.opendf-probe','catalog-probe.bin','metadata-seed.bin']:
             if (saves/basename).exists() or (saves/(basename+'.finfo')).exists():raise SystemExit('FAIL file-write: delete left a fork/metadata companion')
         for basename in ['iZx','i_x','iAx','i0x','i`x']:
             if (saves/basename).exists() or (saves/(basename+'.finfo')).exists():raise SystemExit('FAIL file-write: index scratch cleanup')
         import hashlib
         if hashlib.sha256((drive/'data'/'Alone In The Dark').read_bytes()).hexdigest()!='b5848c063652b7223e3e350905b3a9054247b8536942753f435b1051a6352db2' or (drive/'data'/'Alone In The Dark.data').read_bytes()!=bytes.fromhex('12345678'):
             raise SystemExit('FAIL file-write: application fork separation/hash')
-        for basename in ['fork-probe.bin','fork-seed.bin']:
+        for basename in ['.opendf-probe','fork-probe.bin','fork-seed.bin']:
             for suffix in ['', '.rsrc','.finfo']:
                 if (saves/(basename+suffix)).exists():raise SystemExit('FAIL file-write: dual-fork deletion')
         if (saves/'fork-durable.bin').read_bytes()!=bytes.fromhex('12345678') or (saves/'fork-durable.bin.rsrc').read_bytes()!=bytes.fromhex('abcdef012345'):

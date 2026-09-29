@@ -46,8 +46,8 @@ positions, and FlushVol name/reference forms now pass Mac/native checks.
 Named Create/Delete and Finder-info calls now pass Mac/native fixtures, with
 checksummed metadata companions and durable close. Installed-file metadata now comes from validated original archive fields;
 indexed queries now use measured HFS ordering in complete directories.
-The dedicated application namespace and synchronous volume-parameter query are
-complete; other dispatch and async variants remain. Data and resource forks now use independent streams;
+The dedicated application namespace, synchronous volume-parameter query and
+OpenDF dispatch forms are complete; volume-info and async variants remain. Data and resource forks now use independent streams;
 companion creation/reload/deletion and application resource preservation pass
 Mac/native/host checks.
 Final startup requirements acceptance awaits the file/resource services.
