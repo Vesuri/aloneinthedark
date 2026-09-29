@@ -76,6 +76,7 @@ lowmem-check:
 
 host-tests:
 	@python3 tools/check_resource_map.py
+	@python3 tools/check_resource_source.py
 	@python3 tools/test_installed_metadata.py
 	@python3 tools/check_file_metadata.py
 	@python3 tools/check_file_sharing.py --selftest

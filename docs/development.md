@@ -957,8 +957,39 @@ that exceed the data region or overflow naive arithmetic.
 This is a parser foundation, not completed on-demand loading. Vette's
 `ResourceForks` and `PlatformAmiga` also preload whole forks; their parsing
 conventions are reused, while bounded I/O must come from this port's File Manager.
-The runtime still uses the inherited resident `ResourceForks` path until M2.2b.
+The runtime still supplies a resident fork until M2.2b2.
 Its acceptance must cover direct and indirect resource loads through user-mode
 system windows, all original CODE-byte validation, sample resource checksums,
 startup window counts and all existing native regressions. Writable maps,
 Resource Manager search/handle semantics and overlay support remain M2.2 work.
+
+
+### Callback-backed resource directory (M2.2b1)
+
+`ResourceForks` now owns validated map copies and accepts a source context, source
+length and read callback. Opening reads only the 16-byte header, map and four-byte
+length prefixes; each prefix/body range is checked by `ResourceMap`. It retains
+metadata and file offsets, with no payload pointer for file sources. Map copies
+are capped at 256 KiB and the existing combined 768-resource limit remains;
+unsupported sizes fail rather than allocating from untrusted lengths.
+
+The `read` API fills caller-owned storage in transfers of at most 65,536 bytes.
+Invalid destination capacity performs no reads, zero-length resources need no
+buffer, callback errors propagate, and a short successful transfer returns -39.
+The caller must discard incomplete destination contents on error. A failed open
+releases partial maps and publishes no entries. Source contexts remain caller-owned
+until close. Resource lookup preserves the previous sorted handle indices;
+`ResourceMap` retains native map order for the later enumeration implementation.
+
+`tools/check_resource_source.py`, included in `make host-tests`, uses ASan/UBSan
+and a guarded source that rejects any payload read during open. Its two-resource
+fixture opens with four reads totaling 86 metadata bytes, then reads a 100,003-byte
+resource in two bounded transfers with guard bytes intact. It covers read errors,
+short reads, empty resources, two-fork identities, failure cleanup and the resident
+compatibility adapter. The full host suite and all native regression gates remain
+required because the adapter now uses the same map parser as file sources.
+
+This does not remove startup preloading: PlatformAmiga still passes its resident
+application fork and existing handle fills still use its payload pointers.
+M2.2b2 must remove that adapter from the runtime path, stream handle contents,
+preserve original CODE validation and check actual resource bytes/window counts.

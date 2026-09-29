@@ -1,174 +1,80 @@
 #include "ResourceForks.h"
-
-static uint16_t resourceBe16(const uint8_t* p)
-{
-    return (uint16_t)(((uint16_t)p[0] << 8) | p[1]);
-}
-
-static uint32_t resourceBe24(const uint8_t* p)
-{
-    return ((uint32_t)p[0] << 16) | ((uint32_t)p[1] << 8) | p[2];
-}
-
-static uint32_t resourceBe32(const uint8_t* p)
-{
-    return ((uint32_t)p[0] << 24) | ((uint32_t)p[1] << 16)
-         | ((uint32_t)p[2] << 8) | p[3];
-}
-
-static bool resourceRange(uint32_t offset, uint32_t length, uint32_t size)
-{
-    return offset <= size && length <= size - offset;
-}
-
-void ResourceForks::close()
-{
-    m_count = 0;
-    m_forks = 0;
-    m_open = false;
-}
-
-bool ResourceForks::before(const Item& a, const Item& b)
-{
-    if (a.fork != b.fork) return a.fork < b.fork;
-    if (a.type != b.type) return a.type < b.type;
-    return a.id < b.id;
-}
-
-bool ResourceForks::appendFork(uint16_t fork, const uint8_t* bytes, uint32_t size)
-{
-    if (!bytes || size < 16) return false;
-    const uint32_t dataOffset = resourceBe32(bytes);
-    const uint32_t mapOffset = resourceBe32(bytes + 4);
-    const uint32_t dataLength = resourceBe32(bytes + 8);
-    const uint32_t mapLength = resourceBe32(bytes + 12);
-    if (!resourceRange(dataOffset, dataLength, size)
-        || !resourceRange(mapOffset, mapLength, size) || mapLength < 30)
-        return false;
-
-    const uint8_t* map = bytes + mapOffset;
-    // A resource map begins with a copy of the fork header.  Requiring the
-    // offsets and lengths to agree catches wrong files and truncated copies
-    // before any game code or hardware takeover is attempted.
-    for (uint16_t i = 0; i < 16; ++i)
-        if (map[i] != bytes[i]) return false;
-
-    const uint32_t typeListOffset = resourceBe16(map + 24);
-    const uint32_t nameListOffset = resourceBe16(map + 26);
-    if (!resourceRange(typeListOffset, 2, mapLength)
-        || nameListOffset > mapLength)
-        return false;
-    const uint8_t* typeList = map + typeListOffset;
-    uint32_t typeCount = (uint32_t)resourceBe16(typeList) + 1;
-    if (!typeCount || typeCount > 4096
-        || !resourceRange(typeListOffset + 2, typeCount * 8, mapLength))
-        return false;
-
-    for (uint32_t typeIndex = 0; typeIndex < typeCount; ++typeIndex) {
-        const uint8_t* typeEntry = typeList + 2 + typeIndex * 8;
-        const uint32_t type = resourceBe32(typeEntry);
-        const uint32_t referenceCount = (uint32_t)resourceBe16(typeEntry + 4) + 1;
-        const uint32_t referenceOffset = resourceBe16(typeEntry + 6);
-        if (!referenceCount || referenceCount > kMaximumResources
-            || referenceOffset > mapLength - typeListOffset
-            || !resourceRange(typeListOffset + referenceOffset,
-                              referenceCount * 12, mapLength))
-            return false;
-        const uint8_t* references = typeList + referenceOffset;
-
-        for (uint32_t reference = 0; reference < referenceCount; ++reference) {
-            if (m_count == kMaximumResources) return false;
-            const uint8_t* entry = references + reference * 12;
-            const uint32_t resourceOffset = resourceBe24(entry + 5);
-            if (!resourceRange(resourceOffset, 4, dataLength)) return false;
-            const uint8_t* lengthWord = bytes + dataOffset + resourceOffset;
-            const uint32_t resourceLength = resourceBe32(lengthWord);
-            if (!resourceRange(resourceOffset + 4, resourceLength, dataLength))
-                return false;
-
-            const int16_t nameOffset = (int16_t)resourceBe16(entry + 2);
-            const uint8_t* name = 0;
-            uint8_t nameLength = 0;
-            if (nameOffset != -1) {
-                const uint32_t namePosition = nameListOffset + (uint16_t)nameOffset;
-                if (!resourceRange(namePosition, 1, mapLength)) return false;
-                nameLength = map[namePosition];
-                if (!resourceRange(namePosition + 1, nameLength, mapLength)) return false;
-                name = map + namePosition + 1;
-            }
-
-            Item& item = m_items[m_count++];
-            item.fork = fork;
-            item.id = (int16_t)resourceBe16(entry);
-            item.type = type;
-            item.attrs = entry[4];
-            item.name = name;
-            item.nameLength = nameLength;
-            item.data = lengthWord + 4;
-            item.size = resourceLength;
-        }
+#include "ResourceMap.h"
+static uint32_t be32(const uint8_t* p) { return (uint32_t)p[0]<<24|(uint32_t)p[1]<<16|(uint32_t)p[2]<<8|p[3]; }
+static int32_t exact(const ResourceForks::Source& source,uint32_t at,uint8_t* out,uint32_t length) {
+    if(!source.read || at>source.size || length>source.size-at || (length && !out))return -50;
+    while(length) {
+        uint32_t n=length<ResourceForks::chunkBytes ? length : ResourceForks::chunkBytes,actual=0;
+        int32_t error=source.read(source.context,at,out,n,actual);
+        if(error)return error;
+        if(actual!=n)return -39;
+        at+=n;out+=n;length-=n;
     }
-    return true;
+    return 0;
 }
-
-bool ResourceForks::open(const uint8_t* application, uint32_t applicationSize,
-                         const uint8_t* data, uint32_t dataSize)
-{
-    close();
-    // The second fork is optional; when supplied it must be valid.
-    if (!appendFork(0, application, applicationSize)
-        || (data && !appendFork(1, data, dataSize))) {
-        close();
-        return false;
-    }
-    m_forks = data ? 2 : 1;
-
-    // Native resource maps are normally ordered, but that ordering is not a
-    // Resource Manager contract.  Sort our small pointer-only directory once
-    // so lookup remains logarithmic without rewriting either original fork.
-    for (uint16_t i = 1; i < m_count; ++i) {
-        Item item = m_items[i];
-        uint16_t j = i;
-        while (j && before(item, m_items[j - 1])) {
-            m_items[j] = m_items[j - 1];
-            --j;
-        }
-        m_items[j] = item;
-    }
-    for (uint16_t i = 1; i < m_count; ++i)
-        if (!before(m_items[i - 1], m_items[i])) {
-            close();
-            return false;
-        }
-    m_open = true;
-    return true;
+static int32_t residentRead(void* context,uint32_t at,uint8_t* out,uint32_t size,uint32_t& actual) {
+    const uint8_t* input=(const uint8_t*)context+at;
+    for(uint32_t i=0;i<size;++i)out[i]=input[i];actual=size;return 0;
 }
-
-bool ResourceForks::item(uint32_t index, Item& out) const
-{
-    if (!m_open || index >= m_count) return false;
-    out = m_items[index];
-    return true;
+void ResourceForks::close() {
+    for(uint16_t i=0;i<kForkCount;++i) { delete[] m_maps[i];m_maps[i]=0;m_sources[i]={}; }
+    m_count=m_forks=0;m_open=false;
 }
-
-bool ResourceForks::find(uint16_t fork, uint32_t type, int16_t id, Item& out,
-                         uint32_t* index) const
-{
-    if (!m_open) return false;
-    Item wanted = {};
-    wanted.fork = fork;
-    wanted.type = type;
-    wanted.id = id;
-    uint16_t first = 0, last = m_count;
-    while (first < last) {
-        const uint16_t middle = (uint16_t)(first + ((last - first) >> 1));
-        if (before(m_items[middle], wanted)) first = (uint16_t)(middle + 1);
-        else last = middle;
+bool ResourceForks::before(const Item& a,const Item& b) {
+    if(a.fork!=b.fork)return a.fork<b.fork;
+    if(a.type!=b.type)return a.type<b.type;
+    return a.id<b.id;
+}
+bool ResourceForks::appendFork(uint16_t fork,const Source& source,const uint8_t* resident) {
+    uint8_t header[16];ResourceMap::Layout layout;
+    if(exact(source,0,header,16) || !ResourceMap::layout(header,source.size,layout)
+        || layout.mapLength>maximumMapBytes)return false;
+    m_maps[fork]=new uint8_t[layout.mapLength];if(!m_maps[fork])return false;
+    if(exact(source,layout.mapOffset,m_maps[fork],layout.mapLength))return false;
+    ResourceMap map;
+    if(!map.open(header,source.size,m_maps[fork],layout.mapLength) || map.count()>kMaximumResources-m_count)return false;
+    m_sources[fork]=source;
+    for(uint16_t i=0;i<map.count();++i) {
+        ResourceMap::Entry entry;uint8_t sizeWord[4];uint32_t offset;
+        if(!map.entry(i,entry) || exact(source,entry.lengthOffset,sizeWord,4))return false;
+        uint32_t size=be32(sizeWord);if(!map.payload(i,size,offset))return false;
+        Record& record=m_items[m_count++];
+        record.item={fork,entry.id,entry.type,entry.attrs,entry.name,entry.nameLength,resident ? resident+offset : 0,size};
+        record.offset=offset;
     }
-    if (first >= m_count) return false;
-    const Item& found = m_items[first];
-    if (found.fork != fork || found.type != type || found.id != id) return false;
-    out = found;
-    if (index) *index = first;
-    return true;
+    ++m_forks;return true;
+}
+bool ResourceForks::finish() {
+    // Preserve the existing stable lookup/handle indices during the I/O change.
+    // Resource Manager enumeration will use map order when those calls land.
+    for(uint16_t i=1;i<m_count;++i) {
+        Record value=m_items[i];uint16_t j=i;
+        while(j && before(value.item,m_items[j-1].item)) { m_items[j]=m_items[j-1];--j; }
+        m_items[j]=value;
+    }
+    m_open=true;return true;
+}
+bool ResourceForks::open(const uint8_t* app,uint32_t appSize,const uint8_t* data,uint32_t dataSize) {
+    close();Source a={(void*)app,appSize,residentRead},b={(void*)data,dataSize,residentRead};
+    if(!app || !appendFork(0,a,app) || (data && !appendFork(1,b,data))) { close();return false; }
+    return finish();
+}
+bool ResourceForks::open(const Source& app,const Source* data) {
+    close();if(!appendFork(0,app) || (data && !appendFork(1,*data))) { close();return false; }
+    return finish();
+}
+bool ResourceForks::item(uint32_t index,Item& out) const {
+    if(!m_open || index>=m_count)return false;out=m_items[index].item;return true;
+}
+bool ResourceForks::find(uint16_t fork,uint32_t type,int16_t id,Item& out,uint32_t* index) const {
+    if(!m_open)return false;Item wanted={};wanted.fork=fork;wanted.type=type;wanted.id=id;
+    uint16_t first=0,last=m_count;
+    while(first<last) { uint16_t mid=first+((last-first)>>1);if(before(m_items[mid].item,wanted))first=mid+1;else last=mid; }
+    if(first>=m_count)return false;const Item& found=m_items[first].item;
+    if(found.fork!=fork || found.type!=type || found.id!=id)return false;
+    out=found;if(index)*index=first;return true;
+}
+int32_t ResourceForks::read(uint32_t index,uint8_t* out,uint32_t capacity) const {
+    if(!m_open || index>=m_count || capacity<m_items[index].item.size)return -50;
+    const Record& r=m_items[index];return exact(m_sources[r.item.fork],r.offset,out,r.item.size);
 }
