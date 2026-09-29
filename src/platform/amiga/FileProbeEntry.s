@@ -236,3 +236,20 @@ aitdProbeEmptyResource:
     .word 0xa02b
     move.l d0,g_resourceLookupD0
     rts
+
+    .section .text.aitdResourceLifecycleProbe,"ax"
+    .macro resourceos name,opcode
+    .globl \name
+\name:
+    move.l 4(sp),a0
+    move.l 8(sp),d0
+    .word \opcode
+    move.l d0,g_resourceLookupD0
+    rts
+    .endm
+    resourceos aitdProbeResState,0xa069
+    resourceos aitdProbeResLock,0xa029
+    resourceos aitdProbeResUnlock,0xa02a
+    resourceos aitdProbeResHPurge,0xa049
+    resourceos aitdProbeResSetState,0xa06a
+    resourceos aitdProbeResPurge,0xa04d

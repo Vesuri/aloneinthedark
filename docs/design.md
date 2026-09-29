@@ -381,8 +381,9 @@ Native trap probes, host fragmentation tests and paired heap captures verify it:
   measured Mac argument/result contract and native fixtures (M2.2c2).
 - **Metadata and explicit loading implemented.** GetResInfo, SetResLoad,
   LoadResource and detached metadata pass paired Mac/native cases (M2.2d2).
-  ResError reads the private low-memory result. Remaining handle-state and
-  heap-pressure purge cases are M2.2d3.
+  ResError reads the private low-memory result. Purge/reload, locked/empty
+  release and empty/detached/nil results pass 28 paired calls (M2.2d3). Dirty
+  resource state and disposal remain part of writable fork support.
 - **Remaining Resource Manager work includes** `CountResources`/`Count1Resources`,
   `Get1IndResource` (if reached), and the writable-file calls in 4.5.
 - **Search order.** Open resource files first, then the application, then the

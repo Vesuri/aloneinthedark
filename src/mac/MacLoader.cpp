@@ -4868,6 +4868,9 @@ static bool dispatchMemoryTrap(uint16_t trap,uint32_t* regs)
             if(permanentHandle(handle) && (op==0xa029 || op==0xa02a))break;
             return false;
         }
+        if(!*handle && (op==0xa029 || op==0xa02a || op==0xa049 || op==0xa069 || op==0xa06a)) {
+            error=MacHeap::nilHandleErr;break;
+        }
         {
             uint8_t state=owner->state(handle);
             if(op==0xa069) { regs[0]=state;resultInD0=false;break; }
@@ -5408,13 +5411,16 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         int32_t index=resourceHandleIndex(handle);ResourceForks::Item item;
         if(index>=0 && s_resourceForks.item(index,item)) { loadResource(index,item);return 5; }
         // Reference: an already loaded detached handle is a successful no-op.
-        if(handleZone(handle) && *handle) { resourceResult(0);return 5; }
+        if(!handle) { resourceResult(0);return 5; }
+        if(handleZone(handle)) { resourceResult(*handle ? 0 : -192);return 5; }
     }
     if(trap==0xa992) {
+        if(!read32(userStack)) { resourceResult(-192);regs[0]=0xff40;return 5; }
         MacHeap::Handle handle=(MacHeap::Handle)read32(userStack);
         int32_t index=resourceHandleIndex(handle);MacHeap* zone=handleZone(handle);
         if(index>=0 && zone) {
             s_resourceHandles[index]=0;zone->setState(handle,zone->state(handle)&~0x20);
+            memoryResult(*handle ? 0 : MacHeap::nilHandleErr);
             resourceResult(0);regs[0]=0;return 5;
         }
     }
@@ -5531,7 +5537,8 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     }
     if (trap == 0xa9a3) {                    // ReleaseResource(resource)
         if (!read32(userStack)) { resourceResult(-192);return 5; }
-        if (releaseResource((uint8_t**)read32(userStack))) {
+        MacHeap::Handle handle=(MacHeap::Handle)read32(userStack);
+        if (releaseResource(handle) || handleZone(handle)) {
             if (g_stageCDepth < 78) g_stageCDepth = 78;
             return 5;
         }

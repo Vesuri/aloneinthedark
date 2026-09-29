@@ -663,7 +663,7 @@ Open/HOpen, Write, SetEOF, GetEOF/GetFCBInfo, Read, FlushVol and Close calls aft
 the read/directory fixture. It requires FILEPROBE=1 and FILEWRITEPROBE=1.
 The case checks exact bytes, marks/EOF, CCR, the 25-pair permission matrix,
 protected-file defaults/errors, shared writes and close order, cached-reader
-coherence and volume-name/reference forms. It requires 381 runtime windows,
+coherence and volume-name/reference forms. It requires 386 runtime windows,
 24 DOS writes (65,536 maximum), 18 flushes including shutdown and an empty
 stream ledger after cleanup. Host readback verifies 17 backend bytes, six
 shared-file bytes, four data bytes plus Finder metadata, and three bytes left dirty
@@ -784,7 +784,7 @@ Native stage 46 checks ordering against known existing save files, the grave
 accent's special position, canonical name outputs, null-name identity, errors,
 classic/default selection, WD precedence and reindexing after deletion. Host
 sanitizer tests cover all 67 characters and reverse insertion order. `file-write`
-is included in the current 381-window regression. The dedicated application directory also supports indexed queries; System/root
+is included in the current 386-window regression. The dedicated application directory also supports indexed queries; System/root
 and the legacy mixed native directory remain explicit unsupported boundaries.
 
 
@@ -802,7 +802,7 @@ All four nonempty forks compare byte-for-byte with read-only MacBinary exports
 from the System 7.5.5 reference application folder. The three full file
 (data then resource) SHA-256 values are respectively
 `5c552161db462f80e82346494a304d133ca502c92ab299a77b82ca988fd1893e`,
-`6173b910b6b572a00bfef3ca40b7e738112ef7a1f533c90c4bc549a200696e69`, and
+`6173b910b6b572a00bfef3ca40b7e738612ef7a1f533c90c4bc549a200696e69`, and
 `a90c4bbebe9615a900ddfbd8f5c5d845ec8e304970a558aea0a663a0c8b7c870`.
 The metadata tests cover two-fork records and reject incomplete/mismatched
 pairs. These outputs are integrated into staging and the native application catalog.
@@ -865,7 +865,7 @@ HOpen addresses drivers; the ordinary-file HOpen error probe uses a leading colo
 Native stage 48 reaches `g_fileOpenDFProbeStep=17`, including matching errors for
 HOpen/HOpenRF, dot-name read/write, both aliases and protected files. Host checks
 verify open-specific path resolution without changing directory-query semantics.
-The current file-write totals, including the HGetVInfo/async fixtures below, are 381 windows, 33 reads / 866,733 bytes, and
+The current file-write totals, including the HGetVInfo/async fixtures below, are 386 windows, 33 reads / 866,733 bytes, and
 24 writes / 470,069 bytes with 18 flushes including shutdown. All owned scratch
 forks/companions must be absent afterward; the restored stream ledger is empty.
 File-read, window-core, production boot and the 42-entry original directory
@@ -890,7 +890,7 @@ eight OS windows; invalid selections add none. The System lookup checks the
 returned WD rather than assuming a reference survives the earlier CloseWD test.
 Both globals are retained by the probe link audit.
 
-Acceptance including the async fixture below: file-write passes with 381 windows, 33 reads / 866,733 bytes and
+Acceptance including the async fixture below: file-write passes with 386 windows, 33 reads / 866,733 bytes and
 24 writes / 470,069 bytes / 18 flushes including shutdown. File-read, window-core,
 production boot and the original 42-entry directory observer remain required;
 rendered-picture verification is still owner-deferred. Original initialization
@@ -921,7 +921,7 @@ at every callback entry. `g_fileAsyncStep=67`, `g_fileAsyncCallbacks=51`,
 controls, retained by the probe-symbol link audit. Probe assembly has its own
 section so file-read/production builds do not retain probe-only references.
 
-File-write requires 381 windows and unchanged final read/write totals; its two
+File-write requires 386 windows and unchanged final read/write totals; its two
 restored closes must leave no open streams. The checker also requires absence
 of all `.async-probe` data/resource/metadata companions. Host tests, file-read,
 window-core, production boot and the directory observer pass. The original run
@@ -1173,3 +1173,47 @@ passed with normal exits. A5 globals match all 75,616 bytes. Original startup
 remains at GetFNum Dan1+$0012 with 16 read windows / 96,648 resource bytes,
 23 balanced services and 53 applied/58 validated low-memory sites. No owner
 decision changed; rendered-picture verification remains deferred.
+
+
+### Resource purge/release lifecycle (M2.2d3)
+
+The CPU-only `mac_resource_lifecycle.lua` fixture checks original Engine+$3CDC,
+then exercises 28 calls using original CREL 13 (attributes `$28`, 1,288 bytes).
+`check_resource_lifecycle.py` requires ordered results, stack cleanup, ResErr,
+MemErr, D0, empty/resident transitions and 24-bit Mac master-pointer flags. Its
+reloaded dump exactly matches the original, SHA256
+`bc4576dd01b2ce1faaebe866250d2366ccc5e5435d876182880a3c76c4ed5336`.
+The reference exits zero. Timeout, incomplete captures and corrupt results,
+flags or stack records are rejected by the checker.
+
+Measured behavior and native implementation:
+- CREL's resource/purge flags are `$60`. PurgeMem with an impossible `$FFFFFF`
+  request empties it while returning memFullErr (-108); LoadResource restores
+  its exact body and flags using the same master pointer.
+- HLock gives `$E0`, and the same purge request preserves the locked body.
+  ReleaseResource disposes the resource even while locked. A later lookup
+  creates/loads a resource again; reusing a freed master slot is permitted.
+  Ordinary and already-empty release also succeed and preserve D0.
+- HGetState, HLock, HPurge, HUnlock and HSetState on an empty handle return
+  nilHandleErr (-109) in MemErr and sign-extended D0. The native OS dispatch now
+  applies this contract; internal resource association is maintained separately.
+- DetachResource on an empty resource succeeds (ResErr/D0 zero), leaving the
+  measured MemErr -109. LoadResource and ReleaseResource on that detached empty
+  handle return -192 and preserve D0/MemErr. LoadResource(nil) succeeds without
+  changing D0/MemErr. DetachResource(nil) returns -192 in ResErr and `$FF40` in D0.
+
+File-write stage 53 repeats the 28 calls with per-call read/window counters and
+checks CREL FNV `$8D35D0BE` at every resident state, including after purge and
+release/relookup. The fixture ends at step 29 with five reads / 6,440 bytes.
+Together with the prior probes, file-write requires ten resource reads / 8,056
+bytes, 386 windows and 66 resource calls. File Manager totals remain unchanged.
+Native master pointers remain clean 32-bit addresses; HGetState verifies their
+flags through the existing side metadata. Disk errors and unsupported pointers
+still stop explicitly; writable dirty-resource disposal belongs with writable
+fork support. The earlier checkpoint totals above remain historical records.
+
+Acceptance passed: the full host suite and all five native regression cases,
+plus catalog, original-startup, identity and low-memory observers. Every runner
+exited normally. The startup A5 comparison has zero mismatches / 75,616 bytes;
+production resource counters and the GetFNum boundary are unchanged. Rendered
+video remains owner-deferred. No owner decision is needed for this checkpoint.
