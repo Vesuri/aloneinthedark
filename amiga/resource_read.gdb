@@ -52,7 +52,7 @@ end
 dump binary memory ../tmp/resource-general.bin $general $general+612
 break AitdScreen::showLoudStop
 continue
-if g_stageBState != 3 || g_trapWord != 0xa97c || g_trapSegment != 13 || g_trapOffset != 0x341c || *(unsigned long*)g_trapRoutine!=0x53435245 || *(unsigned long*)(g_trapRoutine+4)!=0x454e2053 || *(unsigned long*)(g_trapRoutine+8)!=0x495a4520 || *(unsigned long*)(g_trapRoutine+12)!=0x53454c45 || *(unsigned long*)(g_trapRoutine+16)!=0x4354494f || *(unsigned short*)(g_trapRoutine+20)!=0x4e00 || g_trapSelector!=1000 || g_resourceRuntimeReads != 26 || g_resourceRuntimeBytes != 123247 || g_systemWindows != $startup_windows || g_resourceSourceMax > 65536 || g_macServiceEntered != $startup_entered || g_macServiceCompleted != $startup_completed || g_macServiceActive != 0
+if g_stageBState != 3 || g_trapWord != 0xaa2a || g_trapSegment != 7 || g_trapOffset != 0x4782 || *(unsigned long*)g_trapRoutine!=0x4745544d || *(unsigned long*)(g_trapRoutine+4)!=0x41494e44 || *(unsigned long*)(g_trapRoutine+8)!=0x45564943 || *(unsigned short*)(g_trapRoutine+12)!=0x4500 || g_trapSelector!=-1 || g_resourceRuntimeReads != 28 || g_resourceRuntimeBytes != 123387 || g_systemWindows != $startup_windows || g_resourceSourceMax > 65536 || g_macServiceEntered != $startup_entered || g_macServiceCompleted != $startup_completed || g_macServiceActive != 0
  printf "DIAGNOSTIC resource boundary: stage=%u trap=%x segment=%u app=%u/%u overlay=%u/%u windows=%u services=%u/%u active=%u code=%x lowmem=%u\n",g_stageBState,g_trapWord,g_trapSegment,g_resourceRuntimeReads,g_resourceRuntimeBytes,g_overlayRuntimeReads,g_overlayRuntimeBytes,g_systemWindows,g_macServiceEntered,g_macServiceCompleted,g_macServiceActive,g_loadedCodeMask,g_lowMemoryAppliedSites
  echo FAIL resource-read: runtime stop, service balance or bounded reads\n
  detach
@@ -88,6 +88,6 @@ if $samples != 3
  detach
  quit 1
 end
-printf "PASS resource-read: maps=215 preparation=201058 runtime=26/123247 windows=%u samples=3 next=SCREEN-SIZE-SELECTION\n",g_systemWindows
+printf "PASS resource-read: maps=215 preparation=201058 runtime=28/123387 windows=%u samples=3 next=GETMAINDEVICE\n",g_systemWindows
 detach
 quit 0

@@ -1,8 +1,9 @@
 # Fixed screen-size selection
 
 D4 requires 320×200 and no displayed size dialog. M2.1c3c2c5a establishes the
-original contract; M2.1c3c2c5b implements the native service policy. Native startup
-still stops explicitly before GetNewDialog(1000), Dan2+$341C.
+original contract; M2.1c3c2c5b1 implements hidden construction. Native startup now stops
+at GetMainDevice, Engine+$4782, before the original positioning arithmetic.
+The fixed selection itself remains M2.1c3c2c5b2.
 
 Original bytes establish the following:
 
@@ -58,3 +59,49 @@ services; unrelated unsupported operations retain named stops. Merely returning
 a fabricated successful dialog pointer or changing PREF is insufficient.
 Fresh/existing native startup, the next named stop and startup regressions
 remain required. Full window/viewport and frame acceptance remains M2.4/M2.7.
+
+## Hidden native constructor
+
+The original GetNewDialog at Dan2+$341C has id 1000, nil storage and behind=-1.
+It returns a DialogPtr in the Pascal result slot, pops ten bytes, preserves
+D3–D7/A2–A6, inserts the dialog at the head of WindowList, and leaves qd.thePort
+unchanged. The DLOG is initially hidden. Native creation matches these results.
+
+Unlike the inherited Vette constructor, it is an old-style GrafPort with an
+80-byte bitmap stride, screen backing, local portRect (0,0,90,285) and bitmap
+bounds translated by (-187,-241). The visible, structure, content and update
+regions are empty; clipping spans (-32767,-32767)–(32767,32767). Portable port
+fields match the Mac; pointer and opaque implementation fields are compared
+by meaning where required rather than numeric addresses.
+
+The source DITL remains unchanged. A private DITL holds two owned button
+handles and a separate 51-byte text handle. Button records preserve their
+rectangles, titles, owner, value range and reverse creation-order linkage.
+All four private handles are real application-zone handles; failed allocation
+releases already-created handles. The source DITL is locked during allocations
+and its state restored, so compaction/purging cannot invalidate it. Dimensions
+are captured before allocation because the source DLOG is also purgeable.
+Disposal releases the private handles; integrated original disposal acceptance
+remains in the next item.
+
+D4 suppresses ShowWindow for this dialog. Definition handles point to a private
+`HIDDEN DEFINITION DRAWING` loud stop; no WDEF/CDEF drawing is claimed. DrawDialog
+for this excluded dialog also stops explicitly. WDEF storage and TextEdit state
+are absent from this non-presented subset. The original path does not read them
+before the next stop. Other constructor forms or malformed resources stop as
+SCREEN SIZE SELECTION.
+
+`tools/mac_hidden_dialog.lua` captures the original constructor, records and
+regions without changing code or arguments. `amiga/hidden_dialog.gdb` observes
+the production native path. Pair them with:
+
+```sh
+python3 tools/check_hidden_dialog.py REFERENCE --status 0 --native NATIVE --native-status 0
+```
+
+The checker guards original CODE/DLOG/DITL bytes and compares the portable
+170-byte port, complete item list, both controls, text and all five regions.
+The bounded item parser has sanitizer tests for every truncation, oversized
+counts/lengths and trailing bytes. The reference service trace also identifies
+GetMainDevice and SANE selectors $200E/$1004/$2000/$0016/$2010 in the original
+positioning path. They remain dependencies, not successful native services.

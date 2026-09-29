@@ -11,12 +11,12 @@ set $catalog_folder=0
 break AitdScreen::showLoudStop
 commands
  silent
- if $catalog_fcb != 1 || $catalog_wd != 4 || $catalog_setvol != 4 || $catalog_getvol != 1 || $catalog_folder != 1 || g_stageBState != 3 || g_trapWord != 0xa97c || g_trapSegment != 13 || g_trapOffset != 0x341c || *(unsigned long*)g_trapRoutine!=0x53435245 || *(unsigned long*)(g_trapRoutine+4)!=0x454e2053 || *(unsigned long*)(g_trapRoutine+8)!=0x495a4520 || *(unsigned long*)(g_trapRoutine+12)!=0x53454c45 || *(unsigned long*)(g_trapRoutine+16)!=0x4354494f || *(unsigned short*)(g_trapRoutine+20)!=0x4e00 || g_trapSelector!=1000 || g_macServiceEntered != $startup_entered || g_macServiceCompleted != $startup_completed || g_systemWindows != $startup_windows || g_resourceRuntimeReads != 26 || g_resourceRuntimeBytes != 123247
+ if $catalog_fcb != 1 || $catalog_wd != 4 || $catalog_setvol != 4 || $catalog_getvol != 1 || $catalog_folder != 1 || g_stageBState != 3 || g_trapWord != 0xaa2a || g_trapSegment != 7 || g_trapOffset != 0x4782 || *(unsigned long*)g_trapRoutine!=0x4745544d || *(unsigned long*)(g_trapRoutine+4)!=0x41494e44 || *(unsigned long*)(g_trapRoutine+8)!=0x45564943 || *(unsigned short*)(g_trapRoutine+12)!=0x4500 || g_trapSelector!=-1 || g_macServiceEntered != $startup_entered || g_macServiceCompleted != $startup_completed || g_systemWindows != $startup_windows || g_resourceRuntimeReads != 28 || g_resourceRuntimeBytes != 123387
   printf "FAIL file-catalog: FCB=%u WD=%u next=%s/%s\n",$catalog_fcb,$catalog_wd,g_trapManager,g_trapRoutine
   detach
   quit 1
  end
- printf "PASS file-catalog: entries=%u data-files=%u data-bytes=%u FCB=1 OpenWD=3 missing-movies=1 SetVol=4 GetVol=1 FindFolder=1 windows=%u next=SCREEN-SIZE-SELECTION\n",g_catalogEntries,g_catalogDataFiles,g_catalogDataBytes,g_systemWindows
+ printf "PASS file-catalog: entries=%u data-files=%u data-bytes=%u FCB=1 OpenWD=3 missing-movies=1 SetVol=4 GetVol=1 FindFolder=1 windows=%u next=GETMAINDEVICE\n",g_catalogEntries,g_catalogDataFiles,g_catalogDataBytes,g_systemWindows
  detach
  quit 0
 end

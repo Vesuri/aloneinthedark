@@ -2,8 +2,8 @@
 
 The logical device now has a real 640×480, eight-bit screen in fast RAM, as
 specified in design.md §4.7. Original device selection passes; native startup
-passes the already-active SetDepth request and GetGWorld. It stops next at
-Dan2+$341C GetNewDialog(1000), before constructing the excluded size dialog. Drawing and AGA
+passes SetDepth, GetGWorld and hidden dialog creation. It stops next at
+Engine+$4782 GetMainDevice, before positioning the hidden dialog. Drawing and AGA
 presentation are not accepted by this prerequisite.
 
 ## Measured original selection
@@ -199,8 +199,7 @@ python3 tools/check_getgworld.py tmp/m2-getgworld-reference.log --status "$run_s
   --native tmp/m2-getgworld-native.log --native-status "$native_status"
 ```
 
-Other QDOffscreen selectors remain named stops. The next original request is
-GetNewDialog(1000); D4 requires fixed 320×200 selection without that UI. An
-explicit `SCREEN SIZE SELECTION` stop prevents the inherited dialog constructor
-from fabricating success or displaying it before the measured D4 seam exists.
+Other QDOffscreen selectors remain named stops. The following GetNewDialog(1000)
+now creates real hidden records; see [screen-choice.md](screen-choice.md).
+GetMainDevice is the next stop before original positioning and selection.
 This is not completed D4, second-font or rendered-graphics acceptance.

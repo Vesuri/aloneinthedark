@@ -19,7 +19,7 @@ def state(folder):
     return True
 
 def script(existing):
-    windows,entered,completed=(34,42,42) if existing else (60,50,50)
+    windows,entered,completed=(36,43,43) if existing else (62,51,51)
     return (f'set $startup_catalog={42+int(existing)}\nset $startup_windows={windows}\nset $startup_entered={entered}\nset $startup_completed={completed}\n'
             f'printf "STARTUP_PREFS existing={int(existing)} windows={windows} services={entered}/{completed}\\n"\n')
 
@@ -43,8 +43,8 @@ class Checks(unittest.TestCase):
             (folder/'Alone Prefs.rsrc').write_bytes(raw[:-1])
             with self.assertRaises(ValueError):state(folder)
     def test_exact_modes(self):
-        self.assertIn('windows=60 services=50/50',script(False))
-        self.assertIn('windows=34 services=42/42',script(True))
+        self.assertIn('windows=62 services=51/51',script(False))
+        self.assertIn('windows=36 services=43/43',script(True))
 
 if __name__=='__main__':
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('--folder',type=Path);p.add_argument('--gdb',type=Path);p.add_argument('--selftest',action='store_true');a=p.parse_args()

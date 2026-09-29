@@ -102,6 +102,8 @@ host-tests:
 	@python3 tools/check_driver_startup.py --selftest
 	@python3 tools/check_sound_driver.py
 	@python3 tools/check_menu_records.py
+	@python3 tools/check_dialog_items.py
+	@python3 tools/check_hidden_dialog.py --selftest
 	@python3 tools/check_menu_reference.py --selftest
 	@python3 tools/check_device_startup.py --selftest
 	@python3 tools/check_setdepth.py --selftest

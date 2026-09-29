@@ -8,6 +8,7 @@
 #include "BitmapFont.h"
 #include "SoundDriver.h"
 #include "MenuRecords.h"
+#include "DialogItems.h"
 #include "MacFiles.h"
 #include "FileReadCache.h"
 #include "FileWriteBuffer.h"
@@ -266,7 +267,13 @@ struct WindowSlot {
     bool dialog;
     uint16_t dialogItemCount;
     bool dialogDrawn;
+    uint8_t visibilityRegion[10];
+    uint8_t* visibilityRegionMaster;
+    uint8_t** ownedDialogHandles[4]; // private DITL, two controls, static text
 };
+// Unimplemented definition execution must stop even if a caller invokes it directly.
+static uint16_t s_hiddenDialogDefinitionCode[2]={0xa0f7,0x4e75};
+static uint8_t* s_hiddenDialogDefinition=(uint8_t*)s_hiddenDialogDefinitionCode;
 static WindowSlot s_windows[8];
 static uint8_t* s_windowList;
 static uint32_t s_colorSeed = 1;
@@ -692,6 +699,7 @@ static const TrapName s_trapNames[] = {
     {0xa090,"TOOLBOX UTILITIES","SYSENVIRONS"},
     {0xa746,"TRAP MANAGER","GETTOOLTRAPADDRESS"},
     {0xa31e,"MEMORY MANAGER","NEWPTRCLEAR"}, {0xaa32,"QUICKDRAW","GETGDEVICE"},
+    {0xaa2a,"QUICKDRAW","GETMAINDEVICE"},
     {0xa9a0,"RESOURCE MANAGER","GETRESOURCE"},
     {0xa9aa,"RESOURCE MANAGER","CHANGEDRESOURCE"},
     {0xa9b0,"RESOURCE MANAGER","WRITERESOURCE"},
@@ -1591,6 +1599,100 @@ static uint8_t* newColorWindow(int16_t id, uint8_t* storage, uint8_t* behind)
     return window;
 }
 
+static uint32_t resourceHandleSize(uint8_t** handle);
+static int16_t memoryResult(int16_t error);
+
+static void releaseDialogHandles(WindowSlot& slot)
+{
+    for(uint16_t i=0;i<4;++i) {
+        if(MacHeap* owner=handleZone(slot.ownedDialogHandles[i]))
+            owner->disposeHandle(slot.ownedDialogHandles[i]);
+        slot.ownedDialogHandles[i]=0;
+    }
+}
+
+static uint8_t* newHiddenSizeDialog()
+{
+    uint8_t** layout=getResource(0x444c4f47UL,1000);
+    uint8_t** list=getResource(0x4449544cUL,1000);
+    if(!layout || !*layout || !list || !*list)return 0;
+    const uint8_t* d=*layout;uint32_t size=resourceHandleSize(list);
+    // Measured plain-dialog form: hidden, goAway, no refCon/title/position code.
+    if(resourceHandleSize(layout)!=24 || read16(d+8)!=1 || read16(d+10)!=0
+       || read16(d+12)!=0x0100 || read32(d+14)!=0 || read16(d+18)!=1000
+       || read32(d+20)!=0)return 0;
+    int32_t height32=(int16_t)read16(d+4)-(int16_t)read16(d);
+    int32_t width32=(int16_t)read16(d+6)-(int16_t)read16(d+2);
+    if(height32<=0 || height32>kScreenHeight || width32<=0 || width32>kScreenWidth)return 0;
+    DialogItems::Item items[3];uint16_t count=0;
+    if(!DialogItems::scan(*list,size,items,3,count) || count!=3
+       || items[0].type!=4 || items[1].type!=4 || items[2].type!=0x88)return 0;
+    WindowSlot* slot=0;
+    for(uint16_t i=0;i<8;++i)if(!s_windows[i].used) { slot=&s_windows[i];break; }
+    if(!slot)return 0;
+    int16_t top=read16(d),left=read16(d+2);
+    int16_t height=read16(d+4)-top,width=read16(d+6)-left;
+    MacHeap* sourceZone=handleZone(list);if(!sourceZone)return 0;
+    uint8_t sourceState=sourceZone->state(list);
+    sourceZone->setState(list,sourceState|0x80); // allocations may compact or purge
+    for(uint16_t i=0;i<4;++i)slot->ownedDialogHandles[i]=0;
+    for(uint16_t i=0;i<4;++i) {
+        uint32_t bytes=i==0 ? size : (i==3 ? items[2].length : 41+items[i-1].length);
+        slot->ownedDialogHandles[i]=s_applicationZone.newHandle(bytes,true);
+        if(!slot->ownedDialogHandles[i]) {
+            releaseDialogHandles(*slot);sourceZone->setState(list,sourceState);
+            memoryResult(MacHeap::memFullErr);return 0;
+        }
+    }
+    uint8_t* dialog=slot->record;
+    for(uint16_t i=0;i<sizeof(slot->record);++i)dialog[i]=0;
+    for(uint16_t i=0;i<108;++i)MenuRecords::copyByte(dialog+i,s_windowManagerPort+i);
+    write16(dialog+6,80);
+    writeRect(dialog+8,-top,-left,kScreenHeight-top,kScreenWidth-left);
+    writeRect(dialog+16,0,0,height,width);
+    initRegion(slot->visibilityRegion,slot->visibilityRegionMaster,0,0,0,0);
+    initRegion(slot->structureRegion,slot->structureRegionMaster,0,0,0,0);
+    initRegion(slot->contentRegion,slot->contentRegionMaster,0,0,0,0);
+    initRegion(slot->clipRegion,slot->clipRegionMaster,-32767,-32767,32767,32767);
+    initRegion(slot->updateRegion,slot->updateRegionMaster,0,0,0,0);
+    write32(dialog+24,(uint32_t)&slot->visibilityRegionMaster);
+    write32(dialog+28,(uint32_t)&slot->clipRegionMaster);
+    write16(dialog+108,2);dialog[112]=1;
+    write32(dialog+114,(uint32_t)&slot->structureRegionMaster);
+    write32(dialog+118,(uint32_t)&slot->contentRegionMaster);
+    write32(dialog+122,(uint32_t)&slot->updateRegionMaster);
+    write32(dialog+126,(uint32_t)&s_hiddenDialogDefinition);
+    // WDEF data and TextEdit state are unused by this non-presented D4 dialog.
+    slot->title[0]=0;slot->titleMaster=slot->title;
+    write32(dialog+134,(uint32_t)&slot->titleMaster);
+    write32(dialog+140,(uint32_t)slot->ownedDialogHandles[2]);
+    write32(dialog+144,(uint32_t)s_windowList);
+    write32(dialog+156,(uint32_t)slot->ownedDialogHandles[0]);
+    write16(dialog+168,1);
+    uint8_t* liveItems=*slot->ownedDialogHandles[0];
+    for(uint32_t i=0;i<size;++i)MenuRecords::copyByte(liveItems+i,*list+i);
+    for(uint16_t i=0;i<3;++i) {
+        const uint8_t* original=*list+items[i].offset;
+        uint8_t* body=*slot->ownedDialogHandles[i+1];
+        write32(liveItems+items[i].offset,(uint32_t)slot->ownedDialogHandles[i+1]);
+        if(i<2) {
+            write32(body,i ? (uint32_t)slot->ownedDialogHandles[1] : 0);
+            write32(body+4,(uint32_t)dialog);
+            for(uint16_t j=0;j<8;++j)MenuRecords::copyByte(body+8+j,original+4+j);
+            body[16]=255;write16(body+22,1);
+            write32(body+24,(uint32_t)&s_hiddenDialogDefinition);
+            for(uint16_t j=0;j<=items[i].length;++j)MenuRecords::copyByte(body+40+j,original+13+j);
+        } else {
+            for(uint16_t j=0;j<items[i].length;++j)MenuRecords::copyByte(body+j,original+14+j);
+        }
+    }
+    slot->window=dialog;slot->dialog=true;slot->resourceID=1000;slot->procID=1;
+    slot->palette=0;slot->paletteUpdates=false;slot->updating=false;
+    slot->dialogItemCount=3;slot->dialogDrawn=false;slot->used=true;
+    sourceZone->setState(list,sourceState);
+    s_windowList=dialog;memoryResult(0);return dialog;
+}
+
 static uint8_t* newDialog(int16_t id, uint8_t* storage, uint8_t* behind)
 {
     uint8_t** resource = getResource(0x444c4f47UL, id); // 'DLOG'
@@ -1777,7 +1879,9 @@ static bool paintBehind(uint8_t* startWindow, uint8_t** clobberedRegion)
 static bool disposeDialog(uint8_t* dialog)
 {
     WindowSlot* slot = windowSlot(dialog);
-    return slot && slot->dialog && disposeWindow(dialog);
+    if(!slot || !slot->dialog)return false;
+    if(slot->resourceID==1000)releaseDialogHandles(*slot);
+    return disposeWindow(dialog);
 }
 
 static int32_t resourceHandleIndex(uint8_t** handle);
@@ -5464,9 +5568,9 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
             unsupportedGraphics=true;goto unsupportedTrap;
         }
     }
-    if(trap==0xa97c && read16(userStack+8)==1000) {
-        // D4: resolve the original size-selection seam before constructing or
-        // displaying the inherited size dialog. Never pretend a choice here.
+    if(trap==0xa97c && read16(userStack+8)==1000
+       && (read32(userStack+4)!=0 || read32(userStack)!=0xffffffffUL)) {
+        // Only the measured constructor form is supported for D4.
         sizeSelection=true;goto unsupportedTrap;
     }
     if (!builtin) {
@@ -6219,7 +6323,8 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     }
     if (trap == 0xa915) {                    // ShowWindow(window)
         uint8_t* window = (uint8_t*)read32(userStack);
-        if (windowSlot(window)) window[110] = 1;
+        if (WindowSlot* slot=windowSlot(window))
+            window[110] = !(slot->dialog && slot->resourceID==1000);
         if (g_stageCDepth < 31) g_stageCDepth = 31;
         return 5;
     }
@@ -6510,14 +6615,17 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         return 5;
     }
     if (trap == 0xa97c) {                    // GetNewDialog(id, storage, behind) -> DialogPtr
-        uint8_t* dialog = newDialog((int16_t)read16(userStack + 8),
+        uint8_t* dialog = read16(userStack+8)==1000 ? newHiddenSizeDialog() : newDialog((int16_t)read16(userStack + 8),
                                     (uint8_t*)read32(userStack + 4),
                                     (uint8_t*)read32(userStack));
+        if(read16(userStack+8)==1000 && !dialog) { sizeSelection=true;goto unsupportedTrap; }
         write32(userStack + 10, (uint32_t)dialog);
         if (g_stageCDepth < 38) g_stageCDepth = 38;
         return 11;
     }
     if (trap == 0xa981) {                    // DrawDialog(dialog)
+        WindowSlot* slot=windowSlot((uint8_t*)read32(userStack));
+        if(slot && slot->dialog && slot->resourceID==1000) { sizeSelection=true;goto unsupportedTrap; }
         drawDialog((uint8_t*)read32(userStack));
         if (g_stageCDepth < 39) g_stageCDepth = 39;
         return 5;
@@ -6591,6 +6699,7 @@ unsupportedTrap:
     if(unsupportedGraphics)routine="8-BIT DRAWING / PALETTE";
     if(trap==0xab1d && (uint16_t)regs[0]==5)routine="GETGWORLD";
     if(trap==0xa0f8) { manager="SOUND DRIVER";routine=driverStop ? driverStop : "SELECTOR";g_trapSelector=read32(userStack+4); }
+    if(trap==0xa0f7) { manager="DIALOG MANAGER";routine="HIDDEN DEFINITION DRAWING"; }
     if(sizeSelection) { routine="SCREEN SIZE SELECTION";g_trapSelector=1000; }
     copyString(g_trapManager, manager);
     copyString(g_trapRoutine, routine);

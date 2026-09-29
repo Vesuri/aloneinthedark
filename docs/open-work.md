@@ -10,8 +10,8 @@ design.md §5.
 - The executable builds and loads the original resource fork.
 - Original CODE 1 expands the A5 world, relocates Core and enters `main`, then
   passes directory initialization, the first Times lookup and both native
-  driver startup calls, menu-record initialization, device selection, SetDepth and GetGWorld, then stops at
-  Dan2+$341C `SCREEN SIZE SELECTION`. The original
+  driver startup calls, menu-record initialization, device selection, SetDepth, GetGWorld and hidden dialog construction, then stops at
+  Engine+$4782 `GETMAINDEVICE`. The original
   mixer is never loaded.
 - The original runs in MAME on the System 7.5.5 reference volume.
 
@@ -45,22 +45,21 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.1c3c2c5b Fixed 320×200 startup selection (D4/M2.4).**
-  - Original GetGWorld now returns the real current window-manager port and
-    main device with the measured record/stack/register contract. The next
-    request is Dan2+$341C GetNewDialog(1000), explicitly stopped as
-    `SCREEN SIZE SELECTION` before constructing or showing the excluded dialog.
-  - M2.1c3c2c5a measures the original path: Core calls the selector
-    unconditionally, so a PREF override cannot suppress the dialog. Item 2
-    selects WIND 128 for both size inputs and changes only PREF byte 7.
-    See [screen-choice.md](screen-choice.md).
-  - Implement the measured ModalDialog item-2 policy and the real logical
-    dialog services it needs, suppressing presentation for DLOG 1000 under D4.
-    Preserve unrelated preferences and original instructions. Do not invent
-    successful unsupported dialog operations.
-  - Retain M2.3/M2.4/M2.7's full drawing, offscreen, window/viewport and palette
-    acceptance. Current-world state changes such as SetGWorld still require
-    measured implementation if the selected seam reaches them.
+- **M2.1c3c2c5b2 Fixed 320×200 startup selection (D4/M2.4).**
+  - The hidden DLOG 1000 constructor now creates the measured old-style port,
+    private DITL, button and text handles without displaying the dialog.
+    Original startup next stops at Engine+$4782 GetMainDevice, before the
+    original SANE positioning calls. See [screen-choice.md](screen-choice.md).
+  - Implement the measured remaining services in order: GetMainDevice, the
+    original SANE positioning operations, positioning/world binding, and the
+    ModalDialog item-2 policy plus item lookup/disposal. Measure each newly
+    reached contract; do not substitute a guessed position or selection return.
+  - Item 2 selects WIND 128 for both size inputs and changes only PREF byte 7.
+    The selector is called unconditionally, so PREF alone cannot suppress it.
+    Preserve unrelated preferences and original instructions; keep DLOG 1000
+    hidden and unsupported drawing/services as named stops.
+  - Retain full drawing, offscreen, window/viewport and palette acceptance in
+    M2.3/M2.4/M2.7. Constructor record acceptance does not prove those features.
 
   *Done when* fresh and existing-preference startup select the original
   320×200/WIND 128 path without showing DLOG 1000, the selection is verified
@@ -72,7 +71,7 @@ required.
     with no original instructions changed. Selectors 21/24 initialize native
     state and quality; other operations/configurations stop explicitly.
   - Both original call returns match the Mac register/stack/state contract.
-    The screen-size-selection stop prevents reaching the second Times call; this
+    The dialog-positioning stop prevents reaching the second Times call; this
     original acceptance requirement is retained, not counted as passed.
   - Keep the MDRV guard and verify through any newly reached startup services.
     The independent Mac contract and installed seam are in

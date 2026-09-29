@@ -2311,3 +2311,28 @@ selection. Both headless captures exit normally with positive markers; the
 checker rejects eight malformed/status/input cases. Full host tests pass.
 Native behavior is unchanged from the GetGWorld checkpoint; its next stop
 remains SCREEN SIZE SELECTION. See [screen-choice.md](screen-choice.md).
+
+## Hidden size-dialog construction
+
+M2.1c3c2c5b1 implements the measured GetNewDialog(1000) dependency while
+keeping D4's dialog hidden. The native constructor uses a real old-style port,
+private DITL, two control handles and one text handle, and leaves qd.thePort
+unchanged. It preserves D3–D7/A2–A6 and pops ten bytes. All portable record
+fields, the full item list, controls, text and five regions match the Mac.
+The source DITL is byte-identical afterward. Unsupported definition drawing,
+presentation and constructor forms remain explicit stops. Owned-handle cleanup
+is implemented; integrated original disposal/selection acceptance remains
+M2.1c3c2c5b2. See [screen-choice.md](screen-choice.md).
+
+The next named stop is Engine+$4782 QUICKDRAW / GETMAINDEVICE, before the
+original SANE positioning calls. No original instructions were changed.
+Clean boot/resource-read, the full startup observer set, paired graphics/menu/
+driver/font checkers, the host suite and both link audits pass. Final-build A5
+globals match all 75,616 bytes. Existing preferences use 36 windows and 43/43
+services; fresh preferences use 62 windows and 51/51 services. Both constructor
+record checks pass, and existing preferences are restored after the fresh run.
+DLOG/DITL 1000 add two reads / 140 bytes: runtime original reads are now
+28 / 123,387 bytes; overlay reads remain 3 / 1,318. Low-memory validation remains
+58 sites / 55 applied, with segment mask $3B8B. These are logical-record checks,
+not viewport/rendered-frame, full screen-selection or second-Times acceptance.
+No owner decision changed.

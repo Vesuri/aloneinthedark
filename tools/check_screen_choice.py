@@ -18,7 +18,7 @@ def original(path):
         body=next(r.body for r in rows if r.kind==b'CODE' and r.rid==seg)
         if hashlib.sha256(body[start:end]).hexdigest()!=digest:raise ValueError('original screen-choice bytes')
 def check(text,status,expected):
-    if status or any(x in text for x in ('FAIL','[LUA ERROR]','unknown command','Error in','timeout')):raise ValueError('failed observer')
+    if status!=0 or any(x in text for x in ('FAIL','[LUA ERROR]','unknown command','Error in','timeout')):raise ValueError('failed observer')
     for marker in ('PASS original screen choice','Exited via the debugger'):
         if text.count(marker)!=1:raise ValueError('missing/duplicate completion')
     def one(pattern):
