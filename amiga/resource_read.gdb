@@ -6,8 +6,18 @@ if g_resourceSourceOpen != 1 || g_resourceRuntimeReads != 0 || g_resourceRuntime
  detach
  quit 1
 end
+if s_resourceForks.m_directory == 0 || s_resourceForks.m_directory->forks_[0].active != 1 || s_resourceForks.m_directory->forks_[0].writable != 0 || s_resourceForks.m_directory->forks_[0].dirty != 0 || s_resourceForks.m_directory->forks_[0].map == 0
+ echo FAIL resource-read: mutable directory ownership/state\n
+ detach
+ quit 1
+end
 set $ri=0
 while $ri<g_resourceCount
+ if s_resourceForks.m_items[$ri].identity == 0 || s_resourceForks.m_items[$ri].identity != s_resourceForks.m_directory->records_[$ri].identity || s_resourceForks.m_items[$ri].item.size != s_resourceForks.m_directory->records_[$ri].entry.size
+  echo FAIL resource-read: directory/cache identity or size mismatch\n
+  detach
+  quit 1
+ end
  if s_resourceForks.m_items[$ri].item.data != 0
   echo FAIL resource-read: retained resource payload pointer\n
   detach

@@ -2,6 +2,7 @@
 #define AITD_RESOURCE_FORKS_H
 // Resource directory and bounded payload access. Source contexts remain owned
 // by the caller; the directory owns only map bytes and resource metadata.
+class ResourceDirectory;
 class ResourceForks {
 public:
     ResourceForks()=default;
@@ -35,10 +36,9 @@ public:
     int32_t read(uint32_t index,uint8_t* destination,uint32_t capacity) const;
 private:
     bool appendFork(uint16_t fork,const Source& source,const uint8_t* resident=0);
-    struct Record { Item item;uint32_t offset; };
+    struct Record { Item item;uint32_t identity; };
     Record m_items[kMaximumResources];
-    Source m_sources[kForkCount]={};
-    uint8_t* m_maps[kForkCount]={};
+    ResourceDirectory* m_directory=0;
     uint16_t m_count=0,m_forks=0;
     bool m_open=false;
     bool finish();

@@ -1381,3 +1381,32 @@ Acceptance: both independent round trips and all host tests passed. A clean
 contain no shared-base postincrement byte-copy instruction. This change supplies
 portable helpers; f3 must connect them to native streams, resource handles and
 the 63-call Mac resource-file fixture before that API scope is accepted.
+
+
+### Native directory-backed original resources (M2.2f3a)
+
+ResourceForks now delegates map ownership and source reads to ResourceDirectory.
+Its existing Item/index interface maps each native resource-handle slot to the
+stable directory identity. The preparation path and all current Toolbox readers
+therefore exercise the new directory on the 68020, while preserving resource
+order, source callbacks and existing cached-handle indices. Resident compatibility
+remains only for host fixtures. Dynamic open/create/write traps remain pending.
+
+The production resource-read observer additionally requires an active read-only,
+clean directory map and matching nonzero identities/sizes for all 212 cached
+metadata entries. Every retained Item payload pointer is still null. Preparation
+remains 228 reads / 201,058 bytes; startup remains 16 resource reads / 96,648
+bytes and 23 balanced user services before GetFNum Dan1+$0012.
+
+Acceptance: full host suite, file-write's 110 resource calls, file-read,
+window-core, boot, resource-read and all four startup observers passed with normal
+exits. All 75,616 A5 globals match. Source opening/error/short-read tests now link
+and exercise the same directory/writer implementation used by the native loader.
+No owner decision changed; rendered-picture verification remains deferred.
+
+The next native write prerequisite is f3b. Existing FileAccess stream flush
+updates files in place; it cannot implement ResourceWriter's isolated staging
+contract. FileMetadataIO's temporary/backup replacement pattern supplies the
+local precedent, but resource payloads need bounded streamed writes, publication
+rollback and handling of the old source stream before directory rebase. Those
+operations must be verified before f3c enables dynamic resource-file writes.
