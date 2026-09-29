@@ -87,16 +87,18 @@ while $sane_seq<10
   continue
  end
 end
+tbreak *($engine+0x48a2)
 continue
-printf "SANE_NEXT state=%u trap=%X selector=%X segment=%u offset=%X routine=%s windows=%u services=%u/%u calls=%u\n",g_stageBState,g_trapWord,g_trapSelector,g_trapSegment,g_trapOffset,g_trapRoutine,g_systemWindows,g_macServiceEntered,g_macServiceCompleted,$sane_seq
-if g_stageBState!=3 || g_trapWord!=0xa91b || g_trapSegment!=7 || g_trapOffset!=0x48a2 || $sane_seq!=10 || $sane_inflight!=0 || g_macServiceActive!=0 || g_trapSelector!=0xffffffff || g_systemWindows!=$startup_windows || g_macServiceEntered!=$startup_entered || g_macServiceCompleted!=$startup_completed || g_resourceRuntimeReads!=28 || g_resourceRuntimeBytes!=123387
- echo FAIL original SANE progression\n
+printf "SANE_POSITION front=%X vertical=%d horizontal=%d\n",*(unsigned char*)$sp,*(short*)($sp+2),*(short*)($sp+4)
+if *(unsigned short*)$pc!=0xa91b || *(unsigned char*)$sp!=0 || *(short*)($sp+2)!=205 || *(short*)($sp+4)!=177
+ echo FAIL original positioning result\n
  detach
  quit 1
 end
-printf "SANE_POSITION front=%X vertical=%d horizontal=%d\n",*(unsigned char*)g_trapUserStack,*(short*)(g_trapUserStack+2),*(short*)(g_trapUserStack+4)
-if *(unsigned char*)g_trapUserStack!=0 || *(short*)(g_trapUserStack+2)!=205 || *(short*)(g_trapUserStack+4)!=177
- echo FAIL original positioning result\n
+continue
+printf "SANE_NEXT state=%u trap=%X selector=%X segment=%u offset=%X routine=%s windows=%u services=%u/%u calls=%u\n",g_stageBState,g_trapWord,g_trapSelector,g_trapSegment,g_trapOffset,g_trapRoutine,g_systemWindows,g_macServiceEntered,g_macServiceCompleted,$sane_seq
+if g_stageBState!=3 || g_trapWord!=0xa991 || g_trapSegment!=13 || g_trapOffset!=0x30fe || $sane_seq!=10 || $sane_inflight!=0 || g_macServiceActive!=0 || g_trapSelector!=0xffffffff || g_systemWindows!=$startup_windows || g_macServiceEntered!=$startup_entered || g_macServiceCompleted!=$startup_completed || g_resourceRuntimeReads!=28 || g_resourceRuntimeBytes!=123387
+ echo FAIL original SANE progression\n
  detach
  quit 1
 end

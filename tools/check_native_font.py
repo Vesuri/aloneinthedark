@@ -9,7 +9,7 @@ from placeholder_font import build
 from check_font_lookup import check_original
 from resource_fork import read_resource_fork
 
-MARKER='PASS font startup prerequisite: first Times=20 overlay=3/1318 next=MOVEWINDOW; second call pending graphics services'
+MARKER='PASS font startup prerequisite: first Times=20 overlay=3/1318 next=MODALDIALOG; second call pending graphics services'
 ROOT=Path(__file__).resolve().parents[1]
 FILES=[ROOT/'tmp/font-native-fond.bin',ROOT/'tmp/font-native-nfnt.bin']
 def check(text,status):

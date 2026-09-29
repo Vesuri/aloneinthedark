@@ -1671,6 +1671,7 @@ static uint8_t* newHiddenSizeDialog()
     write32(dialog+140,(uint32_t)slot->ownedDialogHandles[2]);
     write32(dialog+144,(uint32_t)s_windowList);
     write32(dialog+156,(uint32_t)slot->ownedDialogHandles[0]);
+    write16(dialog+164,0xffff); // no active edit item in the original static/button-only dialog
     write16(dialog+168,1);
     uint8_t* liveItems=*slot->ownedDialogHandles[0];
     for(uint32_t i=0;i<size;++i)MenuRecords::copyByte(liveItems+i,*list+i);
@@ -1748,6 +1749,31 @@ static uint8_t* newDialog(int16_t id, uint8_t* storage, uint8_t* behind)
     s_windowList = dialog;
     (void)behind;
     return dialog;
+}
+
+// D4's non-presented old-style port: global region coordinates move, local
+// content/items do not. Other window/presentation contracts remain separate.
+static bool moveHiddenSizeDialog(WindowSlot& slot,int16_t h,int16_t v,bool front)
+{
+    uint8_t* window=slot.window;
+    int16_t height=(int16_t)read16(window+20)-(int16_t)read16(window+16);
+    int16_t width=(int16_t)read16(window+22)-(int16_t)read16(window+18);
+    if(front || window[110] || read16(window+6)!=80 || h<0 || v<0
+       || width<=0 || height<=0 || int32_t(h)+width>kScreenWidth
+       || int32_t(v)+height>kScreenHeight)return false;
+    int16_t dv=v+(int16_t)read16(window+8),dh=h+(int16_t)read16(window+10);
+    uint8_t* regions[]={slot.structureRegion,slot.contentRegion,slot.updateRegion};
+    for(uint16_t i=0;i<3;++i) {
+        uint8_t* r=regions[i];
+        if(read16(r)!=10 || read16(r+2)!=read16(r+6) || read16(r+4)!=read16(r+8))return false;
+    }
+    writeRect(window+8,-v,-h,kScreenHeight-v,kScreenWidth-h);
+    for(uint16_t i=0;i<3;++i) {
+        uint8_t* r=regions[i];
+        writeRect(r+2,(int16_t)read16(r+2)+dv,(int16_t)read16(r+4)+dh,
+                  (int16_t)read16(r+6)+dv,(int16_t)read16(r+8)+dh);
+    }
+    return true;
 }
 
 static void moveWindow(uint8_t* window, int16_t h, int16_t v, bool front)
@@ -6185,8 +6211,11 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     }
     if (trap == 0xa91b) {                    // MoveWindow(window, h, v, front)
         WindowSlot* slot=windowSlot((uint8_t*)read32(userStack+6));
-        // The inherited colour-window positioning is not valid for this GrafPort.
-        if(slot && slot->dialog && slot->resourceID==1000)goto unsupportedTrap;
+        if(slot && slot->dialog && slot->resourceID==1000) {
+            if(!moveHiddenSizeDialog(*slot,(int16_t)read16(userStack+4),
+                                     (int16_t)read16(userStack+2),userStack[0]!=0))goto unsupportedTrap;
+            return 11;
+        }
         moveWindow((uint8_t*)read32(userStack + 6),
                    (int16_t)read16(userStack + 4), (int16_t)read16(userStack + 2),
                    userStack[0] != 0);

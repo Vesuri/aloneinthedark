@@ -18,7 +18,7 @@ def original(path):
 
 def calls(text,status,native=False):
     if status!=0 or any(s in text for s in ('FAIL','[LUA ERROR]','unknown command','Error in','timeout','Program received signal')):raise ValueError('failed run')
-    markers=('PASS native hidden dialog next=MOVEWINDOW','[Inferior 1 (Remote target) detached]') if native else ('PASS original hidden dialog constructor','Exited via the debugger')
+    markers=('PASS native hidden dialog next=MODALDIALOG','[Inferior 1 (Remote target) detached]') if native else ('PASS original hidden dialog constructor','Exited via the debugger')
     if any(text.count(s)!=1 for s in markers):raise ValueError('missing/duplicate completion')
     pairs=[]
     for label in ('DIALOG_ENTER','DIALOG_RETURN'):
@@ -38,8 +38,8 @@ def compare(ref,ref_status,native,native_status,folder):
     calls(ref,ref_status);_,ret=calls(native,native_status,True)
     port=(folder/'dialog-native-record.bin').read_bytes()
     # Pointers and opaque WDEF/TextEdit storage are runtime-owned, not portable.
-    portable(port,record(ref,'DIALOG_RECORD',170),[(2,6),(24,32),(114,138),(140,148),(156,164)])
-    if len(port)!=170 or port[110] or not be(port,126):raise ValueError('hidden dialog/definition identity')
+    portable(port,record(ref,'DIALOG_RECORD',170),[(2,6),(24,32),(114,138),(140,148),(156,164),(166,168)])
+    if len(port)!=170 or port[110] or port[164:166]!=b'\xff\xff' or not be(port,126):raise ValueError('hidden dialog/definition identity')
     if hashlib.sha256((folder/'dialog-native-source.bin').read_bytes()).hexdigest()!='b6d1e820a3ab8f14e722f4bf3d3ed063c5d28c7d39c9ab822f95df81b26d6158':raise ValueError('source DITL changed')
     items=(folder/'dialog-native-items.bin').read_bytes()
     portable(items,record(ref,'DIALOG_ITEMS',116),[(2,6),(26,30),(50,54)])

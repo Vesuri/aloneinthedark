@@ -2,9 +2,10 @@
 
 D4 requires 320×200 and no displayed size dialog. M2.1c3c2c5a establishes the
 original contract; M2.1c3c2c5b1 implements hidden construction. Native startup now stops
-at MoveWindow, Engine+$48A2, after the original positioning arithmetic.
+at ModalDialog, Dan2+$30FE, after the original positioning arithmetic and
+hidden MoveWindow.
 GetMainDevice and the five integer-only SANE operations pass; fixed selection
-remains M2.1c3c2c5b2c. No Mac dialog presentation is authorized (D5).
+remains M2.1c3c2c5b2c2. No Mac dialog presentation is authorized (D5).
 
 Original bytes establish the following:
 
@@ -66,7 +67,8 @@ remain required. Full window/viewport and frame acceptance remains M2.4/M2.7.
 The original GetNewDialog at Dan2+$341C has id 1000, nil storage and behind=-1.
 It returns a DialogPtr in the Pascal result slot, pops ten bytes, preserves
 D3–D7/A2–A6, inserts the dialog at the head of WindowList, and leaves qd.thePort
-unchanged. The DLOG is initially hidden. Native creation matches these results.
+unchanged. The DLOG is initially hidden. Native creation matches these results, with the corrected inactive edit-item
+sentinel described below.
 
 Unlike the inherited Vette constructor, it is an old-style GrafPort with an
 80-byte bitmap stride, screen backing, local portRect (0,0,90,285) and bitmap
@@ -106,6 +108,38 @@ The bounded item parser has sanitizer tests for every truncation, oversized
 counts/lengths and trailing bytes. The reference service trace also identifies
 GetMainDevice and SANE selectors $200E/$1004/$2000/$0016/$2010 in the original
 positioning path. GetMainDevice and all ten SANE calls now pass their paired
-contracts; see [sane.md](sane.md). The next MoveWindow remains a named stop
-because the inherited color-window implementation is invalid for this old-style
-port. Hidden state does not authorize drawing the chooser or any Mac dialogs.
+contracts; see [sane.md](sane.md). Hidden MoveWindow now passes the contract below. Hidden state does not authorize
+drawing the chooser or any Mac dialogs.
+
+
+## Hidden positioning
+
+Engine+$48A2 calls MoveWindow with h=177, v=205, front=false; the unused low
+byte of the Pascal Boolean stack word differs across runs and is ignored.
+The original pops ten bytes, preserves D3–D7/A2–A6, current port and WindowList.
+Bitmap bounds change from (-187,-241,293,399) to (-205,-177,275,463). The local
+port rectangle remains (0,0,90,285). Structure/content/update regions remain
+empty but their coordinates translate by (18,-64); visibility and clip regions,
+item list, both controls and text remain byte-identical. No pixels are drawn.
+The native implementation matches; unsupported front/visible/nonempty-region
+forms retain the MoveWindow stop. ModalDialog is next at Dan2+$30FE.
+
+`mac_hidden_move.lua` and `hidden_move.gdb` capture the two sides. Check with:
+
+```sh
+python3 tools/check_hidden_move.py REFERENCE --status 0 --native NATIVE --native-status 0
+```
+
+The checker guards original Engine+$4858–+$48AB, portable fields, complete
+before/after records and positive completion; corruptions and timeout fail.
+Use `tmp/m2-hidden-move-corrected-reference.log` for the reference. The corrected
+constructor reference is `tmp/m2-hidden-dialog-corrected-reference.log`.
+
+This work found an error in earlier dialog dumps: bare hexadecimal offsets
+`a0` and `a4` were parsed as registers. Explicit `0x` prefixes correct them.
+The corrected record establishes editField=-1 (no active edit item), now also
+initialized natively. TextEdit handle and unused editOpen/padding remain opaque
+implementation state for this button/static-text-only hidden dialog; TextEdit
+services are not implemented. Within each machine, every record byte except
+bitmap bounds is preserved by MoveWindow. Earlier constructor tail-byte evidence
+is superseded; the remaining emitter audit is explicitly queued.

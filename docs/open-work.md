@@ -11,7 +11,7 @@ design.md §5.
 - Original CODE 1 expands the A5 world, relocates Core and enters `main`, then
   passes directory initialization, the first Times lookup and both native
   driver startup calls, menu-record initialization, device selection, SetDepth, GetGWorld and hidden dialog construction, then stops at
-  Engine+$48A2 `WINDOW MANAGER / MOVEWINDOW`. The original
+  Dan2+$30FE `DIALOG MANAGER / MODALDIALOG`. The original
   mixer is never loaded.
 - The original runs in MAME on the System 7.5.5 reference volume.
 
@@ -45,16 +45,27 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.1c3c2c5b2c Fixed 320×200 startup selection (D4/M2.4).**
+- **M2.1c3c2c5b2r Reference-capture literal audit.**
+  - Hidden-dialog dumps used bare hexadecimal offsets such as `a0`/`a4`, which
+    MAME interpreted as registers. Those two record observers are corrected;
+    constructor and movement acceptance must use the regenerated captures.
+  - Audit the remaining maintained MAME emitters for the same ambiguity. Use
+    explicit numeric prefixes for emitted literals and identify which accepted
+    semantic bytes, rather than unused dump padding, could be affected.
+
+  *Done when* emitted address/value literals are unambiguous, affected reference
+  contracts have fresh positive captures and paired checks, and a maintained
+  regression prevents recurrence. Do not accept historical affected bytes.
+- **M2.1c3c2c5b2c2 Fixed 320×200 startup selection (D4/M2.4).**
   - The hidden DLOG 1000 constructor now creates the measured old-style port,
     private DITL, button and text handles without displaying the dialog.
     GetMainDevice now returns the same measured device without mutation.
     All ten original SANE positioning calls now pass with integer-only arithmetic
-    and the measured logical MBarHeight=20. The next stop is MoveWindow at
-    Engine+$48A2. See [screen-choice.md](screen-choice.md) and [sane.md](sane.md).
-  - Implement the measured remaining services in order: hidden positioning/
-    world binding, and the
-    ModalDialog item-2 policy plus item lookup/disposal. Measure each newly
+    and the measured logical MBarHeight=20. Hidden MoveWindow now preserves local
+    content/items and translates bitmap/global region coordinates. The next stop
+    is ModalDialog at Dan2+$30FE. See [screen-choice.md](screen-choice.md) and [sane.md](sane.md).
+  - Implement the measured remaining services in order: ModalDialog item-2
+    policy, item lookup/disposal and world restoration. Measure each newly
     reached contract; do not substitute a guessed position or selection return.
   - Item 2 selects WIND 128 for both size inputs and changes only PREF byte 7.
     The selector is called unconditionally, so PREF alone cannot suppress it.

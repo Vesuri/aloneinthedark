@@ -2390,3 +2390,32 @@ integrated second-Times, viewport and rendering acceptance retained. Separately,
 the owner clarified D5: replace all Mac dialog presentation, including new-game
 and save/load, with an in-game interface. The updated design and M3.3 acceptance
 record that decision; hidden records do not authorize Mac UI rendering.
+
+
+## Hidden window positioning
+
+M2.1c3c2c5b2c1 implements the original hidden MoveWindow request without drawing.
+Its bitmap origin and three empty global regions match the Mac; local content,
+items, controls, text, current port and window chain remain unchanged. Stack and
+preserved registers pass. The next stop is Dan2+$30FE ModalDialog. Full fixed
+selection remains queued, with no change to D4/D5/D7 or rendered acceptance.
+
+A failed record comparison exposed ambiguous hexadecimal offsets in the Mac
+capture scripts: `a0`/`a4` were read as registers. Corrected constructor/movement
+captures supersede the earlier tail-byte evidence and establish editField=-1,
+now initialized natively. A constructor probe/write watchpoint verifies its
+preservation. Opaque unused TextEdit state is excluded across implementations,
+but every dialog byte except bitmap bounds remains unchanged within each side.
+The broader emitter audit is newly queued ahead of continuing selection.
+
+Final clean boot/resource-read, all fourteen startup observers, the full host
+suite and paired constructor/movement, SANE, main-device, world/depth/device,
+menu, driver and font checks pass. All 75,616 A5 bytes match. Fresh/existing
+preferences pass with 62/36 windows and 51/43 completed services, with existing
+files restored afterward. Resource reads remain 28 / 123,387 original bytes and
+3 / 1,318 overlay bytes; low-memory sites remain 58 validated / 55 applied.
+No-float and probe audits pass (76 symbols). Accepted runs use the final stable
+build and normal exits with positive markers. An earlier observer run overlapped
+a rebuild and timed out; it was discarded, not counted as passing. Evidence and
+reproduction are in [screen-choice.md](screen-choice.md); final native logs use
+`tmp/m2-hidden-move-accepted-` and the fresh run is `tmp/m2-hidden-move-fresh.log`.

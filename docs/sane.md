@@ -63,8 +63,8 @@ nonzero/timeout status fail. Maintained host checks include checker rejections.
 Local captures: `tmp/m2-sane-height-reference.log`,
 `tmp/m2-sane-fixtures-state.log` and `tmp/m2-sane-verified-sane.log`.
 
-The next stop is Engine+$48A2 `WINDOW MANAGER / MOVEWINDOW`. The inherited
-color-window implementation cannot safely position this old-style hidden port,
-so it is explicitly gated. Full fixed selection, world binding, original item
+The subsequent hidden MoveWindow now passes its measured old-style port
+contract; see [screen-choice.md](screen-choice.md). The current stop is
+Dan2+$30FE `DIALOG MANAGER / MODALDIALOG`. Full fixed selection, world binding, original item
 handling/disposal, the second Times call and all rendering acceptance remain
 pending. This change does not draw dialogs or accept visible Mac UI.

@@ -1,4 +1,4 @@
--- Observe original hidden DLOG 1000 creation. No instruction, argument or state patches.
+-- Observe original hidden DLOG 1000 MoveWindow. No instruction, argument or state patches.
 local mac=dofile('tools/mame_mac_input.lua')
 local meta=dofile('tmp/mac-trap-map.lua')
 local cpu=manager.machine.devices[':maincpu'];local mem=cpu.spaces.program
@@ -28,10 +28,19 @@ emu.register_frame_done(function()
  if armed or mem:read_u32(0x28)~=0xdd60 then return end
  assert(mem:read_u32(0xdd60)==0x2f0a2f02 and mem:read_u32(0xdd64)==0x246f000a,'DIALOG / DISPATCHER BYTES')
  dbg:command('temp8=0;temp9=0')
- local entered='temp8=temp8+1;temp0=sp+8;temp6='..base(13)..';temp7=d@('..base(7)..'+3f94)&ffffff;logerror "DIALOG_ENTER sp=%X behind=%X storage=%X id=%X qdPort=%X windows=%X'..regs..'\\n",temp0,d@(sp+8),d@(sp+c),w@(sp+10),d@temp7,d@9d6'..values..';'
- local returned='temp3=d@sp&ffffff;logerror "DIALOG_RETURN sp=%X expected=%X dialog=%X qdPort=%X windows=%X'..regs..'\\n",sp,temp0+a,temp3,d@temp7,d@9d6'..values..';'..dump('DIALOG_RECORD','temp3',43)..dump('DIALOG_ITEMS','d@(d@(temp3+9c)&ffffff)&ffffff',29)..dump('DIALOG_VIS','d@(d@(temp3+18)&ffffff)&ffffff',3)..dump('DIALOG_CLIP','d@(d@(temp3+1c)&ffffff)&ffffff',3)..dump('DIALOG_STRUCT','d@(d@(temp3+72)&ffffff)&ffffff',3)..dump('DIALOG_CONTENT','d@(d@(temp3+76)&ffffff)&ffffff',3)..dump('DIALOG_UPDATE','d@(d@(temp3+7a)&ffffff)&ffffff',3)..dump('DIALOG_CONTROL1','d@(d@((d@(d@(temp3+9c)&ffffff)&ffffff)+2)&ffffff)&ffffff',24)..dump('DIALOG_CONTROL2','d@(d@((d@(d@(temp3+9c)&ffffff)&ffffff)+1a)&ffffff)&ffffff',24)..dump('DIALOG_TEXT3','d@(d@((d@(d@(temp3+9c)&ffffff)&ffffff)+32)&ffffff)&ffffff',13)..'logerror "PASS original hidden dialog constructor\\n";quit'
- entered=entered..'bpset temp6+341e,1,{'..returned..'};g'
- cpu.debug:bpset(0xdd60,appcond..' && w@(d@(sp+2))==a97c && (d@(sp+2)&ffffff)=='..base(13)..'+341c',entered)
+ local function state(prefix)
+  local out=dump(prefix..'_RECORD','temp3',43)..dump(prefix..'_ITEMS','d@(d@(temp3+9c)&ffffff)&ffffff',29)
+  for name,offset in pairs({VIS=0x18,CLIP=0x1c,STRUCT=0x72,CONTENT=0x76,UPDATE=0x7a}) do
+   out=out..dump(prefix..'_'..name,string.format('d@(d@(temp3+%x)&ffffff)&ffffff',offset),3)
+  end
+  out=out..dump(prefix..'_CONTROL1','d@(d@((d@(d@(temp3+9c)&ffffff)&ffffff)+2)&ffffff)&ffffff',13)..dump(prefix..'_CONTROL2','d@(d@((d@(d@(temp3+9c)&ffffff)&ffffff)+1a)&ffffff)&ffffff',13)..dump(prefix..'_TEXT3','d@(d@((d@(d@(temp3+9c)&ffffff)&ffffff)+32)&ffffff)&ffffff',13)
+  return out
+ end
+ local entered='temp8=1;temp0=sp+8;temp6='..base(7)..';temp7=d@(temp6+3f94)&ffffff;temp3=d@(sp+e)&ffffff;logerror "MOVE_ENTER sp=%X args=%04X%04X%04X%08X qdPort=%X windows=%X'..regs..'\\n",temp0,w@(sp+8),w@(sp+a),w@(sp+c),d@(sp+e),d@temp7,d@9d6'..values..';'..state('MOVE_BEFORE')
+ local returned='logerror "MOVE_RETURN sp=%X qdPort=%X windows=%X'..regs..'\\n",sp,d@temp7,d@9d6'..values..';'..state('MOVE_AFTER')..'logerror "PASS original hidden MoveWindow\\n";quit'
+ entered=entered..'bpset temp6+48a4,1,{'..returned..'};g'
+ cpu.debug:bpset(0xdd60,appcond..' && w@(d@(sp+2))==a91b && (d@(sp+2)&ffffff)=='..base(7)..'+48a2',entered)
+ cpu.debug:bpset(0xdd60,appcond..' && w@(d@(sp+2))==a97c && (d@(sp+2)&ffffff)=='..base(13)..'+341c','bpset '..base(13)..'+341e,1,{temp9=d@sp&ffffff;logerror "MOVE_CONSTRUCTOR_EDIT dialog=%X fields=%08X\\n",temp9,d@(temp9+0xa4);wpset temp9+0xa4,4,w,1,{logerror "MOVE_EDIT_WRITE pc=%X fields=%08X\\n",pc,d@(temp9+0xa4);g};g};g')
  armed=true;print('ARM dialog dispatcher bytes=2f0a2f02246f000a')
 end)
 mac.run(function()

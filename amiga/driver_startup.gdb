@@ -117,7 +117,7 @@ if g_soundDriver.initialized!=1 || g_soundDriver.songLimit!=6 || g_soundDriver.n
 end
 printf "PASS native driver call: selector=24 D0=0 D1=1 preserved=13 stack=unchanged rate=11 voices=6/2/2\n"
 continue
-if g_stageBState!=3 || g_trapWord!=0xa91b || g_trapSegment!=7 || g_trapOffset!=0x48a2 || g_soundDriverCalls!=2 || g_macServiceActive!=0 || g_macServiceEntered!=$startup_entered || g_macServiceCompleted!=$startup_completed || g_systemWindows!=$startup_windows || g_overlayRuntimeReads!=3 || g_overlayRuntimeBytes!=1318 || g_resourceRuntimeReads!=28 || g_resourceRuntimeBytes!=123387
+if g_stageBState!=3 || g_trapWord!=0xa991 || g_trapSegment!=13 || g_trapOffset!=0x30fe || g_soundDriverCalls!=2 || g_macServiceActive!=0 || g_macServiceEntered!=$startup_entered || g_macServiceCompleted!=$startup_completed || g_systemWindows!=$startup_windows || g_overlayRuntimeReads!=3 || g_overlayRuntimeBytes!=1318 || g_resourceRuntimeReads!=28 || g_resourceRuntimeBytes!=123387
  echo FAIL driver: next screen-size stop\n
  detach
  quit 1
@@ -159,6 +159,6 @@ while $vi<4
  set $vi=$vi+1
 end
 printf "DRIVER_COUNTS prep=%u/%u app=%u/%u overlay=%u/%u windows=%u services=%u/%u lowmem=%u mask=%x resources=%u\n",g_overlaySourceReads,g_overlaySourceBytes,g_resourceRuntimeReads,g_resourceRuntimeBytes,g_overlayRuntimeReads,g_overlayRuntimeBytes,g_systemWindows,g_macServiceEntered,g_macServiceCompleted,g_lowMemoryAppliedSites,g_loadedCodeMask,g_resourceCount
-printf "PASS native driver startup: Jnth=11 calls=2 first-Times=20 second=pending-graphics next=MOVEWINDOW original-MDRV=absent\n"
+printf "PASS native driver startup: Jnth=11 calls=2 first-Times=20 second=pending-graphics next=MODALDIALOG original-MDRV=absent\n"
 detach
 quit 0

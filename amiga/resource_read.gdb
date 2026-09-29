@@ -52,7 +52,7 @@ end
 dump binary memory ../tmp/resource-general.bin $general $general+612
 break AitdScreen::showLoudStop
 continue
-if g_stageBState != 3 || g_trapWord != 0xa91b || g_trapSegment != 7 || g_trapOffset != 0x48a2 || *(unsigned long*)g_trapRoutine!=0x4d4f5645 || *(unsigned long*)(g_trapRoutine+4)!=0x57494e44 || *(unsigned short*)(g_trapRoutine+8)!=0x4f57 || g_trapRoutine[10]!=0 || g_trapSelector!=0xffffffff || g_resourceRuntimeReads != 28 || g_resourceRuntimeBytes != 123387 || g_systemWindows != $startup_windows || g_resourceSourceMax > 65536 || g_macServiceEntered != $startup_entered || g_macServiceCompleted != $startup_completed || g_macServiceActive != 0
+if g_stageBState != 3 || g_trapWord != 0xa991 || g_trapSegment != 13 || g_trapOffset != 0x30fe || *(unsigned long*)g_trapRoutine!=0x4d4f4441 || *(unsigned long*)(g_trapRoutine+4)!=0x4c444941 || *(unsigned short*)(g_trapRoutine+8)!=0x4c4f || g_trapRoutine[10]!=0x47 || g_trapRoutine[11]!=0 || g_trapSelector!=0xffffffff || g_resourceRuntimeReads != 28 || g_resourceRuntimeBytes != 123387 || g_systemWindows != $startup_windows || g_resourceSourceMax > 65536 || g_macServiceEntered != $startup_entered || g_macServiceCompleted != $startup_completed || g_macServiceActive != 0
  printf "DIAGNOSTIC resource boundary: stage=%u trap=%x segment=%u app=%u/%u overlay=%u/%u windows=%u services=%u/%u active=%u code=%x lowmem=%u\n",g_stageBState,g_trapWord,g_trapSegment,g_resourceRuntimeReads,g_resourceRuntimeBytes,g_overlayRuntimeReads,g_overlayRuntimeBytes,g_systemWindows,g_macServiceEntered,g_macServiceCompleted,g_macServiceActive,g_loadedCodeMask,g_lowMemoryAppliedSites
  echo FAIL resource-read: runtime stop, service balance or bounded reads\n
  detach
@@ -88,6 +88,6 @@ if $samples != 3
  detach
  quit 1
 end
-printf "PASS resource-read: maps=215 preparation=201058 runtime=28/123387 windows=%u samples=3 next=MOVEWINDOW\n",g_systemWindows
+printf "PASS resource-read: maps=215 preparation=201058 runtime=28/123387 windows=%u samples=3 next=MODALDIALOG\n",g_systemWindows
 detach
 quit 0
