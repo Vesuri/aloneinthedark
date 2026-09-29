@@ -183,6 +183,28 @@ aitdPaletteCase12:
 aitdPaletteCase12Returned:
     nop
     move.l a4,sp
+    | Initialize the same eight-bit manager state as original startup.
+    | QDGlobals uses bytes 38..243; ownership slots begin at 256.
+    pea 240(a4)
+    .word 0xa86e
+    .word 0xa8fe
+    .word 0xa912
+    | Leave a newly constructed default palette alive for actual shutdown.
+    clr.l -(sp)
+    move.w #256,-(sp)
+    move.l 256(a4),-(sp)
+    pea 10.w
+    .word 0xaa91
+    move.l (sp)+,260(a4)
+    pea -1.w
+    move.l 260(a4),-(sp)
+    move.w #0x0100,-(sp)
+    .globl aitdPaletteBinding
+aitdPaletteBinding:
+    .word 0xaa95
+    .globl aitdPaletteBindingReturned
+aitdPaletteBindingReturned:
+    nop
     lea 512(sp),sp
     movem.l (sp)+,d2-d7/a2-a6
     .globl aitdPaletteProbeDone

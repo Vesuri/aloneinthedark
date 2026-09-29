@@ -12,8 +12,8 @@ design.md §5.
   passes directory initialization, the first Times lookup and both native
   driver startup calls, menu-record initialization, device selection, SetDepth, GetGWorld, hidden dialog construction/positioning and fixed
   low-resolution selection/cleanup, all 75 font-metrics calls and four Apple Event
-  registrations, colour-table loading/mutations and palette construction, then stops
-  at Engine+$1172 `PALETTE MANAGER / SETPALETTE`. The original
+  registrations, colour-table loading/mutations, palette construction and default
+  binding, then stops at Misc1+$1296 `WINDOW MANAGER / SETWTITLE`. The original
   mixer is never loaded.
 - The original runs in MAME on the System 7.5.5 reference volume.
 
@@ -47,19 +47,6 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.1c3c2c5b2c2b3e2 Native startup palette binding (M2.7 prerequisite).**
-  - The original SetPalette(-1, palette, true) contract is measured and checked;
-    see [palette.md](palette.md). It installs the default binding and changes
-    palette byte 6 to $E0, leaving the private block and device/display unchanged.
-  - Implement the measured form and preserve ownership through shutdown.
-    Unsupported window/update/palette forms remain named stops. Keep original
-    instructions unchanged; do not use Vette's silent -1 fallthrough.
-  - Full activation/video acceptance remains M2.7/M2.7a; binding checks do not
-    establish it.
-
-  *Done when* paired Mac/native checks prove the original SetPalette request,
-  resulting binding and palette/device state, bounded startup reaches the next
-  named stop, original MDRV stays absent, and relevant regressions pass.
 - **M2.1c3c2c5b2c2c Fixed-selection WIND 128 acceptance (D4/M2.4).**
   - Retains the unfinished integrated acceptance of M2.1c3c2c5b2c2. Native
     preference mapping alone is not evidence that WIND 128 was requested.
@@ -72,12 +59,23 @@ required.
   *Done when* fresh and existing-preference startup request WIND 128 through
   the original instructions, both size inputs match the reference, the next
   stop is named, and relevant startup regressions pass.
+- **M2.1c3c2c5b2c2d Window title state prerequisite.**
+  - Native startup after default-palette binding reaches A91A SetWTitle at
+    Misc1+$1296. Measure the original request and window-record effects.
+  - Implement the title as compatibility state without drawing Mac window
+    chrome, a menu bar or dialogs. Preserve original instructions and keep
+    unsupported forms as named stops.
+
+  *Done when* paired Mac/native checks prove the original title request and
+  record effects, startup reaches the next named stop with original MDRV absent,
+  and relevant startup regressions pass. This does not imply window rendering
+  or viewport acceptance.
 - **M2.1c3c2 Native-driver integrated startup acceptance (D8).**
   - M2.1c3c2a supplies the port-owned Jnth 11 stub through the original loader,
     with no original instructions changed. Selectors 21/24 initialize native
     state and quality; other operations/configurations stop explicitly.
   - Both original call returns match the Mac register/stack/state contract.
-    The palette-binding stop prevents reaching the second Times call; this
+    The window-title stop prevents reaching the second Times call; this
     original acceptance requirement is retained, not counted as passed.
   - Keep the MDRV guard and verify through any newly reached startup services.
     The independent Mac contract and installed seam are in

@@ -52,7 +52,7 @@ end
 dump binary memory ../tmp/resource-general.bin $general $general+612
 break AitdScreen::showLoudStop
 continue
-if g_stageBState != 3 || g_trapWord!=0xaa95 || g_trapSegment!=7 || g_trapOffset!=0x1172 || *(unsigned long*)(g_trapRoutine+0)!=0x53455450 || *(unsigned long*)(g_trapRoutine+4)!=0x414c4554 || *(unsigned short*)(g_trapRoutine+8)!=0x5445 || g_trapRoutine[10]!=0x00 || g_trapSelector!=-1 || g_resourceRuntimeReads != 29 || g_resourceRuntimeBytes != 125443 || g_systemWindows != $startup_windows || g_resourceSourceMax > 65536 || g_macServiceEntered != $startup_entered || g_macServiceCompleted != $startup_completed || g_macServiceActive != 0
+if g_stageBState != 3 || g_trapWord!=0xa91a || g_trapSegment!=9 || g_trapOffset!=0x1296 || *(unsigned long*)(g_trapRoutine+0)!=0x53455457 || *(unsigned long*)(g_trapRoutine+4)!=0x5449544c || g_trapRoutine[8]!=0x45 || g_trapRoutine[9]!=0x00 || g_trapSelector!=-1 || g_resourceRuntimeReads != 31 || g_resourceRuntimeBytes != 130660 || g_systemWindows != $startup_windows || g_resourceSourceMax > 65536 || g_macServiceEntered != $startup_entered || g_macServiceCompleted != $startup_completed || g_macServiceActive != 0
  printf "DIAGNOSTIC resource boundary: stage=%u trap=%x segment=%u app=%u/%u overlay=%u/%u windows=%u services=%u/%u active=%u code=%x lowmem=%u\n",g_stageBState,g_trapWord,g_trapSegment,g_resourceRuntimeReads,g_resourceRuntimeBytes,g_overlayRuntimeReads,g_overlayRuntimeBytes,g_systemWindows,g_macServiceEntered,g_macServiceCompleted,g_macServiceActive,g_loadedCodeMask,g_lowMemoryAppliedSites
  echo FAIL resource-read: runtime stop, service balance or bounded reads\n
  detach
@@ -88,6 +88,6 @@ if $samples != 3
  detach
  quit 1
 end
-printf "PASS resource-read: maps=243 preparation=201058 runtime=29/125443 windows=%u samples=3 next=SETPALETTE\n",g_systemWindows
+printf "PASS resource-read: maps=243 preparation=201058 runtime=31/130660 windows=%u samples=3 next=SETWTITLE\n",g_systemWindows
 detach
 quit 0

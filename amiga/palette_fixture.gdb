@@ -236,6 +236,31 @@ if $pc!=aitdPaletteCase12Returned
  quit 1
 end
 printf "PALETTE_FIX_RETURN label=disposed-private-size seq=%X sp=%X result=%X res=%X mem=%X d0=%X d1=%X d2=%X d3=%X d4=%X d5=%X d6=%X d7=%X a0=%X a1=%X a2=%X a3=%X a4=%X a5=%X a6=%X\n",12,$sp,*(unsigned long*)$sp,*(unsigned short*)(g_macLowMemory+140),*(unsigned short*)(g_macLowMemory+100),$d0,$d1,$d2,$d3,$d4,$d5,$d6,$d7,$a0,$a1,$a2,$a3,$a4,$a5,$a6
+tbreak aitdPaletteBinding
+continue
+if *(unsigned short*)(s_windowManagerPixMap+32)!=8 || $pc!=(unsigned long)&aitdPaletteBinding || *(unsigned short*)$pc!=0xaa95 || *(unsigned short*)$sp!=0x0100 || *(unsigned long*)($sp+6)!=0xffffffff || g_defaultPalette!=0
+ echo FAIL palette binding fixture input\n
+ detach
+ quit 1
+end
+set $binding_sp=$sp
+set $bound=*(unsigned long*)($sp+2)
+set $boundbody=*(unsigned long*)$bound
+set $boundprivate=*(unsigned long*)($boundbody+12)
+if *(unsigned short*)($boundbody+6)!=2 || *(unsigned long*)(*(unsigned long*)$boundprivate)!=0
+ echo FAIL palette binding initial state\n
+ detach
+ quit 1
+end
+tbreak aitdPaletteBindingReturned
+continue
+printf "BIND_DEBUG depth=%X sp=%X expected=%X binding=%X expectedBinding=%X word=%X private=%X\n",*(unsigned short*)(s_windowManagerPixMap+32),$sp,$binding_sp+10,g_defaultPalette,$bound,*(unsigned short*)($boundbody+6),*(unsigned long*)(*(unsigned long*)$boundprivate)
+if $pc!=(unsigned long)&aitdPaletteBindingReturned || $sp!=$binding_sp+10 || g_defaultPalette!=$bound || *(unsigned short*)($boundbody+6)!=0xe002 || *(unsigned long*)(*(unsigned long*)$boundprivate)!=0
+ echo FAIL palette binding fixture return\n
+ detach
+ quit 1
+end
+echo PASS native palette CPU binding retained before shutdown\n
 tbreak aitdPaletteProbeDone
 continue
 if $pc!=aitdPaletteProbeDone
@@ -250,11 +275,12 @@ if *(unsigned short *)((unsigned long)_start+0x58)!=0x4eb9 || *(unsigned long *)
 end
 tbreak *((unsigned long)_start+0x5e)
 continue
-if $pc!=(unsigned long)_start+0x5e || $d0!=0 || g_macLineAInstalled!=0 || g_resourceSourceOpen!=0 || g_overlaySourceOpen!=0 || g_applicationZoneBase!=0 || g_systemZoneBase!=0
+if $pc!=(unsigned long)_start+0x5e || $d0!=0 || g_macLineAInstalled!=0 || g_resourceSourceOpen!=0 || g_overlaySourceOpen!=0 || g_applicationZoneBase!=0 || g_systemZoneBase!=0 || g_defaultPalette!=0
  echo FAIL palette fixture shutdown\n
  detach
  quit 1
 end
+echo PASS native palette CPU default binding cleared on shutdown\n
 echo PASS NewPalette ownership fixture calls=C\n
 echo PASS native palette CPU fixture shutdown zones=0 sources=0/0 lineA=0 result=0\n
 detach

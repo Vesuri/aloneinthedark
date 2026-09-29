@@ -2654,3 +2654,35 @@ checks, and the full host suite passes. Native runtime code is unchanged from
 546480a, so its prior regression evidence remains applicable. Native binding and
 paired startup acceptance remain e2 at the queue head; no rendered acceptance or
 owner decision change is claimed.
+
+
+## Native default-palette binding
+
+M2.1c3c2c5b2c2b3e2 implements the original SetPalette(-1, palette, true) request.
+The default binding, exact palette mutation, private allocation and unchanged
+device/screen/palette state match the Mac. Uninitialized calls and unsupported
+forms stop explicitly. A CPU fixture leaves a palette bound through actual
+shutdown, then verifies cleared binding/zones, closed streams, restored Line-A
+and a zero result. Original game instructions are unchanged; see [palette.md](palette.md).
+
+All nineteen startup observers and paired contracts pass on the final binary,
+as do fresh/existing preference variants, clean boot/resource-read, the shutdown
+fixture and a final full host suite. No-float and 78-symbol audits pass. A5 remains
+exact across 75,616 bytes; low-memory sites remain 58 validated / 55 applied.
+Existing/fresh startup completes 67/93 OS windows and 121/129 services. Original
+resource bodies total 31 / 130,660 bytes; overlay bodies remain 31 / 80,800.
+Original preferences are restored and the final production hash is stable.
+
+Shared-host load caused earlier deadlines to expire; those runs were rejected.
+After interruption, live processes were checked before resuming the unfinished
+observers. The shutdown fixture initially lacked QuickDraw initialization;
+instrumentation established depth zero. Normal initialization and explicit
+assembly-label addresses corrected its setup/observer. The new uninitialized-call
+guard received a complete refreshed final native suite. Evidence and reproduction
+are in [palette.md](palette.md); final host evidence is
+`tmp/m2-setpalette-host-final.log` and the full native suite is
+`tmp/m2-setpalette-final-startup-suite.log`.
+
+The next named stop is Misc1+$1296 SETWTITLE. Original WIND 128 request acceptance
+is next in the queue, followed by measured window-title state. Original MDRV is
+absent; no Mac dialog/menu presentation or rendered-intro acceptance is claimed.

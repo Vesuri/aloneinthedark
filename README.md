@@ -21,8 +21,9 @@ All ten original positioning calls also pass using integer-only SANE arithmetic
 calls now match the Mac using installed placeholder definitions. All four Apple Event
 handler registrations retain their measured callback/refCon state. The original colour
 table now loads with measured detachment, seed and mutation behavior. Native palette
-construction copies all 256 entries and owns its measured private allocation. Startup stops
-explicitly at `PALETTE MANAGER / SETPALETTE`; the original mixer
+construction copies all 256 entries and owns its measured private allocation. Default
+palette binding now matches the Mac without changing device or display colours. Startup stops
+explicitly at `WINDOW MANAGER / SETWTITLE`; the original mixer
 is never loaded. The game is not playable yet.
 Other processors and performance work remain deferred.
 
@@ -35,7 +36,8 @@ serve memory and resource handles. System identity and all eleven derived
 capability flags match the Mac reference. The user-mode service bridge passes
 its native ABI probe. OS windows and DOS/resload adapters pass the native/host
 core probes; rendered-picture acceptance is owner-deferred (M1.7b2). The next
-item is palette binding before WIND 128 selection and original PAK read acceptance.
+item is original WIND 128 selection acceptance, followed by window-title state and
+original PAK read acceptance.
 The logical device has real 640×480×8 storage; its four selection calls match
 the Mac. Drawing, palette realization and eight-plane output remain pending.
 Extraction and staging now
@@ -46,7 +48,7 @@ of the second original Times lookup.
 Resource bodies now stream from disk into zone handles; startup retains the
 4,998-byte map instead of the 1,424,934-byte application fork. The `resource-read`
 regression verifies original bytes and bounded runtime resource reads; the
-current stop is in palette binding; original MDRV loading stays forbidden. Named/ID/indexed lookup, resource counts and metadata, purge/reload and release now
+current stop is in window-title setup; original MDRV loading stays forbidden. Named/ID/indexed lookup, resource counts and metadata, purge/reload and release now
 pass paired Mac/native checks. Native resource staging now passes exact publication,
 abort, rollback and stale-file checks. Resource-file open/create/update/close,
 AddResource, multi-fork search, noncurrent close and invalid update pass a

@@ -1,4 +1,4 @@
-# Startup palette construction
+# Startup palette construction and binding
 
 The original NewPalette request is measured by `tools/mac_palette.lua` and
 validated by `tools/check_palette.py`. Native construction implements the measured startup form; activation and
@@ -86,7 +86,7 @@ allocation failures and exhaustion of the 32-record ownership table stop loudly.
 The ownership table is cleared when the zones are released.
 
 `amiga/palette.gdb` observes the original request/return, captures all palette and
-source bytes and reaches Engine+$1172 SETPALETTE, with original MDRV absent.
+source bytes and reaches Misc1+$1296 SETWTITLE, with original MDRV absent.
 `PALETTEPROBE=1` builds the CPU-executed twelve-case fixture; its read-only observer
 is `amiga/palette_fixture.gdb`. Actual shutdown must return zero, close both
 resource streams, remove Line-A and release both zones. No debugger writes or
@@ -105,8 +105,8 @@ make -C amiga
 (cd amiga && EXTRA_ARGS=--warp_mode=1 GDBSCRIPT=palette.gdb ./diag_run.sh 120)
 ```
 
-This is construction/lifecycle acceptance. It does not establish palette binding,
-activation, video colour transfer or rendered-intro acceptance.
+The constructor checks alone do not establish palette binding, activation, video
+colour transfer or rendered-intro acceptance. Binding has separate checks below.
 
 ## Original default-palette binding [M]
 
@@ -150,4 +150,45 @@ The checker rejects missing/duplicate completion, missing/timeout status,
 wrong query opcodes, changed arguments/live bytes and incomplete pixel captures.
 Evidence is `tmp/m2-setpalette-reference-accepted.log` and
 `tmp/m2-setpalette-reference-host.log`; all raw dumps remain local.
-Native SetPalette implementation and paired acceptance are still pending.
+The native implementation now accepts the measured startup binding: a newly
+created 256-entry palette, window -1 and update=true. It records the default
+handle without activating it, writes only palette byte 6, and clears the binding
+when the zones are released. Uninitialized calls stop explicitly. Replacement/repeated bindings, other window/update
+forms and disposal of a bound palette remain named stops pending their contracts.
+
+`amiga/setpalette.gdb` and `tools/check_setpalette.py --native` check the original
+call, exact paired palette contents apart from the private handle address,
+unchanged GDevice/PixMap/CLUT and full logical screen storage, unchanged pending
+palette and the current sixteen published copper colour moves, and original MDRV absence. The next
+named stop is Misc1+$1296 `WINDOW MANAGER / SETWTITLE` (A91A). Existing preferences
+reach it with 67 OS windows and 121 completed services (fresh: 93 and 129); original resource bodies
+are 31 / 130,660 bytes, with overlay bodies unchanged at 31 / 80,800.
+
+The CPU palette fixture additionally constructs and binds a live palette before
+actual runtime shutdown; its observer requires the binding to clear alongside
+zone, resource-stream and Line-A cleanup. All twelve ownership cases and actual
+shutdown pass. The fixture needed InitGraf/InitFonts/InitWindows before binding;
+instrumentation exposed its initial depth-zero setup and the inherited silent
+fallthrough, now rejected explicitly. Its new assembly-label checks use addresses
+because GDB resolved the labels as byte values. Rejected captures remain local.
+
+The final 68020 production build passes no-float and 78-symbol audits. All
+nineteen startup observers and paired contracts, fresh/existing preference
+variants, clean boot/resource-read and the full host suite pass. The final
+executable is unchanged through the complete final startup/preference suite.
+Prior timeouts and an interrupted run were rejected; only normal exits with
+positive markers count. Original preferences are restored. Evidence:
+`tmp/m2-setpalette-final-startup-suite.log`, `tmp/m2-setpalette-host-final.log`,
+`tmp/m2-setpalette-fixture-final.log`, `tmp/m2-setpalette-boot.log`,
+`tmp/m2-setpalette-resource-read.log`, and `tmp/m2-setpalette-final-low.log`.
+
+```sh
+python3 tools/check_setpalette.py tmp/m2-setpalette-final-low.log --native --status 0 \
+  --folder tmp/setpalette-native-accepted
+python3 tools/check_palette.py tmp/m2-setpalette-fixture-final.log --native --fixture \
+  --status 0 --folder tmp/setpalette-fixture-final
+```
+
+This is binding and ownership acceptance. Palette activation, video colour
+transfer, eight-plane output and rendered intro acceptance remain M2.7/M2.7a and
+the other queued graphics work.

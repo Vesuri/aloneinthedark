@@ -71,6 +71,50 @@ def check(text, status, folder, code):
         raise ValueError('GetPalette binding')
 
 
+def check_native(text, status, folder, code):
+    if status != 0 or any(x in text for x in ('FAIL', 'Error in', 'timeout')):
+        raise ValueError('failed native observer')
+    for marker in ('ARM native SetPalette original bytes', 'PASS native SetPalette capture',
+                   'PASS native SetPalette original-MDRV=absent'):
+        if text.count(marker) != 1:
+            raise ValueError('native completion')
+    if bytes.fromhex(one(text, r'SET_BYTES data=([0-9A-F]+)')) != code:
+        raise ValueError('native live original bytes')
+    enter = fields(one(text, r'SET_ENTER (.*)'))
+    returned = fields(one(text, r'SET_RETURN (.*)'))
+    preserved(enter, returned, 10)
+    before = fields(one(text, r'SET_NATIVE_STATE phase=before (.*)'))
+    after = fields(one(text, r'SET_NATIVE_STATE phase=after (.*)'))
+    if before['binding'] != 0 or after != dict(before, binding=before['palette']):
+        raise ValueError('native binding/identity')
+    args = bytes.fromhex(one(text, r'SET_ENTER .*args=([0-9A-F/]+) .*').replace('/', ''))
+    if len(args) != 10 or args[0] != 1 or int.from_bytes(args[2:6], 'big') != before['palette'] or args[6:] != b'\xff'*4:
+        raise ValueError('native request')
+    def load(phase, kind):
+        return (folder / ('setpalette-native-' + phase + '-' + kind + '.bin')).read_bytes()
+    palette = load('before', 'palette')
+    if len(palette) != 4112 or palette[:12] != bytes.fromhex('010000000000000200000000') or int.from_bytes(palette[12:16], 'big') != before['private']:
+        raise ValueError('native palette extent/header')
+    changed = bytearray(palette)
+    changed[6] = 0xe0
+    if load('after', 'palette') != changed:
+        raise ValueError('native palette mutation')
+    for kind, size in (('private', 4), ('gd', 62), ('pm', 50), ('clut', 2056), ('physical', 307200), ('pending', 32), ('copper', 64)):
+        a, b = load('before', kind), load('after', kind)
+        if len(a) != size or a != b:
+            raise ValueError('native changed device/private state: ' + kind)
+    if load('before', 'private') != bytes(4):
+        raise ValueError('native private block')
+    if fields(one(text, r'SET_NATIVE_SIZE (.*)')) != dict(palette=4112, private=4):
+        raise ValueError('native allocation sizes')
+    one(text, r'SET_NEXT state=3 trap=A91A selector=FFFFFFFF segment=9 offset=1296 manager=WINDOW MANAGER routine=SETWTITLE windows=(?:67|93) services=(?:121/121|129/129)')
+    for phase in ('before', 'after'):
+        reference = (folder/('setpalette-reference-'+phase+'-palette.bin')).read_bytes()
+        native = load(phase, 'palette')
+        if len(reference) != 4112 or reference[:12]+reference[16:] != native[:12]+native[16:]:
+            raise ValueError('paired palette bytes')
+
+
 class Checks(unittest.TestCase):
     def test_reject_incomplete(self):
         for status in (None, 124, 0):
@@ -84,23 +128,25 @@ if __name__ == '__main__':
     p.add_argument('--status', type=int)
     p.add_argument('--folder', type=Path, default=Path('tmp'))
     p.add_argument('--selftest', action='store_true')
+    p.add_argument('--native', action='store_true')
     a = p.parse_args()
     if a.selftest:
         raise SystemExit(not unittest.TextTestRunner().run(unittest.defaultTestLoader.loadTestsFromTestCase(Checks)).wasSuccessful())
     try:
         code = original(Path('tmp/runtime-data/Alone In The Dark'))
         text = a.log.read_text()
-        check(text, a.status, a.folder, code)
+        verify = check_native if a.native else check
+        verify(text, a.status, a.folder, code)
         for bad, status in ((text, 124), (text, None), (text+text, 0),
                             (text.replace('data=4878FFFF', 'data=48780000'), 0),
-                            (text.replace('opcode=AA96', 'opcode=AA90'), 0),
+                            (text.replace('SET_NATIVE_SIZE palette=1010', 'SET_NATIVE_SIZE palette=1000') if a.native else text.replace('opcode=AA96', 'opcode=AA90'), 0),
                             (text.replace('args=01', 'args=00'), 0),
-                            (text.replace('bytes=307200', 'bytes=307199'), 0)):
+                            (text.replace('SET_NATIVE_STATE phase=after', 'SET_NATIVE_STATE phase=wrong') if a.native else text.replace('bytes=307200', 'bytes=307199'), 0)):
             try:
-                check(bad, status, a.folder, code)
+                verify(bad, status, a.folder, code)
             except ValueError:
                 continue
             raise ValueError('invalid capture accepted')
-        print('PASS SetPalette: original bytes, request, stack/registers, default binding, private state and unchanged physical display')
+        print('PASS SetPalette: original bytes, request, stack/registers, default binding, private state and unchanged '+('native logical buffers/copper colours' if a.native else 'physical reference display'))
     except (OSError, ValueError, KeyError, AttributeError) as e:
         raise SystemExit('FAIL SetPalette: ' + str(e))

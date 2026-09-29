@@ -32,6 +32,8 @@ def check(text,status,folder,code,clut,fixture=False,native=False):
     for marker in markers:
         if text.count(marker)!=1:raise ValueError('completion')
     if native and fixture:
+        for marker in ('PASS native palette CPU binding retained before shutdown', 'PASS native palette CPU default binding cleared on shutdown'):
+            if text.count(marker)!=1:raise ValueError('bound palette shutdown')
         if one(text,r'PALETTE_FIX_CODE data=([0-9A-F]+)')!='42A73F3C01002F2C01004878000AAA91':raise ValueError('fixture instruction bytes')
     elif bytes.fromhex(one(text,r'PALETTE_BYTES data=([0-9A-F]+)'))!=code:raise ValueError('live original bytes')
     e=fields(one(text,r'PALETTE_ENTER (.*)'));r=fields(one(text,r'PALETTE_RETURN (.*)'));preserved(e,r,10)
@@ -49,7 +51,7 @@ def check(text,status,folder,code,clut,fixture=False,native=False):
     entries=b''.join(source[10+8*i:16+8*i]+bytes.fromhex('000a0000000000000000') for i in range(256))
     if palette[16:]!=entries:raise ValueError('palette RGB/usage/tolerance/private fields')
     if native and not fixture:
-        one(text,r'PALETTE_NEXT state=3 trap=AA95 selector=FFFFFFFF segment=7 offset=1172 manager=PALETTE MANAGER routine=SETPALETTE windows=(?:65|91) services=(?:119/119|127/127)')
+        one(text,r'PALETTE_NEXT state=3 trap=A91A selector=FFFFFFFF segment=9 offset=1296 manager=WINDOW MANAGER routine=SETWTITLE windows=(?:67|93) services=(?:121/121|129/129)')
     if not fixture:
         if 'PALETTE_FIX_' in text or fields(one(text,r'PALETTE_SIZE (.*)'))!={'size':4112,'mem':0}:raise ValueError('allocated size')
         return
