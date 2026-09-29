@@ -1824,3 +1824,38 @@ No owner decision changed; rendered-video acceptance remains owner-deferred.
 
 The final MacLoader object has no shared-base postincrement byte-copy occurrences.
 The queued QuickDraw pattern dump remains necessary before accepting M2.3a.
+
+
+### Pending resource-map write reference (M2.2f4b3c1)
+
+`mac_resource_map_edits.lua` and `check_resource_map_edits.py` establish 44
+ordered calls using an exclusively created scratch file. WriteResource(A)
+succeeds while B has never been published: A reloads as `AAAA`, while B remains
+resident `BBBB` with its changed flag. After removing B, updating and reopening,
+A remains exact and B is absent. The second phase publishes both, removes B,
+changes A to `CCCC` and writes A while removal is pending. A reloads exactly;
+B stays absent before and after update/close/reopen. Both detached B handles
+are explicitly disposed, the scratch file is deleted and the application
+current resource file is restored. Original Engine and Gloss call bytes match.
+
+Empty/reload of never-published B is **not** a valid saved-body contract.
+The observed LoadResource returns -39, clears its changed flag and leaves a
+resident resource handle. Guarded ROM instruction and I/O probes explain why:
+the first read takes four bytes at fork offset $014E as length $6974, then
+ReallocHandle allocates that amount. The body read at $0152 transfers only four
+bytes and returns EOF. An independent scratch-fork dump finds `00006974` there,
+beyond the old empty map; these are unrelated residual bytes, not B's body or
+length. The on-disk header still describes the old empty map after the selected
+write. Do not reproduce this accidental allocation size or failed-read bytes.
+The native unpublished-empty/reload loud stop remains queued under M2.2f4b5.
+`AITD_RESOURCE_MAP_DIAGNOSTICS=1` enables byte-guarded read/allocation logging
+for this call without changing the 44-call sequence.
+
+The checker validates errors, D0/MemErr, stack cleanup, stable live handles,
+defined low attribute bytes, valid bodies, removals, reopen and final cleanup.
+It deliberately excludes failed-read body/size values. Three bounded headless
+captures exit zero and pass; ten corrupt/incomplete/timeout variants are
+rejected. The separate raw scratch-fork diagnostic also completes with cleanup
+and exit zero. The full host suite passes. This reference-only checkpoint
+leaves native runtime and its e81915f regression baseline unchanged; native
+integration is M2.2f4b3c2. No owner decision changes.
