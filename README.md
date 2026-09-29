@@ -34,7 +34,8 @@ matches the reference and publishes through all eight AGA planes; no Mac chrome 
 ShowHide now reveals the background with exact clipping and leaves the game
 viewport unchanged. SetGWorld binds the game drawing port and startup loads
 Dark. TickCount reads the existing 60 Hz integer clock with the measured Mac
-calling convention; startup then stops explicitly at `SIZEWINDOW` (Misc1+$0F8C). The original mixer
+calling convention. The following size/origin requests preserve the already-correct
+320×200 window; startup then stops explicitly at `SETPT` (Dark+$4F88). The original mixer
 is never loaded. The game is not playable yet.
 Other processors and performance work remain deferred.
 
@@ -47,7 +48,7 @@ serve memory and resource handles. System identity and all eleven derived
 capability flags match the Mac reference. The user-mode service bridge passes
 its native ABI probe. OS windows and DOS/resload adapters pass the native/host
 core probes; rendered-picture acceptance is owner-deferred (M1.7b2). The next
-item is the startup window resize (SizeWindow), followed by the retained second-Times and
+item is the drawing-setup point setter (SetPt), followed by the retained second-Times and
 original PAK read acceptance. Fresh and existing preferences now request WIND 128
 through the original instructions, with only the size byte changed.
 The logical device has real 640×480×8 storage; its four selection calls match
@@ -60,7 +61,7 @@ of the second original Times lookup.
 Resource bodies now stream from disk into zone handles; startup retains the
 4,998-byte map instead of the 1,424,934-byte application fork. The `resource-read`
 regression verifies original bytes and bounded runtime resource reads; the
-current stop is the window resize (SizeWindow); original MDRV loading stays forbidden. Named/ID/indexed lookup, resource counts and metadata, purge/reload and release now
+current stop is the point setter (SetPt); original MDRV loading stays forbidden. Named/ID/indexed lookup, resource counts and metadata, purge/reload and release now
 pass paired Mac/native checks. Native resource staging now passes exact publication,
 abort, rollback and stale-file checks. Resource-file open/create/update/close,
 AddResource, multi-fork search, noncurrent close and invalid update pass a

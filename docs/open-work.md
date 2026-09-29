@@ -14,8 +14,8 @@ design.md §5.
   low-resolution selection/cleanup, all 75 font-metrics calls and four Apple Event
   registrations, colour-table loading/mutations, palette construction and default
   binding, hidden window-title state and the verified WIND 128 request. Startup realizes the palette and clears the game client area, then stops at
-  `SIZEWINDOW` at Misc1+$0F8C after palette binding/activation, first-frame AGA
-  publication, background ShowHide, game-port binding and TickCount. The original
+  `SETPT` at Dark+$4F88 after palette binding/activation, first-frame AGA
+  publication, background ShowHide, game-port binding, TickCount and unchanged window geometry. The original
   mixer is never loaded.
 - The original runs in MAME on the System 7.5.5 reference volume.
 
@@ -49,22 +49,21 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.3d Startup SizeWindow prerequisite.**
-  - After TickCount and cursor setup, original Misc1+$0F8C calls SizeWindow
-    ($A91D). Measure its width/height/update arguments and the resulting port,
-    region and client-pixel state.
-  - Implement the reached resize using the existing screen-backed window model,
-    without drawing Mac chrome. Unsupported arrangements remain named stops.
+- **M2.3e Drawing setup SetPt prerequisite.**
+  - Original Dark+$4F88 calls SetPt ($A880). Measure the point output and
+    stack/register contract, then implement the integer point setter.
+  - Preserve original instructions and report the next unsupported drawing
+    service explicitly; this does not claim broader QuickDraw acceptance.
 
-  *Done when* original/native arguments and state effects match, startup reaches
-  the next named stop with original MDRV absent, and relevant startup/display
-  regressions pass.
+  *Done when* original-byte-guarded native execution matches the original point
+  result/ABI, advances to the next named stop with original MDRV absent, and
+  relevant startup/display regressions pass.
 - **M2.1c3c2 Native-driver integrated startup acceptance (D8).**
   - M2.1c3c2a supplies the port-owned Jnth 11 stub through the original loader,
     with no original instructions changed. Selectors 21/24 initialize native
     state and quality; other operations/configurations stop explicitly.
   - Both original call returns match the Mac register/stack/state contract.
-    The window-resize stop prevents reaching the second Times call; this
+    The point-setup stop prevents reaching the second Times call; this
     original acceptance requirement is retained, not counted as passed.
   - Keep the MDRV guard and verify through any newly reached startup services.
     The independent Mac contract and installed seam are in

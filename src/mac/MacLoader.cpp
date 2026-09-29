@@ -750,7 +750,7 @@ static const TrapName s_trapNames[] = {
     {0xa43c,"TEXT UTILITIES","CMPSTRING"}, {0xa63c,"TEXT UTILITIES","CMPSTRING"},
     {0xa033,"VERTICAL RETRACE","VINSTALL"}, {0xa034,"VERTICAL RETRACE","VREMOVE"},
     {0xa998,"RESOURCE MANAGER","USERESFILE"}, {0xa994,"RESOURCE MANAGER","CURRESFILE"},
-    {0xaa18,"COLOR QUICKDRAW","GETCTABLE"},
+    {0xaa18,"COLOR QUICKDRAW","GETCTABLE"}, {0xa880,"QUICKDRAW","SETPT"},
     {0xaa46,"WINDOW MANAGER","GETNEWCWINDOW"}, {0xa91b,"WINDOW MANAGER","MOVEWINDOW"},
     {0xa915,"WINDOW MANAGER","SHOWWINDOW"}, {0xa916,"WINDOW MANAGER","HIDEWINDOW"}, {0xa908,"WINDOW MANAGER","SHOWHIDE"},
     {0xa91d,"WINDOW MANAGER","SIZEWINDOW"}, {0xa924,"WINDOW MANAGER","FRONTWINDOW"}, {0xa925,"WINDOW MANAGER","DRAGWINDOW"},
@@ -6547,6 +6547,19 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
            || !showBackgroundWindow(*slot))goto unsupportedTrap;
         return 7;
     }
+    if(trap==0xa91d) {                       // SizeWindow(window, width, height, update)
+        WindowSlot* slot=windowSlot((uint8_t*)read32(userStack+6));
+        WindowGeometry::Rect bounds;
+        // The reached request reasserts the visible client's existing size.
+        // Mac captures preserve the entire port, regions, pixels and palette.
+        // Resizing or drawing a grow box is a separate, unsupported operation.
+        if(read16(s_windowManagerPixMap+32)!=8 || !slot || slot->procID!=4
+           || slot->window!=s_windowList || !slot->window[110] || userStack[0]
+           || !colorWindowFrame(*slot,bounds)
+           || (int16_t)read16(userStack+4)!=bounds.right-bounds.left
+           || (int16_t)read16(userStack+2)!=bounds.bottom-bounds.top)goto unsupportedTrap;
+        return 11;
+    }
     if (trap == 0xa91b) {                    // MoveWindow(window, h, v, front)
         WindowSlot* slot=windowSlot((uint8_t*)read32(userStack+6));
         if(slot && slot->dialog && slot->resourceID==1000) {
@@ -6555,6 +6568,15 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
             return 11;
         }
         if(read16(s_windowManagerPixMap+32)==8) {
+            if(slot && slot->window[110]) {
+                WindowGeometry::Rect bounds;
+                // The subsequent visible-front request keeps its current origin.
+                if(slot->procID!=4 || slot->window!=s_windowList || userStack[0]
+                   || !colorWindowFrame(*slot,bounds)
+                   || (int16_t)read16(userStack+4)!=bounds.left
+                   || (int16_t)read16(userStack+2)!=bounds.top)goto unsupportedTrap;
+                return 11;
+            }
             if(!slot || !moveHiddenColorWindow(*slot,(int16_t)read16(userStack+4),
                 (int16_t)read16(userStack+2),userStack[0]!=0))goto unsupportedTrap;
             return 11;

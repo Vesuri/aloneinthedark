@@ -94,3 +94,28 @@ ShowHide validation: `tmp/m2-showhide-reference.log` and
 `tmp/m2-showhide-regressions.log` records original startup, client/palette and
 AGA publication checks; boot and resource-read also pass. Host tests pass,
 A5 has zero differences across 75,616 bytes, and both link audits are clean.
+
+
+## Reasserting the visible game geometry
+
+The original SizeWindow at Misc1+$0F8C requests the existing 320×200 size
+with update=false. The subsequent visible MoveWindow at Engine+$48A2 requests
+the existing (160,150) origin with front=false. Both Mac calls preserve the
+complete window record, own PixMap, five regions, main device/PixMap, palette,
+CLUT and all 307,200 screen pixels. The native services accept those unchanged
+geometry forms for the visible front colour window; actual resize/movement,
+other arrangements and update/front requests retain explicit stops. No Mac
+chrome is drawn. Both calls pop ten argument bytes and preserve D3–D7/A2–A6;
+the remaining registers are scratch under the measured Toolbox contract.
+
+Original byte guards (CODE header included in offsets):
+- Misc1+$0F78–$0F8D: SHA-256
+  `764769fd145c2b1be228275e6c3c34b4a8bf5f494db9e18848a692dd0f8ec59e`.
+- Engine+$4890–$48A3: SHA-256
+  `91e8cde0ff70b45c93ea24bf275399b06ea38786a44b03df25fcf63cfd5f90a0`.
+
+Use `tools/mac_window_reassert.lua`, `amiga/window_reassert.gdb` and
+`tools/check_window_reassert.py` for paired verification. The accepted original
+capture is local `tmp/m2-resize-reference-accepted.log`; the observer reads
+physical NuBus pixels through program space and needs no host-window capture.
+Earlier captures with incomplete or misordered events are rejected.

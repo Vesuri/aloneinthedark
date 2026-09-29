@@ -148,13 +148,13 @@ if s_pixelsDirty || s_dirtyRectCount!=0 || g_macFramesQueued!=1
  quit 1
 end
 printf "WP_NEXT state=%u trap=%X segment=%u offset=%X manager=%s routine=%s windows=%u services=%u/%u\n",g_stageBState,g_trapWord,g_trapSegment,g_trapOffset,g_trapManager,g_trapRoutine,g_systemWindows,g_macServiceEntered,g_macServiceCompleted
-if g_stageBState!=3 || g_trapWord!=0xa91d || g_trapSegment!=9 || g_trapOffset!=0xf8c || g_macServiceActive!=0
+if g_stageBState!=3 || g_trapWord!=0xa880 || g_trapSegment!=4 || g_trapOffset!=0x4f88 || g_macServiceActive!=0
  echo FAIL window palette presentation stop\n
  detach
  quit 1
 end
-if *(unsigned long*)(g_trapRoutine+0)!=0x53495a45 || *(unsigned long*)(g_trapRoutine+4)!=0x57494e44 || g_trapRoutine[8]!=0x4f || g_trapRoutine[9]!=0x57 || g_trapRoutine[10]!=0
- echo FAIL expected SIZEWINDOW\n
+if *(unsigned long*)(g_trapRoutine+0)!=0x53455450 || g_trapRoutine[4]!=0x54 || g_trapRoutine[5]!=0
+ echo FAIL expected SETPT\n
  detach
  quit 1
 end

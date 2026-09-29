@@ -2795,9 +2795,8 @@ See [palette.md](palette.md) for the original bytes and paired capture procedure
 
 Six relevant startup observers and paired checks, host tests, fresh/low
 preferences, clean boot/resource reads and exact A5 comparison pass. Original
-preferences are restored and original MDRV remains absent. The next prerequisite
-is SizeWindow at Misc1+$0F8C after ShowHide, game-port binding and TickCount; intro
-and rendered acceptance remain pending.
+preferences are restored and original MDRV remains absent. Startup subsequently passes ShowHide, game-port binding, TickCount and unchanged
+window geometry; intro and rendered acceptance remain pending.
 
 ## Colour-window geometry and background visibility
 
@@ -2806,7 +2805,7 @@ with their corresponding Mac observers and paired checkers. The contracts and
 local evidence are in [window-geometry.md](window-geometry.md). Host geometry
 checks are part of `make host-tests`. ShowHide's background clear is verified
 against its full complex region and must leave the viewport, palette and frame
-queue unchanged. Current startup observers pin SizeWindow at Misc1+$0F8C; a timeout or a different stop is not acceptance.
+queue unchanged. Current startup observers pin SetPt at Dark+$4F88; a timeout or a different stop is not acceptance.
 
 
 ## Startup clock query
@@ -2821,5 +2820,25 @@ preferences are restored. Existing/fresh startup uses 75/101 OS windows and
 129/137 services; original resource reads total 39 / 177,820 bytes. Original
 MDRV remains absent. Evidence is in local `tmp/m2-tickcount-*` logs.
 
-The next named stop is SizeWindow at Misc1+$0F8C. Logo/intro and rendered-window
+The clock query advances into drawing setup. Logo/intro and rendered-window
 acceptance remain pending; no owner decision changed.
+
+
+## Unchanged startup window geometry
+
+The original size/origin requests now preserve the already-correct visible
+320×200 window. Paired captures verify original bytes, arguments, stack and
+preserved registers, all window/region/device/palette records and all 307,200
+screen pixels. No display update or OS handback is added. The native stop is
+now QUICKDRAW / SETPT at Dark+$4F88. Actual resize/movement and unsupported
+window arrangements remain named stops; no Mac chrome is drawn.
+
+The final paired capture is `tmp/m2-reassert-native-final.log`, checked against
+`tmp/m2-resize-reference-accepted.log`. Host tests and both link audits pass.
+The relevant startup/display evidence uses `tmp/m2-reassert-*` logs; see
+[window-geometry.md](window-geometry.md) for the measured contracts.
+Existing/fresh startup and AGA publication checks pass on the final executable:
+75/101 OS windows, 129/137 services, one queued/presented frame, all eight planes
+and all 256 colours. Original preferences are restored; A5 matches all 75,616
+bytes. Original MDRV remains absent. Rendered-window and intro acceptance remain
+pending; no owner decision changed.
