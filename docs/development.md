@@ -2637,3 +2637,20 @@ Startup advances to Engine+$1172 SETPALETTE. Its binding and device effects are
 the next ordered prerequisite. Original MDRV remains absent; WIND 128, second
 Times, original PAK reads, palette realization and intro-frame acceptance remain
 pending. There is no Mac UI rendering or owner decision change.
+
+
+## Original default-palette binding contract
+
+M2.1c3c2c5b2c2b3e1 measures the original SetPalette(-1) request and independently
+checks its binding with GetPalette(-1). Only palette byte 6 changes; the private
+allocation, device records, logical CLUT, full physical framebuffer and hardware
+palette remain unchanged. Stack/registers and original/live bytes pass. The
+probe distinguishes physical NuBus video from debugger logical-address aliases.
+Incorrect query/opcode and aliased pixel evidence were rejected before acceptance;
+see [palette.md](palette.md) for reproduction and the measured contract.
+
+The bounded accepted Mac run exits normally, all 47 scripts pass syntax/literal
+checks, and the full host suite passes. Native runtime code is unchanged from
+546480a, so its prior regression evidence remains applicable. Native binding and
+paired startup acceptance remain e2 at the queue head; no rendered acceptance or
+owner decision change is claimed.

@@ -47,15 +47,15 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.1c3c2c5b2c2b3e Startup palette binding (M2.7 prerequisite).**
-  - Original NewPalette construction and its twelve ownership/disposal cases
-    now pass; see [palette.md](palette.md).
-  - The next call is SetPalette at Engine+$1172 (`AA95`). The original pushes
-    window -1, the palette at A4+$24 and update=true. Measure its return, binding,
-    palette-private state and any device-table effects before implementing it.
-  - Keep original instructions unchanged and unsupported forms as named stops.
-    Match every observable effect of this call; full activation/video acceptance
-    remains M2.7/M2.7a rather than being implied by constructor/binding checks.
+- **M2.1c3c2c5b2c2b3e2 Native startup palette binding (M2.7 prerequisite).**
+  - The original SetPalette(-1, palette, true) contract is measured and checked;
+    see [palette.md](palette.md). It installs the default binding and changes
+    palette byte 6 to $E0, leaving the private block and device/display unchanged.
+  - Implement the measured form and preserve ownership through shutdown.
+    Unsupported window/update/palette forms remain named stops. Keep original
+    instructions unchanged; do not use Vette's silent -1 fallthrough.
+  - Full activation/video acceptance remains M2.7/M2.7a; binding checks do not
+    establish it.
 
   *Done when* paired Mac/native checks prove the original SetPalette request,
   resulting binding and palette/device state, bounded startup reaches the next

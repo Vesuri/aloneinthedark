@@ -107,3 +107,47 @@ make -C amiga
 
 This is construction/lifecycle acceptance. It does not establish palette binding,
 activation, video colour transfer or rendered-intro acceptance.
+
+## Original default-palette binding [M]
+
+`tools/mac_setpalette.lua` observes SetPalette at Engine+$1172. Original bytes
++$1166–$1173 are `4878FFFF2F2C00241F3C0001AA95`, SHA256
+`a37e6695ed61b794457a22240ae74b278380251f2205ec46b1001a7afa0c7a82`.
+The arguments are update=true, the constructed palette at A4+$24, and window
+-1. The Boolean is the high byte of its stack word; the padding byte is not
+an argument. The call pops ten bytes and preserves D3–D7/A2–A6.
+
+SetPalette installs the handle in the default-palette binding (reference low
+memory $DCC). GetPalette(-1), trap AA96, returns that same handle and pops its
+four-byte argument. The 4,112-byte palette changes only byte 6 from $00 to $E0
+(the word at +6 becomes $E002). All handle/body identities remain unchanged.
+The separate private allocation remains four zero bytes. The full GDevice,
+PixMap, logical CLUT, 307,200 physical framebuffer bytes and all 256 hardware
+palette entries are unchanged. Binding does not establish palette activation.
+
+The physical capture runs from MAME's periodic callback at stopped debugger
+checkpoints, before the original call and before any subsequent scratch query.
+It reads the full NuBus base $F9000A00 directly through Lua's program space.
+Debugger logical `save` at that address aliases low memory in 24-bit mode;
+an initial apparent pixel mutation was the $DCC binding itself, not video.
+The probe logs both logical and physical reads to keep this distinction checked.
+An initial query used AA90 (InitPalettes); it was rejected and replaced by AA96
+with explicit opcode, input, result and stack readback. A nested debugger
+condition failed to complete and was also rejected. No timeout counts as a pass.
+
+Run the standard bounded headless MAME command with `tools/mac_setpalette.lua`,
+then check the actual exit status and matching dumps:
+
+```sh
+python3 tools/check_setpalette.py tmp/m2-setpalette-reference-accepted.log --status 0
+make host-tests
+```
+
+The accepted reference capture exits normally and passes original/live bytes,
+argument, register/stack, binding, private-state and device/display comparisons.
+All 47 Mac scripts pass syntax/literal checks and the host suite passes.
+The checker rejects missing/duplicate completion, missing/timeout status,
+wrong query opcodes, changed arguments/live bytes and incomplete pixel captures.
+Evidence is `tmp/m2-setpalette-reference-accepted.log` and
+`tmp/m2-setpalette-reference-host.log`; all raw dumps remain local.
+Native SetPalette implementation and paired acceptance are still pending.
