@@ -2,7 +2,8 @@
 
 The logical device now has a real 640×480, eight-bit screen in fast RAM, as
 specified in design.md §4.7. Original device selection passes; native startup
-stops next at Core+$0500 SetDepth ($AAA2, selector $0A13). Drawing and AGA
+passes the already-active SetDepth request and stops next at Dan2+$30E2
+GetGWorld ($AB1D, selector 5). Drawing and AGA
 presentation are not accepted by this prerequisite.
 
 ## Measured original selection
@@ -118,6 +119,46 @@ python3 tools/check_native_device.py tmp/m2-device-native.log \
   --reference-status "$run_status"
 ```
 
-The native marker also requires the exact next SetDepth caller/selector and
-balanced services. Initial palette realization, SetDepth, other device APIs and
+The native marker also requires the exact next GetGWorld caller/selector and
+balanced services. Initial palette realization, other device APIs and
 the second original Times call remain separate work.
+
+## Already-active SetDepth
+
+Original Core+$04FC uses `MOVE.W #$0A13,D0`, preserving the upper half of the
+register, then calls PaletteDispatch at +$0500. The arguments are the selected
+device, depth 8, whichFlags 1 and whichValues 1. The reference returns a zero
+OSErr in the reserved word slot, pops ten argument bytes and clears D0. D3–D7
+and A2–A6 are preserved. D2, D1, A0 and A1 are volatile; the native implementation
+preserves extra scratch registers rather than reproducing pointer-dependent
+reference clobbers.
+
+The reference GDevice, PixMap and **full 2,056-byte color table are unchanged**.
+Native SetDepth validates the matching device/master/PixMap/backing, current
+mode $83, depth 8 and measured flags; it returns zero without changing records
+or pixels. Other requests retain the named SetDepth stop. This implements the
+already-active logical mode, not a new physical Amiga display mode or palette
+realization. Both before/after native records and all 307,200 pixel bytes are
+checked. Original MDRV remains forbidden and the second Times lookup is still
+pending behind GetGWorld.
+
+`mac_setdepth.lua` and `check_setdepth.py` fingerprint the original request,
+observe the exact register/stack result, and compare the before/after records
+and full color-table dumps. Run the same bounded MAME command above with
+`-autoboot_script tools/mac_setdepth.lua`, saving its normal exit status, then:
+
+```sh
+python3 tools/check_setdepth.py tmp/m2-setdepth-reference.log --status "$run_status"
+(cd amiga && GDBTAIL=250 EXTRA_ARGS=--warp_mode=1 \
+  GDBSCRIPT=setdepth.gdb ./diag_run.sh 60) >tmp/m2-setdepth-native.log 2>&1
+native_status=$?
+python3 tools/check_setdepth.py tmp/m2-setdepth-reference.log --status "$run_status" \
+  --native tmp/m2-setdepth-native.log --native-status "$native_status"
+```
+
+The native observer also checks the new named stop and exact bounded service/
+resource counts. Captures with timeout/missing status, absent or duplicate
+completion, wrong arguments or a nonzero result are rejected. The host suite
+includes incomplete-capture checks. An initial checker incorrectly compared
+all of incoming D0; the original MOVE.W proves that only its low word is the
+selector. The native upper half retains its selected-device pointer bits.

@@ -2241,3 +2241,32 @@ Resource reads remain 24/104,667 original bytes and 3/1,318 overlay
 bytes. No second Times, palette, rendered frame or full startup acceptance is
 claimed. SetDepth remains first in the queue; M2.3/M2.4/M2.7 retain full graphics
 acceptance. No owner decision changed.
+
+## SetDepth startup
+
+M2.1c3c2c3 implements the original already-active mode request: selected device,
+depth 8, flags 1, values 1. Mac/native captures return zero OSErr with ten-byte
+cleanup and preserve D3–D7/A2–A6. Complete device and PixMap records and the full
+color table remain unchanged; all 307,200 native pixel bytes also remain
+unchanged. Device/master/PixMap/backing identity is checked. Other SetDepth
+requests retain the named stop. See [graphics-device.md](graphics-device.md).
+
+Clean boot/resource-read, the SetDepth/device/menu/driver/font and catalog/
+identity/original-startup/low-memory observers, the host suite and both link
+audits pass. All 75,616 A5 globals match. The new stop is Dan2+$30E2 GetGWorld,
+selector 5. Loading Dan2 adds CODE 13 (17,292 bytes) and CREL 13 (1,288 bytes):
+26 runtime resource reads / 123,247 bytes in total. Existing preferences use
+34 OS windows and 42/42 services. Fresh-preferences SetDepth also passes with
+60 windows and 50/50 services; existing preferences were restored afterward.
+Overlay reads stay 3 / 1,318 bytes. Dan2 changes
+the loaded-segment mask to $3B8B but adds no low-memory sites: 58 validated,
+55 applied. The observer's old mask was rejected, then updated from that
+measured residency and the original site table; its live patch/tick checks pass.
+
+The SetDepth checker initially required all of incoming D0 to equal $0A13.
+Original bytes prove MOVE.W leaves its pointer-dependent upper half intact;
+the checker now validates the selector word and tests this case explicitly.
+The native handler already used the low word. Timeouts, incomplete captures,
+wrong requests/results and duplicated positive records remain failures. Full
+palette, offscreen/rendered graphics and the second Times lookup are pending;
+no owner decision changed.

@@ -15,8 +15,8 @@ The executable builds and runs the original CODE 1 startup on the 68020. Its
 75,616-byte A5 globals match the host model exactly. The original segment loader
 relocates Core and reaches `main`; initialization passes directory setup, the General resource lookup and the
 first Times font lookup and the two native sound-driver startup calls (D8).
-Menu-record initialization and the original eight-bit device selection also pass.
-It then stops explicitly at `PALETTE MANAGER / SETDEPTH`; the original mixer
+Menu-record initialization and the original eight-bit device selection and SetDepth also pass.
+It then stops explicitly at `QUICKDRAW / GETGWORLD`; the original mixer
 is never loaded. The game is not playable yet.
 Other processors and performance work remain deferred.
 
@@ -29,7 +29,7 @@ serve memory and resource handles. System identity and all eleven derived
 capability flags match the Mac reference. The user-mode service bridge passes
 its native ABI probe. OS windows and DOS/resload adapters pass the native/host
 core probes; rendered-picture acceptance is owner-deferred (M1.7b2). The next
-item is the original SetDepth call before original PAK read acceptance.
+item is the original current-world query before original PAK read acceptance.
 The logical device has real 640×480×8 storage; its four selection calls match
 the Mac. Drawing, palette realization and eight-plane output remain pending.
 Extraction and staging now

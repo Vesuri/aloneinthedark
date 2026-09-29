@@ -103,7 +103,7 @@ named trap stops pending M2.9 instead of silently drawing the Vette fixed font.
 The native observer checks the live original trap bytes, Pascal Times name,
 result 20, eight-byte stack cleanup, D0 and error globals at Dan1+$0014. It dumps
 both installed bodies for exact host comparison and requires the next named
-`SETDEPTH` stop, with no original MDRV body resident. The original
+`GETGWORLD` stop, with no original MDRV body resident. The original
 second lookup has not been reached natively: graphics initialization and further
 startup services lie between these calls. The two native driver calls now pass. This is partial M2.1c3 acceptance, not a completed font/startup item.
 
@@ -114,10 +114,10 @@ M2.1c3 retains the second-call requirement after the newly reached services.
 
 
 Startup counters distinguish two measured inputs. With the original default
-`PREF` 128 already present, the graphics boundary uses 32 OS windows and 40/40
+`PREF` 128 already present, the graphics boundary uses 34 OS windows and 42/42
 service entries/completions. Without preferences, original startup creates the
-file and uses 58 windows and 48/48 services. All services complete before the
-graphics stop. Both paths read 24 original resource bodies / 104,667 bytes plus
+file and uses 60 windows and 50/50 services. All services complete before the
+graphics stop. Both paths read 26 original resource bodies / 123,247 bytes plus
 three overlay bodies / 1,318 bytes. `check_startup_prefs.py` classifies
 the starting fixture before launch and supplies exact expected counters; it
 rejects partial, nonregular or unmeasured preference contents without deleting

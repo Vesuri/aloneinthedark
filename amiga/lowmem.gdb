@@ -3,7 +3,7 @@ set pagination off
 set confirm off
 break AitdScreen::showLoudStop
 continue
-if g_lowMemoryValidatedSites != 58 || g_lowMemoryAppliedSites != 55 || g_loadedCodeMask != 0x1b8b
+if g_lowMemoryValidatedSites != 58 || g_lowMemoryAppliedSites != 55 || g_loadedCodeMask != 0x3b8b
  echo lowmem FAIL: missing validation or loaded CODE patches\n
  detach
  quit 1

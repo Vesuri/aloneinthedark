@@ -5945,6 +5945,20 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
             regs[0]=8;return 11;
         }
     }
+    if(trap==0xaaa2 && (uint16_t)regs[0]==0x0a13) { // SetDepth: already-active fixed mode
+        if((uint8_t**)read32(userStack+6)==&s_mainDeviceMaster
+           && s_mainDeviceMaster==s_mainDevice
+           && read32(s_mainDevice+22)==(uint32_t)&s_windowManagerPixMapMaster
+           && s_windowManagerPixMapMaster==s_windowManagerPixMap
+           && read32(s_windowManagerPixMap)==(uint32_t)s_colorScreen
+           && read32(s_mainDevice+42)==0x83
+           && read16(s_windowManagerPixMap+32)==8
+           && read16(userStack+4)==8 && read16(userStack+2)==1 && read16(userStack)==1) {
+            // The reference makes no device, PixMap or CLUT mutation for this
+            // request. This is an OSErr result, not a fabricated mode change.
+            write16(userStack+10,0);regs[0]=0;return 11;
+        }
+    }
     if(trap==0xa8a8) { // OffsetRect: signed 16-bit coordinates wrap modulo 65536
         uint8_t* rect=(uint8_t*)read32(userStack+4);
         if(rect) {
@@ -6557,6 +6571,7 @@ unsupportedTrap:
     if(trap==0xaaa2 && (uint16_t)regs[0]==0x0a13)routine="SETDEPTH";
     if(trap==0xaaa2 && (uint16_t)regs[0]==0x0a14)routine="HASDEPTH";
     if(unsupportedGraphics)routine="8-BIT DRAWING / PALETTE";
+    if(unsupportedGraphics && trap==0xab1d && (uint16_t)regs[0]==5)routine="GETGWORLD";
     if(trap==0xa0f8) { manager="SOUND DRIVER";routine=driverStop ? driverStop : "SELECTOR";g_trapSelector=read32(userStack+4); }
     copyString(g_trapManager, manager);
     copyString(g_trapRoutine, routine);
