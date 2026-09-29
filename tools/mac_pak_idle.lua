@@ -71,5 +71,5 @@ return function(mac,mem)
  assert(mac.wait_for('320x200 window',window320,1800),'PAK IDLE / NO GAME WINDOW')
  assert(mac.mouse_to(620,470),'PAK IDLE / POINTER')
  print('PAK_IDLE no further input; wait for original menu timeout and presentation')
- mac.wait(36000);error('PAK IDLE / NO POSITIVE PRESENTATION COMPLETION')
+ mac.wait(48000);error('PAK IDLE / NO POSITIVE PRESENTATION COMPLETION')
 end

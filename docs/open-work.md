@@ -43,24 +43,27 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.1c2 Capture the original idle presentation route.**
-  - Original-byte checks locate PRESENT at Dan2+$2D16, called by Dark+$52AC
-    after the main-menu timeout, idle demo and two intro calls. Its 15 image
-    loads use ITD_RESS index 13 followed by PRESENT indices 0–13.
-  - `mac_pak_idle.lua` instruments that route without patching code, time or RNG.
-    Its diagnostic-only capture identifies the missing-file alert above; no
-    presentation-completion capture has passed yet.
+- **M2.1c3 Font availability prerequisite for original PAK reads.**
+  - Original startup still stops at GetFNum, Dan1+$0012; a second Times lookup
+    follows at +$0038 before the first original PAK load. This must be implemented
+    before native read acceptance can advance.
+  - Establish the measured GetFNum name/result/stack contract and back the Times
+    family with a valid port-owned placeholder font definition in the overlay
+    (D6). Do not return a font ID without a real installed definition. Remaining
+    unsupported text/font operations must retain named stops; full rendered-font
+    acceptance remains M2.9.
 
-  *Done when* a bounded reference run exits normally, `check_pak_idle.py` accepts
-  the natural timeout and all 15 loads, and paired original File Manager calls
-  prove reads from both PAKs. Native payload acceptance remains M2.1c.
+  *Done when* host checks validate the generated font definition and lookup,
+  original-byte-guarded native execution passes both Times lookups with the Mac
+  result, reaches the next named stop, and relevant startup regressions pass.
 - **M2.1c Original File Manager read acceptance (after M2.2).**
   - This retains M2.1's original acceptance; diagnostic fixture reads do not count
     as original-game reads. M2.1b2a measured the intervening Get1NamedResource
     dependency at Engine+$3CDC. Implement the file core first, then the queued
     resource services, then return here for their integrated acceptance.
-  - Complete the preceding original-installation and idle-route checks. The full
-    Mac play/save/load route did not open PRESENT. Do not synthesize a read.
+  - The original no-input idle route now proves both PAK reads on the Mac.
+    Reproduce actual native execution and compare returned payloads; synthetic
+    fixture reads do not satisfy this requirement.
 
   *Done when* the game opens and reads `ITD_RESS.PAK` and `PRESENT.PAK`, its
   returned bytes match the host files by debugger checksum, and startup window

@@ -28,8 +28,9 @@ capability flags match the Mac reference. The user-mode service bridge passes
 its native ABI probe. OS windows and DOS/resload adapters pass the native/host
 core probes; rendered-picture acceptance is owner-deferred (M1.7b2). The next
 item is original-game PAK read acceptance (M2.1c). Extraction and staging now
-match the original installer: ListBod2.PAK belongs under Alone Data. The idle
-presentation reference capture is next.
+match the original installer: ListBod2.PAK belongs under Alone Data. The original
+Mac idle presentation now completes all 15 images and reads both PAKs. Native
+read acceptance first needs the current GetFNum dependency.
 Resource bodies now stream from disk into zone handles; startup retains the
 4,998-byte map instead of the 1,424,934-byte application fork. The `resource-read`
 regression verifies original bytes and 16 runtime read windows before the current

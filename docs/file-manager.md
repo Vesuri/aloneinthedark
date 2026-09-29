@@ -97,8 +97,8 @@ Select `AITD_MAC_SCENARIO=tools/mac_pak_idle.lua` for read-only execution
 checkpoints. The scenario leaves input untouched after window selection and
 pointer parking. Full acceptance requires normal process status and
 `check_pak_idle.py LOG --status 0`; missing/duplicated completion, incomplete
-loads, zero pointers, emulator errors and timeouts are rejected. No full idle
-presentation run has passed yet.
+loads, zero pointers, emulator errors and timeouts are rejected. The later
+M2.1c2 capture below completes the full route.
 
 After two deadline failures, intermediary checkpoints established that execution
 stops inside the idle demo's scene setup, before either later intro call.
@@ -872,3 +872,47 @@ runtime remain 201,058 bytes and 16 reads / 96,648 bytes, ending at GetFNum.
 The rejected initial fixture runs are not acceptance; no timeout counts as a pass.
 Original idle-presentation capture is next (M2.1c2), and native PAK payload
 acceptance remains pending. No owner decision or game instruction changed.
+
+## Original idle presentation acceptance (M2.1c2)
+
+With the verified installed layout, the unmodified Mac game naturally times out
+its menu, completes the idle demo and both intervening intro calls, then enters
+Dan2+$2D16 from Dark+$52AC. All fifteen original image loads return non-null:
+ITD_RESS index 13 followed by PRESENT indices 0–13. No input is supplied after
+window selection and pointer parking; code, timers, input globals and RNG are
+not patched. Live byte guards and the original-resource SHA checks pass.
+
+`tmp/m2-pak-idle-complete.log` exits normally (status 0) after 619 emulated seconds.
+Both `check_pak_idle.py` and `check_file_reference.py --startup-directories`
+accept it, requiring both PAK names. There are 3,052 paired original File Manager
+calls. Cumulative reads are 180,490 bytes from ITD_RESS.PAK, 257,652 from
+PRESENT.PAK and 138,348 from ListBod2.PAK. The checker also requires the original
+application FCB and successful startup directories with the expected absent-movies
+error. These are real original-game reads, not injected file calls. Returned
+payload checksums on the Amiga remain M2.1c; this does not claim them.
+
+The first corrected-layout capture expired after five presentation images and
+was rejected. Its read-only checkpoints measured the demo return at tick $6207,
+the first intro return at $6788 and the second at $8283. The scenario now permits
+48,000 emulated frames, with a 900-second emulator ceiling and 300-second host
+ceiling. Completion still exits immediately at the guarded original return;
+reaching any ceiling is not a pass. The accepted command is:
+
+```sh
+. amiga/env.sh
+AITD_MAC_FILE_ONLY=1 AITD_MAC_SCENARIO=tools/mac_pak_idle.lua \
+SDL_VIDEODRIVER=dummy timeout -k 5 300 mame maciix \
+  -rompath ref/mame/roms -nb9 mdc48 -ramsize 8M \
+  -hard ref/mame/hd/aitd_755.hd -video none -sound none -window \
+  -skip_gameinfo -nothrottle -seconds_to_run 900 \
+  -snapshot_directory ref/mame/snap -cfg_directory ref/mame/cfg \
+  -nvram_directory ref/mame/nvram -debug -debugger none -oslog \
+  -autoboot_script tools/mac_traps.lua > tmp/m2-pak-idle-complete.log 2>&1
+```
+
+Pass the actual exit status to `check_pak_idle.py LOG --status STATUS`, then run
+`check_file_reference.py LOG --require-file itd_ress.pak --require-file present.pak
+--startup-directories`. Rejection fixtures still pass. Native runtime is unchanged
+from f6e58c2's six-case regression and four-observer acceptance. The next measured
+native dependency is GetFNum; M2.1c3 requires a real D6 placeholder font definition
+before reporting Times available. No owner decision changed.
