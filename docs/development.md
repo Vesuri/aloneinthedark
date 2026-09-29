@@ -1972,7 +1972,48 @@ exits. All 75,616 A5 bytes match; production still reaches GetFNum after 16
 resource reads / 96,648 bytes. Production link/probe/no-float and generated-copy
 audits pass. No owner decision changed.
 
-Dirty-resource exit remains a separate implementation and acceptance item,
-M2.2f4b5b. The current ExitToShell dirty-map guard remains in force. Unpublished
-empty/reload and dirty resize/dispose/purge remain named stops until required by
-original execution; this fixture does not claim those operations.
+### M2.2f4b5b — dirty resource exit persistence
+
+ExitToShell now enters the user-service bridge and closes/publishes dynamic maps
+before switching back to the native host stack. The application source remains
+open until restored-OS cleanup. Publication errors stop at `RESOURCE EXIT IO
+ERROR`; application-map mutation remains unsupported.
+
+`amiga/regression.sh resource-exit` runs three fresh 68020 processes. The failure
+case injects a rename failure, requires ResErr -36, an active service and open
+stream, and the exact resident `EXIT` body. The independently parsed disk fork
+must remain empty, with no staging remnants, before owned scratch cleanup is
+allowed. The successful case leaves LIFE 128 (`Scratch`, body `EXIT`) dirty and
+open, then returns through original CODE 1+$48, its unpatch routine at +$4AA and
+ExitToShell. A fresh launch reads back the same resource, closes and deletes it.
+All thirteen calls retain the measured Mac error/register/stack/body contracts.
+
+The diagnostic build temporarily redirects the guarded Core main entry to the
+fixture and immediately restores all original bytes. FS-UAE's remote stub
+silently ignores register and memory writes; byte readback established that the
+observer cannot inject the call itself. Production contains no diagnostic hook.
+Both the original source bytes and the live CODE 1 exit/unpatch bytes are checked;
+the only expected difference is the established low-memory rewrite at +$48.
+The original return address is verified on the stack before the fixture runs.
+
+Positive exit evidence includes balanced user services, no remaining streams,
+closed original source, restored Line-A/vector ownership, callbacks cleared,
+multitasking enabled, matching DMA/interrupt/View state and all four Paula voices
+zeroed. The observer then requires native main to return zero and positively
+reaches the CRT's final return instruction. This proves original-runtime exit
+persistence, not the game's menu quit path, Workbench startup or reset/power-loss
+durability. Every breakpoint is a positive address check; a timeout is a failure.
+The host checker rejects missing statuses, duplicate/incomplete/wrong-phase logs,
+unexpected stops and timeout records, and refuses pre-existing scratch files.
+
+Unpublished empty/reload and dirty resize/dispose/purge remain named stops until
+required by original execution. Writable prefs/save and overlay integration are
+next (M2.2g); no owner decision changed.
+
+Acceptance: all six native regression cases and the four startup observers pass
+with normal completion, as does the full host suite. The final production build
+passes link/probe/no-float checks; MacLoader and ResourceDirectory generated-copy
+audits are clear. All 75,616 A5 bytes match. File-write remains at 406 paired
+calls / 1,040 windows; original startup remains at GetFNum with 16 resource reads
+/ 96,648 bytes. Both successful exit phases balance 11 user-service calls and
+reach native main result zero and the final CRT return. No timeout is counted.

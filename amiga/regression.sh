@@ -5,6 +5,7 @@ cd "$(dirname "$0")"
 . ./env.sh
 deadline=60
 case "${1:-boot}" in
+  resource-exit) exec bash ./resource_exit.sh ;;
   boot) flags=(); observer=boot.gdb ;;
   resource-read)
     flags=(); observer=resource_read.gdb

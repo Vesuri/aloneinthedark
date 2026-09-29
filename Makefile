@@ -63,10 +63,12 @@ mac-trap-map:
 	@python3 tools/mac_trap_map.py '$(RUNTIME_DATA)/Alone In The Dark'
 
 regression:
+	@./amiga/regression.sh resource-exit
 	@./amiga/regression.sh file-write
 	@./amiga/regression.sh file-read
 	@./amiga/regression.sh window-core
 	@./amiga/regression.sh boot
+	@./amiga/regression.sh resource-read
 
 a5world-check:
 	@python3 tools/a5world_check.py "$(RUNTIME_DATA)/Alone In The Dark"
@@ -75,6 +77,7 @@ lowmem-check:
 	@python3 tools/check_lowmem.py --resource "$(RUNTIME_DATA)/Alone In The Dark"
 
 host-tests:
+	@python3 tools/test_native_resource_exit.py
 	@python3 tools/check_resource_map.py
 	@python3 tools/check_resource_source.py
 	@python3 tools/check_resource_writer.py

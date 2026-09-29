@@ -2,7 +2,7 @@
 #include <dos/dos.h>
 #include "ResourceStage.h"
 #include "SystemWindow.h"
-#ifdef AITD_FILE_WRITE_PROBE
+#if defined(AITD_FILE_WRITE_PROBE) || defined(AITD_RESOURCE_EXIT_PROBE)
 extern "C" { volatile uint32_t g_resourceStageFault=0; }
 static bool fault(uint32_t n) { return g_resourceStageFault==n; }
 #else

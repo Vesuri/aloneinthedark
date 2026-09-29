@@ -55,35 +55,18 @@ required.
     now pass a 64-call native fixture with paired Mac contracts, including
     noncurrent clean/dirty close and invalid update, with exact saved forks and cleanup.
     Native handles remap by stable identity; bodies remain source-backed.
-  - **M2.2f4 Remaining writable resource variants.** Extend the measured scope
-    before enabling the remaining resource mutations and error paths.
-    - **M2.2f4b Native variants.** Implement the measured contracts through the
-      current directory/staging backend, including read-only in-memory removal
-      and closing after a failed read-only update. *Done when* paired native fixtures,
-      source-backed loading, disk error/rollback evidence and all regressions
-      pass. Application-file closure and mixed raw/resource updates remain named
-      stops: measure their reached contracts before enabling them. GetResAttrs
-      exposes only a defined low attribute byte; the Mac wrapper propagates
-      uninitialized upper-byte scratch (traced and poison-verified). Return a
-      zero-extended attribute byte natively. Unmeasured variants remain named
-      stops and queued.
-      - **M2.2f4b5b Dirty-resource exit persistence.** The complete 45-call
-        dirty lifecycle now passes natively. Implement the measured exit
-        contract: use the user-service path to publish dirty dynamic maps before
-        ExitToShell restores the OS. Preserve the original CODE 1 exit/unpatch
-        route and keep failed publication loud. Never-published empty/reload and
-        dirty resize/dispose/purge remain explicit stops until required by
-        original execution; measure any newly reached variant before enabling it.
-        *Done when* a dirty open resource survives native original-runtime exit
-        and a fresh launch, with exact independently parsed/reloaded bytes,
-        close/delete, restored OS/stream/service state and all regressions.
-
-
-
-
-
-  - Implement writable prefs/save resource forks and the port overlay fork
-    (empty at first), preserving design §4.6 search order and dialog overrides.
+  - Writable mutations, isolated publication, pending map edits, permissions and
+    the full dirty-handle lifecycle pass paired fixtures. Dirty open resources
+    now persist through the original runtime exit and a fresh native launch;
+    failed publication remains a named stop. Application-file closure, mixed
+    raw/resource updates, unpublished empty/reload and dirty resize/dispose/purge
+    remain stops until original execution requires their contracts to be measured.
+  - **M2.2g Writable prefs/save and overlay integration.** Implement writable
+    prefs/save resource forks and the port overlay fork (empty at first),
+    preserving design §4.6 search order and dialog overrides.
+    *Done when* native fixtures verify writable prefs/save forks, the empty
+    overlay's place in the search chain and on-demand bodies, with exact fork
+    readback, cleanup and all resource/startup regressions passing.
 
   *Done when* these operations pass Mac-reference and native fixtures, the
   application still loads resource bodies on demand, debugger-captured resource

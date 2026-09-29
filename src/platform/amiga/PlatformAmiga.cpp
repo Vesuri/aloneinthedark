@@ -30,6 +30,9 @@
 #ifdef AITD_FILE_PROBE
 extern "C" void aitdFileCleanupFinished();
 #endif
+#ifdef AITD_RESOURCE_EXIT_PROBE
+extern "C" { void aitdResourceExitCleanupFinished();extern volatile uint32_t g_resourceExitCleanupOK; }
+#endif
 #include "AitdScreen.h"
 #include "PerfProbe.h"
 #include "mac/MacLoader.h"
@@ -435,6 +438,11 @@ bool PlatformAmiga::run()
     }
 #ifdef AITD_FILE_PROBE
     aitdFileCleanupFinished();
+#endif
+
+#ifdef AITD_RESOURCE_EXIT_PROBE
+    g_resourceExitCleanupOK=filesClosed;
+    aitdResourceExitCleanupFinished();
 #endif
 
     // Closed here rather than in a destructor -- see the note in PlatformAmiga.h.  ⚠ AFTER

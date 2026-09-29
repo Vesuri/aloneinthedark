@@ -1038,6 +1038,12 @@ static uint8_t** loadResource(uint32_t index,const ResourceForks::Item& item,boo
             g_lowMemoryAppliedSites+=MacLowMemory::siteCount(item.id);
         }
         refreshCodeViews();
+#ifdef AITD_RESOURCE_EXIT_PROBE
+        if(item.fork==0 && item.type==0x434f4445UL && item.id==3) {
+            extern void aitdInstallResourceExitProbe(uint8_t*);
+            aitdInstallResourceExitProbe(*handle);
+        }
+#endif
     }
     resourceResult(0);return handle;
 }
@@ -5197,7 +5203,7 @@ static bool isUserService(uint16_t trap)
 #ifdef AITD_SERVICE_PROBE
     if((trap&0xfeff)==0xa0fc || trap==0xabfb)return true;
 #endif
-    return trap==0xa997 || trap==0xa9c4 || trap==0xa81a || trap==0xa9b1 || trap==0xa81b || trap==0xa999 || trap==0xa99a || trap==0xa9ab || trap==0xa9aa || trap==0xa9b0 || trap==0xa9ad
+    return trap==0xa9f4 || trap==0xa997 || trap==0xa9c4 || trap==0xa81a || trap==0xa9b1 || trap==0xa81b || trap==0xa999 || trap==0xa99a || trap==0xa9ab || trap==0xa9aa || trap==0xa9b0 || trap==0xa9ad
         || trap==0xa80e || trap==0xa9a2 || trap==0xa81f || trap==0xa820 || trap==0xa9a0 || trap==0xa9a1 || trap==0xa930 || trap==0xa9bf
         || trap==0xaa46 || trap==0xaa92 || trap==0xa9b9 || trap==0xa9bc || trap==0xa97c
         || trap==0xa40c || trap==0xa608 || trap==0xa60a || trap==0xa60c || trap==0xa60d || trap==0xa614 || trap==0xa615
@@ -5477,7 +5483,15 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     }
 
     if (trap == 0xa9f4) {                    // original ExitToShell after patch cleanup
-        for(uint16_t key=0;key<ResourceForks::kForkCount;++key)if(resourceFileDirty(key) || s_resourceMapTouched[key]) { loaderStop("DIRTY RESOURCE EXIT UNMEASURED",0);showLoaderStop(); }
+        // The bridge keeps file I/O in user mode before the exit trampoline
+        // restores the host stack. Keep the application source until OS cleanup.
+        int16_t key=0;
+        while(s_resourceForks.directory()->newest(key) && key!=0) {
+            if(key<0 || key>=ResourceForks::kForkCount) { loaderStop("RESOURCE EXIT MAP",0);showLoaderStop(); }
+            int32_t error=closeResourceFile(key);
+            if(error) { resourceResult(error);loaderStop("RESOURCE EXIT IO ERROR",0);showLoaderStop(); }
+        }
+        if(resourceFileDirty(0) || s_resourceMapTouched[0]) { loaderStop("APPLICATION RESOURCE EXIT MUTATION",0);showLoaderStop(); }
         g_macVBLCallbackEntry = 0;
         g_macVBLCallbackTask = 0;
         g_macVBLCallbackA5 = 0;

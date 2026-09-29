@@ -39,7 +39,8 @@ AddResource, multi-fork search, noncurrent close and invalid update pass a
 writes, pending map edits and the full dirty-handle lifecycle pass 175 additional paired
 calls and six native rollback cases. Permissions 0–4, creation errors and read-only
 mutation/close behavior pass a further 59-step fixture. Dirty-resource exit
-persistence is next. The metadata model preserves duplicate
+persistence passes the original runtime exit, fresh-launch readback and failed
+publication checks. Writable prefs/save and overlay integration are next. The metadata model preserves duplicate
 type/ID entries within one file and resolves the first surviving insertion.
 The metadata-only catalog and application-fork identity are verified (M2.1b1):
 32 data files, 5,315,994 bytes; no data payload preloading. SetVol, the three

@@ -378,7 +378,7 @@ Native trap probes, host fragmentation tests and paired heap captures verify it:
   - `DetachResource` hands a clean block over to the caller; dirty detach
     returns -198. `ReleaseResource` frees clean resources but leaves dirty
     resources resident. Dirty resource files persist on close and OS exit
-    (Mac reference M2.2f4a2b; native close is implemented, dirty exit pending).
+    (Mac reference M2.2f4a2b; native close and original-runtime exit are verified).
   - Whole-fork startup loading is removed (M2.2b2). Before takeover, validate
     each original CODE resource using temporary storage, then discard it; only
     CODE 0 metadata and CODE 1 remain resident. Runtime resource misses use
@@ -695,7 +695,7 @@ These settings establish a functional baseline, not a performance result.
 
 **Regression** (`amiga/regression.sh <case>`, `make regression`). Each case is a
 clean build with its flags, a warp-mode bounded run, a required PASS regex, and
-no loud stop. The cases are added as their milestone lands:
+no unexpected loud stop. The cases are added as their milestone lands:
 - `boot`: reaches main, then ends the observer before main executes. The harness
   was introduced in M0; positive acceptance passes on `a1200-020` (M1.3a).
 - `resource-read`: map-only startup, original CODE validation, bounded runtime
@@ -703,6 +703,10 @@ no loud stop. The cases are added as their milestone lands:
 - `file-write`: native Line-A and DOS backend writes, zero-count extension,
   truncation/mark updates, read-only errors, exact readback, close and dirty
   shutdown; host-file bytes and bounded transfer/window counts are required.
+- `resource-exit`: dirty open resource saved by the original CODE 1 exit,
+  independent exact-fork parsing, fresh-launch readback/delete, restored OS and
+  native main/CRT return. A separate forced publication failure must stop loudly,
+  retain the resident body and preserve the prior disk fork.
 - `file-read`: actual Line-A data-fork calls, cache reuse/crossing, multi-chunk
   direct read, exact bytes/CCR/EOF/errors, window counts and restored-OS cleanup.
 - `window-core`: 1 MB chunk reads, DOS errors/save, clock, Paula interrupts,
