@@ -46,14 +46,17 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.1c3c2c5b2c2b3c Startup colour-table loading (M2.7 prerequisite).**
+- **M2.1c3c2c5b2c2b3c2 Native startup colour-table loading (M2.7 prerequisite).**
   - Original startup now passes the four Apple Event registrations and requests
     GetCTable(128) at Engine+$110E, before WIND 128 creation. Original bytes are
     `3f3c0080aa18` at +$110A; no patch is needed.
-  - Measure the returned table bytes, handle ownership, result/stack/register
-    contract and reached follow-up mutations against the Mac. Implement actual
-    table loading/ownership; do not equate resource handles with returned copies
-    without evidence. Unsupported forms stay named stops.
+  - Reference prerequisite b3c1 is complete in [color-table.md](color-table.md):
+    original bytes/mutations and 21 fixtures establish detach/reload ownership,
+    seed sequence, handle state, disposal and missing-table behavior.
+  - Implement the original table request using the actual resource body and
+    measured detachment/seed semantics. Returning a copy while leaving a resident
+    resource handle in the map would violate the measured alias contract.
+    Unsupported forms stay named stops.
   - Full palette realization and reference video transfer remain M2.7/M2.7a.
 
   *Done when* paired Mac/native checks prove the original GetCTable request and

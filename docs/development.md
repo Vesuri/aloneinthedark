@@ -2538,3 +2538,22 @@ It was rejected, and the unchanged clean retry passed with a 240-second bound.
 The next named stop is GetCTable(128), Engine+$110E, before WIND 128 creation.
 Colour-table ownership and bytes are the next ordered dependency; palette
 realization, the second Times lookup and full M2 acceptance remain pending.
+
+## Original GetCTable ownership contract
+
+M2.1c3c2c5b2c2b3c1 captures the original GetCTable(128) return and all 256
+subsequent index mutations, plus 21 separate ownership/seed/disposal calls. The
+returned handle is detached from the resource map: when clut 128 is already
+loaded, GetCTable returns that same handle, clears its resource state and assigns
+a new seed. Subsequent requests reload original bytes into distinct handles.
+Mutation and disposal tests prove the alias relationship; seed calls establish
+one consumed seed per successful table request and none for the measured missing
+ID. This rules out a copy-only implementation that retains the old resource map
+entry. See [color-table.md](color-table.md) for exact scope and reproduction.
+
+Both bounded Mac capture modes exit normally and pass byte, input, stack/register,
+state and output checks. Syntax/literal audits cover 45 scripts; the full host
+suite passes. A checker line-anchoring mistake was corrected before acceptance;
+no failed capture was counted as a pass. Native code is unchanged, so the
+previous native regression evidence remains applicable. Native detachment and
+paired acceptance remain b3c2 at the top of the queue.
