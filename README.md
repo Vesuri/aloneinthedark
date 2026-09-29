@@ -30,6 +30,8 @@ capability flags match the Mac reference. The user-mode service bridge passes
 its native ABI probe. OS windows and DOS/resload adapters pass the native/host
 core probes; rendered-picture acceptance is owner-deferred (M1.7b2). The next
 item is the logical graphics-device model before original PAK read acceptance.
+Its original four-call selection contract and 640×480×8 device records are now
+measured; native implementation is pending.
 Extraction and staging now
 match the original installer: ListBod2.PAK belongs under Alone Data. The original
 Mac idle presentation now completes all 15 images and reads both PAKs. Native
@@ -74,7 +76,7 @@ Async completion preserves the measured Mac callback behavior at safe user-mode
 return points, including nested file-service calls. Data and resource forks now use independent streams;
 companion creation/reload/deletion and application resource preservation pass
 Mac/native/host checks.
-Final startup requirements acceptance remains pending beyond the native-driver stop.
+Final startup requirements acceptance remains pending beyond the graphics-device stop.
 
 ## Requirements (provisional)
 

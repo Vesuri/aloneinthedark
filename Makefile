@@ -103,6 +103,7 @@ host-tests:
 	@python3 tools/check_sound_driver.py
 	@python3 tools/check_menu_records.py
 	@python3 tools/check_menu_reference.py --selftest
+	@python3 tools/check_device_startup.py --selftest
 	@python3 tools/check_native_driver.py --selftest
 	@python3 tools/check_resload_access.py
 	@python3 tools/check_mac_heap.py

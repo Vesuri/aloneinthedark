@@ -423,6 +423,8 @@ Native trap probes, host fragmentation tests and paired heap captures verify it:
 ### 4.7 Display: 8-bit Mac screen, AGA presentation
 
 - **Mac screen model (task M2.4).**
+  - The original startup selection and device fields are measured in
+    [graphics-device.md](graphics-device.md); native implementation is pending.
   - The logical main screen is 640×480 at 8 bits (the reference's mdc48 mode), in
     fast RAM, with one GDevice and a 256-entry CLUT.
   - Windows, dialogs and menus are drawn into this screen by the port's QuickDraw.

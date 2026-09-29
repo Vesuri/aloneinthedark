@@ -2208,3 +2208,14 @@ prerequisite is now queued, while integrated driver/font, graphics, PAK and intr
 acceptance remain pending. Failed probe actions, missing-call captures and a
 wrapped/truncated observer log were rejected before the paired pass. No timeout
 or deferred rendered-window check is counted as passing; no owner decision changed.
+
+## Graphics-device reference contract
+
+M2.1c3c2c1's bounded original startup capture validates the four Core device
+selection calls, 640×480×8 GDevice/PixMap fields, the 256-entry CLUT header,
+HasDepth mode $83, the rectangle result and the original one-device selection
+through the second Times lookup. The checker also rejects eight corrupted
+captures; its incomplete-capture checks run in `make host-tests`. See
+[graphics-device.md](graphics-device.md) for reproduction and exact scope.
+This changes no native code: the GetDeviceList stop and native second-font
+acceptance remain pending in M2.1c3c2c2.

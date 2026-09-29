@@ -45,11 +45,13 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.1c3c2c Graphics-device startup prerequisite (M2.4).**
+- **M2.1c3c2c2 Native graphics-device startup prerequisite (M2.4).**
   - Original menu-record initialization now passes paired Mac/native checks.
     Core+$4B48 GetDeviceList is the next stop, still before the second Times call.
-  - Measure the original device-list traversal and requested GDevice/PixMap
-    fields against the 8-bit reference. Bring forward the required logical
+  - M2.1c3c2c1 measured the original four-call selection contract and device
+    records: [graphics-device.md](graphics-device.md). HasDepth returns mode
+    $83, not a Boolean; the original selects one 640×480×8 display.
+    Bring forward the required logical
     device model from §4.7, with real backing storage consistent with its
     advertised layout; do not return a guessed handle or advertise an unsupported
     depth. Keep unimplemented graphics operations named stops.
