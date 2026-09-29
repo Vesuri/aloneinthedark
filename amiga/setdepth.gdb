@@ -64,11 +64,11 @@ dump binary memory ../tmp/setdepth-native-after-ct.bin $ct $ct+2056
 dump binary memory ../tmp/setdepth-native-after-pixels.bin $pixels $pixels+307200
 continue
 printf "DEPTH_NEXT state=%u trap=%X selector=%X segment=%u offset=%X routine=%s windows=%u services=%u/%u resources=%u/%u overlay=%u/%u mask=%X\n",g_stageBState,g_trapWord,g_trapSelector,g_trapSegment,g_trapOffset,g_trapRoutine,g_systemWindows,g_macServiceEntered,g_macServiceCompleted,g_resourceRuntimeReads,g_resourceRuntimeBytes,g_overlayRuntimeReads,g_overlayRuntimeBytes,g_loadedCodeMask
-if g_stageBState!=3 || g_trapWord!=0xaa95 || g_trapSelector!=-1 || g_trapSegment!=9 || g_trapOffset!=0x10fa || g_macServiceActive!=0 || g_systemWindows!=$startup_windows || g_macServiceEntered!=$startup_entered || g_macServiceCompleted!=$startup_completed || g_resourceRuntimeReads!=32 || g_resourceRuntimeBytes!=130692
+if g_stageBState!=2 || g_trapWord!=0 || g_trapSelector!=-1 || g_trapSegment!=0 || g_trapOffset!=0xffffffff || *(unsigned long*)(g_trapRoutine+0)!=0x382d4249 || *(unsigned long*)(g_trapRoutine+4)!=0x54205052 || *(unsigned long*)(g_trapRoutine+8)!=0x4553454e || *(unsigned long*)(g_trapRoutine+12)!=0x54415449 || *(unsigned short*)(g_trapRoutine+16)!=0x4f4e || g_trapRoutine[18]!=0 || g_macServiceActive!=0 || g_systemWindows!=$startup_windows || g_macServiceEntered!=$startup_entered || g_macServiceCompleted!=$startup_completed || g_resourceRuntimeReads!=34 || g_resourceRuntimeBytes!=130788
  echo FAIL SetDepth next stop\n
  detach
  quit 1
 end
-printf "PASS native SetDepth calls=1 next=SETPALETTE\n"
+printf "PASS native SetDepth calls=1 next=8-BIT-PRESENTATION\n"
 detach
 quit 0

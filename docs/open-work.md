@@ -13,8 +13,8 @@ design.md §5.
   driver startup calls, menu-record initialization, device selection, SetDepth, GetGWorld, hidden dialog construction/positioning and fixed
   low-resolution selection/cleanup, all 75 font-metrics calls and four Apple Event
   registrations, colour-table loading/mutations, palette construction and default
-  binding, hidden window-title state and the verified WIND 128 request, then stops at Misc1+$10FA
-  `PALETTE MANAGER / SETPALETTE` for a window binding. The original
+  binding, hidden window-title state and the verified WIND 128 request. Startup realizes the palette and clears the game client area, then stops at
+  `8-BIT PRESENTATION` before window binding. The original
   mixer is never loaded.
 - The original runs in MAME on the System 7.5.5 reference volume.
 
@@ -48,24 +48,25 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.1c3c2c5b2c2e1 Window palette state before binding (M2.7 prerequisite).**
-  - Original MoveWindow at Misc1+$0FAC changes the default palette header;
-    ShowWindow at +$10E6 realizes its colours in the device CLUT. The later
-    SetPalette at +$10FA leaves the already-realized state unchanged.
-  - Native entry to the binding still has the earlier default-only header and
-    no active palette. Implement and verify the earlier transitions first,
-    rather than treating the final binding as the missing realization point.
-  - Extend the paired captures across these service boundaries. Preserve original
-    instructions and exclude Mac chrome/dialog presentation. Unsupported forms
-    remain named stops. See [palette.md](palette.md) for measured evidence.
+- **M2.5a First eight-bit client presentation prerequisite.**
+  - The measured ShowWindow clear creates the first 320×200 dirty rectangle.
+    At the next trap boundary, the display backend stops explicitly at
+    `SEGMENT LOADER / 8-BIT PRESENTATION`, before window palette binding.
+  - Bring forward the necessary M2.4–M2.6 display path: derive the viewport
+    from WIND 128's live content rectangle, convert eight-bit pixels into eight
+    AGA planes, and publish complete display/palette state in VBI on 68020.
+    Reuse Vette's publication and dirty-rectangle conventions. Preserve D4/D5/D7;
+    never pass these pixels through the inherited four-bit converter.
+  - Keep this requirement part of M2.5/M2.6; no performance or other CPU work.
 
-  *Done when* paired calls prove the palette/private-record and device-CLUT
-  transitions (including slots 1, 15 and 191), stack/register contracts and
-  explained drawing effects, and relevant startup regressions pass. AGA output
-  and intro-frame acceptance remain M2.5/M2.10.
+  *Done when* the first clear is published from exactly its dirty client rectangle,
+  plane and palette captures match the logical source, a bounded original run
+  reaches the next named stop, and relevant startup regressions pass. The full
+  colour ramp, video transfer, rendered output and intro checks remain required
+  by M2.5/M2.7a/M2.10.
 - **M2.1c3c2c5b2c2e Window palette binding prerequisite.**
-  - Startup now reaches the original SetPalette request at Misc1+$10FA after
-    hidden title updates. The implemented default-window (-1) binding does not
+  - The original SetPalette request at Misc1+$10FA follows the first client
+    presentation, currently blocked by M2.5a. The implemented default-window (-1) binding does not
     cover this form.
   - Measure its window/palette/update arguments and binding, palette, device and
     display effects. Implement the reached form, including any state transition

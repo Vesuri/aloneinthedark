@@ -52,7 +52,7 @@ end
 dump binary memory ../tmp/resource-general.bin $general $general+612
 break AitdScreen::showLoudStop
 continue
-if g_stageBState != 3 || g_trapWord!=0xaa95 || g_trapSegment!=9 || g_trapOffset!=0x10fa || *(unsigned long*)(g_trapRoutine+0)!=0x53455450 || *(unsigned long*)(g_trapRoutine+4)!=0x414c4554 || g_trapRoutine[8]!=0x54 || g_trapRoutine[9]!=0x45 || g_trapRoutine[10]!=0x00 || g_trapSelector!=-1 || g_resourceRuntimeReads != 32 || g_resourceRuntimeBytes != 130692 || g_systemWindows != $startup_windows || g_resourceSourceMax > 65536 || g_macServiceEntered != $startup_entered || g_macServiceCompleted != $startup_completed || g_macServiceActive != 0
+if g_stageBState != 2 || g_trapWord!=0 || g_trapSegment!=0 || g_trapOffset!=0xffffffff || *(unsigned long*)(g_trapRoutine+0)!=0x382d4249 || *(unsigned long*)(g_trapRoutine+4)!=0x54205052 || *(unsigned long*)(g_trapRoutine+8)!=0x4553454e || *(unsigned long*)(g_trapRoutine+12)!=0x54415449 || *(unsigned short*)(g_trapRoutine+16)!=0x4f4e || g_trapRoutine[18]!=0 || g_trapSelector!=-1 || g_resourceRuntimeReads != 34 || g_resourceRuntimeBytes != 130788 || g_systemWindows != $startup_windows || g_resourceSourceMax > 65536 || g_macServiceEntered != $startup_entered || g_macServiceCompleted != $startup_completed || g_macServiceActive != 0
  printf "DIAGNOSTIC resource boundary: stage=%u trap=%x segment=%u app=%u/%u overlay=%u/%u windows=%u services=%u/%u active=%u code=%x lowmem=%u\n",g_stageBState,g_trapWord,g_trapSegment,g_resourceRuntimeReads,g_resourceRuntimeBytes,g_overlayRuntimeReads,g_overlayRuntimeBytes,g_systemWindows,g_macServiceEntered,g_macServiceCompleted,g_macServiceActive,g_loadedCodeMask,g_lowMemoryAppliedSites
  echo FAIL resource-read: runtime stop, service balance or bounded reads\n
  detach
@@ -88,6 +88,6 @@ if $samples != 3
  detach
  quit 1
 end
-printf "PASS resource-read: maps=243 preparation=201058 runtime=32/130692 windows=%u samples=3 next=SETPALETTE\n",g_systemWindows
+printf "PASS resource-read: maps=243 preparation=201058 runtime=34/130788 windows=%u samples=3 next=8-BIT-PRESENTATION\n",g_systemWindows
 detach
 quit 0

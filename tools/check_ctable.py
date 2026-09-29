@@ -31,7 +31,7 @@ def preserved(e,r,pop):
     if r['sp']!=e['sp']+pop or any(e[k]!=r[k] for k in PRESERVED):raise ValueError('stack/register preservation')
 def check(text,status,resource,folder,fixture=False,native=False):
     if status!=0 or any(x in text for x in ('FAIL','Error in','[LUA ERROR]','timeout')):raise ValueError('failed observer')
-    markers=('ARM native ctable original bytes','PASS original GetCTable and mutations','PASS native GetCTable detached next=SETPALETTE original-MDRV=absent') if native else ('ARM ctable dispatcher bytes=2f0a2f02246f000a','PASS original GetCTable and mutations','Exited via the debugger')
+    markers=('ARM native ctable original bytes','PASS original GetCTable and mutations','PASS native GetCTable detached next=8-BIT-PRESENTATION original-MDRV=absent') if native else ('ARM ctable dispatcher bytes=2f0a2f02246f000a','PASS original GetCTable and mutations','Exited via the debugger')
     if native and fixture:markers=('ARM native ctable CPU fixture','PASS CPU GetCTable and mutations','PASS native ctable CPU fixture shutdown sources=0/0 lineA=0 result=0')
     for marker in markers:
         if text.count(marker)!=1:raise ValueError('completion')
@@ -47,7 +47,7 @@ def check(text,status,resource,folder,fixture=False,native=False):
     for i in range(256):struct.pack_into('>H',expected,8+i*8,i)
     if after!=expected:raise ValueError('original index/flags mutations')
     if native and not fixture:
-        one(text,r'CTABLE_NEXT state=3 trap=AA95 selector=FFFFFFFF segment=9 offset=10FA manager=PALETTE MANAGER routine=SETPALETTE windows=(?:68|94) services=(?:124/124|132/132) reads=32 bytes=130692')
+        one(text,r'CTABLE_NEXT state=2 trap=0 selector=FFFFFFFF segment=0 offset=FFFFFFFF manager=SEGMENT LOADER routine=8-BIT PRESENTATION windows=(?:70|96) services=(?:124/124|132/132) reads=34 bytes=130788')
     if not fixture:
         if 'CTABLE_FIX_' in text:raise ValueError('unexpected fixture')
         return

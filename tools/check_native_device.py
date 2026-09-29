@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """Compare original native device selection with its checked Macintosh contract."""
 import argparse
+import hashlib
 from pathlib import Path
 import re
 from check_device_startup import check,original,ORDER,SITES
 
 def native(text,status,gd,pm,ct,pixels,reference):
     if status!=0 or any(s in text for s in ('FAIL','Error in','Program received signal','timeout')):raise ValueError('failed native observer')
-    for marker in ('PASS native device selection calls=4 count=1','[Inferior 1 (Remote target) detached]','NEXT state=3 trap=AA95 PALETTE MANAGER/SETPALETTE caller=9+10FA'):
+    for marker in ('PASS native device selection calls=4 count=1','[Inferior 1 (Remote target) detached]','NEXT state=2 trap=0000 SEGMENT LOADER/8-BIT PRESENTATION caller=0+FFFFFFFF'):
         if text.count(marker)!=1:raise ValueError('missing/duplicate native completion')
     entries=re.findall(r'DEVICE native entry=(\d+) offset=([0-9a-f]+) sp=([0-9A-F]+) args=([0-9A-F/]+)',text)
     returns=re.findall(r'DEVICE native return=(\d+) sp=([0-9A-F]+) result=([0-9A-F]+) D0=([0-9A-F]+)',text)
@@ -24,9 +25,9 @@ def native(text,status,gd,pm,ct,pixels,reference):
     for off,n in ((4,2),(10,2),(20,2),(30,4),(34,8),(42,4)):
         if gd[off:off+n]!=refgd[off:off+n]:raise ValueError('paired GDevice field')
     if pm[4:42]!=refpm[4:42] or pm[46:50]!=refpm[46:50] or ct[4:8]!=refct[4:8]:raise ValueError('paired PixMap/CTable header')
-    # The initial CLUT is un-realized storage, not a claim of matching colours.
-    # Drawing/palette use remains a named stop until that separate work lands.
-    if any(ct[8:]):raise ValueError('unexpected initial palette realization')
+    # Initial system colours, independently measured before game realization.
+    if hashlib.sha256(ct[4:]).hexdigest()!='8bde63f387a037ed68a9a1b659571162634834d079dd17e593df446b53aabb19':
+        raise ValueError('initial system colour table')
     if not int.from_bytes(pm[:4],'big') or not int.from_bytes(pm[42:46],'big') or not int.from_bytes(gd[22:26],'big'):raise ValueError('native backing pointers')
 
 if __name__=='__main__':
@@ -39,5 +40,5 @@ if __name__=='__main__':
             try:native(bad,status,*payload,reference)
             except ValueError:continue
             raise ValueError('native rejection fixture passed')
-        print('PASS paired native device: four original calls, stack/register observer, mode 0x83, 640x480x8 records, 307200 real bytes; next SETPALETTE')
+        print('PASS paired native device: four original calls, stack/register observer, mode 0x83, 640x480x8 records, 307200 real bytes; next 8-BIT PRESENTATION')
     except (OSError,ValueError,KeyError,AttributeError) as error:raise SystemExit('FAIL native device: '+str(error))

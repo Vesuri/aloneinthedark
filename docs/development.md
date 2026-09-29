@@ -2733,3 +2733,20 @@ and original byte checks pass. Original preferences are restored. The runtime
 executable is unchanged from 4b54e82, whose full host suite, twenty startup checks,
 boot/resource-read and link audits remain applicable. This is selection acceptance,
 not viewport or rendered output. See [screen-choice.md](screen-choice.md).
+
+
+## Window palette and client clear
+
+The original MoveWindow/ShowWindow transitions now match the Mac's complete
+palette/private/CLUT effects. Original window colour resources drive the black
+320×200 client clear; its exact dirty rectangle is retained. No Mac chrome is
+rendered. The next named stop is `8-BIT PRESENTATION`, before window binding.
+M2.5a brings the required display path forward; see [palette.md](palette.md).
+
+All 21 startup observers and paired checks, preference variants, host suite,
+clean boot/resource-read and link audits pass on the same executable. Original
+preferences are restored. A5 remains exact, low-memory sites are 58/55, and
+existing/fresh runs use 70/96 OS windows and 124/132 services. Original resource
+reads are 34 / 130,788 bytes; overlay reads remain 31 / 80,650. The paired checker
+also validates the exact reference cursor exception and rejects corrupt captures.
+This is logical state/pixel acceptance; rendered AGA/intro checks remain pending.

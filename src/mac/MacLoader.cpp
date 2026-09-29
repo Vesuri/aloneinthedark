@@ -6,6 +6,7 @@
 #include "LowMemory.h"
 #include "MacHeap.h"
 #include "BitmapFont.h"
+#include "Palette8.h"
 #include "SoundDriver.h"
 #include "MenuRecords.h"
 #include "AppleEventHandlers.h"
@@ -481,8 +482,10 @@ static int16_t s_memoryError;
 
 static void releaseZones()
 {
-    g_defaultPalette=0;
-    for(uint16_t i=0;i<8;++i)s_windows[i].ownedTitle=0;
+    g_defaultPalette=0;s_activePalette=0;
+    for(uint16_t i=0;i<8;++i) {
+        s_windows[i].ownedTitle=0;s_windows[i].palette=0;s_windows[i].paletteUpdates=false;
+    }
     for(uint16_t i=0;i<32;++i) {
         s_createdPalettes[i].handle=0;s_createdPalettes[i].privateHandle=0;
     }
@@ -1462,11 +1465,9 @@ static void initWindowManagerPort()
     for (uint16_t i = 0; i < sizeof(s_windowManagerColors); ++i) s_windowManagerColors[i] = 0;
 
     s_windowManagerColorsMaster = s_windowManagerColors;
-    // Storage is a real 256-entry device table. Palette realization remains
-    // a named stop: no unmeasured startup colours are published to the display.
-    write32(s_windowManagerColors, 1);
-    write16(s_windowManagerColors + 4, 0x8000);
-    write16(s_windowManagerColors + 6, 255);
+    // Initial logical device colours are needed when tolerant endpoint
+    // duplicates retain their old slots. AGA publication remains separate.
+    Palette8::systemTable(s_windowManagerColors,s_colorSeed++);
 
     s_windowManagerPixMapMaster = s_windowManagerPixMap;
     write32(s_windowManagerPixMap, (uint32_t)s_colorScreen);
@@ -1618,6 +1619,16 @@ static uint8_t* newColorWindow(int16_t id, uint8_t* storage, uint8_t* behind)
     uint8_t** resource = getResource(0x57494e44UL, id); // 'WIND'
     if (!resource || !*resource) return 0;
     const uint8_t* wind = *resource;
+    // Matching wctb part 0 is the content background, not window chrome.
+    MacHeap::Handle colors=getResource(0x77637462UL,id);
+    MacHeap* colorOwner=handleZone(colors);
+    if(!colorOwner || !colors || !*colors || colorOwner->handleSize(colors)!=48
+       || read32(*colors)!=0 || read16(*colors+4)!=0 || read16(*colors+6)!=4) {
+        loaderStop("WINDOW COLOR DEFINITION",0);showLoaderStop();
+    }
+    for(uint16_t i=0;i<5;++i)if(read16(*colors+8+i*8)!=i) {
+        loaderStop("WINDOW COLOR PARTS",0);showLoaderStop();
+    }
     uint32_t windBytes=handleZone(resource)->handleSize(resource);
     uint16_t titleWidth=0;
     if(windBytes<19 || uint32_t(19+wind[18])>windBytes
@@ -1660,6 +1671,13 @@ static uint8_t* newColorWindow(int16_t id, uint8_t* storage, uint8_t* behind)
     initRegion(slot->updateRegion, slot->updateRegionMaster, 0, 0, 0, 0);
     initColorPort(window, &slot->contentRegionMaster, &slot->clipRegionMaster,
                   top, left, bottom, right);
+    for(uint16_t i=0;i<3;++i)write16(window+42+i*2,read16(*colors+10+i*2));
+    // The reached wctb backgrounds and initial foreground are exact black.
+    // Other colour matching requires its own measured Color Manager contract.
+    if(!Palette8::rgb(window+42,0)) {
+        loaderStop("WINDOW BACKGROUND COLOR MATCH",0);showLoaderStop();
+    }
+    write32(window+80,255);write32(window+84,255);
 
     write16(window + 108, 0);                         // windowKind
     window[110] = wind[10];                           // visible
@@ -1848,6 +1866,51 @@ static bool moveHiddenSizeDialog(WindowSlot& slot,int16_t h,int16_t v,bool front
         writeRect(r+2,(int16_t)read16(r+2)+dv,(int16_t)read16(r+4)+dh,
                   (int16_t)read16(r+6)+dv,(int16_t)read16(r+8)+dh);
     }
+    return true;
+}
+
+// The measured single-device palette state preceding first realization.
+static bool prepareWindowPalette(MacHeap::Handle palette)
+{
+    uint16_t i=0;while(i<32 && s_createdPalettes[i].handle!=palette)++i;
+    if(!palette || i==32)return false;
+    MacHeap* owner=handleZone(palette);
+    MacHeap::Handle privateHandle=s_createdPalettes[i].privateHandle;
+    MacHeap* privateOwner=handleZone(privateHandle);
+    if(!owner || !*palette || !Palette8::supported(*palette,owner->handleSize(palette))
+       || read32(*palette+12)!=(uint32_t)privateHandle
+       || !privateOwner || !*privateHandle || privateOwner->handleSize(privateHandle)!=4
+       || read32(*privateHandle)!=0)return false;
+    uint32_t flags=read32(*palette+4),state=read32(*palette+8);
+    if(flags==0xe002 && state==0) {
+        (*palette)[6]=0xc0;write32(*palette+8,1);return true;
+    }
+    return flags==0xc002 && state==1;
+}
+
+static bool showColorWindow(WindowSlot& slot)
+{
+    if(slot.dialog || slot.window!=s_windowList || slot.window[110])return false;
+    const uint8_t* bounds=slot.contentRegion+2;
+    int16_t top=(int16_t)read16(bounds),left=(int16_t)read16(bounds+2);
+    int16_t bottom=(int16_t)read16(bounds+4),right=(int16_t)read16(bounds+6);
+    if(top<0 || left<0 || bottom<=top || right<=left || bottom>kScreenHeight
+       || right>kScreenWidth || !Palette8::rgb(slot.window+42,0))return false;
+    MacHeap::Handle palette=slot.palette ? slot.palette : g_defaultPalette;
+    if(!prepareWindowPalette(palette))return false;
+    MacHeap::Handle privateHandle=(MacHeap::Handle)read32(*palette+12);
+    // The protected endpoint matches use existing device slots; explicit
+    // non-endpoint colours occupy their requested slots without Vette maps.
+    if(!Palette8::realize(*palette,4112,s_windowManagerColors,sizeof(s_windowManagerColors),
+                         *privateHandle,4,s_colorSeed))return false;
+    ++s_colorSeed;
+    s_activePalette=palette;
+    // Clear only client content. The Mac's desktop, frame and title are never
+    // drawn; physical AGA publication is the separate display-backend step.
+    for(int16_t y=top;y<bottom;++y)
+        for(int16_t x=left;x<right;++x)s_colorScreen[uint32_t(y)*kScreenWidth+x]=255;
+    markDirtyBounds(top,left,bottom,right);
+    slot.window[110]=1;slot.window[111]=0xff;
     return true;
 }
 
@@ -6358,6 +6421,8 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
                                      (int16_t)read16(userStack+2),userStack[0]!=0))goto unsupportedTrap;
             return 11;
         }
+        if(read16(s_windowManagerPixMap+32)==8
+           && (!slot || !prepareWindowPalette(g_defaultPalette)))goto unsupportedTrap;
         moveWindow((uint8_t*)read32(userStack + 6),
                    (int16_t)read16(userStack + 4), (int16_t)read16(userStack + 2),
                    userStack[0] != 0);
@@ -6601,8 +6666,11 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     }
     if (trap == 0xa915) {                    // ShowWindow(window)
         uint8_t* window = (uint8_t*)read32(userStack);
-        if (WindowSlot* slot=windowSlot(window))
-            window[110] = !(slot->dialog && slot->resourceID==1000);
+        WindowSlot* slot=windowSlot(window);
+        if(!slot)goto unsupportedTrap;
+        if(read16(s_windowManagerPixMap+32)==8 && !slot->dialog) {
+            if(!showColorWindow(*slot))goto unsupportedTrap;
+        } else window[110] = !(slot->dialog && slot->resourceID==1000);
         if (g_stageCDepth < 31) g_stageCDepth = 31;
         return 5;
     }

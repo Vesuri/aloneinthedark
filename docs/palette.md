@@ -194,37 +194,74 @@ transfer, eight-plane output and rendered intro acceptance remain M2.7/M2.7a and
 the other queued graphics work.
 
 
-## Window lifecycle prerequisite for window binding
+## Window palette state and first client clear [M]
 
-The newly reached original SetPalette call is at Misc1+$10FA. Its instruction
+MoveWindow at Misc1+$0FAC changes palette byte 6 from $E0 to $C0 and long +8
+from zero to one. Private data, device records, CLUT and physical pixels remain
+unchanged. ShowWindow at +$10E6 changes each entry's private word at +10 to
+$800A, realizes the device CLUT, and writes its new seed to the private allocation.
+The private header fields' broader meaning is not inferred from these values.
+
+The native initial device table contains the complete measured system palette.
+Its seed-independent SHA-256 is
+`8bde63f387a037ed68a9a1b659571162634834d079dd17e593df446b53aabb19`.
+The realization helper assigns explicit non-endpoint colours and retains
+protected white/black duplicate slots without hardcoding game indices. For the
+original palette these are slots 1, 15 and 191, plus endpoints 0 and 255.
+Sanitizer fixtures cover different duplicate positions, malformed inputs,
+repeat-realization rejection and mutation atomicity. Unsupported forms stop.
+
+Original `wctb` 128/131 supply black client backgrounds. Part zero is the
+content background, as documented in Apple's
+[Window Color Table reference](https://dev.os9.ca/techpubs/mac/Toolbox/Toolbox-295.html).
+ShowWindow clears only the global client rectangle (160,150)–(480,350), marks
+it dirty, and updates visibility/hilite state. No Mac chrome is drawn.
+The reference's software arrow explains 43 white pixels inside the otherwise
+black client area; the checker requires its complete measured 16×16 pattern.
+Native hardware cursor presentation remains separate.
+
+The MoveWindow helper bytes +$0F94–$0FB3 have SHA-256
+`ac7b10b44ab334076f90cb605411a22f4d82b7cb09e3e91470942a38dea74d5a`;
+the ShowWindow call +$10E2–$10E7 has SHA-256
+`fbb2f10eed30f3a3ccbb42f116e135a329de15963a39307a540398422a54a59c`.
+`tools/mac_window_palette_state.lua`, `amiga/window_palette_state.gdb` and
+`tools/check_window_palette_state.py` verify original/live bytes, arguments,
+stack/register preservation, full palette/CLUT transitions, private seed
+consistency, loaded window colours and client pixels. Only opaque addresses and
+allocated seeds are normalized, after identity/seed relationships are checked.
+The helper also reproduces the complete captured Mac transition byte-for-byte.
+
+Use the documented bounded headless MAME command with the Lua observer, and
+`GDBSCRIPT=window_palette_state.gdb ./diag_run.sh 300` for the native capture.
+Preserve captures before subsequent runs. Supply actual runner statuses:
+
+```sh
+python3 tools/check_window_palette_state.py REFERENCE.log NATIVE.log \
+  --reference-status 0 --native-status 0
+```
+
+All 21 startup observers and paired contracts, existing/fresh/low preference
+variants, host tests, clean boot/resource-read and no-float/78-symbol audits
+pass. The clean executable matches the suite's executable. A5 remains exact
+across 75,616 bytes; low-memory validation/applied counts remain 58/55.
+Existing/fresh runs complete 70/96 OS windows and 124/132 services; original
+resource bodies total 34 / 130,788 bytes, overlay bodies 31 / 80,650. Original
+preferences are restored. The checker rejects timeouts, missing completion,
+CLUT/palette/private-seed corruption and writes outside client content.
+
+Accepted evidence: `tmp/m2-window-state-reference-cursor.log`,
+`tmp/m2-window-state-dirty-pair.log`, `tmp/m2-window-state-final-suite.log`
+(all native observers), `tmp/m2-window-state-final-paired.log` (paired checks),
+`tmp/m2-window-state-final-preferences.log`, `tmp/m2-window-state-final-host.log`,
+`tmp/m2-window-state-boot.log` and `tmp/m2-window-state-resource-read.log`.
+The suite's first paired pass rejected a zero-padding mismatch in its device
+checker; the corrected expectation passed against the same successful capture.
+
+The pending dirty rectangle now exposes `8-BIT PRESENTATION` at the next trap
+boundary. This is the M2.5a display prerequisite, before window binding; no AGA
+output or rendered intro acceptance is claimed. The original subsequent
+SetPalette call at Misc1+$10FA is measured to leave the already-realized state
+unchanged, with GetPalette(window) returning the default handle. Its instruction
 range +$10E8–$10FB has SHA-256
 `41c4b669d4c6ce8e4889fb470c9a76c753d11fe61bd4e1285be68a20b6db8a23`.
-A bounded headless exploratory capture shows update=true and the existing default
-palette passed for the main window. GetPalette(window) returns that same handle.
-The complete palette, private allocation, window record, GDevice, PixMap, CLUT,
-physical framebuffer and hardware palette remain unchanged across this call.
-
-Earlier transitions explain why it is not an activation point on this route:
-
-- MoveWindow at Misc1+$0FAC changes palette byte 6 from $E0 to $C0 and long +8
-  from zero to one. Private data, GDevice, PixMap and CLUT remain unchanged.
-  The exact private-field meaning is not inferred from those values.
-- ShowWindow at Misc1+$10E6 changes each entry's private word at +10 to $800A,
-  realizes the device CLUT and writes its new seed to the four-byte private
-  allocation. RGB slots 1, 15 and 191 retain their prior values, matching the
-  M0.5 observation; the other RGBs match the palette.
-- Native entry to SetPalette still has the earlier $E002 header, long +8 zero
-  and no active palette. The inherited ShowWindow visibility flag alone does
-  not reproduce these measured palette effects.
-
-Original MoveWindow helper bytes +$0F94–$0FB3 have SHA-256
-`ac7b10b44ab334076f90cb605411a22f4d82b7cb09e3e91470942a38dea74d5a`;
-the ShowWindow call bytes +$10E2–$10E7 have SHA-256
-`fbb2f10eed30f3a3ccbb42f116e135a329de15963a39307a540398422a54a59c`.
-Exploratory evidence is `tmp/m2-window-palette-reference-explore.log`,
-`tmp/m2-window-palette-stages.log`, `tmp/m2-window-palette-move.log` and
-`tmp/m2-window-palette-native-input.log`. All bounded captures exited zero with
-positive markers. The byte deltas were independently checked; this locates the
-prerequisite, but is not native acceptance or a complete lifecycle contract.
-Maintained paired probes, implementation and regression acceptance are queued
-as M2.1c3c2c5b2c2e1 before final window-binding acceptance.
+Native window binding and broader activation remain queued.

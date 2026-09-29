@@ -475,6 +475,11 @@ Native trap probes, host fragmentation tests and paired heap captures verify it:
     registers through BPLCON3 banks, published in the VBI.
   - Verify the device CLUT against a MAME capture taken after the game activates
     its palette (8-bit `mac_probe_fb.lua`, M0.5).
+  - Startup MoveWindow/ShowWindow now reproduce the measured initial palette
+    state and realization, including retained duplicate endpoint colours.
+    ShowWindow clears only client content and records its dirty rectangle.
+    The next boundary stops at `8-BIT PRESENTATION` until M2.5a; this does not
+    claim AGA publication or full ActivatePalette acceptance. See [palette.md](palette.md).
 - **Fonts.** See 4.11 and D6.
 
 ### 4.8 QuickDraw and offscreen worlds

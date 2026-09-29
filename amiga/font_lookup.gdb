@@ -33,7 +33,7 @@ if $pc!=(unsigned long)($dan+0x14) || *(short*)$out!=20 || $sp!=(unsigned long)(
 end
 printf "PASS font first: Dan1+0014 result=%d stack=$%08x D0=$%08x\n",*(short*)$out,$sp,$d0
 continue
-if g_stageBState != 3 || g_trapWord!=0xaa95 || g_trapSegment!=9 || g_trapOffset!=0x10fa || *(unsigned long*)(g_trapRoutine+0)!=0x53455450 || *(unsigned long*)(g_trapRoutine+4)!=0x414c4554 || g_trapRoutine[8]!=0x54 || g_trapRoutine[9]!=0x45 || g_trapRoutine[10]!=0x00 || g_trapSelector!=-1 || g_resourceRuntimeReads!=32 || g_resourceRuntimeBytes!=130692 || g_overlayRuntimeReads!=31 || g_overlayRuntimeBytes!=80650 || g_systemWindows!=$startup_windows || g_macServiceEntered!=$startup_entered || g_macServiceCompleted!=$startup_completed || g_macServiceActive!=0
+if g_stageBState != 2 || g_trapWord!=0 || g_trapSegment!=0 || g_trapOffset!=0xffffffff || *(unsigned long*)(g_trapRoutine+0)!=0x382d4249 || *(unsigned long*)(g_trapRoutine+4)!=0x54205052 || *(unsigned long*)(g_trapRoutine+8)!=0x4553454e || *(unsigned long*)(g_trapRoutine+12)!=0x54415449 || *(unsigned short*)(g_trapRoutine+16)!=0x4f4e || g_trapRoutine[18]!=0 || g_trapSelector!=-1 || g_resourceRuntimeReads!=34 || g_resourceRuntimeBytes!=130788 || g_overlayRuntimeReads!=31 || g_overlayRuntimeBytes!=80650 || g_systemWindows!=$startup_windows || g_macServiceEntered!=$startup_entered || g_macServiceCompleted!=$startup_completed || g_macServiceActive!=0
  echo FAIL font lookup: next named stop or bounded resource counts\n
  detach
  quit 1
@@ -69,6 +69,6 @@ if $font_bodies!=2
  detach
  quit 1
 end
-printf "PASS font startup prerequisite: first Times=20 overlay=31/80650 next=SETPALETTE; second call pending graphics services\n"
+printf "PASS font startup prerequisite: first Times=20 overlay=31/80650 next=8-BIT-PRESENTATION; second call pending graphics services\n"
 detach
 quit 0
