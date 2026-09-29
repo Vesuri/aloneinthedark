@@ -62,3 +62,38 @@ rejects incomplete/duplicate/reordered calls, verifies stack/results and D0,
 and checks original bytes. Its negative fixtures run in `make host-tests`.
 Timeouts and diagnostic wait snapshots are failures. Internal MAME snapshots
 are local diagnostics and do not satisfy deferred Amiga rendered-video checks.
+
+## Port-owned placeholder definition
+
+`resources/placeholder-font.json` contains original port-owned 5×7 shapes.
+Digits and capitals match the inherited Vette picture font; punctuation is drawn
+for this port. Lowercase deliberately shares capital shapes at this prerequisite
+stage. This is a placeholder, not Times artwork or an Apple font. Full lowercase,
+style/size coverage and rendered placement remain M2.9.
+
+`tools/placeholder_font.py` encodes family 20 as a 60-byte FOND with one plain
+14-point association to NFNT 128. The 1,254-byte NFNT contains printable ASCII
+plus a missing-character box: a 480×14 monochrome bitmap, 97 location words and
+97 offset/width words. The fixed advance is six pixels, ascent twelve and descent
+two. Font type $3000 and FOND flags $C000 describe this restricted layout.
+The width-table offset is measured in words from the NFNT field at byte 16.
+
+The format follows Apple's [NFNT description](https://dev.os9.ca/techpubs/mac/Text/Text-250.html),
+[font type flags](https://dev.os9.ca/techpubs/mac/Text/Text-251.html), and
+[FamRec definition](https://dev.os9.ca/techpubs/mac/Text/Text-215.html).
+No optional tables or external font data are used.
+
+`BitmapFont.h` validates the family link, metrics, bitmap bounds and every glyph
+location/width before exposing pixels. Unsupported layouts are rejected. Its
+ASCII family-name matcher passes the measured Times case/space cases.
+`check_bitmap_font.py` compiles that native header under address/undefined-behavior
+sanitizers and checks exact A, space and missing-glyph pixels, every truncation
+and malformed header/table cases. It runs in `make host-tests`. The complete
+host suite passes. A standalone parser translation unit also compiles with the
+repository’s 68020 flags and compatibility prelude without unresolved helpers;
+this is a compiler check, not native runtime acceptance.
+
+This independently tested M2.1c3b definition is not installed yet: the committed
+overlay remains empty and native GetFNum still stops loudly. M2.1c3 must publish
+these resources, connect the lookup to validated installed bodies, and verify
+both original calls before this prerequisite is complete.

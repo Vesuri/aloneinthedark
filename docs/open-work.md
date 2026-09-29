@@ -48,8 +48,10 @@ required.
     follows at +$0038 before the first original PAK load. This must be implemented
     before native read acceptance can advance.
   - The original/reference-fixture GetFNum contract is measured; see
-    [font-manager.md](font-manager.md). Back the Times family with a valid port-owned placeholder font definition in the overlay
-    (D6). Do not return a font ID without a real installed definition. Remaining
+    [font-manager.md](font-manager.md). The port-owned 14-point FOND/NFNT
+    definition and native parser pass host checks. Install them in the overlay
+    and connect GetFNum to validated resource bodies (D6). Do not return a font
+    ID without a real installed definition. Remaining
     unsupported text/font operations must retain named stops; full rendered-font
     acceptance remains M2.9.
 
