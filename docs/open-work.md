@@ -43,13 +43,38 @@ required.
 
 ## M2 Startup to intro
 
+- **M2.1c1 Verify the installed ListBod2.PAK location.**
+  - The original idle route randomly selects one of two body archives. The captured
+    branch requests `:Alone Data:ListBod2.PAK` and returns fnfErr (-43), then
+    displays the original missing-file alert. The extracted payload places that
+    file at the application root; the original installer has not yet been run.
+  - Run the unmodified installer on an isolated reference-volume copy and inspect
+    its resulting paths and fork checksums. Do not silently relocate a file or
+    bypass the original alert. Correct extraction/staging only if that reproduces
+    the verified installation; an original-release defect requiring a behavior
+    change goes to the owner.
+
+  *Done when* a normally completed original installation establishes the exact
+  ListBod2 path and bytes, and any necessary staging correction has host/native
+  verification; otherwise record the specific original defect for an owner decision.
+- **M2.1c2 Capture the original idle presentation route.**
+  - Original-byte checks locate PRESENT at Dan2+$2D16, called by Dark+$52AC
+    after the main-menu timeout, idle demo and two intro calls. Its 15 image
+    loads use ITD_RESS index 13 followed by PRESENT indices 0–13.
+  - `mac_pak_idle.lua` instruments that route without patching code, time or RNG.
+    Its diagnostic-only capture identifies the missing-file alert above; no
+    presentation-completion capture has passed yet.
+
+  *Done when* a bounded reference run exits normally, `check_pak_idle.py` accepts
+  the natural timeout and all 15 loads, and paired original File Manager calls
+  prove reads from both PAKs. Native payload acceptance remains M2.1c.
 - **M2.1c Original File Manager read acceptance (after M2.2).**
   - This retains M2.1's original acceptance; diagnostic fixture reads do not count
     as original-game reads. M2.1b2a measured the intervening Get1NamedResource
     dependency at Engine+$3CDC. Implement the file core first, then the queued
     resource services, then return here for their integrated acceptance.
-  - Identify the original PRESENT.PAK path: the full Mac play/save/load route
-    did not open it. Do not synthesize a read or infer one from a diagnostic.
+  - Complete the preceding original-installation and idle-route checks. The full
+    Mac play/save/load route did not open PRESENT. Do not synthesize a read.
 
   *Done when* the game opens and reads `ITD_RESS.PAK` and `PRESENT.PAK`, its
   returned bytes match the host files by debugger checksum, and startup window

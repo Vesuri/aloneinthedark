@@ -7,6 +7,7 @@ local meta = dofile('tmp/mac-trap-map.lua')
 local cpu = manager.machine.devices[':maincpu']
 local mem = cpu.spaces.program
 local dbg = assert(manager.machine.debugger, 'TRAP LOG / DEBUGGER REQUIRED')
+local fileOnly=os.getenv('AITD_MAC_FILE_ONLY')=='1'
 local appname='Alone In The Dark'
 local guard={string.format('b@910==%x',#appname)}
 for i=1,#appname do guard[#guard+1]=string.format('b@%x==%x',0x910+i,appname:byte(i)) end
@@ -63,7 +64,7 @@ local function map_segments()
     local args={{'ticks','d@16a'},{'caller','pc'},{'cleanup','w@(pc+2)'},{'selector','d@sp'},{'arg','d@(sp+4)'},
      {'arg0','d@(d@(sp+4)&ffffff)'},{'arg1','d@((d@(sp+4)&ffffff)+4)'},{'arg2','d@((d@(sp+4)&ffffff)+8)'}}
     for i=0,7 do args[#args+1]={'sample'..i,string.format('if(d@sp==11,d@((d@(d@(sp+4)&ffffff)&ffffff)+%x),0)',4*i)} end
-    breakpoint(pc,string.format('MDRV seg=%X offset=%X',seg,offset),args)
+    if not fileOnly then breakpoint(pc,string.format('MDRV seg=%X offset=%X',seg,offset),args) end
    end
    for _,site in ipairs(info.input_writes) do
     assert(mem:read_u16(base+site[1])==site[3],'INPUT PROBE / ORIGINAL WRITE BYTES')
@@ -72,7 +73,8 @@ local function map_segments()
    for _,t in ipairs(info.traps) do
     local pc=base+t[1]
     -- Byte-check every original site; loaded relocation never changes trap words.
-    if mem:read_u16(pc)==t[2] and (t[2]&0x0c00)~=0x0c00 and not return_bps[pc+2] then
+    if mem:read_u16(pc)==t[2] and (t[2]&0x0c00)~=0x0c00 and not return_bps[pc+2]
+     and (not fileOnly or is_file_trap(t[2]) or t[2]==0xa823) then
      local result={{'pc','pc'},{'sp','sp'},{'d0','d0'},{'a0','a0'},{'r0','d@sp'},{'r1','d@(sp+4)'},{'r2','d@(sp+8)'},{'env0','if(w@(pc-2)==a090,d@a0,0)'},{'env1','if(w@(pc-2)==a090,d@(a0+4),0)'},{'env2','if(w@(pc-2)==a090,d@(a0+8),0)'},{'env3','if(w@(pc-2)==a090,d@(a0+c),0)'}}
      if t[2]==0xa823 then
       -- Original FindFolder glue keeps the two output pointers live in A3/A4.
@@ -118,10 +120,11 @@ emu.register_frame_done(function()
   local trapword='w@(d@(sp+2))'
   local base=appcond..' && (d@(sp+2)&ffffff)>100000 && (d@(sp+2)&ffffff)<800000'
   local excluded=' && '..trapword..'!=a884 && '..trapword..'!=a885 && '..trapword..'!=a900 && ('..trapword..'&8ff)>18 && ('..trapword..'&8ff)!=44 && ('..trapword..'&8ff)!=60'
-  breakpoint(0xdd60,'TRAP',expr,base..excluded)
+  if not fileOnly then breakpoint(0xdd60,'TRAP',expr,base..excluded) end
   local function detail(label,args,condition)
+   if fileOnly and label~='FILE' then return end
    local both=action('TRAP',expr):gsub(';g$',';')..action(label,args)
-   cpu.debug:bpset(0xdd60,appcond..' && '..condition,both)
+   cpu.debug:bpset(0xdd60,(fileOnly and base or appcond)..' && '..condition,both)
   end
   -- DrawText's Pascal stack: count:w, first:w, buffer:l.
   local text={{'font','w@((d@(d@(d@904)&ffffff)&ffffff)+44)'},{'size','w@((d@(d@(d@904)&ffffff)&ffffff)+4a)'},{'pc','d@(sp+2)'},{'count','w@(sp+8)'},{'first','w@(sp+a)'}}

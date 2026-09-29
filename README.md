@@ -27,7 +27,9 @@ serve memory and resource handles. System identity and all eleven derived
 capability flags match the Mac reference. The user-mode service bridge passes
 its native ABI probe. OS windows and DOS/resload adapters pass the native/host
 core probes; rendered-picture acceptance is owner-deferred (M1.7b2). The next
-implementation item is the remaining Resource Manager services (M2.2).
+item is original-game PAK read acceptance (M2.1c). Its idle reference route
+currently encounters the original missing-ListBod2.PAK alert; installer placement
+must be verified before changing staging.
 Resource bodies now stream from disk into zone handles; startup retains the
 4,998-byte map instead of the 1,424,934-byte application fork. The `resource-read`
 regression verifies original bytes and 16 runtime read windows before the current

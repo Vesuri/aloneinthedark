@@ -93,6 +93,7 @@ host-tests:
 	@python3 tools/check_file_read_cache.py
 	@python3 tools/check_mac_files.py
 	@python3 tools/check_file_reference.py --selftest
+	@python3 tools/check_pak_idle.py --selftest
 	@python3 tools/check_resload_access.py
 	@python3 tools/check_mac_heap.py
 	@python3 tools/check_lowmem.py --selftest

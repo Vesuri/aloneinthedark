@@ -30,7 +30,10 @@ resource fork) is never run.
 
 The payload also holds `ListBod2.PAK` at its root, an empty `Alone Saved Games`
 folder, `Quick Reference` and a registration application. Whether the installer
-places `ListBod2.PAK` in the data folder is unknown; the tool does not copy it.
+places `ListBod2.PAK` in the data folder is unknown; extraction and staging
+preserve it at the root. The original idle demo has now been observed requesting
+`:Alone Data:ListBod2.PAK`, receiving fnfErr and displaying a missing-file alert.
+M2.1c1 must establish the actual installer layout before changing these paths.
 
 The HFS volume also holds the manual (PDF), `Quick Reference` and a "Stair Bug
 Fix" folder: G3Throttle, with a note that the storeroom stairs fail on a fast

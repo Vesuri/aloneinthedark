@@ -80,6 +80,44 @@ and STRS $004442C8 give zero mismatches in 75,616 bytes. Heap accounting retains
 zero unexplained bytes. This is a diagnostic/reference checkpoint, not progress
 past the File Manager stop or a successful game launch.
 
+## Original idle-route diagnosis (M2.1c0)
+
+`check_pak_idle.py --original-only` checks the original main-menu timeout,
+caller and presentation-loop bytes, STRS+$64's `present.pak` string, its sole
+CREL reference (Dan2+$2D46), and CODE 0's A5+$34A jump entry. Dan1+$137E uses
+900 ticks for the menu timeout; its -1 result enters Dark+$524A. The path runs
+an idle demo, then two intro calls, before Dark+$52AC calls Dan2+$2D16.
+That function loads ITD_RESS image 13 and PRESENT images 0–13. This establishes
+an original code path, not successful execution or an unused-file exemption.
+
+`AITD_MAC_FILE_ONLY=1` restricts the existing logger to File Manager evidence
+and FindFolder returns; its default full-trace behavior is unchanged. It retains
+original RAM caller attribution, complete parameter blocks and paired returns.
+Select `AITD_MAC_SCENARIO=tools/mac_pak_idle.lua` for read-only execution
+checkpoints. The scenario leaves input untouched after window selection and
+pointer parking. Full acceptance requires normal process status and
+`check_pak_idle.py LOG --status 0`; missing/duplicated completion, incomplete
+loads, zero pointers, emulator errors and timeouts are rejected. No full idle
+presentation run has passed yet.
+
+After two deadline failures, intermediary checkpoints established that execution
+stops inside the idle demo's scene setup, before either later intro call.
+`AITD_PAK_IDLE_DIAG=1` captures an internal MAME frame and call stack after
+that point and exits with a diagnostic-only marker. Local
+`tmp/m2-pak-idle-stack.log` exits zero and the internal image
+`ref/mame/snap/m2-pak-idle-wait.png` visibly shows the original missing-file alert.
+The paired Misc3+$0FBE Open requests `:Alone Data:ListBod2.PAK` and returns
+-43. Dark+$5254 stores the random low bit selecting the alternate body set;
+the captured result is 1. The archive and current extracted installation keep
+ListBod2 at the application root. Installer placement remains unverified;
+M2.1c1 records that prerequisite. No original bytes or files were moved to hide
+this error, and no missing-file run counts as PAK acceptance.
+
+The full host suite and byte guards pass. This changes reference diagnostics
+only; native runtime and its six-case regression baseline at 4d199ce remain
+unchanged. Production still stops at GetFNum, and native original-read byte
+checksums and startup-window acceptance remain M2.1c.
+
 ## Implemented catalog checkpoint (M2.1b1)
 
 The independent catalog/identity portion of M2.1b is complete. `MacFiles` models

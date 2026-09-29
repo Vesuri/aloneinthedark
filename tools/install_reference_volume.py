@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
 """Install the original game onto a classic-Mac HFS hard-disk image for MAME.
 
-The installer payload (see extract_original_data.py) is exactly the folder the
-original installer creates, so it is copied as-is into a top-level folder of
-the volume's Desktop Folder (so it shows on the System 7 desktop, or the root
+The extracted installer payload (see extract_original_data.py) is copied as-is
+into a top-level folder of the volume's Desktop Folder (so it shows on the System 7 desktop, or the root
 if the volume has none): the application with its resource fork, `Alone Data`,
 the empty `Alone Saved Games` folder and the extras.  Every file travels as MacBinary
 through `hcopy -m`, the only hfsutils path that keeps both forks together with
 type, creator and Finder flags.  Nothing here is committed: the image lives in
 ignored ref/.
+
+This preserves archive layout, not a verified installer result. In particular,
+ListBod2.PAK is at the payload root, while the original idle demo requests it
+under Alone Data. M2.1c1 must verify the original installer before changing this.
 
     python3 tools/install_reference_volume.py tmp/AloneInTheDark.img_.sit \\
         ref/mame/hd/aitd_755.hd
