@@ -75,6 +75,8 @@ volatile uint32_t g_macVBLCallbackTask = 0;
 volatile uint32_t g_macVBLCallbackA5 = 0;
 volatile uint32_t g_macVBLCallbackReturn = 0;
 volatile uint16_t g_macVBLCallbackActive = 0;
+volatile uint16_t g_macFileCompletionDepth = 0;
+uint32_t aitd_call_file_completion(uint32_t entry,uint32_t pb,uint32_t result,uint32_t a5);
 volatile uint32_t g_macHostReturnSP = 0;
 uint8_t* g_macStackBase = 0;
 uint8_t* g_macLowMemory = 0;
@@ -641,6 +643,14 @@ static const TrapName s_trapNames[] = {
     {0xa1ad,"OS","GESTALT"},
     {0xa860,"EVENT MANAGER","WAITNEXTEVENT"},
     {0xa207,"FILE MANAGER","HGETVINFO"},
+    {0xa40c,"FILE MANAGER","GETFINFO ASYNC"},
+    {0xa608,"FILE MANAGER","HCREATE ASYNC"},
+    {0xa60a,"FILE MANAGER","HOPENRF ASYNC"},
+    {0xa60c,"FILE MANAGER","HGETFINFO ASYNC"},
+    {0xa60d,"FILE MANAGER","HSETFINFO ASYNC"},
+    {0xa614,"FILE MANAGER","HGETVOL ASYNC"},
+    {0xa615,"FILE MANAGER","HSETVOL ASYNC"},
+    {0xa660,"FILE MANAGER","HFSDISPATCH ASYNC"},
     {0xa060,"FILE MANAGER","FSDISPATCH"},
     {0xa260,"FILE MANAGER","HFSDISPATCH"},
     {0xa9af,"RESOURCE MANAGER","RESERROR"}, {0xa992,"RESOURCE MANAGER","DETACHRESOURCE"},
@@ -4458,7 +4468,7 @@ static void scheduleVBLTask()
         if (g_macTicksAddress) write32((uint8_t*)g_macTicksAddress, g_macTicks);
         return;
     }
-    if (g_macVBLCallbackEntry || g_macVBLCallbackActive) return;
+    if (g_macVBLCallbackEntry || g_macVBLCallbackActive || g_macFileCompletionDepth) return;
 
     for (;;) {
         if (!s_vblPassActive) {
@@ -5142,6 +5152,18 @@ static bool dispatchFileData(uint16_t trap,uint32_t* regs) {
     if(error==MacFiles::unsupported)return false;
     write16(pb+16,error);regs[0]=(uint32_t)(int32_t)error;return true;
 }
+// Only the measured async census encodings are accepted. Preserve the original
+// trap identity for patch routing and loud stops; normalize only file dispatch.
+static uint16_t synchronousFileTrap(uint16_t trap,uint16_t selector) {
+    switch(trap) {
+    case 0xa40c:case 0xa608:case 0xa60a:case 0xa60c:case 0xa60d:case 0xa614:case 0xa615:
+        return trap&~0x0400;
+    case 0xa660:
+        if(selector==1 || selector==2 || selector==7 || selector==8)return 0xa260;
+        return trap;
+    default:return trap;
+    }
+}
 static bool isUserService(uint16_t trap)
 {
 #ifdef AITD_FILE_WRITE_PROBE
@@ -5153,7 +5175,8 @@ static bool isUserService(uint16_t trap)
 #ifdef AITD_SERVICE_PROBE
     if((trap&0xfeff)==0xa0fc || trap==0xabfb)return true;
 #endif
-    return (trap&0xf8ff)==0xa060 || trap==0xa014 || trap==0xa015 || trap==0xa214 || trap==0xa215 || trap==0xa207 || isFileDataService(trap) || isFileCatalogService(trap);
+    return trap==0xa40c || trap==0xa608 || trap==0xa60a || trap==0xa60c || trap==0xa60d || trap==0xa614 || trap==0xa615
+        || (trap&0xf8ff)==0xa060 || trap==0xa014 || trap==0xa015 || trap==0xa214 || trap==0xa215 || trap==0xa207 || isFileDataService(trap) || isFileCatalogService(trap);
 }
 // File Manager metadata and volume selectors. Unsupported layouts fall through
 // to the named trap stop; native volume queries use a user-mode OS window.
@@ -5347,9 +5370,10 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     }
 #endif
     if(!(trap&0x0800) && dispatchMemoryTrap(trap,regs))return 1;
-    if(inUserService && dispatchFileMetadata(trap,regs))return 1;
-    if(inUserService && dispatchFileData(trap,regs))return 1;
-    if(inUserService && dispatchFileCatalog(trap,regs))return 1;
+    uint16_t fileTrap=synchronousFileTrap(trap,(uint16_t)regs[0]);
+    if(inUserService && dispatchFileMetadata(fileTrap,regs))return 1;
+    if(inUserService && dispatchFileData(fileTrap,regs))return 1;
+    if(inUserService && dispatchFileCatalog(fileTrap,regs))return 1;
     if(trap==0xa823 && (uint16_t)regs[0]==0) { // FindFolder, catalogued Preferences.
         const uint16_t volume=read16(userStack+14);
         const uint32_t type=read32(userStack+10);
@@ -6265,7 +6289,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     if (trap == 0xab1d) g_trapSelector = (uint16_t)regs[0];
     if (trap == 0xa823) g_trapSelector=(uint16_t)regs[0];
     if (trap == 0xa1ad) g_trapSelector = (int32_t)regs[0];
-    if (trap == 0xa060 || trap == 0xa260) {
+    if (trap == 0xa060 || trap == 0xa260 || trap == 0xa660) {
         g_trapSelector=(uint16_t)regs[0];
         if(g_trapSelector==1)routine="OPENWD";
         if(g_trapSelector==2)routine="CLOSEWD";
@@ -6287,6 +6311,21 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
 extern "C" uint8_t* aitdUserServiceDispatch(uint8_t* parked)
 {
     ++g_macServiceEntered;
+    const uint16_t trap=s_userService.trap,selector=(uint16_t)read32(parked);
+    const uint16_t fileTrap=synchronousFileTrap(trap,selector);
+    uint8_t* pb=(uint8_t*)read32(parked+32);
+    const bool async=fileTrap!=trap;
+    const bool protectedWD=(trap==0xa660 || trap==0xa260) && selector==2 && pb
+        && (int16_t)read16(pb+22)==MacFiles::applicationWD;
+    uint32_t completion=async && pb && !protectedWD ? read32(pb+12) : 0;
+    // These synchronous file services use the standard PB header. Unknown
+    // dispatch selectors remain loud and cannot accidentally call a completion.
+    const bool syncFile=isFileDataService(trap) || isFileCatalogService(trap)
+        || trap==0xa014 || trap==0xa015 || trap==0xa214 || trap==0xa215 || trap==0xa207
+        || ((trap==0xa060 || trap==0xa260) && (selector==1 || selector==2 || selector==7
+            || selector==8 || selector==0x1a || selector==0x30));
+    if(pb && syncFile && !protectedWD)write32(pb+12,0);
+    if(pb && async)write16(pb+16,1);
     uint32_t result=dispatchMacTrap(s_userService.trap,s_userService.builtin,
         (uint32_t*)parked,s_userService.frame,s_userService.arguments,true);
     if(!result || result>0x7fff) {
@@ -6296,16 +6335,27 @@ extern "C" uint8_t* aitdUserServiceDispatch(uint8_t* parked)
     if(s_userService.builtin && (s_userService.trap&0x0800))
         write32(s_userService.arguments-4+cleanup,s_userService.toolboxReturn);
     uint16_t ccr=read16(s_userService.frame);
-    if(!(s_userService.trap&0x0800)) {
+    uint32_t returnPC=read32(s_userService.frame+2)+2;
+    // All global service-frame data is consumed before entering original code.
+    // A completion may submit another file service using its own parked frame.
+    g_macServiceActive=0;
+    ++g_macServiceCompleted;
+    if(completion) {
+        if(g_macFileCompletionDepth>=8) {
+            loaderStop("FILE COMPLETION DEPTH",0);showLoaderStop();
+        }
+        ++g_macFileCompletionDepth;
+        uint32_t value=aitd_call_file_completion(completion,(uint32_t)pb,read32(parked),read32(parked+52));
+        --g_macFileCompletionDepth;
+        write32(parked,value);
+    }
+    if(!(trap&0x0800)) {
         ccr&=0xfff0;
         int16_t d0=(int16_t)read16(parked+2);
         if(d0<0)ccr|=8;else if(!d0)ccr|=4;
     }
     write16(parked+60,ccr);
-    uint32_t returnPC=read32(s_userService.frame+2)+2;
-    g_macServiceActive=0;
-    ++g_macServiceCompleted;
-    if(g_macVBLCallbackEntry) {
+    if(g_macVBLCallbackEntry && !g_macFileCompletionDepth) {
         g_macVBLCallbackReturn=returnPC;
         returnPC=(uint32_t)aitd_user_vbl_trampoline;
     }

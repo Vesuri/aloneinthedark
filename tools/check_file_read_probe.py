@@ -20,7 +20,7 @@ if a.prepare:
         prefs=drive/'prefs'
         if prefs.exists():prefs.rmdir() # Fail rather than remove any pre-existing contents.
         saves=drive/'Saved Games';saves.mkdir(exist_ok=True)
-        for basename in ['.opendf-probe','catalog-probe.bin','metadata-seed.bin','metadata-durable.bin','fork-probe.bin','fork-seed.bin','fork-durable.bin','iZx','i_x','iAx','i0x','i`x']:
+        for basename in ['.async-probe','.opendf-probe','catalog-probe.bin','metadata-seed.bin','metadata-durable.bin','fork-probe.bin','fork-seed.bin','fork-durable.bin','iZx','i_x','iAx','i0x','i`x']:
             for suffix in ['', '.finfo','.finfo.new','.finfo.old','.rsrc']:(saves/(basename+suffix)).unlink(missing_ok=True)
         (drive/'data'/'Alone In The Dark.data').unlink(missing_ok=True)
         (saves/'fork-seed.bin').write_bytes(bytes.fromhex('12345678'))
@@ -36,7 +36,7 @@ if a.prepare:
 else:
     log=(root/'amiga/.run/gdb-out.log').read_text()
     marker='PASS file-read: Line-A open/read/seek/EOF/position/close bytes=exact CCR=checked windows=10 DOS-reads=6 max=65536 cleanup=1 GetVol=WD/root/null-name FCB=index/exact/errors HVol=directory/state/errors WD=query/close/filter'
-    if a.write:marker='PASS file-write: Line-A/backend bytes=exact windows=353 writes=24 max=65536 flushes=18 EOF=17/3 cleanup=2 sharing=coherent permissions=0-4/locked volume=name/ref catalog=metadata/durable forks=independent installed=original index=HFS volparms=exact opendf=dot/aliases vinfo=native/catalog'
+    if a.write:marker='PASS file-write: Line-A/backend bytes=exact windows=376 writes=24 max=65536 flushes=18 EOF=17/3 cleanup=2 sharing=coherent permissions=0-4/locked volume=name/ref catalog=metadata/durable forks=independent installed=original index=HFS volparms=exact opendf=dot/aliases vinfo=native/catalog async=51/nested/user'
     if a.status or re.search(r'FAIL|Error in sourced command file|Program received signal',log) or log.count(marker)!=1:
         raise SystemExit('FAIL file-read: missing completion or runner/observer failure')
     if a.write and (drive/'write-probe.bin').read_bytes()!=bytes((i*37+(i>>8))&255 for i in range(17)):
@@ -60,7 +60,7 @@ else:
         import hashlib
         if hashlib.sha256((drive/'data'/'Alone In The Dark').read_bytes()).hexdigest()!='b5848c063652b7223e3e350905b3a9054247b8536942753f435b1051a6352db2' or (drive/'data'/'Alone In The Dark.data').read_bytes()!=bytes.fromhex('12345678'):
             raise SystemExit('FAIL file-write: application fork separation/hash')
-        for basename in ['.opendf-probe','fork-probe.bin','fork-seed.bin']:
+        for basename in ['.async-probe','.opendf-probe','fork-probe.bin','fork-seed.bin']:
             for suffix in ['', '.rsrc','.finfo']:
                 if (saves/(basename+suffix)).exists():raise SystemExit('FAIL file-write: dual-fork deletion')
         if (saves/'fork-durable.bin').read_bytes()!=bytes.fromhex('12345678') or (saves/'fork-durable.bin.rsrc').read_bytes()!=bytes.fromhex('abcdef012345'):

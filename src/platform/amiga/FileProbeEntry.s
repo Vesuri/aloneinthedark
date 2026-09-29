@@ -93,3 +93,68 @@ aitdProbeHOpenDF:
     rts
 
     filetrap aitdProbeHGetVInfo,0xa207
+
+    .section .text.aitdFileAsyncProbe,"ax"
+    filetrap aitdProbeAsyncInfo,0xa40c
+    filetrap aitdProbeAsyncHInfo,0xa60c
+    filetrap aitdProbeAsyncCreate,0xa608
+    filetrap aitdProbeAsyncSetInfo,0xa60d
+    filetrap aitdProbeAsyncOpenRF,0xa60a
+    filetrap aitdProbeAsyncGetVol,0xa614
+    filetrap aitdProbeAsyncSetVol,0xa615
+    .macro asyncdispatch name,selector
+    .globl \name
+\name:
+    move.l 4(sp),a0
+    moveq #\selector,d0
+    .word 0xa660
+    move.w ccr,g_fileProbeCCR
+    rts
+    .endm
+    asyncdispatch aitdProbeAsyncOpenWD,1
+    asyncdispatch aitdProbeAsyncCloseWD,2
+    asyncdispatch aitdProbeAsyncGetWD,7
+    asyncdispatch aitdProbeAsyncFCB,8
+    .globl aitdFileAsyncCompletion
+aitdFileAsyncCompletion:
+    addq.l #1,g_fileAsyncCallbacks
+    move.l a5,g_fileAsyncA5
+    move.l a0,g_fileAsyncPB
+    move.l d0,g_fileAsyncResult
+    tst.l g_fileAsyncNested
+    beq.s 1f
+    movem.l d0/a0,-(sp)
+    jsr aitdFileAsyncNestedCall
+    movem.l (sp)+,d0/a0
+1:  tst.l g_fileAsyncClobber
+    beq.s 2f
+    move.l #0xdeadbeef,d0
+    move.l #0xaabbccdd,d1
+    move.l #0xbbccddee,d2
+    move.l #0xccddee00,a0
+    move.l #0xddee0011,a1
+2:  rts
+
+    .globl aitdProbeAsyncRegisters
+aitdProbeAsyncRegisters:
+    movem.l d2/a5,-(sp)
+    move.l 12(sp),a0
+    move.l #0x11223344,d1
+    move.l #0x22334455,d2
+    move.l #0x33445566,a1
+    move.l #0x12345678,a5
+    .word 0xa614
+    move.w ccr,g_fileProbeCCR
+    cmpi.l #0x11223344,d1
+    bne.s 3f
+    cmpi.l #0x22334455,d2
+    bne.s 3f
+    cmpa.l #0x33445566,a1
+    bne.s 3f
+    cmpa.l #0x12345678,a5
+    bne.s 3f
+    cmpa.l 12(sp),a0
+    beq.s 4f
+3:  move.l #0xbad00001,d0
+4:  movem.l (sp)+,d2/a5
+    rts

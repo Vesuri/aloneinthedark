@@ -629,8 +629,8 @@ Classic GetFInfo uses the current default directory and ignores the hierarchical
 PB directory field. These cases match the 218-call System 7.5.5 fixture.
 
 The native fixture passes the corresponding Line-A cases and exact returned
-names, metadata and lifetime checks. The current File-write regression uses 353 runtime windows, including the
-later OpenDF and HGetVInfo fixtures. Production still stops at Get1NamedResource.
+names, metadata and lifetime checks. The current File-write regression uses 376 runtime windows, including the
+later OpenDF, HGetVInfo and async fixtures. Production still stops at Get1NamedResource.
 
 ## Application namespace boundary (M2.1b2c9c2b)
 
@@ -737,7 +737,7 @@ Invalid native geometry, dates or unhandled disk states stop loudly. Classic and
 async volume-information forms remain unsupported unless separately measured.
 
 
-## Async reference contract (M2.1b2c9c2c4a; native implementation pending)
+## Async File Manager (M2.1b2c9c2c4)
 
 The original Core wrappers select async traps from a boolean argument. Byte
 checks cover GetFInfo `A40C` (+$3F54), HCreate `A608` (+$416E), HOpenRF `A60A`
@@ -745,9 +745,9 @@ checks cover GetFInfo `A40C` (+$3F54), HCreate `A608` (+$416E), HOpenRF `A60A`
 (+$411E), HSetVol `A615` (+$410C), and `A660` selectors 1/2/7/8
 (+$40E4/+$40FA/+$4134/+$414A). Each is followed by `MOVE.W D0,(SP)`.
 
-Two 30-call System 7.5.5 fixtures measure these local-HFS operations with a
+Two 33-call System 7.5.5 fixtures measure these local-HFS operations with a
 completion routine that either returns unchanged or clobbers D0–D2/A0–A1.
-All observed operations finish before returning. For 23 calls, including errors,
+All observed operations finish before returning. For 25 calls, including errors,
 completion runs exactly once before the trap return, with A0 pointing to the PB
 and D0.W equal to its final ioResult. The null-completion call runs no callback.
 This agrees with the File Manager reference's warning that local SCSI execution
@@ -759,14 +759,30 @@ Do not replace the callback's D0 with ioResult after it returns. High D0 words
 vary between trap families; the OSErr contract and original wrapper use D0.W.
 
 Closing the protected application WD is an immediate success with **no callback**
-and preserves ioCompletion. Closing a newly opened WD, and closing that same WD
+and preserves ioCompletion for both synchronous and async aliases. Closing the
+volume root does invoke async completion. Closing a newly opened WD, and closing that same WD
 again (-51), both invoke completion. The measured synchronous HGetVol, GetFInfo,
 Close, Delete and FlushVol calls clear ioCompletion and never invoke it. This
-clearing is still missing from the native path and belongs with async dispatch.
+clearing is implemented in the native service bridge.
 
 The fixture also checks duplicate Create (-48), invalid volumes (-35), invalid
 FCB/WD references (-51), and SetFInfo readback of TEST/AITD. It owns only
 `.AITD Async Probe`; Create must succeed before continuing, and Delete and Flush
-must succeed before completion. No original files are changed. These are Mac
-reference results, not native async acceptance. Native completion must run at a
-safe user-mode return point per design §4.1, never from an Amiga interrupt.
+must succeed before completion. No original files are changed. Native completion runs at a safe user-mode return point per design §4.1,
+never from an Amiga interrupt. The dispatcher retains the original trap identity
+for patch routing and named stops, normalizing only the measured async encodings
+for file execution. Unknown async dispatch selectors still stop loudly.
+
+The native fixture covers both callback modes, protected/root WD cases,
+synchronous completion clearing, metadata readback and cleanup. A final callback
+submits a nested synchronous File Manager request. Its outer D1/D2/A0/A1/A5 and
+return PC survive; the debugger checks user mode and an inactive service bridge
+at all 51 completion entries. VBL callbacks wait until file completions unwind.
+Service-frame fields are consumed before calling original code, so a nested
+service cannot replace the outer return state. Nesting beyond eight completions
+is the named `FILE COMPLETION DEPTH` stop; no unbounded native-stack use is hidden.
+
+Stage 50 completes 67 calls and 51 callbacks, with 376 runtime windows overall.
+FlushVol in the async fixture flushes the earlier pending write before shutdown;
+final transfer totals remain 24 writes / 470,069 bytes / 18 flushes, with two
+restored-OS closes and no open streams. Original game PAK reads remain M2.1c.

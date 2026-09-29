@@ -4,8 +4,8 @@ import argparse
 from pathlib import Path
 import re
 
-LABELS='hgetvol hgetvol-null hgetvol-sync hsetvol hsetvol-error getinfo getinfo-sync hgetinfo hgetinfo-error getwd getwd-error getfcb getfcb-error openwd closewd-app openwd-new closewd-new closewd-error openwd-error create create-error scratch-info setinfo scratch-readback setinfo-error openrf close openrf-error delete flush'.split()
-NO_CALLBACK={'hgetvol-null','hgetvol-sync','getinfo-sync','closewd-app','close','delete','flush'}
+LABELS='hgetvol hgetvol-null hgetvol-sync hsetvol hsetvol-error getinfo getinfo-sync hgetinfo hgetinfo-error getwd getwd-error getfcb getfcb-error openwd closewd-app closewd-app-sync openwd-root closewd-root openwd-new closewd-new closewd-error openwd-error create create-error scratch-info setinfo scratch-readback setinfo-error openrf close openrf-error delete flush'.split()
+NO_CALLBACK={'hgetvol-null','hgetvol-sync','getinfo-sync','closewd-app','closewd-app-sync','close','delete','flush'}
 ERRORS={'hsetvol-error':-35,'hgetinfo-error':-35,'getwd-error':-35,'getfcb-error':-51,'closewd-error':-51,'openwd-error':-35,'create-error':-48,'setinfo-error':-35,'openrf-error':-35}
 
 def validate(text,status):
@@ -35,8 +35,8 @@ def validate(text,status):
             if cb['a0']!=r['pb'] or cb['pb']!=r['pb'] or cb['result']!=error or cb['d0']&65535!=error:
                 raise ValueError(label+' completion ABI')
             if not r['completion']:raise ValueError(label+' completion pointer changed')
-        elif label!='closewd-app' and r['completion']:raise ValueError(label+' synchronous/null completion not cleared')
-        if label=='closewd-app' and not r['completion']:raise ValueError('protected WD completion pointer')
+        elif label not in ('closewd-app','closewd-app-sync') and r['completion']:raise ValueError(label+' synchronous/null completion not cleared')
+        if label in ('closewd-app','closewd-app-sync') and not r['completion']:raise ValueError('protected WD completion pointer')
         expected=0xdeadbeef if called and clobber else error
         if (r['d0'] if called and clobber else r['d0']&65535)!=expected:raise ValueError(label+' callback D0 return')
         if r['sr']&15!=(8 if expected&0x8000 else 4 if not expected else 0):raise ValueError(label+' return CCR')
@@ -45,7 +45,7 @@ def validate(text,status):
     if (by['scratch-readback']['type'],by['scratch-readback']['creator'])!=(0x54455354,0x41495444):raise ValueError('written scratch metadata')
     if by['openwd']['volume']!=by['hgetvol']['volume'] or by['openwd-new']['volume'] in (0,65535,by['openwd']['volume']):raise ValueError('distinct WD identity')
     if by['closewd-new']['volume']!=by['openwd-new']['volume']:raise ValueError('closed WD identity')
-    return f'PASS async reference: 30 calls, 23 early callbacks, errors/metadata/cleanup/registers; clobber={int(clobber)}'
+    return f'PASS async reference: 33 calls, 25 early callbacks, errors/metadata/cleanup/registers; clobber={int(clobber)}'
 
 if __name__=='__main__':
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('log',type=Path);p.add_argument('--status',type=int,required=True);a=p.parse_args()

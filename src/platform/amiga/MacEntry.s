@@ -76,6 +76,8 @@ aitd_line_a_handler:
 	addq.l #2,2(sp)
 	tst.w g_macServiceActive
 	bne.s 2f
+	tst.w g_macFileCompletionDepth
+	bne.s 2f
 	tst.l g_macVBLCallbackEntry
 	beq.s 2f
 	move.l 2(sp),g_macVBLCallbackReturn
@@ -145,3 +147,17 @@ aitd_os_patch_return:
 	lea 24(sp),sp
 	tst.w d0
 	rts
+
+| File completions run on the active user stack, outside the service boundary.
+| Preserve the native C ABI and the Mac A5 context. D0 is deliberately returned:
+| the local-HFS reference lets the completion's D0 survive the File Manager call.
+    .globl aitd_call_file_completion
+aitd_call_file_completion:
+    movem.l d2-d7/a2-a6,-(sp)
+    move.l 48(sp),a1
+    move.l 52(sp),a0
+    move.l 56(sp),d0
+    move.l 60(sp),a5
+    jsr (a1)
+    movem.l (sp)+,d2-d7/a2-a6
+    rts

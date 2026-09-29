@@ -663,7 +663,7 @@ Open/HOpen, Write, SetEOF, GetEOF/GetFCBInfo, Read, FlushVol and Close calls aft
 the read/directory fixture. It requires FILEPROBE=1 and FILEWRITEPROBE=1.
 The case checks exact bytes, marks/EOF, CCR, the 25-pair permission matrix,
 protected-file defaults/errors, shared writes and close order, cached-reader
-coherence and volume-name/reference forms. It requires 353 runtime windows,
+coherence and volume-name/reference forms. It requires 376 runtime windows,
 24 DOS writes (65,536 maximum), 18 flushes including shutdown and an empty
 stream ledger after cleanup. Host readback verifies 17 backend bytes, six
 shared-file bytes, four data bytes plus Finder metadata, and three bytes left dirty
@@ -784,7 +784,7 @@ Native stage 46 checks ordering against known existing save files, the grave
 accent's special position, canonical name outputs, null-name identity, errors,
 classic/default selection, WD precedence and reindexing after deletion. Host
 sanitizer tests cover all 67 characters and reverse insertion order. `file-write`
-is included in the current 353-window regression. The dedicated application directory also supports indexed queries; System/root
+is included in the current 376-window regression. The dedicated application directory also supports indexed queries; System/root
 and the legacy mixed native directory remain explicit unsupported boundaries.
 
 
@@ -818,7 +818,7 @@ files retain their Finder flags on the reference disk, with icon coordinates
 Native stage 44 checks their original metadata, fork sizes, canonical indexed
 names and both -43 results, finishing at step 10. The complete production catalog
 contains 42 entries and still performs zero runtime windows during original
-directory initialization. Current File-write totals include the later OpenDF and HGetVInfo fixtures below.
+directory initialization. Current File-write totals include the later OpenDF, HGetVInfo and async fixtures below.
 
 After the production boot build, run `python3 tools/check_file_namespace.py` with
 `amiga/env.sh` sourced. Its three bounded native startup runs require normal exit:
@@ -865,7 +865,7 @@ HOpen addresses drivers; the ordinary-file HOpen error probe uses a leading colo
 Native stage 48 reaches `g_fileOpenDFProbeStep=17`, including matching errors for
 HOpen/HOpenRF, dot-name read/write, both aliases and protected files. Host checks
 verify open-specific path resolution without changing directory-query semantics.
-The current file-write totals, including HGetVInfo below, are 353 windows, 33 reads / 866,733 bytes, and
+The current file-write totals, including the HGetVInfo/async fixtures below, are 376 windows, 33 reads / 866,733 bytes, and
 24 writes / 470,069 bytes with 18 flushes including shutdown. All owned scratch
 forks/companions must be absent afterward; the restored stream ledger is empty.
 File-read, window-core, production boot and the 42-entry original directory
@@ -890,7 +890,7 @@ eight OS windows; invalid selections add none. The System lookup checks the
 returned WD rather than assuming a reference survives the earlier CloseWD test.
 Both globals are retained by the probe link audit.
 
-Acceptance: file-write passes with 353 windows, 33 reads / 866,733 bytes and
+Acceptance including the async fixture below: file-write passes with 376 windows, 33 reads / 866,733 bytes and
 24 writes / 470,069 bytes / 18 flushes including shutdown. File-read, window-core,
 production boot and the original 42-entry directory observer remain required;
 rendered-picture verification is still owner-deferred. Original initialization
@@ -898,12 +898,12 @@ still stops at Engine+$3CDC Get1NamedResource, with seven directory services and
 zero runtime OS windows. This does not establish original PAK-read acceptance.
 
 
-### Async reference fixture (M2.1b2c9c2c4a)
+### Async reference and native fixtures (M2.1b2c9c2c4)
 
 Run `tools/mac_file_async.lua` with the standard headless MAME command twice,
 setting `AITD_ASYNC_CLOBBER=0` then `1`. Check each actual runner status using
-`python3 tools/check_file_async.py LOG --status STATUS`. Both modes pass 30 calls
-and 23 early callbacks. The checker requires all eleven original caller byte
+`python3 tools/check_file_async.py LOG --status STATUS`. Both modes pass 33 calls
+and 25 early callbacks. The checker requires all eleven original caller byte
 checks, callback-before-return ordering, PB/result identity, register restoration,
 D0/CCR behavior, scratch metadata readback, cleanup and explicit completion.
 A normal emulator exit without the completion marker fails.
@@ -912,6 +912,18 @@ The clobber mode intentionally changes the callback scratch registers. Its D0
 must survive the trap, while D1/D2/A0/A1 must not leak to the caller. The normal
 mode checks final errors directly. These paired runs distinguish callback ABI
 from ordinary file-service behavior. The reference files remain local-only;
-only the fixture and checker are tracked. Native async dispatch remains the
-first open item, including synchronous ioCompletion clearing and nested-service
-safety at the user-mode callback boundary.
+only the fixture and checker are tracked. Native stage 50 checks 67 calls and 51 callbacks, including the synchronous
+protected-WD exception and root closure. The final callback makes a nested
+synchronous query; assembly sentinels validate D1/D2/A0/A1/A5 after it returns.
+The debugger checks supervisor state, completion depth and inactive service state
+at every callback entry. `g_fileAsyncStep=67`, `g_fileAsyncCallbacks=51`,
+`g_fileAsyncNestedOK=1` and zero final completion depth are required positive
+controls, retained by the probe-symbol link audit. Probe assembly has its own
+section so file-read/production builds do not retain probe-only references.
+
+File-write requires 376 windows and unchanged final read/write totals; its two
+restored closes must leave no open streams. The checker also requires absence
+of all `.async-probe` data/resource/metadata companions. Host tests, file-read,
+window-core, production boot and the directory observer pass. The original run
+still stops at Get1NamedResource; completing census variants is not original
+PAK-read or successful-startup acceptance.
