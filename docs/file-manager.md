@@ -93,7 +93,7 @@ takeover, without Read. The original data directory contains 32 files totaling
 5,315,994 bytes; the current virtual catalog has 42 entries. Application,
 System, Preferences, saves and data directories have distinct IDs. Missing
 optional save/prefs directories are represented as empty; other DOS errors fail
-startup. The application still uses its existing whole-fork buffer until M2.2.
+startup. The application now uses map-only resource storage and bounded source reads (M2.2b2).
 
 The application resource fork is ref 128, catalog ID 8, parent 3. CurApRefNum,
 CurResFile and UseResFile share its identity. GetFCBInfo returns the exact
@@ -580,7 +580,7 @@ windows, 30 stream reads / 866,721 bytes, 23 stream writes / 470,065 bytes and
 restoration. Metadata I/O remains separate from stream counters. Host tests,
 file-read, window-core, boot and the original directory observer pass.
 
-The Resource Manager still holds the application fork buffer until M2.2. This
+The Resource Manager now holds only maps and resource metadata (M2.2b2). This
 File Manager work does not claim resource-map editing or original-game PAK/save
 acceptance. Unsupported resource service calls remain named stops.
 
@@ -786,3 +786,15 @@ Stage 50 completes 67 calls and 51 callbacks, with 376 runtime windows overall.
 FlushVol in the async fixture flushes the earlier pending write before shutdown;
 final transfer totals remain 24 writes / 470,069 bytes / 18 flushes, with two
 restored-OS closes and no open streams. Original game PAK reads remain M2.1c.
+
+
+## Resource streaming and File Manager counters (M2.2b2)
+
+Original directory initialization still performs seven File Manager services and
+no File Manager DOS windows. On-demand resources now add 13 user services and
+13 OS windows before Get1NamedResource: production observers require 20 balanced
+services and 13 windows total. Earlier zero-window directory measurements above
+refer to the pre-streaming baseline. Resource source reads have separate counters
+from File Manager streams, so the native file-read/write byte totals are unchanged.
+Their shutdown observers additionally require the resource source to be closed
+with zero close errors. The metadata catalog still has 42 entries / 32 data files.

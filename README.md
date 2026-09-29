@@ -27,7 +27,11 @@ serve memory and resource handles. System identity and all eleven derived
 capability flags match the Mac reference. The user-mode service bridge passes
 its native ABI probe. OS windows and DOS/resload adapters pass the native/host
 core probes; rendered-picture acceptance is owner-deferred (M1.7b2). The next
-implementation item is on-demand Resource Manager services (M2.2). The metadata-only catalog and application-fork identity are verified (M2.1b1):
+implementation item is the remaining Resource Manager services (M2.2).
+Resource bodies now stream from disk into zone handles; startup retains the
+4,998-byte map instead of the 1,424,934-byte application fork. The `resource-read`
+regression verifies original bytes and 13 runtime read windows before the current
+Get1NamedResource stop. The metadata-only catalog and application-fork identity are verified (M2.1b1):
 32 data files, 5,315,994 bytes; no data payload preloading. SetVol, the three
 startup working directories, Preferences lookup and the optional movies error
 are verified against the Mac (M2.1b2a). Read-only data forks now use persistent

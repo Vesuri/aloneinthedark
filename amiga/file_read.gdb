@@ -16,7 +16,7 @@ if g_fileProbeDone != 1 || g_fileProbeError != 0 || g_fileProbeStage != 39 || g_
 end
 tbreak aitdFileCleanupFinished
 continue
-if g_fileCloseErrors != 0 || g_fileOpenHandles != 0 || g_fileRestoredCloses != 1 || g_macLineAInstalled != 0 || ((struct ExecBase*)SysBase)->TDNestCnt != -1
+if g_resourceSourceOpen != 0 || g_resourceSourceCloseErrors != 0 || g_fileCloseErrors != 0 || g_fileOpenHandles != 0 || g_fileRestoredCloses != 1 || g_macLineAInstalled != 0 || ((struct ExecBase*)SysBase)->TDNestCnt != -1
  echo FAIL file-read: OS restoration or remaining stream cleanup\n
  detach
  quit 1

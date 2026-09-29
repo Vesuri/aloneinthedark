@@ -5,7 +5,7 @@ set $startup_main=0
 break AitdScreen::showLoudStop
 commands
  silent
- if g_macServiceEntered != 7 || g_macServiceCompleted != 7 || g_macServiceActive != 0 || $startup_main != 1 || g_stageBState != 3 || g_trapWord != 0xa820 || g_trapSegment != 7 || g_trapOffset != 0x3cdc
+ if g_macServiceEntered != 20 || g_macServiceCompleted != 20 || g_macServiceActive != 0 || $startup_main != 1 || g_stageBState != 3 || g_trapWord != 0xa820 || g_trapSegment != 7 || g_trapOffset != 0x3cdc
   printf "startup FAIL: %s / %s CODE %u+$%04x\n",g_trapManager,g_trapRoutine,g_trapSegment,g_trapOffset
   detach
   quit 1

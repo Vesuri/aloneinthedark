@@ -551,33 +551,29 @@ static bool loadStartupSegments()
             clearResidentSegments();
             return false;
         }
-        if (item.id > 0) {
-            if (!MacLowMemory::validate(item.id, item.data, item.size)) {
-                s_preparationError = "LOW MEMORY / ORIGINAL CODE MISMATCH";
-                clearResidentSegments();
-                return false;
+        Segment& segment=s_segments[item.id];segment.size=item.size;
+        uint8_t* bytes=0;
+        if(item.id==1) {
+            segment.handle=s_applicationZone.newHandle(item.size);
+            if(segment.handle) {
+                bytes=*segment.handle;s_resourceHandles[index]=segment.handle;
+                s_applicationZone.setState(segment.handle,0x20|((item.attrs&0x10)?0x80:0)|((item.attrs&0x20)?0x40:0));
             }
-            ++checkedSegments;
-            checkedSites += MacLowMemory::siteCount(item.id);
+        } else bytes=new uint8_t[item.size];
+        if(!bytes) { clearResidentSegments();return false; }
+        if(item.id<=1)segment.begin=bytes;
+        if(s_resourceForks.read(index,bytes,item.size)) {
+            if(item.id>1)delete[] bytes;
+            s_preparationError="RESOURCE FORK / CODE READ";clearResidentSegments();return false;
         }
-        Segment& segment = s_segments[item.id];
-        segment.size = item.size;
-        // CODE 0 is metadata; CODE 1 is the only executable loaded at launch.
-        if (item.id <= 1) {
-            if(item.id==0)segment.begin = new uint8_t[item.size];
-            else {
-                segment.handle=s_applicationZone.newHandle(item.size);
-                if(segment.handle) {
-                    segment.begin=*segment.handle;
-                    s_applicationZone.setState(segment.handle,0x20|((item.attrs&0x10)?0x80:0)|((item.attrs&0x20)?0x40:0));
-                    s_resourceHandles[index]=segment.handle;
-                }
-            }
-            if (!segment.begin) { clearResidentSegments(); return false; }
-            for (uint32_t byte = 0; byte < item.size; ++byte)
-                segment.begin[byte] = item.data[byte];
-            segment.end = segment.begin + item.size;
-            g_loadedCodeMask |= 1UL << item.id;
+        if(item.id>0) {
+            bool valid=MacLowMemory::validate(item.id,bytes,item.size);
+            if(item.id>1)delete[] bytes;
+            if(!valid) { s_preparationError="LOW MEMORY / ORIGINAL CODE MISMATCH";clearResidentSegments();return false; }
+            ++checkedSegments;checkedSites+=MacLowMemory::siteCount(item.id);
+        }
+        if(item.id<=1) {
+            segment.end=segment.begin+item.size;g_loadedCodeMask|=1UL<<item.id;
         }
         uint16_t length = item.nameLength < sizeof(segment.name) - 1
             ? item.nameLength : (uint16_t)(sizeof(segment.name) - 1);
@@ -1011,7 +1007,12 @@ static uint8_t** loadResource(uint32_t index,const ResourceForks::Item& item)
     if(!*handle) {
         if(zone->reallocateHandle(handle,item.size)!=0) { memoryResult(zone->error());resourceResult(zone->error());return 0; }
         memoryResult(zone->error());
-        for(uint32_t byte=0;byte<item.size;++byte)(*handle)[byte]=item.data[byte];
+        int32_t error=s_resourceForks.read(index,*handle,item.size);
+        if(error) {
+            zone->emptyHandle(handle);resourceResult(error);
+            if(error==-32760) { loaderStop("RESOURCE READ OUTSIDE USER SERVICE",0);showLoaderStop(); }
+            return 0;
+        }
         zone->setState(handle,0x20|((item.attrs&0x10)?0x80:0)|((item.attrs&0x20)?0x40:0));
         if(item.fork==0 && item.type==0x434f4445UL && item.id>0) {
             if(item.id>=kMaximumSegments || !MacLowMemory::patch(item.id,*handle,item.size)) {
@@ -5175,7 +5176,9 @@ static bool isUserService(uint16_t trap)
 #ifdef AITD_SERVICE_PROBE
     if((trap&0xfeff)==0xa0fc || trap==0xabfb)return true;
 #endif
-    return trap==0xa40c || trap==0xa608 || trap==0xa60a || trap==0xa60c || trap==0xa60d || trap==0xa614 || trap==0xa615
+    return trap==0xa9a0 || trap==0xa9a1 || trap==0xa930 || trap==0xa9bf
+        || trap==0xaa46 || trap==0xaa92 || trap==0xa9b9 || trap==0xa9bc || trap==0xa97c
+        || trap==0xa40c || trap==0xa608 || trap==0xa60a || trap==0xa60c || trap==0xa60d || trap==0xa614 || trap==0xa615
         || (trap&0xf8ff)==0xa060 || trap==0xa014 || trap==0xa015 || trap==0xa214 || trap==0xa215 || trap==0xa207 || isFileDataService(trap) || isFileCatalogService(trap);
 }
 // File Manager metadata and volume selectors. Unsupported layouts fall through
@@ -6401,8 +6404,7 @@ extern "C" uint32_t aitdLineADispatch(uint32_t* regs, uint8_t* frame, uint8_t* u
 
 const char* MacLoader::preparationError() const { return s_preparationError; }
 
-bool MacLoader::prepareResourceForks(uint8_t* application, uint32_t applicationSize,
-                                     uint8_t* data, uint32_t dataSize)
+bool MacLoader::prepareResourceForks(const ResourceForks::Source& application)
 {
     s_preparationError = "RESOURCE FORK / INVALID OR UNSUPPORTED";
     for (uint16_t i = 0; i < 4096; ++i) {
@@ -6417,7 +6419,7 @@ bool MacLoader::prepareResourceForks(uint8_t* application, uint32_t applicationS
     for(uint16_t i=0;i<ResourceForks::kMaximumResources;++i)s_resourceHandles[i]=0;
     resourceResult(0);
     if(!prepareZones()) { s_preparationError="MEMORY MANAGER / FAST RAM ZONES";return false; }
-    if (!s_resourceForks.open(application, applicationSize, data, dataSize)
+    if (!s_resourceForks.open(application)
         || !loadStartupSegments()) {
         s_resourceForks.close();clearResidentSegments();releaseZones();return false;
     }

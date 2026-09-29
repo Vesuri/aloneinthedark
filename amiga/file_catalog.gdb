@@ -8,7 +8,7 @@ set $catalog_folder=0
 break AitdScreen::showLoudStop
 commands
  silent
- if $catalog_fcb != 1 || $catalog_wd != 4 || $catalog_setvol != 2 || $catalog_folder != 1 || g_trapWord != 0xa820 || g_trapSegment != 7 || g_trapOffset != 0x3cdc || g_macServiceEntered != 7 || g_macServiceCompleted != 7 || g_systemWindows != 0
+ if $catalog_fcb != 1 || $catalog_wd != 4 || $catalog_setvol != 2 || $catalog_folder != 1 || g_trapWord != 0xa820 || g_trapSegment != 7 || g_trapOffset != 0x3cdc || g_macServiceEntered != 20 || g_macServiceCompleted != 20 || g_systemWindows != 13 || g_resourceRuntimeReads != 13 || g_resourceRuntimeBytes != 68336
   printf "FAIL file-catalog: FCB=%u WD=%u next=%s/%s\n",$catalog_fcb,$catalog_wd,g_trapManager,g_trapRoutine
   detach
   quit 1

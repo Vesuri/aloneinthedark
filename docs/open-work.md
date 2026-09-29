@@ -43,24 +43,20 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.2 Resource Manager on demand.**
-  - The map-only parser foundation (M2.2a) passes host/original-byte checks;
-    it now backs the resource directory through bounded source callbacks
-    (M2.2b1). Startup still supplies a resident fork. Switch platform startup
-    and resource-handle fills to file sources next (M2.2b2), including indirect
-    Toolbox resource loads through the user-mode bridge.
-    Preserve startup's all-CODE byte validation with temporary bounded storage,
-    then discard those validation buffers.
-  - Keep only the resource maps in memory; load data into zone handles on
-    `GetResource` through system windows.
+- **M2.2 Remaining Resource Manager services.**
+  - Map parsing and file-backed loading (M2.2a/b) are complete; the application
+    no longer preloads its whole fork. Continue with the design §4.6 call set,
+    including the current Get1NamedResource stop, search/handle semantics and
+    purge/reload behavior (M2.2c).
   - Replace the inherited OpenResFile helper that currently returns -1 without
     opening a fork; no guessed missing-file result may hide unsupported work.
-  - Implement the design §4.6 call set, the writable prefs/save forks, and the
-    port overlay fork (empty at first) first in the search order.
+  - Implement writable prefs/save resource forks and the port overlay fork
+    (empty at first), preserving design §4.6 search order and dialog overrides.
 
-  *Done when* the application no longer loads its whole fork at startup, and the
-  run reaches the same point as before with the same resource bytes (gdb checksum
-  of a sample).
+  *Done when* these operations pass Mac-reference and native fixtures, the
+  application still loads resource bodies on demand, debugger-captured resource
+  bytes match the originals, and all regressions including `resource-read` pass
+  (advance its expected stop only with measured original execution).
 - **M2.1c Original File Manager read acceptance (after M2.2).**
   - This retains M2.1's original acceptance; diagnostic fixture reads do not count
     as original-game reads. M2.1b2a measured the intervening Get1NamedResource

@@ -369,7 +369,11 @@ Native trap probes, host fragmentation tests and paired heap captures verify it:
   purged and reloaded (`LoadResource`).
   - `DetachResource` hands the block over to the caller. `ReleaseResource`
     frees it.
-  - This replaces today's whole-fork load (`PlatformAmiga.cpp`, capped at 4 MB).
+  - Whole-fork startup loading is removed (M2.2b2). Before takeover, validate
+    each original CODE resource using temporary storage, then discard it; only
+    CODE 0 metadata and CODE 1 remain resident. Runtime resource misses use
+    bounded source reads through the user-mode bridge, including indirect
+    Toolbox resource loads.
 - **Port overlay resources.** A small resource fork of the port's own resources
   comes first in the search order: the 320×200 dialog layouts (D5) and the
   placeholder fonts (D6).
@@ -671,6 +675,8 @@ clean build with its flags, a warp-mode bounded run, a required PASS regex, and
 no loud stop. The cases are added as their milestone lands:
 - `boot`: reaches main, then ends the observer before main executes. The harness
   was introduced in M0; positive acceptance passes on `a1200-020` (M1.3a).
+- `resource-read`: map-only startup, original CODE validation, bounded runtime
+  resource reads and byte-exact debugger samples before Get1NamedResource.
 - `file-write`: native Line-A and DOS backend writes, zero-count extension,
   truncation/mark updates, read-only errors, exact readback, close and dirty
   shutdown; host-file bytes and bounded transfer/window counts are required.

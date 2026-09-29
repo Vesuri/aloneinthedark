@@ -359,7 +359,7 @@ reference observations, not values for the port to return unconditionally.
 The application zone reserves 3,145,728 bytes of fast RAM; a separate 131,072-byte
 system zone serves system allocations. Mac globals and stack remain outside the
 zone. Resource handles now use its master blocks, flags, allocation and disposal;
-whole-fork disk buffering remains the explicitly queued M2.2 replacement.
+whole-fork disk buffering has been replaced by bounded source reads (M2.2b2).
 MemErr and ApplLimit are published into private low-memory shadows, and ResError
 reads the actual ResErr shadow (including original-code writes).
 
@@ -817,8 +817,8 @@ files retain their Finder flags on the reference disk, with icon coordinates
 (y=52, x=0/128/256); these measured installation changes are checked explicitly.
 Native stage 44 checks their original metadata, fork sizes, canonical indexed
 names and both -43 results, finishing at step 10. The complete production catalog
-contains 42 entries and still performs zero runtime windows during original
-directory initialization. Current File-write totals include the later OpenDF, HGetVInfo and async fixtures below.
+contains 42 entries; directory calls need no DOS windows, while streamed
+resources now add 13 runtime windows (M2.2b2). Current File-write totals include the later OpenDF, HGetVInfo and async fixtures below.
 
 After the production boot build, run `python3 tools/check_file_namespace.py` with
 `amiga/env.sh` sourced. Its three bounded native startup runs require normal exit:
@@ -894,8 +894,8 @@ Acceptance including the async fixture below: file-write passes with 376 windows
 24 writes / 470,069 bytes / 18 flushes including shutdown. File-read, window-core,
 production boot and the original 42-entry directory observer remain required;
 rendered-picture verification is still owner-deferred. Original initialization
-still stops at Engine+$3CDC Get1NamedResource, with seven directory services and
-zero runtime OS windows. This does not establish original PAK-read acceptance.
+still stops at Engine+$3CDC Get1NamedResource. Seven directory services plus
+13 resource services/windows now give 20 total services (M2.2b2). This does not establish original PAK-read acceptance.
 
 
 ### Async reference and native fixtures (M2.1b2c9c2c4)
@@ -957,7 +957,7 @@ that exceed the data region or overflow naive arithmetic.
 This is a parser foundation, not completed on-demand loading. Vette's
 `ResourceForks` and `PlatformAmiga` also preload whole forks; their parsing
 conventions are reused, while bounded I/O must come from this port's File Manager.
-The runtime still supplies a resident fork until M2.2b2.
+The runtime uses file-backed resource sources as of M2.2b2.
 Its acceptance must cover direct and indirect resource loads through user-mode
 system windows, all original CODE-byte validation, sample resource checksums,
 startup window counts and all existing native regressions. Writable maps,
@@ -989,7 +989,46 @@ short reads, empty resources, two-fork identities, failure cleanup and the resid
 compatibility adapter. The full host suite and all native regression gates remain
 required because the adapter now uses the same map parser as file sources.
 
-This does not remove startup preloading: PlatformAmiga still passes its resident
-application fork and existing handle fills still use its payload pointers.
-M2.2b2 must remove that adapter from the runtime path, stream handle contents,
-preserve original CODE validation and check actual resource bytes/window counts.
+The resident compatibility adapter remains for host fixtures only. Platform
+startup and zone-handle fills use file-backed sources as of M2.2b2 below.
+
+
+### Streamed startup resources (M2.2b2)
+
+`amiga/regression.sh resource-read` clean-builds a production executable, checks
+positive preparation/runtime counters, and captures STRS 0 (1,810 bytes) and
+mctb 128 (32 bytes) from their live zone handles. `check_resource_reads.py`
+compares both dumps byte-for-byte with the original fork and prints their SHA256
+checksums. No completion marker, missing dump, timeout or runner error can pass.
+
+Platform startup keeps one DOS handle, a 4,998-byte map and resource metadata;
+it no longer allocates/loads the 1,424,934-byte application fork. Preparation
+reads 201,058 bytes in 228 operations: the header/map/length words and one CODE
+resource at a time for the existing original-byte validation. All 58 low-memory
+sites are checked before takeover; only CODE 0 and CODE 1 remain resident then.
+Discarded validation buffers do not serve runtime resource requests.
+
+Original startup subsequently performs 13 source reads / 68,336 bytes in 13 OS
+windows before the unchanged Engine+$3CDC Get1NamedResource stop. Its directory
+observer now requires 20 balanced services (seven file + thirteen resource).
+Source requests are capped at 65,536 bytes; the largest observed startup request
+is 27,692 bytes. GetResource, GetNamedResource, InitMenus, GetMenu, GetNewCWindow,
+GetNewPalette, GetCursor, GetPicture and GetNewDialog use the user-mode bridge.
+An indirect load outside that bridge is `RESOURCE READ OUTSIDE USER SERVICE`,
+never a supervisor-mode DOS call. Failed reads empty the incomplete handle and
+return the I/O error; later calls can retry. Source close errors are reported.
+
+`g_resourceSourceReads/Bytes/Max` cover preparation plus runtime;
+`g_resourceRuntimeReads/Bytes` isolate takeover reads. `g_resourceSourceOpen` and
+`g_resourceSourceCloseErrors` make cleanup observable. All are retained by the
+link audit. File-read/write fixtures retain their own unchanged transfer counters
+and additionally require a closed resource source after OS restoration.
+Writable resource maps, remaining Resource Manager calls and overlay semantics
+are still M2.2 work; streaming acceptance does not prove original PAK reads.
+
+
+M2.2b2 validation also reruns `original_startup.gdb`: the host A5 model matches
+all 75,616 debugger-dumped bytes (zero mismatches). File-write/read, window-core,
+boot, resource-read and the original directory observer complete with explicit
+PASS records and normal runner exits. The bitplane snapshot hash is unchanged;
+actual rendered-video acceptance remains owner-deferred.

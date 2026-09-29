@@ -36,76 +36,59 @@ extern "C" void aitdFileCleanupFinished();
 
 extern struct GfxBase* GfxBase;         // opened below; the global lives in GCCRuntime.cpp
 
+extern "C" {
+volatile uint32_t g_resourceSourceReads=0,g_resourceSourceBytes=0,g_resourceSourceMax=0;
+volatile uint32_t g_resourceRuntimeReads=0,g_resourceRuntimeBytes=0,g_resourceSourceOpen=0,g_resourceSourceCloseErrors=0;
+extern volatile uint16_t g_macServiceActive;
+}
 struct OriginalResourceFiles {
     const char* applicationPath;
-    uint8_t* application;
+    BPTR application;
     uint32_t applicationSize;
-    uint8_t* data;
-    uint32_t dataSize;
+    bool runtime;
 };
-
-static bool readOriginalResourceFork(const char* name, uint8_t*& bytes, uint32_t& size)
-{
-    bytes = 0;
-    size = 0;
-    BPTR file = Open((CONST_STRPTR)name, MODE_OLDFILE);
-    if (!file) return false;
-    bool ok = false;
-    if (Seek(file, 0, OFFSET_END) >= 0) {
-        LONG length = Seek(file, 0, OFFSET_CURRENT);
-        if (length >= 16 && (uint32_t)length <= 4UL * 1024 * 1024
-            && Seek(file, 0, OFFSET_BEGINNING) >= 0) {
-            bytes = (uint8_t*)AllocMem((uint32_t)length, MEMF_ANY);
-            if (bytes) {
-                size = (uint32_t)length;
-                LONG total = 0;
-                while (total < length) {
-                    LONG got = Read(file, bytes + total, length - total);
-                    if (got <= 0) break;
-                    total += got;
-                }
-                if (total == length) {
-                    ok = true;
-                }
-            }
+struct ResourceRead { OriginalResourceFiles* files;uint32_t offset;uint8_t* buffer;uint32_t bytes,actual; };
+static int32_t readResourceDOS(void* opaque) {
+    ResourceRead& request=*(ResourceRead*)opaque;
+    if(Seek(request.files->application,request.offset,OFFSET_BEGINNING)<0)return -36;
+    LONG got=Read(request.files->application,request.buffer,request.bytes);
+    ++g_resourceSourceReads;g_resourceSourceBytes+=got>0 ? got : 0;
+    if(request.bytes>g_resourceSourceMax)g_resourceSourceMax=request.bytes;
+    if(request.files->runtime) { ++g_resourceRuntimeReads;g_resourceRuntimeBytes+=got>0 ? got : 0; }
+    if(got<0)return -36;
+    request.actual=got;return 0;
+}
+static int32_t readOriginalResource(void* opaque,uint32_t offset,uint8_t* buffer,uint32_t bytes,uint32_t& actual) {
+    OriginalResourceFiles& files=*(OriginalResourceFiles*)opaque;actual=0;
+    if(!files.application || bytes>65536 || offset>files.applicationSize || bytes>files.applicationSize-offset)return -50;
+    ResourceRead request={&files,offset,buffer,bytes,0};
+    // Before takeover DOS is already available. Every later read requires the
+    // user-mode bridge; an overlooked indirect Toolbox load fails explicitly.
+    if(files.runtime && !g_macServiceActive)return -32760;
+    int32_t error=files.runtime ? aitdSystemWindow(readResourceDOS,&request) : readResourceDOS(&request);
+    actual=request.actual;return error;
+}
+static bool releaseOriginalResourceFiles(OriginalResourceFiles& files) {
+    bool closed=!files.application || Close(files.application)!=0;
+    if(!closed)++g_resourceSourceCloseErrors;
+    files.application=0;files.applicationSize=0;g_resourceSourceOpen=0;return closed;
+}
+static bool loadOriginalResourceFiles(OriginalResourceFiles& files) {
+    files.applicationPath="PROGDIR:data/Alone In The Dark";
+    files.application=Open((CONST_STRPTR)files.applicationPath,MODE_OLDFILE);
+    if(!files.application) {
+        files.applicationPath="PROGDIR:Alone In The Dark";
+        files.application=Open((CONST_STRPTR)files.applicationPath,MODE_OLDFILE);
+    }
+    if(files.application && Seek(files.application,0,OFFSET_END)>=0) {
+        LONG size=Seek(files.application,0,OFFSET_CURRENT);
+        if(size>=16 && Seek(files.application,0,OFFSET_BEGINNING)>=0) {
+            files.applicationSize=size;g_resourceSourceOpen=1;return true;
         }
     }
-    Close(file);
-    if (!ok && bytes) {
-        FreeMem(bytes, size);
-        bytes = 0;
-        size = 0;
-    }
-    return ok;
-}
-
-static void releaseOriginalResourceFiles(OriginalResourceFiles& files)
-{
-    if (files.application)
-        FreeMem(files.application, files.applicationSize);
-    if (files.data)
-        FreeMem(files.data, files.dataSize);
-    files.application = files.data = 0;
-    files.applicationSize = files.dataSize = 0;
-}
-
-// The development and installed layouts both keep the original application's
-// raw resource fork as "Alone In The Dark", beside the executable or in data/.
-// The "Alone Data" folder of .PAK/.ITD data-fork files is read later through
-// the File Manager implementation, not preloaded here.
-static bool loadOriginalResourceFiles(OriginalResourceFiles& files)
-{
-    files.application = files.data = 0;
-    files.applicationSize = files.dataSize = 0;
-    files.applicationPath="PROGDIR:data/Alone In The Dark";
-    if(!readOriginalResourceFork(files.applicationPath,files.application,files.applicationSize))
-        files.applicationPath="PROGDIR:Alone In The Dark";
-    if(!files.application && !readOriginalResourceFork(files.applicationPath,files.application,files.applicationSize)) {
-        PutStr((CONST_STRPTR)
-            "Alone: cannot read Alone In The Dark in PROGDIR:data/ or PROGDIR:\n");
-        return false;
-    }
-    return true;
+    releaseOriginalResourceFiles(files);
+    PutStr((CONST_STRPTR)"Alone: cannot read Alone In The Dark in PROGDIR:data/ or PROGDIR:\n");
+    return false;
 }
 
 // ---------------------------------------------------------------------------
@@ -279,9 +262,8 @@ bool PlatformAmiga::run()
         return false;
     }
     const char* catalogError=aitdBuildFileCatalog(loader.files(),resourceFiles.applicationPath,resourceFiles.applicationSize);
-    if (catalogError || !loader.prepareResourceForks(resourceFiles.application,
-                                     resourceFiles.applicationSize,
-                                     resourceFiles.data, resourceFiles.dataSize)) {
+    ResourceForks::Source source={&resourceFiles,resourceFiles.applicationSize,readOriginalResource};
+    if (catalogError || !loader.prepareResourceForks(source)) {
         PutStr((CONST_STRPTR)"Alone: ");
         PutStr((CONST_STRPTR)(catalogError ? catalogError : loader.preparationError()));
         PutStr((CONST_STRPTR)"\n");
@@ -385,7 +367,9 @@ bool PlatformAmiga::run()
     // Stage B hands control to the original Macintosh instructions.  Its Line-A handler
     // services the one prerequisite (_BlockMove), then deliberately stops on the first
     // unimplemented trap and paints the full diagnostic into this screen.
+    resourceFiles.runtime=true;
     if (ok) ok = loader.run(&screen);
+    resourceFiles.runtime=false;
 
     // Keep multitasking forbidden through the Wait()-free hardware handback.
     // Permit belongs immediately before LoadView/WaitTOF, after exec's VERTB
@@ -446,7 +430,9 @@ bool PlatformAmiga::run()
     // unrelated tasks against partially restored state.
     bool filesClosed=loader.releaseResourceForks();
     if(!filesClosed)PutStr((CONST_STRPTR)"Alone: FILE FLUSH/CLOSE ON EXIT FAILED\n");
-    releaseOriginalResourceFiles(resourceFiles);
+    if(!releaseOriginalResourceFiles(resourceFiles)) {
+        PutStr((CONST_STRPTR)"Alone: RESOURCE FORK CLOSE FAILED\n");filesClosed=false;
+    }
 #ifdef AITD_FILE_PROBE
     aitdFileCleanupFinished();
 #endif

@@ -1,19 +1,16 @@
 #ifndef AITD_MAC_LOADER_H
 #define AITD_MAC_LOADER_H
 
+#include "ResourceForks.h"
 class AitdScreen;
 class MacFiles;
 
 class MacLoader {
 public:
     MacFiles& files();
-    // Validate and index the original raw Macintosh resource fork(s) while
-    // AmigaDOS and normal process memory are still available. The application
-    // CODE 1 is copied to aligned storage; later CODE handles are created on demand.
-    // The supplied file images remain untouched.  `data` may be
-    // null: Alone in the Dark keeps its game data in data-fork .PAK files.
-    bool prepareResourceForks(uint8_t* application, uint32_t applicationSize,
-                              uint8_t* data, uint32_t dataSize);
+    // Retain maps only; validate original CODE through temporary source reads.
+    // The source context remains live until releaseResourceForks returns.
+    bool prepareResourceForks(const ResourceForks::Source& application);
     bool releaseResourceForks();
     const char* preparationError() const;
 

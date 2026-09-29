@@ -31,7 +31,7 @@ if g_fileWriteProbeStep != 23 || g_fileWriteCalls != 24 || g_fileWriteBytes != 4
 end
 tbreak aitdFileCleanupFinished
 continue
-if g_fileWriteCalls != 24 || g_fileWriteBytes != 470069 || g_fileFlushCalls != 18 || g_fileCloseErrors != 0 || g_fileOpenHandles != 0 || g_fileRestoredCloses != 2 || g_macLineAInstalled != 0 || ((struct ExecBase*)SysBase)->TDNestCnt != -1
+if g_fileWriteCalls != 24 || g_fileWriteBytes != 470069 || g_fileFlushCalls != 18 || g_resourceSourceOpen != 0 || g_resourceSourceCloseErrors != 0 || g_fileCloseErrors != 0 || g_fileOpenHandles != 0 || g_fileRestoredCloses != 2 || g_macLineAInstalled != 0 || ((struct ExecBase*)SysBase)->TDNestCnt != -1
  echo FAIL file-write: OS restoration or remaining stream cleanup\n
  detach
  quit 1
