@@ -264,4 +264,36 @@ SetPalette call at Misc1+$10FA is measured to leave the already-realized state
 unchanged, with GetPalette(window) returning the default handle. Its instruction
 range +$10E8–$10FB has SHA-256
 `41c4b669d4c6ce8e4889fb470c9a76c753d11fe61bd4e1285be68a20b6db8a23`.
-Native window binding and broader activation remain queued.
+The native window binding now assigns the already-active default handle and
+records the update flag. It accepts only a visible front window with no explicit
+binding and a valid realized palette/private seed; unmeasured forms stop loudly.
+It preserves all palette, private, window, device, logical pixel and copper data.
+The next original call is ActivatePalette at Misc1+$1100, currently unsupported.
+
+`tools/mac_window_binding.lua` captures the original call and executes a scratch
+GetPalette(window) query through the Mac CPU to verify its result.
+`amiga/window_binding.gdb` records original arguments and live relocated bytes,
+then captures the native service after the dispatcher publishes the preceding
+client clear. This boundary matters: capturing at dispatcher entry would count
+the prior clear as a SetPalette display mutation. The observer checks that no
+binding exists yet at its service boundary.
+
+`tools/check_window_binding.py REFERENCE.log NATIVE.log --reference-status 0
+--native-status 0` checks the actual runner statuses, original bytes including
+the relocated A5 operand, stack/register contract, full state preservation,
+complete palette/CLUT pairing, binding identity, and next named stop. Captures
+remain local under `tmp/windowpalette-*`. The accepted service capture is
+`tmp/m2-window-binding-native-final.log`, paired with
+`tmp/m2-window-binding-reference.log`; both exited normally. Rejection checks
+cover timeout status, missing completion, incorrect query results, changed
+original instructions and CLUT corruption. Broader activation remains queued.
+
+
+Window-binding regression evidence: `tmp/m2-window-binding-regressions.log`
+(default binding, client clear, original startup, native driver and first AGA
+frame with paired checkers), `tmp/m2-window-binding-preferences.log`,
+`tmp/m2-window-binding-host-tests.log`, and the corresponding `boot` and
+`resource-read` logs. All exit zero with positive completion. A5 matches all
+75,616 bytes; resource counts and 70/96 OS-window totals remain unchanged.
+Original preferences are restored. The final clean production SHA-256 is
+`c2fbc390d5d3591733342635ea5652edd57e6ed23cecf02454504e34ddebe181`.

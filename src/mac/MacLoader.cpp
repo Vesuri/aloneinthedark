@@ -6626,8 +6626,27 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
             MacHeap::Handle palette=(MacHeap::Handle)read32(userStack+2);
             uint16_t slot=0;
             while(slot<32 && s_createdPalettes[slot].handle!=palette)++slot;
-            if(read32(userStack+6)!=0xffffffffUL || userStack[0]!=1
-                || g_defaultPalette || !palette || slot==32)goto unsupportedTrap;
+            if(userStack[0]!=1 || !palette || slot==32)goto unsupportedTrap;
+            if(read32(userStack+6)!=0xffffffffUL) {
+                // The reached window binds the already-realized default palette.
+                // The Mac preserves device colours, private seed and pixels here.
+                WindowSlot* window=windowSlot((uint8_t*)read32(userStack+6));
+                MacHeap* owner=handleZone(palette);
+                MacHeap::Handle privateHandle=s_createdPalettes[slot].privateHandle;
+                MacHeap* privateOwner=handleZone(privateHandle);
+                if(!window || window->dialog || window->window!=s_windowList
+                    || !window->window[110] || window->palette
+                    || palette!=g_defaultPalette || palette!=s_activePalette
+                    || !owner || !*palette || owner->handleSize(palette)!=4112
+                    || read32(*palette)!=0x01000000UL || read32(*palette+4)!=0xc002
+                    || read32(*palette+8)!=1 || read32(*palette+12)!=(uint32_t)privateHandle
+                    || !privateOwner || !*privateHandle || privateOwner->handleSize(privateHandle)!=4
+                    || read32(*privateHandle)!=read32(s_windowManagerColors))goto unsupportedTrap;
+                window->palette=palette;
+                window->paletteUpdates=true;
+                return 11;
+            }
+            if(g_defaultPalette)goto unsupportedTrap;
             MacHeap* owner=handleZone(palette);
             MacHeap::Handle privateHandle=s_createdPalettes[slot].privateHandle;
             MacHeap* privateOwner=handleZone(privateHandle);
@@ -7079,7 +7098,8 @@ unsupportedTrap:
     }
     if(trap==0xaaa2 && (uint16_t)regs[0]==0x0a13)routine="SETDEPTH";
     if(trap==0xaaa2 && (uint16_t)regs[0]==0x0a14)routine="HASDEPTH";
-    if(unsupportedGraphics)routine=trap==0xaa95 ? "SETPALETTE" : "8-BIT DRAWING / PALETTE";
+    if(unsupportedGraphics)routine=trap==0xaa95 ? "SETPALETTE"
+        : trap==0xaa94 ? "ACTIVATEPALETTE" : "8-BIT DRAWING / PALETTE";
     if(trap==0xab1d && (uint16_t)regs[0]==5)routine="GETGWORLD";
     if(trap==0xab1d && (uint16_t)regs[0]==6)routine="SETGWORLD";
     if(trap==0xa0f8) { manager="SOUND DRIVER";routine=driverStop ? driverStop : "SELECTOR";g_trapSelector=read32(userStack+4); }

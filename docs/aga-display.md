@@ -1,7 +1,7 @@
 # Eight-bit display bring-up
 
 The integrated display publishes the first client clear and reaches
-`PALETTE MANAGER / SETPALETTE` at Misc1+$10FA. Independent startup and
+`PALETTE MANAGER / ACTIVATEPALETTE` at Misc1+$1100 after window binding. Independent startup and
 five-frame fixture capture decoders pass, as do the 21 startup observers and
 paired checks, fresh/existing preferences, host tests, system-window checks,
 clean boot and streamed-resource regressions. This is M2.5a prerequisite
@@ -59,7 +59,7 @@ by inherited 16-colour cursor setup.
 Regression evidence is local: `tmp/m2-aga-startup-suite.log`,
 `tmp/m2-aga-windowstate.log`, `tmp/m2-aga-final-variants-{fresh,low}.log`,
 `tmp/m2-aga-host-tests.log`, `tmp/m2-aga-window-core.log`, `tmp/m2-aga-boot.log`
-and `tmp/m2-aga-resource-read.log`. The production SHA-256 is
+and `tmp/m2-aga-resource-read.log`. The M2.5a checkpoint production SHA-256 is
 `df261784efb9b279b0a26fe89e24ba75823ba7481e0fd816dd30f9c3701441c6`.
 The no-float and 78-symbol link audits pass. Capture-checker rejection checks
 cover nonzero/timeout status, debugger errors, missing completion and corrupted

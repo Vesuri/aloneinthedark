@@ -479,7 +479,8 @@ Native trap probes, host fragmentation tests and paired heap captures verify it:
     state and realization, including retained duplicate endpoint colours.
     ShowWindow clears only client content and records its dirty rectangle.
     The display path now queues that clear for AGA publication and reaches
-    window SetPalette at Misc1+$10FA. Full ActivatePalette and rendered intro
+    window SetPalette, whose binding preserves that state. The next stop is
+    ActivatePalette at Misc1+$1100. Full ActivatePalette and rendered intro
     acceptance remain pending. See [palette.md](palette.md) and
     [aga-display.md](aga-display.md).
 - **Fonts.** See 4.11 and D6.

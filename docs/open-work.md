@@ -14,7 +14,7 @@ design.md §5.
   low-resolution selection/cleanup, all 75 font-metrics calls and four Apple Event
   registrations, colour-table loading/mutations, palette construction and default
   binding, hidden window-title state and the verified WIND 128 request. Startup realizes the palette and clears the game client area, then stops at
-  window `SETPALETTE` at Misc1+$10FA, after the first client frame is
+  `ACTIVATEPALETTE` at Misc1+$1100, after window palette binding and the first client frame is
   published through the eight-plane AGA display. The original
   mixer is never loaded.
 - The original runs in MAME on the System 7.5.5 reference volume.
@@ -49,19 +49,16 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.1c3c2c5b2c2e Window palette binding prerequisite.**
-  - The original SetPalette request at Misc1+$10FA follows the first client
-    presentation. The implemented default-window (-1) binding does not
-    cover this form.
-  - Measure its window/palette/update arguments and binding, palette, device and
-    display effects. Implement the reached form, including any state transition
-    the original call requires, without Mac chrome or dialogs.
-  - Unsupported forms remain named stops. Broader palette realization and frame
-    acceptance remain M2.7/M2.10.
+- **M2.1c3c2c5b2c2f Window palette activation prerequisite.**
+  - The original ActivatePalette at Misc1+$1100 follows window SetPalette.
+    Measure its arguments and effects on the already-realized palette, device,
+    window and display; implement the reached form without Mac UI.
+  - Keep other activation forms as named stops until measured. Full palette and
+    intro acceptance remain M2.7/M2.10.
 
-  *Done when* paired Mac/native checks prove the original request and its effects,
-  startup reaches the next named stop with original MDRV absent, and relevant
-  startup regressions pass.
+  *Done when* paired original/native captures prove the request and complete
+  state transition, startup reaches the next named stop with original MDRV
+  absent, and relevant startup regressions pass.
 - **M2.1c3c2 Native-driver integrated startup acceptance (D8).**
   - M2.1c3c2a supplies the port-owned Jnth 11 stub through the original loader,
     with no original instructions changed. Selectors 21/24 initialize native

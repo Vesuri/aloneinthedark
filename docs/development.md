@@ -2768,3 +2768,18 @@ host tests, clean boot/resource-read and system-window memory checks pass.
 See [aga-display.md](aga-display.md) for commands, captures and the exact build.
 Rendered output, PAL/NTSC and pointer acceptance, and full intro verification
 remain in the ordered M2 queue.
+
+
+## Window palette binding
+
+The original SetPalette(window, default palette, true) now binds the visible
+front window without changing its already-realized colours or pixels. Paired
+captures verify original/relocated bytes, stack/register behavior, private seed,
+full palette/CLUT and display preservation. Capture the native service after
+its dispatcher publishes the preceding clear; see [palette.md](palette.md).
+
+Default-binding, client-clear, original-startup, native-driver and first-frame
+regressions pass, along with fresh/low preferences, the host suite, clean boot
+and resource reads. A5 is still byte-exact, original MDRV is absent, and startup
+now stops at ActivatePalette, Misc1+$1100. That measured dependency is next in
+the queue; M2 intro and rendered acceptance remain incomplete.
