@@ -203,7 +203,6 @@ static uint8_t s_resourceChanges[ResourceForks::kMaximumResources]; // bit 0 dir
 static bool s_resourceMapTouched[ResourceForks::kForkCount];
 static int16_t s_resourceError;
 static const uint16_t kScreenWidth=640,kScreenHeight=480;
-static uint8_t s_quickDrawScreen[(kScreenWidth / 8) * kScreenHeight];
 static uint8_t s_colorScreen[kScreenWidth * kScreenHeight];
 // The first driving frame expands its roadside panorama as 512x24 8-bit
 // strips.  Keep one strip's decode storage resident so all 38 calls share the
@@ -1339,9 +1338,10 @@ static void initGraf(uint8_t* thePort)
         write16(arrow + 32 + i * 2, arrowMask[i]);
     }
 
-    // screenBits is a one-bit BitMap describing the whole logical screen.
+    // The reference keeps an 80-byte monochrome screenBits view over the
+    // same backing as its 640-byte eight-bit device/window-manager port.
     uint8_t* screenBits = thePort - 122;
-    write32(screenBits, (uint32_t)s_quickDrawScreen);
+    write32(screenBits, (uint32_t)s_colorScreen);
     write16(screenBits + 4, kScreenWidth / 8);
     write16(screenBits + 6, 0);             // bounds.top
     write16(screenBits + 8, 0);             // bounds.left
@@ -1421,8 +1421,8 @@ static void initWindowManagerPort()
 
     // WMgrPort remains an old-style GrafPort on this system.  Vette reads its
     // embedded BitMap directly to obtain the screen bounds before centering windows.
-    write32(s_windowManagerPort + 2, (uint32_t)s_quickDrawScreen);
-    write16(s_windowManagerPort + 6, kScreenWidth / 8);
+    write32(s_windowManagerPort + 2, (uint32_t)s_colorScreen);
+    write16(s_windowManagerPort + 6, kScreenWidth);
     writeRect(s_windowManagerPort + 8, 0, 0, kScreenHeight, kScreenWidth);
     writeRect(s_windowManagerPort + 16, 0, 0, kScreenHeight, kScreenWidth);
     write32(s_windowManagerPort + 24, (uint32_t)&s_windowManagerVisRgnMaster);
@@ -1437,7 +1437,7 @@ static void initWindowManagerPort()
     write16(s_windowManagerPort + 56, 8);             // patCopy
     write16(s_windowManagerPort + 68, s_fontManager.systemFont);
     write16(s_windowManagerPort + 72, 1);             // srcOr
-    write16(s_windowManagerPort + 74, s_fontManager.systemSize);
+    write16(s_windowManagerPort + 74, 0); // measured WMgrPort system-default size
     write32(s_windowManagerPort + 80, 33);            // blackColor
     write32(s_windowManagerPort + 84, 30);            // whiteColor
 
@@ -5438,6 +5438,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     uint32_t pc = read32(frame + 2);
     const char* driverStop=0;
     bool unsupportedGraphics=false;
+    bool sizeSelection=false;
     uint16_t fileTrap=0;
 #ifdef AITD_PROBE
     // Empty same-rate bracket: its total bounds the profiler's per-dispatch
@@ -5455,11 +5456,18 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     presentMacRuntime();
     if(read16(s_windowManagerPixMap+32)==8) {
         switch(trap) {
+        case 0xab1d:
+            if((uint16_t)regs[0]!=5) { unsupportedGraphics=true;goto unsupportedTrap; }
+            break;
         case 0xa8f6: case 0xa8a1: case 0xa8a3: case 0xa8a4: case 0xa8a5:
         case 0xa8ec: case 0xa90d: case 0xaa95: case 0xaa94: case 0xa91f:
-        case 0xab1d: // inherited GWorld storage still has a sixteen-entry table
             unsupportedGraphics=true;goto unsupportedTrap;
         }
+    }
+    if(trap==0xa97c && read16(userStack+8)==1000) {
+        // D4: resolve the original size-selection seam before constructing or
+        // displaying the inherited size dialog. Never pretend a choice here.
+        sizeSelection=true;goto unsupportedTrap;
     }
     if (!builtin) {
         uint32_t routed = routePatchedTrap(trap, regs, frame, userStack);
@@ -5965,6 +5973,16 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
             uint16_t dv=read16(userStack),dh=read16(userStack+2);
             write16(rect,read16(rect)+dv);write16(rect+2,read16(rect+2)+dh);
             write16(rect+4,read16(rect+4)+dv);write16(rect+6,read16(rect+6)+dh);
+            return 9;
+        }
+    }
+    if(trap==0xab1d && (uint16_t)regs[0]==5) { // GetGWorld(port*, device*)
+        uint8_t* deviceOut=(uint8_t*)read32(userStack);
+        uint8_t* portOut=(uint8_t*)read32(userStack+4);
+        if(s_windowManager.initialized && s_qdThePort && read32(s_qdThePort)
+           && deviceOut && portOut) {
+            write32(portOut,read32(s_qdThePort));
+            write32(deviceOut,(uint32_t)&s_mainDeviceMaster);
             return 9;
         }
     }
@@ -6571,8 +6589,9 @@ unsupportedTrap:
     if(trap==0xaaa2 && (uint16_t)regs[0]==0x0a13)routine="SETDEPTH";
     if(trap==0xaaa2 && (uint16_t)regs[0]==0x0a14)routine="HASDEPTH";
     if(unsupportedGraphics)routine="8-BIT DRAWING / PALETTE";
-    if(unsupportedGraphics && trap==0xab1d && (uint16_t)regs[0]==5)routine="GETGWORLD";
+    if(trap==0xab1d && (uint16_t)regs[0]==5)routine="GETGWORLD";
     if(trap==0xa0f8) { manager="SOUND DRIVER";routine=driverStop ? driverStop : "SELECTOR";g_trapSelector=read32(userStack+4); }
+    if(sizeSelection) { routine="SCREEN SIZE SELECTION";g_trapSelector=1000; }
     copyString(g_trapManager, manager);
     copyString(g_trapRoutine, routine);
     if (s_loudStopScreen)

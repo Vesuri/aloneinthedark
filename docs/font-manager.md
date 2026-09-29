@@ -103,7 +103,7 @@ named trap stops pending M2.9 instead of silently drawing the Vette fixed font.
 The native observer checks the live original trap bytes, Pascal Times name,
 result 20, eight-byte stack cleanup, D0 and error globals at Dan1+$0014. It dumps
 both installed bodies for exact host comparison and requires the next named
-`GETGWORLD` stop, with no original MDRV body resident. The original
+`SCREEN SIZE SELECTION` stop, with no original MDRV body resident. The original
 second lookup has not been reached natively: graphics initialization and further
 startup services lie between these calls. The two native driver calls now pass. This is partial M2.1c3 acceptance, not a completed font/startup item.
 

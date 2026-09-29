@@ -6,12 +6,12 @@ set $id_flags=0
 break AitdScreen::showLoudStop
 commands
  silent
- if g_stageBState != 3 || g_trapWord != 0xab1d || g_trapSegment != 13 || g_trapOffset != 0x30e2 || *(unsigned long*)g_trapRoutine!=0x47455447 || *(unsigned long*)(g_trapRoutine+4)!=0x574f524c || *(unsigned short*)(g_trapRoutine+8)!=0x4400 || g_trapSelector!=5 || $id_calls != 8 || $id_flags != 1
+ if g_stageBState != 3 || g_trapWord != 0xa97c || g_trapSegment != 13 || g_trapOffset != 0x341c || *(unsigned long*)g_trapRoutine!=0x53435245 || *(unsigned long*)(g_trapRoutine+4)!=0x454e2053 || *(unsigned long*)(g_trapRoutine+8)!=0x495a4520 || *(unsigned long*)(g_trapRoutine+12)!=0x53454c45 || *(unsigned long*)(g_trapRoutine+16)!=0x4354494f || *(unsigned short*)(g_trapRoutine+20)!=0x4e00 || g_trapSelector!=1000 || $id_calls != 8 || $id_flags != 1
   printf "identity FAIL: calls=%u flags=%u %s / %s\n",$id_calls,$id_flags,g_trapManager,g_trapRoutine
   detach
   quit 1
  end
- printf "PASS identity: SysEnvRec=16 Gestalt=8 Engine-flags=11 next=GETGWORLD\n"
+ printf "PASS identity: SysEnvRec=16 Gestalt=8 Engine-flags=11 next=SCREEN-SIZE-SELECTION\n"
  detach
  quit 0
 end

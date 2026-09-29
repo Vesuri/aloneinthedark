@@ -219,9 +219,9 @@ The original startup path is implemented (M1.1–M1.3):
 **Verified:** the host check `tools/a5world_check.py` passes: it runs
 CODE 1's expansion algorithm on the resource bytes and compares, byte for byte,
 with the A5 world the Amiga dumps (via gdb) when it enters `main`. The current
-loud stop is `QUICKDRAW / GETGWORLD`, after the original startup
+loud stop is `DIALOG MANAGER / SCREEN SIZE SELECTION`, after the original startup
 directories, General lookup, first Times font lookup and two native driver
-initialization calls, menu-record initialization, logical device selection and SetDepth. The second Times lookup still needs intervening startup
+initialization calls, menu-record initialization, logical device selection, SetDepth and GetGWorld. The second Times lookup still needs intervening startup
 services. Original MDRV loading remains forbidden.
 
 ### 4.3 Low memory
@@ -427,6 +427,7 @@ Native trap probes, host fragmentation tests and paired heap captures verify it:
     [graphics-device.md](graphics-device.md). Native GetDeviceList, HasDepth,
     OffsetRect and GetNextDevice now pass that original selection with real
     eight-bit backing. The measured already-active SetDepth request also passes;
+    GetGWorld now returns the live current port and main device. Further
     current-world bindings and drawing remain pending.
   - The logical main screen is 640×480 at 8 bits (the reference's mdc48 mode), in
     fast RAM, with one GDevice and a 256-entry CLUT.
@@ -717,7 +718,7 @@ no unexpected loud stop. The cases are added as their milestone lands:
   was introduced in M0; positive acceptance passes on `a1200-020` (M1.3a).
 - `resource-read`: map-only startup, original CODE validation, bounded runtime
   resource reads and byte-exact debugger samples through the General lookup,
-  continuing to the explicit GetGWorld startup stop.
+  continuing to the explicit screen-size-selection startup stop.
 - `file-write`: native Line-A and DOS backend writes, zero-count extension,
   truncation/mark updates, read-only errors, exact readback, close and dirty
   shutdown; host-file bytes and bounded transfer/window counts are required.

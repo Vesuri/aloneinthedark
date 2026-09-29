@@ -10,8 +10,8 @@ design.md §5.
 - The executable builds and loads the original resource fork.
 - Original CODE 1 expands the A5 world, relocates Core and enters `main`, then
   passes directory initialization, the first Times lookup and both native
-  driver startup calls, menu-record initialization, device selection and SetDepth, then stops at
-  Dan2+$30E2 `GETGWORLD`. The original
+  driver startup calls, menu-record initialization, device selection, SetDepth and GetGWorld, then stops at
+  Dan2+$341C `SCREEN SIZE SELECTION`. The original
   mixer is never loaded.
 - The original runs in MAME on the System 7.5.5 reference volume.
 
@@ -45,28 +45,30 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.1c3c2c4 Current graphics-world startup prerequisite (M2.3).**
-  - The original SetDepth call now passes with stable eight-bit storage and the
-    measured zero OSErr. Dan2+$30E2 QDOffscreen selector 5 (GetGWorld) is the
-    next stop before the second Times lookup.
-  - Measure the original current-port/device query and the state changes it
-    actually reaches. Implement the required current-world bindings using real
-    ports, devices and backing; do not fabricate a GWorld or run inherited
-    four-bit paths against eight-bit storage. Unknown operations remain named
-    stops. The existing GetGWorld stop is the explicit guard on that old code.
-  - Retain M2.3/M2.4/M2.7's complete offscreen, drawing, viewport and palette
-    acceptance. A current-world query does not establish rendered correctness.
+- **M2.1c3c2c5 Fixed 320×200 startup selection (D4/M2.4).**
+  - Original GetGWorld now returns the real current window-manager port and
+    main device with the measured record/stack/register contract. The next
+    request is Dan2+$341C GetNewDialog(1000), explicitly stopped as
+    `SCREEN SIZE SELECTION` before constructing or showing the excluded dialog.
+  - Measure the original preferences and screen-choice path; implement D4's
+    verified fixed low-resolution seam from §4.9. Prefer the cleanest measured
+    route through original game decisions, preserving unrelated preferences.
+    Do not show the size dialog or invent a successful dialog operation.
+  - Retain M2.3/M2.4/M2.7's full drawing, offscreen, window/viewport and palette
+    acceptance. Current-world state changes such as SetGWorld still require
+    measured implementation if the selected seam reaches them.
 
-  *Done when* the original current-world query matches the Mac arguments,
-  returned port/device identity and stack/register contract, execution reaches
-  the next named stop, and relevant startup regressions pass. Integrated
-  second-font/driver acceptance remains required.
+  *Done when* fresh and existing-preference startup select the original
+  320×200/WIND 128 path without showing DLOG 1000, the selection is verified
+  against original bytes/reference behavior, the next stop is named, and
+  relevant startup regressions pass. Full viewport/render acceptance and the
+  integrated second Times/driver checks remain required.
 - **M2.1c3c2 Native-driver integrated startup acceptance (D8).**
   - M2.1c3c2a supplies the port-owned Jnth 11 stub through the original loader,
     with no original instructions changed. Selectors 21/24 initialize native
     state and quality; other operations/configurations stop explicitly.
   - Both original call returns match the Mac register/stack/state contract.
-    The GetGWorld stop prevents reaching the second Times call; this
+    The screen-size-selection stop prevents reaching the second Times call; this
     original acceptance requirement is retained, not counted as passed.
   - Keep the MDRV guard and verify through any newly reached startup services.
     The independent Mac contract and installed seam are in
@@ -105,7 +107,7 @@ required.
   evidence before revising that requirement; absence from one route is not proof.
 - **M1.6b Final startup requirements acceptance (after file/resource services).**
   - M1.6a implements the measured identity records and verifies all eleven
-    Engine capability flags. Full startup is still stopped in GetGWorld, before
+    Engine capability flags. Full startup is still stopped before screen-size selection, before
     Core's initialization-result/alert branches; it is not a successful launch.
   - After M2.1/M2.2, verify Core+$0460 is reached with initialization result zero,
     without taking its failure-alert branches ($0410/$044E).

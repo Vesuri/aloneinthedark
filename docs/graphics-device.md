@@ -2,8 +2,8 @@
 
 The logical device now has a real 640×480, eight-bit screen in fast RAM, as
 specified in design.md §4.7. Original device selection passes; native startup
-passes the already-active SetDepth request and stops next at Dan2+$30E2
-GetGWorld ($AB1D, selector 5). Drawing and AGA
+passes the already-active SetDepth request and GetGWorld. It stops next at
+Dan2+$341C GetNewDialog(1000), before constructing the excluded size dialog. Drawing and AGA
 presentation are not accepted by this prerequisite.
 
 ## Measured original selection
@@ -55,10 +55,10 @@ reads; the video base address retains all 32 bits.
 
 The main GDevice points to the window manager's eight-bit PixMap, backed by a
 307,200-byte buffer. The PixMap and GDevice share 640×480 bounds and mode $83;
-the table has space for 256 entries. The classic monochrome screenBits and
-window-manager BitMap instead have their own 38,400-byte buffer and 80-byte
-stride, with the same bounds. Clip/visible/gray region bounds are updated.
-GetGDevice and GetDeviceList use the same stable master pointer; GetNextDevice
+the table has space for 256 entries. The old-style window-manager BitMap uses the same backing and 640-byte stride.
+QuickDraw screenBits is an 80-byte monochrome view over that same backing,
+matching the reference; both have the same bounds. Clip/visible/gray region bounds are updated.
+GetGDevice, GetGWorld and GetDeviceList use the same stable master pointer; GetNextDevice
 reads its actual next pointer. HasDepth validates the measured depth/flags/device
 request and returns the stored mode; unsupported requests remain named stops.
 OffsetRect adds the signed offsets to each coordinate modulo 65536. The paired
@@ -119,7 +119,7 @@ python3 tools/check_native_device.py tmp/m2-device-native.log \
   --reference-status "$run_status"
 ```
 
-The native marker also requires the exact next GetGWorld caller/selector and
+The native marker also requires the exact next screen-size-selection caller/selector and
 balanced services. Initial palette realization, other device APIs and
 the second original Times call remain separate work.
 
@@ -140,7 +140,7 @@ or pixels. Other requests retain the named SetDepth stop. This implements the
 already-active logical mode, not a new physical Amiga display mode or palette
 realization. Both before/after native records and all 307,200 pixel bytes are
 checked. Original MDRV remains forbidden and the second Times lookup is still
-pending behind GetGWorld.
+pending behind fixed screen-size selection.
 
 `mac_setdepth.lua` and `check_setdepth.py` fingerprint the original request,
 observe the exact register/stack result, and compare the before/after records
@@ -162,3 +162,45 @@ completion, wrong arguments or a nonzero result are rejected. The host suite
 includes incomplete-capture checks. An initial checker incorrectly compared
 all of incoming D0; the original MOVE.W proves that only its low word is the
 selector. The native upper half retains its selected-device pointer bits.
+
+## Original GetGWorld
+
+Dan2+$30E2 calls QDOffscreen selector 5 with D0=$00080005. The two output
+addresses are adjacent local longs: the device output is first on the stack,
+then the port output. The reference pops eight bytes and preserves D0–D7/A2–A6.
+It returns the actual QuickDraw current port, also WMgrPort, and the same main
+GDevice selected earlier. The complete 108-byte port record is unchanged.
+
+This exposed a previously unmeasured representation detail: WMgrPort is an
+old-style GrafPort whose BitMap points to the eight-bit device backing with
+rowBytes=640. QuickDraw's screenBits instead has rowBytes=80, with the **same
+base address**, not a separate monochrome allocation. Native records now use
+those exact relationships and the measured WMgrPort txSize=0 (system default).
+The redundant monochrome buffer is removed. Bounds, flags, patterns, pen/text
+state and color fields match the reference; base and region/master pointers
+are native addresses. The getter uses live current-port state, preserves it,
+and returns the real main-device master. It allocates no GWorld.
+
+`mac_getgworld.lua` observes the verified dispatcher at the original call,
+records QuickDraw/WMgr/main-device identities, and captures the port before and
+after plus its screen descriptor and device. `check_getgworld.py` fingerprints
+the original call and InitGraf argument, checks the exact return contract, and
+compares every portable port field with `getgworld.gdb`'s native dumps. The
+native observer also proves both views use the device's actual backing.
+Run the standard bounded MAME command above with
+`-autoboot_script tools/mac_getgworld.lua`, then:
+
+```sh
+python3 tools/check_getgworld.py tmp/m2-getgworld-reference.log --status "$run_status"
+(cd amiga && GDBTAIL=250 EXTRA_ARGS=--warp_mode=1 \
+  GDBSCRIPT=getgworld.gdb ./diag_run.sh 60) >tmp/m2-getgworld-native.log 2>&1
+native_status=$?
+python3 tools/check_getgworld.py tmp/m2-getgworld-reference.log --status "$run_status" \
+  --native tmp/m2-getgworld-native.log --native-status "$native_status"
+```
+
+Other QDOffscreen selectors remain named stops. The next original request is
+GetNewDialog(1000); D4 requires fixed 320×200 selection without that UI. An
+explicit `SCREEN SIZE SELECTION` stop prevents the inherited dialog constructor
+from fabricating success or displaying it before the measured D4 seam exists.
+This is not completed D4, second-font or rendered-graphics acceptance.

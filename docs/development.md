@@ -2270,3 +2270,32 @@ The native handler already used the low word. Timeouts, incomplete captures,
 wrong requests/results and duplicated positive records remain failures. Full
 palette, offscreen/rendered graphics and the second Times lookup are pending;
 no owner decision changed.
+
+## Current-world startup query
+
+M2.1c3c2c4 implements original Dan2+$30E2 GetGWorld. The reference/native pair
+returns the current WMgrPort and main GDevice, pops eight bytes, and preserves
+D0–D7/A2–A6. All portable bytes of the 108-byte port agree, and the query leaves
+it unchanged. The reference revealed that WMgrPort's old-style bitmap has the
+eight-bit device's base and 640-byte stride, while screenBits is an 80-byte
+monochrome view over the same base. Native records now match, including
+WMgrPort's default txSize=0; the redundant separate monochrome buffer is gone.
+The live native observer proves both records use the device's real backing.
+
+GetGWorld allocates no synthetic world and leaves current-port state intact.
+The next request, GetNewDialog(1000) at Dan2+$341C, stops explicitly as
+`DIALOG MANAGER / SCREEN SIZE SELECTION`, selector 1000, before constructing or
+showing D4's excluded dialog. The fixed 320×200 choice remains first in the
+queue. Further world bindings, drawing, palette realization, viewport output
+and the second Times call remain pending. This query does not establish any
+rendered-frame acceptance.
+
+Validation: clean production boot/resource-read, GetGWorld/SetDepth/device/menu/
+driver/font and catalog/identity/original-startup/low-memory observers, the full
+host suite and both link audits pass. All 75,616 A5 globals match exactly.
+Existing preferences use 34 windows and 42/42 services; fresh preferences pass
+the same query/record checks with 60 windows and 50/50 services. Existing
+preferences were restored afterward. Runtime reads remain 26/123,247 original
+bytes and 3/1,318 overlay bytes; low-memory checks validate 58 sites with 55
+applied. Every bounded acceptance run exited normally with its positive marker.
+No owner decision changed.
