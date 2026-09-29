@@ -1,7 +1,7 @@
 # Eight-bit display bring-up
 
 The integrated display publishes the first client clear and reaches
-`PALETTE MANAGER / ACTIVATEPALETTE` at Misc1+$1100 after window binding. Independent startup and
+`WINDOW MANAGER / SHOWHIDE` at Misc1+$0FC6 after palette binding/activation. Independent startup and
 five-frame fixture capture decoders pass, as do the 21 startup observers and
 paired checks, fresh/existing preferences, host tests, system-window checks,
 clean boot and streamed-resource regressions. This is M2.5a prerequisite

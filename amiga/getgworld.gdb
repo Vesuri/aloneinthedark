@@ -45,11 +45,11 @@ if *(unsigned long*)($port+2)!=$pixels || *(unsigned long*)($qd-122)!=$pixels
 end
 continue
 printf "WORLD_NEXT state=%u trap=%X selector=%X segment=%u offset=%X routine=%s windows=%u services=%u/%u resources=%u/%u\n",g_stageBState,g_trapWord,g_trapSelector,g_trapSegment,g_trapOffset,g_trapRoutine,g_systemWindows,g_macServiceEntered,g_macServiceCompleted,g_resourceRuntimeReads,g_resourceRuntimeBytes
-if g_stageBState!=3 || g_trapWord!=0xaa94 || g_trapSelector!=-1 || g_trapSegment!=9 || g_trapOffset!=0x1100 || *(unsigned long*)(g_trapRoutine+0)!=0x41435449 || *(unsigned long*)(g_trapRoutine+4)!=0x56415445 || *(unsigned long*)(g_trapRoutine+8)!=0x50414c45 || *(unsigned long*)(g_trapRoutine+12)!=0x54544500 || g_systemWindows!=$startup_windows || g_macServiceEntered!=$startup_entered || g_macServiceCompleted!=$startup_completed || g_macServiceActive!=0
+if g_stageBState!=3 || g_trapWord!=0xa908 || g_trapSelector!=-1 || g_trapSegment!=9 || g_trapOffset!=0xfc6 || *(unsigned long*)(g_trapRoutine+0)!=0x53484f57 || *(unsigned long*)(g_trapRoutine+4)!=0x48494445 || g_trapRoutine[8]!=0 || g_systemWindows!=$startup_windows || g_macServiceEntered!=$startup_entered || g_macServiceCompleted!=$startup_completed || g_macServiceActive!=0
  echo FAIL GetGWorld next named stop\n
  detach
  quit 1
 end
-printf "PASS native GetGWorld calls=1 next=ACTIVATEPALETTE\n"
+printf "PASS native GetGWorld calls=1 next=SHOWHIDE\n"
 detach
 quit 0

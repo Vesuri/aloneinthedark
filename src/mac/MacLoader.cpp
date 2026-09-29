@@ -748,7 +748,7 @@ static const TrapName s_trapNames[] = {
     {0xa998,"RESOURCE MANAGER","USERESFILE"}, {0xa994,"RESOURCE MANAGER","CURRESFILE"},
     {0xaa18,"COLOR QUICKDRAW","GETCTABLE"},
     {0xaa46,"WINDOW MANAGER","GETNEWCWINDOW"}, {0xa91b,"WINDOW MANAGER","MOVEWINDOW"},
-    {0xa915,"WINDOW MANAGER","SHOWWINDOW"}, {0xa916,"WINDOW MANAGER","HIDEWINDOW"},
+    {0xa915,"WINDOW MANAGER","SHOWWINDOW"}, {0xa916,"WINDOW MANAGER","HIDEWINDOW"}, {0xa908,"WINDOW MANAGER","SHOWHIDE"},
     {0xa924,"WINDOW MANAGER","FRONTWINDOW"}, {0xa925,"WINDOW MANAGER","DRAGWINDOW"},
     {0xa92c,"WINDOW MANAGER","FINDWINDOW"},
     {0xaa91,"PALETTE MANAGER","NEWPALETTE"},
@@ -5744,7 +5744,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
             if((uint16_t)regs[0]!=5 && (uint16_t)regs[0]!=6) { unsupportedGraphics=true;goto unsupportedTrap; }
             break;
         case 0xa8f6: case 0xa8a1: case 0xa8a3: case 0xa8a4: case 0xa8a5:
-        case 0xa8ec: case 0xa90d: case 0xaa94: case 0xa91f:
+        case 0xa8ec: case 0xa90d: case 0xa91f:
             unsupportedGraphics=true;goto unsupportedTrap;
         }
     }
@@ -6682,6 +6682,28 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         return 11;
     }
     if (trap == 0xaa94) {                    // ActivatePalette(window)
+        if(read16(s_windowManagerPixMap+32)==8) {
+            WindowSlot* window=windowSlot((uint8_t*)read32(userStack));
+            if(!window || window->dialog || window->window!=s_windowList
+                || !window->window[110] || !window->paletteUpdates
+                || !window->palette || window->palette!=g_defaultPalette
+                || window->palette!=s_activePalette)goto unsupportedTrap;
+            MacHeap::Handle palette=window->palette;
+            uint16_t slot=0;
+            while(slot<32 && s_createdPalettes[slot].handle!=palette)++slot;
+            if(slot==32)goto unsupportedTrap;
+            MacHeap* owner=handleZone(palette);
+            MacHeap::Handle privateHandle=s_createdPalettes[slot].privateHandle;
+            MacHeap* privateOwner=handleZone(privateHandle);
+            if(!owner || !*palette || owner->handleSize(palette)!=4112
+                || read32(*palette)!=0x01000000UL || read32(*palette+4)!=0xc002
+                || read32(*palette+8)!=1 || read32(*palette+12)!=(uint32_t)privateHandle
+                || !privateOwner || !*privateHandle || privateOwner->handleSize(privateHandle)!=4
+                || read32(*privateHandle)!=read32(s_windowManagerColors))goto unsupportedTrap;
+            // Measured original call: ShowWindow already realized this palette.
+            // Keep its seed, colours, pixels and pending display state unchanged.
+            return 5;
+        }
         activatePalette((uint8_t*)read32(userStack));
         s_screenDirty = true;
         if (g_stageCDepth < 30) g_stageCDepth = 30;

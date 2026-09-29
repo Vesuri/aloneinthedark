@@ -27,7 +27,8 @@ Hidden window-title state now matches the Mac through owned title handles and
 measured system-font advances. Startup realizes all 256 device colours and clears the 320×200 game client
 area. The eight-plane display publishes that clear and its complete 256-colour
 palette during vertical blank. Window palette binding now matches the Mac;
-startup stops explicitly at `ACTIVATEPALETTE` (Misc1+$1100). The original mixer
+the already-realized ActivatePalette call also passes without changing colours.
+Startup stops explicitly at `SHOWHIDE` (Misc1+$0FC6). The original mixer
 is never loaded. The game is not playable yet.
 Other processors and performance work remain deferred.
 
@@ -40,7 +41,7 @@ serve memory and resource handles. System identity and all eleven derived
 capability flags match the Mac reference. The user-mode service bridge passes
 its native ABI probe. OS windows and DOS/resload adapters pass the native/host
 core probes; rendered-picture acceptance is owner-deferred (M1.7b2). The next
-item is window-palette activation, followed by the retained second-Times and
+item is window visibility (ShowHide), followed by the retained second-Times and
 original PAK read acceptance. Fresh and existing preferences now request WIND 128
 through the original instructions, with only the size byte changed.
 The logical device has real 640×480×8 storage; its four selection calls match
@@ -53,7 +54,7 @@ of the second original Times lookup.
 Resource bodies now stream from disk into zone handles; startup retains the
 4,998-byte map instead of the 1,424,934-byte application fork. The `resource-read`
 regression verifies original bytes and bounded runtime resource reads; the
-current stop is window-palette activation; original MDRV loading stays forbidden. Named/ID/indexed lookup, resource counts and metadata, purge/reload and release now
+current stop is window visibility (ShowHide); original MDRV loading stays forbidden. Named/ID/indexed lookup, resource counts and metadata, purge/reload and release now
 pass paired Mac/native checks. Native resource staging now passes exact publication,
 abort, rollback and stale-file checks. Resource-file open/create/update/close,
 AddResource, multi-fork search, noncurrent close and invalid update pass a

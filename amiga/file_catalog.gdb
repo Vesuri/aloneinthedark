@@ -11,12 +11,12 @@ set $catalog_folder=0
 break AitdScreen::showLoudStop
 commands
  silent
- if $catalog_fcb != 1 || $catalog_wd != 4 || $catalog_setvol != 4 || $catalog_getvol != 1 || $catalog_folder != 1 || g_stageBState != 3 || g_trapWord!=0xaa94 || g_trapSegment!=9 || g_trapOffset!=0x1100 || *(unsigned long*)(g_trapRoutine+0)!=0x41435449 || *(unsigned long*)(g_trapRoutine+4)!=0x56415445 || *(unsigned long*)(g_trapRoutine+8)!=0x50414c45 || *(unsigned long*)(g_trapRoutine+12)!=0x54544500 || g_trapSelector!=-1 || g_macServiceEntered != $startup_entered || g_macServiceCompleted != $startup_completed || g_systemWindows != $startup_windows || g_resourceRuntimeReads != 34 || g_resourceRuntimeBytes != 130788
+ if $catalog_fcb != 1 || $catalog_wd != 4 || $catalog_setvol != 4 || $catalog_getvol != 1 || $catalog_folder != 1 || g_stageBState != 3 || g_trapWord!=0xa908 || g_trapSegment!=9 || g_trapOffset!=0xfc6 || *(unsigned long*)(g_trapRoutine+0)!=0x53484f57 || *(unsigned long*)(g_trapRoutine+4)!=0x48494445 || g_trapRoutine[8]!=0 || g_trapSelector!=-1 || g_macServiceEntered != $startup_entered || g_macServiceCompleted != $startup_completed || g_systemWindows != $startup_windows || g_resourceRuntimeReads != 34 || g_resourceRuntimeBytes != 130788
   printf "FAIL file-catalog: FCB=%u WD=%u next=%s/%s\n",$catalog_fcb,$catalog_wd,g_trapManager,g_trapRoutine
   detach
   quit 1
  end
- printf "PASS file-catalog: entries=%u data-files=%u data-bytes=%u FCB=1 OpenWD=3 missing-movies=1 SetVol=4 GetVol=1 FindFolder=1 windows=%u next=ACTIVATEPALETTE\n",g_catalogEntries,g_catalogDataFiles,g_catalogDataBytes,g_systemWindows
+ printf "PASS file-catalog: entries=%u data-files=%u data-bytes=%u FCB=1 OpenWD=3 missing-movies=1 SetVol=4 GetVol=1 FindFolder=1 windows=%u next=SHOWHIDE\n",g_catalogEntries,g_catalogDataFiles,g_catalogDataBytes,g_systemWindows
  detach
  quit 0
 end

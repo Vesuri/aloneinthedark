@@ -14,8 +14,8 @@ design.md §5.
   low-resolution selection/cleanup, all 75 font-metrics calls and four Apple Event
   registrations, colour-table loading/mutations, palette construction and default
   binding, hidden window-title state and the verified WIND 128 request. Startup realizes the palette and clears the game client area, then stops at
-  `ACTIVATEPALETTE` at Misc1+$1100, after window palette binding and the first client frame is
-  published through the eight-plane AGA display. The original
+  `SHOWHIDE` at Misc1+$0FC6, after palette binding/activation and publication
+  of the first client frame through the eight-plane AGA display. The original
   mixer is never loaded.
 - The original runs in MAME on the System 7.5.5 reference volume.
 
@@ -49,16 +49,16 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.1c3c2c5b2c2f Window palette activation prerequisite.**
-  - The original ActivatePalette at Misc1+$1100 follows window SetPalette.
-    Measure its arguments and effects on the already-realized palette, device,
-    window and display; implement the reached form without Mac UI.
-  - Keep other activation forms as named stops until measured. Full palette and
-    intro acceptance remain M2.7/M2.10.
+- **M2.1c3c2c5b2c2g ShowHide window visibility prerequisite.**
+  - The original path reaches ShowHide ($A908) at Misc1+$0FC6 after palette
+    activation. Identify its window/visibility request from original bytes and
+    compare the Mac's window, region, palette and client-pixel effects.
+  - Implement the measured form without Mac chrome or dialogs. Unsupported
+    visibility changes remain named stops.
 
-  *Done when* paired original/native captures prove the request and complete
-  state transition, startup reaches the next named stop with original MDRV
-  absent, and relevant startup regressions pass.
+  *Done when* paired original/native arguments and state effects match, startup
+  reaches the next named stop with original MDRV absent, and relevant startup
+  and display regressions pass.
 - **M2.1c3c2 Native-driver integrated startup acceptance (D8).**
   - M2.1c3c2a supplies the port-owned Jnth 11 stub through the original loader,
     with no original instructions changed. Selectors 21/24 initialize native

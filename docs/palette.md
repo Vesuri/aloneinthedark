@@ -297,3 +297,40 @@ frame with paired checkers), `tmp/m2-window-binding-preferences.log`,
 75,616 bytes; resource counts and 70/96 OS-window totals remain unchanged.
 Original preferences are restored. The final clean production SHA-256 is
 `c2fbc390d5d3591733342635ea5652edd57e6ed23cecf02454504e34ddebe181`.
+
+
+## Already-realized window activation
+
+The original Misc1+$1100 ActivatePalette request contains the window pointer
+and pops four argument bytes. Its original +$10FC–$1101 instruction range is
+`2F2C0008AA94`, SHA-256
+`37df3a67690b54fed3ec5919c7018e887f19a8b44f900795abb6d548120a2370`.
+The Mac's palette, private seed, window, window PixMap, device, main PixMap,
+logical CLUT, physical pixels and hardware colours are all unchanged. ShowWindow
+has already realized the bound palette; this call does not allocate colours.
+
+The native service accepts the measured visible front window with update-enabled
+binding to its already-active default palette, validated ownership, realized
+header and matching private/device seed. It preserves the complete state and
+queues no additional frame. Other eight-bit activation states remain explicit
+stops rather than falling through Vette's sixteen-colour allocator.
+
+`mac_window_activation.lua`, `window_activation.gdb` and
+`check_window_activation.py REFERENCE.log NATIVE.log --reference-status 0
+--native-status 0` pair original bytes, stack/registers, binding and complete
+before/after captures. The accepted reference/native calls are in
+`tmp/m2-window-activation-reference.log` and
+`tmp/m2-window-activation-native-final.log`, both normal exits with positive
+completion. Captures stay under `tmp/activation-*`. Rejection checks cover
+failed/timeout status, missing completion, changed bytes, an extra publication
+and palette corruption. The next stop is ShowHide ($A908), Misc1+$0FC6, whose
+name is recorded in the maintained trap census.
+
+
+Activation regressions: `tmp/m2-window-activation-regressions.log` contains six
+bounded startup observers and paired checks; `tmp/m2-window-activation-host-tests.log`,
+`tmp/m2-window-activation-preferences.log`, and the `boot`/`resource-read` logs
+also pass. Original preferences are restored. A5 matches 75,616 bytes exactly;
+resource and system-window totals are unchanged. No-float and 78-symbol audits
+pass. The final clean production SHA-256 is
+`ef4492241f7f0fa1f8e8c519c9708ac08e5e62c738eabbbdf2584e44a7fff81e`.

@@ -100,13 +100,13 @@ if s_pixelsDirty || s_dirtyRectCount!=0 || g_macFramesQueued!=1
  quit 1
 end
 printf "WP_NEXT state=%u trap=%X segment=%u offset=%X manager=%s routine=%s windows=%u services=%u/%u\n",g_stageBState,g_trapWord,g_trapSegment,g_trapOffset,g_trapManager,g_trapRoutine,g_systemWindows,g_macServiceEntered,g_macServiceCompleted
-if g_stageBState!=3 || g_trapWord!=0xaa94 || g_trapSegment!=9 || g_trapOffset!=0x1100 || g_macServiceActive!=0
+if g_stageBState!=3 || g_trapWord!=0xa908 || g_trapSegment!=9 || g_trapOffset!=0xfc6 || g_macServiceActive!=0
  echo FAIL window palette presentation stop\n
  detach
  quit 1
 end
-if *(unsigned long*)(g_trapRoutine+0)!=0x41435449 || *(unsigned long*)(g_trapRoutine+4)!=0x56415445 || *(unsigned long*)(g_trapRoutine+8)!=0x50414c45 || *(unsigned long*)(g_trapRoutine+12)!=0x54544500
- echo FAIL expected ACTIVATEPALETTE\n
+if *(unsigned long*)(g_trapRoutine+0)!=0x53484f57 || *(unsigned long*)(g_trapRoutine+4)!=0x48494445 || g_trapRoutine[8]!=0
+ echo FAIL expected SHOWHIDE\n
  detach
  quit 1
 end

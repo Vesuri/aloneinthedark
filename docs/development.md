@@ -2783,3 +2783,17 @@ regressions pass, along with fresh/low preferences, the host suite, clean boot
 and resource reads. A5 is still byte-exact, original MDRV is absent, and startup
 now stops at ActivatePalette, Misc1+$1100. That measured dependency is next in
 the queue; M2 intro and rendered acceptance remain incomplete.
+
+
+## Already-realized palette activation
+
+ActivatePalette at Misc1+$1100 now accepts the measured already-realized,
+active palette bound to the visible front window. The original Mac call leaves
+all palette, device and pixel state unchanged; the native service preserves
+that state and queues no extra frame. Unmeasured activation states stop loudly.
+See [palette.md](palette.md) for the original bytes and paired capture procedure.
+
+Six relevant startup observers and paired checks, host tests, fresh/low
+preferences, clean boot/resource reads and exact A5 comparison pass. Original
+preferences are restored and original MDRV remains absent. The next prerequisite
+is ShowHide ($A908), Misc1+$0FC6; intro and rendered acceptance remain pending.
