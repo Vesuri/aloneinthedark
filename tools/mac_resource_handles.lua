@@ -41,9 +41,9 @@ emu.register_frame_done(function()
  }
  local function enter(n)
   local q=steps[n]
-  return 'sp=temp2;w@a60=8888;w@(temp2+80)=cccc;d@(temp2+90)=cccccccc;d@(temp2+100)=cccccccc;d@(temp2+104)=cccccccc;d@(temp2+108)=cccccccc;d@(temp2+10c)=cccccccc;'..q[3]..string.format('temp0=0x%x;d0=12345678;w@(temp2+400)=%x;pc=temp2+400;g',n,q[2])
+  return 'sp=temp2;w@a60=8888;w@(temp2+80)=cccc;d@(temp2+90)=cccccccc;d@(temp2+100)=cccccccc;d@(temp2+104)=cccccccc;d@(temp2+108)=cccccccc;d@(temp2+10c)=cccccccc;'..q[3]..string.format('temp0=0x%x;d0=12345678;w@(temp2+400)=0x%x;pc=temp2+400;g',n,q[2])
  end
- local setup=string.format('temp1=d@(sp);sp=sp-600;temp2=sp;temp3=temp1;d@(temp2+200)=0e457272;d@(temp2+204)=6f72204d;d@(temp2+208)=65737361;d@(temp2+20c)=67657300;w@(temp2+402)=4ef9;d@(temp2+404)=%x;',base+0x3cde)
+ local setup=string.format('temp1=d@(sp);sp=sp-600;temp2=sp;temp3=temp1;d@(temp2+200)=0e457272;d@(temp2+204)=6f72204d;d@(temp2+208)=65737361;d@(temp2+20c)=67657300;w@(temp2+402)=4ef9;d@(temp2+404)=0x%x;',base+0x3cde)
  cpu.debug:bpset(base+0x3cde,'temp0==0',setup..enter(1))
  for n,q in ipairs(steps) do
   local prefix=q[1]=='lookup-unloaded' and 'temp3=d@(sp);' or ''

@@ -25,7 +25,7 @@ emu.register_frame_done(function()
  assert(mem:read_u32(base+0x4142)==0x7008a260 and mem:read_u16(base+0x4146)==0x6004,'ASYNC / ORIGINAL BYTES')
  local function name(text)
   text=string.char(#text)..text;local out=''
-  for i=1,#text do out=out..string.format('b@(sp+%x)=%x;',0x200+i-1,text:byte(i)) end
+  for i=1,#text do out=out..string.format('b@(sp+0x%x)=0x%x;',0x200+i-1,text:byte(i)) end
   return out
  end
  local h='d@(a0+12)=sp+200;w@(a0+16)=ffff;d@(a0+30)=temp1;w@(a0+1c)=0;'
@@ -66,14 +66,14 @@ emu.register_frame_done(function()
  }
  local function enter(n)
   local q=steps[n]
-  return 'a0=temp6;d@(a0+c)=temp8;w@(a0+10)=7777;temp7=0;d1=11223344;d2=22334455;a1=33445566;'..q[4]..string.format('temp0=0x%x;d0=%x;w@(sp+400)=%x;pc=sp+400;g',n,q[3],q[2])
+  return 'a0=temp6;d@(a0+c)=temp8;w@(a0+10)=7777;temp7=0;d1=11223344;d2=22334455;a1=33445566;'..q[4]..string.format('temp0=0x%x;d0=0x%x;w@(sp+400)=0x%x;pc=sp+400;g',n,q[3],q[2])
  end
  local setup='temp1=d@(a0+3a);sp=sp-600;a0=sp+100;temp6=a0;temp8=sp+500;'
- for i=0,31 do setup=setup..string.format('d@(a0+%x)=0;',4*i) end
- setup=setup..string.format('w@(sp+402)=4ef9;d@(sp+404)=%x;w@(sp+500)=203c;d@(sp+502)=deadbeef;w@(sp+506)=223c;d@(sp+508)=aabbccdd;w@(sp+50c)=243c;d@(sp+50e)=bbccddee;w@(sp+512)=207c;d@(sp+514)=ccddee00;w@(sp+518)=227c;d@(sp+51a)=ddee0011;w@(sp+51e)=4e75;',base+0x4146)
+ for i=0,31 do setup=setup..string.format('d@(a0+0x%x)=0;',4*i) end
+ setup=setup..string.format('w@(sp+402)=4ef9;d@(sp+404)=0x%x;w@(sp+500)=203c;d@(sp+502)=deadbeef;w@(sp+506)=223c;d@(sp+508)=aabbccdd;w@(sp+50c)=243c;d@(sp+50e)=bbccddee;w@(sp+512)=207c;d@(sp+514)=ccddee00;w@(sp+518)=227c;d@(sp+51a)=ddee0011;w@(sp+51e)=4e75;',base+0x4146)
  if not clobber then setup=setup..'w@(sp+500)=4e75;' end
  local text=string.char(17)..'Alone In The Dark'
- for i=1,#text do setup=setup..string.format('b@(sp+%x)=%x;',0x200+i-1,text:byte(i)) end
+ for i=1,#text do setup=setup..string.format('b@(sp+0x%x)=0x%x;',0x200+i-1,text:byte(i)) end
  cpu.debug:bpset(base+0x4146,'temp0==0',setup..'bpset temp8,1,{temp7=temp7+1;logerror "ASYNC CALLBACK stage=%X d0=%08X result=%04X a0=%08X pb=%08X sr=%04X\\n",temp0,d0,w@(a0+10),a0,temp6,sr;g};'..enter(1))
  for n,q in ipairs(steps) do
   local report=string.format('logerror "ASYNC label=%s stage=%%X d0=%%08X result=%%04X completion=%%08X callbacks=%%X a0=%%08X pb=%%08X sr=%%04X d1=%%08X d2=%%08X a1=%%08X type=%%08X creator=%%08X volume=%%04X ref=%%04X id=%%08X\\n",temp0,d0,w@(temp6+10),d@(temp6+c),temp7,a0,temp6,sr,d1,d2,a1,d@(temp6+20),d@(temp6+24),w@(temp6+16),w@(temp6+18),d@(temp6+30);',q[1])

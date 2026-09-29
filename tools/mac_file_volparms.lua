@@ -21,12 +21,12 @@ emu.register_frame_done(function()
   steps[#steps+1]={label=label,trap=trap,setup=setup or '',success=success or '',failure=failure or ''}
  end
  local function request(count,ref,text)
-  local out='d@(a0+12)=0;w@(a0+16)='..(ref or 'temp2')..';d@(a0+20)=sp+300;d@(a0+24)='..string.format('%x',count)..';d@(a0+28)=deadbeef;'
-  for i=0,7 do out=out..string.format('d@(sp+%x)=cccccccc;',0x300+4*i) end
+  local out='d@(a0+12)=0;w@(a0+16)='..(ref or 'temp2')..';d@(a0+20)=sp+300;d@(a0+24)='..string.format('0x%x',count)..';d@(a0+28)=deadbeef;'
+  for i=0,7 do out=out..string.format('d@(sp+0x%x)=cccccccc;',0x300+4*i) end
   if text then
    out=out..'d@(a0+12)=sp+200;'
    text=string.char(#text)..text
-   for i=1,#text do out=out..string.format('b@(sp+%x)=%x;',0x200+i-1,text:byte(i)) end
+   for i=1,#text do out=out..string.format('b@(sp+0x%x)=0x%x;',0x200+i-1,text:byte(i)) end
   end
   return out
  end
@@ -44,13 +44,13 @@ emu.register_frame_done(function()
  add('null-zero',0xa260,request(0)..'d@(a0+20)=0;')
  local function enter(n)
   local s=steps[n]
-  return s.setup..string.format('temp0=0x%x;d0=%x;w@(sp+400)=%x;pc=sp+400;g',n,0x30,s.trap)
+  return s.setup..string.format('temp0=0x%x;d0=0x%x;w@(sp+400)=0x%x;pc=sp+400;g',n,0x30,s.trap)
  end
  local setup='temp1=d@(a0+3a);temp2=w@(a0+34);temp3=w@(a0+16);sp=sp-600;a0=sp+100;'
- for i=0,19 do setup=setup..string.format('d@(a0+%x)=0;',4*i) end
- setup=setup..string.format('w@(sp+402)=4ef9;d@(sp+404)=%x;',base+0x4146)
+ for i=0,19 do setup=setup..string.format('d@(a0+0x%x)=0;',4*i) end
+ setup=setup..string.format('w@(sp+402)=4ef9;d@(sp+404)=0x%x;',base+0x4146)
  local name='AITD Port Catalog Probe';local text=string.char(#name)..name
- for i=1,#text do setup=setup..string.format('b@(sp+%x)=%x;',0x200+i-1,text:byte(i)) end
+ for i=1,#text do setup=setup..string.format('b@(sp+0x%x)=0x%x;',0x200+i-1,text:byte(i)) end
  cpu.debug:bpset(base+0x4146,'temp0==0',setup..enter(1))
  for n,s in ipairs(steps) do
   local report=string.format('logerror "VOLPARMS label=%s stage=%X state=%%X d0=%%08X result=%%04X actual=%%08X volume=%%04X b0=%%08X b1=%%08X b2=%%08X b3=%%08X b4=%%08X b5=%%08X b6=%%08X b7=%%08X\\n",temp0,d0,w@(a0+10),d@(a0+28),w@(a0+16),d@(sp+300),d@(sp+304),d@(sp+308),d@(sp+30c),d@(sp+310),d@(sp+314),d@(sp+318),d@(sp+31c);',s.label,n)

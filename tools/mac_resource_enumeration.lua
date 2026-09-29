@@ -35,13 +35,13 @@ emu.register_frame_done(function()
  indexed('loaded-first',0x4352454c,1)
  local function enter(n)
   local q=steps[n];local out='sp=temp2;w@a60=8888;d0=12345678;w@(temp2+80)=cccc;d@(temp2+90)=cccccccc;'
-  if q[2]=='count' then out=out..string.format('sp=sp-6;d@(sp)=%x;w@(sp+4)=cccc;',q[4])
-  elseif q[2]=='switch' then out=out..string.format('sp=sp-2;w@(sp)=%x;',q[4]*256)
-  elseif q[2]=='index' then out=out..string.format('sp=sp-a;w@(sp)=%x;d@(sp+2)=%x;d@(sp+6)=cccccccc;',q[5]&0xffff,q[4])
+  if q[2]=='count' then out=out..string.format('sp=sp-6;d@(sp)=0x%x;w@(sp+4)=cccc;',q[4])
+  elseif q[2]=='switch' then out=out..string.format('sp=sp-2;w@(sp)=0x%x;',q[4]*256)
+  elseif q[2]=='index' then out=out..string.format('sp=sp-a;w@(sp)=0x%x;d@(sp+2)=0x%x;d@(sp+6)=cccccccc;',q[5]&0xffff,q[4])
   else out=out..'sp=sp-10;d@(sp)=temp2+100;d@(sp+4)=temp2+90;d@(sp+8)=temp2+80;d@(sp+c)=temp3;' end
-  return out..string.format('temp0=0x%x;w@(temp2+400)=%x;pc=temp2+400;g',n,q[3])
+  return out..string.format('temp0=0x%x;w@(temp2+400)=0x%x;pc=temp2+400;g',n,q[3])
  end
- local setup=string.format('sp=sp-600;temp2=sp;temp3=0;w@(temp2+402)=4ef9;d@(temp2+404)=%x;',base+0x3cde)
+ local setup=string.format('sp=sp-600;temp2=sp;temp3=0;w@(temp2+402)=4ef9;d@(temp2+404)=0x%x;',base+0x3cde)
  cpu.debug:bpset(base+0x3cde,'temp0==0',setup..enter(1))
  for n,q in ipairs(steps) do
   local prefix=q[2]=='index' and 'temp3=d@(sp);' or ''

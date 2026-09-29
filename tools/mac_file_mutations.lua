@@ -44,21 +44,21 @@ emu.register_frame_done(function()
  -- The fixture owns scratch stack memory; it changes no original instructions.
  -- Each trap returns through a generated JMP to the verified startup observer.
  local setup='temp1=d@(a0+3a);sp=sp-600;a0=sp+100;'
- for i=0,19 do setup=setup..string.format('d@(a0+%x)=0;',4*i) end
- setup=setup..string.format('w@(sp+402)=4ef9;d@(sp+404)=%x;',bases[3]+0x4146)
+ for i=0,19 do setup=setup..string.format('d@(a0+0x%x)=0;',4*i) end
+ setup=setup..string.format('w@(sp+402)=4ef9;d@(sp+404)=0x%x;',bases[3]+0x4146)
  local name='AITD Port Write Probe';local text=string.char(#name)..name
- for i=1,#text do setup=setup..string.format('b@(sp+%x)=%x;',0x200+i-1,text:byte(i)) end
+ for i=1,#text do setup=setup..string.format('b@(sp+0x%x)=0x%x;',0x200+i-1,text:byte(i)) end
  setup=setup..'temp0=1;d@(a0+12)=sp+200;w@(a0+16)=ffff;d@(a0+30)=temp1;w@(sp+400)=a208;pc=sp+400;g'
  cpu.debug:bpset(bases[3]+0x4146,'temp0==0',setup)
  for n,s in ipairs(steps) do
   local nextstep=steps[n+1];local action
   if nextstep then
-   action=s[4]..string.format('temp0=%x;d0=%x;w@(sp+400)=%x;pc=sp+400;g',n+1,nextstep[3]==0xa260 and 8 or 0,nextstep[3])
+   action=s[4]..string.format('temp0=0x%x;d0=0x%x;w@(sp+400)=0x%x;pc=sp+400;g',n+1,nextstep[3]==0xa260 and 8 or 0,nextstep[3])
   else action='logerror "PASS mutation capture complete; scratch file deleted\\n";quit' end
   local expected=(n==17 or n==18) and 0xffc3 or 0
-  local condition=string.format('temp0==%x && (d0&ffff)==%x',n,expected)
+  local condition=string.format('temp0==0x%x && (d0&ffff)==0x%x',n,expected)
   cpu.debug:bpset(bases[3]+0x4146,condition,'logerror "MUTATION RETURN pc=%08X sp=%08X a0=%08X stage=%X stub=%04X\\n",pc,sp,a0,temp0,w@(sp+400);'..emit(n)..action)
-  cpu.debug:bpset(bases[3]+0x4146,string.format('temp0==%x && (d0&ffff)!=%x',n,expected),emit(n)..'logerror "FAIL mutation unexpected result; scratch retained for recovery\\n";quit')
+  cpu.debug:bpset(bases[3]+0x4146,string.format('temp0==0x%x && (d0&ffff)!=0x%x',n,expected),emit(n)..'logerror "FAIL mutation unexpected result; scratch retained for recovery\\n";quit')
  end
  armed=true;print('ARM mutation Core+$4142 bytes=7008a2606004; stack-owned API fixture; new scratch file only')
 end)

@@ -225,3 +225,43 @@ File Manager parameter-block evidence is checked separately with
 `python3 tools/check_file_reference.py <log>`; see [file-manager.md](file-manager.md).
 The logger includes HFSDispatch selectors and SetFPos as well as the basic
 file calls, and records 80 parameter-block bytes on original-code returns.
+
+
+## Debugger literal discipline
+
+MAME expressions resolve bare `a0`–`a7` and `d0`–`d7` as registers. Generated
+hexadecimal operands must use `0x` prefixes, including byte strings supplied
+through `%s`. Diagnostic printf formats are separate from operand formatting.
+`tools/check_mame_literals.py`, run by `make host-tests`, scans all 41 maintained
+Mac/MAME Lua scripts and rejects unprefixed generated numeric/byte operands.
+Its rejection tests include a reverted dialog-dump offset, uppercase formats
+and decimal formatting after a hex prefix. The two explicit non-operand `%x`
+uses are a host map key and the Lua input-count pattern.
+
+The M2.1c3c2c5b2r audit changed 36 emitters. The impact inventory is:
+
+| Emitter group | Previous exposure and accepted evidence |
+| --- | --- |
+| Hidden constructor/movement, 172-byte rounded record dump | Offsets $A0/$A4 read registers. Corrected captures supersede the old tail bytes; editField=-1 is now implemented and paired. |
+| Menu/text, 256-byte dump | $A0/$A4/$D0/$D4 changed only padding. Across all 33 original calls, menu bodies are at most 97 bytes and text at most 30; every semantic byte is unchanged in the fresh capture and still pairs with native records. |
+| SANE fixture byte writer | Hex byte strings could collide with registers. Every one of 41 fixture source/destination inputs is now read back exactly before execution, then results, guards, stack and FPState are checked. Historical captures without input readback no longer satisfy this checker. |
+| Main device, device selection, depth, world and SANE-position dumps | Maximum rounded record is 108 bytes, below the first ambiguous offset $A0. CLUT payloads use direct `save`, not generated per-word offsets. |
+| Segment bases and general trap logger | Only the first jump entry per segment is emitted. All 12 actual base/entry operands avoid register aliases; parameter/text/name dumps use offsets below $A0. The logger never emits all 468 jump slots. |
+| File/resource fixtures and input probes | Parameter-block loops stay below $A0; larger scratch offsets start at $100. Text is length-prefixed ASCII. Fixture stages/IDs/selectors, full addresses and payload words do not collide with register names on the accepted routes; large resource-stage sequences already used prefixes. Remaining concatenated scratch slots are $300/$304 and payload words are eight hex digits. Prefixes now protect future values as well. |
+
+Fresh logs `tmp/m2-literals-hidden_dialog-reference.log`,
+`tmp/m2-literals-hidden_move-reference.log`, `tmp/m2-literals-menu-reference.log`
+and `tmp/m2-literals-sane-fixtures.log` all completed normally and pass their
+checkers. Constructor/movement/menu records pair with the existing accepted
+native build; the exact-rational host oracle includes all 41 SANE fixtures.
+The menu log also has `PASS MAME script syntax files=41`, from compiling every
+maintained Lua source with MAME's `loadfile` before starting the observer.
+Generate that wrapper with:
+
+```sh
+python3 tools/check_mame_literals.py --syntax-wrapper tmp/mame-literals-syntax.lua
+# Use the standard headless command with -autoboot_script tmp/mame-literals-syntax.lua.
+```
+
+The full host suite passes. This is a reference-tool correction; native code,
+original instructions, resource inputs and rendering behavior are unchanged.

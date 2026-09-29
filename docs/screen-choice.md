@@ -132,8 +132,8 @@ python3 tools/check_hidden_move.py REFERENCE --status 0 --native NATIVE --native
 
 The checker guards original Engine+$4858–+$48AB, portable fields, complete
 before/after records and positive completion; corruptions and timeout fail.
-Use `tmp/m2-hidden-move-corrected-reference.log` for the reference. The corrected
-constructor reference is `tmp/m2-hidden-dialog-corrected-reference.log`.
+Use `tmp/m2-literals-hidden_move-reference.log` for the reference. The corrected
+constructor reference is `tmp/m2-literals-hidden_dialog-reference.log`.
 
 This work found an error in earlier dialog dumps: bare hexadecimal offsets
 `a0` and `a4` were parsed as registers. Explicit `0x` prefixes correct them.
@@ -142,4 +142,5 @@ initialized natively. TextEdit handle and unused editOpen/padding remain opaque
 implementation state for this button/static-text-only hidden dialog; TextEdit
 services are not implemented. Within each machine, every record byte except
 bitmap bounds is preserved by MoveWindow. Earlier constructor tail-byte evidence
-is superseded; the remaining emitter audit is explicitly queued.
+is superseded; the remaining emitters are now audited, with a maintained regression and
+fresh affected captures; see [mac-reference-loop.md](mac-reference-loop.md).

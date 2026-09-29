@@ -9,8 +9,8 @@ local mem = cpu.spaces.program
 local dbg = assert(manager.machine.debugger, 'TRAP LOG / DEBUGGER REQUIRED')
 local fileOnly=os.getenv('AITD_MAC_FILE_ONLY')=='1'
 local appname='Alone In The Dark'
-local guard={string.format('b@910==%x',#appname)}
-for i=1,#appname do guard[#guard+1]=string.format('b@%x==%x',0x910+i,appname:byte(i)) end
+local guard={string.format('b@910==0x%x',#appname)}
+for i=1,#appname do guard[#guard+1]=string.format('b@0x%x==0x%x',0x910+i,appname:byte(i)) end
 local appcond=table.concat(guard,' && ')
 local function u32(a) return mem:read_u32(a & 0xffffff) end
 local function ptr(a) return u32(a) & 0xffffff end
@@ -21,7 +21,7 @@ local function is_file_trap(trap)
 end
 local function file_fields(args)
  -- Preserve the raw 80-byte parameter block: selectors reuse field offsets.
- for i=0,19 do args[#args+1]={'pb'..i,string.format('d@((a0&ffffff)+%x)',4*i)} end
+ for i=0,19 do args[#args+1]={'pb'..i,string.format('d@((a0&ffffff)+0x%x)',4*i)} end
  return args
 end
 local function action(label, expressions)
@@ -63,12 +63,12 @@ local function map_segments()
     assert(u32(pc-4)==0x206df954 and mem:read_u16(pc)==0x4e90,'MDRV / CALL BYTES')
     local args={{'ticks','d@16a'},{'caller','pc'},{'cleanup','w@(pc+2)'},{'selector','d@sp'},{'arg','d@(sp+4)'},
      {'arg0','d@(d@(sp+4)&ffffff)'},{'arg1','d@((d@(sp+4)&ffffff)+4)'},{'arg2','d@((d@(sp+4)&ffffff)+8)'}}
-    for i=0,7 do args[#args+1]={'sample'..i,string.format('if(d@sp==11,d@((d@(d@(sp+4)&ffffff)&ffffff)+%x),0)',4*i)} end
+    for i=0,7 do args[#args+1]={'sample'..i,string.format('if(d@sp==11,d@((d@(d@(sp+4)&ffffff)&ffffff)+0x%x),0)',4*i)} end
     if not fileOnly then breakpoint(pc,string.format('MDRV seg=%X offset=%X',seg,offset),args) end
    end
    for _,site in ipairs(info.input_writes) do
     assert(mem:read_u16(base+site[1])==site[3],'INPUT PROBE / ORIGINAL WRITE BYTES')
-    cpu.debug:bpset(base+site[2],appcond..string.format(' && temp3==%x && w@((d@904&ffffff)-temp3)==temp1',site[4]),'temp0=temp0+1;g')
+    cpu.debug:bpset(base+site[2],appcond..string.format(' && temp3==0x%x && w@((d@904&ffffff)-temp3)==temp1',site[4]),'temp0=temp0+1;g')
    end
    for _,t in ipairs(info.traps) do
     local pc=base+t[1]
@@ -86,7 +86,7 @@ local function map_segments()
      if is_file_trap(t[2]) then
       file_fields(result)
       if t[2]==0xa014 then
-       for i=0,7 do result[#result+1]={'volume'..i,string.format('d@((d@(a0+12)&ffffff)+%x)',4*i)} end
+       for i=0,7 do result[#result+1]={'volume'..i,string.format('d@((d@(a0+12)&ffffff)+0x%x)',4*i)} end
       end
      end
      return_bps[pc+2]=breakpoint(pc+2,string.format('RESULT seg=%d offset=%04X trap=%04X',seg,t[1],t[2]),result)
@@ -113,10 +113,10 @@ emu.register_frame_done(function()
    if not first[j[1]] then
     first[j[1]]=true
     local e=32+(index-1)*8
-    expr[#expr+1]={'j'..j[1],string.format('if(w@((d@904&ffffff)+%x)==4ef9,d@((d@904&ffffff)+%x),0)',e+2,e+4)}
+    expr[#expr+1]={'j'..j[1],string.format('if(w@((d@904&ffffff)+0x%x)==4ef9,d@((d@904&ffffff)+0x%x),0)',e+2,e+4)}
    end
   end
-  for i=0,7 do expr[#expr+1]={'p'..i,string.format('d@(sp+%x)',8+4*i)} end
+  for i=0,7 do expr[#expr+1]={'p'..i,string.format('d@(sp+0x%x)',8+4*i)} end
   local trapword='w@(d@(sp+2))'
   local base=appcond..' && (d@(sp+2)&ffffff)>100000 && (d@(sp+2)&ffffff)<800000'
   local excluded=' && '..trapword..'!=a884 && '..trapword..'!=a885 && '..trapword..'!=a900 && ('..trapword..'&8ff)>18 && ('..trapword..'&8ff)!=44 && ('..trapword..'&8ff)!=60'
@@ -128,20 +128,20 @@ emu.register_frame_done(function()
   end
   -- DrawText's Pascal stack: count:w, first:w, buffer:l.
   local text={{'font','w@((d@(d@(d@904)&ffffff)&ffffff)+44)'},{'size','w@((d@(d@(d@904)&ffffff)&ffffff)+4a)'},{'pc','d@(sp+2)'},{'count','w@(sp+8)'},{'first','w@(sp+a)'}}
-  for i=0,15 do text[#text+1]={'text'..i,string.format('d@((d@(sp+c)&ffffff)+w@(sp+a)+%x)',4*i)} end
+  for i=0,15 do text[#text+1]={'text'..i,string.format('d@((d@(sp+c)&ffffff)+w@(sp+a)+0x%x)',4*i)} end
   detail('TEXT',text,trapword..'==a885')
   local stringtext={{'font','w@((d@(d@(d@904)&ffffff)&ffffff)+44)'},
    {'size','w@((d@(d@(d@904)&ffffff)&ffffff)+4a)'},
    {'pc','d@(sp+2)'},{'count','b@(d@(sp+8)&ffffff)'}}
-  for i=0,15 do stringtext[#stringtext+1]={'text'..i,string.format('d@((d@(sp+8)&ffffff)+%x)',1+4*i)} end
+  for i=0,15 do stringtext[#stringtext+1]={'text'..i,string.format('d@((d@(sp+8)&ffffff)+0x%x)',1+4*i)} end
   detail('TEXT',stringtext,trapword..'==a884')
   local font={{'pc','d@(sp+2)'},{'resultptr','d@(sp+8)'}}
-  for i=0,7 do font[#font+1]={'name'..i,string.format('d@((d@(sp+c)&ffffff)+%x)',4*i)} end
+  for i=0,7 do font[#font+1]={'name'..i,string.format('d@((d@(sp+c)&ffffff)+0x%x)',4*i)} end
   detail('FONT',font,trapword..'==a900')
   local file={{'pc','d@(sp+2)'},{'trap','w@(d@(sp+2))'},{'selector','d0'},{'pb','a0'},
    {'ref','w@(a0+18)'},{'buffer','d@(a0+20)'},{'requested','d@(a0+24)'},
    {'actual','d@(a0+28)'},{'position','d@(a0+2e)'}}
-  for i=0,11 do file[#file+1]={'name'..i,string.format('d@((d@(a0+12)&ffffff)+%x)',4*i)} end
+  for i=0,11 do file[#file+1]={'name'..i,string.format('d@((d@(a0+12)&ffffff)+0x%x)',4*i)} end
   detail('FILE',file_fields(file),'(('..trapword..'&8ff)<=18 || ('..trapword..'&8ff)==44 || ('..trapword..'&8ff)==60)')
   armed=true
   print('ARM dispatcher=0000DD60 bytes=2f0a2f02246f000a')

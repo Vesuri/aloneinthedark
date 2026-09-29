@@ -63,16 +63,16 @@ emu.register_frame_done(function()
     end
     for n,step in ipairs(steps) do
      assert(mem:read_u16(base+step[1])==step[2],'DIRECTORY QUERIES / ORIGINAL TRAP BYTES')
-     local report=string.format('logerror "DIRQUERY stage=%%X trap=%%04X d0=%%08X result=%%04X volume=%%04X created=%%04X index=%%04X process=%%08X wdvolume=%%04X directory=%%08X\\n",temp0,%x,d0,w@(a0+10),w@(a0+16),w@(a0+18),w@(a0+1a),d@(a0+1c),w@(a0+20),d@(a0+30);',step[2])
+     local report=string.format('logerror "DIRQUERY stage=%%X trap=%%04X d0=%%08X result=%%04X volume=%%04X created=%%04X index=%%04X process=%%08X wdvolume=%%04X directory=%%08X\\n",temp0,0x%x,d0,w@(a0+10),w@(a0+16),w@(a0+18),w@(a0+1a),d@(a0+1c),w@(a0+20),d@(a0+30);',step[2])
      if wdmode then report=report:gsub('DIRQUERY','WDQUERY') end
      local nextstep=steps[n+1]
      local action
      if nextstep then
       local selector=nextstep[1]==0x40de and 1 or nextstep[1]==0x40f4 and 2 or nextstep[1]==0x412e and 7 or 0
-      action=step[3]..string.format('temp0=%x;d0=%x;pc=%x;g',n,selector,base+nextstep[1])
+      action=step[3]..string.format('temp0=0x%x;d0=0x%x;pc=0x%x;g',n,selector,base+nextstep[1])
      else action='logerror "PASS directory-query capture complete\\n";quit' end
      if wdmode then action=action:gsub('directory%-query capture','wd-query capture') end
-     cpu.debug:bpset(base+step[1]+2,string.format('temp0==%x',n-1),report..action)
+     cpu.debug:bpset(base+step[1]+2,string.format('temp0==0x%x',n-1),report..action)
     end
    else
    local at=base+0x4146

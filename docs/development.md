@@ -2419,3 +2419,18 @@ build and normal exits with positive markers. An earlier observer run overlapped
 a rebuild and timed out; it was discarded, not counted as passing. Evidence and
 reproduction are in [screen-choice.md](screen-choice.md); final native logs use
 `tmp/m2-hidden-move-accepted-` and the fresh run is `tmp/m2-hidden-move-fresh.log`.
+
+
+## Reference-capture literal audit
+
+M2.1c3c2c5b2r makes generated hexadecimal operands explicit in 36 emitters,
+adds a host regression over all 41 maintained Mac/MAME Lua scripts, and requires
+exact input readback in the 41-case original SANE fixture. All sources compile
+in MAME; fresh constructor/movement/menu/SANE captures exit normally and pass.
+Paired native records remain valid with the corrected references. Menu semantic
+bytes were unaffected; only trailing dump padding changed. The full host suite
+passes, including source-checker mutations and fixture-input rejection cases.
+The native executable is unchanged; the prior native regression results remain
+applicable. Detailed exposure and replacement evidence are in
+[mac-reference-loop.md](mac-reference-loop.md). Fixed size selection is again
+first in the implementation queue; no owner decision changed.

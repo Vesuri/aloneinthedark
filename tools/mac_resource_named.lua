@@ -42,13 +42,13 @@ emu.register_frame_done(function()
   local q=steps[n];local out='sp=temp2;w@a60=8888;'
   if type(q[4])=='string' then
    local text=string.char(#q[4])..q[4]
-   for i=1,#text do out=out..string.format('b@(temp2+%x)=%x;',0x100+i-1,text:byte(i)) end
-   out=out..string.format('sp=sp-c;d@(sp)=temp2+100;d@(sp+4)=%x;d@(sp+8)=cccccccc;',q[3])
-  else out=out..string.format('sp=sp-a;w@(sp)=%x;d@(sp+2)=%x;d@(sp+6)=cccccccc;',q[4]&0xffff,q[3]) end
-  return out..string.format('temp0=0x%x;d0=12345678;w@(temp2+400)=%x;pc=temp2+400;g',n,q[2])
+   for i=1,#text do out=out..string.format('b@(temp2+0x%x)=0x%x;',0x100+i-1,text:byte(i)) end
+   out=out..string.format('sp=sp-c;d@(sp)=temp2+100;d@(sp+4)=0x%x;d@(sp+8)=cccccccc;',q[3])
+  else out=out..string.format('sp=sp-a;w@(sp)=0x%x;d@(sp+2)=0x%x;d@(sp+6)=cccccccc;',q[4]&0xffff,q[3]) end
+  return out..string.format('temp0=0x%x;d0=12345678;w@(temp2+400)=0x%x;pc=temp2+400;g',n,q[2])
  end
  cpu.debug:bpset(base+0x3cdc,'temp0==0','logerror "RESOURCE ORIGINAL name0=%08X name1=%08X type=%08X\\n",d@(d@(sp)),d@(d@(sp)+4),d@(sp+4);g')
- local setup=string.format('logerror "RESOURCE ORIGINAL result=%%08X error=%%04X\\n",d@(sp),w@a60;temp1=d@(sp);save tmp/mac-general-resource.bin,(d@(temp1)&ffffff),264;sp=sp-600;temp2=sp;w@(temp2+402)=4ef9;d@(temp2+404)=%x;',base+0x3cde)
+ local setup=string.format('logerror "RESOURCE ORIGINAL result=%%08X error=%%04X\\n",d@(sp),w@a60;temp1=d@(sp);save tmp/mac-general-resource.bin,(d@(temp1)&ffffff),264;sp=sp-600;temp2=sp;w@(temp2+402)=4ef9;d@(temp2+404)=0x%x;',base+0x3cde)
  cpu.debug:bpset(base+0x3cde,'temp0==0',setup..enter(1))
  for n,q in ipairs(steps) do
   local report=string.format('logerror "RNAMED label=%s stage=%%X handle=%%08X error=%%04X d0=%%08X sp=%%08X expectedsp=%%08X original=%%08X\\n",temp0,d@(sp),w@a60,d0,sp,temp2-4,temp1;',q[1])

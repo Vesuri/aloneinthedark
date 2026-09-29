@@ -65,13 +65,13 @@ emu.register_frame_done(function()
  add('flush',0xa013,'d@(a0+12)=0;w@(a0+16)=ffff;',nil,fatal)
  local function enter(n)
   local s=steps[n]
-  return s.setup..string.format('temp0=0x%x;d0=%x;w@(sp+400)=%x;pc=sp+400;g',n,s.trap==0xa260 and 8 or 0,s.trap)
+  return s.setup..string.format('temp0=0x%x;d0=0x%x;w@(sp+400)=0x%x;pc=sp+400;g',n,s.trap==0xa260 and 8 or 0,s.trap)
  end
  local setup='temp1=d@(a0+3a);sp=sp-600;a0=sp+100;'
- for i=0,19 do setup=setup..string.format('d@(a0+%x)=0;',4*i) end
- setup=setup..string.format('w@(sp+402)=4ef9;d@(sp+404)=%x;',base+0x4146)
+ for i=0,19 do setup=setup..string.format('d@(a0+0x%x)=0;',4*i) end
+ setup=setup..string.format('w@(sp+402)=4ef9;d@(sp+404)=0x%x;',base+0x4146)
  local name='AITD Port Fork Probe';local text=string.char(#name)..name
- for i=1,#text do setup=setup..string.format('b@(sp+%x)=%x;',0x200+i-1,text:byte(i)) end
+ for i=1,#text do setup=setup..string.format('b@(sp+0x%x)=0x%x;',0x200+i-1,text:byte(i)) end
  cpu.debug:bpset(base+0x4146,'temp0==0',setup..enter(1))
  for n,s in ipairs(steps) do
   local report=string.format('logerror "FORKS label=%s stage=%X state=%%X trap=%04X d0=%%08X result=%%04X ref=%%04X attr=%%02X data=%%08X resource=%%08X eof=%%08X flags=%%04X length=%%08X mark=%%08X actual=%%08X position=%%08X bytes=%%08X tail=%%04X\\n",temp0,d0,w@(a0+10),w@(a0+18),b@(a0+1e),d@(a0+36),d@(a0+40),d@(a0+1c),w@(a0+24),d@(a0+28),d@(a0+30),d@(a0+28),d@(a0+2e),d@(sp+300),w@(sp+304);',s.label,n,s.trap)

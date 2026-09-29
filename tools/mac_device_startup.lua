@@ -4,16 +4,16 @@ local meta=dofile('tmp/mac-trap-map.lua')
 local cpu=manager.machine.devices[':maincpu'];local mem=cpu.spaces.program
 local dbg=assert(manager.machine.debugger,'DEVICE STARTUP / DEBUGGER REQUIRED')
 local function base(seg)
- for i,j in ipairs(meta.jt) do if j[1]==seg then return string.format('((d@((d@904&ffffff)+%x)&ffffff)-%x)',36+(i-1)*8,j[2]) end end
+ for i,j in ipairs(meta.jt) do if j[1]==seg then return string.format('((d@((d@904&ffffff)+0x%x)&ffffff)-0x%x)',36+(i-1)*8,j[2]) end end
  error('DEVICE STARTUP / NO JUMP ENTRY')
 end
-local app='Alone In The Dark';local appcond=string.format('b@910==%x',#app)
-for i=1,#app do appcond=appcond..string.format(' && b@%x==%x',0x910+i,app:byte(i)) end
+local app='Alone In The Dark';local appcond=string.format('b@910==0x%x',#app)
+for i=1,#app do appcond=appcond..string.format(' && b@0x%x==0x%x',0x910+i,app:byte(i)) end
 local regs,values='',''
 for _,r in ipairs({'d0','d1','d2','d3','d4','d5','d6','d7','a0','a1','a2','a3','a4','a5','a6'}) do regs=regs..' '..r..'=%08X';values=values..','..r end
 local function dump(label,address,count)
  local format,args='',''
- for i=0,count-1 do format=format..'%08X';args=args..string.format(',d@((%s)+%x)',address,i*4) end
+ for i=0,count-1 do format=format..'%08X';args=args..string.format(',d@((%s)+0x%x)',address,i*4) end
  return 'logerror "'..label..' seq=%X data='..format..'\\n",temp8'..args..';'
 end
 local armed=false
@@ -32,8 +32,8 @@ emu.register_frame_done(function()
  local sites={{0x4b48,0xaa29,0,4},{0x4b8e,0xaa2b,4,4},{0x4d4a,0xaa2c,6,1},{0x4d70,0xaaa2,10,2},{0x4da2,0xa8a8,8,0}}
  for _,site in ipairs(sites) do
   local off,trap,pop,result=table.unpack(site)
-  local ent=string.format('temp9=1;temp8=temp8+1;temp0=sp;temp2=%x;logerror "DEVICE_ENTER seq=%%X offset=%%X trap=%%X sp=%%X args=%%08X/%%08X/%%08X/%%08X'..regs:gsub("%%","%%%%")..'\\n",temp8,%x,temp2,sp,d@sp,d@(sp+4),d@(sp+8),d@(sp+c)'..values..';g',trap,off)
-  local ret=string.format('logerror "DEVICE_RETURN seq=%%X offset=%%X trap=%%X sp=%%X expected=%%X result=%%X'..regs:gsub("%%","%%%%")..'\\n",temp8,%x,temp2,sp,temp0+%x,%s'..values..';',off,pop,result==4 and 'd@sp' or result==2 and 'w@sp' or result==1 and 'b@sp' or '0')
+  local ent=string.format('temp9=1;temp8=temp8+1;temp0=sp;temp2=0x%x;logerror "DEVICE_ENTER seq=%%X offset=%%X trap=%%X sp=%%X args=%%08X/%%08X/%%08X/%%08X'..regs:gsub("%%","%%%%")..'\\n",temp8,0x%x,temp2,sp,d@sp,d@(sp+4),d@(sp+8),d@(sp+c)'..values..';g',trap,off)
+  local ret=string.format('logerror "DEVICE_RETURN seq=%%X offset=%%X trap=%%X sp=%%X expected=%%X result=%%X'..regs:gsub("%%","%%%%")..'\\n",temp8,0x%x,temp2,sp,temp0+0x%x,%s'..values..';',off,pop,result==4 and 'd@sp' or result==2 and 'w@sp' or result==1 and 'b@sp' or '0')
   if trap==0xa8a8 then
    ent=ent:sub(1,-2).."temp7=d@(sp+4)&ffffff;"..dump('RECT_BEFORE','temp7',2)..'g'
    ret=ret..dump('RECT_AFTER','temp7',2)
@@ -43,7 +43,7 @@ emu.register_frame_done(function()
    ret=ret..'temp4=d@((d@temp3&ffffff)+16)&ffffff;'..dump('PIXMAP_RECORD','d@temp4&ffffff',13)
    ret=ret..'temp5=d@((d@temp4&ffffff)+2a)&ffffff;'..dump('CTABLE_RECORD','d@temp5&ffffff',2)
   end
-  setup=setup..string.format('logerror "DEVICE_SITE offset=%%X bytes=%%08X\\n",%x,d@(temp6+%x);bpset temp6+%x,temp9==0,{',off,off,off)..ent..'};'..string.format('bpset temp6+%x,temp9==1,{',off+2)..ret..'temp9=0;g};'
+  setup=setup..string.format('logerror "DEVICE_SITE offset=%%X bytes=%%08X\\n",0x%x,d@(temp6+0x%x);bpset temp6+0x%x,temp9==0,{',off,off,off)..ent..'};'..string.format('bpset temp6+0x%x,temp9==1,{',off+2)..ret..'temp9=0;g};'
  end
  setup=setup..'bpset temp6+4d34,temp8>0,{logerror "DEVICE_SELECTED result=%X count=%X\\n",d0,d7&ffff;g};bpset '..base(12)..'+3a,temp8>0 && temp9==0,{logerror "PASS device reference calls=%X inflight=%X secondTimes=%X\\n",temp8,temp9,w@((d@904&ffffff)-1261c);quit};g'
  cpu.debug:bpset(0xdd60,appcond..' && w@(d@(sp+2))==a900 && (d@(sp+2)&ffffff)=='..base(12)..'+12',setup)

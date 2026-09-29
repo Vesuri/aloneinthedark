@@ -21,12 +21,12 @@ emu.register_frame_done(function()
   steps[#steps+1]={label=label,trap=trap,setup=setup or '',success=success or '',failure=failure or ''}
  end
  local function request(index,ref,text)
-  local out='d@(a0+12)=0;w@(a0+16)='..(ref or 'temp2')..';w@(a0+1c)='..string.format('%x',index&0xffff)..';'
-  for i=0,45 do out=out..string.format('w@(a0+%x)=cccc;',30+2*i) end
+  local out='d@(a0+12)=0;w@(a0+16)='..(ref or 'temp2')..';w@(a0+1c)='..string.format('0x%x',index&0xffff)..';'
+  for i=0,45 do out=out..string.format('w@(a0+0x%x)=cccc;',30+2*i) end
   if text then
    out=out..'d@(a0+12)=sp+200;'
    text=string.char(#text)..text
-   for i=1,#text do out=out..string.format('b@(sp+%x)=%x;',0x200+i-1,text:byte(i)) end
+   for i=1,#text do out=out..string.format('b@(sp+0x%x)=0x%x;',0x200+i-1,text:byte(i)) end
   end
   return out
  end
@@ -48,13 +48,13 @@ emu.register_frame_done(function()
  add('system-query',0xa260,'w@(a0+16)=temp6;w@(a0+1a)=0;')
  local function enter(n)
   local s=steps[n]
-  return s.setup..string.format('temp0=0x%x;d0=%x;w@(sp+400)=%x;pc=sp+400;g',n,s.label=='system-wd' and 1 or s.label=='system-query' and 7 or 0,s.trap)
+  return s.setup..string.format('temp0=0x%x;d0=0x%x;w@(sp+400)=0x%x;pc=sp+400;g',n,s.label=='system-wd' and 1 or s.label=='system-query' and 7 or 0,s.trap)
  end
  local setup='temp1=d@(a0+3a);temp2=w@(a0+34);temp3=w@(a0+16);sp=sp-600;a0=sp+100;'
- for i=0,19 do setup=setup..string.format('d@(a0+%x)=0;',4*i) end
- setup=setup..string.format('w@(sp+402)=4ef9;d@(sp+404)=%x;',base+0x4146)
+ for i=0,19 do setup=setup..string.format('d@(a0+0x%x)=0;',4*i) end
+ setup=setup..string.format('w@(sp+402)=4ef9;d@(sp+404)=0x%x;',base+0x4146)
  local name='ignored';local text=string.char(#name)..name
- for i=1,#text do setup=setup..string.format('b@(sp+%x)=%x;',0x200+i-1,text:byte(i)) end
+ for i=1,#text do setup=setup..string.format('b@(sp+0x%x)=0x%x;',0x200+i-1,text:byte(i)) end
  cpu.debug:bpset(base+0x4146,'temp0==0',setup..enter(1))
  for n,s in ipairs(steps) do
   local report=string.format('logerror "VINFO label=%s stage=%X state=%%X d0=%%08X result=%%04X volume=%%04X created=%%08X modified=%%08X attr=%%04X valence=%%04X bitmap=%%04X alloc=%%04X blocks=%%04X blocksize=%%08X clump=%%08X start=%%04X nextid=%%08X free=%%04X sig=%%04X drive=%%04X driver=%%04X fsid=%%04X backup=%%08X sequence=%%04X writes=%%08X files=%%08X dirs=%%08X finder0=%%08X finder1=%%08X finder2=%%08X finder3=%%08X finder4=%%08X finder5=%%08X finder6=%%08X finder7=%%08X name0=%%08X name1=%%08X name2=%%08X name3=%%08X\\n",temp0,d0,w@(a0+10),w@(a0+16),d@(a0+1e),d@(a0+22),w@(a0+26),w@(a0+28),w@(a0+2a),w@(a0+2c),w@(a0+2e),d@(a0+30),d@(a0+34),w@(a0+38),d@(a0+3a),w@(a0+3e),w@(a0+40),w@(a0+42),w@(a0+44),w@(a0+46),d@(a0+48),w@(a0+4c),d@(a0+4e),d@(a0+52),d@(a0+56),d@(a0+5a),d@(a0+5e),d@(a0+62),d@(a0+66),d@(a0+6a),d@(a0+6e),d@(a0+72),d@(a0+76),d@(sp+200),d@(sp+204),d@(sp+208),d@(sp+20c);',s.label,n)

@@ -4,11 +4,11 @@ local meta=dofile('tmp/mac-trap-map.lua')
 local cpu=manager.machine.devices[':maincpu'];local mem=cpu.spaces.program
 local dbg=assert(manager.machine.debugger,'DIALOG / DEBUGGER REQUIRED')
 local function base(seg)
- for i,j in ipairs(meta.jt) do if j[1]==seg then return string.format('((d@((d@904&ffffff)+%x)&ffffff)-%x)',36+(i-1)*8,j[2]) end end
+ for i,j in ipairs(meta.jt) do if j[1]==seg then return string.format('((d@((d@904&ffffff)+0x%x)&ffffff)-0x%x)',36+(i-1)*8,j[2]) end end
  error('DIALOG / NO JUMP ENTRY')
 end
-local app='Alone In The Dark';local appcond=string.format('b@910==%x',#app)
-for i=1,#app do appcond=appcond..string.format(' && b@%x==%x',0x910+i,app:byte(i)) end
+local app='Alone In The Dark';local appcond=string.format('b@910==0x%x',#app)
+for i=1,#app do appcond=appcond..string.format(' && b@0x%x==0x%x',0x910+i,app:byte(i)) end
 local regs,values='',''
 for _,r in ipairs({'d0','d1','d2','d3','d4','d5','d6','d7','a0','a1','a2','a3','a4','a5','a6'}) do regs=regs..' '..r..'=%08X';values=values..','..r end
 local function dump(label,address,count)
@@ -31,7 +31,7 @@ emu.register_frame_done(function()
  local function state(prefix)
   local out=dump(prefix..'_RECORD','temp3',43)..dump(prefix..'_ITEMS','d@(d@(temp3+9c)&ffffff)&ffffff',29)
   for name,offset in pairs({VIS=0x18,CLIP=0x1c,STRUCT=0x72,CONTENT=0x76,UPDATE=0x7a}) do
-   out=out..dump(prefix..'_'..name,string.format('d@(d@(temp3+%x)&ffffff)&ffffff',offset),3)
+   out=out..dump(prefix..'_'..name,string.format('d@(d@(temp3+0x%x)&ffffff)&ffffff',offset),3)
   end
   out=out..dump(prefix..'_CONTROL1','d@(d@((d@(d@(temp3+9c)&ffffff)&ffffff)+2)&ffffff)&ffffff',13)..dump(prefix..'_CONTROL2','d@(d@((d@(d@(temp3+9c)&ffffff)&ffffff)+1a)&ffffff)&ffffff',13)..dump(prefix..'_TEXT3','d@(d@((d@(d@(temp3+9c)&ffffff)&ffffff)+32)&ffffff)&ffffff',13)
   return out

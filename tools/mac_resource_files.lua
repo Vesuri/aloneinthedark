@@ -27,12 +27,12 @@ emu.register_frame_done(function()
  local function refcall(label,trap,ref) add(label,trap,'sp=sp-2;w@(sp)='..ref..';') end
  local function cur(label) add(label,0xa994,'sp=sp-2;w@(sp)=cccc;','w@(sp)') end
  local function lookup(label,trap,typ,id)
-  add(label,trap,string.format('sp=sp-a;w@(sp)=%x;d@(sp+2)=%x;d@(sp+6)=cccccccc;',id,typ),'d@(sp)','temp3=d@(sp);')
+  add(label,trap,string.format('sp=sp-a;w@(sp)=0x%x;d@(sp+2)=0x%x;d@(sp+6)=cccccccc;',id,typ),'d@(sp)','temp3=d@(sp);')
  end
- local function count(label,trap,typ) add(label,trap,string.format('sp=sp-6;d@(sp)=%x;w@(sp+4)=cccc;',typ),'w@(sp)') end
+ local function count(label,trap,typ) add(label,trap,string.format('sp=sp-6;d@(sp)=0x%x;w@(sp+4)=cccc;',typ),'w@(sp)') end
  local function newresource(label,typ,id,value)
   add(label..'-allocate',0xa122,'d0=4;','a0','temp3=a0;d@((d@(temp3)&ffffff))='..value..';','(d0&ffff)==0 && a0!=0')
-  add(label..'-add',0xa9ab,string.format('sp=sp-e;d@(sp)=temp2+280;w@(sp+4)=%x;d@(sp+6)=%x;d@(sp+a)=temp3;',id,typ),nil,nil,'w@a60==0')
+  add(label..'-add',0xa9ab,string.format('sp=sp-e;d@(sp)=temp2+280;w@(sp+4)=0x%x;d@(sp+6)=0x%x;d@(sp+a)=temp3;',id,typ),nil,nil,'w@a60==0')
  end
  add('application',0xa994,'sp=sp-2;w@(sp)=cccc;','w@(sp)','temp1=w@(sp);')
  count('baseline-chain-strings',0xa99c,0x53545223);count('baseline-chain-probes',0xa99c,0x52505242)
@@ -75,13 +75,13 @@ emu.register_frame_done(function()
  cur('current-final')
  local function enter(n)
   local q=steps[n]
-  return 'sp=temp2;w@a60=8888;d0=12345678;'..q.setup..string.format('temp0=0x%x;w@(temp2+400)=%x;pc=temp2+400;g',n,q.trap)
+  return 'sp=temp2;w@a60=8888;d0=12345678;'..q.setup..string.format('temp0=0x%x;w@(temp2+400)=0x%x;pc=temp2+400;g',n,q.trap)
  end
- local setup=string.format('sp=sp-800;temp2=sp;temp3=0;temp4=0;temp5=0;w@(temp2+402)=4ef9;d@(temp2+404)=%x;',base+0x3cde)
- for i=0,31 do setup=setup..string.format('d@(temp2+%x)=0;',0x100+i*4) end
+ local setup=string.format('sp=sp-800;temp2=sp;temp3=0;temp4=0;temp5=0;w@(temp2+402)=4ef9;d@(temp2+404)=0x%x;',base+0x3cde)
+ for i=0,31 do setup=setup..string.format('d@(temp2+0x%x)=0;',0x100+i*4) end
  for _,q in ipairs({{0x200,'AITD Resource Probe A'},{0x240,'AITD Resource Probe B'},{0x280,'General'}}) do
   local text=string.char(#q[2])..q[2]
-  for i=1,#text do setup=setup..string.format('b@(temp2+%x)=%x;',q[1]+i-1,text:byte(i)) end
+  for i=1,#text do setup=setup..string.format('b@(temp2+0x%x)=0x%x;',q[1]+i-1,text:byte(i)) end
  end
  cpu.debug:bpset(base+0x3cde,'temp0==0',setup..enter(1))
  for n,q in ipairs(steps) do

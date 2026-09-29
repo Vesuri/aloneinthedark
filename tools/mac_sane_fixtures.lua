@@ -6,16 +6,16 @@ local meta=dofile('tmp/mac-trap-map.lua')
 local cpu=manager.machine.devices[':maincpu'];local mem=cpu.spaces.program
 local dbg=assert(manager.machine.debugger,'GETMAINDEVICE / DEBUGGER REQUIRED')
 local function base(seg)
- for i,j in ipairs(meta.jt) do if j[1]==seg then return string.format('((d@((d@904&ffffff)+%x)&ffffff)-%x)',36+(i-1)*8,j[2]) end end
+ for i,j in ipairs(meta.jt) do if j[1]==seg then return string.format('((d@((d@904&ffffff)+0x%x)&ffffff)-0x%x)',36+(i-1)*8,j[2]) end end
  error('GETMAINDEVICE / NO JUMP ENTRY')
 end
-local app='Alone In The Dark';local appcond=string.format('b@910==%x',#app)
-for i=1,#app do appcond=appcond..string.format(' && b@%x==%x',0x910+i,app:byte(i)) end
+local app='Alone In The Dark';local appcond=string.format('b@910==0x%x',#app)
+for i=1,#app do appcond=appcond..string.format(' && b@0x%x==0x%x',0x910+i,app:byte(i)) end
 local regs,values='',''
 for _,r in ipairs({'d0','d1','d2','d3','d4','d5','d6','d7','a0','a1','a2','a3','a4','a5','a6'}) do regs=regs..' '..r..'=%08X';values=values..','..r end
 local function dump(label,address,count)
  local format,args='',''
- for i=0,count-1 do format=format..'%08X';args=args..string.format(',d@((%s)+%x)',address,i*4) end
+ for i=0,count-1 do format=format..'%08X';args=args..string.format(',d@((%s)+0x%x)',address,i*4) end
  return 'logerror "'..label..' seq=%X data='..format..'\\n",temp8'..args..';'
 end
 local armed=false
@@ -33,16 +33,16 @@ emu.register_frame_done(function()
  local fixtures=dofile('tmp/sane-fixtures.lua')
  local function writes(address,hex)
   local result=''
-  for i=1,#hex,2 do result=result..string.format('b@(%s+%x)=%s;',address,(i-1)/2,hex:sub(i,i+1)) end
+  for i=1,#hex,2 do result=result..string.format('b@(%s+0x%x)=0x%s;',address,(i-1)/2,hex:sub(i,i+1)) end
   return result
  end
  for i,v in ipairs(fixtures) do
-  local entered='temp8=temp8+1;temp0=sp+8;temp6='..base(7)..';temp4=d@(d@((d@(d@(d@9d6+9c)&ffffff)&ffffff)+32)&ffffff)&ffffff;temp2=temp4+10;temp3=temp4;'..writes('temp3',v.source)..writes('temp2',v.before)..string.format('w@(sp+8)=%x;d@(sp+a)=temp2;d@(sp+e)=temp3;',v.op)..'logerror "FIXTURE_ENTER seq=%X op=%X sp=%X sr=%X fp=%X\\n",temp8,w@(sp+8),temp0,sr,w@a4a;g'
+  local entered='temp8=temp8+1;temp0=sp+8;temp6='..base(7)..';temp4=d@(d@((d@(d@(d@9d6+9c)&ffffff)&ffffff)+32)&ffffff)&ffffff;temp2=temp4+10;temp3=temp4;'..writes('temp3',v.source)..writes('temp2',v.before)..string.format('w@(sp+8)=0x%x;d@(sp+a)=temp2;d@(sp+e)=temp3;',v.op)..'logerror "FIXTURE_ENTER seq=%X op=%X sp=%X sr=%X fp=%X\\n",temp8,w@(sp+8),temp0,sr,w@a4a;'..dump('FIXTURE_SOURCE','temp3',3)..dump('FIXTURE_BEFORE','temp2',3)..'g'
   local returned='logerror "FIXTURE_RETURN seq=%X sp=%X sr=%X fp=%X data=%08X%08X%08X\\n",temp8,sp,sr,w@a4a,d@temp2,d@(temp2+4),d@(temp2+8);'
   if i==#fixtures then returned=returned..'logerror "PASS SANE fixtures calls=%X\\n",temp8;quit'
   else returned=returned..'sp=temp0;pc=temp6+47c2;g' end
-  local retbp='bpset '..base(7)..'+47c4,temp8=='..string.format('%x',i)..',{'..returned..'};'
-  cpu.debug:bpset(0xdd60,appcond..' && w@(d@(sp+2))==a9eb && (d@(sp+2)&ffffff)=='..base(7)..'+47c2 && temp8=='..string.format('%x',i-1),retbp..entered)
+  local retbp='bpset '..base(7)..'+47c4,temp8=='..string.format('0x%x',i)..',{'..returned..'};'
+  cpu.debug:bpset(0xdd60,appcond..' && w@(d@(sp+2))==a9eb && (d@(sp+2)&ffffff)=='..base(7)..'+47c2 && temp8=='..string.format('0x%x',i-1),retbp..entered)
  end
  armed=true;print('ARM main-device dispatcher bytes=2f0a2f02246f000a')
 end)

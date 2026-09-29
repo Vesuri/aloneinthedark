@@ -40,7 +40,8 @@ service instead. An initial debugger-SR assertion was rejected and instrumented.
 
 `check_sane.py` compares 2,455 cases against an independent exact rational
 oracle under host address/undefined-behavior sanitizers. The 41 deterministic
-fixtures also run through the original Mac SANE service, including rounding,
+fixtures also run through the original Mac SANE service, with exact input
+readback as well as result checks, including rounding,
 cancellation, signed zeros and subnormals. `mac_sane_fixtures.lua` uses a bounded
 private scratch handle and controlled call arguments; it changes no instructions.
 `mac_sane_position.lua` observes all ten original calls without changing inputs.
@@ -61,7 +62,7 @@ operand/results, stack/registers, FPState, destination extents and the paired
 177/205 position. Missing/duplicate completion, altered operands/results and
 nonzero/timeout status fail. Maintained host checks include checker rejections.
 Local captures: `tmp/m2-sane-height-reference.log`,
-`tmp/m2-sane-fixtures-state.log` and `tmp/m2-sane-verified-sane.log`.
+`tmp/m2-literals-sane-fixtures.log` and `tmp/m2-sane-verified-sane.log`.
 
 The subsequent hidden MoveWindow now passes its measured old-style port
 contract; see [screen-choice.md](screen-choice.md). The current stop is

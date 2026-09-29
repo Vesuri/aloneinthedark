@@ -24,7 +24,7 @@ emu.register_frame_done(function()
  local function named(text,dir)
   local out='d@(a0+12)=sp+200;w@(a0+16)=ffff;w@(a0+1c)=0;b@(a0+1b)=0;d@(a0+30)='..dir..';'
   text=string.char(#text)..text
-  for i=1,#text do out=out..string.format('b@(sp+%x)=%x;',0x200+i-1,text:byte(i)) end
+  for i=1,#text do out=out..string.format('b@(sp+0x%x)=0x%x;',0x200+i-1,text:byte(i)) end
   return out
  end
  add('make_directory',0xa260,named('AITD Port Index Probe','temp1'),'temp2=d@(a0+30);',fatal);steps[#steps].selector=6
@@ -32,7 +32,7 @@ emu.register_frame_done(function()
  for c=126,32,-1 do if not (c>=97 and c<=122) and c~=47 and c~=58 then names[#names+1]='i'..string.char(c)..'x' end end
  for i,name in ipairs(names) do add('create_'..i,0xa208,named(name,'temp2'),nil,fatal) end
  add('make_subdirectory',0xa260,named('iBdir','temp2'),'temp3=d@(a0+30);',fatal);steps[#steps].selector=6
- for i=1,#names+2 do add('index_'..i,0xa20c,named('ignored','temp2')..string.format('w@(a0+1c)=%x;',i)) end
+ for i=1,#names+2 do add('index_'..i,0xa20c,named('ignored','temp2')..string.format('w@(a0+1c)=0x%x;',i)) end
  add('null_name',0xa20c,'d@(a0+12)=0;w@(a0+16)=ffff;d@(a0+30)=temp2;w@(a0+1c)=1;')
  add('negative_name',0xa20c,named('iAx','temp2')..'w@(a0+1c)=ffff;')
  add('bad_directory',0xa20c,named('ignored','9999')..'w@(a0+1c)=1;')
@@ -49,13 +49,13 @@ emu.register_frame_done(function()
  add('flush',0xa013,'d@(a0+12)=0;w@(a0+16)=ffff;',nil,fatal)
  local function enter(n)
   local s=steps[n]
-  return s.setup..string.format('temp0=0x%x;d0=%x;w@(sp+400)=%x;pc=sp+400;g',n,s.selector or 0,s.trap)
+  return s.setup..string.format('temp0=0x%x;d0=0x%x;w@(sp+400)=0x%x;pc=sp+400;g',n,s.selector or 0,s.trap)
  end
  local setup='temp1=d@(a0+3a);sp=sp-600;a0=sp+100;'
- for i=0,19 do setup=setup..string.format('d@(a0+%x)=0;',4*i) end
- setup=setup..string.format('w@(sp+402)=4ef9;d@(sp+404)=%x;',base+0x4146)
+ for i=0,19 do setup=setup..string.format('d@(a0+0x%x)=0;',4*i) end
+ setup=setup..string.format('w@(sp+402)=4ef9;d@(sp+404)=0x%x;',base+0x4146)
  local name='AITD Port Catalog Probe';local text=string.char(#name)..name
- for i=1,#text do setup=setup..string.format('b@(sp+%x)=%x;',0x200+i-1,text:byte(i)) end
+ for i=1,#text do setup=setup..string.format('b@(sp+0x%x)=0x%x;',0x200+i-1,text:byte(i)) end
  cpu.debug:bpset(base+0x4146,'temp0==0',setup..enter(1))
  for n,s in ipairs(steps) do
   local report=string.format('logerror "INDEX label=%s stage=%X state=%%X trap=%04X d0=%%08X result=%%04X index=%%04X attr=%%02X name0=%%08X name1=%%08X id=%%08X\\n",temp0,d0,w@(a0+10),w@(a0+1c),b@(a0+1e),d@(sp+200),d@(sp+204),d@(a0+30);',s.label,n,s.trap)

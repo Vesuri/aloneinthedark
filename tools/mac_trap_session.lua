@@ -48,7 +48,7 @@ return function(mac,mem)
   local probe=polled and not mods and observed[name]
   for _,m in ipairs(mods or {}) do mac.key_down(m) end
   mac.wait(2)
-  if probe then dbg:command(string.format('temp0=0;temp1=%x;temp3=%x',probe[2],probe[1])) end
+  if probe then dbg:command(string.format('temp0=0;temp1=0x%x;temp3=0x%x',probe[2],probe[1])) end
   mac.key_down(name)
   if probe then
    local function count()

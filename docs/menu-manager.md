@@ -98,3 +98,11 @@ Both checkers require normal status, exact call order/count, original bytes,
 positive completion, stack/register evidence and complete records. The paired
 checker also rejects deliberately corrupted versions of the actual capture.
 Logs, record dumps and original data remain local-only.
+
+
+The capture-literal audit regenerated `tmp/m2-literals-menu-reference.log`.
+Bare $A0/$A4/$D0/$D4 dump offsets formerly read registers, but only in padding:
+all 33 calls retain exactly the same menu bodies (at most 97 bytes) and text
+(at most 30 bytes). The corrected full dumps pass the original checker and
+pair with the accepted native records. See the impact inventory in
+[mac-reference-loop.md](mac-reference-loop.md).

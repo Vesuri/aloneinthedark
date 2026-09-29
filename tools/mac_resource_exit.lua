@@ -61,18 +61,18 @@ emu.register_frame_done(function()
  local firstStage=phase==1 and 0 or 0x1000
  local function enter(n)
   local q=steps[n]
-  return 'sp=temp2;w@a60=8888;w@220=7777;d0=12345678;'..q.setup..string.format('temp0=0x%x;w@(temp2+400)=%x;pc=temp2+400;g',n+firstStage,q.trap)
+  return 'sp=temp2;w@a60=8888;w@220=7777;d0=12345678;'..q.setup..string.format('temp0=0x%x;w@(temp2+400)=0x%x;pc=temp2+400;g',n+firstStage,q.trap)
  end
- local setup=string.format('sp=sp-800;temp2=sp;temp3=0;temp4=0;temp5=0;w@(temp2+402)=4ef9;d@(temp2+404)=%x;',base+0x3cde)
- for i=0,31 do setup=setup..string.format('d@(temp2+%x)=0;',0x100+i*4) end
+ local setup=string.format('sp=sp-800;temp2=sp;temp3=0;temp4=0;temp5=0;w@(temp2+402)=4ef9;d@(temp2+404)=0x%x;',base+0x3cde)
+ for i=0,31 do setup=setup..string.format('d@(temp2+0x%x)=0;',0x100+i*4) end
  for _,q in ipairs({{0x200,scratchPath},{0x280,'Scratch'}}) do
   local text=string.char(#q[2])..q[2]
-  for i=1,#text do setup=setup..string.format('b@(temp2+%x)=%x;',q[1]+i-1,text:byte(i)) end
+  for i=1,#text do setup=setup..string.format('b@(temp2+0x%x)=0x%x;',q[1]+i-1,text:byte(i)) end
  end
- cpu.debug:bpset(base+0x3cde,string.format('temp0==%x',firstStage),setup..enter(1))
+ cpu.debug:bpset(base+0x3cde,string.format('temp0==0x%x',firstStage),setup..enter(1))
  for n,q in ipairs(steps) do
   local report=string.format('logerror "REXIT label=%s stage=%%X result=%%08X error=%%04X mem=%%04X d0=%%08X sp=%%08X base=%%08X app=%%04X ref=%%04X handle=%%08X other=%%08X master=%%08X body=%%08X\\n",temp0,%s,w@a60,w@220,d0,sp,temp2,temp1,temp4,temp3,temp5,d@(temp3),d@((d@(temp3)&ffffff));',q.label,q.result)
-  local nextaction=n<#steps and enter(n+1) or (phase==1 and string.format('logerror "REXIT original-runtime-exit dirty-open=1\\n";temp0=1000;pc=%x;g',code1+0x48) or 'logerror "PASS resource exit capture complete; scratch deleted\\n";quit')
+  local nextaction=n<#steps and enter(n+1) or (phase==1 and string.format('logerror "REXIT original-runtime-exit dirty-open=1\\n";temp0=1000;pc=0x%x;g',code1+0x48) or 'logerror "PASS resource exit capture complete; scratch deleted\\n";quit')
   local cond=string.format('temp0==0x%x',n+firstStage)
   cpu.debug:bpset(base+0x3cde,cond..(q.guard and ' && ('..q.guard..')' or ''),q.after..report..nextaction)
   if q.guard then cpu.debug:bpset(base+0x3cde,cond..' && !('..q.guard..')',report..'logerror "FAIL resource exit scratch ownership/setup; retained for recovery\\n";quit') end

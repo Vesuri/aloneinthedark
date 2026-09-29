@@ -94,23 +94,47 @@ def check_host():
         for i,(v,line) in enumerate(zip(rows,lines)):
             want=f"{int(v['ok'])} {v['after']}"
             if line!=want:raise ValueError(f'case {i} {v}: got {line}, expected {want}')
+    # Validate the reference checker independently of emulator availability.
+    lines=[]
+    for i,v in enumerate(fixtures(),1):
+        lines += [f"FIXTURE_ENTER seq={i:X} op={v['op']:X} sp=100 sr=0 fp=0",
+                  f"FIXTURE_SOURCE seq={i:X} data={v['source'].upper()}",
+                  f"FIXTURE_BEFORE seq={i:X} data={v['before'].upper()}",
+                  f"FIXTURE_RETURN seq={i:X} sp={0x100+(6 if v['op']==0x16 else 10):X} sr=0 fp=0 data={v['after'].upper()}"]
+    text='\n'.join(lines)+f'\nPASS SANE fixtures calls={len(fixtures()):X}\nExited via the debugger\n'
+    check_reference_text(text,0)
+    for bad,status in [(text,124),(text,None),(text.replace('FIXTURE_SOURCE seq=1 data=8000','FIXTURE_SOURCE seq=1 data=8001'),0),(text.replace('FIXTURE_BEFORE seq=1','MISSING seq=1'),0),(text.replace('FIXTURE_RETURN seq=1 sp=10A','FIXTURE_RETURN seq=1 sp=100'),0)]:
+        try:check_reference_text(bad,status)
+        except ValueError:continue
+        raise ValueError('corrupted reference fixture accepted')
     print(f'PASS SANE rational oracle: {len(rows)} cases, rounding/cancellation/subnormals, rejected values and untouched destination guards')
 
-def check_reference(path,status):
+def check_reference_text(text,status):
     if status!=0:raise ValueError('nonzero or missing reference status')
-    text=path.read_text();rows=fixtures()
+    rows=fixtures()
     if any(s in text for s in ('FAIL','[LUA ERROR]','unknown command','Error in')):raise ValueError('reference failure')
     if text.count(f'PASS SANE fixtures calls={len(rows):X}')!=1 or text.count('Exited via the debugger')!=1:raise ValueError('reference completion')
     entries=re.findall(r'^FIXTURE_ENTER seq=([0-9A-F]+) op=([0-9A-F]+) sp=([0-9A-F]+) sr=([0-9A-F]+) fp=([0-9A-F]+)$',text,re.M)
     returns=re.findall(r'^FIXTURE_RETURN seq=([0-9A-F]+) sp=([0-9A-F]+) sr=([0-9A-F]+) fp=([0-9A-F]+) data=([0-9A-F]+)$',text,re.M)
     if len(entries)!=len(rows) or len(returns)!=len(rows):raise ValueError('fixture coverage')
+    inputs={}
+    for label in ('SOURCE','BEFORE'):
+        inputs[label]=re.findall(r'^FIXTURE_'+label+r' seq=([0-9A-F]+) data=([0-9A-F]{24})$',text,re.M)
+        if len(inputs[label])!=len(rows):raise ValueError('fixture input coverage')
     for i,(v,e,r) in enumerate(zip(rows,entries,returns),1):
+        for label,key in (('SOURCE','source'),('BEFORE','before')):
+            seq,data=inputs[label][i-1]
+            if int(seq,16)!=i or data.lower()!=v[key]:raise ValueError('fixture input readback')
         if int(e[0],16)!=i or int(r[0],16)!=i or int(e[1],16)!=v['op']:raise ValueError('fixture identity')
         if int(r[1],16)!=int(e[2],16)+(6 if v['op']==0x16 else 10):raise ValueError('fixture stack')
         # FP68K clobbers CCR; each original continuation overwrites it before use.
         if int(e[4],16)!=0 or int(r[3],16)!=0:raise ValueError('fixture FPState')
         if r[4].lower()!=v['after']:raise ValueError(f'fixture result {i}: {r[4]} != {v["after"]}')
-    print(f'PASS SANE Mac fixtures: {len(rows)} exact results, stack cleanup, FPState and destination guards')
+    return len(rows)
+
+def check_reference(path,status):
+    count=check_reference_text(path.read_text(),status)
+    print(f'PASS SANE Mac fixtures: {count} exact inputs/results, stack cleanup, FPState and destination guards')
 
 if __name__=='__main__':
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('--write-fixtures',type=Path);p.add_argument('--reference',type=Path);p.add_argument('--status',type=int);a=p.parse_args()

@@ -25,7 +25,7 @@ emu.register_frame_done(function()
  local function named(text)
   local out='d@(a0+12)=sp+200;w@(a0+16)=ffff;w@(a0+1c)=0;d@(a0+30)=temp1;'
   text=string.char(#text)..text
-  for i=1,#text do out=out..string.format('b@(sp+%x)=%x;',0x200+i-1,text:byte(i)) end
+  for i=1,#text do out=out..string.format('b@(sp+0x%x)=0x%x;',0x200+i-1,text:byte(i)) end
   return out
  end
  add('application',0xa20c,named('Alone In The Dark'),nil,fatal)
@@ -36,19 +36,19 @@ emu.register_frame_done(function()
  add('quick',0xa20c,named('Quick Reference'),nil,fatal)
  add('register',0xa20c,named('Register Triple A Pack'),nil,fatal)
  for i=1,3 do
-  add('index'..i,0xa20c,named('ignored')..string.format('w@(a0+1c)=%x;',i),nil,fatal)
+  add('index'..i,0xa20c,named('ignored')..string.format('w@(a0+1c)=0x%x;',i),nil,fatal)
  end
  add('index-end',0xa20c,named('ignored')..'w@(a0+1c)=4;')
  add('missing',0xa20c,named('AITD Absent Namespace Probe'))
  local function enter(n)
   local s=steps[n]
-  return s.setup..string.format('temp0=0x%x;d0=%x;w@(sp+400)=%x;pc=sp+400;g',n,s.trap==0xa260 and 8 or 0,s.trap)
+  return s.setup..string.format('temp0=0x%x;d0=0x%x;w@(sp+400)=0x%x;pc=sp+400;g',n,s.trap==0xa260 and 8 or 0,s.trap)
  end
  local setup='temp1=d@(a0+3a);sp=sp-600;a0=sp+100;'
- for i=0,19 do setup=setup..string.format('d@(a0+%x)=0;',4*i) end
- setup=setup..string.format('w@(sp+402)=4ef9;d@(sp+404)=%x;',base+0x4146)
+ for i=0,19 do setup=setup..string.format('d@(a0+0x%x)=0;',4*i) end
+ setup=setup..string.format('w@(sp+402)=4ef9;d@(sp+404)=0x%x;',base+0x4146)
  local name='AITD Port Catalog Probe';local text=string.char(#name)..name
- for i=1,#text do setup=setup..string.format('b@(sp+%x)=%x;',0x200+i-1,text:byte(i)) end
+ for i=1,#text do setup=setup..string.format('b@(sp+0x%x)=0x%x;',0x200+i-1,text:byte(i)) end
  cpu.debug:bpset(base+0x4146,'temp0==0',setup..enter(1))
  for n,s in ipairs(steps) do
   local report=string.format('logerror "INSTALLED label=%s stage=%X state=%%X trap=%04X d0=%%08X result=%%04X ref=%%04X attr=%%02X finder0=%%08X finder1=%%08X finder2=%%08X finder3=%%08X id=%%08X data=%%08X resource=%%08X created=%%08X modified=%%08X\\n",temp0,d0,w@(a0+10),w@(a0+18),b@(a0+1e),d@(a0+20),d@(a0+24),d@(a0+28),d@(a0+2c),d@(a0+30),d@(a0+36),d@(a0+40),d@(a0+48),d@(a0+4c);',s.label,n,s.trap)

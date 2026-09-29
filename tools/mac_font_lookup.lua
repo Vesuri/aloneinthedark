@@ -9,11 +9,11 @@ local fixture=os.getenv('AITD_FONT_FIXTURE')=='1'
 local armed=false
 local base
 for i,j in ipairs(meta.jt) do
- if j[1]==12 then base=string.format('((d@((d@904&ffffff)+%x)&ffffff)-%x)',36+(i-1)*8,j[2]);break end
+ if j[1]==12 then base=string.format('((d@((d@904&ffffff)+0x%x)&ffffff)-0x%x)',36+(i-1)*8,j[2]);break end
 end
 assert(base,'FONT LOOKUP / NO JUMP ENTRY')
-local app='Alone In The Dark';local condition=string.format('b@910==%x',#app)
-for i=1,#app do condition=condition..string.format(' && b@%x==%x',0x910+i,app:byte(i)) end
+local app='Alone In The Dark';local condition=string.format('b@910==0x%x',#app)
+for i=1,#app do condition=condition..string.format(' && b@0x%x==0x%x',0x910+i,app:byte(i)) end
 condition=condition..' && w@(d@(sp+2))==a900 && ((d@(sp+2)&ffffff)=='..base..'+12 || (d@(sp+2)&ffffff)=='..base..'+38)'
 local report='logerror "FONT_ORIGINAL return=%X result=%04X d0=%08X res=%04X mem=%04X sp=%X expected=%X\\n",temp4-temp9,w@temp1,d0,w@a60,w@220,sp,temp2+8;'
 emu.register_frame_done(function()
@@ -26,14 +26,14 @@ emu.register_frame_done(function()
   local function enter(n)
    local name=string.char(#names[n])..names[n]
    local out='sp=temp2-8;d@sp=temp2+80;d@(sp+4)=temp2+100;w@(temp2+7e)=abcd;w@(temp2+80)=cccc;w@(temp2+82)=dcba;w@a60=8888;w@220=7777;'
-   for i=1,#name do out=out..string.format('b@(temp2+%x)=%x;',0x100+i-1,name:byte(i)) end
-   return out..string.format('temp0=%x;d0=12345678;pc=temp2+400;g',n)
+   for i=1,#name do out=out..string.format('b@(temp2+0x%x)=0x%x;',0x100+i-1,name:byte(i)) end
+   return out..string.format('temp0=0x%x;d0=12345678;pc=temp2+400;g',n)
   end
   local setup='sp=sp-800;temp2=sp;w@(temp2+400)=a900;w@(temp2+402)=4ef9;d@(temp2+404)=temp4;'
   action=action..'bpset temp4,temp0==0,{'..report..setup..enter(1)..'};'
   for n in ipairs(names) do
    local row=string.format('logerror "FONT_CASE stage=%X result=%%04X before=%%04X after=%%04X d0=%%08X res=%%04X mem=%%04X sp=%%X expected=%%X\\n",w@(temp2+80),w@(temp2+7e),w@(temp2+82),d0,w@a60,w@220,sp,temp2;',n)
-   action=action..string.format('bpset temp4,temp0==%x,{',n)..row..(n<#names and enter(n+1) or 'logerror "PASS font lookup fixture complete\\n";quit')..'};'
+   action=action..string.format('bpset temp4,temp0==0x%x,{',n)..row..(n<#names and enter(n+1) or 'logerror "PASS font lookup fixture complete\\n";quit')..'};'
   end
  else
   action=action..'bpset temp4,temp8==1,{'..report..'g};bpset temp4,temp8==2,{'..report..'logerror "PASS original font lookup complete\\n";quit};'

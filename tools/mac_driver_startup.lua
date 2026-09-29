@@ -4,14 +4,14 @@ local meta=dofile('tmp/mac-trap-map.lua')
 local cpu=manager.machine.devices[':maincpu'];local mem=cpu.spaces.program
 local dbg=assert(manager.machine.debugger,'DRIVER STARTUP / DEBUGGER REQUIRED')
 local function base(seg)
- for i,j in ipairs(meta.jt) do if j[1]==seg then return string.format('((d@((d@904&ffffff)+%x)&ffffff)-%x)',36+(i-1)*8,j[2]) end end
+ for i,j in ipairs(meta.jt) do if j[1]==seg then return string.format('((d@((d@904&ffffff)+0x%x)&ffffff)-0x%x)',36+(i-1)*8,j[2]) end end
  error('DRIVER STARTUP / NO JUMP ENTRY')
 end
 local names={'d0','d1','d2','d3','d4','d5','d6','d7','a0','a1','a2','a3','a4','a5','a6'}
 local registerFormat,registerValues='',''
 for _,name in ipairs(names) do registerFormat=registerFormat..' '..name..'=%08X';registerValues=registerValues..','..name end
-local app='Alone In The Dark';local condition=string.format('b@910==%x',#app)
-for i=1,#app do condition=condition..string.format(' && b@%x==%x',0x910+i,app:byte(i)) end
+local app='Alone In The Dark';local condition=string.format('b@910==0x%x',#app)
+for i=1,#app do condition=condition..string.format(' && b@0x%x==0x%x',0x910+i,app:byte(i)) end
 condition=condition..' && w@(d@(sp+2))==a900 && (d@(sp+2)&ffffff)=='..base(12)..'+12'
 local armed=false
 emu.register_frame_done(function()

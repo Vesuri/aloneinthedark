@@ -20,7 +20,7 @@ emu.register_frame_done(function()
   steps[#steps+1]={label=label,trap=trap,setup=setup or '',success=success or '',failure=failure or ''}
  end
  local function open(label,permission,register)
-  add(label,0xa000,string.format('d@(a0+12)=sp+200;w@(a0+16)=0;w@(a0+18)=0;b@(a0+1b)=%x;',permission),register..'=w@(a0+18);',register..'=0;')
+  add(label,0xa000,string.format('d@(a0+12)=sp+200;w@(a0+16)=0;w@(a0+18)=0;b@(a0+1b)=0x%x;',permission),register..'=w@(a0+18);',register..'=0;')
  end
  local function fcb(label,register) add(label,0xa260,'d@(a0+12)=0;w@(a0+1c)=0;w@(a0+18)='..register..';') end
  local function close(label,register) add(label,0xa001,'w@(a0+18)='..register..';') end
@@ -75,13 +75,13 @@ emu.register_frame_done(function()
  add('flush',0xa013,'d@(a0+12)=0;w@(a0+16)=ffff;',nil,'logerror "FAIL sharing scratch flush\\n";quit;')
  local function enter(n)
   local s=steps[n]
-  return s.setup..string.format('temp0=0x%x;d0=%x;w@(sp+400)=%x;pc=sp+400;g',n,s.trap==0xa260 and 8 or 0,s.trap)
+  return s.setup..string.format('temp0=0x%x;d0=0x%x;w@(sp+400)=0x%x;pc=sp+400;g',n,s.trap==0xa260 and 8 or 0,s.trap)
  end
  local setup='temp1=d@(a0+3a);sp=sp-600;a0=sp+100;'
- for i=0,19 do setup=setup..string.format('d@(a0+%x)=0;',4*i) end
- setup=setup..string.format('w@(sp+402)=4ef9;d@(sp+404)=%x;',base+0x4146)
+ for i=0,19 do setup=setup..string.format('d@(a0+0x%x)=0;',4*i) end
+ setup=setup..string.format('w@(sp+402)=4ef9;d@(sp+404)=0x%x;',base+0x4146)
  local name='AITD Port Sharing Probe';local text=string.char(#name)..name
- for i=1,#text do setup=setup..string.format('b@(sp+%x)=%x;',0x200+i-1,text:byte(i)) end
+ for i=1,#text do setup=setup..string.format('b@(sp+0x%x)=0x%x;',0x200+i-1,text:byte(i)) end
  cpu.debug:bpset(base+0x4146,'temp0==0',setup..enter(1))
  for n,s in ipairs(steps) do
   local report=string.format('logerror "SHARING label=%s stage=%X state=%%X trap=%04X d0=%%08X result=%%04X ref=%%04X volume=%%04X drive=%%04X flags=%%04X eof=%%08X mark=%%08X actual=%%08X position=%%08X data=%%08X\\n",temp0,d0,w@(a0+10),w@(a0+18),w@(a0+16),w@(a0+42),w@(a0+24),d@(a0+28),d@(a0+30),d@(a0+28),d@(a0+2e),d@(sp+300);',s.label,n,s.trap)

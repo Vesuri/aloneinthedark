@@ -45,17 +45,6 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.1c3c2c5b2r Reference-capture literal audit.**
-  - Hidden-dialog dumps used bare hexadecimal offsets such as `a0`/`a4`, which
-    MAME interpreted as registers. Those two record observers are corrected;
-    constructor and movement acceptance must use the regenerated captures.
-  - Audit the remaining maintained MAME emitters for the same ambiguity. Use
-    explicit numeric prefixes for emitted literals and identify which accepted
-    semantic bytes, rather than unused dump padding, could be affected.
-
-  *Done when* emitted address/value literals are unambiguous, affected reference
-  contracts have fresh positive captures and paired checks, and a maintained
-  regression prevents recurrence. Do not accept historical affected bytes.
 - **M2.1c3c2c5b2c2 Fixed 320×200 startup selection (D4/M2.4).**
   - The hidden DLOG 1000 constructor now creates the measured old-style port,
     private DITL, button and text handles without displaying the dialog.
