@@ -83,7 +83,8 @@ Final startup requirements acceptance remains pending beyond the graphics-device
 The original code uses 68020 instructions and 256-color graphics, so the target
 is an AGA Amiga with a 68020 or better and, provisionally, 4 MB of fast RAM (the
 original asks for 3 MB). The port supports only the 320×200 low-resolution
-mode.
+mode. Mac dialogs and the menu bar will not be drawn; game choices such as
+new-game and save/load use replacement in-game interfaces.
 
 No original game code or data, Kickstart image or WHDLoad binary is
 distributed. You need your own copy of the original release.

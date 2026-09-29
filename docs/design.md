@@ -391,10 +391,9 @@ Native trap probes, host fragmentation tests and paired heap captures verify it:
     Toolbox resource loads.
 - **Port overlay resources.** `resources/overlay.rsrc` is generated port-owned
   data, opened read-only from `PROGDIR:overlay.rsrc`. It contains the Times
-  placeholder FOND/NFNT (D6) and native Jnth 11 driver stub (D8); measured
-  320×200 dialog layouts (D5) follow at their milestone.
-  Ordinary resources fall back to this System-file map; dialog layouts override
-  application resources as specified below.
+  placeholder FOND/NFNT (D6) and native Jnth 11 driver stub (D8).
+  Ordinary resources fall back to this System-file map. The existing dialog
+  override lookup remains available for compatibility data, not Mac presentation.
 - **Lookup implemented.** GetResource/Get1Resource and named variants pass the
   measured Mac argument/result contract and native fixtures (M2.2c2).
 - **Metadata and explicit loading implemented.** GetResInfo, SetResLoad,
@@ -409,7 +408,7 @@ Native trap probes, host fragmentation tests and paired heap captures verify it:
   counts/search and the writable-file calls in 4.5 pass paired fixtures.
 - **Search order.** Open resource files first, then the application, then the
   port overlay, which stands in for the System file. The one exception is the
-  dialog layouts, which the overlay supplies ahead of the application.
+  DLOG/DITL/ALRT compatibility resources, searched in the overlay first.
   The M2.2f1 reference establishes that ordinary lookup starts at the current
   file and follows older files, whereas CountResources counts all open maps,
   including duplicate IDs, regardless of the current selection. Native startup
@@ -431,7 +430,8 @@ Native trap probes, host fragmentation tests and paired heap captures verify it:
     current-world bindings and drawing remain pending.
   - The logical main screen is 640×480 at 8 bits (the reference's mdc48 mode), in
     fast RAM, with one GDevice and a 256-entry CLUT.
-  - Windows, dialogs and menus are drawn into this screen by the port's QuickDraw.
+  - QuickDraw draws game content into this screen. Mac dialog presentation and
+    the Mac menu bar are suppressed (D4/D5/D7).
   - `GetMainDevice`, `GetDeviceList`, `GetNextDevice`, `TestDeviceAttribute` and
     `HasDepth` (8 bits: yes) describe it. A single device means the monitor picker
     (DLOG 2000) never appears.
@@ -440,7 +440,7 @@ Native trap probes, host fragmentation tests and paired heap captures verify it:
   original window positioning moves it to (160,150)–(480,350) in the M0.5
   reference [M]. Use the live content bounds. Nothing outside it is ever shown:
   - there is no screen-size dialog (D4);
-  - dialogs are laid out inside the viewport (D5);
+  - replacement in-game interfaces stay inside the viewport (D5);
   - the menu bar is never drawn (D7).
 - **AGA output (task M2.5).**
   - Lores, 8 planes, 320×200 centred in the PAL or NTSC field, with double-buffered
@@ -541,17 +541,19 @@ Native trap probes, host fragmentation tests and paired heap captures verify it:
   - `MenuKey` maps Right-Amiga+key to the game's own Command-key items, so ⌘O,
     ⌘S and ⌘Q work if the ESC screen does not cover them.
   - Hide Background and About get a key only if the owner asks.
-- **Dialogs (D5): reimplemented inside 320×200.**
-  - The Dialog Manager (`GetNewDialog`, `ModalDialog` with standard filter
-    behaviour, `DialogSelect`, `GetDialogItem`/`SetDialogItemText`, `ParamText`,
-    `Alert`, `StopAlert`, `UpdateDialog`, `HiliteControl`) runs the game's
-    dialogs unchanged.
-  - Any `DLOG`/`ALRT` whose rectangle does not fit the viewport gets a port
-    overlay `DLOG`/`DITL` with the same item numbers, kinds and meaning, laid out
-    inside WIND 128's content rectangle. The game's dialog code is unaffected.
-    Candidates: DLOG 200/201 (348×218) and 212 (493×272); 128 and 131 fit.
-  - The overlay is a committed, generated resource file, built by a tool that
-    records each layout.
+- **Dialogs (D5): replace all Mac dialog presentation.**
+  - Owner clarification 2026-09-29: this includes new-game, save/load and other
+    Mac dialogs. Do not recreate Mac controls/chrome in smaller overlay layouts.
+  - Use an in-game interface within 320×200, preserving available choices,
+    entered values, cancellation and resulting game actions. Reuse existing
+    engine interfaces where the original already provides them.
+  - Keep only the hidden Dialog Manager records and service contracts needed
+    by unchanged original callers. Translate user actions into the measured
+    item/result contract; unsupported paths remain named stops.
+  - DLOG 1000 has no replacement interface: select 320×200 automatically (D4).
+    Logical positioning or menu-height state does not authorize rendering.
+  - Verify actions against the Mac reference. Visual differences replacing Mac
+    presentation are intentional under D5, and must be documented in frame pairs.
   - StandardFile (`Pack3`) appears only in unreached code [M]. M0.2 observed
     zero direct calls through new game, ESC save, Command-S/Command-O and quit.
     Those paths use the engine UI; this does not prove error paths cannot call it.
@@ -683,7 +685,7 @@ the owner.
 | D2 | **68020 first.** A 68020 must boot and play. It is the sole active target; 68030/040/060 support and performance work are deferred (owner update 2026-09-28). |
 | D3 | **No frame cap** unless bug-free gameplay requires one. Such a bug, for example the stairs, is addressed separately. |
 | D4 | **No screen-size dialog;** only 320×200. |
-| D5 | **Dialogs reimplemented within 320×200:** port overlay layouts, with the game's dialog code unchanged. |
+| D5 | **Replace all Mac dialogs**, including new-game and save/load, with an in-game interface inside 320×200. Preserve choices/actions through measured service contracts; no Mac dialog appearance (owner update 2026-09-29). |
 | D6 | **Fonts:** most are game-provided (the engine font). For Mac-font text, placeholder fonts first; eventually the game's own font, from the PC version if needed. |
 | D7 | **No menus** (the DOS version had none). Keys only: the game's keys, plus Right-Amiga for its Command-key items. |
 | D8 | **Paula channels instead of software mixing:** a native driver behind the SoundMusicSys interface. |
@@ -793,7 +795,7 @@ state". Task-level detail and acceptance checks are in
 | R3 | Native driver mis-reads the SoundMusicSys API or songs need more than 4 voices | Selector-by-selector decoding with loud stops; MAME event compare; measured voice counts (M4.2) |
 | R4 | Stairs bug on fast CPUs | `stairs` regression on 060; separate fix only if it occurs (D3) |
 | R5 | Memory | Zone sized by SIZE; on-demand files and resources; measure the minimum fast RAM (M5) |
-| R6 | Placeholder fonts or 320×200 dialog layouts look wrong | Overlay layouts reviewed against MAME frames; engine-font follow-up |
+| R6 | Replacement interfaces lose choices or obscure game content | Pair actions/results with MAME and review all replacements inside 320×200; engine-font follow-up |
 | R7 | Save-game loss | Write-through at close in a system window (4.5), WHDLoad resload |
 | R8 | Hidden reliance on 24-bit master-pointer flags or on handle movement | Census found none. Zone allocator tests; M1.5 checks for `StripAddress`-free flag reads |
 | R9 | Unreached-code surprises (StandardFile, desk accessories) | Runtime trap log across a full manual session in MAME (M0.2, repeated in M6) |
