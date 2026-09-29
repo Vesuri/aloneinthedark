@@ -42,28 +42,36 @@ extern struct GfxBase* GfxBase;         // opened below; the global lives in GCC
 extern "C" {
 volatile uint32_t g_resourceSourceReads=0,g_resourceSourceBytes=0,g_resourceSourceMax=0;
 volatile uint32_t g_resourceRuntimeReads=0,g_resourceRuntimeBytes=0,g_resourceSourceOpen=0,g_resourceSourceCloseErrors=0;
+volatile uint32_t g_overlaySourceReads=0,g_overlaySourceBytes=0,g_overlaySourceMax=0;
+volatile uint32_t g_overlayRuntimeReads=0,g_overlayRuntimeBytes=0,g_overlaySourceOpen=0,g_overlaySourceCloseErrors=0;
 extern volatile uint16_t g_macServiceActive;
 }
-struct OriginalResourceFiles {
-    const char* applicationPath;
-    BPTR application;
-    uint32_t applicationSize;
-    bool runtime;
+struct ResourceFileSource {
+    const char* path;
+    BPTR handle;
+    uint32_t size;
+    bool runtime,overlay;
 };
-struct ResourceRead { OriginalResourceFiles* files;uint32_t offset;uint8_t* buffer;uint32_t bytes,actual; };
+struct ResourceRead { ResourceFileSource* files;uint32_t offset;uint8_t* buffer;uint32_t bytes,actual; };
 static int32_t readResourceDOS(void* opaque) {
     ResourceRead& request=*(ResourceRead*)opaque;
-    if(Seek(request.files->application,request.offset,OFFSET_BEGINNING)<0)return -36;
-    LONG got=Read(request.files->application,request.buffer,request.bytes);
-    ++g_resourceSourceReads;g_resourceSourceBytes+=got>0 ? got : 0;
-    if(request.bytes>g_resourceSourceMax)g_resourceSourceMax=request.bytes;
-    if(request.files->runtime) { ++g_resourceRuntimeReads;g_resourceRuntimeBytes+=got>0 ? got : 0; }
+    if(Seek(request.files->handle,request.offset,OFFSET_BEGINNING)<0)return -36;
+    LONG got=Read(request.files->handle,request.buffer,request.bytes);
+    if(request.files->overlay) {
+        ++g_overlaySourceReads;g_overlaySourceBytes+=got>0 ? got : 0;
+        if(request.bytes>g_overlaySourceMax)g_overlaySourceMax=request.bytes;
+        if(request.files->runtime) { ++g_overlayRuntimeReads;g_overlayRuntimeBytes+=got>0 ? got : 0; }
+    } else {
+        ++g_resourceSourceReads;g_resourceSourceBytes+=got>0 ? got : 0;
+        if(request.bytes>g_resourceSourceMax)g_resourceSourceMax=request.bytes;
+        if(request.files->runtime) { ++g_resourceRuntimeReads;g_resourceRuntimeBytes+=got>0 ? got : 0; }
+    }
     if(got<0)return -36;
     request.actual=got;return 0;
 }
-static int32_t readOriginalResource(void* opaque,uint32_t offset,uint8_t* buffer,uint32_t bytes,uint32_t& actual) {
-    OriginalResourceFiles& files=*(OriginalResourceFiles*)opaque;actual=0;
-    if(!files.application || bytes>65536 || offset>files.applicationSize || bytes>files.applicationSize-offset)return -50;
+static int32_t readResourceSource(void* opaque,uint32_t offset,uint8_t* buffer,uint32_t bytes,uint32_t& actual) {
+    ResourceFileSource& files=*(ResourceFileSource*)opaque;actual=0;
+    if(!files.handle || bytes>65536 || offset>files.size || bytes>files.size-offset)return -50;
     ResourceRead request={&files,offset,buffer,bytes,0};
     // Before takeover DOS is already available. Every later read requires the
     // user-mode bridge; an overlooked indirect Toolbox load fails explicitly.
@@ -71,26 +79,41 @@ static int32_t readOriginalResource(void* opaque,uint32_t offset,uint8_t* buffer
     int32_t error=files.runtime ? aitdSystemWindow(readResourceDOS,&request) : readResourceDOS(&request);
     actual=request.actual;return error;
 }
-static bool releaseOriginalResourceFiles(OriginalResourceFiles& files) {
-    bool closed=!files.application || Close(files.application)!=0;
-    if(!closed)++g_resourceSourceCloseErrors;
-    files.application=0;files.applicationSize=0;g_resourceSourceOpen=0;return closed;
+static bool releaseResourceFile(ResourceFileSource& files) {
+    bool closed=!files.handle || Close(files.handle)!=0;
+    if(files.overlay) { if(!closed)++g_overlaySourceCloseErrors;g_overlaySourceOpen=0; }
+    else { if(!closed)++g_resourceSourceCloseErrors;g_resourceSourceOpen=0; }
+    files.handle=0;files.size=0;return closed;
 }
-static bool loadOriginalResourceFiles(OriginalResourceFiles& files) {
-    files.applicationPath="PROGDIR:data/Alone In The Dark";
-    files.application=Open((CONST_STRPTR)files.applicationPath,MODE_OLDFILE);
-    if(!files.application) {
-        files.applicationPath="PROGDIR:Alone In The Dark";
-        files.application=Open((CONST_STRPTR)files.applicationPath,MODE_OLDFILE);
+static bool loadOriginalResourceFiles(ResourceFileSource& files) {
+    files.path="PROGDIR:data/Alone In The Dark";
+    files.handle=Open((CONST_STRPTR)files.path,MODE_OLDFILE);
+    if(!files.handle) {
+        files.path="PROGDIR:Alone In The Dark";
+        files.handle=Open((CONST_STRPTR)files.path,MODE_OLDFILE);
     }
-    if(files.application && Seek(files.application,0,OFFSET_END)>=0) {
-        LONG size=Seek(files.application,0,OFFSET_CURRENT);
-        if(size>=16 && Seek(files.application,0,OFFSET_BEGINNING)>=0) {
-            files.applicationSize=size;g_resourceSourceOpen=1;return true;
+    if(files.handle && Seek(files.handle,0,OFFSET_END)>=0) {
+        LONG size=Seek(files.handle,0,OFFSET_CURRENT);
+        if(size>=16 && Seek(files.handle,0,OFFSET_BEGINNING)>=0) {
+            files.size=size;g_resourceSourceOpen=1;return true;
         }
     }
-    releaseOriginalResourceFiles(files);
+    releaseResourceFile(files);
     PutStr((CONST_STRPTR)"Alone: cannot read Alone In The Dark in PROGDIR:data/ or PROGDIR:\n");
+    return false;
+}
+
+static bool loadOverlayResourceFile(ResourceFileSource& files) {
+    files.overlay=true;files.path="PROGDIR:overlay.rsrc";
+    files.handle=Open((CONST_STRPTR)files.path,MODE_OLDFILE);
+    if(files.handle && Seek(files.handle,0,OFFSET_END)>=0) {
+        LONG size=Seek(files.handle,0,OFFSET_CURRENT);
+        if(size>=16 && Seek(files.handle,0,OFFSET_BEGINNING)>=0) {
+            files.size=size;g_overlaySourceOpen=1;return true;
+        }
+    }
+    releaseResourceFile(files);
+    PutStr((CONST_STRPTR)"Alone: cannot read port overlay PROGDIR:overlay.rsrc\n");
     return false;
 }
 
@@ -256,21 +279,25 @@ bool PlatformAmiga::run()
 
     static AitdScreen screen;      // file-scope lifetime, off the stack — see src/main.cpp
     static MacLoader loader;
-    OriginalResourceFiles resourceFiles = {};
-    if (!loadOriginalResourceFiles(resourceFiles)) {
+    ResourceFileSource resourceFiles = {},overlayFile = {};
+    if (!loadOriginalResourceFiles(resourceFiles) || !loadOverlayResourceFile(overlayFile)) {
+        releaseResourceFile(resourceFiles);
+        releaseResourceFile(overlayFile);
         CloseLibrary((struct Library*)GfxBase);
         GfxBase = 0;
         CloseLibrary((struct Library*)DOSBase);
         DOSBase = 0;
         return false;
     }
-    const char* catalogError=aitdBuildFileCatalog(loader.files(),resourceFiles.applicationPath,resourceFiles.applicationSize);
-    ResourceForks::Source source={&resourceFiles,resourceFiles.applicationSize,readOriginalResource};
-    if (catalogError || !loader.prepareResourceForks(source)) {
+    const char* catalogError=aitdBuildFileCatalog(loader.files(),resourceFiles.path,resourceFiles.size);
+    ResourceForks::Source source={&resourceFiles,resourceFiles.size,readResourceSource};
+    ResourceForks::Source overlay={&overlayFile,overlayFile.size,readResourceSource};
+    if (catalogError || !loader.prepareResourceForks(source,overlay)) {
         PutStr((CONST_STRPTR)"Alone: ");
         PutStr((CONST_STRPTR)(catalogError ? catalogError : loader.preparationError()));
         PutStr((CONST_STRPTR)"\n");
-        releaseOriginalResourceFiles(resourceFiles);
+        releaseResourceFile(resourceFiles);
+        releaseResourceFile(overlayFile);
         CloseLibrary((struct Library*)GfxBase);
         GfxBase = 0;
         CloseLibrary((struct Library*)DOSBase);
@@ -370,9 +397,9 @@ bool PlatformAmiga::run()
     // Stage B hands control to the original Macintosh instructions.  Its Line-A handler
     // services the one prerequisite (_BlockMove), then deliberately stops on the first
     // unimplemented trap and paints the full diagnostic into this screen.
-    resourceFiles.runtime=true;
+    resourceFiles.runtime=true;overlayFile.runtime=true;
     if (ok) ok = loader.run(&screen);
-    resourceFiles.runtime=false;
+    resourceFiles.runtime=false;overlayFile.runtime=false;
 
     // Keep multitasking forbidden through the Wait()-free hardware handback.
     // Permit belongs immediately before LoadView/WaitTOF, after exec's VERTB
@@ -433,8 +460,11 @@ bool PlatformAmiga::run()
     // unrelated tasks against partially restored state.
     bool filesClosed=loader.releaseResourceForks();
     if(!filesClosed)PutStr((CONST_STRPTR)"Alone: FILE FLUSH/CLOSE ON EXIT FAILED\n");
-    if(!releaseOriginalResourceFiles(resourceFiles)) {
+    if(!releaseResourceFile(resourceFiles)) {
         PutStr((CONST_STRPTR)"Alone: RESOURCE FORK CLOSE FAILED\n");filesClosed=false;
+    }
+    if(!releaseResourceFile(overlayFile)) {
+        PutStr((CONST_STRPTR)"Alone: OVERLAY FORK CLOSE FAILED\n");filesClosed=false;
     }
 #ifdef AITD_FILE_PROBE
     aitdFileCleanupFinished();

@@ -42,6 +42,21 @@ bool ResourceForks::openWithOverlay(const Source& app,const Source& overlay) {
 bool ResourceForks::item(uint32_t index,Item& out) const {
     if(!m_open || index>=m_count)return false;out=m_items[index].item;return true;
 }
+uint16_t ResourceForks::searchOrder(uint16_t current,uint32_t type,bool currentOnly,uint16_t* keys) const {
+    if(!m_open || !keys || !m_directory->active(current))return 0;
+    if(currentOnly) { keys[0]=current;return 1; }
+    bool dialog=type==0x444c4f47UL || type==0x4449544cUL || type==0x414c5254UL;
+    bool override=dialog && m_directory->active(kOverlayFork);
+    uint16_t count=0;if(override)keys[count++]=kOverlayFork;
+    int16_t key=current;
+    do {
+        if(!override || key!=kOverlayFork) {
+            if(count==kForkCount || key<0 || key>=kForkCount)return 0;
+            keys[count++]=key;
+        }
+    } while(m_directory->older(key,key));
+    return count;
+}
 bool ResourceForks::find(uint16_t fork,uint32_t type,int16_t id,Item& out,uint32_t* index) const {
     if(!m_open)return false;
     for(uint16_t i=0;i<m_count;++i) {

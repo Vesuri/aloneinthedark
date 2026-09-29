@@ -5,8 +5,13 @@ set confirm off
 break AitdScreen::showLoudStop
 commands
   silent
-  if g_resourceExitPhase==3 && g_resourceExitPrepared==1 && g_resourceExitError==0 && g_resourceStageFault==1 && g_macExitState!=3 && g_macExitState!=4 && g_macServiceActive==1 && g_macServiceEntered==g_macServiceCompleted+1 && g_fileOpenHandles==1 && g_macLineAInstalled==1 && *(unsigned short *)(g_macLowMemory+140)==0xffdc && g_resourceExitHandle!=0 && *(unsigned long *)*(unsigned long *)g_resourceExitHandle==0x45584954
-    printf "PASS resource-exit fault stop=%s resident=EXIT service=active stream=open\n",g_trapRoutine
+  if (g_resourceExitPhase==4 || g_resourceExitPhase==5) && g_resourceExitPrepared==1 && g_resourceExitOverlayChecks==6 && g_resourceExitError==0 && g_resourceExitStep==0x2000+g_resourceExitPhase && g_macServiceActive==1 && g_macServiceEntered==g_macServiceCompleted+1 && g_fileOpenHandles==0 && g_overlaySourceOpen==1 && g_resourceSourceOpen==1 && g_stageBState==2
+    printf "PASS resource-exit overlay-stop reason=%s prefs=%u\n",g_trapRoutine,g_resourceExitPrefs
+    detach
+    quit 0
+  end
+  if g_resourceExitPhase==3 && g_resourceExitPrepared==1 && g_resourceExitOverlayChecks==6 && g_resourceExitError==0 && g_resourceStageFault==1 && g_macExitState!=3 && g_macExitState!=4 && g_macServiceActive==1 && g_macServiceEntered==g_macServiceCompleted+1 && g_fileOpenHandles==1 && g_macLineAInstalled==1 && *(unsigned short *)(g_macLowMemory+140)==0xffdc && g_resourceExitHandle!=0 && *(unsigned long *)*(unsigned long *)g_resourceExitHandle==0x45584954
+    printf "PASS resource-exit fault stop=%s resident=EXIT service=active stream=open prefs=%u\n",g_trapRoutine,g_resourceExitPrefs
     detach
     quit 0
   end
@@ -19,7 +24,7 @@ commands
   quit 1
 end
 # CODE 1+$AA is reached after CREL and before its original jump-table fill.
-if g_startupCode == 0 || g_code3Base != 0 || g_loadedCodeMask != 3 || *(unsigned long *)(g_startupCode+0xaa) != 0x4eba013a
+if g_overlayChainVerified!=1 || g_overlaySourceOpen!=1 || g_overlaySourceReads!=2 || g_overlaySourceBytes!=46 || g_startupCode == 0 || g_code3Base != 0 || g_loadedCodeMask != 3 || *(unsigned long *)(g_startupCode+0xaa) != 0x4eba013a
   echo resource-exit FAIL: startup residency or loader byte mismatch\n
   detach
   quit 1
@@ -60,7 +65,7 @@ if *(unsigned long *)$main!=0x4e56ff00 || *(unsigned long *)($main+4)!=0x4ebafd7
  quit 1
 end
 printf "resource-exit fixture phase=%u prepared=%u step=%u error=%u d0=$%x\n",g_resourceExitPhase,g_resourceExitPrepared,g_resourceExitStep,g_resourceExitError,g_resourceLookupD0
-if $pc!=(unsigned long)aitdResourceExitFixtureFinished || g_resourceExitPrepared!=1 || g_resourceExitError!=0 || g_resourceExitStep!=($exit_phase==2?0x1006:7)
+if $pc!=(unsigned long)aitdResourceExitFixtureFinished || g_resourceExitPrepared!=1 || g_resourceExitOverlayChecks!=6 || g_resourceExitError!=0 || g_resourceExitStep!=($exit_phase==2?0x1006:7)
  echo resource-exit FAIL: fixture\n
  detach
  quit 1
@@ -75,7 +80,7 @@ end
 tbreak *aitdResourceExitCleanupFinished
 continue
 printf "resource-exit cleanup state=%u ok=%u dma=$%x/$%x int=$%x/$%x view=%u service=%u/%u streams=%u source=%u\n",g_macExitState,g_resourceExitCleanupOK,g_restoreSavedDmacon,g_restoreActualDmacon,g_restoreSavedIntena,g_restoreActualIntena,g_restoreViewMatches,g_macServiceEntered,g_macServiceCompleted,g_fileOpenHandles,g_resourceSourceOpen
-if $pc!=(unsigned long)aitdResourceExitCleanupFinished || g_macExitState!=4 || g_resourceExitCleanupOK!=1 || g_macHostReturnSP!=0 || g_macLineAInstalled!=0 || g_macServiceActive!=0 || g_macServiceEntered!=g_macServiceCompleted || g_fileOpenHandles!=0 || g_fileCloseErrors!=0 || g_resourceSourceOpen!=0 || g_resourceSourceCloseErrors!=0 || g_macVBLCallbackEntry!=0 || g_macVBLCallbackTask!=0 || g_macVBLCallbackA5!=0 || g_macVBLCallbackReturn!=0 || g_systemWindowActive!=0 || ((struct ExecBase*)SysBase)->TDNestCnt!=-1 || g_restoreActualDmacon!=(g_restoreSavedDmacon&0x07ff) || g_restoreActualIntena!=((g_restoreSavedIntena&0x7fff)|0x4000) || g_restoreViewMatches!=1 || g_probePaulaZeroedMask!=15
+if $pc!=(unsigned long)aitdResourceExitCleanupFinished || g_macExitState!=4 || g_resourceExitCleanupOK!=1 || g_macHostReturnSP!=0 || g_macLineAInstalled!=0 || g_macServiceActive!=0 || g_macServiceEntered!=g_macServiceCompleted || g_fileOpenHandles!=0 || g_fileCloseErrors!=0 || g_overlaySourceOpen!=0 || g_overlaySourceCloseErrors!=0 || g_resourceSourceOpen!=0 || g_resourceSourceCloseErrors!=0 || g_macVBLCallbackEntry!=0 || g_macVBLCallbackTask!=0 || g_macVBLCallbackA5!=0 || g_macVBLCallbackReturn!=0 || g_systemWindowActive!=0 || ((struct ExecBase*)SysBase)->TDNestCnt!=-1 || g_restoreActualDmacon!=(g_restoreSavedDmacon&0x07ff) || g_restoreActualIntena!=((g_restoreSavedIntena&0x7fff)|0x4000) || g_restoreViewMatches!=1 || g_probePaulaZeroedMask!=15
  echo resource-exit FAIL: restored state\n
  detach
  quit 1
@@ -99,6 +104,6 @@ if $pc!=(unsigned long)_start+0x82
  detach
  quit 1
 end
-printf "PASS resource-exit phase=%u original-return=1 restored=1 main-result=0 crt-return=1\n",$exit_phase
+printf "PASS resource-exit phase=%u original-return=1 restored=1 main-result=0 crt-return=1 prefs=%u\n",$exit_phase,g_resourceExitPrefs
 detach
 quit 0

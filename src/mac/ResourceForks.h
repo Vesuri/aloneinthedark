@@ -43,6 +43,9 @@ public:
     uint32_t resourceCount() const { return m_count; }
     // Items retain each fork's original map reference-list order.
     bool item(uint32_t index,Item& out) const;
+    // D5: dialog layouts override ordinary search; single-file calls stay local.
+    // Caller provides kForkCount entries. No payload reads are performed.
+    uint16_t searchOrder(uint16_t current,uint32_t type,bool currentOnly,uint16_t* keys) const;
     bool find(uint16_t fork,uint32_t type,int16_t id,Item& out,uint32_t* index=0) const;
     // Reads exactly the indexed resource into caller-owned storage, in <=64 KiB
     // transfers. Errors/short reads never claim a complete resource.

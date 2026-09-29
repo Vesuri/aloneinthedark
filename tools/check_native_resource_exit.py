@@ -12,9 +12,11 @@ ALLOWED={NAME+suffix for suffix in ('','.rsrc','.finfo','.uaem','.rsrc.uaem','.f
 def scratch():
     return list(DIRECTORY.glob(NAME+'*'))
 
-def validate_log(text,status,phase):
+def validate_log(text,status,phase,location="saves"):
     marker=(f'PASS resource-exit phase={phase} original-return=1 restored=1 main-result=0 crt-return=1'
             if phase!=3 else 'PASS resource-exit fault stop=RESOURCE EXIT IO ERROR resident=EXIT service=active stream=open')
+    if phase in (4,5):marker='PASS resource-exit overlay-stop reason=OVERLAY '+('UPDATE' if phase==4 else 'CLOSE')
+    marker+=f' prefs={int(location=="prefs")}'
     if status!=0 or text.count(marker)!=1 or any(x in text for x in ('FAIL','TIMEOUT','Error in sourced','unexpected debugger stop')):
         raise ValueError('observer did not complete the required phase normally')
 
@@ -29,7 +31,7 @@ def original_bytes():
 
 def inspect(phase):
     files=scratch()
-    if phase in (0,2):
+    if phase in (0,2,4,5):
         if files:raise ValueError('scratch exists; preserve it for inspection: '+str(files))
         return
     if any(p.name not in ALLOWED or not p.is_file() for p in files):raise ValueError('unexpected scratch/staging files')
@@ -41,12 +43,14 @@ def inspect(phase):
 
 if __name__=='__main__':
     p=argparse.ArgumentParser(description=__doc__)
-    p.add_argument('--phase',type=int,choices=(0,1,2,3),required=True)
+    p.add_argument('--location',choices=('saves','prefs'),default='saves')
+    p.add_argument('--phase',type=int,choices=(0,1,2,3,4,5),required=True)
     p.add_argument('--log',type=Path);p.add_argument('--status',type=int)
     p.add_argument('--cleanup-fault',action='store_true')
     a=p.parse_args()
+    DIRECTORY=ROOT/'amiga/.run/dh1'/('prefs' if a.location=='prefs' else 'Saved Games')
     try:
-        if a.phase:validate_log(a.log.read_text(),a.status,a.phase)
+        if a.phase:validate_log(a.log.read_text(),a.status,a.phase,a.location)
         if a.phase==0:original_bytes()
         inspect(a.phase)
         if a.cleanup_fault:

@@ -131,8 +131,9 @@ ifeq ($(FILEPROBE),1)
 $(error RESOURCEEXITPROBE uses original startup, not FILEPROBE)
 endif
 RESOURCEEXITPHASE ?= 1
-EXTRA_DEFINES += -DAITD_RESOURCE_EXIT_PROBE -DAITD_RESOURCE_EXIT_PHASE=$(RESOURCEEXITPHASE)
-PROBE_SYMS_RESOURCEEXIT = g_resourceExitPhase g_resourceExitStep g_resourceExitError g_resourceExitPrepared g_resourceExitCleanupOK g_resourceExitHandle g_resourceLookupD0 g_resourceFileStackError g_fileProbeCCR g_resourceStageFault g_fileReadCalls g_fileReadBytes g_fileReadMax g_fileOpenHandles g_fileRestoredCloses g_fileCloseErrors
+RESOURCEEXITPREFS ?= 0
+EXTRA_DEFINES += -DAITD_RESOURCE_EXIT_PROBE -DAITD_RESOURCE_EXIT_PHASE=$(RESOURCEEXITPHASE) -DAITD_RESOURCE_EXIT_PREFS=$(RESOURCEEXITPREFS)
+PROBE_SYMS_RESOURCEEXIT = g_resourceExitPrefs g_resourceExitOverlayChecks g_resourceExitPhase g_resourceExitStep g_resourceExitError g_resourceExitPrepared g_resourceExitCleanupOK g_resourceExitHandle g_resourceLookupD0 g_resourceFileStackError g_fileProbeCCR g_resourceStageFault g_fileReadCalls g_fileReadBytes g_fileReadMax g_fileOpenHandles g_fileRestoredCloses g_fileCloseErrors
 endif
 
 ifeq ($(FILEWRITEPROBE),1)
@@ -240,6 +241,7 @@ PROBE_SYMS = g_catalogEntries g_catalogDataFiles g_catalogDataBytes g_applicatio
              g_trapPC g_trapRegisters g_trapUserStack g_resourceCount g_jumpEntryCount \
              g_blockMoveCount g_trapManager g_trapRoutine
 PROBE_SYMS += $(PROBE_SYMS_FILE) $(PROBE_SYMS_FILEWRITE) $(PROBE_SYMS_RESOURCEEXIT)
+PROBE_SYMS += g_overlayChainVerified g_overlaySourceReads g_overlaySourceBytes g_overlaySourceMax g_overlayRuntimeReads g_overlayRuntimeBytes g_overlaySourceOpen g_overlaySourceCloseErrors
 PROBE_SYMS += g_resourceSourceReads g_resourceSourceBytes g_resourceSourceMax g_resourceRuntimeReads g_resourceRuntimeBytes g_resourceSourceOpen g_resourceSourceCloseErrors
 PROBE_SYMS += g_systemWindows g_windowFields g_systemWindowActive $(PROBE_SYMS_WINDOW)
 PROBE_SYMS += g_macServiceActive g_macServiceEntered g_macServiceCompleted $(PROBE_SYMS_SERVICE)

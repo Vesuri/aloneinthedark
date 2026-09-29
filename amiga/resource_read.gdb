@@ -1,7 +1,7 @@
 # Production on-demand resource acceptance. Read-only debugger observations.
 set pagination off
 set confirm off
-if g_resourceSourceOpen != 1 || g_resourceRuntimeReads != 0 || g_resourceRuntimeBytes != 0 || g_resourceSourceReads != 228 || g_resourceSourceBytes != 201058 || g_resourceCount != 212 || g_loadedCodeMask != 3 || g_lowMemoryValidatedSites != 58
+if g_overlayChainVerified!=1 || g_overlaySourceOpen!=1 || g_overlaySourceReads!=2 || g_overlaySourceBytes!=46 || g_overlayRuntimeReads!=0 || g_overlayRuntimeBytes!=0 || g_resourceSourceOpen != 1 || g_resourceRuntimeReads != 0 || g_resourceRuntimeBytes != 0 || g_resourceSourceReads != 228 || g_resourceSourceBytes != 201058 || g_resourceCount != 212 || g_loadedCodeMask != 3 || g_lowMemoryValidatedSites != 58
  echo FAIL resource-read: preparation, CODE validation or residency\n
  detach
  quit 1

@@ -40,8 +40,9 @@ writes, pending map edits and the full dirty-handle lifecycle pass 175 additiona
 calls and six native rollback cases. Permissions 0–4, creation errors and read-only
 mutation/close behavior pass a further 59-step fixture. Dirty-resource exit
 persistence passes the original runtime exit, fresh-launch readback and failed
-publication checks. Writable prefs/save and overlay integration are next. The metadata model preserves duplicate
-type/ID entries within one file and resolves the first surviving insertion.
+publication checks under both saves and preferences. The empty port overlay is
+open below the application; dialog overrides have a tested search route. The
+metadata model preserves duplicate type/ID entries within one file and resolves the first surviving insertion.
 The metadata-only catalog and application-fork identity are verified (M2.1b1):
 32 data files, 5,315,994 bytes; no data payload preloading. SetVol, the three
 startup working directories, Preferences lookup and the optional movies error

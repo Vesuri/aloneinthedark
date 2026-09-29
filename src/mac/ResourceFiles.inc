@@ -188,6 +188,9 @@ static uint32_t dispatchResourceFiles(uint16_t trap,uint32_t* regs,uint8_t* stac
     } else if(trap==0xa999 || trap==0xa99a) {
         int16_t ref=(int16_t)read16(stack);uint16_t key=0;
         while(key<ResourceForks::kForkCount && (!s_resourceForks.directory()->active(key) || s_resourceFileRefs[key]!=ref))++key;
+        if(key==ResourceForks::kOverlayFork) {
+            loaderStop(trap==0xa999 ? "OVERLAY UPDATE" : "OVERLAY CLOSE",0);showLoaderStop();
+        }
         error=key==ResourceForks::kForkCount ? -193 : trap==0xa999 ? updateResourceFile(key) : closeResourceFile(key);
         if(error==-32760)return 0;
         pop=2;preserve=trap==0xa999;
@@ -211,6 +214,7 @@ static uint32_t dispatchResourceFiles(uint16_t trap,uint32_t* regs,uint8_t* stac
         if(index<0 || !s_resourceForks.item(index,item))error=trap==0xa9ad ? -196 : -192;
         else {
             auto* zone=handleZone(handle);if(!zone || !*handle || !item.fork)return 0;
+            if(item.fork==ResourceForks::kOverlayFork) { loaderStop("OVERLAY MUTATION",0);showLoaderStop(); }
             if(trap==0xa9aa) {
                 const auto* fork=s_files.fork(s_resourceFileRefs[item.fork]);if(!fork)return 0;
                 if(!fork->writable)error=-61;else s_resourceChanges[index]|=1;memoryResult(0);

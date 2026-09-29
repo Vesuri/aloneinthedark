@@ -37,6 +37,9 @@ def validate(text,status,resources):
     if engine[0x3cdc:0x3ce0]!=bytes.fromhex('a820245f'):raise ValueError('original Engine gate')
     return 'PASS resource exit reference: dirty open resource survives original runtime exit, Finder transition and relaunch; exact EXIT body, close/delete and current restoration'
 if __name__=='__main__':
-    p=argparse.ArgumentParser(description=__doc__);p.add_argument('log',type=Path);p.add_argument('--status',type=int,required=True);p.add_argument('--original',type=Path,required=True);a=p.parse_args()
-    try:print(validate(a.log.read_text(),a.status,read_resource_fork(a.original)))
+    p=argparse.ArgumentParser(description=__doc__);p.add_argument('log',type=Path);p.add_argument('--status',type=int,required=True);p.add_argument('--original',type=Path,required=True);p.add_argument('--path');a=p.parse_args()
+    try:
+        text=a.log.read_text()
+        if a.path and text.count('REXIT path='+a.path+'\n')!=2:raise ValueError('exact scratch path on both launches')
+        print(validate(text,a.status,read_resource_fork(a.original)))
     except (ValueError,KeyError,OSError,StopIteration) as error:raise SystemExit('FAIL resource exit reference: '+str(error))

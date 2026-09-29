@@ -61,7 +61,10 @@ beneath the executable directory on the emulated hard drive. The port executable
 and diagnostic files remain outside this Mac-visible namespace. Override
 `AITD_APP_RSRC` and `AITD_DATA_DIR` for extraction locations; the three original
 root files and companions must be beside `AITD_APP_RSRC`. Saves and preferences
-retain their separate `Saved Games/` and `prefs/` native mappings.
+retain their separate `Saved Games/` and `prefs/` native mappings. The launcher
+also stages the port-owned `resources/overlay.rsrc` beside the executable. A
+manual installation must copy that file to `PROGDIR:overlay.rsrc`; a missing or
+invalid overlay fails explicitly.
 
 ## Debugging
 
@@ -2040,3 +2043,51 @@ The full host suite and a clean production `resource-read` regression pass with
 normal completion. Production still has 212 resources, 201,058 preparation bytes
 and 16 runtime reads / 96,648 bytes, with the same GetFNum stop; the new API is
 not yet selected by native startup.
+
+### M2.2g2 — native overlay and writable paths
+
+Startup opens the generated overlay read-only as a separate bounded source,
+then its map before the application's map. The loader verifies the exact
+application → overlay → end chain and leaves the application selected. The
+empty overlay has Mac resource-file reference zero, consumes two metadata reads
+/ 46 bytes, adds no resources and performs no runtime reads. Its DOS source is
+closed during restored-OS cleanup; missing/invalid input and close errors fail
+explicitly. Both ID and named searches use the shared tested order. DLOG, DITL
+and ALRT search the overlay first under D5, while single-file lookups remain
+local. No layouts or placeholder fonts have been invented for this step.
+
+The native `resource-exit` regression now runs failure, original exit and fresh
+readback/delete for both `Saved Games/Resource Exit` and `prefs/Resource Exit`.
+Every process additionally selects System reference zero, verifies an empty CODE
+count, and restores the original application selection. Disk parsing requires
+exact LIFE 128 / Scratch / EXIT bytes and no staging leftovers; failures preserve
+the old empty fork and live dirty body. Every phase checks both source closures,
+service/window state and native main/CRT return. Location-tagged output prevents
+a saves result from being accepted as preferences evidence. Two additional
+processes require exact `OVERLAY UPDATE` / `OVERLAY CLOSE` stops for attempts to
+update/close System reference zero, without creating scratch or closing either
+source. Overlay resource mutations also remain a named stop until measured;
+the port map is not exposed as a writable File Manager stream.
+
+The same thirteen-call lifecycle also passes on the Mac in its actual blessed
+folder, `7.5.5 2GB (D):System 7.5.5 (min):Preferences:`. The first attempt used the
+wrong System folder name and returned dirNFErr; it was rejected. An HFS directory
+inspection established the exact path before the successful bounded run.
+`AITD_RESOURCE_EXIT_PATH` supplies the reference-only scratch path, and the
+checker requires that path on both launches. The existing `Alone Prefs` is never
+modified. This verifies the file/resource services, not the game's eventual
+preferences format, screen-size choice or save/load UI.
+
+M2.2's measured service and integration scope is complete. Unmeasured resource
+variants remain named stops as listed in design §4.5. Original-file read
+acceptance is next (M2.1c); the production startup stop remains GetFNum.
+
+Acceptance: the full host suite, all six native regression cases and all four
+startup observers pass with normal completion. Both explicit overlay-stop cases
+also pass their exact reason checks; the final production build passes
+resource-read, no-float/probe audits and the MacLoader/ResourceDirectory generated
+copy audit. All 75,616 A5 bytes match. Original application preparation remains
+228 reads / 201,058 bytes; the separate empty overlay adds 2 reads / 46 bytes.
+Original runtime remains 16 resource reads / 96,648 bytes. File-write remains
+406 paired calls / 1,040 windows. No timeout or failed exploratory run is counted;
+rendered-window acceptance remains owner-deferred. No owner decision changed.

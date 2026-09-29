@@ -10,7 +10,7 @@ public:
     MacFiles& files();
     // Retain maps only; validate original CODE through temporary source reads.
     // The source context remains live until releaseResourceForks returns.
-    bool prepareResourceForks(const ResourceForks::Source& application);
+    bool prepareResourceForks(const ResourceForks::Source& application,const ResourceForks::Source& overlay);
     bool releaseResourceForks();
     const char* preparationError() const;
 

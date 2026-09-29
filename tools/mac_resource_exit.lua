@@ -5,6 +5,8 @@ local mac=dofile('tools/mame_mac_input.lua')
 local meta=dofile('tmp/mac-trap-map.lua')
 local cpu=manager.machine.devices[':maincpu'];local mem=cpu.spaces.program
 local dbg=assert(manager.machine.debugger,'RESOURCE EXIT / DEBUGGER REQUIRED')
+local scratchPath=os.getenv('AITD_RESOURCE_EXIT_PATH') or 'AITD Exit Resource Probe'
+assert(#scratchPath>0 and #scratchPath<128,'RESOURCE EXIT / SCRATCH PATH LENGTH')
 local armed=false
 local phase=1
 local exitSeen=false
@@ -63,7 +65,7 @@ emu.register_frame_done(function()
  end
  local setup=string.format('sp=sp-800;temp2=sp;temp3=0;temp4=0;temp5=0;w@(temp2+402)=4ef9;d@(temp2+404)=%x;',base+0x3cde)
  for i=0,31 do setup=setup..string.format('d@(temp2+%x)=0;',0x100+i*4) end
- for _,q in ipairs({{0x200,'AITD Exit Resource Probe'},{0x280,'Scratch'}}) do
+ for _,q in ipairs({{0x200,scratchPath},{0x280,'Scratch'}}) do
   local text=string.char(#q[2])..q[2]
   for i=1,#text do setup=setup..string.format('b@(temp2+%x)=%x;',q[1]+i-1,text:byte(i)) end
  end
@@ -75,7 +77,7 @@ emu.register_frame_done(function()
   cpu.debug:bpset(base+0x3cde,cond..(q.guard and ' && ('..q.guard..')' or ''),q.after..report..nextaction)
   if q.guard then cpu.debug:bpset(base+0x3cde,cond..' && !('..q.guard..')',report..'logerror "FAIL resource exit scratch ownership/setup; retained for recovery\\n";quit') end
  end
- armed=true;print('ARM resource-exit Engine+$3CDC bytes=a820245f CODE1+$0048/$04AA checked')
+ armed=true;print('REXIT path='..scratchPath);print('ARM resource-exit Engine+$3CDC bytes=a820245f CODE1+$0048/$04AA checked')
 end)
 mac.run(function()
  local ok,err=pcall(function()

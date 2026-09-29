@@ -88,6 +88,7 @@ volatile uint16_t g_lowMemoryValidatedSites = 0;
 volatile uint16_t g_lowMemoryAppliedSites = 0;
 volatile uint32_t g_loadedCodeMask = 0;
 uint8_t* g_code3Base = 0;
+uint16_t g_overlayChainVerified = 0;
 uint8_t* g_applicationZoneBase=0;
 uint8_t* g_systemZoneBase=0;
 volatile uint32_t g_heapFree=0, g_heapLargest=0, g_heapSystemFree=0;
@@ -1049,11 +1050,12 @@ static uint8_t** loadResource(uint32_t index,const ResourceForks::Item& item,boo
 }
 static uint8_t** getResource(uint32_t type,int16_t id,bool currentOnly=false)
 {
-    int16_t fork=s_currentResourceFork;
-    do {
+    uint16_t keys[ResourceForks::kForkCount];
+    uint16_t count=s_resourceForks.searchOrder(s_currentResourceFork,type,currentOnly,keys);
+    for(uint16_t n=0;n<count;++n) {
         ResourceForks::Item item;uint32_t index;
-        if(s_resourceForks.find(fork,type,id,item,&index))return loadResource(index,item,false);
-    } while(!currentOnly && s_resourceForks.directory()->older(fork,fork));
+        if(s_resourceForks.find(keys[n],type,id,item,&index))return loadResource(index,item,false);
+    }
     resourceResult(0);return 0; // Measured System 7.5.5 missing-ID behavior.
 }
 
@@ -1224,16 +1226,17 @@ static bool resourceNameEquals(const ResourceForks::Item& item, const uint8_t* n
 
 static uint8_t** getNamedResource(uint32_t type, const uint8_t* name,bool currentOnly=false)
 {
-    int16_t fork=s_currentResourceFork;
-    do {
+    uint16_t keys[ResourceForks::kForkCount];
+    uint16_t count=s_resourceForks.searchOrder(s_currentResourceFork,type,currentOnly,keys);
+    for(uint16_t n=0;n<count;++n) {
         for (uint32_t i = 0; i < s_resourceForks.resourceCount(); ++i) {
             ResourceForks::Item item;
             if (!s_resourceForks.item(i, item)) return 0;
-            if (item.fork == fork && item.type == type && resourceNameEquals(item, name)) {
+            if (item.fork == keys[n] && item.type == type && resourceNameEquals(item, name)) {
                 return loadResource(i,item,false);
             }
         }
-    } while(!currentOnly && s_resourceForks.directory()->older(fork,fork));
+    }
     resourceResult(-192);return 0;
 }
 
@@ -6495,9 +6498,10 @@ extern "C" uint32_t aitdLineADispatch(uint32_t* regs, uint8_t* frame, uint8_t* u
 
 const char* MacLoader::preparationError() const { return s_preparationError; }
 
-bool MacLoader::prepareResourceForks(const ResourceForks::Source& application)
+bool MacLoader::prepareResourceForks(const ResourceForks::Source& application,const ResourceForks::Source& overlay)
 {
     s_preparationError = "RESOURCE FORK / INVALID OR UNSUPPORTED";
+    g_overlayChainVerified=0;
     for (uint16_t i = 0; i < 4096; ++i) {
         write16(s_trapBuiltins[i], 0xaffe);
         write16(s_trapBuiltins[i] + 2, 0xa000 | i);
@@ -6511,13 +6515,21 @@ bool MacLoader::prepareResourceForks(const ResourceForks::Source& application)
     for(auto& touched:s_resourceMapTouched)touched=false;
     resourceResult(0);
     if(!prepareZones()) { s_preparationError="MEMORY MANAGER / FAST RAM ZONES";return false; }
-    if (!s_resourceForks.open(application)
+    if (!s_resourceForks.openWithOverlay(application,overlay)
         || !loadStartupSegments()) {
         s_resourceForks.close();clearResidentSegments();releaseZones();return false;
     }
+    int16_t parent=-1,older=-1;
+    if(!s_resourceForks.directory()->older(0,parent) || parent!=ResourceForks::kOverlayFork
+        || s_resourceForks.directory()->older(parent,older)) {
+        s_preparationError="RESOURCE OVERLAY CHAIN";
+        s_resourceForks.close();clearResidentSegments();releaseZones();return false;
+    }
+    g_overlayChainVerified=1;
     s_currentResourceFork = 0;
+    for(auto& ref:s_resourceFileRefs)ref=0; // System/overlay reference is zero.
     const MacFiles::Entry* app=s_files.child(s_files.application,"Alone In The Dark");
-    if(!app || s_resourceForks.forkCount()!=1) {
+    if(!app || s_resourceForks.forkCount()!=2) {
         s_preparationError="CATALOG / APPLICATION FORK";
         s_resourceForks.close();clearResidentSegments();releaseZones();return false;
     }

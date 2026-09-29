@@ -366,7 +366,10 @@ Native trap probes, host fragmentation tests and paired heap captures verify it:
     staging for resource-file services. Per-entry publication preserves unrelated
     saved bodies during WriteResource. Resource opens support permissions 0–4;
     read-only removal stays in memory, and close reports the failed update while
-    still closing the file. Remaining lifecycle variants are M2.2f4.
+    still closing the file. Prefs/save paths and original-runtime exit persistence
+    are verified. Application closure, mixed raw/resource updates, unpublished
+    empty/reload and dirty resize/dispose/purge remain named stops until reached
+    by original execution and measured.
 
 ### 4.6 Resource Manager
 
@@ -384,27 +387,32 @@ Native trap probes, host fragmentation tests and paired heap captures verify it:
     CODE 0 metadata and CODE 1 remain resident. Runtime resource misses use
     bounded source reads through the user-mode bridge, including indirect
     Toolbox resource loads.
-- **Port overlay resources.** A small resource fork of the port's own resources
-  comes first in the search order: the 320×200 dialog layouts (D5) and the
-  placeholder fonts (D6).
+- **Port overlay resources.** `resources/overlay.rsrc` is generated port-owned
+  data, opened read-only from `PROGDIR:overlay.rsrc`. It is empty at M2.2; measured
+  320×200 dialog layouts (D5) and placeholder fonts (D6) follow at their milestones.
+  Ordinary resources fall back to this System-file map; dialog layouts override
+  application resources as specified below.
 - **Lookup implemented.** GetResource/Get1Resource and named variants pass the
   measured Mac argument/result contract and native fixtures (M2.2c2).
 - **Metadata and explicit loading implemented.** GetResInfo, SetResLoad,
   LoadResource and detached metadata pass paired Mac/native cases (M2.2d2).
   ResError reads the private low-memory result. Purge/reload, locked/empty
   release and empty/detached/nil results pass 28 paired calls (M2.2d3). Dirty
-  resource state and disposal remain part of writable fork support.
+  resource state, publication and saved dirty-empty reload have paired fixtures.
+  Unmeasured lifecycle variants retain their named stops.
 - **Enumeration implemented.** Count1Resources, Get1IndResource and single-fork
   CountResources pass 44 paired calls. The directory preserves original map
   order; counts and disabled-load indexed lookups read no bodies. Multi-fork
-  counts/search and the writable-file calls in 4.5 remain M2.2f.
+  counts/search and the writable-file calls in 4.5 pass paired fixtures.
 - **Search order.** Open resource files first, then the application, then the
   port overlay, which stands in for the System file. The one exception is the
   dialog layouts, which the overlay supplies ahead of the application.
   The M2.2f1 reference establishes that ordinary lookup starts at the current
   file and follows older files, whereas CountResources counts all open maps,
-  including duplicate IDs, regardless of the current selection. Resource-file
-  integration and this multi-fork behavior remain pending M2.2f2/f3.
+  including duplicate IDs, regardless of the current selection. Native startup
+  verifies the overlay is older than the application, and resource-file fixtures
+  verify this multi-fork behavior. DLOG/DITL/ALRT lookup tries the overlay first;
+  Get1Resource/Get1NamedResource stay restricted to the selected file.
   Resources the game expects from the System file (fonts, `snd `
   beeps, `CURS`) are listed and supplied by the port (4.11). A missing one is a
   loud stop.
@@ -703,7 +711,8 @@ no unexpected loud stop. The cases are added as their milestone lands:
 - `file-write`: native Line-A and DOS backend writes, zero-count extension,
   truncation/mark updates, read-only errors, exact readback, close and dirty
   shutdown; host-file bytes and bounded transfer/window counts are required.
-- `resource-exit`: dirty open resource saved by the original CODE 1 exit,
+- `resource-exit`: both save and preferences directories; dirty open resource
+  saved by the original CODE 1 exit,
   independent exact-fork parsing, fresh-launch readback/delete, restored OS and
   native main/CRT return. A separate forced publication failure must stop loudly,
   retain the resident body and preserve the prior disk fork.

@@ -128,6 +128,18 @@ int main(int argc,char** argv) {
     assert(!directory->open(1,source,true) && forks.refresh(remap));
     assert(directory->newest(key) && key==1 && directory->older(1,key) && key==0);
     assert(directory->older(0,key) && key==ResourceForks::kOverlayFork);
+    uint16_t keys[ResourceForks::kForkCount];
+    auto reads=app.calls+overlay.calls+disk.calls;
+    assert(forks.searchOrder(1,body.type,false,keys)==3 && keys[0]==1 && keys[1]==0 && keys[2]==ResourceForks::kOverlayFork);
+    assert(forks.searchOrder(0,body.type,false,keys)==2 && keys[0]==0 && keys[1]==ResourceForks::kOverlayFork);
+    for(auto type:{0x444c4f47UL,0x4449544cUL,0x414c5254UL}) {
+        assert(forks.searchOrder(1,type,false,keys)==3 && keys[0]==ResourceForks::kOverlayFork && keys[1]==1 && keys[2]==0);
+        assert(forks.searchOrder(1,type,true,keys)==1 && keys[0]==1);
+        assert(forks.searchOrder(0,type,true,keys)==1 && keys[0]==0);
+        assert(forks.searchOrder(ResourceForks::kOverlayFork,type,false,keys)==1 && keys[0]==ResourceForks::kOverlayFork);
+    }
+    assert(!forks.searchOrder(14,body.type,false,keys));
+    assert(app.calls+overlay.calls+disk.calls==reads);
     assert(forks.find(ResourceForks::kOverlayFork,body.type,128,item,&index) && !item.data);
     overlay.payload=true;assert(!forks.read(index,out.data(),out.size()));
     assert(overlay.calls==6 && app.calls==4);
