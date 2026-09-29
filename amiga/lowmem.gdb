@@ -20,6 +20,12 @@ if *(unsigned long *)(g_code3Base+0x4290) != 0x3b400f50 || *(unsigned long *)(g_
  detach
  quit 1
 end
+# Logical menu geometry remains present while Mac menu rendering is suppressed.
+if *(unsigned short*)(g_macLowMemory+156)!=20 || *(unsigned long*)(s_segments[7].begin+0x479e)!=0x302d0f5c
+ echo lowmem FAIL: MBarHeight shadow/positioning instruction\n
+ detach
+ quit 1
+end
 # Engine's $16C word must alias the low half of the $16A long.
 if *(unsigned long *)(s_segments[7].begin+0x4a22) != 0x302d0ec2
  echo lowmem FAIL: Ticks word alias\n

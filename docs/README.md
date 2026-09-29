@@ -12,6 +12,8 @@ Start with the [project README](../README.md).
 - [Static map](static-map.md): CODE segments, A5 world and CPU requirements.
 - [Macintosh reference](mac-reference-loop.md): local oracle setup and capture.
 - [Graphics device](graphics-device.md): measured original selection and display records.
+- [Screen choice](screen-choice.md): hidden fixed-size selection and original contracts.
+- [SANE positioning](sane.md): integer-only arithmetic, original inputs and verification.
 - [Menu records](menu-manager.md): original counts, labels and native mutations.
 - [Sound driver](sound-driver.md): original startup contract and native D8 seam.
 - [Font Manager](font-manager.md): measured font lookup contract and reference probes.

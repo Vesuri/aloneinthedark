@@ -7,7 +7,7 @@ static const uint16_t base = 3776;
 static const uint16_t size = 160;
 static const uint16_t currentA5 = 32, curStackBase = 52;
 static const uint16_t fpState = 56, cpuFlag = 58, loadTrap = 59;
-static const uint16_t resLoad = 60, lo3Bytes = 64;
+static const uint16_t resLoad = 60, lo3Bytes = 64, menuBarHeight = 156;
 struct Shadow { uint16_t address, offset, width; };
 static const Shadow shadows[] = {
     {0x012d, 59, 1},

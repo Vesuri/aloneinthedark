@@ -2,8 +2,9 @@
 
 D4 requires 320×200 and no displayed size dialog. M2.1c3c2c5a establishes the
 original contract; M2.1c3c2c5b1 implements hidden construction. Native startup now stops
-at FP68K selector $200E, Engine+$47C2, in the original positioning arithmetic.
-GetMainDevice is verified by M2.1c3c2c5b2a; fixed selection remains M2.1c3c2c5b2b.
+at MoveWindow, Engine+$48A2, after the original positioning arithmetic.
+GetMainDevice and the five integer-only SANE operations pass; fixed selection
+remains M2.1c3c2c5b2c. No Mac dialog presentation is authorized (D5).
 
 Original bytes establish the following:
 
@@ -104,5 +105,7 @@ The checker guards original CODE/DLOG/DITL bytes and compares the portable
 The bounded item parser has sanitizer tests for every truncation, oversized
 counts/lengths and trailing bytes. The reference service trace also identifies
 GetMainDevice and SANE selectors $200E/$1004/$2000/$0016/$2010 in the original
-positioning path. GetMainDevice now passes; the SANE operations remain dependencies, not
-successful native services.
+positioning path. GetMainDevice and all ten SANE calls now pass their paired
+contracts; see [sane.md](sane.md). The next MoveWindow remains a named stop
+because the inherited color-window implementation is invalid for this old-style
+port. Hidden state does not authorize drawing the chooser or any Mac dialogs.

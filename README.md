@@ -16,7 +16,8 @@ The executable builds and runs the original CODE 1 startup on the 68020. Its
 relocates Core and reaches `main`; initialization passes directory setup, the General resource lookup and the
 first Times font lookup and the two native sound-driver startup calls (D8).
 Menu-record initialization and the original eight-bit device selection, SetDepth, GetGWorld, hidden dialog construction and GetMainDevice also pass.
-It then stops explicitly at `SANE / FP68K`; the original mixer
+All ten original positioning calls also pass using integer-only SANE arithmetic
+(no FPU). It then stops explicitly at `WINDOW MANAGER / MOVEWINDOW`; the original mixer
 is never loaded. The game is not playable yet.
 Other processors and performance work remain deferred.
 

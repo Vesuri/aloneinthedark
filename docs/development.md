@@ -2363,3 +2363,30 @@ reads are introduced: 28 / 123,387 original bytes and 3 / 1,318 overlay bytes.
 The local SANE trace additionally passes exact rational operand/result, register,
 stack and destination-bound checks; arithmetic implementation and full D4
 selection remain pending. No owner decision changed.
+
+
+## Integer-only original positioning
+
+M2.1c3c2c5b2b implements the five original SANE operations with integer-only
+68020 arithmetic. All ten original calls match the Mac operands/results,
+registers, stack, FPState and bounded writes. Paired instrumentation found an
+uninitialized MBarHeight shadow; the measured value 20 now produces the original
+177/205 position. The native observer checks actual exception-frame flags
+because debugger SR at original entry was stale. No FPU, Mac dialog drawing or
+menu bar is introduced. See [sane.md](sane.md) for scope and reproduction.
+
+Validation: 2,455 sanitizer/oracle cases, 41 original Mac fixtures, all ten
+paired original calls, clean boot/resource-read, all thirteen startup observers
+and the full host suite pass. Final link audits pass (76 probes), and all 75,616
+A5 bytes match. Existing/fresh preferences pass with 36/62 OS windows and 43/51
+completed services; existing preferences were restored. Resource reads remain
+28 / 123,387 original bytes and 3 / 1,318 overlay bytes. Low-memory checks remain
+58 validated / 55 applied, with live menu-height and ten-field tick checks.
+Every accepted bounded run exited normally with its positive marker.
+
+The next named stop is Engine+$48A2 MoveWindow. Remaining hidden positioning,
+world binding and fixed-choice/item/disposal work remains M2.1c3c2c5b2c, with
+integrated second-Times, viewport and rendering acceptance retained. Separately,
+the owner clarified D5: replace all Mac dialog presentation, including new-game
+and save/load, with an in-game interface. The updated design and M3.3 acceptance
+record that decision; hidden records do not authorize Mac UI rendering.

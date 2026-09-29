@@ -11,7 +11,7 @@ design.md §5.
 - Original CODE 1 expands the A5 world, relocates Core and enters `main`, then
   passes directory initialization, the first Times lookup and both native
   driver startup calls, menu-record initialization, device selection, SetDepth, GetGWorld and hidden dialog construction, then stops at
-  Engine+$47C2 `FP68K` selector $200E. The original
+  Engine+$48A2 `WINDOW MANAGER / MOVEWINDOW`. The original
   mixer is never loaded.
 - The original runs in MAME on the System 7.5.5 reference volume.
 
@@ -45,14 +45,15 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.1c3c2c5b2b Fixed 320×200 startup selection (D4/M2.4).**
+- **M2.1c3c2c5b2c Fixed 320×200 startup selection (D4/M2.4).**
   - The hidden DLOG 1000 constructor now creates the measured old-style port,
     private DITL, button and text handles without displaying the dialog.
     GetMainDevice now returns the same measured device without mutation.
-    Original startup next stops at Engine+$47C2 FP68K selector $200E, the first
-    original SANE positioning call. See [screen-choice.md](screen-choice.md).
-  - Implement the measured remaining services in order: the original SANE
-    positioning operations (also M2.12), positioning/world binding, and the
+    All ten original SANE positioning calls now pass with integer-only arithmetic
+    and the measured logical MBarHeight=20. The next stop is MoveWindow at
+    Engine+$48A2. See [screen-choice.md](screen-choice.md) and [sane.md](sane.md).
+  - Implement the measured remaining services in order: hidden positioning/
+    world binding, and the
     ModalDialog item-2 policy plus item lookup/disposal. Measure each newly
     reached contract; do not substitute a guessed position or selection return.
   - Item 2 selects WIND 128 for both size inputs and changes only PREF byte 7.
@@ -221,7 +222,8 @@ required.
   and frame pairs prove no Mac dialog presentation or menu bar is drawn.
 - **M3.4 Apple Events and misc Toolbox.**
   - Pack8 handler installation.
-  - The SANE ops at Engine $47C2–$4852; identify each one.
+  - Exercise the five integer-only SANE ops implemented at Engine $47C2–$4852
+    in the integrated session; unimplemented operations/states remain loud stops.
   - The remaining Window Manager calls.
 
   *Done when* no loud stop occurs in a 10-minute manual session covering the first

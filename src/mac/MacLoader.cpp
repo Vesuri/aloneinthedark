@@ -9,6 +9,7 @@
 #include "SoundDriver.h"
 #include "MenuRecords.h"
 #include "DialogItems.h"
+#include "Sane.h"
 #include "MacFiles.h"
 #include "FileReadCache.h"
 #include "FileWriteBuffer.h"
@@ -823,6 +824,8 @@ static bool buildA5World(uint8_t*& a5)
     write16(s_portLowMemory+100,(uint16_t)s_memoryError);
     write16(s_portLowMemory+132,g_applicationFileRef); // CurApRefNum ($0900), Engine+$4092
     write16(s_portLowMemory+84,0x0755); // M1.6 System 7.5.5 reference
+    // Logical Mac desktop geometry, even though D7 suppresses menu rendering.
+    write16(s_portLowMemory+MacLowMemory::menuBarHeight,20); // $0BAA, reference MBarHeight
     s_jumpTableOffset = jumpOffset;
 
     // Preserve the original unloaded entries. CODE 1's installed LoadSeg
@@ -6090,6 +6093,16 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
             return 9;
         }
     }
+    if(trap==0xa9eb) { // FP68K: measured default-state positioning operations
+        uint16_t operation=read16(userStack);
+        if(read16(s_portLowMemory+MacLowMemory::fpState)==0
+           && (operation==0x200e || operation==0x1004 || operation==0x2000
+               || operation==0x16 || operation==0x2010)) {
+            uint8_t* destination=(uint8_t*)read32(userStack+2);
+            const uint8_t* source=operation==0x16 ? 0 : (const uint8_t*)read32(userStack+6);
+            if(Sane::apply(operation,source,destination))return operation==0x16 ? 7 : 11;
+        }
+    }
     if(trap==0xaa2a) { // GetMainDevice: Pascal handle result, no arguments
         if(s_windowManager.initialized && s_mainDeviceMaster==s_mainDevice) {
             write32(userStack,(uint32_t)&s_mainDeviceMaster);return 1;
@@ -6171,6 +6184,9 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         return 11;
     }
     if (trap == 0xa91b) {                    // MoveWindow(window, h, v, front)
+        WindowSlot* slot=windowSlot((uint8_t*)read32(userStack+6));
+        // The inherited colour-window positioning is not valid for this GrafPort.
+        if(slot && slot->dialog && slot->resourceID==1000)goto unsupportedTrap;
         moveWindow((uint8_t*)read32(userStack + 6),
                    (int16_t)read16(userStack + 4), (int16_t)read16(userStack + 2),
                    userStack[0] != 0);

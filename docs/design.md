@@ -79,7 +79,9 @@ Measured facts the design depends on. Details are in
     in a system-heap block, and Dark's task only re-arms itself.
   - There is no Time Manager. The engine logic runs in 60 Hz ticks [external: FITD].
 - **Floating point.** SANE (`FP68K`) is used at 10 sites, all in Engine
-  $47C2–$4852.
+  $47C2–$4852, for positioning. The five operations are implemented with integer
+  arithmetic on the 68020; no FPU or compiler floating-point helpers are used
+  ([sane.md](sane.md)).
 - **68020 code.** Dark2 (179 sites), Misc2 (93) and Dark (55) use 68020 addressing
   modes, bitfields and `MULU.L`. The hot rasteriser in Dark3 uses 16-bit
   arithmetic [M].
@@ -219,9 +221,9 @@ The original startup path is implemented (M1.1–M1.3):
 **Verified:** the host check `tools/a5world_check.py` passes: it runs
 CODE 1's expansion algorithm on the resource bytes and compares, byte for byte,
 with the A5 world the Amiga dumps (via gdb) when it enters `main`. The current
-loud stop is `SANE / FP68K`, after the original startup
+loud stop is `WINDOW MANAGER / MOVEWINDOW`, after the original startup
 directories, General lookup, first Times font lookup and two native driver
-initialization calls, menu-record initialization, logical device selection, SetDepth, GetGWorld, hidden dialog construction and GetMainDevice. The second Times lookup still needs intervening startup
+initialization calls, menu-record initialization, logical device selection, SetDepth, GetGWorld, hidden dialog construction, GetMainDevice and ten integer-only positioning calls. The second Times lookup still needs intervening startup
 services. Original MDRV loading remains forbidden.
 
 ### 4.3 Low memory
