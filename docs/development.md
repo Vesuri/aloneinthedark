@@ -2336,3 +2336,30 @@ DLOG/DITL 1000 add two reads / 140 bytes: runtime original reads are now
 58 sites / 55 applied, with segment mask $3B8B. These are logical-record checks,
 not viewport/rendered-frame, full screen-selection or second-Times acceptance.
 No owner decision changed.
+
+## Main-device query for original positioning
+
+M2.1c3c2c5b2a adds GetMainDevice at Engine+$4782. The original-byte-guarded
+Mac/native pair returns the existing main handle with no argument cleanup,
+preserves D0–D7/A1–A6, and leaves the full device record and current port intact.
+There is no allocation, mode change or synthetic device. The next stop is
+Engine+$47C2 SANE / FP68K, selector $200E, before the first positioning
+conversion. The remaining arithmetic and fixed-choice requirements stay first
+in the queue as M2.1c3c2c5b2b.
+
+The exploratory reference trace `tmp/m2-sane-position-reference.log` completed
+all ten original positioning calls normally. Selectors $200E/$1004/$2000/$0016/
+$2010 convert a word, multiply by a single, add a word, truncate the extended
+value, and convert to a word on this path. In particular, 355 × 0.5 becomes
+177.5 and is truncated to 177; the vertical result is 205. This identifies the
+next work; it is not native arithmetic acceptance or proof of other operands.
+
+Validation: clean boot/resource-read, all maintained startup observers, paired
+main-device/hidden-dialog/world/depth/device/menu/driver/font checks, the full
+host suite and both link audits pass. All 75,616 A5 globals match exactly.
+Existing and fresh preferences pass with 36/62 windows and 43/51 completed
+services; the existing preferences were restored afterward. No new resource
+reads are introduced: 28 / 123,387 original bytes and 3 / 1,318 overlay bytes.
+The local SANE trace additionally passes exact rational operand/result, register,
+stack and destination-bound checks; arithmetic implementation and full D4
+selection remain pending. No owner decision changed.

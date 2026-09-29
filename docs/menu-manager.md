@@ -62,7 +62,7 @@ named trap stops until their behavior is required and measured. Host sanitizer
 checks cover 510 length-changing replacements (1–255 bytes, both first and last
 items), exact metadata/tails, output guards, empty menus and truncated records.
 The native original-call observer validates all 32 calls and compares each
-record and text with the Mac. The next stop is Engine+$4782 screen-size-selection; this is
+record and text with the Mac. The next stop is Engine+$47C2 screen-size-selection; this is
 not second-font, graphics or complete startup acceptance.
 
 ## Reproduce

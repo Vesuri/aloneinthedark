@@ -104,7 +104,7 @@ and selector. M4 extends this interface and supplies playback.
 `SoundDriver.h` has sanitizer-backed state and rejection checks. The native
 `driver_startup.gdb` checks both original call sites, the installed stub, packet,
 D0/D1, all thirteen preserved registers, stack and real native state. It also
-requires the next exact Engine+$4782 screen-size-selection stop with no MDRV resident.
+requires the next exact Engine+$47C2 screen-size-selection stop with no MDRV resident.
 `check_native_driver.py LOG --status STATUS` rejects missing or duplicated
 controls, wrong ordering, observer errors and nonzero/timeout status.
 

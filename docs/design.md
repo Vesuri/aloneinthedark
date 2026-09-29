@@ -219,9 +219,9 @@ The original startup path is implemented (M1.1–M1.3):
 **Verified:** the host check `tools/a5world_check.py` passes: it runs
 CODE 1's expansion algorithm on the resource bytes and compares, byte for byte,
 with the A5 world the Amiga dumps (via gdb) when it enters `main`. The current
-loud stop is `QUICKDRAW / GETMAINDEVICE`, after the original startup
+loud stop is `SANE / FP68K`, after the original startup
 directories, General lookup, first Times font lookup and two native driver
-initialization calls, menu-record initialization, logical device selection, SetDepth, GetGWorld and hidden dialog construction. The second Times lookup still needs intervening startup
+initialization calls, menu-record initialization, logical device selection, SetDepth, GetGWorld, hidden dialog construction and GetMainDevice. The second Times lookup still needs intervening startup
 services. Original MDRV loading remains forbidden.
 
 ### 4.3 Low memory

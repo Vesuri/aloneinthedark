@@ -2,8 +2,8 @@
 
 D4 requires 320×200 and no displayed size dialog. M2.1c3c2c5a establishes the
 original contract; M2.1c3c2c5b1 implements hidden construction. Native startup now stops
-at GetMainDevice, Engine+$4782, before the original positioning arithmetic.
-The fixed selection itself remains M2.1c3c2c5b2.
+at FP68K selector $200E, Engine+$47C2, in the original positioning arithmetic.
+GetMainDevice is verified by M2.1c3c2c5b2a; fixed selection remains M2.1c3c2c5b2b.
 
 Original bytes establish the following:
 
@@ -104,4 +104,5 @@ The checker guards original CODE/DLOG/DITL bytes and compares the portable
 The bounded item parser has sanitizer tests for every truncation, oversized
 counts/lengths and trailing bytes. The reference service trace also identifies
 GetMainDevice and SANE selectors $200E/$1004/$2000/$0016/$2010 in the original
-positioning path. They remain dependencies, not successful native services.
+positioning path. GetMainDevice now passes; the SANE operations remain dependencies, not
+successful native services.

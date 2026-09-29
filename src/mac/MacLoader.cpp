@@ -6090,6 +6090,11 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
             return 9;
         }
     }
+    if(trap==0xaa2a) { // GetMainDevice: Pascal handle result, no arguments
+        if(s_windowManager.initialized && s_mainDeviceMaster==s_mainDevice) {
+            write32(userStack,(uint32_t)&s_mainDeviceMaster);return 1;
+        }
+    }
     if (trap == 0xaa32) {                    // GetGDevice() -> GDHandle
         write32(userStack, (uint32_t)&s_mainDeviceMaster);
         if (g_stageCDepth < 18) g_stageCDepth = 18;
@@ -6700,6 +6705,7 @@ unsupportedTrap:
     if(trap==0xab1d && (uint16_t)regs[0]==5)routine="GETGWORLD";
     if(trap==0xa0f8) { manager="SOUND DRIVER";routine=driverStop ? driverStop : "SELECTOR";g_trapSelector=read32(userStack+4); }
     if(trap==0xa0f7) { manager="DIALOG MANAGER";routine="HIDDEN DEFINITION DRAWING"; }
+    if(trap==0xa9eb) { manager="SANE";routine="FP68K";g_trapSelector=read16(userStack); }
     if(sizeSelection) { routine="SCREEN SIZE SELECTION";g_trapSelector=1000; }
     copyString(g_trapManager, manager);
     copyString(g_trapRoutine, routine);

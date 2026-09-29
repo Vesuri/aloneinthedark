@@ -11,7 +11,7 @@ design.md §5.
 - Original CODE 1 expands the A5 world, relocates Core and enters `main`, then
   passes directory initialization, the first Times lookup and both native
   driver startup calls, menu-record initialization, device selection, SetDepth, GetGWorld and hidden dialog construction, then stops at
-  Engine+$4782 `GETMAINDEVICE`. The original
+  Engine+$47C2 `FP68K` selector $200E. The original
   mixer is never loaded.
 - The original runs in MAME on the System 7.5.5 reference volume.
 
@@ -45,13 +45,14 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.1c3c2c5b2 Fixed 320×200 startup selection (D4/M2.4).**
+- **M2.1c3c2c5b2b Fixed 320×200 startup selection (D4/M2.4).**
   - The hidden DLOG 1000 constructor now creates the measured old-style port,
     private DITL, button and text handles without displaying the dialog.
-    Original startup next stops at Engine+$4782 GetMainDevice, before the
-    original SANE positioning calls. See [screen-choice.md](screen-choice.md).
-  - Implement the measured remaining services in order: GetMainDevice, the
-    original SANE positioning operations, positioning/world binding, and the
+    GetMainDevice now returns the same measured device without mutation.
+    Original startup next stops at Engine+$47C2 FP68K selector $200E, the first
+    original SANE positioning call. See [screen-choice.md](screen-choice.md).
+  - Implement the measured remaining services in order: the original SANE
+    positioning operations (also M2.12), positioning/world binding, and the
     ModalDialog item-2 policy plus item lookup/disposal. Measure each newly
     reached contract; do not substitute a guessed position or selection return.
   - Item 2 selects WIND 128 for both size inputs and changes only PREF byte 7.

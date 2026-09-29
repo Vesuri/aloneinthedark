@@ -3,7 +3,7 @@
 The logical device now has a real 640×480, eight-bit screen in fast RAM, as
 specified in design.md §4.7. Original device selection passes; native startup
 passes SetDepth, GetGWorld and hidden dialog creation. It stops next at
-Engine+$4782 GetMainDevice, before positioning the hidden dialog. Drawing and AGA
+Engine+$47C2 FP68K selector $200E, while positioning the hidden dialog. Drawing and AGA
 presentation are not accepted by this prerequisite.
 
 ## Measured original selection
@@ -201,5 +201,21 @@ python3 tools/check_getgworld.py tmp/m2-getgworld-reference.log --status "$run_s
 
 Other QDOffscreen selectors remain named stops. The following GetNewDialog(1000)
 now creates real hidden records; see [screen-choice.md](screen-choice.md).
-GetMainDevice is the next stop before original positioning and selection.
+GetMainDevice also passes; FP68K is the next stop in original positioning.
 This is not completed D4, second-font or rendered-graphics acceptance.
+
+## Main-device query during positioning
+
+Original Engine+$4782 GetMainDevice returns the same main GDevice handle that
+the original selection and SetDepth calls used. It leaves the Pascal stack
+unchanged (no arguments), preserves D0–D7/A1–A6 in the capture, and changes
+neither the full 62-byte device record nor current device/port identities.
+The native handler returns its real existing handle without allocation or
+state/register writes. Portable device fields match the reference.
+
+`tools/mac_main_device.lua`, `amiga/main_device.gdb` and
+`tools/check_main_device.py REFERENCE --status 0 --native NATIVE --native-status 0`
+provide the original-byte-guarded pair. The checker rejects bad/missing status,
+missing completion, altered opcode, stack, result and preserved state/registers.
+The next original request is SANE FP68K selector $200E at Engine+$47C2, now a
+named stop. Positioning arithmetic and fixed selection remain queued.
