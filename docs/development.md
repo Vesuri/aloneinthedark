@@ -1616,8 +1616,8 @@ It deliberately does not interpret stale master pointers after a file closes.
 - EmptyHandle discards dirty `DDDD`; LoadResource retrieves the previously written
   `CCCC` under the same handle. The captured full GetResAttrs word is `$E002`
   while empty and `$0600` after reload in both runs. These upper bits are recorded,
-  not interpreted as portable resource attribute bits; their source needs tracing
-  before a native full-word result is chosen. UpdateResFile then preserves MemErr.
+  not interpreted as portable resource attribute bits; the trace/poison check
+  below establishes their uninitialized origin. UpdateResFile then preserves MemErr.
 - Closing a current dirty map persists `EEEE`. Closing either a clean or dirty
   noncurrent map preserves the application current file. Reopening the dirty
   noncurrent map retrieves its exact `FFFF` resource, then both files are deleted.
@@ -1664,3 +1664,22 @@ bytes. All 75,616 A5 bytes match, and the three changed resource-model objects
 pass the generated copy audit. Production startup still stops at GetFNum;
 remaining resource mutation/permission/lifecycle traps are M2.2f4b. No owner
 decision changed; rendered-video verification remains owner-deferred.
+
+
+### GetResAttrs upper-byte diagnosis (M2.2f4b prerequisite)
+
+Instruction traces of the empty/reloaded dirty-handle calls show the System
+7.5.5 wrapper at `$41768` reserving an uninitialized result word. The ROM at
+`$408134A0` writes only the low attribute byte (`MOVE.B 4(A2),13(A6)`). The
+wrapper copies the entire word back to its caller, exposing old stack contents
+as the high byte. The observed `$E002`/`$0600` are not portable attributes.
+
+`AITD_RESOURCE_ATTR_POISON=1` enables two guarded diagnostic breakpoints in
+`mac_resource_dirty.lua`. They verify the wrapper/ROM instruction bytes before
+setting the internal result's high byte to `$5A` and `$A5`. The full 45-call
+fixture returns `$5A02` and `$A500`, with unchanged low attributes, errors,
+registers, bodies, close/readback and scratch cleanup. The bounded MAME run exits
+zero and `check_resource_dirty.py --poison` passes. The unpoisoned traced run
+also exits zero and passes its checker. Native GetResAttrs should zero-extend
+the defined attribute byte; it must not reproduce stack garbage. No game
+instructions or original files change, and no owner decision is needed.

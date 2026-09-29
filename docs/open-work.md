@@ -61,10 +61,11 @@ required.
       and closing after a failed read-only update. *Done when* paired native fixtures,
       source-backed loading, disk error/rollback evidence and all regressions
       pass. Application-file closure and mixed raw/resource updates remain named
-      stops: measure their reached contracts before enabling them. Dirty EmptyHandle
-      returns unusual GetResAttrs upper bits (`$E002`, then `$0600` after reload);
-      trace their origin before choosing the native full-word result. Unmeasured
-      variants remain named stops and queued.
+      stops: measure their reached contracts before enabling them. GetResAttrs
+      exposes only a defined low attribute byte; the Mac wrapper propagates
+      uninitialized upper-byte scratch (traced and poison-verified). Return a
+      zero-extended attribute byte natively. Unmeasured variants remain named
+      stops and queued.
 
 
 

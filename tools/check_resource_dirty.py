@@ -11,9 +11,10 @@ OS={'create-a','create-b','allocate-a','allocate-b','dispose-detached','empty-di
 PRESERVE_MEM=CURRENT|{'create-a','create-b','map-a','map-b','release-dirty','lookup-released','detach-dirty','update-loaded','use-app','delete-a','delete-b'}|{s for s in LABELS if s.startswith('attrs-')}
 PRESERVE_D0=CURRENT|{'open-a','open-b','reopen-a','reopen-b','update-a','update-loaded','release-dirty','load-empty'}|{s for s in LABELS if s.startswith('attrs-')}
 
-def validate(text,status,resources):
+def validate(text,status,resources,poison=False):
     if status or any(x in text for x in ('FAIL ','LUA ERROR','Error in breakpoint')) or text.count('PASS resource dirty lifecycle capture complete; scratch deleted')!=1 or text.count('ARM resource-dirty Engine+$3CDC bytes=a820245f')!=1:
         raise ValueError('runner, original gate or completion')
+    if text.count('ARM resource-attrs poison wrapper/ROM byte guards checked')!=int(poison):raise ValueError('attribute poison byte guards')
     rows=[{k:v if k=='label' else int(v,16) for k,v in re.findall(r'(\w+)=(\S+)',line)} for line in text.splitlines() if line.startswith('RDIRTY label=')]
     if [r['label'] for r in rows]!=LABELS:raise ValueError('ordered 45-call sequence')
     by={r['label']:r for r in rows};app=by['application']['result']
@@ -30,7 +31,7 @@ def validate(text,status,resources):
         elif lookup or s.startswith('allocate-'):
             if not r['result'] or r['result']!=r['handle']:raise ValueError(s+' handle result')
         elif s.startswith('attrs-'):
-            expected={'attrs-released':2,'attrs-still-dirty':2,'attrs-detached':0,'attrs-empty':0xe002,'attrs-loaded':0x600}[s]
+            expected={'attrs-released':2,'attrs-still-dirty':2,'attrs-detached':0,'attrs-empty':0x5a02 if poison else 0xe002,'attrs-loaded':0xa500 if poison else 0x600}[s]
             if r['result']!=expected:raise ValueError(s+' attributes (including captured upper bits)')
         elif r['result']:raise ValueError(s+' scalar result')
     groups=[('allocate-a',0x41414141,0),('add-a update-a',0x41414141,0x20),('change-release release-dirty lookup-released attrs-released',0x42424242,0x20),('change-detach detach-dirty attrs-still-dirty write-before-detach',0x43434343,0x20),('detach-written attrs-detached',0x43434343,0),('lookup-detached dispose-detached load-empty attrs-loaded update-loaded',0x43434343,0x20),('change-empty',0x44444444,0x20),('change-close lookup-closed',0x45454545,0x20),('allocate-b',0x46464646,0),('add-b use-app close-noncurrent-a current-after-a lookup-noncurrent-closed',0x46464646,0x20)]
@@ -48,6 +49,6 @@ def validate(text,status,resources):
     return 'PASS resource dirty reference: 45 calls; dirty release/detach/empty/reload, current/noncurrent close, exact persisted bodies and cleanup'
 
 if __name__=='__main__':
-    p=argparse.ArgumentParser(description=__doc__);p.add_argument('log',type=Path);p.add_argument('--status',type=int,required=True);p.add_argument('--original',type=Path,required=True);a=p.parse_args()
-    try:print(validate(a.log.read_text(),a.status,read_resource_fork(a.original)))
+    p=argparse.ArgumentParser(description=__doc__);p.add_argument('log',type=Path);p.add_argument('--status',type=int,required=True);p.add_argument('--original',type=Path,required=True);p.add_argument('--poison',action='store_true');a=p.parse_args()
+    try:print(validate(a.log.read_text(),a.status,read_resource_fork(a.original),a.poison))
     except (ValueError,KeyError,OSError,StopIteration) as error:raise SystemExit('FAIL resource dirty reference: '+str(error))

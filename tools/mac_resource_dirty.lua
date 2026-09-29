@@ -17,6 +17,15 @@ emu.register_frame_done(function()
  end
  if not base then return end
  assert(mem:read_u32(base+0x3cdc)==0xa820245f,'RESOURCE DIRTY / ORIGINAL BYTES')
+ -- System 7.5.5 wrapper reserves a word but ROM writes only its low byte.
+ -- Optional controlled poison proves the returned upper byte is scratch state.
+ if os.getenv('AITD_RESOURCE_ATTR_POISON')=='1' then
+  assert(mem:read_u32(0x41768)==0x558f2f2e and mem:read_u32(0x4176c)==0x0008204c and mem:read_u16(0x41770)==0x4e90,'RESOURCE ATTR / WRAPPER BYTES')
+  assert(mem:read_u32(0x408134a0)==0x1d6a0004 and mem:read_u16(0x408134a4)==0x000d,'RESOURCE ATTR / ROM BYTE STORE')
+  cpu.debug:bpset(0x41770,'temp0==16','b@(sp+4)=5a;g')
+  cpu.debug:bpset(0x41770,'temp0==18','b@(sp+4)=0xa5;g')
+  print('ARM resource-attrs poison wrapper/ROM byte guards checked')
+ end
  local steps={}
  local function add(label,trap,setup,result,after,guard)
   steps[#steps+1]={label=label,trap=trap,setup=setup or '',result=result or '0',after=after or '',guard=guard}
