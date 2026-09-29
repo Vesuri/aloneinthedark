@@ -91,9 +91,9 @@ host suite passes. A standalone parser translation unit also compiles with the
 repository’s 68020 flags and compatibility prelude without unresolved helpers;
 this is a compiler check, not native runtime acceptance.
 
-The overlay now publishes both resources (1,654 bytes total). Its map preparation
-uses four reads / 100 bytes; the first lookup reads the two bodies in two bounded
-windows / 1,314 bytes. Startup retains 214 resource entries including the fonts.
+The overlay publishes both fonts and the native Jnth driver stub (1,682 bytes
+total). Its map preparation uses five reads / 124 bytes; the first lookup reads the two bodies in two bounded
+windows / 1,314 bytes. Startup retains 215 resource entries including the fonts and stub.
 GetFNum traverses the resource chain, validates the matching FOND and linked NFNT,
 and returns the installed family ID. It preserves D0 and the measured error
 behavior; unsupported collation, formats and missing linked definitions stop
@@ -103,22 +103,22 @@ named trap stops pending M2.9 instead of silently drawing the Vette fixed font.
 The native observer checks the live original trap bytes, Pascal Times name,
 result 20, eight-byte stack cleanup, D0 and error globals at Dan1+$0014. It dumps
 both installed bodies for exact host comparison and requires the next named
-`NATIVE SOUND DRIVER` stop, with no original MDRV body resident. The original
-second lookup has not been reached natively: the driver prerequisite lies between
-these calls. This is partial M2.1c3 acceptance, not a completed font/startup item.
+`COUNTMITEMS` stop, with no original MDRV body resident. The original
+second lookup has not been reached natively: menu initialization and further
+startup services lie between these calls. The two native driver calls now pass. This is partial M2.1c3 acceptance, not a completed font/startup item.
 
 `amiga/font_lookup.gdb` plus `tools/check_native_font.py LOG --status STATUS`
 provide that bounded first-call check; `--prepare` removes old diagnostic dumps.
 The checker rejects missing/duplicate completion, bad status and observer errors.
-M2.1c3 retains the second-call requirement after M2.1c3c's native driver seam.
+M2.1c3 retains the second-call requirement after the newly reached services.
 
 
 Startup counters distinguish two measured inputs. With the original default
-`PREF` 128 already present, the driver boundary uses 27 OS windows and 35/34
+`PREF` 128 already present, the menu boundary uses 29 OS windows and 37/37
 service entries/completions. Without preferences, original startup creates the
-file and uses 53 windows and 43/42 services. One service remains active at the
-intentional MDRV stop. Both paths read 20 original resource windows / 104,340
-bytes plus two overlay bodies / 1,314 bytes. `check_startup_prefs.py` classifies
+file and uses 55 windows and 45/45 services. All services complete before the
+menu stop. Both paths read 21 original resource bodies / 104,397 bytes plus
+three overlay bodies / 1,318 bytes. `check_startup_prefs.py` classifies
 the starting fixture before launch and supplies exact expected counters; it
 rejects partial, nonregular or unmeasured preference contents without deleting
 them. These observer restrictions do not alter production preference handling.

@@ -6,6 +6,7 @@
 #include "LowMemory.h"
 #include "MacHeap.h"
 #include "BitmapFont.h"
+#include "SoundDriver.h"
 #include "MacFiles.h"
 #include "FileReadCache.h"
 #include "FileWriteBuffer.h"
@@ -44,6 +45,9 @@ volatile uint32_t g_trapPC = 0;
 volatile uint32_t g_trapRegisters[15] = {0};
 volatile uint32_t g_trapUserStack = 0;
 volatile uint32_t g_resourceCount = 0;
+SoundDriver g_soundDriver;
+MacHeap::Handle g_soundDriverHandle=0;
+volatile uint32_t g_soundDriverCalls=0;
 volatile uint16_t g_jumpEntryCount = 0;
 volatile uint16_t g_blockMoveCount = 0;
 volatile uint16_t g_stageCDepth = 1;       // _BlockMove is row 1
@@ -672,7 +676,7 @@ static const TrapName s_trapNames[] = {
     {0xa02e,"MEMORY MANAGER","BLOCKMOVE"}, {0xa9f1,"SEGMENT MANAGER","UNLOADSEG"},
     {0xa86e,"QUICKDRAW","INITGRAF"},
     {0xa8fe,"FONT MANAGER","INITFONTS"}, {0xa912,"WINDOW MANAGER","INITWINDOWS"},
-    {0xa930,"MENU MANAGER","INITMENUS"}, {0xa9cc,"TEXTEDIT","TEINIT"},
+    {0xa950,"MENU MANAGER","COUNTMITEMS"}, {0xa930,"MENU MANAGER","INITMENUS"}, {0xa9cc,"TEXTEDIT","TEINIT"},
     {0xa97b,"DIALOG MANAGER","INITDIALOGS"},
     {0xa997,"RESOURCE MANAGER","OPENRESFILE"},
     {0xa900,"FONT MANAGER","GETFNUM"},
@@ -1052,13 +1056,23 @@ static uint8_t** loadResource(uint32_t index,const ResourceForks::Item& item,boo
 static uint8_t** getResource(uint32_t type,int16_t id,bool currentOnly=false)
 {
     // D8 forbids entering the original software mixer. The native driver seam
-    // is still a startup prerequisite; never hand executable MDRV code back.
+    // uses the port-owned Jnth resource; never hand executable MDRV code back.
     if(type==0x4d445256UL) { loaderStop("NATIVE SOUND DRIVER",3);showLoaderStop(); }
     uint16_t keys[ResourceForks::kForkCount];
     uint16_t count=s_resourceForks.searchOrder(s_currentResourceFork,type,currentOnly,keys);
     for(uint16_t n=0;n<count;++n) {
         ResourceForks::Item item;uint32_t index;
-        if(s_resourceForks.find(keys[n],type,id,item,&index))return loadResource(index,item,false);
+        if(s_resourceForks.find(keys[n],type,id,item,&index)) {
+            uint8_t** handle=loadResource(index,item,false);
+            if(type==0x4a6e7468UL) {
+                if(id!=11 || item.fork!=ResourceForks::kOverlayFork || item.size!=4
+                    || !handle || !*handle || read32(*handle)!=0xa0f84e75UL) {
+                    loaderStop("NATIVE DRIVER RESOURCE",3);showLoaderStop();
+                }
+                g_soundDriverHandle=handle;
+            }
+            return handle;
+        }
     }
     resourceResult(0);return 0; // Measured System 7.5.5 missing-ID behavior.
 }
@@ -4965,7 +4979,11 @@ static bool dispatchMemoryTrap(uint16_t trap,uint32_t* regs)
     case 0xa063: break; // The full SIZE arena was reserved before takeover.
     case 0xa064:
         owner=handleZone(handle);if(!owner)return false;
-        error=owner->moveHigh(handle);break;
+        error=owner->moveHigh(handle);
+        // Jnth is executable port-owned code, published after the original
+        // loader's MoveHHi. Its destination must not retain old instructions.
+        if(!error && handle==g_soundDriverHandle)CacheClearU();
+        break;
     case 0xa066: regs[8]=(uint32_t)zone->newEmptyHandle();error=zone->error();break;
     default: return false;
     }
@@ -5244,7 +5262,7 @@ static bool isUserService(uint16_t trap)
 #ifdef AITD_SERVICE_PROBE
     if((trap&0xfeff)==0xa0fc || trap==0xabfb)return true;
 #endif
-    return trap==0xa900 || trap==0xa9f4 || trap==0xa997 || trap==0xa9c4 || trap==0xa81a || trap==0xa9b1 || trap==0xa81b || trap==0xa999 || trap==0xa99a || trap==0xa9ab || trap==0xa9aa || trap==0xa9b0 || trap==0xa9ad
+    return trap==0xa0f8 || trap==0xa900 || trap==0xa9f4 || trap==0xa997 || trap==0xa9c4 || trap==0xa81a || trap==0xa9b1 || trap==0xa81b || trap==0xa999 || trap==0xa99a || trap==0xa9ab || trap==0xa9aa || trap==0xa9b0 || trap==0xa9ad
         || trap==0xa80e || trap==0xa9a2 || trap==0xa81f || trap==0xa820 || trap==0xa9a0 || trap==0xa9a1 || trap==0xa930 || trap==0xa9bf
         || trap==0xaa46 || trap==0xaa92 || trap==0xa9b9 || trap==0xa9bc || trap==0xa97c
         || trap==0xa40c || trap==0xa608 || trap==0xa60a || trap==0xa60c || trap==0xa60d || trap==0xa614 || trap==0xa615
@@ -5397,6 +5415,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
                                uint8_t* frame, uint8_t* userStack, bool inUserService=false)
 {
     uint32_t pc = read32(frame + 2);
+    const char* driverStop=0;
 #ifdef AITD_PROBE
     // Empty same-rate bracket: its total bounds the profiler's per-dispatch
     // observer cost and catches a timer whose apparent resolution is fiction.
@@ -5449,6 +5468,25 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         regs[0]=0xffffff94;regs[8]=0x2468ace0;return 1;
     }
 #endif
+    if(trap==0xa0f8) {
+        MacHeap* zone=handleZone(g_soundDriverHandle);
+        if(!zone || zone->handleSize(g_soundDriverHandle)!=4 || !*g_soundDriverHandle
+            || pc!=(uint32_t)*g_soundDriverHandle || read32(*g_soundDriverHandle)!=0xa0f84e75UL) {
+            driverStop="ENTRY";
+        } else {
+            uint32_t selector=read32(userStack+4),argument=read32(userStack+8);
+            if(selector==21) {
+                uint8_t* packet=(uint8_t*)argument;
+                if(!packet || (argument&1))driverStop="VOICE PACKET";
+                else driverStop=g_soundDriver.initialize(read16(packet),read16(packet+2),read16(packet+4));
+            } else if(selector==24)driverStop=g_soundDriver.quality(argument);
+            else driverStop="SELECTOR";
+            if(!driverStop) {
+                ++g_soundDriverCalls;regs[0]=0;regs[1]=selector==24 ? 1 : 0;
+                return 1; // C caller owns arguments; stub executes RTS.
+            }
+        }
+    }
     if(!(trap&0x0800) && dispatchMemoryTrap(trap,regs))return 1;
     uint16_t fileTrap=synchronousFileTrap(trap,(uint16_t)regs[0]);
     if(inUserService && dispatchFileMetadata(fileTrap,regs))return 1;
@@ -6414,11 +6452,12 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     g_trapSegment = 0xffff;
     g_trapOffset = 0xffffffffUL;
     const char* segmentName = "UNKNOWN";
+    uint32_t attributionPC=trap==0xa0f8 ? read32(userStack)-2 : pc;
     for (uint16_t i = 1; i < s_segmentCount; ++i) {
         uint32_t lo = (uint32_t)s_segments[i].begin;
         uint32_t hi = (uint32_t)s_segments[i].end;
-        if (pc >= lo && pc < hi) {
-            g_trapSegment = i; g_trapOffset = pc - lo; segmentName = s_segments[i].name;
+        if (attributionPC >= lo && attributionPC < hi) {
+            g_trapSegment = i; g_trapOffset = attributionPC - lo; segmentName = s_segments[i].name;
             break;
         }
     }
@@ -6441,6 +6480,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         if(g_trapSelector==0x1a)routine="OPENDF";
         if(g_trapSelector==0x30)routine="HGETVOLPARMS";
     }
+    if(trap==0xa0f8) { manager="SOUND DRIVER";routine=driverStop ? driverStop : "SELECTOR";g_trapSelector=read32(userStack+4); }
     copyString(g_trapManager, manager);
     copyString(g_trapRoutine, routine);
     if (s_loudStopScreen)
@@ -6557,6 +6597,7 @@ bool MacLoader::prepareResourceForks(const ResourceForks::Source& application,co
     s_resourceForks.close();
     clearResidentSegments();
     g_resourceCount = 0;
+    g_soundDriver.reset();g_soundDriverHandle=0;g_soundDriverCalls=0;
     for(uint16_t i=0;i<ResourceForks::kMaximumResources;++i) { s_resourceHandles[i]=0;s_resourceChanges[i]=0; }
     for(auto& touched:s_resourceMapTouched)touched=false;
     resourceResult(0);

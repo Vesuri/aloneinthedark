@@ -219,9 +219,10 @@ The original startup path is implemented (M1.1–M1.3):
 **Verified:** the host check `tools/a5world_check.py` passes: it runs
 CODE 1's expansion algorithm on the resource bytes and compares, byte for byte,
 with the A5 world the Amiga dumps (via gdb) when it enters `main`. The current
-loud stop is `NATIVE SOUND DRIVER` before MDRV loading, after the original
-startup directories, General lookup and first Times font lookup. The second
-Times lookup still needs the native-driver startup prerequisite.
+loud stop is `MENU MANAGER / COUNTMITEMS`, after the original startup
+directories, General lookup, first Times font lookup and two native driver
+initialization calls. The second Times lookup still needs intervening startup
+services. Original MDRV loading remains forbidden.
 
 ### 4.3 Low memory
 
@@ -389,8 +390,9 @@ Native trap probes, host fragmentation tests and paired heap captures verify it:
     bounded source reads through the user-mode bridge, including indirect
     Toolbox resource loads.
 - **Port overlay resources.** `resources/overlay.rsrc` is generated port-owned
-  data, opened read-only from `PROGDIR:overlay.rsrc`. It is empty at M2.2; measured
-  320×200 dialog layouts (D5) and placeholder fonts (D6) follow at their milestones.
+  data, opened read-only from `PROGDIR:overlay.rsrc`. It contains the Times
+  placeholder FOND/NFNT (D6) and native Jnth 11 driver stub (D8); measured
+  320×200 dialog layouts (D5) follow at their milestone.
   Ordinary resources fall back to this System-file map; dialog layouts override
   application resources as specified below.
 - **Lookup implemented.** GetResource/Get1Resource and named variants pass the
@@ -567,9 +569,8 @@ on a 68020/030.
   pointer stored at A5−$6AC. It uses selectors 1, 2, 4–9 and 12–25 [M].
   - The port provides a native SoundMusicSys-compatible driver behind that
     entry. The entry is a 68k stub of a private Line-A trap in a zone block.
-  - Install the stub at one verified point, chosen in task M4.1 by byte check:
-    either a port-supplied `Jnth` resource (the game looks for `Jnth` before
-    `MDRV` at Core+$10E2/+$1102), or a guarded loader/interface hook.
+  - The byte-verified installation uses a port-supplied `Jnth` 11 resource.
+    The game looks for `Jnth` before `MDRV` at Core+$10E2/+$1102.
     Core+$1CC6 calls the loader and +$1CF4 stores the entry pointer. The native
     startup now reaches this dependency before the second Times lookup, so its
     initialization subset is brought forward as M2.1c3c.
@@ -711,7 +712,7 @@ no unexpected loud stop. The cases are added as their milestone lands:
   was introduced in M0; positive acceptance passes on `a1200-020` (M1.3a).
 - `resource-read`: map-only startup, original CODE validation, bounded runtime
   resource reads and byte-exact debugger samples through the General lookup,
-  continuing to the explicit native-driver prerequisite stop.
+  continuing to the explicit CountMItems startup stop.
 - `file-write`: native Line-A and DOS backend writes, zero-count extension,
   truncation/mark updates, read-only errors, exact readback, close and dirty
   shutdown; host-file bytes and bounded transfer/window counts are required.

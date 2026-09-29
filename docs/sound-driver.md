@@ -1,9 +1,10 @@
 # Native SoundMusicSys driver
 
 D8 replaces the original software mixer at its driver interface. The native
-implementation is still pending; production stops before any MDRV body is
-loaded. This document records the measured startup contract (M2.1c3c1), not
-native or audio acceptance.
+startup implementation supplies Jnth 11 and the two measured initialization
+calls. Production stops later at CountMItems without loading any MDRV body.
+Integrated acceptance through the second Times lookup remains pending; neither
+this startup subset nor its reference capture proves audio acceptance.
 
 ## Installation seam
 
@@ -81,3 +82,47 @@ mouse input for the original size dialog and uses internal debugger reads;
 no host window access is involved. A timeout, absent/duplicate call, wrong
 state, changed preserved register, missing dump or missing positive completion
 fails. Host rejection fixtures run in `make host-tests`.
+
+## Native startup implementation (M2.1c3c2a)
+
+The generated overlay now includes Jnth 11 containing only `$A0F8; RTS`. The
+original loader obtains, detaches, moves and locks it, then installs its entry.
+MoveHHi flushes the native instruction cache after moving this executable stub.
+The native resource boundary requires the exact four port-owned bytes, ID and
+overlay provenance. Every call verifies the live handle and entry PC. MDRV
+requests retain their unconditional loud stop. No original instructions change.
+
+The private trap runs through the existing user-mode bridge. It reads the
+original C arguments, initializes six logical song slots, two effect slots and
+four unassigned Paula channels, and stores the measured normalization/quality
+configuration. All voices begin inactive with no sample or assigned channel.
+Selector 24 selects the requested 11 kHz/interpolation setting. It does not
+create a Mac mixer, open audio hardware or claim playback. Unmeasured selectors,
+configurations and reinitialization stop by name, reporting the original caller
+and selector. M4 extends this interface and supplies playback.
+
+`SoundDriver.h` has sanitizer-backed state and rejection checks. The native
+`driver_startup.gdb` checks both original call sites, the installed stub, packet,
+D0/D1, all thirteen preserved registers, stack and real native state. It also
+requires the next exact Engine+$2DEE CountMItems stop with no MDRV resident.
+`check_native_driver.py LOG --status STATUS` rejects missing or duplicated
+controls, wrong ordering, observer errors and nonzero/timeout status.
+
+The first attempt to require the second Times call stopped at CountMItems and
+was rejected. The original M0.2 trace likewise has menu initialization between
+the driver and second font call. The full second-call acceptance is retained in
+M2.1c3c2/M2.1c3 after the newly identified menu-record prerequisite. No render,
+audio or full startup success is claimed by this subset.
+
+Run the native observer with the normal production build, then check its log:
+
+```sh
+. amiga/env.sh
+make -C amiga
+(cd amiga && GDBTAIL=110 EXTRA_ARGS=--warp_mode=1 \
+  GDBSCRIPT=driver_startup.gdb ./diag_run.sh 60) \
+  >tmp/m2-native-driver-calls.log 2>&1
+run_status=$?
+python3 tools/check_native_driver.py tmp/m2-native-driver-calls.log \
+  --status "$run_status"
+```

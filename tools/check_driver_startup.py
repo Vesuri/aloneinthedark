@@ -14,11 +14,14 @@ COMPLETE='PASS driver startup reference: second Times=14 calls=2'
 DRIVER_HASH='3880a65dcdf4ece9c5e91712ce0af9866b0dcc435bd09fc5ad536eff2b70b470'
 PRESERVED=[f'd{i}' for i in range(2,8)]+[f'a{i}' for i in range(7)]
 
-def original(path,driver):
+def check_call_source(path):
     check_original(path);check_driver_source(path)
     core=next(r.body for r in read_resource_fork(path) if r.kind==b'CODE' and r.rid==3)
     if hashlib.sha256(core[0x1d28:0x1d6c]).hexdigest()!='0a07124a10112a37e832f94caf9bce1380189f7523f52da8fe59a6a57eb2075a':
         raise ValueError('original driver call/argument/cleanup bytes')
+
+def original(path,driver):
+    check_call_source(path)
     data=driver.read_bytes()
     if len(data)!=29256 or hashlib.sha256(data).hexdigest()!=DRIVER_HASH:
         raise ValueError('original live decrypted driver bytes')

@@ -9,8 +9,9 @@ design.md §5.
 **Current state:**
 - The executable builds and loads the original resource fork.
 - Original CODE 1 expands the A5 world, relocates Core and enters `main`, then
-  passes directory initialization and the first Times lookup, then stops at
-  `NATIVE SOUND DRIVER` before loading the original mixer.
+  passes directory initialization, the first Times lookup and both native
+  driver startup calls, then stops at Engine+$2DEE `COUNTMITEMS`. The original
+  mixer is never loaded.
 - The original runs in MAME on the System 7.5.5 reference volume.
 
 Each item gives the **goal**, then the scope, then *done when*: the evidence
@@ -43,20 +44,29 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.1c3c2 Native sound-driver startup prerequisite (D8).**
-  - After the first original Times lookup, startup reaches Core+$1102's MDRV
-    request before the second lookup. The exploratory run entered decrypted
-    code and stopped on `.BD_PAS16`; it is not an accepted execution path.
-    Production now stops before returning any MDRV body.
-  - Use the verified `Jnth` lookup at Core+$10E2 to install the port driver,
-    as D8 already requires. Core+$1CC6 calls the loader; the actual entry-pointer
-    store is +$1CF4. Preserve original instructions and register/stack contracts.
-  - The independent reference contract (M2.1c3c1) is measured and checked in
-    [sound-driver.md](sound-driver.md): selectors 21 and 24, arguments, state,
-    stack and preserved registers, through the second original Times lookup.
-  - Bring forward the startup portion of M4.1: implement those measured driver
-    selectors with real state, retaining named stops for unsupported selectors.
-    Do not return invented success or enable the original mixer.
+- **M2.1c3c2b Startup menu-record prerequisite.**
+  - Native Jnth startup calls 21/24 now pass. Original execution next reaches
+    Engine+$2DEE CountMItems before the second Times lookup. The Mac M0.2 trace
+    confirms intervening CountMItems/GetMenuItemText/SetMenuItemText calls at
+    Engine+$2DEE/+$2E0C/+$2EC2. These are data operations, not a menu bar (D7).
+  - Measure the original arguments, returned counts/text and changed menu
+    records. Implement the reached operations over the existing menu handles,
+    preserving their packed records and the measured trap ABI. Reject malformed
+    or unsupported records explicitly; do not return invented counts or strings.
+
+  *Done when* original menu-record initialization passes paired Mac/native
+  count/text/mutation checks, the next stop is named, and relevant regressions
+  pass. The driver/font integrated acceptance below remains required.
+- **M2.1c3c2 Native-driver integrated startup acceptance (D8).**
+  - M2.1c3c2a supplies the port-owned Jnth 11 stub through the original loader,
+    with no original instructions changed. Selectors 21/24 initialize native
+    state and quality; other operations/configurations stop explicitly.
+  - Both original call returns match the Mac register/stack/state contract.
+    The first CountMItems stop prevents reaching the second Times call; this
+    original acceptance requirement is retained, not counted as passed.
+  - Keep the MDRV guard and verify through any newly reached startup services.
+    The independent Mac contract and installed seam are in
+    [sound-driver.md](sound-driver.md).
 
   *Done when* original startup reaches the second Times lookup through the native
   driver, no original MDRV body executes, original-byte and reference contracts
@@ -65,7 +75,7 @@ required.
 - **M2.1c3 Font availability prerequisite for original PAK reads.**
   - The installed font and GetFNum now pass the first original call at
     Dan1+$0012. The second call at +$0038 remains unverified natively behind the
-    sound-driver prerequisite above. Keep this original acceptance requirement.
+    intervening startup services above. Keep this original acceptance requirement.
   - The original/reference-fixture GetFNum contract is measured; see
     [font-manager.md](font-manager.md). The port-owned 14-point FOND/NFNT
     definition, native parser and installed-body lookup pass host/first-call
@@ -91,7 +101,7 @@ required.
   evidence before revising that requirement; absence from one route is not proof.
 - **M1.6b Final startup requirements acceptance (after file/resource services).**
   - M1.6a implements the measured identity records and verifies all eleven
-    Engine capability flags. Full startup is still stopped in GetFNum, before
+    Engine capability flags. Full startup is still stopped in CountMItems, before
     Core's initialization-result/alert branches; it is not a successful launch.
   - After M2.1/M2.2, verify Core+$0460 is reached with initialization result zero,
     without taking its failure-alert branches ($0410/$044E).

@@ -57,6 +57,14 @@ preparation) are inherited. Vette's Bogas engine bridge is removed. This game
 uses `snd ` resources and a MIDI synth driver (`MDRV`, `SONG`, `INST`), plus
 .PAK sample and music lists; its Sound Manager usage is not mapped yet.
 
+The original driver loader now selects port-owned Jnth 11 from the overlay.
+Its four-byte `$A0F8; RTS` stub enters the user-mode service bridge, with the
+original C argument/return convention. MoveHHi flushes the instruction cache
+before the original caller executes it. The native state implements only the
+measured initialization and quality selectors; all others stop explicitly.
+MDRV loading remains forbidden. See [sound-driver.md](sound-driver.md) for the
+byte-verified seam and paired startup contracts; playback remains M4.
+
 ## Lifecycle
 
 Shell and Workbench startup, the protected Workbench reply, allocation ledgers

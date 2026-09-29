@@ -33,7 +33,7 @@ if $pc!=(unsigned long)($dan+0x14) || *(short*)$out!=20 || $sp!=(unsigned long)(
 end
 printf "PASS font first: Dan1+0014 result=%d stack=$%08x D0=$%08x\n",*(short*)$out,$sp,$d0
 continue
-if g_stageBState!=2 || g_trapWord!=0 || g_trapSegment!=3 || (*(unsigned long*)(g_trapRoutine+0)!=0x4e415449 || *(unsigned long*)(g_trapRoutine+4)!=0x56452053 || *(unsigned long*)(g_trapRoutine+8)!=0x4f554e44 || *(unsigned long*)(g_trapRoutine+12)!=0x20445249 || *(unsigned long*)(g_trapRoutine+16)!=0x56455200) || g_resourceRuntimeReads!=20 || g_resourceRuntimeBytes!=104340 || g_overlayRuntimeReads!=2 || g_overlayRuntimeBytes!=1314 || g_systemWindows!=$startup_windows || g_macServiceEntered!=$startup_entered || g_macServiceCompleted!=$startup_completed || g_macServiceActive!=1
+if g_stageBState != 3 || g_trapWord != 0xa950 || g_trapSegment != 7 || g_trapOffset != 0x2dee || *(unsigned long*)g_trapRoutine!=0x434f554e || *(unsigned long*)(g_trapRoutine+4)!=0x544d4954 || *(unsigned long*)(g_trapRoutine+8)!=0x454d5300 || g_resourceRuntimeReads!=21 || g_resourceRuntimeBytes!=104397 || g_overlayRuntimeReads!=3 || g_overlayRuntimeBytes!=1318 || g_systemWindows!=$startup_windows || g_macServiceEntered!=$startup_entered || g_macServiceCompleted!=$startup_completed || g_macServiceActive!=0
  echo FAIL font lookup: next named stop or bounded resource counts\n
  detach
  quit 1
@@ -46,7 +46,7 @@ while $ri<g_resourceCount
   detach
   quit 1
  end
- if s_resourceForks.m_items[$ri].item.fork==15
+ if s_resourceForks.m_items[$ri].item.fork==15 && (s_resourceForks.m_items[$ri].item.type==0x464f4e44 || s_resourceForks.m_items[$ri].item.type==0x4e464e54)
   if s_resourceHandles[$ri]==0 || *s_resourceHandles[$ri]==0
    echo FAIL font lookup: missing installed font body\n
    detach
@@ -69,6 +69,6 @@ if $font_bodies!=2
  detach
  quit 1
 end
-printf "PASS font startup prerequisite: first Times=20 overlay=2/1314 next=NATIVE_SOUND_DRIVER; second call pending driver\n"
+printf "PASS font startup prerequisite: first Times=20 overlay=3/1318 next=COUNTMITEMS; second call pending menu services\n"
 detach
 quit 0

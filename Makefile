@@ -100,6 +100,8 @@ host-tests:
 	@python3 tools/check_pak_idle.py --selftest
 	@python3 tools/check_font_lookup.py --selftest
 	@python3 tools/check_driver_startup.py --selftest
+	@python3 tools/check_sound_driver.py
+	@python3 tools/check_native_driver.py --selftest
 	@python3 tools/check_resload_access.py
 	@python3 tools/check_mac_heap.py
 	@python3 tools/check_lowmem.py --selftest

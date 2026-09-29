@@ -2151,3 +2151,33 @@ This independent measurement changes no native runtime; the prior native
 regression results still describe the production stop before MDRV loading.
 Native installation remains M2.1c3c2, preserving the full original acceptance
 requirement. No owner decision changed.
+
+### Native driver startup subset (M2.1c3c2a)
+
+The original loader now installs the port-owned Jnth 11 entry without any game
+patch. Native selectors 21/24 initialize voice/channel state and quality and
+match both Mac return contracts, including thirteen preserved registers and
+unchanged caller stack. The instruction cache is flushed after the loader's
+MoveHHi. Other selectors/configurations remain named stops; MDRV is never
+loaded. The next original stop is Engine+$2DEE `MENU MANAGER / COUNTMITEMS`.
+The second Times lookup is still pending behind intervening services: its
+attempt was rejected at that menu stop. M2.1c3c2 and M2.1c3 retain full integrated
+acceptance; menu-record support is the next named prerequisite.
+
+The complete host suite, six native regression cases, four startup observers,
+first-font body comparison and both driver-call checks pass normally. Final
+production passes the driver/font observers and both fresh/existing-preference
+resource boundaries: 55/29 windows and 45/45 or 37/37 paired services. Overlay
+preparation is 5 reads / 124 bytes; its three runtime bodies total 1,318 bytes.
+Original application preparation remains 228 / 201,058; runtime is now 21 /
+104,397 after loading MENU 128. All 75,616 A5 bytes match. File-write remains at
+406 paired calls / 1,039 windows, with all rollback and staging cases passing.
+Original preferences were preserved before the file-write fixture and restored
+exactly after the final fresh-start check.
+
+Final link/no-float/probe audits pass (76 probes). The generated-copy inspection
+finds one shared-base postincrement byte copy in the existing initGraf patterns,
+the already-queued M2.3a defect; ResourceDirectory has none. No new driver copy
+uses that form. No timeout, failed second-font attempt or obsolete overlay-size
+observer is counted as passing. Rendered-window acceptance remains owner-deferred;
+no render/audio/full-startup acceptance or owner decision changed.

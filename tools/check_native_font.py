@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Accept the first original GetFNum and explicit D8 stop, not the second call."""
+"""Accept the first original GetFNum and explicit menu stop, not the second call."""
 import argparse
 import hashlib
 from pathlib import Path
@@ -9,7 +9,7 @@ from placeholder_font import build
 from check_font_lookup import check_original
 from resource_fork import read_resource_fork
 
-MARKER='PASS font startup prerequisite: first Times=20 overlay=2/1314 next=NATIVE_SOUND_DRIVER; second call pending driver'
+MARKER='PASS font startup prerequisite: first Times=20 overlay=3/1318 next=COUNTMITEMS; second call pending menu services'
 ROOT=Path(__file__).resolve().parents[1]
 FILES=[ROOT/'tmp/font-native-fond.bin',ROOT/'tmp/font-native-nfnt.bin']
 def check(text,status):
