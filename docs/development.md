@@ -1107,3 +1107,37 @@ preloading. Acceptance passed: the full host suite; native file-write, file-read
 window-core, boot and resource-read; catalog, startup, identity and low-memory
 observers. Every run exited normally. The startup A5 dump has zero mismatches
 across all 75,616 bytes. Rendered-picture verification remains owner-deferred.
+
+
+### Resource metadata and lazy-handle reference (M2.2d1)
+
+`tools/mac_resource_handles.lua` runs 18 synthetic calls on the System 7.5.5
+reference after checking original Engine+$3CDC (`A820 245F`). It uses scratch
+stack instructions, without editing the game's code or files. The paired
+`tools/check_resource_handles.py` requires normal runner exit, every ordered
+result, stack cleanup, output canaries, handle identity and exact reloaded bytes.
+It also checks original Gloss SetResLoad sites +$03CC/+$03E0 and GetResInfo +$03F4.
+
+Measured contract:
+- GetResInfo returns General's ID/type/Pascal name with ResErr/D0 zero. It also
+  returns Error Messages metadata while its resource handle is empty, both
+  before its first load and after EmptyHandle.
+- A nil or detached handle returns ID -1, type zero, an empty Pascal name and
+  ResErr/D0 `$FF40` (-192). Bytes beyond the returned name remain untouched.
+- SetResLoad(false/true) writes ResLoad 0/1 and preserves seeded ResErr and D0.
+  With loading disabled, ID and named lookups share a nonnull empty handle.
+  Re-enabling loading makes lookup fill that same handle.
+- LoadResource explicitly fills/reloads the handle even when ResLoad is false,
+  clears ResErr and preserves D0. EmptyHandle clears the body while preserving
+  the resource association and ResErr. The reloaded 251-byte STR# 2001 body
+  matches the original, SHA256
+  `3646fd58d4898bbae89c6e1283418c305adf3016bcce50d8f7ce36e865d38341`.
+- DetachResource preserves the body and clears ResErr/D0. GetResInfo then reports
+  no resource association. LoadResource on this already loaded detached handle
+  preserves its body, clears ResErr and preserves D0. ReleaseResource(nil)
+  returns -192 while preserving D0.
+
+The final reference run exited zero and its checker passed. This is reference
+acceptance only: native implementation and matching probes are M2.2d2. Automatic
+heap-pressure purge, unloaded detached handles, valid ReleaseResource disposal,
+multi-fork lookup and writable forks are not established by this fixture.
