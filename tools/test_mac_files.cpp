@@ -3,6 +3,28 @@
 #include <cstring>
 #include <initializer_list>
 #include "../src/mac/MacFiles.h"
+static void volumeParameters() {
+    MacFiles c;c.reset();c.application=c.add(2,"Game","PROGDIR:",true);
+    c.system=c.add(2,"System Folder","",true);
+    assert(!c.initializeDirectories());
+    const unsigned char record[20]={0,2,0,0,0x10,0xe0};
+    unsigned char buffer[32];uint32_t actual;
+    for(unsigned count=0;count<=32;++count) {
+        memset(buffer,0xcc,sizeof(buffer));actual=0xdeadbeef;
+        assert(!c.volumeParameters(-1,0,buffer,count,actual));
+        assert(actual==(count<20 ? count : 20));
+        for(unsigned i=0;i<32;++i)assert(buffer[i]==(i<actual ? record[i] : 0xcc));
+    }
+    actual=0xdeadbeef;assert(c.volumeParameters(99,0,buffer,6,actual)==-35 && actual==0xdeadbeef);
+    assert(!c.volumeParameters(99,"Alone:",buffer,6,actual));
+    assert(c.volumeParameters(99,"Alone",buffer,6,actual)==-35);
+    assert(!c.volumeParameters(0,":ignored:",buffer,6,actual));
+    assert(!c.volumeParameters(c.applicationWD,0,buffer,6,actual));
+    assert(c.volumeParameters(-1,"Missing:",buffer,6,actual)==-35);
+    assert(!c.volumeParameters(-1,0,0,0,actual) && !actual);
+    assert(c.volumeParameters(-1,0,0,1,actual)==c.unsupported);
+    assert(c.volumeParameters(-1,0,buffer,0xffffffff,actual)==c.unsupported);
+}
 static void indexedFiles() {
     MacFiles c;c.reset();c.application=c.add(2,"Game","PROGDIR:",true);
     c.data=c.add(c.application,"Alone Data","PROGDIR:data",true);
@@ -91,7 +113,7 @@ static void catalogLifetime() {
     assert(c.planCreate(0,0x1234,"new",plan)==c.dirNFErr);
 }
 int main() {
-    indexedFiles();
+    volumeParameters();indexedFiles();
     dualForks();
     catalogLifetime();
     MacFiles c;c.reset();assert(c.count()==1 && c.entry(2)->parent==1);

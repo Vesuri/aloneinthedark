@@ -216,6 +216,15 @@ int16_t MacFiles::openFork(uint32_t id,bool resource,uint8_t permission,bool loc
     ref=result;Fork* f=const_cast<Fork*>(fork(ref));f->shared=permission==4;f->locked=locked;
     return noErr;
 }
+int16_t MacFiles::volumeParameters(int16_t ref,const char* name,uint8_t* buffer,uint32_t requested,uint32_t& actual) const {
+    if(requested>0x7fffffffUL || (!buffer && requested))return unsupported;
+    int16_t error=volume(ref,name);if(error)return error;
+    // Measured System 7.5.5 local HFS record: version 2, attributes $10E0,
+    // no shared-volume handle/server, unrated speed, standard HFS privileges.
+    actual=requested<20 ? requested : 20;
+    for(uint32_t i=0;i<actual;++i)buffer[i]=i==1 ? 2 : i==4 ? 0x10 : i==5 ? 0xe0 : 0;
+    return noErr;
+}
 int16_t MacFiles::volume(int16_t ref,const char* name) const {
     // A full pathname's volume prefix overrides the reference. A bare name
     // is ignored by the reference FlushVol; ref zero then selects the default.

@@ -657,3 +657,27 @@ Preferences beneath System is a complete supported namespace. The legacy mixed
 absence, but cannot claim a complete file listing or arbitrary missing name.
 Host tests enforce these boundaries; native/Mac fixtures cover the complete
 application directory and existing data/save/prefs fixtures remain unchanged.
+
+
+## Volume characteristics (M2.1b2c9c2c1)
+
+Synchronous HGetVolParms (`A260`, selector `$30`) returns the measured 20-byte
+System 7.5.5 local HFS record: version 2, attributes `$000010E0`, zero shared
+volume handle, server address, speed grade and foreign privilege ID. This
+preserves the reference capability identity; unsupported APIs remain loud.
+It copies `min(ioReqCount,20)` bytes and reports that count, leaving the remainder
+untouched. Zero bytes with a null buffer succeeds. Negative lengths, nonzero
+lengths with null buffers and unmeasured trap-flag forms remain unsupported.
+Invalid volume errors preserve both ioActCount and the caller's buffer.
+
+Volume resolution reuses the measured FlushVol rules: a colon-terminated volume
+prefix overrides the reference; bare, empty and relative names use the supplied
+reference. Default, explicit and working-directory references are supported.
+The operation uses catalog state and opens no system window.
+
+Original Core+$43F4 is `7030 A260`. The caller requests six bytes and tests the
+`bNoSysDir` bit (`$00020000`) at +$4404. The reference attributes leave it clear,
+so the caller proceeds to HGetVInfo at +$4424; that remaining service stays queued.
+The maintained 22-call Mac fixture measures lengths 0–32, name/reference/WD
+selection, untouched tails and missing-volume outputs. Host and native fixtures
+check every count 0–32, exact bytes, errors and null zero-length buffers.

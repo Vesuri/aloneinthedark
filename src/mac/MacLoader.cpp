@@ -5184,7 +5184,15 @@ static bool dispatchFileMetadata(uint16_t trap,uint32_t* regs)
     if(!pb)return false;
     uint16_t selector=(uint16_t)regs[0];
     int16_t error=MacFiles::unsupported;
-    if(selector==8) { // PBGetFCBInfo: exact reference or one-based live-fork index.
+    if(selector==0x30) { // PBHGetVolParms, synchronous local volume.
+        if(trap!=0xa260)return false;
+        const uint8_t* name=(const uint8_t*)read32(pb+18);char volume[256];
+        uint16_t length=name ? name[0] : 0;
+        for(uint16_t i=0;i<length;++i)volume[i]=name[i+1];volume[length]=0;
+        uint32_t actual=0;
+        error=s_files.volumeParameters((int16_t)read16(pb+22),volume,(uint8_t*)read32(pb+32),read32(pb+36),actual);
+        if(!error)write32(pb+40,actual);
+    } else if(selector==8) { // PBGetFCBInfo: exact reference or one-based live-fork index.
         const MacFiles::Fork* fork=0;
         error=s_files.queryFork((int16_t)read16(pb+22),(int16_t)read16(pb+28),
                                (int16_t)read16(pb+24),fork);

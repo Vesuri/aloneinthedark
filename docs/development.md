@@ -827,3 +827,19 @@ returns `CATALOG / UNSUPPORTED DIRECTORY`, and an orphan `.rsrc` returns
 `CATALOG / ORPHAN COMPANION`. Each fixture owns and cleans only its named scratch.
 The observer finishes the real catalog builder before takeover; no game file is
 modified and no host window access is used.
+
+
+### Volume-parameter regression (M2.1b2c9c2c1)
+
+Run `tools/mac_file_volparms.lua` using the documented headless MAME command,
+then `python3 tools/check_file_volparms.py LOG --status STATUS` with its actual
+exit status. The read-only 22-call fixture checks the original Core+$43F4
+`7030 A260` bytes and the standard +$4142 observer bytes. Its initial GetVol
+supplies an actual working-directory reference for the round-trip case.
+No mode selection, original-code patch or host-window access is used.
+
+Native `file-write` stage 47 finishes with `g_fileVolumeProbeStep=35`; the marker
+includes `volparms=exact`. The full fixture still uses 296 system windows, since
+these catalog-only queries open none. Record bytes, untouched buffer tails,
+ioActCount, D0/ioResult and CCR are checked. File-read, window-core, boot and the
+42-entry original-directory observer remain regression gates.

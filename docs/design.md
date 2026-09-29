@@ -304,8 +304,8 @@ Native trap probes, host fragmentation tests and paired heap captures verify it:
   file-table reference shared by CurApRefNum and CurResFile/UseResFile. Original
   GetFCBInfo/OpenWD, SetVol and Preferences FindFolder pass (M2.1b2a).
   Get1NamedResource is the next stop. Named Finder metadata and independent
-  data/resource streams and installed-file metadata are implemented; remaining
-  application namespace is complete; remaining dispatch variants are pending
+  data/resource streams, installed-file metadata and the application namespace
+  are implemented; remaining dispatch variants are pending
   M2.1b2c9c2c. Integrated original
   PAK read acceptance is M2.1c after the intervening Resource Manager work.
 - **File Manager calls (task M2.1).** Implement the ones the census lists over

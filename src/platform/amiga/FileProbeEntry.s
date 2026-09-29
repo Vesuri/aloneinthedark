@@ -68,3 +68,11 @@ aitdProbeWriteBackend:
 
     filetrap aitdProbeOpenRF,0xa00a
     filetrap aitdProbeHOpenRF,0xa20a
+
+    .globl aitdProbeVolParms
+aitdProbeVolParms:
+    move.l 4(sp),a0
+    moveq #0x30,d0
+    .word 0xa260
+    move.w ccr,g_fileProbeCCR
+    rts
