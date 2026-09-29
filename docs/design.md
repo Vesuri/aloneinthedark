@@ -481,7 +481,7 @@ Native trap probes, host fragmentation tests and paired heap captures verify it:
     The display path now queues that clear for AGA publication and reaches
     window SetPalette and the already-realized ActivatePalette, both preserving
     that state. ShowHide reveals the background with exact regions and no
-    viewport or palette change. The next stop is SetGWorld at Engine+$1286. Broader activation and rendered intro
+    viewport or palette change. SetGWorld now binds the visible game port; the next stop is TickCount at Dark+$41F4. Broader activation and rendered intro
     acceptance remain pending. See [palette.md](palette.md) and
     [aga-display.md](aga-display.md).
 - **Fonts.** See 4.11 and D6.

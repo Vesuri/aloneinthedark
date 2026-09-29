@@ -2796,7 +2796,7 @@ See [palette.md](palette.md) for the original bytes and paired capture procedure
 Six relevant startup observers and paired checks, host tests, fresh/low
 preferences, clean boot/resource reads and exact A5 comparison pass. Original
 preferences are restored and original MDRV remains absent. The next prerequisite
-is SetGWorld at Engine+$1286 after the now-verified ShowHide transition; intro
+is TickCount at Dark+$41F4 after ShowHide and game-port binding; intro
 and rendered acceptance remain pending.
 
 ## Colour-window geometry and background visibility
@@ -2806,5 +2806,4 @@ with their corresponding Mac observers and paired checkers. The contracts and
 local evidence are in [window-geometry.md](window-geometry.md). Host geometry
 checks are part of `make host-tests`. ShowHide's background clear is verified
 against its full complex region and must leave the viewport, palette and frame
-queue unchanged. Current startup observers pin SetGWorld selector 6 at
-Engine+$1286; a timeout or a different stop is not acceptance.
+queue unchanged. Current startup observers pin TickCount at Dark+$41F4; a timeout or a different stop is not acceptance.

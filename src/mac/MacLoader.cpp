@@ -745,7 +745,7 @@ static const TrapName s_trapNames[] = {
     {0xa02a,"MEMORY MANAGER","HUNLOCK"}, {0xa049,"MEMORY MANAGER","HPURGE"},
     {0xa04a,"MEMORY MANAGER","HNOPURGE"},
     {0xa032,"EVENT MANAGER","FLUSHEVENTS"},
-    {0xa03b,"TIME MANAGER","DELAY"},
+    {0xa03b,"TIME MANAGER","DELAY"}, {0xa975,"TIME MANAGER","TICKCOUNT"},
     {0xa03c,"TEXT UTILITIES","CMPSTRING"}, {0xa23c,"TEXT UTILITIES","CMPSTRING"},
     {0xa43c,"TEXT UTILITIES","CMPSTRING"}, {0xa63c,"TEXT UTILITIES","CMPSTRING"},
     {0xa033,"VERTICAL RETRACE","VINSTALL"}, {0xa034,"VERTICAL RETRACE","VREMOVE"},
@@ -6398,7 +6398,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
             return 9;
         }
     }
-    if(trap==0xab1d && (uint16_t)regs[0]==6) { // Restore the measured main WMgr world.
+    if(trap==0xab1d && (uint16_t)regs[0]==6) { // SetGWorld: measured screen-backed ports.
         uint8_t* device=(uint8_t*)read32(userStack);
         uint8_t* port=(uint8_t*)read32(userStack+4);
         if(s_windowManager.initialized && s_qdThePort
@@ -6406,6 +6406,17 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
            && port==s_windowManagerPort && read32(s_qdThePort)==(uint32_t)port) {
             write32(s_qdThePort,(uint32_t)port);
             regs[0]&=0xffff0000UL;regs[8]=(uint32_t)port;regs[9]=(uint32_t)device;
+            return 9;
+        }
+        WindowSlot* slot=windowSlot(port);
+        WindowGeometry::Rect bounds;
+        if(s_windowManager.initialized && s_qdThePort && s_mainDeviceMaster==s_mainDevice
+           && !device && slot && port==s_windowList && port[110]
+           && colorWindowFrame(*slot,bounds) && read16(port+6)==0xc000
+           && read32(slot->pixelMap)==(uint32_t)s_colorScreen && read16(slot->pixelMap+32)==8) {
+            write32(s_qdThePort,(uint32_t)port);
+            regs[0]=(regs[0]&0xffff0000UL)|read16(port+6);
+            regs[8]=(uint32_t)port;regs[9]=(uint32_t)&s_mainDeviceMaster;
             return 9;
         }
         unsupportedGraphics=true;goto unsupportedTrap;

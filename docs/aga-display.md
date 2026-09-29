@@ -1,8 +1,8 @@
 # Eight-bit display bring-up
 
 The integrated display publishes the first client clear and reaches
-`QUICKDRAW / SETGWORLD` at Engine+$1286 after palette binding/activation and
-background ShowHide. ShowHide changes no displayed pixel and queues no extra frame. Independent startup and
+`TIME MANAGER / TICKCOUNT` at Dark+$41F4 after palette binding/activation,
+background ShowHide and game-port binding. ShowHide changes no displayed pixel and queues no extra frame. Independent startup and
 five-frame fixture capture decoders pass, as do the 21 startup observers and
 paired checks, fresh/existing preferences, host tests, system-window checks,
 clean boot and streamed-resource regressions. This is M2.5a prerequisite

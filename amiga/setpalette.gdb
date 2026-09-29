@@ -49,7 +49,7 @@ printf "SET_COUNTS app=%u/%u overlay=%u/%u prep=%u/%u resources=%u\n",g_resource
 echo PASS native SetPalette capture\n
 continue
 printf "SET_NEXT state=%u trap=%X selector=%X segment=%u offset=%X manager=%s routine=%s windows=%u services=%u/%u\n",g_stageBState,g_trapWord,g_trapSelector,g_trapSegment,g_trapOffset,g_trapManager,g_trapRoutine,g_systemWindows,g_macServiceEntered,g_macServiceCompleted
-if g_stageBState!=3 || g_trapWord!=0xab1d || g_trapSegment!=7 || g_trapOffset!=0x1286 || *(unsigned long*)(g_trapRoutine+0)!=0x53455447 || *(unsigned long*)(g_trapRoutine+4)!=0x574f524c || g_trapRoutine[8]!=0x44 || g_trapRoutine[9]!=0 || g_macServiceActive!=0
+if g_stageBState!=3 || g_trapWord!=0xa975 || g_trapSegment!=4 || g_trapOffset!=0x41f4 || *(unsigned long*)(g_trapRoutine+0)!=0x5449434b || *(unsigned long*)(g_trapRoutine+4)!=0x434f554e || g_trapRoutine[8]!=0x54 || g_trapRoutine[9]!=0 || g_macServiceActive!=0
  echo FAIL SetPalette next stop\n
  detach
  quit 1

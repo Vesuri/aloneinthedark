@@ -201,8 +201,8 @@ python3 tools/check_getgworld.py tmp/m2-getgworld-reference.log --status "$run_s
 
 Other QDOffscreen selectors remain named stops. The following GetNewDialog(1000)
 now creates real hidden records; see [screen-choice.md](screen-choice.md).
-GetMainDevice also passes; FP68K is the next stop in original positioning.
-This is not completed D4, second-font or rendered-graphics acceptance.
+GetMainDevice and integer-only positioning also pass. Full intro acceptance
+remains open.
 
 ## Main-device query during positioning
 
@@ -217,5 +217,33 @@ state/register writes. Portable device fields match the reference.
 `tools/check_main_device.py REFERENCE --status 0 --native NATIVE --native-status 0`
 provide the original-byte-guarded pair. The checker rejects bad/missing status,
 missing completion, altered opcode, stack, result and preserved state/registers.
-The next original request is SANE FP68K selector $200E at Engine+$47C2, now a
-named stop. Positioning arithmetic and fixed selection remain queued.
+The subsequent SANE positioning calls now pass using integer arithmetic,
+without an FPU; fixed low-resolution selection is also implemented.
+
+## Binding the game drawing port
+
+Original Engine+$1286 calls SetGWorld with the visible WIND 128 colour port and
+nil device. The reference changes the current port from WMgrPort to WIND 128,
+keeps the sole screen device, pops eight argument bytes and returns D0=$0008C000,
+A0=window, A1=main-device handle. D1–D7/A2–A6 and the complete window, PixMap,
+device and pixels remain unchanged. The colour-port flags supply D0's low word.
+
+The native service binds that measured screen-backed window form; the existing
+main-WMgr restore remains supported and other layouts remain named stops.
+Original Engine+$1276–$1287 has SHA-256
+`6cc93f9eb31462a18a6460396cd3b737ec91052179d1062dee0bf78c309f0fb9`.
+`mac_world_binding.lua`, `world_binding.gdb` and `check_world_binding.py`
+provide the paired byte/ABI/state/pixel checks. MAME framebuffer captures use
+program-space video reads; generic debugger `save` reads the wrong address
+space here. The checker includes a real-client-pixel positive control.
+
+Both sides pass in `tmp/m2-world-binding-{reference,native}.log`. Original
+startup now loads Dark and reaches TickCount ($A975), Dark+$41F4. The measured
+existing-preferences totals are 36 resource reads / 161,044 bytes, 72 system
+windows and 126 completed services. No original MDRV is loaded.
+
+SetGWorld regression acceptance: original startup passes with existing and
+isolated fresh preferences (72/98 system windows, 126/134 completed services).
+Original preference files are restored. AGA and resource-read regressions,
+host tests, no-float and 78-symbol audits pass. The fresh-start A5 dump matches
+all 75,616 bytes exactly. Logs use the `tmp/m2-world-binding-*` prefix.

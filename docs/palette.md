@@ -324,7 +324,7 @@ before/after captures. The accepted reference/native calls are in
 completion. Captures stay under `tmp/activation-*`. Rejection checks cover
 failed/timeout status, missing completion, changed bytes, an extra publication
 and palette corruption. The subsequent ShowHide service now passes without
-changing palette or viewport pixels; the next stop is SetGWorld at Engine+$1286.
+changing palette or viewport pixels; SetGWorld also passes, and the next stop is TickCount at Dark+$41F4.
 
 
 Activation regressions: `tmp/m2-window-activation-regressions.log` contains six

@@ -7,7 +7,7 @@ from check_driver_startup import check_call_source
 
 CALLS=['PASS native driver call: selector=21 D0=0 D1=0 preserved=13 stack=unchanged rate=22 voices=6/2/2',
        'PASS native driver call: selector=24 D0=0 D1=1 preserved=13 stack=unchanged rate=11 voices=6/2/2']
-COMPLETE='PASS native driver startup: Jnth=11 calls=2 first-Times=20 second=pending-graphics next=SETGWORLD original-MDRV=absent'
+COMPLETE='PASS native driver startup: Jnth=11 calls=2 first-Times=20 second=pending-graphics next=TICKCOUNT original-MDRV=absent'
 def check(text,status):
     if status!=0 or any(bad in text for bad in ('FAIL','Error in sourced command file','Program received signal','timeout')):
         raise ValueError('runner/observer completion')

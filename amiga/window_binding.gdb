@@ -24,7 +24,7 @@ printf "WSET_ENTER sp=%X args=%04X/%08X/%08X d0=%X d1=%X d2=%X d3=%X d4=%X d5=%X
 printf "WSET_BYTES data=%04X%04X%04X%04X%04X%04X%04X%04X%04X%04X\n",*(unsigned short*)($misc+0x10e8),*(unsigned short*)($misc+0x10ea),*(unsigned short*)($misc+0x10ec),*(unsigned short*)($misc+0x10ee),*(unsigned short*)($misc+0x10f0),*(unsigned short*)($misc+0x10f2),*(unsigned short*)($misc+0x10f4),*(unsigned short*)($misc+0x10f6),*(unsigned short*)($misc+0x10f8),*(unsigned short*)($misc+0x10fa)
 # Capture the service itself after presentMacRuntime consumes the prior clear.
 # This source boundary is immediately before window binding validation.
-tbreak MacLoader.cpp:6748
+tbreak MacLoader.cpp:6759
 continue
 if s_windows[$slot].palette!=0 || g_macFramesQueued!=1 || s_pixelsDirty || s_dirtyRectCount!=0
  echo FAIL window binding service boundary\n
@@ -62,7 +62,7 @@ dump binary memory ../tmp/windowpalette-native-after-pending.bin (char*)s_loudSt
 echo PASS native window SetPalette capture\n
 continue
 printf "WSET_NEXT state=%u trap=%X segment=%u offset=%X manager=%s routine=%s windows=%u services=%u/%u\n",g_stageBState,g_trapWord,g_trapSegment,g_trapOffset,g_trapManager,g_trapRoutine,g_systemWindows,g_macServiceEntered,g_macServiceCompleted
-if g_stageBState!=3 || g_trapWord!=0xab1d || g_trapSegment!=7 || g_trapOffset!=0x1286 || g_macServiceActive!=0
+if g_stageBState!=3 || g_trapWord!=0xa975 || g_trapSegment!=4 || g_trapOffset!=0x41f4 || g_macServiceActive!=0
  echo FAIL next window binding boundary\n
  detach
  quit 1
