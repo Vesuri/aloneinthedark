@@ -23,6 +23,8 @@ local function dump(label,phase)
   out=out..string.format('temp8=d@(d@(temp9+0x%x)&0xffffff)&0xffffff;',region[2])
   out=out..'save tmp/showhide-reference-'..label..'-'..phase..'-'..region[1]..'.bin,temp8,w@temp8;'
  end
+ out=out..'temp8=d@0x9ee&0xffffff;temp8=d@temp8&0xffffff;save tmp/showhide-reference-'..label..'-'..phase..'-gray.bin,temp8,w@temp8;'
+ out=out..'temp8=d@0x9d6&0xffffff;save tmp/showhide-reference-'..label..'-'..phase..'-front.bin,temp8,0x9c;'
  return out
 end
 local armed=false

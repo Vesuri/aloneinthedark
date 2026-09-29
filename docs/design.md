@@ -479,9 +479,9 @@ Native trap probes, host fragmentation tests and paired heap captures verify it:
     state and realization, including retained duplicate endpoint colours.
     ShowWindow clears only client content and records its dirty rectangle.
     The display path now queues that clear for AGA publication and reaches
-    window SetPalette, whose binding preserves that state. The next stop is
-    ShowHide at Misc1+$0FC6; the already-realized ActivatePalette call now
-    preserves all state as measured. Broader activation and rendered intro
+    window SetPalette and the already-realized ActivatePalette, both preserving
+    that state. ShowHide reveals the background with exact regions and no
+    viewport or palette change. The next stop is SetGWorld at Engine+$1286. Broader activation and rendered intro
     acceptance remain pending. See [palette.md](palette.md) and
     [aga-display.md](aga-display.md).
 - **Fonts.** See 4.11 and D6.

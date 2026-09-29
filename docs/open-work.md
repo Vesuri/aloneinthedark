@@ -14,8 +14,8 @@ design.md §5.
   low-resolution selection/cleanup, all 75 font-metrics calls and four Apple Event
   registrations, colour-table loading/mutations, palette construction and default
   binding, hidden window-title state and the verified WIND 128 request. Startup realizes the palette and clears the game client area, then stops at
-  `SHOWHIDE` at Misc1+$0FC6, after palette binding/activation and publication
-  of the first client frame through the eight-plane AGA display. The original
+  `SETGWORLD` at Engine+$1286 after palette binding/activation, first-frame
+  AGA publication and the verified background ShowHide transition. The original
   mixer is never loaded.
 - The original runs in MAME on the System 7.5.5 reference volume.
 
@@ -49,16 +49,16 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.1c3c2c5b2c2g ShowHide window visibility prerequisite.**
-  - The original path reaches ShowHide ($A908) at Misc1+$0FC6 after palette
-    activation. Identify its window/visibility request from original bytes and
-    compare the Mac's window, region, palette and client-pixel effects.
-  - Implement the measured form without Mac chrome or dialogs. Unsupported
-    visibility changes remain named stops.
+- **M2.3b Startup SetGWorld binding prerequisite.**
+  - After ShowHide, original Engine+$1286 calls QDExtensions selector 6 to bind
+    a drawing world. The existing service only restores the unchanged main
+    Window Manager world; it rejects this new request explicitly.
+  - Measure the original arguments, current port/device and return registers;
+    bind the reached world without changing the original game instructions.
 
-  *Done when* paired original/native arguments and state effects match, startup
-  reaches the next named stop with original MDRV absent, and relevant startup
-  and display regressions pass.
+  *Done when* paired original/native binding and return state match, startup
+  reaches the next named stop with original MDRV absent, and the startup/display
+  regressions pass. Full offscreen drawing remains M2.3.
 - **M2.1c3c2 Native-driver integrated startup acceptance (D8).**
   - M2.1c3c2a supplies the port-owned Jnth 11 stub through the original loader,
     with no original instructions changed. Selectors 21/24 initialize native

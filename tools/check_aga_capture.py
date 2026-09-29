@@ -67,7 +67,7 @@ def main():
     transfer = read(args.folder, 'video-transfer-lut16.bin', 65536)
     require(hashlib.sha256(transfer).hexdigest() == 'bf0a6433c155a61989e5dc0571bae1357066ab476a24d0afaf2e2aa7094fe2aa', 'reference transfer identity')
     if args.mode == 'startup':
-        require(log.count('PASS AGA startup queued and VBI-published next=SHOWHIDE') == 1, 'startup positive control')
+        require(log.count('PASS AGA startup queued and VBI-published next=SETGWORLD') == 1, 'startup positive control')
         m = re.search(r'AGA_ACTIVE front=([0-9A-F]+) back=([0-9A-F]+) copper=([0-9A-F]+) crop=160/150 queued=1 presented=1 pending=0 line=(\d+) late=0', log)
         require(m and int(m[4]) < 72, 'startup publication')
         source = read(args.folder, 'aga-startup-logical.bin', 307200)
@@ -75,7 +75,13 @@ def main():
         expected = bytearray(307200)
         for y in range(150,350):
             expected[y*640+160:y*640+480] = bytes([255])*320
-        require(source == expected, 'exact first client clear, no outside writes')
+        # ShowHide now clears the measured exposed background after the client
+        # frame is queued; it leaves every viewport pixel and palette unchanged.
+        from check_showhide import spans
+        region = (args.folder/'showhide-reference-showhide-after-update.bin').read_bytes()
+        for y,left,right in spans(region):
+            expected[y*640+left:y*640+right] = bytes([255])*(right-left)
+        require(source == expected, 'exact client/background clears, no other writes')
         reference_clut = read(args.folder, 'windowstate-reference-show-after-clut.bin', 2056)
         require(clut[4:] == reference_clut[4:], 'reference logical palette, excluding process-local seed')
         hardware = read(args.folder, 'windowstate-reference-show-after-hardware.bin', 1024)

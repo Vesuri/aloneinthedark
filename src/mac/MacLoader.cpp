@@ -8,6 +8,7 @@
 #include "BitmapFont.h"
 #include "Palette8.h"
 #include "WindowGeometry.h"
+#include "RegionRows.h"
 #include "SoundDriver.h"
 #include "MenuRecords.h"
 #include "AppleEventHandlers.h"
@@ -241,7 +242,7 @@ static uint8_t s_windowManagerVisRgn[10];
 static uint8_t* s_windowManagerVisRgnMaster;
 static uint8_t s_windowManagerClipRgn[10];
 static uint8_t* s_windowManagerClipRgnMaster;
-static uint8_t s_grayRgn[10];
+static uint8_t s_grayRgn[76];
 static uint8_t* s_grayRgnMaster;
 static uint8_t s_textEditScrap[1];
 static uint8_t* s_textEditScrapMaster;
@@ -272,7 +273,7 @@ struct WindowSlot {
     uint8_t* contentRegionMaster;
     uint8_t clipRegion[10];
     uint8_t* clipRegionMaster;
-    uint8_t updateRegion[10];
+    uint8_t updateRegion[256];
     uint8_t* updateRegionMaster;
     uint8_t title[256];
     uint8_t* titleMaster;
@@ -285,7 +286,7 @@ struct WindowSlot {
     bool dialog;
     uint16_t dialogItemCount;
     bool dialogDrawn;
-    uint8_t visibilityRegion[10];
+    uint8_t visibilityRegion[256];
     uint8_t* visibilityRegionMaster;
     uint8_t** ownedDialogHandles[4]; // private DITL, two controls, static text
 };
@@ -1502,6 +1503,7 @@ static void initWindowManagerPort()
     initRegion(s_windowManagerClipRgn, s_windowManagerClipRgnMaster,
                -32767, -32767, 32767, 32767);
     initRegion(s_grayRgn, s_grayRgnMaster, 20, 0, kScreenHeight, kScreenWidth);
+    RegionRows::desktop(s_grayRgn);
 
     // WMgrPort remains an old-style GrafPort on this system.  Vette reads its
     // embedded BitMap directly to obtain the screen bounds before centering windows.
@@ -1963,6 +1965,52 @@ static bool showColorWindow(WindowSlot& slot)
         for(int16_t x=left;x<right;++x)s_colorScreen[uint32_t(y)*kScreenWidth+x]=255;
     markDirtyBounds(top,left,bottom,right);
     slot.window[110]=1;slot.window[111]=0xff;
+    return true;
+}
+
+static WindowSlot* windowSlot(uint8_t* window);
+
+static bool showBackgroundWindow(WindowSlot& slot)
+{
+    WindowSlot* front=windowSlot(s_windowList);
+    WindowGeometry::Rect bounds,frontBounds;
+    if(!front || front==&slot || !front->window[110] || front->procID!=4
+       || slot.window[110] || slot.procID!=2 || slot.dialog
+       || read32(front->window+144)!=(uint32_t)slot.window || read32(slot.window+144)
+       || !colorWindowFrame(slot,bounds) || !colorWindowFrame(*front,frontBounds)
+       || bounds.top>0 || bounds.left>0 || bounds.bottom<kScreenHeight || bounds.right<kScreenWidth
+       || frontBounds.bottom-frontBounds.top!=200 || frontBounds.right-frontBounds.left!=320
+       || !Palette8::rgb(slot.window+42,0) || read32(slot.window+84)!=255
+       || s_activePalette!=g_defaultPalette)return false;
+    if(bounds.top<=-32768 || bounds.left<=-32768 || bounds.bottom>=32767 || bounds.right>=32767)return false;
+    uint8_t expected[44];
+    if(!WindowGeometry::structure4(frontBounds,expected))return false;
+    for(uint16_t i=0;i<44;++i)if(front->structureRegion[i]!=expected[i])return false;
+    uint8_t update[256],visibility[256];
+    if(!RegionRows::difference(s_grayRgn,sizeof s_grayRgn,front->structureRegion,44,bounds,
+            update,sizeof update)
+       || !RegionRows::difference(s_grayRgn,sizeof s_grayRgn,front->structureRegion,44,bounds,
+            visibility,sizeof visibility,int16_t(-bounds.left),int16_t(-bounds.top)))return false;
+    // The exposed background is disjoint from the game viewport. Validate that
+    // before touching pixels, so this service cannot hide a game drawing error.
+    for(int16_t y=0;y<kScreenHeight;++y) {
+        RegionRows::Edges row{};
+        if(!RegionRows::row(update,sizeof update,y,row))return false;
+        for(uint16_t i=0;i<row.count;i+=2)
+            if(frontBounds.top<=y && y<frontBounds.bottom
+               && row.x[i]<frontBounds.right && row.x[i+1]>frontBounds.left)return false;
+    }
+    initRegion(slot.structureRegion,slot.structureRegionMaster,bounds.top-1,bounds.left-1,bounds.bottom+1,bounds.right+1);
+    initRegion(slot.contentRegion,slot.contentRegionMaster,bounds.top,bounds.left,bounds.bottom,bounds.right);
+    for(uint16_t i=0;i<read16(update);++i)MenuRecords::copyByte(slot.updateRegion+i,update+i);
+    for(uint16_t i=0;i<read16(visibility);++i)MenuRecords::copyByte(slot.visibilityRegion+i,visibility+i);
+    for(int16_t y=0;y<kScreenHeight;++y) {
+        RegionRows::Edges row{};RegionRows::row(update,sizeof update,y,row);
+        for(uint16_t i=0;i<row.count;i+=2)
+            for(int16_t x=row.x[i];x<row.x[i+1];++x)s_colorScreen[uint32_t(y)*kScreenWidth+x]=255;
+    }
+    // No displayed pixel changed; a later viewport move requests a full frame.
+    slot.window[110]=1;
     return true;
 }
 
@@ -6475,6 +6523,12 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
             initRegion(slot->contentRegion,slot->contentRegionMaster,0,0,0,0);
         }
         return 9;
+    }
+    if(trap==0xa908) {                       // ShowHide(window, visible)
+        WindowSlot* slot=windowSlot((uint8_t*)read32(userStack+2));
+        if(read16(s_windowManagerPixMap+32)!=8 || !slot || userStack[0]!=1
+           || !showBackgroundWindow(*slot))goto unsupportedTrap;
+        return 7;
     }
     if (trap == 0xa91b) {                    // MoveWindow(window, h, v, front)
         WindowSlot* slot=windowSlot((uint8_t*)read32(userStack+6));

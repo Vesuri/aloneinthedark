@@ -24,7 +24,7 @@ def original(path):
     if hashlib.sha256(b[0x534:0x66c]).hexdigest()!='364f0d6ecb13463d7382b639f6d6dd460023ced401f22c52ee43f77a9f019f15':raise ValueError('original metric loop bytes')
 def check(text,status,native=False):
     if status!=0 or any(x in text for x in ('FAIL','[LUA ERROR]','unknown command','Error in','timeout')):raise ValueError('failed observer')
-    markers=('PASS native font metrics calls=4B next=SHOWHIDE','[Inferior 1 (Remote target) detached]','ARM native metrics original bytes') if native else ('PASS original font metrics calls=4B','Exited via the debugger','ARM metrics dispatcher bytes=2f0a2f02246f000a')
+    markers=('PASS native font metrics calls=4B next=SETGWORLD','[Inferior 1 (Remote target) detached]','ARM native metrics original bytes') if native else ('PASS original font metrics calls=4B','Exited via the debugger','ARM metrics dispatcher bytes=2f0a2f02246f000a')
     if any(text.count(x)!=1 for x in markers):raise ValueError('completion')
     entered=re.findall(r'^METRIC_ENTER label=(\w+) (.*)$',text,re.M)
     returned=re.findall(r'^METRIC_RETURN label=(\w+) (.*)$',text,re.M)
@@ -58,7 +58,7 @@ def check(text,status,native=False):
     done=fields(one(text,r'METRIC_DONE (.*)'))
     if done!={**saved,'error':0}:raise ValueError('restored text state/result')
     if native:
-        one(text,r'METRIC_NEXT state=3 trap=A908 selector=FFFFFFFF segment=9 offset=FC6 manager=WINDOW MANAGER routine=SHOWHIDE windows=(?:70|96) services=(?:124/124|132/132) app=34/130788 overlay=31/80650 prep=64/81222 resources=244')
+        one(text,r'METRIC_NEXT state=3 trap=AB1D selector=6 segment=7 offset=1286 manager=QUICKDRAW routine=SETGWORLD windows=(?:70|96) services=(?:124/124|132/132) app=34/130788 overlay=31/80650 prep=64/81222 resources=244')
         from build_overlay import definitions
         rows=re.findall(r'^FONT_INSTALLED type=([0-9A-F]+) id=(\d+) size=(\d+)$',text,re.M)
         expected=[(kind,rid,body) for kind,rid,_,body in definitions() if kind in (b'FOND',b'NFNT')]

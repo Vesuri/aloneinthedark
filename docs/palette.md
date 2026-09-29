@@ -295,7 +295,7 @@ frame with paired checkers), `tmp/m2-window-binding-preferences.log`,
 `tmp/m2-window-binding-host-tests.log`, and the corresponding `boot` and
 `resource-read` logs. All exit zero with positive completion. A5 matches all
 75,616 bytes; resource counts and 70/96 OS-window totals remain unchanged.
-Original preferences are restored. The final clean production SHA-256 is
+Original preferences are restored. The activation-checkpoint production SHA-256 is
 `c2fbc390d5d3591733342635ea5652edd57e6ed23cecf02454504e34ddebe181`.
 
 
@@ -323,8 +323,8 @@ before/after captures. The accepted reference/native calls are in
 `tmp/m2-window-activation-native-final.log`, both normal exits with positive
 completion. Captures stay under `tmp/activation-*`. Rejection checks cover
 failed/timeout status, missing completion, changed bytes, an extra publication
-and palette corruption. The next stop is ShowHide ($A908), Misc1+$0FC6, whose
-name is recorded in the maintained trap census.
+and palette corruption. The subsequent ShowHide service now passes without
+changing palette or viewport pixels; the next stop is SetGWorld at Engine+$1286.
 
 
 Activation regressions: `tmp/m2-window-activation-regressions.log` contains six
@@ -332,5 +332,5 @@ bounded startup observers and paired checks; `tmp/m2-window-activation-host-test
 `tmp/m2-window-activation-preferences.log`, and the `boot`/`resource-read` logs
 also pass. Original preferences are restored. A5 matches 75,616 bytes exactly;
 resource and system-window totals are unchanged. No-float and 78-symbol audits
-pass. The final clean production SHA-256 is
+pass. The activation-checkpoint production SHA-256 is
 `ef4492241f7f0fa1f8e8c519c9708ac08e5e62c738eabbbdf2584e44a7fff81e`.

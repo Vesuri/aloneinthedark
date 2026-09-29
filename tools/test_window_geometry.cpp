@@ -1,4 +1,5 @@
 #include "../src/mac/WindowGeometry.h"
+#include "../src/mac/RegionRows.h"
 #include <cassert>
 #include <cstring>
 #include <set>
@@ -7,6 +8,7 @@ using WindowGeometry::Rect;
 static int word(const unsigned char* p) {return int16_t(uint16_t(p[0])<<8|p[1]);}
 static bool same(Rect a,Rect b) {return a.top==b.top && a.left==b.left && a.bottom==b.bottom && a.right==b.right;}
 static bool contains(const unsigned char* data,int x,int y) {
+    if(word(data)==10)return word(data+2)<=y && y<word(data+6) && word(data+4)<=x && x<word(data+8);
     std::set<int> crossings;
     int at=10;
     while(word(data+at)!=32767 && word(data+at)<=y) {
@@ -49,5 +51,30 @@ int main() {
     unsigned char bad[44];std::memset(bad,0xa5,sizeof bad);
     assert(!WindowGeometry::structure4({-32760,0,-32750,10},bad));
     for(auto b:bad)assert(b==0xa5);
-    std::puts("PASS window geometry: original resource layouts, inverse coordinates, independent region decode, shadow union and overflow rejection");
+    unsigned char gray[76],structure[44],visible[256],local[256];
+    RegionRows::desktop(gray);
+    assert(WindowGeometry::structure4({150,160,350,480},structure));
+    assert(RegionRows::difference(gray,sizeof gray,structure,sizeof structure,{-8000,-8000,8000,8000},visible,sizeof visible));
+    assert(RegionRows::difference(gray,sizeof gray,structure,sizeof structure,{-8000,-8000,8000,8000},local,sizeof local,8000,8000));
+    assert(word(visible)==108 && word(local)==108);
+    const int corners[5]={1,1,2,3,5};
+    for(int y=0;y<480;++y) {
+        RegionRows::Edges row{};assert(RegionRows::row(visible,sizeof visible,y,row));
+        int inset=y>=475 ? corners[y-475] : 0;
+        for(int x=0;x<640;++x) {
+            bool desktop=y>=20 && x>=inset && x<640-inset;
+            bool border=x>=159 && x<481 && y>=131 && y<351;
+            bool shadow=x>=160 && x<482 && y>=132 && y<352;
+            bool expected=desktop && !(border || shadow);
+            assert(contains(visible,x,y)==expected);
+            assert(contains(local,x+8000,y+8000)==expected);
+            assert(RegionRows::inside(row,x)==expected);
+        }
+    }
+    unsigned char small[12];std::memset(small,0xa5,sizeof small);
+    assert(!RegionRows::difference(gray,sizeof gray,structure,sizeof structure,{-8000,-8000,8000,8000},small,sizeof small));
+    for(auto b:small)assert(b==0xa5);
+    unsigned char malformed[76];std::memcpy(malformed,gray,sizeof gray);malformed[0]=0;malformed[1]=75;
+    RegionRows::Edges row{};assert(!RegionRows::row(malformed,sizeof malformed,20,row));
+    std::puts("PASS window geometry: original resource layouts, inverse coordinates, independent region decode, shadow union, full-screen region subtraction/translation and overflow rejection");
 }

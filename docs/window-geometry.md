@@ -1,11 +1,11 @@
-# Colour-window geometry prerequisite
+# Colour-window geometry and background visibility
 
 The ShowHide request at Misc1+$0FC6 is `(WIND 131, true)`, revealing the hidden
 background window behind WIND 128. The Mac changes its visible byte from 0 to 1,
 rebuilds its visibility/structure/content/update regions, and changes 135,512
 physical pixels outside the 320×200 game viewport. No viewport pixel or palette
-entry changes. This is not yet implemented natively; the named ShowHide stop
-remains. The design keeps the background window, with no Mac UI drawn.
+entry changes. The native service now passes this transition, keeping the
+background window with no Mac UI drawn.
 
 The constructor correction addresses these inherited differences:
 
@@ -62,8 +62,12 @@ transition. Its original Misc1+$0FB4–$0FC7 bytes have SHA-256
 `6ff795aa43796be5965f16c5109e7e26f3d7966698fbeb435d57da5a9c80ba2c`.
 The bounded reference run `tmp/m2-showhide-reference.log` and native input run
 `tmp/m2-showhide-native-input.log` exited normally. These are investigation
-captures, not ShowHide implementation acceptance. Region changes include complex
-scan-line data; rectangle-only substitutions must not be treated as a pass.
+captures. The maintained native `amiga/showhide.gdb` and paired
+`tools/check_showhide.py` now verify actual implementation acceptance: original
+bytes/ABI, all five complete regions, desktop clipping, front-window preservation,
+222,995 exposed pixels painted black, and unchanged viewport/palette/presentation.
+Native pixels outside the exposed region are preserved. The original changes
+fewer physical pixels because some exposed pixels were already black.
 
 The frame observer allows the client clear either to remain dirty at ShowWindow
 return or to have been queued once by an intervening safe trap boundary. A
@@ -74,4 +78,19 @@ publication. A cleared dirty flag alone is never accepted as display evidence.
 
 Bounded `boot` and `resource-read` regressions also pass on `a1200-020`.
 Resource reads remain 34/130,788 bytes with 70 system windows and original
-MDRV absent. ShowHide remains the next named stop; intro acceptance is open.
+MDRV absent. ShowHide now progresses to SetGWorld, QDExtensions selector 6 at
+Engine+$1286; intro acceptance remains open.
+
+`RegionRows.h` decodes QuickDraw XOR scan-line transitions and computes the
+background content intersected with the desktop minus the front window structure.
+The desktop is the measured 640×480 region below the menu strip, including its
+five-pixel lower corners. Visibility is the same result translated to local
+window coordinates; update remains global. Unsupported region complexity,
+window arrangements and visibility requests remain named stops. No displayed
+pixel changes, so the off-viewport clear queues no additional AGA frame.
+
+ShowHide validation: `tmp/m2-showhide-reference.log` and
+`tmp/m2-showhide-native.log` complete normally and pass the paired checker.
+`tmp/m2-showhide-regressions.log` records original startup, client/palette and
+AGA publication checks; boot and resource-read also pass. Host tests pass,
+A5 has zero differences across 75,616 bytes, and both link audits are clean.
