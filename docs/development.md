@@ -1945,3 +1945,34 @@ the guard that limits close-after-permission-error to read-only files. All 75,61
 A5 bytes match; production remains at GetFNum after 16 resource reads / 96,648 bytes.
 MacLoader/ResourceDirectory generated-copy audits and the restored clean production
 build's no-float/probe audits pass. No owner decision changed.
+
+
+### Complete native dirty lifecycle fixture (M2.2f4b5a)
+
+The independent lifecycle portion now has all 45 Mac-reference calls in one native
+fixture: dirty release preserves association/body; dirty detach returns -198;
+write followed by detach keeps the caller's body and allows a distinct fresh
+resource handle. Empty/reload discards a saved resource's dirty resident edit and
+restores its old saved bytes, clearing its changed flag. Dirty current close
+persists `EEEE`; dirty noncurrent close persists `FFFF` while leaving the
+application selected. Every call checks errors, MemErr, D0 and stack cleanup;
+body/handle-state and identity checks cover the live transitions. GetResAttrs
+continues to compare only its defined low byte.
+
+An independent parser verifies both closed forks before deletion: exact LIFE 128
+bodies, Scratch names, zero attributes, empty data forks and no staging remnants.
+Final acceptance requires both scratch files/companions deleted. The fixture adds
+96 windows and 45 paired calls: combined file-write coverage is 406 paired calls,
+59 permission steps, six mutation rollback cases and nine staging cases. It uses
+1,040 windows and 237 File Manager reads / 871,061 bytes; write/flush totals remain
+25 / 470,085 bytes / 19. Existing runtime implementations pass the full contract
+without another runtime change. Original-byte/reference and full host checks pass.
+All five native 68020 regressions and four startup observers pass with normal
+exits. All 75,616 A5 bytes match; production still reaches GetFNum after 16
+resource reads / 96,648 bytes. Production link/probe/no-float and generated-copy
+audits pass. No owner decision changed.
+
+Dirty-resource exit remains a separate implementation and acceptance item,
+M2.2f4b5b. The current ExitToShell dirty-map guard remains in force. Unpublished
+empty/reload and dirty resize/dispose/purge remain named stops until required by
+original execution; this fixture does not claim those operations.

@@ -67,12 +67,17 @@ required.
       uninitialized upper-byte scratch (traced and poison-verified). Return a
       zero-extended attribute byte natively. Unmeasured variants remain named
       stops and queued.
-      - **M2.2f4b5 Remaining dirty lifecycle and exit.** Complete paired dirty
-        lifecycle and exit persistence. Never-published empty/reload and dirty
-        resize/dispose/purge remain explicit stops until their reached contract
-        is measured. *Done when* native fixtures cover the 45-call lifecycle and
-        exit persistence references, required newly reached variants, exact saved
-        bytes, restoration/cleanup, and all regressions.
+      - **M2.2f4b5b Dirty-resource exit persistence.** The complete 45-call
+        dirty lifecycle now passes natively. Implement the measured exit
+        contract: use the user-service path to publish dirty dynamic maps before
+        ExitToShell restores the OS. Preserve the original CODE 1 exit/unpatch
+        route and keep failed publication loud. Never-published empty/reload and
+        dirty resize/dispose/purge remain explicit stops until required by
+        original execution; measure any newly reached variant before enabling it.
+        *Done when* a dirty open resource survives native original-runtime exit
+        and a fresh launch, with exact independently parsed/reloaded bytes,
+        close/delete, restored OS/stream/service state and all regressions.
+
 
 
 
