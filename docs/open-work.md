@@ -67,13 +67,14 @@ required.
       uninitialized upper-byte scratch (traced and poison-verified). Return a
       zero-extended attribute byte natively. Unmeasured variants remain named
       stops and queued.
-      - **M2.2f4b3a WriteResource isolation reference.** Before implementing
-        mutation traps, measure writing one resource while another remains dirty
-        in the same map. The current backend publishes whole maps; simply routing
-        WriteResource through UpdateResFile could save unrelated dirty bodies.
-        *Done when* an exclusively created two-resource Mac fixture checks each
-        resource's attributes, empty/reload bodies, update/close/reopen and cleanup,
-        establishing exactly which bytes one WriteResource commits.
+      - **M2.2f4b3b Selective publication.** WriteResource saves only its selected
+        resource; another dirty resource must retain its old reloadable bytes.
+        Add source-backed per-entry publication overrides with atomic failure and
+        identity-preserving rebase, then bind native mutation traps to them.
+        *Done when* host fixtures verify selective payload/size changes, unrelated
+        saved bodies, rollback and no preloading, and native fixtures match the
+        50-call mutation and 40-call isolation reference contracts.
+
 
   - Implement writable prefs/save resource forks and the port overlay fork
     (empty at first), preserving design §4.6 search order and dialog overrides.

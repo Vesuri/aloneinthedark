@@ -1714,3 +1714,30 @@ Acceptance: both Mac reference checkers pass, the full host suite and all five
 75,616 A5 bytes match. Production resource reads remain 16 / 96,648 bytes before
 GetFNum Dan1+$0012; no original instructions changed. No owner decision is
 needed. Rendered-video acceptance is still owner-deferred.
+
+
+### WriteResource isolation reference (M2.2f4b3a)
+
+`mac_resource_isolation.lua` exclusively creates one scratch file with two
+resources, then completes 40 calls with original Engine gate guards. Both
+resources are dirtied; WriteResource(A) clears only A's changed flag. B remains
+dirty. Empty/reload retrieves A's written `CCCC`, but retrieves B's old `BBBB`
+instead of its discarded dirty `DDDD`. Update/close/reopen retains those exact
+bodies. The second phase changes both resources again, writes B, proves A still
+dirty, and reloads B as written `FFFF`. UpdateResFile then writes A's remaining
+`EEEE`; both exact bodies survive close/reopen. The scratch file is deleted and
+the application current file restored. The bounded CPU-only MAME run exits zero.
+
+The strict checker verifies ordered calls, errors, D0/MemErr, stack, independent
+live handle identities, defined attribute bytes, exact bodies and cleanup. It
+also checks original Gloss ChangedResource/WriteResource instruction pairs.
+Undefined GetResAttrs upper-byte scratch is intentionally excluded, following
+the guarded trace/poison diagnosis. Ten incomplete/corrupted captures are rejected.
+
+This establishes that a whole-map update cannot stand in for WriteResource:
+unselected dirty bodies must keep their saved source until explicitly written,
+while UpdateResFile writes all remaining changes. Selective source-backed
+publication and native integration are M2.2f4b3b. Native runtime is unchanged;
+its regression baseline remains abbbf61. No owner decision is needed.
+
+The full host suite passes for this reference-tooling checkpoint.
