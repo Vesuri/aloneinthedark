@@ -46,14 +46,13 @@ required.
 - **M2.2 Remaining Resource Manager services.**
   - Map parsing, file-backed loading and named/ID lookup (M2.2a/b/c1/c2) are
     complete. Continue with the remaining design §4.6 calls, multi-fork search
-    and handle semantics, SetResLoad and purge/reload behavior.
-  - **M2.2d2 Native metadata/lazy-handle contract next:** implement the 18-call
-    M2.2d1 Mac reference in `tools/mac_resource_handles.lua` (GetResInfo,
-    SetResLoad, explicit loading and empty/reload, detached metadata, nil release).
-    *Done when* matching native calls, stack/register/error results and original
-    payload hashes pass, disk reads occur only when loading is requested, and
-    the full existing regression set passes. Heap-pressure purge and other
-    unmeasured handle states remain in the parent item.
+    and the remaining handle lifecycle and purge behavior.
+  - Native metadata, SetResLoad, explicit load/empty/reload and detached metadata
+    now pass the 18-call M2.2d reference. **M2.2d3 Handle lifecycle next:** measure
+    and implement resource-attribute/heap-pressure purge behavior, valid release
+    and remaining empty/detached/error states. *Done when* paired Mac/native
+    fixtures prove handle flags, identity, reload bytes and errors, followed by
+    the existing regression set.
   - Implement OpenResFile and the other resource-file calls. The inherited fake
     -1 result is removed; unsupported OpenResFile now stops by name.
   - Implement writable prefs/save resource forks and the port overlay fork

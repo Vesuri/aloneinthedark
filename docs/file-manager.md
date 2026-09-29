@@ -629,8 +629,9 @@ Classic GetFInfo uses the current default directory and ignores the hierarchical
 PB directory field. These cases match the 218-call System 7.5.5 fixture.
 
 The native fixture passes the corresponding Line-A cases and exact returned
-names, metadata and lifetime checks. The current File-write regression uses 378 runtime windows, including the
-later OpenDF, HGetVInfo and async fixtures. Production still stops at Get1NamedResource.
+names, metadata and lifetime checks. The current File-write regression uses 381 runtime windows, including the
+later OpenDF, HGetVInfo, async and resource fixtures. Production now stops at
+GetFNum (Dan1+$0012), after General lookup.
 
 ## Application namespace boundary (M2.1b2c9c2b)
 
@@ -782,7 +783,7 @@ Service-frame fields are consumed before calling original code, so a nested
 service cannot replace the outer return state. Nesting beyond eight completions
 is the named `FILE COMPLETION DEPTH` stop; no unbounded native-stack use is hidden.
 
-Stage 50 completes 67 calls and 51 callbacks, with 378 runtime windows overall, including the later resource-lookup fixture.
+Stage 50 completes 67 calls and 51 callbacks, with 381 runtime windows overall, including the later resource-lookup and handle fixtures.
 FlushVol in the async fixture flushes the earlier pending write before shutdown;
 final transfer totals remain 24 writes / 470,069 bytes / 18 flushes, with two
 restored-OS closes and no open streams. Original game PAK reads remain M2.1c.

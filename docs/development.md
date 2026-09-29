@@ -663,7 +663,7 @@ Open/HOpen, Write, SetEOF, GetEOF/GetFCBInfo, Read, FlushVol and Close calls aft
 the read/directory fixture. It requires FILEPROBE=1 and FILEWRITEPROBE=1.
 The case checks exact bytes, marks/EOF, CCR, the 25-pair permission matrix,
 protected-file defaults/errors, shared writes and close order, cached-reader
-coherence and volume-name/reference forms. It requires 378 runtime windows,
+coherence and volume-name/reference forms. It requires 381 runtime windows,
 24 DOS writes (65,536 maximum), 18 flushes including shutdown and an empty
 stream ledger after cleanup. Host readback verifies 17 backend bytes, six
 shared-file bytes, four data bytes plus Finder metadata, and three bytes left dirty
@@ -784,7 +784,7 @@ Native stage 46 checks ordering against known existing save files, the grave
 accent's special position, canonical name outputs, null-name identity, errors,
 classic/default selection, WD precedence and reindexing after deletion. Host
 sanitizer tests cover all 67 characters and reverse insertion order. `file-write`
-is included in the current 378-window regression. The dedicated application directory also supports indexed queries; System/root
+is included in the current 381-window regression. The dedicated application directory also supports indexed queries; System/root
 and the legacy mixed native directory remain explicit unsupported boundaries.
 
 
@@ -865,7 +865,7 @@ HOpen addresses drivers; the ordinary-file HOpen error probe uses a leading colo
 Native stage 48 reaches `g_fileOpenDFProbeStep=17`, including matching errors for
 HOpen/HOpenRF, dot-name read/write, both aliases and protected files. Host checks
 verify open-specific path resolution without changing directory-query semantics.
-The current file-write totals, including the HGetVInfo/async fixtures below, are 378 windows, 33 reads / 866,733 bytes, and
+The current file-write totals, including the HGetVInfo/async fixtures below, are 381 windows, 33 reads / 866,733 bytes, and
 24 writes / 470,069 bytes with 18 flushes including shutdown. All owned scratch
 forks/companions must be absent afterward; the restored stream ledger is empty.
 File-read, window-core, production boot and the 42-entry original directory
@@ -890,7 +890,7 @@ eight OS windows; invalid selections add none. The System lookup checks the
 returned WD rather than assuming a reference survives the earlier CloseWD test.
 Both globals are retained by the probe link audit.
 
-Acceptance including the async fixture below: file-write passes with 378 windows, 33 reads / 866,733 bytes and
+Acceptance including the async fixture below: file-write passes with 381 windows, 33 reads / 866,733 bytes and
 24 writes / 470,069 bytes / 18 flushes including shutdown. File-read, window-core,
 production boot and the original 42-entry directory observer remain required;
 rendered-picture verification is still owner-deferred. Original initialization
@@ -921,7 +921,7 @@ at every callback entry. `g_fileAsyncStep=67`, `g_fileAsyncCallbacks=51`,
 controls, retained by the probe-symbol link audit. Probe assembly has its own
 section so file-read/production builds do not retain probe-only references.
 
-File-write requires 378 windows and unchanged final read/write totals; its two
+File-write requires 381 windows and unchanged final read/write totals; its two
 restored closes must leave no open streams. The checker also requires absence
 of all `.async-probe` data/resource/metadata companions. Host tests, file-read,
 window-core, production boot and the directory observer pass. The original run
@@ -1083,7 +1083,7 @@ GetNamedResource preserves its incoming D0. Null Pascal-name pointers remain a
 named unsupported call. Multi-fork search-order and non-ASCII case-pair fixtures
 remain part of the remaining Resource Manager work.
 
-Native file-write stage 51 reproduces all 20 reference calls. It requires
+At this checkpoint, native file-write stage 51 reproduced all 20 reference calls. It required
 `g_resourceLookupStep=21`, General FNV `$54B9DC7D`, two runtime resource reads /
 863 bytes, and 378 total system windows. The other file transfer totals remain
 unchanged. The assembly wrappers expose trap D0 and return the Pascal handle;
@@ -1141,3 +1141,35 @@ The final reference run exited zero and its checker passed. This is reference
 acceptance only: native implementation and matching probes are M2.2d2. Automatic
 heap-pressure purge, unloaded detached handles, valid ReleaseResource disposal,
 multi-fork lookup and writable forks are not established by this fixture.
+
+
+### Native metadata and lazy handles (M2.2d2)
+
+GetResInfo returns metadata independently of resource residency. Missing or
+removed associations return the measured -192 and cleared outputs; bytes beyond
+returned Pascal names remain untouched. A volatile byte-copy loop avoids the
+known m68k overlapping-address copy defect. Null output pointers stop by name.
+SetResLoad updates the private ResLoad byte without changing ResErr/D0. Disabled
+lookups return an empty associated master pointer without reading the source.
+LoadResource runs through the user-mode service bridge and explicitly fills the
+same handle regardless of ResLoad. The measured detached loaded-handle case is
+successful without reading; unsupported empty/unassociated cases stop by name.
+DetachResource now also clears D0. ReleaseResource(nil) returns the measured
+-192 and preserves D0; remaining valid release/flag semantics are M2.2d3.
+
+`ResourceHandleProbe.cpp` reproduces the 18 reference calls before the existing
+20 lookup calls. The handle fixture is file-write stage 51 and lookup is now
+stage 52. The fixture checks errors, D0, metadata canaries, resident/empty state,
+master-pointer identity and disk counters after every operation. Error Messages
+has FNV `$20AC017E` after both explicit reload and re-enabled lookup, and after
+detach. No metadata or disabled lookup reads resource bodies. The combined probe
+requires step 19/21, five resource reads / 1,616 bytes and 381 system windows.
+File Manager transfer and cleanup totals remain unchanged. M2.2c2's 378-window
+record above describes its earlier standalone lookup checkpoint.
+
+Acceptance: full host suite; native file-write, file-read, window-core, boot and
+resource-read; catalog, original-startup, identity and low-memory observers all
+passed with normal exits. A5 globals match all 75,616 bytes. Original startup
+remains at GetFNum Dan1+$0012 with 16 read windows / 96,648 resource bytes,
+23 balanced services and 53 applied/58 validated low-memory sites. No owner
+decision changed; rendered-picture verification remains deferred.

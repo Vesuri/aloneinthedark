@@ -192,3 +192,47 @@ aitdProbeAsyncRegisters:
     .endm
     idtrap aitdProbeResource,0xa9a0
     idtrap aitdProbe1Resource,0xa81f
+
+    .section .text.aitdResourceHandleProbe,"ax"
+    .globl aitdProbeResInfo
+aitdProbeResInfo:
+    move.l 4(sp),d0
+    move.l 8(sp),d1
+    move.l 12(sp),a0
+    move.l 16(sp),a1
+    move.l d0,-(sp)
+    move.l d1,-(sp)
+    move.l a0,-(sp)
+    move.l a1,-(sp)
+    move.l #0x12345678,d0
+    .word 0xa9a8
+    move.l d0,g_resourceLookupD0
+    rts
+    .globl aitdProbeResLoad
+aitdProbeResLoad:
+    move.w 6(sp),d0
+    lsl.w #8,d0
+    move.w d0,-(sp)
+    move.l #0x12345678,d0
+    .word 0xa99b
+    move.l d0,g_resourceLookupD0
+    rts
+    .macro handletrap name,opcode
+    .globl \name
+\name:
+    move.l 4(sp),-(sp)
+    move.l #0x12345678,d0
+    .word \opcode
+    move.l d0,g_resourceLookupD0
+    rts
+    .endm
+    handletrap aitdProbeLoadResource,0xa9a2
+    handletrap aitdProbeDetachResource,0xa992
+    handletrap aitdProbeReleaseResource,0xa9a3
+    .globl aitdProbeEmptyResource
+aitdProbeEmptyResource:
+    move.l 4(sp),a0
+    move.l #0x12345678,d0
+    .word 0xa02b
+    move.l d0,g_resourceLookupD0
+    rts
