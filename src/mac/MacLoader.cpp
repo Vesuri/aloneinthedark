@@ -669,6 +669,7 @@ static const TrapName s_trapNames[] = {
     {0xa930,"MENU MANAGER","INITMENUS"}, {0xa9cc,"TEXTEDIT","TEINIT"},
     {0xa97b,"DIALOG MANAGER","INITDIALOGS"},
     {0xa997,"RESOURCE MANAGER","OPENRESFILE"},
+    {0xa900,"FONT MANAGER","GETFNUM"},
     {0xa9a1,"RESOURCE MANAGER","GETNAMEDRESOURCE"}, {0xa9a3,"RESOURCE MANAGER","RELEASERESOURCE"},
     {0xa063,"MEMORY MANAGER","MAXAPPLZONE"}, {0xa01c,"MEMORY MANAGER","FREEMEM"},
     {0xa01f,"MEMORY MANAGER","DISPOSEPTR"},
@@ -1026,14 +1027,14 @@ static uint8_t** loadResource(uint32_t index,const ResourceForks::Item& item)
     }
     resourceResult(0);return handle;
 }
-static uint8_t** getResource(uint32_t type,int16_t id)
+static uint8_t** getResource(uint32_t type,int16_t id,bool currentOnly=false)
 {
-    for(uint16_t pass=0;pass<s_resourceForks.forkCount();++pass) {
+    for(uint16_t pass=0;pass<(currentOnly ? 1 : s_resourceForks.forkCount());++pass) {
         uint16_t fork=(s_currentResourceFork+pass)%s_resourceForks.forkCount();
         ResourceForks::Item item;uint32_t index;
         if(s_resourceForks.find(fork,type,id,item,&index))return loadResource(index,item);
     }
-    resourceResult(-192);return 0;
+    resourceResult(0);return 0; // Measured System 7.5.5 missing-ID behavior.
 }
 
 static uint16_t paulaBeamLine()
@@ -1195,15 +1196,15 @@ static bool equalMacRomanStrings(const uint8_t* first, uint16_t firstLength,
 
 static bool resourceNameEquals(const ResourceForks::Item& item, const uint8_t* name)
 {
-    if (!name || name[0] != item.nameLength) return false;
+    if (!name || !item.nameLength || name[0] != item.nameLength) return false;
     for (uint16_t i = 0; i < item.nameLength; ++i)
         if (asciiUpper(name[i + 1]) != asciiUpper(item.name[i])) return false;
     return true;
 }
 
-static uint8_t** getNamedResource(uint32_t type, const uint8_t* name)
+static uint8_t** getNamedResource(uint32_t type, const uint8_t* name,bool currentOnly=false)
 {
-    for (uint16_t pass = 0; pass < s_resourceForks.forkCount(); ++pass) {
+    for (uint16_t pass = 0; pass < (currentOnly ? 1 : s_resourceForks.forkCount()); ++pass) {
         uint16_t fork = (uint16_t)(s_currentResourceFork + pass);
         if (fork >= s_resourceForks.forkCount()) fork -= s_resourceForks.forkCount();
         for (uint32_t i = 0; i < s_resourceForks.resourceCount(); ++i) {
@@ -1214,7 +1215,7 @@ static uint8_t** getNamedResource(uint32_t type, const uint8_t* name)
             }
         }
     }
-    return 0;
+    resourceResult(-192);return 0;
 }
 
 static bool pascalEquals(const uint8_t* value, const char* expected)
@@ -1225,14 +1226,6 @@ static bool pascalEquals(const uint8_t* value, const char* expected)
     for (uint16_t i = 0; i < length; ++i)
         if (asciiUpper(value[i + 1]) != asciiUpper((uint8_t)expected[i])) return false;
     return true;
-}
-
-static int16_t openResourceFile(const uint8_t* name)
-{
-    // Vette opened its second resource fork by name here. Alone in the Dark
-    // keeps its data in data-fork .PAK files; no second fork is known yet.
-    (void)name;
-    return -1;
 }
 
 static void initGraf(uint8_t* thePort)
@@ -5176,7 +5169,7 @@ static bool isUserService(uint16_t trap)
 #ifdef AITD_SERVICE_PROBE
     if((trap&0xfeff)==0xa0fc || trap==0xabfb)return true;
 #endif
-    return trap==0xa9a0 || trap==0xa9a1 || trap==0xa930 || trap==0xa9bf
+    return trap==0xa81f || trap==0xa820 || trap==0xa9a0 || trap==0xa9a1 || trap==0xa930 || trap==0xa9bf
         || trap==0xaa46 || trap==0xaa92 || trap==0xa9b9 || trap==0xa9bc || trap==0xa97c
         || trap==0xa40c || trap==0xa608 || trap==0xa60a || trap==0xa60c || trap==0xa60d || trap==0xa614 || trap==0xa615
         || (trap&0xf8ff)==0xa060 || trap==0xa014 || trap==0xa015 || trap==0xa214 || trap==0xa215 || trap==0xa207 || isFileDataService(trap) || isFileCatalogService(trap);
@@ -5491,24 +5484,21 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
             return 7;
         }
     }
-    if (trap == 0xa9a0) {                    // GetResource(type:4, id:2) -> Handle result:4
+    if (trap == 0xa9a0 || trap == 0xa81f) {  // GetResource/Get1Resource(type:4, id:2) -> Handle result:4
         int16_t id = (int16_t)read16(userStack);
         uint32_t type = read32(userStack + 2);
-        uint8_t** handle = getResource(type, id);
+        uint8_t** handle = getResource(type, id,trap==0xa81f);
         write32(userStack + 6, (uint32_t)handle);
-        if (handle) {
-            // D0 is scratch for this Pascal Toolbox call.  System 6.0.8 leaves
-            // it zero on a successful GetResource, and Vette proved original
-            // code can depend on that side effect.
-            regs[0] = 0;
-        }
+        // Both ID traps expose zero-extended ResErr in the measured reference.
+        regs[0]=read16(s_portLowMemory+140);
         if (g_stageCDepth < 3) g_stageCDepth = 3;
         return 7;
     }
-    if (trap == 0xa9a1) {                    // GetNamedResource(type:4, name:4) -> Handle result:4
+    if ((trap == 0xa9a1 || trap == 0xa820) && read32(userStack)) { // GetNamedResource/Get1NamedResource(type:4, name:4) -> Handle result:4
         uint8_t** handle = getNamedResource(read32(userStack + 4),
-                                             (const uint8_t*)read32(userStack));
+                                             (const uint8_t*)read32(userStack),trap==0xa820);
         write32(userStack + 8, (uint32_t)handle);
+        if(trap==0xa820)regs[0]=read16(s_portLowMemory+140);
         if (g_stageCDepth < 51) g_stageCDepth = 51;
         return 9;
     }
@@ -5662,12 +5652,6 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         regs[0] = 0;
         if (g_stageCDepth < 48) g_stageCDepth = 48;
         return 1;
-    }
-
-    if (trap == 0xa997) {                    // OpenResFile(name: Str255) -> refNum
-        write16(userStack + 4, (uint16_t)openResourceFile((uint8_t*)read32(userStack)));
-        if (g_stageCDepth < 13) g_stageCDepth = 13;
-        return 5;
     }
 
     if (trap == 0xa874) {                    // GetPort(VAR port)

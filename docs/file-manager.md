@@ -629,7 +629,7 @@ Classic GetFInfo uses the current default directory and ignores the hierarchical
 PB directory field. These cases match the 218-call System 7.5.5 fixture.
 
 The native fixture passes the corresponding Line-A cases and exact returned
-names, metadata and lifetime checks. The current File-write regression uses 376 runtime windows, including the
+names, metadata and lifetime checks. The current File-write regression uses 378 runtime windows, including the
 later OpenDF, HGetVInfo and async fixtures. Production still stops at Get1NamedResource.
 
 ## Application namespace boundary (M2.1b2c9c2b)
@@ -782,7 +782,7 @@ Service-frame fields are consumed before calling original code, so a nested
 service cannot replace the outer return state. Nesting beyond eight completions
 is the named `FILE COMPLETION DEPTH` stop; no unbounded native-stack use is hidden.
 
-Stage 50 completes 67 calls and 51 callbacks, with 376 runtime windows overall.
+Stage 50 completes 67 calls and 51 callbacks, with 378 runtime windows overall, including the later resource-lookup fixture.
 FlushVol in the async fixture flushes the earlier pending write before shutdown;
 final transfer totals remain 24 writes / 470,069 bytes / 18 flushes, with two
 restored-OS closes and no open streams. Original game PAK reads remain M2.1c.
@@ -791,9 +791,9 @@ restored-OS closes and no open streams. Original game PAK reads remain M2.1c.
 ## Resource streaming and File Manager counters (M2.2b2)
 
 Original directory initialization still performs seven File Manager services and
-no File Manager DOS windows. On-demand resources now add 13 user services and
-13 OS windows before Get1NamedResource: production observers require 20 balanced
-services and 13 windows total. Earlier zero-window directory measurements above
+no File Manager DOS windows. On-demand resources now add 16 user services and
+16 OS windows before GetFNum (M2.2c2): production observers require 23 balanced
+services and 16 windows total. Earlier zero-window directory measurements above
 refer to the pre-streaming baseline. Resource source reads have separate counters
 from File Manager streams, so the native file-read/write byte totals are unchanged.
 Their shutdown observers additionally require the resource source to be closed

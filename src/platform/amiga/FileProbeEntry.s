@@ -158,3 +158,37 @@ aitdProbeAsyncRegisters:
 3:  move.l #0xbad00001,d0
 4:  movem.l (sp)+,d2/a5
     rts
+
+    .section .text.aitdResourceLookupProbe,"ax"
+    .macro namedtrap name,opcode
+    .globl \name
+\name:
+    move.l 4(sp),d0
+    move.l 8(sp),a0
+    clr.l -(sp)
+    move.l d0,-(sp)
+    move.l a0,-(sp)
+    move.l #0x12345678,d0
+    .word \opcode
+    move.l d0,g_resourceLookupD0
+    move.l (sp)+,d0
+    rts
+    .endm
+    namedtrap aitdProbeNamed,0xa9a1
+    namedtrap aitdProbe1Named,0xa820
+    .macro idtrap name,opcode
+    .globl \name
+\name:
+    move.l 4(sp),d0
+    move.w 10(sp),d1
+    clr.l -(sp)
+    move.l d0,-(sp)
+    move.w d1,-(sp)
+    move.l #0x12345678,d0
+    .word \opcode
+    move.l d0,g_resourceLookupD0
+    move.l (sp)+,d0
+    rts
+    .endm
+    idtrap aitdProbeResource,0xa9a0
+    idtrap aitdProbe1Resource,0xa81f

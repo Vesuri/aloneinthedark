@@ -10,7 +10,7 @@ design.md §5.
 - The executable builds and loads the original resource fork.
 - Original CODE 1 expands the A5 world, relocates Core and enters `main`, then
   passes directory initialization and stops at
-  `RESOURCE MANAGER / GET1NAMEDRESOURCE`, Engine+$3CDC.
+  `FONT MANAGER / GETFNUM`, Dan1+$0012, after the original General lookup.
 - The original runs in MAME on the System 7.5.5 reference volume.
 
 Each item gives the **goal**, then the scope, then *done when*: the evidence
@@ -44,14 +44,11 @@ required.
 ## M2 Startup to intro
 
 - **M2.2 Remaining Resource Manager services.**
-  - Map parsing and file-backed loading (M2.2a/b) are complete; the application
-    no longer preloads its whole fork. Continue with the design §4.6 call set,
-    including the current Get1NamedResource stop, search/handle semantics and
-    purge/reload behavior (M2.2c). The original General request and a 20-call
-    named/ID lookup reference are measured (M2.2c1); implement the native lookup
-    family next, preserving its distinct named versus ID error results.
-  - Replace the inherited OpenResFile helper that currently returns -1 without
-    opening a fork; no guessed missing-file result may hide unsupported work.
+  - Map parsing, file-backed loading and named/ID lookup (M2.2a/b/c1/c2) are
+    complete. Continue with the remaining design §4.6 calls, multi-fork search
+    and handle semantics, SetResLoad and purge/reload behavior.
+  - Implement OpenResFile and the other resource-file calls. The inherited fake
+    -1 result is removed; unsupported OpenResFile now stops by name.
   - Implement writable prefs/save resource forks and the port overlay fork
     (empty at first), preserving design §4.6 search order and dialog overrides.
 
@@ -73,7 +70,7 @@ required.
   evidence before revising that requirement; absence from one route is not proof.
 - **M1.6b Final startup requirements acceptance (after file/resource services).**
   - M1.6a implements the measured identity records and verifies all eleven
-    Engine capability flags. Full startup is still stopped in Get1NamedResource, before
+    Engine capability flags. Full startup is still stopped in GetFNum, before
     Core's initialization-result/alert branches; it is not a successful launch.
   - After M2.1/M2.2, verify Core+$0460 is reached with initialization result zero,
     without taking its failure-alert branches ($0410/$044E).

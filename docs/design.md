@@ -219,8 +219,8 @@ The original startup path is implemented (M1.1–M1.3):
 **Verified:** the host check `tools/a5world_check.py` passes: it runs
 CODE 1's expansion algorithm on the resource bytes and compares, byte for byte,
 with the A5 world the Amiga dumps (via gdb) when it enters `main`. The current
-loud stop is `Get1NamedResource` at Engine+$3CDC during `main` initialization,
-after the original startup directory calls.
+loud stop is `GetFNum` at Dan1+$0012 during `main` initialization,
+after the original startup directory calls and General resource lookup.
 
 ### 4.3 Low memory
 
@@ -303,7 +303,7 @@ Native trap probes, host fragmentation tests and paired heap captures verify it:
   and open-fork references are distinct. The application resource fork has a
   file-table reference shared by CurApRefNum and CurResFile/UseResFile. Original
   GetFCBInfo/OpenWD, SetVol and Preferences FindFolder pass (M2.1b2a).
-  Get1NamedResource is the next stop. Named Finder metadata and independent
+  Get1NamedResource now passes; GetFNum at Dan1+$0012 is the next stop. Named Finder metadata and independent
   data/resource streams, installed-file metadata and the application namespace
   are implemented; remaining dispatch variants are pending
   M2.1b2c9c2c. Integrated original
@@ -377,7 +377,9 @@ Native trap probes, host fragmentation tests and paired heap captures verify it:
 - **Port overlay resources.** A small resource fork of the port's own resources
   comes first in the search order: the 320×200 dialog layouts (D5) and the
   placeholder fonts (D6).
-- **Calls to add.** `Get1Resource`, `Get1NamedResource`, `DetachResource`,
+- **Lookup implemented.** GetResource/Get1Resource and named variants pass the
+  measured Mac argument/result contract and native fixtures (M2.2c2).
+- **Remaining Resource Manager work includes** `DetachResource`,
   `ResError`, `SetResLoad`, `GetResInfo`, `CountResources`/`Count1Resources`,
   `Get1IndResource` (if reached), and the writable-file calls in 4.5.
 - **Search order.** Open resource files first, then the application, then the
@@ -676,7 +678,7 @@ no loud stop. The cases are added as their milestone lands:
 - `boot`: reaches main, then ends the observer before main executes. The harness
   was introduced in M0; positive acceptance passes on `a1200-020` (M1.3a).
 - `resource-read`: map-only startup, original CODE validation, bounded runtime
-  resource reads and byte-exact debugger samples before Get1NamedResource.
+  resource reads and byte-exact debugger samples through the General lookup, stopping at GetFNum.
 - `file-write`: native Line-A and DOS backend writes, zero-count extension,
   truncation/mark updates, read-only errors, exact readback, close and dirty
   shutdown; host-file bytes and bounded transfer/window counts are required.

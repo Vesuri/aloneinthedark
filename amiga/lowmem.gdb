@@ -3,7 +3,7 @@ set pagination off
 set confirm off
 break AitdScreen::showLoudStop
 continue
-if g_lowMemoryValidatedSites != 58 || g_lowMemoryAppliedSites != 50 || g_loadedCodeMask != 0x8b
+if g_lowMemoryValidatedSites != 58 || g_lowMemoryAppliedSites != 53 || g_loadedCodeMask != 0x188b
  echo lowmem FAIL: missing validation or loaded CODE patches\n
  detach
  quit 1
@@ -40,6 +40,6 @@ if (unsigned short)(g_vbiCount-$lm_fields) != 10 || g_macTicks-$lm_ticks != 12 |
  detach
  quit 1
 end
-printf "lowmem PASS: validated=58 applied=50 fields=10 ticks=12 shadow=$%08x\n",g_macLowMemory
+printf "lowmem PASS: validated=58 applied=53 fields=10 ticks=12 shadow=$%08x\n",g_macLowMemory
 detach
 quit 0

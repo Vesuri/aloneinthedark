@@ -14,8 +14,8 @@ and Toolbox layer are carried over from Vette!; see
 The executable builds and runs the original CODE 1 startup on the 68020. Its
 75,616-byte A5 globals match the host model exactly. The original segment loader
 relocates Core and reaches `main`; initialization then stops explicitly at
-`RESOURCE MANAGER / GET1NAMEDRESOURCE`, Engine+$3CDC, after directory
-initialization. The game is not playable yet.
+`FONT MANAGER / GETFNUM`, Dan1+$0012, after directory initialization and
+the original General resource lookup. The game is not playable yet.
 Other processors and performance work remain deferred.
 
 The M0 tools checkpoint includes the trap census, original Mac runtime/frame
@@ -30,8 +30,8 @@ core probes; rendered-picture acceptance is owner-deferred (M1.7b2). The next
 implementation item is the remaining Resource Manager services (M2.2).
 Resource bodies now stream from disk into zone handles; startup retains the
 4,998-byte map instead of the 1,424,934-byte application fork. The `resource-read`
-regression verifies original bytes and 13 runtime read windows before the current
-Get1NamedResource stop. The metadata-only catalog and application-fork identity are verified (M2.1b1):
+regression verifies original bytes and 16 runtime read windows before the current
+GetFNum stop. Named and ID resource lookup traps now pass paired Mac/native checks. The metadata-only catalog and application-fork identity are verified (M2.1b1):
 32 data files, 5,315,994 bytes; no data payload preloading. SetVol, the three
 startup working directories, Preferences lookup and the optional movies error
 are verified against the Mac (M2.1b2a). Read-only data forks now use persistent

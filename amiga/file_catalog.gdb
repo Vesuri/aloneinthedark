@@ -8,12 +8,12 @@ set $catalog_folder=0
 break AitdScreen::showLoudStop
 commands
  silent
- if $catalog_fcb != 1 || $catalog_wd != 4 || $catalog_setvol != 2 || $catalog_folder != 1 || g_trapWord != 0xa820 || g_trapSegment != 7 || g_trapOffset != 0x3cdc || g_macServiceEntered != 20 || g_macServiceCompleted != 20 || g_systemWindows != 13 || g_resourceRuntimeReads != 13 || g_resourceRuntimeBytes != 68336
+ if $catalog_fcb != 1 || $catalog_wd != 4 || $catalog_setvol != 2 || $catalog_folder != 1 || g_trapWord != 0xa900 || g_trapSegment != 12 || g_trapOffset != 0x12 || g_macServiceEntered != 23 || g_macServiceCompleted != 23 || g_systemWindows != 16 || g_resourceRuntimeReads != 16 || g_resourceRuntimeBytes != 96648
   printf "FAIL file-catalog: FCB=%u WD=%u next=%s/%s\n",$catalog_fcb,$catalog_wd,g_trapManager,g_trapRoutine
   detach
   quit 1
  end
- printf "PASS file-catalog: entries=%u data-files=%u data-bytes=%u FCB=1 OpenWD=3 missing-movies=1 SetVol=2 FindFolder=1 windows=%u next=GET1NAMEDRESOURCE\n",g_catalogEntries,g_catalogDataFiles,g_catalogDataBytes,g_systemWindows
+ printf "PASS file-catalog: entries=%u data-files=%u data-bytes=%u FCB=1 OpenWD=3 missing-movies=1 SetVol=2 FindFolder=1 windows=%u next=GETFNUM\n",g_catalogEntries,g_catalogDataFiles,g_catalogDataBytes,g_systemWindows
  detach
  quit 0
 end
