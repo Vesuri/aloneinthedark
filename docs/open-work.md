@@ -56,9 +56,8 @@ required.
     Native handles remap by stable identity; bodies remain source-backed.
   - **M2.2f4 Remaining writable resource variants.** Extend the measured scope
     before enabling the remaining resource mutations and error paths.
-    - **M2.2f4a Reference contract.** Capture permissions 0–4/read-only files,
-      create on absent/existing files, malformed maps, invalid update refs,
-      AddResource errors, ChangedResource/WriteResource/RmveResource, dirty
+    - **M2.2f4a2 Remaining reference contract.** Capture permissions 0–4 and
+      read-only files, create on absent/existing files, malformed maps, dirty
       handle release/detach/empty, noncurrent-file close and exit persistence.
       Application-file closure and mixing raw resource streams with resource
       updates are currently explicit stops; establish their reached semantics
@@ -69,6 +68,14 @@ required.
       current directory/staging backend. *Done when* paired native fixtures,
       source-backed loading, disk error/rollback evidence and all regressions
       pass; any still-unmeasured variant remains a named stop and queued.
+      - **M2.2f4b1 Same-file duplicate model correction.** The Mac accepts
+        duplicate type/ID pairs in one map, persists both in insertion order,
+        and ID lookup selects the first. ResourceMap/ResourceWriter currently
+        reject them. Preserve per-entry identity through remove/rebase and slot
+        reuse. *Done when* parser, writer, directory and native-view host tests
+        cover exact duplicate round trips and lookup order without body preload,
+        and existing original-fork/native regressions pass.
+
 
   - Implement writable prefs/save resource forks and the port overlay fork
     (empty at first), preserving design §4.6 search order and dialog overrides.

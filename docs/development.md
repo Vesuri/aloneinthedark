@@ -1512,3 +1512,46 @@ independent six-resource disk check. A5 globals match all 75,616 bytes. The
 resource integration copy audit and clean production no-float/probe audits
 pass. No owner decision changed; actual rendered-video verification remains
 owner-deferred.
+
+
+### Writable resource mutation reference (M2.2f4a1)
+
+The CPU-only `mac_resource_writes.lua` fixture exclusively creates one scratch
+file and performs 50 calls at the byte-checked Engine+$3CDC gate. Its checker
+also validates Gloss+$08AC, +$0906, +$090A, +$09CE and +$09D4 original mutation
+instruction pairs. The final MAME run exits normally, deletes the scratch file,
+and restores the application current resource file. No original assets change.
+
+Measured contract:
+- AddResource accepts two resources with identical type/ID in the same file.
+  Both survive UpdateResFile, close and reopen. Get1IndResource returns them in
+  insertion order; Get1Resource selects the first. Removing that first handle
+  leaves the other resource under the same ID. This contradicts the portable
+  map/writer duplicate-rejection assumption; correction is queued as M2.2f4b1.
+- AddResource and ChangedResource set attribute bit `$02`; WriteResource clears
+  it. GetResAttrs preserves D0 and MemErr. WriteResource without ChangedResource
+  succeeds but does not persist a changed body: resident `CCCC` reopens as the
+  previously written `BBBB`.
+- RmveResource clears the resource handle flag but preserves its four-byte body
+  and master pointer. Readding that handle as ID 129 succeeds and persists `BBBB`;
+  the duplicate at ID 128 still contains `DDDD` after reopen.
+- Nil AddResource returns -194 (`$FF3E`) and clears MemErr. Nil/removed
+  ChangedResource and WriteResource return -192 (`$FF40`) while preserving seeded
+  MemErr. Nil/repeated RmveResource returns -196 (`$FF3C`). Those calls put the
+  zero-extended ResErr in D0. GetResAttrs on the removed handle returns zero with
+  -192 while preserving D0/MemErr. Invalid UpdateResFile returns -193 while
+  preserving D0/MemErr.
+- Successful mutations clear ResErr, MemErr and D0; UpdateResFile preserves D0.
+  Cached lookup of the already loaded first duplicate preserves seeded MemErr,
+  while lookup that loads its body clears MemErr. The checker distinguishes
+  these states and checks stack cleanup, independent handles and resource flags.
+
+The checker passes the actual capture and rejects timeout, missing completion,
+and corrupted attribute, duplicate-count, body, handle-flag, error and register
+records. This is Mac reference evidence; native mutation/dirty-attribute support
+is still pending. Remaining permission and dirty-lifecycle reference cases are
+M2.2f4a2, before native integration resumes.
+
+The full host suite passes. No native runtime code changed in this reference
+checkpoint; existing native regression results remain the ab2a3ff baseline.
+No owner decision is needed.
