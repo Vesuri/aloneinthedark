@@ -34,9 +34,32 @@ static const char* scan(MacFiles& catalog,uint32_t directory,const char* path,bo
     else if(!Examine(lock,info) || info->fib_DirEntryType<=0)error="CATALOG / EXPECTED DIRECTORY";
     else {
         while(ExNext(lock,info)) {
-            // Nested user directories and companion forks require explicit handling.
-            if(info->fib_DirEntryType>=0 || info->fib_Size<0) { error="CATALOG / UNSUPPORTED ENTRY";break; }
             const char* name=(const char*)info->fib_FileName;
+            const MacFiles::Entry* known=catalog.child(directory,name);
+            char nativePath[160];
+            if(!join(nativePath,path,name)) { error="CATALOG / FILE PATH";break; }
+            // Only the explicitly mapped child directory may already be present.
+            if(info->fib_DirEntryType>=0) {
+                if(known && known->directory && same(known->path,nativePath))continue;
+                error="CATALOG / UNSUPPORTED DIRECTORY";break;
+            }
+            if(info->fib_Size<0) { error="CATALOG / UNSUPPORTED ENTRY";break; }
+            if(known) {
+                if(!known->resourceIsBase || !same(known->path,nativePath)
+                    || known->resourceSize!=(uint32_t)info->fib_Size) {
+                    error="CATALOG / CONFLICTING ENTRY";break;
+                }
+                continue;
+            }
+            // The raw application resource has a .data companion, unlike ordinary files.
+            uint16_t nameLength=0;while(name[nameLength])++nameLength;
+            if(nameLength>5 && same(name+nameLength-5,".data")) {
+                char owner[108];
+                for(uint16_t i=0;i<nameLength-5;++i)owner[i]=name[i];
+                owner[nameLength-5]=0;
+                const MacFiles::Entry* application=catalog.child(directory,owner);
+                if(application && application->resourceIsBase)continue;
+            }
             const char* suffix=0;
             for(const char* p=name;*p;++p)if(*p=='.')suffix=p;
             if(suffix && same(suffix,".finfo"))continue;
@@ -72,7 +95,7 @@ static const char* scan(MacFiles& catalog,uint32_t directory,const char* path,bo
                 if(length-suffix>=sizeof(owner)) { error="CATALOG / COMPANION NAME";break; }
                 for(uint16_t i=0;i<length-suffix;++i)owner[i]=name[i];owner[length-suffix]=0;
                 const MacFiles::Entry* entry=catalog.child(directory,owner);
-                if(!entry || (metadata && !entry->metadataKnown))error="CATALOG / ORPHAN COMPANION";
+                if(!entry || entry->directory || (!metadata && entry->resourceIsBase) || (metadata && !entry->metadataKnown))error="CATALOG / ORPHAN COMPANION";
             }
         }
         if(!error && IoErr()!=ERROR_NO_MORE_ENTRIES)error="CATALOG / COMPANION ENUMERATION";
@@ -83,7 +106,8 @@ static const char* scan(MacFiles& catalog,uint32_t directory,const char* path,bo
 const char* aitdBuildFileCatalog(MacFiles& catalog,const char* applicationPath,uint32_t resourceBytes) {
     FileAccess::initializeMetadataClock();
     catalog.reset();g_catalogEntries=g_catalogDataFiles=g_catalogDataBytes=0;
-    catalog.application=catalog.add(2,"Alone in the Dark","PROGDIR:",true);
+    bool dedicated=same(applicationPath,"PROGDIR:data/Alone In The Dark");
+    catalog.application=catalog.add(2,"Alone in the Dark",dedicated ? "PROGDIR:data" : "PROGDIR:",true);
     catalog.system=catalog.add(2,"System Folder","",true);
     catalog.preferences=catalog.add(catalog.system,"Preferences","PROGDIR:prefs",true);
     catalog.saves=catalog.add(catalog.application,"Alone Saved Games","PROGDIR:Saved Games",true);
@@ -101,7 +125,8 @@ const char* aitdBuildFileCatalog(MacFiles& catalog,const char* applicationPath,u
     if(FileAccess::loadMetadataRestored(applicationPath,metadata,found)
         || (found && catalog.setMetadata(app,metadata)))return "CATALOG / APPLICATION METADATA";
     if(catalog.initializeDirectories())return "CATALOG / SYSTEM WORKING DIRECTORY";
-    const char* error=scan(catalog,catalog.data,dataPath,false,true);
+    const char* error=dedicated ? scan(catalog,catalog.application,"PROGDIR:data",false,false) : 0;
+    if(!error)error=scan(catalog,catalog.data,dataPath,false,true);
     if(!error)error=scan(catalog,catalog.saves,"PROGDIR:Saved Games",true,false);
     if(!error)error=scan(catalog,catalog.preferences,"PROGDIR:prefs",true,false);
 #ifdef AITD_FILE_PROBE
@@ -117,6 +142,6 @@ const char* aitdBuildFileCatalog(MacFiles& catalog,const char* applicationPath,u
             || catalog.add(catalog.data,"locked-probe.bin","PROGDIR:locked-probe.bin",false,0)<0))
         error="CATALOG / SHARING PROBE";
 #endif
-    if(!error)g_catalogEntries=catalog.count();
+    if(!error) { catalog.applicationComplete=dedicated;g_catalogEntries=catalog.count(); }
     return error;
 }

@@ -17,7 +17,7 @@ commands
  detach
  quit 0
 end
-if g_catalogEntries != 39 || g_catalogDataFiles != 32 || g_catalogDataBytes != 5315994 || g_applicationFileRef <= 0
+if g_catalogEntries != 42 || g_catalogDataFiles != 32 || g_catalogDataBytes != 5315994 || g_applicationFileRef <= 0
  echo FAIL file-catalog: original metadata totals\n
  detach
  quit 1

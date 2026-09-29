@@ -22,8 +22,30 @@ stage_aitd_original_data()
     echo "Original Finder metadata missing; rerun tools/extract_original_data.py" >&2
     return 1
   }
-  cp -f "$AITD_APP_RSRC" "$destination/Alone In The Dark"
-  cp -f "$AITD_APP_RSRC.finfo" "$destination/Alone In The Dark.finfo"
-  rm -rf "$destination/Alone Data"
-  cp -R "$AITD_DATA_DIR" "$destination/Alone Data"
+  local source_root="$(dirname "$AITD_APP_RSRC")" name suffix
+  for name in 'ListBod2.PAK' 'Quick Reference' 'Register Triple A Pack'; do
+    for suffix in '' '.finfo'; do
+      [ -f "$source_root/$name$suffix" ] || {
+        echo "Original application-folder file missing: $name$suffix; rerun extractor" >&2
+        return 1
+      }
+    done
+  done
+  for name in 'Quick Reference' 'Register Triple A Pack'; do
+    [ -f "$source_root/$name.rsrc" ] || return 1
+  done
+  # This dedicated asset directory excludes the port executable and probes.
+  # Preserve arbitrary user contents: catalog validation must see unknown layouts.
+  local assets="$destination/data"
+  mkdir -p "$assets"
+  cp -f "$AITD_APP_RSRC" "$assets/Alone In The Dark"
+  cp -f "$AITD_APP_RSRC.finfo" "$assets/Alone In The Dark.finfo"
+  for name in 'ListBod2.PAK' 'Quick Reference' 'Register Triple A Pack'; do
+    cp -f "$source_root/$name" "$source_root/$name.finfo" "$assets/"
+  done
+  for name in 'Quick Reference' 'Register Triple A Pack'; do
+    cp -f "$source_root/$name.rsrc" "$assets/"
+  done
+  rm -rf "$assets/Alone Data"
+  cp -R "$AITD_DATA_DIR" "$assets/Alone Data"
 }

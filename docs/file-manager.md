@@ -84,14 +84,13 @@ past the File Manager stop or a successful game launch.
 
 The independent catalog/identity portion of M2.1b is complete. `MacFiles` models
 128 catalog entries, 16 open forks and 16 working directories. ASCII names are
-case-insensitive; unsupported names, unknown application paths, nested native
-directories, `.rsrc` companions and capacity exhaustion stop explicitly. The
-measured optional `Alone Movies` lookup and absent files inside known directories
-return fnfErr. Finder information and resource companions remain M2.1b2.
+case-insensitive; unsupported names, unknown nested native directories and
+capacity exhaustion stop explicitly. Absent files in complete directories return
+fnfErr. Validated Finder records and independent resource companions are supported.
 
 The native builder enumerates names and sizes with Lock/Examine/ExNext before
 takeover, without Read. The original data directory contains 32 files totaling
-5,315,994 bytes; the complete virtual catalog has 39 entries. Application,
+5,315,994 bytes; the current virtual catalog has 42 entries. Application,
 System, Preferences, saves and data directories have distinct IDs. Missing
 optional save/prefs directories are represented as empty; other DOS errors fail
 startup. The application still uses its existing whole-fork buffer until M2.2.
@@ -242,7 +241,7 @@ six DOS reads, ten OS windows and restored-OS cleanup remain unchanged. Host
 fixtures reject missing name round-trips and a substituted volume-root ref.
 
 All host checks, file-read, window-core and production boot pass on 68020.
-The original directory observer still reports 39 entries, 32 data files,
+The original directory observer still reports 42 entries, 32 data files,
 5,315,994 bytes, seven successful service completions, zero runtime OS windows
 and the unchanged Get1NamedResource stop. No owner decision is required.
 
@@ -330,7 +329,7 @@ implementation acceptance.
 
 All host tests, the 28-stage native file regression, window-core, production
 boot and the original directory observer pass on 68020. Original startup retains
-39 catalog entries, 32 data files, seven completed services and zero runtime
+42 catalog entries, 32 data files, seven completed services and zero runtime
 OS windows, with the same named Get1NamedResource stop.
 
 ## Working-directory queries and lifetime (M2.1b2c4)
@@ -629,9 +628,32 @@ return -35. An explicit bad directory still fails when a valid WD is supplied.
 Classic GetFInfo uses the current default directory and ignores the hierarchical
 PB directory field. These cases match the 218-call System 7.5.5 fixture.
 
-The native fixture passes all corresponding Line-A cases and exact returned
-names, metadata and lifetime checks. Enumeration of the deliberately incomplete
-application/System/root namespaces remains a named stop, not a fabricated empty
-listing; their boundaries are queued in M2.1b2c9c2b. All regression gates pass,
-with 289 runtime windows in the expanded file-write case and unchanged stream
-read/write/flush totals. Production still stops at Get1NamedResource.
+The native fixture passes the corresponding Line-A cases and exact returned
+names, metadata and lifetime checks. File-write uses 296 runtime windows with
+unchanged stream read/write/flush totals. Production still stops at Get1NamedResource.
+
+## Application namespace boundary (M2.1b2c9c2b)
+
+The preferred `PROGDIR:data/` layout is the Mac application folder. Every ordinary
+native file is catalogued, including unknown files; missing metadata remains a
+named GetFInfo stop. The known `Alone Data` directory is scanned separately;
+unknown nested directories are rejected. `Alone Saved Games` maps to the separate
+native `PROGDIR:Saved Games` location. A native directory that conflicts with that
+mapping is rejected rather than hidden. Port executables and diagnostics live
+outside `data/`. Original root files, both forks and metadata are preserved.
+
+Only a successful full scan marks the application namespace complete. Its named
+missing paths and indexed end-of-directory now return -43, matching the Mac.
+Indices 1–4 return the application, ListBod2.PAK, Quick Reference and Register
+Triple A Pack; directories and companions are excluded. Original application
+ID 8 and directory IDs 2–7 remain fixed. Unknown ordinary native files participate
+in enumeration rather than disappearing from it.
+
+System and virtual-root namespaces deliberately expose only mapped directories;
+they do not represent the reference operating-system installation or whole disk.
+Their unknown named paths and file listings remain loud unsupported operations.
+Preferences beneath System is a complete supported namespace. The legacy mixed
+`PROGDIR:` asset layout retains known lookups and the measured optional Movies
+absence, but cannot claim a complete file listing or arbitrary missing name.
+Host tests enforce these boundaries; native/Mac fixtures cover the complete
+application directory and existing data/save/prefs fixtures remain unchanged.

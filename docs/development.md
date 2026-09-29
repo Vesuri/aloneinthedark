@@ -56,9 +56,12 @@ with `CONFIG / DEFERRED CPU TARGET`; their support is deferred to M5.0.
 All three launchers share these settings and write the emulator core log to
 `amiga/.run/logs/fs-uae.log.txt`.
 
-`stage_original_data.sh` copies the extracted files next to the executable on
-the emulated hard drive; override `AITD_APP_RSRC` and `AITD_DATA_DIR` for other
-layouts.
+`stage_original_data.sh` copies the original application folder into `data/`
+beneath the executable directory on the emulated hard drive. The port executable
+and diagnostic files remain outside this Mac-visible namespace. Override
+`AITD_APP_RSRC` and `AITD_DATA_DIR` for extraction locations; the three original
+root files and companions must be beside `AITD_APP_RSRC`. Saves and preferences
+retain their separate `Saved Games/` and `prefs/` native mappings.
 
 ## Debugging
 
@@ -660,7 +663,7 @@ Open/HOpen, Write, SetEOF, GetEOF/GetFCBInfo, Read, FlushVol and Close calls aft
 the read/directory fixture. It requires FILEPROBE=1 and FILEWRITEPROBE=1.
 The case checks exact bytes, marks/EOF, CCR, the 25-pair permission matrix,
 protected-file defaults/errors, shared writes and close order, cached-reader
-coherence and volume-name/reference forms. It requires 289 runtime windows,
+coherence and volume-name/reference forms. It requires 296 runtime windows,
 23 DOS writes (65,536 maximum), 17 flushes including shutdown and an empty
 stream ledger after cleanup. Host readback verifies 17 backend bytes, six
 shared-file bytes, four data bytes plus Finder metadata, and three bytes left dirty
@@ -781,9 +784,8 @@ Native stage 46 checks ordering against known existing save files, the grave
 accent's special position, canonical name outputs, null-name identity, errors,
 classic/default selection, WD precedence and reindexing after deletion. Host
 sanitizer tests cover all 67 characters and reverse insertion order. `file-write`
-now requires 289 runtime windows; stream counters are unchanged. Partial
-application/System/root namespaces still stop on indexed access until their
-separately queued completeness work is verified.
+now requires 296 runtime windows; stream counters are unchanged. The dedicated application directory also supports indexed queries; System/root
+and the legacy mixed native directory remain explicit unsupported boundaries.
 
 
 ### Original application-folder files (M2.1b2c9c2b1)
@@ -803,5 +805,25 @@ from the System 7.5.5 reference application folder. The three full file
 `6173b910b6b572a00bfef3ca40b7e738112ef7a1f533c90c4bc549a200696e69`, and
 `a90c4bbebe9615a900ddfbd8f5c5d845ec8e304970a558aea0a663a0c8b7c870`.
 The metadata tests cover two-fork records and reject incomplete/mismatched
-pairs. These extractor outputs are not yet integrated into development staging
-or the native catalog; that remains M2.1b2c9c2b.
+pairs. These outputs are integrated into staging and the native application catalog.
+
+
+### Application namespace regression (M2.1b2c9c2b)
+
+`mac_file_installed.lua` now makes 13 read-only calls: seven named original-file
+queries, the four application-file indices, end-of-directory and a missing name.
+The checker compares indexed IDs/metadata to named results. The three added root
+files retain their Finder flags on the reference disk, with icon coordinates
+(y=52, x=0/128/256); these measured installation changes are checked explicitly.
+Native stage 44 checks their original metadata, fork sizes, canonical indexed
+names and both -43 results, finishing at step 10. The complete production catalog
+contains 42 entries and still performs zero runtime windows during original
+directory initialization. File-write uses 296 windows; stream totals are unchanged.
+
+After the production boot build, run `python3 tools/check_file_namespace.py` with
+`amiga/env.sh` sourced. Its three bounded native startup runs require normal exit:
+an unknown ordinary file raises the catalog count to 43, an unknown directory
+returns `CATALOG / UNSUPPORTED DIRECTORY`, and an orphan `.rsrc` returns
+`CATALOG / ORPHAN COMPANION`. Each fixture owns and cleans only its named scratch.
+The observer finishes the real catalog builder before takeover; no game file is
+modified and no host window access is used.

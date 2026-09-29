@@ -14,7 +14,7 @@ static bool copy(char* out,const char* in,uint32_t capacity) {
     out[i]=0;return true;
 }
 void MacFiles::reset() {
-    count_=used_=0;nextID_=2;defaultRef_=0;defaultDirectory_=0;application=system=preferences=saves=data=0;
+    applicationComplete=false;count_=used_=0;nextID_=2;defaultRef_=0;defaultDirectory_=0;application=system=preferences=saves=data=0;
     for(uint16_t i=0;i<maxOpen;++i)forks_[i].ref=0;
     for(uint16_t i=0;i<maxWD;++i)wd_[i].ref=0;
     add(1,"Alone","",true); // Virtual volume root has the HFS-reserved ID 2.
@@ -54,9 +54,9 @@ int16_t MacFiles::indexedFile(int16_t volume,uint32_t directory,int16_t index,ui
     if(index<=0)return unsupported;
     uint32_t parent=0;int16_t error=resolve(volume,directory,0,parent);
     if(error)return error==dirNFErr ? fnfErr : error;
-    // Application/System namespaces deliberately omit unimplemented native files.
+    // Legacy application and System/root namespaces remain intentionally partial.
     // Never turn an incomplete enumeration into a false end-of-directory result.
-    if(parent==2 || parent==application || parent==system)return unsupported;
+    if(parent==2 || (parent==application && !applicationComplete) || parent==system)return unsupported;
     for(uint16_t i=0;i<used_;++i) {
         const Entry& candidate=entries_[i];
         if(!candidate.id || candidate.directory || candidate.parent!=parent)continue;
@@ -183,8 +183,8 @@ int16_t MacFiles::resolve(int16_t volume,uint32_t directory,const char* path,uin
         component[n]=0;
         const Entry* found=child(base,component);
         if(!found) {
-            // Only the measured optional application directory may be absent.
-            if(base==application && !equal(component,"Alone Movies"))return unsupported;
+            // Partial namespaces cannot establish absence beyond the measured optional Movies path.
+            if(base==2 || base==system || (base==application && !applicationComplete && !equal(component,"Alone Movies")))return unsupported;
             return fnfErr;
         }
         base=found->id;

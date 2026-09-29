@@ -43,19 +43,6 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.1b2c9c2b Application namespace completeness.**
-  - Finish application-directory missing-path resolution without hiding native
-    files outside its deliberately partial catalog. Application/System/root
-    indexed listings currently stop explicitly; establish complete supported
-    namespace boundaries before returning entries or end-of-directory there.
-  - Original root-file extraction is complete (M2.1b2c9c2b1); staging and
-    native application catalog integration remain in this item.
-  - Data/save/prefs indexed file queries are complete (M2.1b2c9c2a).
-    Preserve original metadata and distinguish port files from Mac-visible files.
-
-  *Done when* named missing/existing paths and indexed listings in each supported
-  namespace have Mac/native comparisons, unknown native layouts remain loud,
-  and all existing regression cases pass.
 - **M2.1b2c9c2c Remaining File Manager dispatch variants.**
   - Complete HGetVolParms, FSDispatch PBHOpenDF and async census variants.
     Keep per-fork state and system-window boundaries (design §4.5).

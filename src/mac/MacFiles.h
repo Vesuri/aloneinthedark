@@ -53,6 +53,7 @@ public:
     int16_t defaultRef() const { return defaultRef_ ? defaultRef_ : application ? applicationWD : volumeRef; }
     uint16_t count() const { return count_; }
     uint32_t application=0,system=0,preferences=0,saves=0,data=0;
+    bool applicationComplete=false;
     static const int16_t volumeRef=-1,applicationWD=-32000,systemWD=(int16_t)0x8053;
 private:
     struct WD { int16_t ref; uint32_t directory,process; };
