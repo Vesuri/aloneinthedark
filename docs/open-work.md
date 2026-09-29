@@ -48,6 +48,21 @@ required.
 
 ## M2 Startup to intro
 
+- **M2.1c3c2c5b2c2e1 Window palette state before binding (M2.7 prerequisite).**
+  - Original MoveWindow at Misc1+$0FAC changes the default palette header;
+    ShowWindow at +$10E6 realizes its colours in the device CLUT. The later
+    SetPalette at +$10FA leaves the already-realized state unchanged.
+  - Native entry to the binding still has the earlier default-only header and
+    no active palette. Implement and verify the earlier transitions first,
+    rather than treating the final binding as the missing realization point.
+  - Extend the paired captures across these service boundaries. Preserve original
+    instructions and exclude Mac chrome/dialog presentation. Unsupported forms
+    remain named stops. See [palette.md](palette.md) for measured evidence.
+
+  *Done when* paired calls prove the palette/private-record and device-CLUT
+  transitions (including slots 1, 15 and 191), stack/register contracts and
+  explained drawing effects, and relevant startup regressions pass. AGA output
+  and intro-frame acceptance remain M2.5/M2.10.
 - **M2.1c3c2c5b2c2e Window palette binding prerequisite.**
   - Startup now reaches the original SetPalette request at Misc1+$10FA after
     hidden title updates. The implemented default-window (-1) binding does not

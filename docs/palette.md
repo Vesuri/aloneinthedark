@@ -192,3 +192,39 @@ python3 tools/check_palette.py tmp/m2-setpalette-fixture-final.log --native --fi
 This is binding and ownership acceptance. Palette activation, video colour
 transfer, eight-plane output and rendered intro acceptance remain M2.7/M2.7a and
 the other queued graphics work.
+
+
+## Window lifecycle prerequisite for window binding
+
+The newly reached original SetPalette call is at Misc1+$10FA. Its instruction
+range +$10E8–$10FB has SHA-256
+`41c4b669d4c6ce8e4889fb470c9a76c753d11fe61bd4e1285be68a20b6db8a23`.
+A bounded headless exploratory capture shows update=true and the existing default
+palette passed for the main window. GetPalette(window) returns that same handle.
+The complete palette, private allocation, window record, GDevice, PixMap, CLUT,
+physical framebuffer and hardware palette remain unchanged across this call.
+
+Earlier transitions explain why it is not an activation point on this route:
+
+- MoveWindow at Misc1+$0FAC changes palette byte 6 from $E0 to $C0 and long +8
+  from zero to one. Private data, GDevice, PixMap and CLUT remain unchanged.
+  The exact private-field meaning is not inferred from those values.
+- ShowWindow at Misc1+$10E6 changes each entry's private word at +10 to $800A,
+  realizes the device CLUT and writes its new seed to the four-byte private
+  allocation. RGB slots 1, 15 and 191 retain their prior values, matching the
+  M0.5 observation; the other RGBs match the palette.
+- Native entry to SetPalette still has the earlier $E002 header, long +8 zero
+  and no active palette. The inherited ShowWindow visibility flag alone does
+  not reproduce these measured palette effects.
+
+Original MoveWindow helper bytes +$0F94–$0FB3 have SHA-256
+`ac7b10b44ab334076f90cb605411a22f4d82b7cb09e3e91470942a38dea74d5a`;
+the ShowWindow call bytes +$10E2–$10E7 have SHA-256
+`fbb2f10eed30f3a3ccbb42f116e135a329de15963a39307a540398422a54a59c`.
+Exploratory evidence is `tmp/m2-window-palette-reference-explore.log`,
+`tmp/m2-window-palette-stages.log`, `tmp/m2-window-palette-move.log` and
+`tmp/m2-window-palette-native-input.log`. All bounded captures exited zero with
+positive markers. The byte deltas were independently checked; this locates the
+prerequisite, but is not native acceptance or a complete lifecycle contract.
+Maintained paired probes, implementation and regression acceptance are queued
+as M2.1c3c2c5b2c2e1 before final window-binding acceptance.
