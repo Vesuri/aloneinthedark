@@ -107,6 +107,7 @@ host-tests:
 	@python3 tools/check_main_device.py --selftest
 	@python3 tools/check_sane_position.py --selftest
 	@python3 tools/check_hidden_move.py --selftest
+	@python3 tools/check_choice_services.py --selftest
 	@python3 tools/check_mame_literals.py
 	@python3 tools/check_sane.py
 	@python3 tools/check_menu_reference.py --selftest

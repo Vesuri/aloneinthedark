@@ -1,11 +1,10 @@
 # Fixed screen-size selection
 
-D4 requires 320×200 and no displayed size dialog. M2.1c3c2c5a establishes the
-original contract; M2.1c3c2c5b1 implements hidden construction. Native startup now stops
-at ModalDialog, Dan2+$30FE, after the original positioning arithmetic and
-hidden MoveWindow.
-GetMainDevice and the five integer-only SANE operations pass; fixed selection
-remains M2.1c3c2c5b2c2. No Mac dialog presentation is authorized (D5).
+D4 requires 320×200 and no displayed size dialog. Hidden construction,
+positioning, automatic item-2 selection, item lookup/disposal and restoration of
+the main world are implemented. Native startup now stops at GetFontInfo,
+Misc1+$0610, before the original WIND 128 request. That request remains a separate
+acceptance requirement. No Mac dialog presentation is authorized (D5).
 
 Original bytes establish the following:
 
@@ -54,13 +53,11 @@ Its rejection tests run in `make host-tests`. Local evidence is
 `tmp/m2-screen-choice-reference.log` and
 `tmp/m2-screen-choice-low-reference.log`, both normal exit status zero.
 
-The implementation should use the existing D4-authorized ModalDialog seam,
-with real logical dialog state and no presentation of DLOG 1000. It must measure
-and implement the required constructor, positioning, item and world-binding
-services; unrelated unsupported operations retain named stops. Merely returning
-a fabricated successful dialog pointer or changing PREF is insufficient.
-Fresh/existing native startup, the next named stop and startup regressions
-remain required. Full window/viewport and frame acceptance remains M2.4/M2.7.
+The native implementation uses the D4-authorized ModalDialog seam with real
+logical dialog state and no presentation of DLOG 1000. The measured constructor,
+positioning, item and restoration services are implemented; unrelated unsupported
+operations retain named stops. Fresh/existing native selection passes as below.
+WIND 128 request and full window/viewport/frame acceptance remain pending.
 
 ## Hidden native constructor
 
@@ -84,8 +81,7 @@ All four private handles are real application-zone handles; failed allocation
 releases already-created handles. The source DITL is locked during allocations
 and its state restored, so compaction/purging cannot invalidate it. Dimensions
 are captured before allocation because the source DLOG is also purgeable.
-Disposal releases the private handles; integrated original disposal acceptance
-remains in the next item.
+Disposal releases the private handles; the integrated acceptance is below.
 
 D4 suppresses ShowWindow for this dialog. Definition handles point to a private
 `HIDDEN DEFINITION DRAWING` loud stop; no WDEF/CDEF drawing is claimed. DrawDialog
@@ -122,7 +118,7 @@ port rectangle remains (0,0,90,285). Structure/content/update regions remain
 empty but their coordinates translate by (18,-64); visibility and clip regions,
 item list, both controls and text remain byte-identical. No pixels are drawn.
 The native implementation matches; unsupported front/visible/nonempty-region
-forms retain the MoveWindow stop. ModalDialog is next at Dan2+$30FE.
+forms retain the MoveWindow stop. The subsequent hidden selection is below.
 
 `mac_hidden_move.lua` and `hidden_move.gdb` capture the two sides. Check with:
 
@@ -144,3 +140,49 @@ services are not implemented. Within each machine, every record byte except
 bitmap bounds is preserved by MoveWindow. Earlier constructor tail-byte evidence
 is superseded; the remaining emitters are now audited, with a maintained regression and
 fresh affected captures; see [mac-reference-loop.md](mac-reference-loop.md).
+
+
+## Hidden fixed-choice services
+
+The original service sequence is Dan2+$30FE ModalDialog, +$348A GetDItem,
++$3452 DisposeDialog and +$313C SetGWorld (selector 6). Original helper bytes
++$344A–+$34F9 are guarded alongside the selection-path hashes. No original
+instruction is changed.
+
+D4 returns item 2 immediately for the hidden DLOG 1000 and its measured
+A5+$372 filter. It writes only the item word, preserves D3–D7/A2–A6, pops eight
+bytes and makes the hidden dialog current. The Mac reference has an initial
+item-zero iteration before the scripted click; omitting that visible interaction
+is the intentional D4 policy. Other modal forms remain explicit stops.
+
+GetDItem pops eighteen bytes and returns the actual owned second control handle,
+button type 4, and local rectangle (60,29,80,129). Disposal pops four bytes,
+unlinks the hidden dialog, restores WMgrPort and releases all four owned
+allocations (384 physical bytes). Allocation flags clear and the slot is unused;
+freed master pointers are linked into the heap free list, not required to stay
+nil. SetGWorld pops eight bytes, restores the measured main-device/WMgrPort pair,
+returns D0=$00080000 and the port/device in A0/A1. Broader world changes are
+unsupported, pending the graphics work.
+
+`mac_choice_services.lua` and `choice_services.gdb` capture both sides;
+`check_choice_services.py` checks stack/registers, output extents, pointer
+relationships, item fields, private ownership cleanup and preference mapping:
+
+```sh
+python3 tools/check_choice_services.py tmp/m2-choice-services-reference.log --status 0 \
+  --native tmp/m2-choice-native.log --native-status 0
+```
+
+The current explicit stop is `FONT MANAGER / GETFONTINFO`, Misc1+$0610, A88B.
+The original then calls CharWidth for '0' and space. These metrics precede
+window creation; preference zero does not by itself prove WIND 128 acceptance.
+Full drawing, replacement in-game interfaces, window/viewport and frame acceptance
+remain required by the queue.
+
+Native evidence uses `tmp/m2-choice-native.log`, `tmp/m2-choice-fresh.log` and
+`tmp/m2-choice-low.log`, all normal exits with positive completion. The fresh
+run creates the default size-one PREF; existing inputs one and zero both become
+zero with all nine unrelated bytes preserved. The tests restore the original
+on-disk preferences. Existing/fresh window counts remain 36/62, with 43/51
+completed services; resource reads remain 28 / 123,387 bytes. The checker also
+rejects visibility, cleanup, preference, duplicate-capture and timeout failures.

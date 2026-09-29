@@ -221,9 +221,9 @@ The original startup path is implemented (M1.1–M1.3):
 **Verified:** the host check `tools/a5world_check.py` passes: it runs
 CODE 1's expansion algorithm on the resource bytes and compares, byte for byte,
 with the A5 world the Amiga dumps (via gdb) when it enters `main`. The current
-loud stop is `DIALOG MANAGER / MODALDIALOG`, after the original startup
+loud stop is `FONT MANAGER / GETFONTINFO`, after the original startup
 directories, General lookup, first Times font lookup and two native driver
-initialization calls, menu-record initialization, logical device selection, SetDepth, GetGWorld, hidden dialog construction, GetMainDevice and ten integer-only positioning calls plus hidden MoveWindow. The second Times lookup still needs intervening startup
+initialization calls, menu-record initialization, logical device selection, SetDepth, GetGWorld, hidden dialog construction, GetMainDevice and ten integer-only positioning calls plus hidden MoveWindow, fixed item selection, disposal and main-world restoration. The second Times lookup still needs intervening startup
 services. Original MDRV loading remains forbidden.
 
 ### 4.3 Low memory
@@ -521,8 +521,9 @@ Native trap probes, host fragmentation tests and paired heap captures verify it:
   - Original Core+$050E calls the selector unconditionally: a `PREF` override
     cannot suppress the dialog. The measured service seam is `ModalDialog`
     returning item 2 for DLOG 1000, with dialog presentation suppressed (D4).
-    Hidden construction and positioning are verified; world restoration and
-    modal/item services remain pending.
+    Hidden construction, positioning, selection, item lookup/disposal and main-world
+    restoration are verified. Native WIND 128 request acceptance remains behind
+    the newly reached font-metrics prerequisite.
   - The original updates only PREF byte 7 and picks WIND 128 at Misc1+$1084
     (the high-resolution branch at +$107E picks WIND 132). See
     [screen-choice.md](screen-choice.md) for both preference-input captures.

@@ -2434,3 +2434,24 @@ The native executable is unchanged; the prior native regression results remain
 applicable. Detailed exposure and replacement evidence are in
 [mac-reference-loop.md](mac-reference-loop.md). Fixed size selection is again
 first in the implementation queue; no owner decision changed.
+
+## Hidden fixed-choice services
+
+M2.1c3c2c5b2c2a implements D4's immediate item-2 policy, the original button
+lookup, private dialog disposal and main-world restoration. Both existing size
+inputs and fresh preferences pass paired service/selection checks; no dialog is
+shown and only PREF byte 7 changes. All four private handles are released,
+returning 384 physical bytes, with cleared allocation flags and an unused slot.
+Original instructions remain unchanged. The next named stop is GetFontInfo,
+Misc1+$0610, before WIND 128 creation. The unfinished WIND acceptance is retained
+in M2.1c3c2c5b2c2c behind the new font-metrics prerequisite.
+
+The full host suite, clean-build boot/resource-read, fourteen affected startup
+observers and their paired contract checks pass. A5 remains exact across 75,616
+bytes; low-memory validation/application remains 58/55. The 68020 no-float and
+76-symbol probe audits pass. Original MDRV remains absent. Native evidence is
+`tmp/m2-choice-accepted-*`; selection/reference reproduction is documented in
+[screen-choice.md](screen-choice.md). One menu observer lost its connection
+without completion and was rejected; its retry completed and passed the full
+paired check. A debugger expression error in the initial choice observer was
+also rejected and corrected before the accepted three preference runs.

@@ -17,7 +17,7 @@ relocates Core and reaches `main`; initialization passes directory setup, the Ge
 first Times font lookup and the two native sound-driver startup calls (D8).
 Menu-record initialization and the original eight-bit device selection, SetDepth, GetGWorld, hidden dialog construction and GetMainDevice also pass.
 All ten original positioning calls also pass using integer-only SANE arithmetic
-(no FPU), followed by hidden window positioning. It then stops explicitly at `DIALOG MANAGER / MODALDIALOG`; the original mixer
+(no FPU), followed by hidden positioning, automatic low-resolution selection and cleanup. It then stops explicitly at `FONT MANAGER / GETFONTINFO`; the original mixer
 is never loaded. The game is not playable yet.
 Other processors and performance work remain deferred.
 
@@ -30,7 +30,7 @@ serve memory and resource handles. System identity and all eleven derived
 capability flags match the Mac reference. The user-mode service bridge passes
 its native ABI probe. OS windows and DOS/resload adapters pass the native/host
 core probes; rendered-picture acceptance is owner-deferred (M1.7b2). The next
-item is the fixed 320×200 selection (D4) before original PAK read acceptance.
+item is font metrics before WIND 128 selection and original PAK read acceptance.
 The logical device has real 640×480×8 storage; its four selection calls match
 the Mac. Drawing, palette realization and eight-plane output remain pending.
 Extraction and staging now

@@ -33,7 +33,7 @@ printf 'cd dh1:\nAlone\n' > "$DH0/s/startup-sequence"
 cp -f out/Alone.exe "$DH1/Alone"
 stage_aitd_original_data "$DH1"
 case "${GDBSCRIPT:-runtime_status.gdb}" in
-  resource_read.gdb|font_lookup.gdb|driver_startup.gdb|menu_records.gdb|device_startup.gdb|setdepth.gdb|hidden_move.gdb|sane.gdb|main_device.gdb|hidden_dialog.gdb|getgworld.gdb|identity.gdb|original_startup.gdb|file_catalog.gdb)
+  choice_services.gdb|resource_read.gdb|font_lookup.gdb|driver_startup.gdb|menu_records.gdb|device_startup.gdb|setdepth.gdb|hidden_move.gdb|sane.gdb|main_device.gdb|hidden_dialog.gdb|getgworld.gdb|identity.gdb|original_startup.gdb|file_catalog.gdb)
     python3 ../tools/check_startup_prefs.py --folder "$DH1/prefs" --gdb "$RUN/startup-state.gdb"
     ;;
 esac

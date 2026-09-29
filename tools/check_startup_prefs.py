@@ -8,13 +8,14 @@ import unittest
 from resource_fork import read_resource_fork
 
 DEFAULT=bytes.fromhex('ff800001010101010000')
+LOW=DEFAULT[:7]+b'\0'+DEFAULT[8:]
 def state(folder):
     data=folder/'Alone Prefs';fork=folder/'Alone Prefs.rsrc';info=folder/'Alone Prefs.finfo'
     if not any(p.exists() or p.is_symlink() for p in (data,fork,info)):return False
     if any(p.is_symlink() or not p.is_file() for p in (data,fork,info)) or data.stat().st_size!=0:
         raise ValueError('incomplete or nonregular Alone Prefs fixture')
     rows=read_resource_fork(fork)
-    if len(rows)!=1 or (rows[0].kind,rows[0].rid,rows[0].attrs,rows[0].name,rows[0].body)!=(b'PREF',128,0,'',DEFAULT):
+    if len(rows)!=1 or (rows[0].kind,rows[0].rid,rows[0].attrs,rows[0].name)!=(b'PREF',128,0,'') or rows[0].body not in (DEFAULT,LOW):
         raise ValueError('unmeasured Alone Prefs contents; preserve them and use an isolated fixture')
     return True
 
@@ -38,6 +39,7 @@ class Checks(unittest.TestCase):
             resource_map=header+bytes(8)+struct.pack('>HHH4sHHhHII',28,50,0,b'PREF',0,10,128,0xffff,0,0)
             raw=header+bytes(240)+struct.pack('>I',10)+DEFAULT+resource_map
             (folder/'Alone Prefs.rsrc').write_bytes(raw);self.assertTrue(state(folder))
+            low=bytearray(raw);low[267]=0;(folder/'Alone Prefs.rsrc').write_bytes(low);self.assertTrue(state(folder))
             bad=bytearray(raw);bad[260]^=1;(folder/'Alone Prefs.rsrc').write_bytes(bad)
             with self.assertRaises(ValueError):state(folder)
             (folder/'Alone Prefs.rsrc').write_bytes(raw[:-1])

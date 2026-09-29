@@ -690,6 +690,7 @@ static const TrapName s_trapNames[] = {
     {0xa97b,"DIALOG MANAGER","INITDIALOGS"},
     {0xa997,"RESOURCE MANAGER","OPENRESFILE"},
     {0xa900,"FONT MANAGER","GETFNUM"},
+    {0xa88b,"FONT MANAGER","GETFONTINFO"},
     {0xa99b,"RESOURCE MANAGER","SETRESLOAD"}, {0xa9a8,"RESOURCE MANAGER","GETRESINFO"},
     {0xa9a2,"RESOURCE MANAGER","LOADRESOURCE"},
     {0xa80d,"RESOURCE MANAGER","COUNT1RESOURCES"}, {0xa99c,"RESOURCE MANAGER","COUNTRESOURCES"},
@@ -5590,7 +5591,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     if(read16(s_windowManagerPixMap+32)==8) {
         switch(trap) {
         case 0xab1d:
-            if((uint16_t)regs[0]!=5) { unsupportedGraphics=true;goto unsupportedTrap; }
+            if((uint16_t)regs[0]!=5 && (uint16_t)regs[0]!=6) { unsupportedGraphics=true;goto unsupportedTrap; }
             break;
         case 0xa8f6: case 0xa8a1: case 0xa8a3: case 0xa8a4: case 0xa8a5:
         case 0xa8ec: case 0xa90d: case 0xaa95: case 0xaa94: case 0xa91f:
@@ -6118,6 +6119,18 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
             write32(deviceOut,(uint32_t)&s_mainDeviceMaster);
             return 9;
         }
+    }
+    if(trap==0xab1d && (uint16_t)regs[0]==6) { // Restore the measured main WMgr world.
+        uint8_t* device=(uint8_t*)read32(userStack);
+        uint8_t* port=(uint8_t*)read32(userStack+4);
+        if(s_windowManager.initialized && s_qdThePort
+           && device==(uint8_t*)&s_mainDeviceMaster && s_mainDeviceMaster==s_mainDevice
+           && port==s_windowManagerPort && read32(s_qdThePort)==(uint32_t)port) {
+            write32(s_qdThePort,(uint32_t)port);
+            regs[0]&=0xffff0000UL;regs[8]=(uint32_t)port;regs[9]=(uint32_t)device;
+            return 9;
+        }
+        unsupportedGraphics=true;goto unsupportedTrap;
     }
     if(trap==0xa9eb) { // FP68K: measured default-state positioning operations
         uint16_t operation=read16(userStack);
@@ -6680,8 +6693,39 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         if (g_stageCDepth < 39) g_stageCDepth = 39;
         return 5;
     }
+    if(trap==0xa991) { // D4: select low resolution without showing the Mac chooser.
+        WindowSlot* slot=windowSlot(s_windowList);
+        uint8_t* itemOut=(uint8_t*)read32(userStack);
+        if(slot && slot->dialog && slot->resourceID==1000 && !slot->window[110]
+           && itemOut && s_qdThePort
+           && read32(userStack+4)==read32(s_portLowMemory+kLowCurrentA5)+0x372) {
+            write32(s_qdThePort,(uint32_t)slot->window);
+            write16(itemOut,2);return 9;
+        }
+        goto unsupportedTrap;
+    }
+    if(trap==0xa98d) { // GetDItem: original fixed-choice button lookup.
+        WindowSlot* slot=windowSlot((uint8_t*)read32(userStack+14));
+        uint8_t* rectOut=(uint8_t*)read32(userStack);
+        uint8_t* handleOut=(uint8_t*)read32(userStack+4);
+        uint8_t* typeOut=(uint8_t*)read32(userStack+8);
+        if(slot && slot->dialog && slot->resourceID==1000 && read16(userStack+12)==2
+           && rectOut && handleOut && typeOut) {
+            uint8_t** handle=slot->ownedDialogHandles[0];MacHeap* zone=handleZone(handle);
+            DialogItems::Item items[3];uint16_t count=0;
+            if(zone && *handle && DialogItems::scan(*handle,zone->handleSize(handle),items,3,count)
+               && count==3 && items[1].type==4
+               && read32(*handle+items[1].offset)==(uint32_t)slot->ownedDialogHandles[2]) {
+                const uint8_t* item=*handle+items[1].offset;
+                write16(typeOut,items[1].type);write32(handleOut,read32(item));
+                write32(rectOut,read32(item+4));write32(rectOut+4,read32(item+8));
+                return 19;
+            }
+        }
+        goto unsupportedTrap;
+    }
     if (trap == 0xa983) {                    // DisposeDialog(dialog)
-        disposeDialog((uint8_t*)read32(userStack));
+        if(!disposeDialog((uint8_t*)read32(userStack)))goto unsupportedTrap;
         if (g_stageCDepth < 55) g_stageCDepth = 55;
         return 5;
     }
@@ -6748,6 +6792,7 @@ unsupportedTrap:
     if(trap==0xaaa2 && (uint16_t)regs[0]==0x0a14)routine="HASDEPTH";
     if(unsupportedGraphics)routine="8-BIT DRAWING / PALETTE";
     if(trap==0xab1d && (uint16_t)regs[0]==5)routine="GETGWORLD";
+    if(trap==0xab1d && (uint16_t)regs[0]==6)routine="SETGWORLD";
     if(trap==0xa0f8) { manager="SOUND DRIVER";routine=driverStop ? driverStop : "SELECTOR";g_trapSelector=read32(userStack+4); }
     if(trap==0xa0f7) { manager="DIALOG MANAGER";routine="HIDDEN DEFINITION DRAWING"; }
     if(trap==0xa9eb) { manager="SANE";routine="FP68K";g_trapSelector=read16(userStack); }

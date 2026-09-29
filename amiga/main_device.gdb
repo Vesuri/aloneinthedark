@@ -33,11 +33,11 @@ printf "MAIN_RETURN sp=%X result=%X main=%X current=%X port=%X d0=%X d1=%X d2=%X
 dump binary memory ../tmp/main-device-native-after.bin $gd $gd+62
 continue
 printf "MAIN_NEXT state=%u trap=%X selector=%X segment=%u offset=%X routine=%s windows=%u services=%u/%u\n",g_stageBState,g_trapWord,g_trapSelector,g_trapSegment,g_trapOffset,g_trapRoutine,g_systemWindows,g_macServiceEntered,g_macServiceCompleted
-if g_stageBState!=3 || g_trapWord!=0xa991 || g_trapSelector!=0xffffffff || g_trapSegment!=13 || g_trapOffset!=0x30fe || g_macServiceActive!=0 || g_systemWindows!=$startup_windows || g_macServiceEntered!=$startup_entered || g_macServiceCompleted!=$startup_completed
+if g_stageBState!=3 || g_trapWord!=0xa88b || g_trapSelector!=0xffffffff || g_trapSegment!=9 || g_trapOffset!=0x610 || g_macServiceActive!=0 || g_systemWindows!=$startup_windows || g_macServiceEntered!=$startup_entered || g_macServiceCompleted!=$startup_completed
  echo FAIL GetMainDevice next stop\n
  detach
  quit 1
 end
-echo PASS native GetMainDevice next=MODALDIALOG\n
+echo PASS native GetMainDevice next=GETFONTINFO\n
 detach
 quit 0

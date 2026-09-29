@@ -66,6 +66,6 @@ Local captures: `tmp/m2-sane-height-reference.log`,
 
 The subsequent hidden MoveWindow now passes its measured old-style port
 contract; see [screen-choice.md](screen-choice.md). The current stop is
-Dan2+$30FE `DIALOG MANAGER / MODALDIALOG`. Full fixed selection, world binding, original item
-handling/disposal, the second Times call and all rendering acceptance remain
-pending. This change does not draw dialogs or accept visible Mac UI.
+Misc1+$0610 `FONT MANAGER / GETFONTINFO`, after the hidden choice, item
+lookup/disposal and main-world restoration. WIND 128 request acceptance, the
+second Times call and all rendering acceptance remain pending. This change does not draw dialogs or accept visible Mac UI.

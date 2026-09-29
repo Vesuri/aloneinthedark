@@ -10,8 +10,9 @@ design.md §5.
 - The executable builds and loads the original resource fork.
 - Original CODE 1 expands the A5 world, relocates Core and enters `main`, then
   passes directory initialization, the first Times lookup and both native
-  driver startup calls, menu-record initialization, device selection, SetDepth, GetGWorld and hidden dialog construction, then stops at
-  Dan2+$30FE `DIALOG MANAGER / MODALDIALOG`. The original
+  driver startup calls, menu-record initialization, device selection, SetDepth, GetGWorld, hidden dialog construction/positioning and fixed
+  low-resolution selection/cleanup, then stops at
+  Misc1+$0610 `FONT MANAGER / GETFONTINFO`. The original
   mixer is never loaded.
 - The original runs in MAME on the System 7.5.5 reference volume.
 
@@ -45,35 +46,38 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.1c3c2c5b2c2 Fixed 320×200 startup selection (D4/M2.4).**
-  - The hidden DLOG 1000 constructor now creates the measured old-style port,
-    private DITL, button and text handles without displaying the dialog.
-    GetMainDevice now returns the same measured device without mutation.
-    All ten original SANE positioning calls now pass with integer-only arithmetic
-    and the measured logical MBarHeight=20. Hidden MoveWindow now preserves local
-    content/items and translates bitmap/global region coordinates. The next stop
-    is ModalDialog at Dan2+$30FE. See [screen-choice.md](screen-choice.md) and [sane.md](sane.md).
-  - Implement the measured remaining services in order: ModalDialog item-2
-    policy, item lookup/disposal and world restoration. Measure each newly
-    reached contract; do not substitute a guessed position or selection return.
-  - Item 2 selects WIND 128 for both size inputs and changes only PREF byte 7.
-    The selector is called unconditionally, so PREF alone cannot suppress it.
-    Preserve unrelated preferences and original instructions; keep DLOG 1000
-    hidden and unsupported drawing/services as named stops.
-  - Retain full drawing, offscreen, window/viewport and palette acceptance in
-    M2.3/M2.4/M2.7. Constructor record acceptance does not prove those features.
+- **M2.1c3c2c5b2c2b Font metrics before the game window.**
+  - Fixed-choice services now return item 2, preserve unrelated PREF bytes,
+    release all four private dialog handles and restore the main world. The
+    next original call is GetFontInfo at Misc1+$0610, before WIND 128 creation.
+  - Measure the original current font/size/face and the metrics record, then
+    supply metrics from the installed font definition. The following original
+    CharWidth calls (+$0618/+$0626) must be measured when reached. No text or
+    Mac dialog drawing is authorized by this task.
+  - Unsupported font/service forms remain named stops. Keep the fixed-choice
+    service and startup observers passing; see [screen-choice.md](screen-choice.md).
 
-  *Done when* fresh and existing-preference startup select the original
-  320×200/WIND 128 path without showing DLOG 1000, the selection is verified
-  against original bytes/reference behavior, the next stop is named, and
-  relevant startup regressions pass. Full viewport/render acceptance and the
-  integrated second Times/driver checks remain required.
+  *Done when* original font-metrics calls pass paired Mac/native checks, their
+  installed-font inputs and output extents are verified, and bounded startup
+  reaches the next named stop with relevant regressions passing.
+- **M2.1c3c2c5b2c2c Fixed-selection WIND 128 acceptance (D4/M2.4).**
+  - Retains the unfinished integrated acceptance of M2.1c3c2c5b2c2. Native
+    preference mapping alone is not evidence that WIND 128 was requested.
+  - Observe the original Misc1+$109A GetNewCWindow request after the font
+    prerequisite. Both incoming size flags must take the low-resolution path,
+    without showing DLOG 1000 or changing unrelated preference bytes.
+  - Keep full window/viewport, drawing and palette acceptance in M2.3/M2.4/M2.7,
+    and the integrated second Times/driver acceptance immediately below.
+
+  *Done when* fresh and existing-preference startup request WIND 128 through
+  the original instructions, both size inputs match the reference, the next
+  stop is named, and relevant startup regressions pass.
 - **M2.1c3c2 Native-driver integrated startup acceptance (D8).**
   - M2.1c3c2a supplies the port-owned Jnth 11 stub through the original loader,
     with no original instructions changed. Selectors 21/24 initialize native
     state and quality; other operations/configurations stop explicitly.
   - Both original call returns match the Mac register/stack/state contract.
-    The dialog-positioning stop prevents reaching the second Times call; this
+    The font-metrics stop prevents reaching the second Times call; this
     original acceptance requirement is retained, not counted as passed.
   - Keep the MDRV guard and verify through any newly reached startup services.
     The independent Mac contract and installed seam are in
