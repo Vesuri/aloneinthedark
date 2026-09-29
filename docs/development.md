@@ -2508,3 +2508,33 @@ scripts pass syntax and literal audits; the full host suite passes. The native
 executable is unchanged and still stops at AEInstallEventHandler, so its previous
 regression evidence remains applicable. Native state and paired acceptance are
 retained as b3b at the top of the queue. See [apple-events.md](apple-events.md).
+
+## Native Apple Event registrations
+
+M2.1c3c2c5b2c2b3b retains the four original callback/refCon registrations in an
+application-owned table, with measured exact lookup, replacement and invalid
+handler errors. Four original calls and 17 CPU-executed native fixture calls pass
+the independent Mac contracts. Six unsupported forms stop explicitly without
+changing state. Actual probe shutdown clears the table, closes both resource
+streams, removes Line-A and returns zero from native main. Original instructions
+are unchanged and no callbacks run from interrupts. Event delivery remains M3.4.
+
+All 16 startup observers and paired service checks pass, as do the full host
+suite, clean boot/resource-read, file-write and eight save/preference resource-exit
+phases. A5 matches all 75,616 bytes; low-memory sites remain 58 validated / 55
+applied. Existing/fresh preferences retain 64/90 windows and 118/126 services.
+Original resource reads remain 28 / 123,387 bytes; overlay bodies 31 / 80,800.
+Production no-float and 77-symbol probe audits pass. Original preference/save
+directories are restored. Evidence is `tmp/m2-ae-accepted-*`,
+`tmp/m2-ae-regression-*`, `tmp/m2-ae-native-cpu-fixture-final.log`, and
+`tmp/m2-ae-native-final-clean.log`; reproduction is in [apple-events.md](apple-events.md).
+
+Rejected debugger-driven fixtures led to direct write/readback instrumentation:
+this FS-UAE debugger ignores register and memory writes. The accepted fixtures
+construct inputs on the CPU and use read-only observers. A file-write run hit
+its 120-second deadline; the runner interrupt was confirmed in the remote log.
+It was rejected, and the unchanged clean retry passed with a 240-second bound.
+
+The next named stop is GetCTable(128), Engine+$110E, before WIND 128 creation.
+Colour-table ownership and bytes are the next ordered dependency; palette
+realization, the second Times lookup and full M2 acceptance remain pending.

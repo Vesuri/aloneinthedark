@@ -2,8 +2,8 @@
 
 D4 requires 320×200 and no displayed size dialog. Hidden construction,
 positioning, automatic item-2 selection, item lookup/disposal and restoration of
-the main world are implemented. Native startup now passes font metrics and stops at AEInstallEventHandler,
-Engine+$1038, before the original WIND 128 request. That request remains a separate
+the main world are implemented. Native startup now passes font metrics and Apple Event registration and stops at GetCTable,
+Engine+$110E, before the original WIND 128 request. That request remains a separate
 acceptance requirement. No Mac dialog presentation is authorized (D5).
 
 Original bytes establish the following:
@@ -174,8 +174,8 @@ python3 tools/check_choice_services.py tmp/m2-choice-services-reference.log --st
 ```
 
 The subsequent GetFontInfo/CharWidth calls now pass; see [font-manager.md](font-manager.md).
-The current stop is `APPLE EVENT MANAGER / AEINSTALLEVENTHANDLER`,
-Engine+$1038, selector $091F. Preference zero does not by itself prove WIND 128 acceptance.
+The current stop is `COLOR QUICKDRAW / GETCTABLE`,
+Engine+$110E, trap $AA18. Preference zero does not by itself prove WIND 128 acceptance.
 Full drawing, replacement in-game interfaces, window/viewport and frame acceptance
 remain required by the queue.
 

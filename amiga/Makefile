@@ -143,6 +143,11 @@ endif
 EXTRA_DEFINES += -DAITD_FILE_WRITE_PROBE
 PROBE_SYMS_FILEWRITE = g_resourceDirtyStep g_resourceDirtyValue g_resourceDirtyError g_resourceDirtyMemory g_resourceDirtyWindows g_resourcePermissionStep g_resourcePermissionValue g_resourcePermissionError g_resourcePermissionMemory g_resourcePermissionWindows g_resourceMutationLifecycleChecks g_resourceMutationFaultChecks g_resourceMutationStep g_resourceMutationValue g_resourceMutationError g_resourceMutationMemory g_resourceMutationWindows g_resourceFileStep g_resourceFileStackError g_resourceFileWindows g_resourceFileResult g_fileWriteCalls g_fileWriteBytes g_fileWriteMax g_fileFlushCalls g_fileWriteProbeStep g_fileCatalogProbeStep g_fileForkProbeStep g_fileInstalledProbeStep g_fileIndexProbeStep g_fileVolumeProbeStep g_fileOpenDFProbeStep g_fileVInfoProbeStep g_volumeBackingProbe g_resourceStageError g_resourceStageStep g_resourceStageWindows g_resourceStageHash g_resourceStageFault g_resourceEnumerationStep g_resourceEnumerationHash g_resourceLifecycleStep g_resourceLifecycleHash g_resourceHandleStep g_resourceHandleHash g_resourceLookupStep g_resourceLookupD0 g_resourceLookupHash g_fileAsyncStep g_fileAsyncCallbacks g_fileAsyncPB g_fileAsyncA5 g_fileAsyncResult g_fileAsyncClobber g_fileAsyncNested g_fileAsyncNestedOK g_macFileCompletionDepth
 endif
+ifeq ($(APPLEEVENTPROBE),1)
+APPLEEVENTFORM ?= 0
+EXTRA_DEFINES += -DAITD_APPLE_EVENT_PROBE -DAITD_APPLE_EVENT_FORM=$(APPLEEVENTFORM)
+PROBE_SYMS_AE = g_aeProbeForm
+endif
 ifeq ($(FILEPROBE),1)
 EXTRA_DEFINES += -DAITD_FILE_PROBE
 PROBE_SYMS_FILE = g_fileCloseErrors g_fileOpenHandles g_fileRestoredCloses g_fileReadCalls g_fileReadBytes g_fileReadMax g_fileProbeStage g_fileProbeError g_fileProbeDone g_fileProbeCCR g_fileProbeWindows
@@ -241,7 +246,7 @@ PROBE_SYMS = g_catalogEntries g_catalogDataFiles g_catalogDataBytes g_applicatio
              g_trapPC g_trapRegisters g_trapUserStack g_resourceCount g_jumpEntryCount \
              g_blockMoveCount g_trapManager g_trapRoutine
 PROBE_SYMS += $(PROBE_SYMS_FILE) $(PROBE_SYMS_FILEWRITE) $(PROBE_SYMS_RESOURCEEXIT)
-PROBE_SYMS += g_soundDriver g_soundDriverHandle g_soundDriverCalls
+PROBE_SYMS += $(PROBE_SYMS_AE) g_appleEventHandlers g_soundDriver g_soundDriverHandle g_soundDriverCalls
 PROBE_SYMS += g_overlayChainVerified g_overlaySourceReads g_overlaySourceBytes g_overlaySourceMax g_overlayRuntimeReads g_overlayRuntimeBytes g_overlaySourceOpen g_overlaySourceCloseErrors
 PROBE_SYMS += g_resourceSourceReads g_resourceSourceBytes g_resourceSourceMax g_resourceRuntimeReads g_resourceRuntimeBytes g_resourceSourceOpen g_resourceSourceCloseErrors
 PROBE_SYMS += g_systemWindows g_windowFields g_systemWindowActive $(PROBE_SYMS_WINDOW)

@@ -8,6 +8,7 @@
 #include "BitmapFont.h"
 #include "SoundDriver.h"
 #include "MenuRecords.h"
+#include "AppleEventHandlers.h"
 #include "DialogItems.h"
 #include "Sane.h"
 #include "MacFiles.h"
@@ -119,6 +120,10 @@ __attribute__((noinline)) void aitdHeapProbeComplete() { __asm__ volatile("" :::
 volatile uint32_t g_identityProbeStage=0;
 void aitd_identity_probe();
 __attribute__((noinline)) void aitdIdentityProbeReturned() { __asm__ volatile("" ::: "memory"); }
+#endif
+#ifdef AITD_APPLE_EVENT_PROBE
+volatile uint32_t g_aeProbeForm=AITD_APPLE_EVENT_FORM;
+void aitdAppleEventProbe();
 #endif
 #ifdef AITD_FILE_PROBE
 void aitdFileProbe();
@@ -416,6 +421,7 @@ struct FontManagerState {
     int16_t systemSize;
 };
 static FontManagerState s_fontManager;
+AppleEventHandlers g_appleEventHandlers;
 
 struct WindowManagerState {
     bool initialized;
@@ -722,6 +728,7 @@ static const TrapName s_trapNames[] = {
     {0xa43c,"TEXT UTILITIES","CMPSTRING"}, {0xa63c,"TEXT UTILITIES","CMPSTRING"},
     {0xa033,"VERTICAL RETRACE","VINSTALL"}, {0xa034,"VERTICAL RETRACE","VREMOVE"},
     {0xa998,"RESOURCE MANAGER","USERESFILE"}, {0xa994,"RESOURCE MANAGER","CURRESFILE"},
+    {0xaa18,"COLOR QUICKDRAW","GETCTABLE"},
     {0xaa46,"WINDOW MANAGER","GETNEWCWINDOW"}, {0xa91b,"WINDOW MANAGER","MOVEWINDOW"},
     {0xa915,"WINDOW MANAGER","SHOWWINDOW"}, {0xa916,"WINDOW MANAGER","HIDEWINDOW"},
     {0xa924,"WINDOW MANAGER","FRONTWINDOW"}, {0xa925,"WINDOW MANAGER","DRAGWINDOW"},
@@ -5907,6 +5914,24 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         write16((uint8_t*)read32(userStack),(uint16_t)family);
         return 9; // Procedure: preserve D0, consume both pointers.
     }
+    if(trap==0xa816) {
+        uint16_t selector=(uint16_t)regs[0];int16_t error;
+        if(selector!=0x091f && selector!=0x0921)goto unsupportedTrap;
+        uint8_t system=userStack[0]; // The padding byte is unspecified.
+        uint32_t eventClass=read32(userStack+14),eventID=read32(userStack+10);
+        if(selector==0x091f) {
+            if(!g_appleEventHandlers.install(eventClass,eventID,read32(userStack+6),
+                                             read32(userStack+2),system,error))goto unsupportedTrap;
+        } else if(selector==0x0921) {
+            uint8_t* outHandler=(uint8_t*)read32(userStack+6);
+            uint8_t* outRef=(uint8_t*)read32(userStack+2);
+            if(!outHandler || !outRef || ((uint32_t)outHandler&1) || ((uint32_t)outRef&1))goto unsupportedTrap;
+            uint32_t handler=0,refCon=0;
+            if(!g_appleEventHandlers.lookup(eventClass,eventID,system,handler,refCon,error))goto unsupportedTrap;
+            if(!error) { write32(outHandler,handler);write32(outRef,refCon); }
+        } else goto unsupportedTrap;
+        write16(userStack+18,(uint16_t)error);return 19;
+    }
     if(trap==0xa88b || trap==0xa88d) {
         BitmapFont font;
         if(!fontForCurrentPort(font))goto unsupportedTrap;
@@ -6813,7 +6838,7 @@ unsupportedTrap:
         }
     if (trap == 0xa9c9 || trap == 0xa198) g_trapSelector = (uint16_t)regs[0];
     if (trap == 0xab1d || trap==0xaaa2) g_trapSelector = (uint16_t)regs[0];
-    if(trap==0xa816) { g_trapSelector=(uint16_t)regs[0];if(g_trapSelector==0x091f)routine="AEINSTALLEVENTHANDLER"; }
+    if(trap==0xa816) { g_trapSelector=(uint16_t)regs[0];if(g_trapSelector==0x091f)routine="AEINSTALLEVENTHANDLER";if(g_trapSelector==0x0921)routine="AEGETEVENTHANDLER";if(g_trapSelector==0x021b)routine="AEPROCESSAPPLEEVENT"; }
     if (trap == 0xa823) g_trapSelector=(uint16_t)regs[0];
     if (trap == 0xa1ad) g_trapSelector = (int32_t)regs[0];
     if (trap == 0xa060 || trap == 0xa260 || trap == 0xa660) {
@@ -6951,6 +6976,7 @@ bool MacLoader::prepareResourceForks(const ResourceForks::Source& application,co
     clearResidentSegments();
     g_resourceCount = 0;
     g_soundDriver.reset();g_soundDriverHandle=0;g_soundDriverCalls=0;
+    g_appleEventHandlers.reset();
     for(uint16_t i=0;i<ResourceForks::kMaximumResources;++i) { s_resourceHandles[i]=0;s_resourceChanges[i]=0; }
     for(auto& touched:s_resourceMapTouched)touched=false;
     resourceResult(0);
@@ -7031,6 +7057,7 @@ bool MacLoader::releaseResourceForks()
         if(f.buffer)FreeMem(f.buffer,FileReadCache::capacity);f.buffer=0;f.ref=0;
     }
     s_files.reset();g_applicationFileRef=0;
+    g_appleEventHandlers.reset();
     releaseRuntimeAllocations();
 #ifdef AITD_PROBE
     aitdRuntimeAllocationsReleased();
@@ -7140,6 +7167,12 @@ bool MacLoader::run(AitdScreen* screen)
                       g_macStackBase + 65536);
     restoreLineAVector();
     aitdHeapProbeComplete();
+#endif
+#ifdef AITD_APPLE_EVENT_PROBE
+    installLineAVector();
+    aitd_call_mac_code((void*)aitdAppleEventProbe,a5,g_macStackBase+65536);
+    restoreLineAVector();
+    return true;
 #endif
     write32(s_portLowMemory + kLowTicks, g_macTicks);
     write32(s_portLowMemory + kLowRndSeed, g_macTicks ? g_macTicks - 1 : 0);

@@ -7,7 +7,7 @@ from check_device_startup import check,original,ORDER,SITES
 
 def native(text,status,gd,pm,ct,pixels,reference):
     if status!=0 or any(s in text for s in ('FAIL','Error in','Program received signal','timeout')):raise ValueError('failed native observer')
-    for marker in ('PASS native device selection calls=4 count=1','[Inferior 1 (Remote target) detached]','NEXT state=3 trap=A816 APPLE EVENT MANAGER/AEINSTALLEVENTHANDLER caller=7+1038'):
+    for marker in ('PASS native device selection calls=4 count=1','[Inferior 1 (Remote target) detached]','NEXT state=3 trap=AA18 COLOR QUICKDRAW/GETCTABLE caller=7+110E'):
         if text.count(marker)!=1:raise ValueError('missing/duplicate native completion')
     entries=re.findall(r'DEVICE native entry=(\d+) offset=([0-9a-f]+) sp=([0-9A-F]+) args=([0-9A-F/]+)',text)
     returns=re.findall(r'DEVICE native return=(\d+) sp=([0-9A-F]+) result=([0-9A-F]+) D0=([0-9A-F]+)',text)
@@ -39,5 +39,5 @@ if __name__=='__main__':
             try:native(bad,status,*payload,reference)
             except ValueError:continue
             raise ValueError('native rejection fixture passed')
-        print('PASS paired native device: four original calls, stack/register observer, mode 0x83, 640x480x8 records, 307200 real bytes; next AEINSTALLEVENTHANDLER')
+        print('PASS paired native device: four original calls, stack/register observer, mode 0x83, 640x480x8 records, 307200 real bytes; next GETCTABLE')
     except (OSError,ValueError,KeyError,AttributeError) as error:raise SystemExit('FAIL native device: '+str(error))

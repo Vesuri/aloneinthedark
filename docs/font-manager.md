@@ -104,7 +104,7 @@ named trap stops pending M2.9 instead of silently drawing the Vette fixed font.
 The native observer checks the live original trap bytes, Pascal Times name,
 result 20, eight-byte stack cleanup, D0 and error globals at Dan1+$0014. It dumps
 both installed bodies for exact host comparison and requires the next named
-`AEINSTALLEVENTHANDLER` stop at Engine+$1038, with no original MDRV body resident. The original
+`GETCTABLE` stop at Engine+$110E, with no original MDRV body resident. The original
 second lookup has not been reached natively: graphics initialization and further
 startup services lie between these calls. The two native driver calls now pass. This is partial M2.1c3 acceptance, not a completed font/startup item.
 
@@ -115,7 +115,7 @@ M2.1c3 retains the second-call requirement after the newly reached services.
 
 
 Startup counters distinguish two measured inputs. With the original default
-`PREF` 128 already present, the event-registration boundary uses 64 OS windows and 118/118
+`PREF` 128 already present, the colour-table boundary uses 64 OS windows and 118/118
 service entries/completions. Without preferences, original startup creates the
 file and uses 90 windows and 126/126 services. All services complete before the
 graphics stop. Both paths read 28 original resource bodies / 123,387 bytes plus
@@ -224,7 +224,7 @@ Run `amiga/font_metrics.gdb` with the bounded native diagnostic launcher. The
 first entry is read from the actual saved Line-A frame after Misc1 loads; later
 calls use sequential original-site breakpoints. The observer never writes game
 memory or registers. At completion the original restores font/size/face 0/0/0
-and returns zero. It then stops at Engine+$1038 Pack8/$091F, now named
-`APPLE EVENT MANAGER / AEINSTALLEVENTHANDLER`. The second Times lookup and WIND
+and returns zero. It then stops at Engine+$110E GetCTable/$AA18, now named
+`COLOR QUICKDRAW / GETCTABLE`. The second Times lookup and WIND
 128 request remain unverified behind that next dependency. Original MDRV is
 absent. These are metric/data contracts, not rendered-font acceptance.

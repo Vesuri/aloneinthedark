@@ -11,8 +11,8 @@ design.md §5.
 - Original CODE 1 expands the A5 world, relocates Core and enters `main`, then
   passes directory initialization, the first Times lookup and both native
   driver startup calls, menu-record initialization, device selection, SetDepth, GetGWorld, hidden dialog construction/positioning and fixed
-  low-resolution selection/cleanup and all 75 font-metrics calls, then stops at
-  Engine+$1038 `APPLE EVENT MANAGER / AEINSTALLEVENTHANDLER`. The original
+  low-resolution selection/cleanup, all 75 font-metrics calls and four Apple Event
+  registrations, then stops at Engine+$110E `COLOR QUICKDRAW / GETCTABLE`. The original
   mixer is never loaded.
 - The original runs in MAME on the System 7.5.5 reference volume.
 
@@ -46,26 +46,23 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.1c3c2c5b2c2b3b Native startup Apple Event handler registration.**
-  - The 25 original GetFontInfo and 50 CharWidth calls now pass from installed
-    port-owned definitions. Startup next reaches Engine+$1038, Pack8 selector
-    $091F (AEInstallEventHandler), before WIND 128 creation.
-  - The independent reference contract is complete in [apple-events.md](apple-events.md):
-    four original calls and 17 table fixtures establish callback/refCon ownership,
-    replacement, exact lookup, missing entries, invalid pointers and stack/registers.
-  - Implement the measured application registration state and verify it against
-    those captures. Do not silently ignore registration or run callbacks inside
-    an interrupt. Unsupported forms remain named stops.
-  - Full Apple Event delivery remains M3.4. Any newly reached unimplemented
-    selector remains a named stop; keep original MDRV loading forbidden.
+- **M2.1c3c2c5b2c2b3c Startup colour-table loading (M2.7 prerequisite).**
+  - Original startup now passes the four Apple Event registrations and requests
+    GetCTable(128) at Engine+$110E, before WIND 128 creation. Original bytes are
+    `3f3c0080aa18` at +$110A; no patch is needed.
+  - Measure the returned table bytes, handle ownership, result/stack/register
+    contract and reached follow-up mutations against the Mac. Implement actual
+    table loading/ownership; do not equate resource handles with returned copies
+    without evidence. Unsupported forms stay named stops.
+  - Full palette realization and reference video transfer remain M2.7/M2.7a.
 
-  *Done when* the original registration calls pass paired Mac/native contracts,
-  state ownership and unsupported forms are verified, and bounded startup
-  reaches the next named stop with relevant regressions passing.
+  *Done when* paired Mac/native checks prove the original GetCTable request and
+  returned table/ownership, bounded startup reaches the next named stop, original
+  MDRV stays absent, and relevant regressions pass.
 - **M2.1c3c2c5b2c2c Fixed-selection WIND 128 acceptance (D4/M2.4).**
   - Retains the unfinished integrated acceptance of M2.1c3c2c5b2c2. Native
     preference mapping alone is not evidence that WIND 128 was requested.
-  - Observe the original Misc1+$109A GetNewCWindow request after the font and event-registration
+  - Observe the original Misc1+$109A GetNewCWindow request after the font, event-registration and colour-table
     prerequisites. Both incoming size flags must take the low-resolution path,
     without showing DLOG 1000 or changing unrelated preference bytes.
   - Keep full window/viewport, drawing and palette acceptance in M2.3/M2.4/M2.7,
@@ -79,7 +76,7 @@ required.
     with no original instructions changed. Selectors 21/24 initialize native
     state and quality; other operations/configurations stop explicitly.
   - Both original call returns match the Mac register/stack/state contract.
-    The event-registration stop prevents reaching the second Times call; this
+    The colour-table stop prevents reaching the second Times call; this
     original acceptance requirement is retained, not counted as passed.
   - Keep the MDRV guard and verify through any newly reached startup services.
     The independent Mac contract and installed seam are in
