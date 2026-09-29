@@ -1462,3 +1462,53 @@ Acceptance: full host suite and the expanded ASan/UBSan source fixture pass.
 All five native 68020 regressions and four startup observers exit normally with
 unchanged counts and GetFNum boundary. The generated resource-view copy audit
 is clean; all 75,616 captured A5 bytes match. No owner decision changed.
+
+
+### Dynamic resource-file services (M2.2f3c2)
+
+Resource-file open/create/update/close and AddResource now use the File Manager
+catalog and persistent streams. ResourceFiles.inc owns that integration within
+MacLoader. Maps stay metadata-only, added bodies read from their associated
+handles, and resource view refresh remaps all handles by stable identity.
+GetResource/GetNamedResource traverse current then older maps without wrapping
+into newer maps. CountResources counts every open map, including duplicate IDs,
+regardless of current selection. UseResFile returns the measured D0/error state.
+
+Update serializes through ResourceStage while old sources remain readable,
+closes the target stream only at publication, then reopens it. Successful writes
+reset the sparse data view, validate/rebase directory offsets without changing
+identity, and update catalog size and Finder metadata. Closing updates first,
+then disposes the closed map's handles and selects the next older map when
+necessary. Reopening an already open file returns its existing reference.
+
+The native ResourceFileProbe repeats the 63-call reference sequence, using only
+named scratch files under Alone Saved Games. It checks errors, D0, Pascal stack
+cleanup, current refs, six independent handles, search identity and exact bytes,
+including reopen. Its STR# chain count uses the measured +2 delta to the native
+baseline; no unused Apple System resources are fabricated. The debugger invokes
+an independent host reader before deletion to verify all six persisted payloads,
+General names, attributes, order, empty data forks and absent staging leftovers.
+Final host checks require both files and companions deleted.
+
+This measured scope covers default/explicit read-write opens and creating maps
+in already-created files. Other permissions/errors, creating absent files,
+ChangedResource/WriteResource/RmveResource and dirty-handle disposal still need
+paired coverage. Unsupported forms stop by trap name. Dirty-resource mutation
+and exit stop explicitly rather than silently losing changes. Application-file
+closure and mixed raw-stream/resource updates remain unmeasured loud stops.
+
+The 63-call fixture adds 78 windows and 24 disk reads / 590 bytes. Combined
+file-write acceptance is 173 paired calls, nine staging cases, 521 windows and
+57 File Manager reads / 867,323 bytes (maximum 65,536). File Manager write,
+flush and restored-close totals remain 24 / 18 / 2; ResourceStage writes are
+separately covered by staging/independent disk checks. Production startup retains
+212 resources, 16 runtime resource reads / 96,648 bytes and 23 balanced services
+before GetFNum Dan1+$0012. Other writable variants are ordered as M2.2f4.
+
+Acceptance: the original-byte/reference checker, full host suite, all five
+68020 regression cases and four startup observers pass with normal exits.
+The final file-write rerun includes the explicit pending-variant guards and
+independent six-resource disk check. A5 globals match all 75,616 bytes. The
+resource integration copy audit and clean production no-float/probe audits
+pass. No owner decision changed; actual rendered-video verification remains
+owner-deferred.

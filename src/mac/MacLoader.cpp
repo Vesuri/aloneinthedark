@@ -11,6 +11,8 @@
 #include "platform/amiga/FileAccess.h"
 #include "platform/amiga/FileMetadataIO.h"
 #include "ResourceForks.h"
+#include "ResourceDirectory.h"
+#include "platform/amiga/ResourceStage.h"
 #include "platform/amiga/AitdScreen.h"
 #include "platform/amiga/MacInput.h"
 #include "platform/amiga/PerfProbe.h"
@@ -1037,11 +1039,11 @@ static uint8_t** loadResource(uint32_t index,const ResourceForks::Item& item,boo
 }
 static uint8_t** getResource(uint32_t type,int16_t id,bool currentOnly=false)
 {
-    for(uint16_t pass=0;pass<(currentOnly ? 1 : s_resourceForks.forkCount());++pass) {
-        uint16_t fork=(s_currentResourceFork+pass)%s_resourceForks.forkCount();
+    int16_t fork=s_currentResourceFork;
+    do {
         ResourceForks::Item item;uint32_t index;
         if(s_resourceForks.find(fork,type,id,item,&index))return loadResource(index,item,false);
-    }
+    } while(!currentOnly && s_resourceForks.directory()->older(fork,fork));
     resourceResult(0);return 0; // Measured System 7.5.5 missing-ID behavior.
 }
 
@@ -1212,9 +1214,8 @@ static bool resourceNameEquals(const ResourceForks::Item& item, const uint8_t* n
 
 static uint8_t** getNamedResource(uint32_t type, const uint8_t* name,bool currentOnly=false)
 {
-    for (uint16_t pass = 0; pass < (currentOnly ? 1 : s_resourceForks.forkCount()); ++pass) {
-        uint16_t fork = (uint16_t)(s_currentResourceFork + pass);
-        if (fork >= s_resourceForks.forkCount()) fork -= s_resourceForks.forkCount();
+    int16_t fork=s_currentResourceFork;
+    do {
         for (uint32_t i = 0; i < s_resourceForks.resourceCount(); ++i) {
             ResourceForks::Item item;
             if (!s_resourceForks.item(i, item)) return 0;
@@ -1222,7 +1223,7 @@ static uint8_t** getNamedResource(uint32_t type, const uint8_t* name,bool curren
                 return loadResource(i,item,false);
             }
         }
-    }
+    } while(!currentOnly && s_resourceForks.directory()->older(fork,fork));
     resourceResult(-192);return 0;
 }
 
@@ -4803,8 +4804,16 @@ static void forgetHandle(uint8_t** handle)
     for(uint16_t i=1;i<s_segmentCount;++i)
         if(s_segments[i].handle==handle)s_segments[i].handle=0;
 }
+static bool dirtyResourceHandle(uint8_t** handle) {
+    int32_t i=resourceHandleIndex(handle);ResourceForks::Item item;
+    return i>=0 && s_resourceForks.item(i,item) && s_resourceForks.directory()->dirty(item.fork);
+}
+static void stopDirtyResourceMutation(uint8_t** handle) {
+    if(dirtyResourceHandle(handle)) { loaderStop("DIRTY RESOURCE HANDLE MUTATION UNMEASURED",0);showLoaderStop(); }
+}
 static bool releaseResource(uint8_t** handle)
 {
+    stopDirtyResourceMutation(handle);
     int32_t index=resourceHandleIndex(handle);MacHeap* zone=handleZone(handle);
     if(index<0 || !zone) { resourceResult(-192);return false; }
     memoryResult(zone->disposeHandle(handle));forgetHandle(handle);refreshCodeViews();
@@ -4821,6 +4830,7 @@ static bool dispatchMemoryTrap(uint16_t trap,uint32_t* regs)
     MacHeap* zone=(trap&0x400) ? &s_systemZone : s_currentZone;
     uint8_t* ptr=(uint8_t*)regs[8];MacHeap::Handle handle=(MacHeap::Handle)ptr;
     MacHeap* owner=0;int16_t error=0;bool resultInD0=true;
+    if(op==0xa023 || op==0xa024 || op==0xa02b || op==0xa049 || op==0xa06a)stopDirtyResourceMutation(handle);
     switch(op) {
     case 0xa01a: regs[8]=(uint32_t)s_currentZone->base();break;
     case 0xa01b:
@@ -5157,6 +5167,8 @@ static bool dispatchFileData(uint16_t trap,uint32_t* regs) {
     if(error==MacFiles::unsupported)return false;
     write16(pb+16,error);regs[0]=(uint32_t)(int32_t)error;return true;
 }
+#include "ResourceFiles.inc"
+
 // Only the measured async census encodings are accepted. Preserve the original
 // trap identity for patch routing and loud stops; normalize only file dispatch.
 static uint16_t synchronousFileTrap(uint16_t trap,uint16_t selector) {
@@ -5180,7 +5192,8 @@ static bool isUserService(uint16_t trap)
 #ifdef AITD_SERVICE_PROBE
     if((trap&0xfeff)==0xa0fc || trap==0xabfb)return true;
 #endif
-    return trap==0xa80e || trap==0xa9a2 || trap==0xa81f || trap==0xa820 || trap==0xa9a0 || trap==0xa9a1 || trap==0xa930 || trap==0xa9bf
+    return trap==0xa997 || trap==0xa9c4 || trap==0xa81a || trap==0xa9b1 || trap==0xa81b || trap==0xa999 || trap==0xa99a || trap==0xa9ab
+        || trap==0xa80e || trap==0xa9a2 || trap==0xa81f || trap==0xa820 || trap==0xa9a0 || trap==0xa9a1 || trap==0xa930 || trap==0xa9bf
         || trap==0xaa46 || trap==0xaa92 || trap==0xa9b9 || trap==0xa9bc || trap==0xa97c
         || trap==0xa40c || trap==0xa608 || trap==0xa60a || trap==0xa60c || trap==0xa60d || trap==0xa614 || trap==0xa615
         || (trap&0xf8ff)==0xa060 || trap==0xa014 || trap==0xa015 || trap==0xa214 || trap==0xa215 || trap==0xa207 || isFileDataService(trap) || isFileCatalogService(trap);
@@ -5397,6 +5410,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
             return 17;
         }
     }
+    if(uint32_t handled=dispatchResourceFiles(trap,regs,userStack))return handled;
     if(trap==0xa9af) { write16(userStack,read16(s_portLowMemory+140));return 1; }
     if(trap==0xa99b) { // Pascal Boolean occupies the high byte of its stack word.
         s_portLowMemory[MacLowMemory::resLoad]=userStack[0];return 3;
@@ -5423,6 +5437,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     if(trap==0xa992) {
         if(!read32(userStack)) { resourceResult(-192);regs[0]=0xff40;return 5; }
         MacHeap::Handle handle=(MacHeap::Handle)read32(userStack);
+        stopDirtyResourceMutation(handle);
         int32_t index=resourceHandleIndex(handle);MacHeap* zone=handleZone(handle);
         if(index>=0 && zone) {
             s_resourceHandles[index]=0;zone->setState(handle,zone->state(handle)&~0x20);
@@ -5447,6 +5462,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     }
 
     if (trap == 0xa9f4) {                    // original ExitToShell after patch cleanup
+        for(uint16_t key=0;key<ResourceForks::kForkCount;++key)if(s_resourceForks.directory()->dirty(key)) { loaderStop("DIRTY RESOURCE EXIT UNMEASURED",0);showLoaderStop(); }
         g_macVBLCallbackEntry = 0;
         g_macVBLCallbackTask = 0;
         g_macVBLCallbackA5 = 0;
@@ -5523,11 +5539,11 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
             return 7;
         }
     }
-    if(trap==0xa80d || (trap==0xa99c && s_resourceForks.forkCount()==1)) {
+    if(trap==0xa80d || trap==0xa99c) {
         uint32_t type=read32(userStack);uint16_t count=0;
         for(uint32_t i=0;i<s_resourceForks.resourceCount();++i) {
             ResourceForks::Item item;
-            if(s_resourceForks.item(i,item) && item.fork==s_currentResourceFork && item.type==type)++count;
+            if(s_resourceForks.item(i,item) && (trap==0xa99c || item.fork==s_currentResourceFork) && item.type==type)++count;
         }
         write16(userStack+4,count);resourceResult(0);regs[0]=0;return 5;
     }
@@ -5773,13 +5789,14 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     if (trap == 0xa998) {                    // UseResFile(refNum)
         int16_t ref=(int16_t)read16(userStack);
         uint16_t fork=0;
-        while(fork<s_resourceForks.forkCount() && s_resourceFileRefs[fork]!=ref)++fork;
-        if (fork < s_resourceForks.forkCount()) {
+        while(fork<ResourceForks::kForkCount && (!s_resourceForks.directory()->active(fork) || s_resourceFileRefs[fork]!=ref))++fork;
+        if (fork < ResourceForks::kForkCount) {
             s_currentResourceFork = fork;
             resourceResult(0);
         } else {
             resourceResult(-193);    // resFNotFound
         }
+        regs[0]=read16(s_portLowMemory+140);
         if (g_stageCDepth < 22) g_stageCDepth = 22;
         return 3;
     }

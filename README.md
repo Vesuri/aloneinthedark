@@ -33,7 +33,9 @@ Resource bodies now stream from disk into zone handles; startup retains the
 regression verifies original bytes and 16 runtime read windows before the current
 GetFNum stop. Named/ID/indexed lookup, resource counts and metadata, purge/reload and release now
 pass paired Mac/native checks. Native resource staging now passes exact publication,
-abort, rollback and stale-file checks; dynamic resource-file traps remain next.
+abort, rollback and stale-file checks. Resource-file open/create/update/close,
+AddResource and multi-fork search pass a paired 63-call fixture; remaining
+writable-resource variants are next.
 The metadata-only catalog and application-fork identity are verified (M2.1b1):
 32 data files, 5,315,994 bytes; no data payload preloading. SetVol, the three
 startup working directories, Preferences lookup and the optional movies error

@@ -51,30 +51,24 @@ required.
     paired Mac/native fixtures (M2.2d).
   - Count1Resources/Get1IndResource and single-fork CountResources now pass
     paired enumeration fixtures (M2.2e), including original map order.
-  - **M2.2f Resource files and search next:** implement OpenResFile and the other
-    resource-file calls, current/open-file search order and multi-fork counts.
-    The inherited fake -1 OpenResFile result is removed; unsupported calls stop
-    by name. *Done when* paired fixtures prove open/current/close state, search
-    precedence, counts with duplicate types/IDs, file errors and independent
-    handles, with all existing regressions passing.
-    - M2.2f1 reference is measured: `mac_resource_files.lua` / its checker cover
-      63 calls and delete both exclusively created scratch files on success.
-    - M2.2f2a's bounded transactional serializer is complete; it round-trips all
-      212 original resources without preloading payloads and preserves the old
-      target on injected failures. Native write integration remains f3.
-    - M2.2f2b's mutable directory is complete: 16 independent maps, stable
-      identities, source-backed add/replace/remove, transactional serialization
-      and validated rebase pass host/sanitizer and original-fork round trips.
-    - M2.2f3a's existing native resource path now uses the mutable directory;
-      all 110 resource calls and production startup pass with unchanged I/O.
-    - **M2.2f3c Dynamic resource-file integration.** Bind the directory to the
-      existing File Manager streams and match f1's current/search/count/close
-      and reopen contract. *Done when* the paired 63-call native fixture and
-      all existing regressions pass; add measured coverage for additional
-      write/permission/error cases before claiming those variants complete.
-      - **M2.2f3c2 Trap/backend integration.** Apply that remapping to native
-        handles and bind file open/create/update/close plus multi-fork search.
-        *Done when* f3c's paired 63-call fixture and full regressions pass.
+  - Resource-file open/create/update/close, AddResource and multi-fork search
+    now pass the paired 63-call fixture, with exact persisted forks and cleanup.
+    Native handles remap by stable identity; bodies remain source-backed.
+  - **M2.2f4 Remaining writable resource variants.** Extend the measured scope
+    before enabling the remaining resource mutations and error paths.
+    - **M2.2f4a Reference contract.** Capture permissions 0–4/read-only files,
+      create on absent/existing files, malformed maps, invalid update refs,
+      AddResource errors, ChangedResource/WriteResource/RmveResource, dirty
+      handle release/detach/empty, noncurrent-file close and exit persistence.
+      Application-file closure and mixing raw resource streams with resource
+      updates are currently explicit stops; establish their reached semantics
+      before enabling them. Use exclusively created scratch files and retain
+      originals unchanged. *Done when* bounded Mac fixtures check original
+      call bytes, results/registers, state, exact saved bytes and cleanup.
+    - **M2.2f4b Native variants.** Implement the measured contracts through the
+      current directory/staging backend. *Done when* paired native fixtures,
+      source-backed loading, disk error/rollback evidence and all regressions
+      pass; any still-unmeasured variant remains a named stop and queued.
 
   - Implement writable prefs/save resource forks and the port overlay fork
     (empty at first), preserving design §4.6 search order and dialog overrides.
