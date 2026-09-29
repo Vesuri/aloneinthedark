@@ -43,7 +43,7 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.1c3c Native sound-driver startup prerequisite (D8).**
+- **M2.1c3c2 Native sound-driver startup prerequisite (D8).**
   - After the first original Times lookup, startup reaches Core+$1102's MDRV
     request before the second lookup. The exploratory run entered decrypted
     code and stopped on `.BD_PAS16`; it is not an accepted execution path.
@@ -51,9 +51,12 @@ required.
   - Use the verified `Jnth` lookup at Core+$10E2 to install the port driver,
     as D8 already requires. Core+$1CC6 calls the loader; the actual entry-pointer
     store is +$1CF4. Preserve original instructions and register/stack contracts.
-  - Bring forward the startup portion of M4.1: measure and implement the reached
-    driver selectors with real state, retaining named stops for unsupported
-    selectors. Do not return invented success or enable the original mixer.
+  - The independent reference contract (M2.1c3c1) is measured and checked in
+    [sound-driver.md](sound-driver.md): selectors 21 and 24, arguments, state,
+    stack and preserved registers, through the second original Times lookup.
+  - Bring forward the startup portion of M4.1: implement those measured driver
+    selectors with real state, retaining named stops for unsupported selectors.
+    Do not return invented success or enable the original mixer.
 
   *Done when* original startup reaches the second Times lookup through the native
   driver, no original MDRV body executes, original-byte and reference contracts

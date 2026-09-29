@@ -2136,3 +2136,18 @@ already measured in M0.2. The 75,616-byte A5 comparison has zero mismatches.
 The clean production build passes no-float/probe audits (73 symbols). No timeout
 or failed exploratory observer is counted as a pass; rendered-window verification
 remains owner-deferred. No owner decision changed.
+
+### Native-driver reference contract (M2.1c3c1)
+
+The bounded original Mac probe now verifies both startup driver calls, their
+arguments, resulting configuration, stack and D2–D7/A0–A6 preservation, then
+positively reaches the second Times lookup (20). Its fresh 29,256-byte driver
+dump matches the original unpacked body exactly. The checker rejects missing
+calls, wrong state/registers, early or duplicate completion and nonzero/timeout
+status. Reproduction and byte attribution are in `sound-driver.md`.
+
+The complete host suite and fresh reference run pass with normal completion.
+This independent measurement changes no native runtime; the prior native
+regression results still describe the production stop before MDRV loading.
+Native installation remains M2.1c3c2, preserving the full original acceptance
+requirement. No owner decision changed.
