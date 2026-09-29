@@ -27,6 +27,7 @@ public:
     void close();
     uint16_t forkCount() const { return m_open ? m_forks : 0; }
     uint32_t resourceCount() const { return m_count; }
+    // Items retain each fork's original map reference-list order.
     bool item(uint32_t index,Item& out) const;
     bool find(uint16_t fork,uint32_t type,int16_t id,Item& out,uint32_t* index=0) const;
     // Reads exactly the indexed resource into caller-owned storage, in <=64 KiB
@@ -34,7 +35,6 @@ public:
     int32_t read(uint32_t index,uint8_t* destination,uint32_t capacity) const;
 private:
     bool appendFork(uint16_t fork,const Source& source,const uint8_t* resident=0);
-    static bool before(const Item& a,const Item& b);
     struct Record { Item item;uint32_t offset; };
     Record m_items[kMaximumResources];
     Source m_sources[kForkCount]={};

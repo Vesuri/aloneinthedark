@@ -20,11 +20,6 @@ void ResourceForks::close() {
     for(uint16_t i=0;i<kForkCount;++i) { delete[] m_maps[i];m_maps[i]=0;m_sources[i]={}; }
     m_count=m_forks=0;m_open=false;
 }
-bool ResourceForks::before(const Item& a,const Item& b) {
-    if(a.fork!=b.fork)return a.fork<b.fork;
-    if(a.type!=b.type)return a.type<b.type;
-    return a.id<b.id;
-}
 bool ResourceForks::appendFork(uint16_t fork,const Source& source,const uint8_t* resident) {
     uint8_t header[16];ResourceMap::Layout layout;
     if(exact(source,0,header,16) || !ResourceMap::layout(header,source.size,layout)
@@ -45,13 +40,7 @@ bool ResourceForks::appendFork(uint16_t fork,const Source& source,const uint8_t*
     ++m_forks;return true;
 }
 bool ResourceForks::finish() {
-    // Preserve the existing stable lookup/handle indices during the I/O change.
-    // Resource Manager enumeration will use map order when those calls land.
-    for(uint16_t i=1;i<m_count;++i) {
-        Record value=m_items[i];uint16_t j=i;
-        while(j && before(value.item,m_items[j-1].item)) { m_items[j]=m_items[j-1];--j; }
-        m_items[j]=value;
-    }
+    // Retain original reference-list order for indexed Resource Manager calls.
     m_open=true;return true;
 }
 bool ResourceForks::open(const uint8_t* app,uint32_t appSize,const uint8_t* data,uint32_t dataSize) {
@@ -67,12 +56,14 @@ bool ResourceForks::item(uint32_t index,Item& out) const {
     if(!m_open || index>=m_count)return false;out=m_items[index].item;return true;
 }
 bool ResourceForks::find(uint16_t fork,uint32_t type,int16_t id,Item& out,uint32_t* index) const {
-    if(!m_open)return false;Item wanted={};wanted.fork=fork;wanted.type=type;wanted.id=id;
-    uint16_t first=0,last=m_count;
-    while(first<last) { uint16_t mid=first+((last-first)>>1);if(before(m_items[mid].item,wanted))first=mid+1;else last=mid; }
-    if(first>=m_count)return false;const Item& found=m_items[first].item;
-    if(found.fork!=fork || found.type!=type || found.id!=id)return false;
-    out=found;if(index)*index=first;return true;
+    if(!m_open)return false;
+    for(uint16_t i=0;i<m_count;++i) {
+        const Item& found=m_items[i].item;
+        if(found.fork==fork && found.type==type && found.id==id) {
+            out=found;if(index)*index=i;return true;
+        }
+    }
+    return false;
 }
 int32_t ResourceForks::read(uint32_t index,uint8_t* out,uint32_t capacity) const {
     if(!m_open || index>=m_count || capacity<m_items[index].item.size)return -50;

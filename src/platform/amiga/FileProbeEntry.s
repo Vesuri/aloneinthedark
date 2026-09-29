@@ -253,3 +253,21 @@ aitdProbeEmptyResource:
     resourceos aitdProbeResHPurge,0xa049
     resourceos aitdProbeResSetState,0xa06a
     resourceos aitdProbeResPurge,0xa04d
+
+    .section .text.aitdResourceEnumerationProbe,"ax"
+    idtrap aitdProbe1IndResource,0xa80e
+    .macro counttrap name,opcode
+    .globl \name
+\name:
+    move.l 4(sp),d0
+    clr.w -(sp)
+    move.l d0,-(sp)
+    move.l #0x12345678,d0
+    .word \opcode
+    move.l d0,g_resourceLookupD0
+    moveq #0,d0
+    move.w (sp)+,d0
+    rts
+    .endm
+    counttrap aitdProbeCount1Resources,0xa80d
+    counttrap aitdProbeCountResources,0xa99c

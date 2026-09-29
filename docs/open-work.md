@@ -49,13 +49,14 @@ required.
     and the remaining handle lifecycle and purge behavior.
   - Metadata, explicit load/empty/reload, purge and release lifecycle now pass
     paired Mac/native fixtures (M2.2d).
-  - **M2.2e Enumeration next:** CountResources/Count1Resources/Get1IndResource.
-    *Done when* paired Mac/native fixtures verify count, original map ordering,
-    index bounds, load-control behavior and returned resource bytes, and all
-    existing regressions pass. Follow with current/open-file search order and
-    the resource-file calls below.
-  - Implement OpenResFile and the other resource-file calls. The inherited fake
-    -1 result is removed; unsupported OpenResFile now stops by name.
+  - Count1Resources/Get1IndResource and single-fork CountResources now pass
+    paired enumeration fixtures (M2.2e), including original map order.
+  - **M2.2f Resource files and search next:** implement OpenResFile and the other
+    resource-file calls, current/open-file search order and multi-fork counts.
+    The inherited fake -1 OpenResFile result is removed; unsupported calls stop
+    by name. *Done when* paired fixtures prove open/current/close state, search
+    precedence, counts with duplicate types/IDs, file errors and independent
+    handles, with all existing regressions passing.
   - Implement writable prefs/save resource forks and the port overlay fork
     (empty at first), preserving design §4.6 search order and dialog overrides.
 

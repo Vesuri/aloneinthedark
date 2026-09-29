@@ -32,6 +32,9 @@ int main() {
     assert(forks.open(source) && forks.resourceCount()==2 && forks.forkCount()==1);
     assert(disk.calls==4 && disk.total==86 && disk.max==62); // No body read on open.
     ResourceForks::Item item;uint32_t index;
+    assert(forks.item(0,item) && item.id==128 && item.fork==0);
+    assert(forks.item(1,item) && item.id==-3 && item.fork==0);
+    assert(!forks.item(2,item));
     assert(forks.find(0,0x54455354,128,item,&index) && item.size==100003 && !item.data);
     std::vector<uint8_t> out(100005,0xcc);disk.payload=true;auto calls=disk.calls;
     assert(forks.read(index,out.data()+1,100002)==-50 && disk.calls==calls);
@@ -43,6 +46,11 @@ int main() {
     assert(forks.find(0,0x54455354,-3,item,&index) && item.size==0);calls=disk.calls;
     assert(!forks.read(index,nullptr,0) && disk.calls==calls);
     assert(forks.open(source,&source) && forks.resourceCount()==4 && forks.forkCount()==2);
+    for(uint32_t i=0;i<4;++i) {
+        assert(forks.item(i,item) && item.fork==i/2 && item.id==(i%2 ? -3 : 128));
+        uint32_t foundIndex;
+        assert(forks.find(item.fork,item.type,item.id,item,&foundIndex) && foundIndex==i);
+    }
     assert(forks.find(1,0x54455354,128,item,&index) && !forks.read(index,out.data(),out.size()));
     disk.fail=disk.calls+2;assert(!forks.open(source) && !forks.resourceCount() && !forks.forkCount());
     assert(forks.read(0,out.data(),out.size())==-50);disk.fail=0;

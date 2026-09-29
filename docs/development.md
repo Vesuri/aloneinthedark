@@ -663,7 +663,7 @@ Open/HOpen, Write, SetEOF, GetEOF/GetFCBInfo, Read, FlushVol and Close calls aft
 the read/directory fixture. It requires FILEPROBE=1 and FILEWRITEPROBE=1.
 The case checks exact bytes, marks/EOF, CCR, the 25-pair permission matrix,
 protected-file defaults/errors, shared writes and close order, cached-reader
-coherence and volume-name/reference forms. It requires 386 runtime windows,
+coherence and volume-name/reference forms. It requires 387 runtime windows,
 24 DOS writes (65,536 maximum), 18 flushes including shutdown and an empty
 stream ledger after cleanup. Host readback verifies 17 backend bytes, six
 shared-file bytes, four data bytes plus Finder metadata, and three bytes left dirty
@@ -784,7 +784,7 @@ Native stage 46 checks ordering against known existing save files, the grave
 accent's special position, canonical name outputs, null-name identity, errors,
 classic/default selection, WD precedence and reindexing after deletion. Host
 sanitizer tests cover all 67 characters and reverse insertion order. `file-write`
-is included in the current 386-window regression. The dedicated application directory also supports indexed queries; System/root
+is included in the current 387-window regression. The dedicated application directory also supports indexed queries; System/root
 and the legacy mixed native directory remain explicit unsupported boundaries.
 
 
@@ -802,7 +802,7 @@ All four nonempty forks compare byte-for-byte with read-only MacBinary exports
 from the System 7.5.5 reference application folder. The three full file
 (data then resource) SHA-256 values are respectively
 `5c552161db462f80e82346494a304d133ca502c92ab299a77b82ca988fd1893e`,
-`6173b910b6b572a00bfef3ca40b7e738612ef7a1f533c90c4bc549a200696e69`, and
+`6173b910b6b572a00bfef3ca40b7e738712ef7a1f533c90c4bc549a200696e69`, and
 `a90c4bbebe9615a900ddfbd8f5c5d845ec8e304970a558aea0a663a0c8b7c870`.
 The metadata tests cover two-fork records and reject incomplete/mismatched
 pairs. These outputs are integrated into staging and the native application catalog.
@@ -865,7 +865,7 @@ HOpen addresses drivers; the ordinary-file HOpen error probe uses a leading colo
 Native stage 48 reaches `g_fileOpenDFProbeStep=17`, including matching errors for
 HOpen/HOpenRF, dot-name read/write, both aliases and protected files. Host checks
 verify open-specific path resolution without changing directory-query semantics.
-The current file-write totals, including the HGetVInfo/async fixtures below, are 386 windows, 33 reads / 866,733 bytes, and
+The current file-write totals, including the HGetVInfo/async fixtures below, are 387 windows, 33 reads / 866,733 bytes, and
 24 writes / 470,069 bytes with 18 flushes including shutdown. All owned scratch
 forks/companions must be absent afterward; the restored stream ledger is empty.
 File-read, window-core, production boot and the 42-entry original directory
@@ -890,7 +890,7 @@ eight OS windows; invalid selections add none. The System lookup checks the
 returned WD rather than assuming a reference survives the earlier CloseWD test.
 Both globals are retained by the probe link audit.
 
-Acceptance including the async fixture below: file-write passes with 386 windows, 33 reads / 866,733 bytes and
+Acceptance including the async fixture below: file-write passes with 387 windows, 33 reads / 866,733 bytes and
 24 writes / 470,069 bytes / 18 flushes including shutdown. File-read, window-core,
 production boot and the original 42-entry directory observer remain required;
 rendered-picture verification is still owner-deferred. Original initialization
@@ -921,7 +921,7 @@ at every callback entry. `g_fileAsyncStep=67`, `g_fileAsyncCallbacks=51`,
 controls, retained by the probe-symbol link audit. Probe assembly has its own
 section so file-read/production builds do not retain probe-only references.
 
-File-write requires 386 windows and unchanged final read/write totals; its two
+File-write requires 387 windows and unchanged final read/write totals; its two
 restored closes must leave no open streams. The checker also requires absence
 of all `.async-probe` data/resource/metadata companions. Host tests, file-read,
 window-core, production boot and the directory observer pass. The original run
@@ -978,8 +978,8 @@ Invalid destination capacity performs no reads, zero-length resources need no
 buffer, callback errors propagate, and a short successful transfer returns -39.
 The caller must discard incomplete destination contents on error. A failed open
 releases partial maps and publishes no entries. Source contexts remain caller-owned
-until close. Resource lookup preserves the previous sorted handle indices;
-`ResourceMap` retains native map order for the later enumeration implementation.
+until close. At M2.2b, ResourceForks retained sorted handle indices while
+ResourceMap retained original order; M2.2e now preserves map order throughout.
 
 `tools/check_resource_source.py`, included in `make host-tests`, uses ASan/UBSan
 and a guarded source that rejects any payload read during open. Its two-resource
@@ -1217,3 +1217,44 @@ plus catalog, original-startup, identity and low-memory observers. Every runner
 exited normally. The startup A5 comparison has zero mismatches / 75,616 bytes;
 production resource counters and the GetFNum boundary are unchanged. Rendered
 video remains owner-deferred. No owner decision is needed for this checkpoint.
+
+
+### Original-order resource enumeration (M2.2e)
+
+`mac_resource_enumeration.lua` captures 44 CPU-only calls after the original
+Engine+$3CDC byte check. `check_resource_enumeration.py` derives expected counts
+and order directly from the independent original-fork reader, requires normal
+exit, and checks stack cleanup, D0/ResErr, metadata and handle reuse. Current-file
+counts are CREL 10, CODE 14 and STRS 1; missing-type counts are zero with no error.
+CountResources matches for the application-specific CREL type and an absent type.
+This does not establish multi-fork duplicate handling, which remains M2.2f.
+
+Get1IndResource follows original reference-list order, not sorted resource IDs.
+CREL enumerates `13,12,3,4,5,6,7,8,9,10`; CODE indices 1/2/14 give IDs 2/13/0.
+Zero, negative, out-of-range and missing-type indices return nil, ResErr -192
+and D0 `$FF40`. Successful counts and indexed lookups clear ResErr/D0. With
+ResLoad false, each new CREL lookup returns a distinct empty resource handle;
+GetResInfo still returns its ID/type. Re-enabling loading fills the same first
+handle with original CREL 13: 1,288 bytes, SHA256
+`bc4576dd01b2ce1faaebe866250d2366ccc5e5435d876182880a3c76c4ed5336`.
+
+ResourceForks no longer sorts its records. Its bounded linear ID lookup returns
+indices into the original-order directory; resource-handle and payload indices
+therefore stay consistent. The host source test checks unsorted positive/negative
+IDs, two-fork order and find/index agreement without body reads, under ASan/UBSan.
+Native Count1Resources and Get1IndResource use the current fork; CountResources
+supports the current single-fork configuration and explicitly stops if multiple
+forks are present until M2.2f establishes that contract.
+
+File-write stage 54 reproduces the 44 reference calls. Every count, metadata call
+and disabled-load lookup leaves disk counters unchanged. The final enabled lookup
+adds one 1,288-byte read, preserving the original empty master pointer. Terminal
+step is 45 and FNV is `$8D35D0BE`. The combined resource probes now check 110
+calls, eleven reads / 9,344 bytes and 387 total windows, with unchanged File
+Manager transfer and cleanup totals. Prior checkpoint counts above are historical.
+
+Acceptance: host suite (including source ASan/UBSan), all five native regressions
+and four startup observers passed with normal exits. All 75,616 A5 globals match.
+Original startup remains GetFNum Dan1+$0012, 16 runtime resource reads / 96,648
+bytes and 23 balanced services. No owner decision changed; rendered-picture
+verification remains deferred.

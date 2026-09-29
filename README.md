@@ -31,7 +31,7 @@ implementation item is the remaining Resource Manager services (M2.2).
 Resource bodies now stream from disk into zone handles; startup retains the
 4,998-byte map instead of the 1,424,934-byte application fork. The `resource-read`
 regression verifies original bytes and 16 runtime read windows before the current
-GetFNum stop. Named and ID lookup, resource metadata, purge/reload and release behavior now
+GetFNum stop. Named/ID/indexed lookup, resource counts and metadata, purge/reload and release now
 pass paired Mac/native checks. The metadata-only catalog and application-fork identity are verified (M2.1b1):
 32 data files, 5,315,994 bytes; no data payload preloading. SetVol, the three
 startup working directories, Preferences lookup and the optional movies error

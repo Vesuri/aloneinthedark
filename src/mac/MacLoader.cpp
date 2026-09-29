@@ -672,6 +672,8 @@ static const TrapName s_trapNames[] = {
     {0xa900,"FONT MANAGER","GETFNUM"},
     {0xa99b,"RESOURCE MANAGER","SETRESLOAD"}, {0xa9a8,"RESOURCE MANAGER","GETRESINFO"},
     {0xa9a2,"RESOURCE MANAGER","LOADRESOURCE"},
+    {0xa80d,"RESOURCE MANAGER","COUNT1RESOURCES"}, {0xa99c,"RESOURCE MANAGER","COUNTRESOURCES"},
+    {0xa80e,"RESOURCE MANAGER","GET1INDRESOURCE"},
     {0xa9a1,"RESOURCE MANAGER","GETNAMEDRESOURCE"}, {0xa9a3,"RESOURCE MANAGER","RELEASERESOURCE"},
     {0xa063,"MEMORY MANAGER","MAXAPPLZONE"}, {0xa01c,"MEMORY MANAGER","FREEMEM"},
     {0xa01f,"MEMORY MANAGER","DISPOSEPTR"},
@@ -5178,7 +5180,7 @@ static bool isUserService(uint16_t trap)
 #ifdef AITD_SERVICE_PROBE
     if((trap&0xfeff)==0xa0fc || trap==0xabfb)return true;
 #endif
-    return trap==0xa9a2 || trap==0xa81f || trap==0xa820 || trap==0xa9a0 || trap==0xa9a1 || trap==0xa930 || trap==0xa9bf
+    return trap==0xa80e || trap==0xa9a2 || trap==0xa81f || trap==0xa820 || trap==0xa9a0 || trap==0xa9a1 || trap==0xa930 || trap==0xa9bf
         || trap==0xaa46 || trap==0xaa92 || trap==0xa9b9 || trap==0xa9bc || trap==0xa97c
         || trap==0xa40c || trap==0xa608 || trap==0xa60a || trap==0xa60c || trap==0xa60d || trap==0xa614 || trap==0xa615
         || (trap&0xf8ff)==0xa060 || trap==0xa014 || trap==0xa015 || trap==0xa214 || trap==0xa215 || trap==0xa207 || isFileDataService(trap) || isFileCatalogService(trap);
@@ -5516,6 +5518,26 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
             if (g_stageCDepth < 81) g_stageCDepth = 81;
             return 7;
         }
+    }
+    if(trap==0xa80d || (trap==0xa99c && s_resourceForks.forkCount()==1)) {
+        uint32_t type=read32(userStack);uint16_t count=0;
+        for(uint32_t i=0;i<s_resourceForks.resourceCount();++i) {
+            ResourceForks::Item item;
+            if(s_resourceForks.item(i,item) && item.fork==s_currentResourceFork && item.type==type)++count;
+        }
+        write16(userStack+4,count);resourceResult(0);regs[0]=0;return 5;
+    }
+    if(trap==0xa80e) {
+        int16_t ordinal=(int16_t)read16(userStack);uint32_t type=read32(userStack+2);
+        MacHeap::Handle handle=0;bool found=false;
+        if(ordinal>0)for(uint32_t i=0;i<s_resourceForks.resourceCount();++i) {
+            ResourceForks::Item item;
+            if(s_resourceForks.item(i,item) && item.fork==s_currentResourceFork && item.type==type && !--ordinal) {
+                found=true;handle=loadResource(i,item,false);break;
+            }
+        }
+        if(!found)resourceResult(-192);
+        write32(userStack+6,(uint32_t)handle);regs[0]=read16(s_portLowMemory+140);return 7;
     }
     if (trap == 0xa9a0 || trap == 0xa81f) {  // GetResource/Get1Resource(type:4, id:2) -> Handle result:4
         int16_t id = (int16_t)read16(userStack);

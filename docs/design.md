@@ -384,8 +384,10 @@ Native trap probes, host fragmentation tests and paired heap captures verify it:
   ResError reads the private low-memory result. Purge/reload, locked/empty
   release and empty/detached/nil results pass 28 paired calls (M2.2d3). Dirty
   resource state and disposal remain part of writable fork support.
-- **Remaining Resource Manager work includes** `CountResources`/`Count1Resources`,
-  `Get1IndResource` (if reached), and the writable-file calls in 4.5.
+- **Enumeration implemented.** Count1Resources, Get1IndResource and single-fork
+  CountResources pass 44 paired calls. The directory preserves original map
+  order; counts and disabled-load indexed lookups read no bodies. Multi-fork
+  counts/search and the writable-file calls in 4.5 remain M2.2f.
 - **Search order.** Open resource files first, then the application, then the
   port overlay, which stands in for the System file. The one exception is the
   dialog layouts, which the overlay supplies ahead of the application. Resources the game expects from the System file (fonts, `snd `
