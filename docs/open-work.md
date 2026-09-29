@@ -56,16 +56,16 @@ required.
     Native handles remap by stable identity; bodies remain source-backed.
   - **M2.2f4 Remaining writable resource variants.** Extend the measured scope
     before enabling the remaining resource mutations and error paths.
-    - **M2.2f4a2 Remaining reference contract.** Capture permissions 0–4 and
-      read-only files, create on absent/existing files, malformed maps, dirty
-      handle release/detach/empty, noncurrent-file close and exit persistence.
+    - **M2.2f4a2b Dirty lifecycle reference.** Capture dirty-handle
+      release/detach/empty, noncurrent-file close and exit persistence.
       Application-file closure and mixing raw resource streams with resource
       updates are currently explicit stops; establish their reached semantics
       before enabling them. Use exclusively created scratch files and retain
       originals unchanged. *Done when* bounded Mac fixtures check original
       call bytes, results/registers, state, exact saved bytes and cleanup.
     - **M2.2f4b Native variants.** Implement the measured contracts through the
-      current directory/staging backend. *Done when* paired native fixtures,
+      current directory/staging backend, including read-only in-memory removal
+      and closing after a failed read-only update. *Done when* paired native fixtures,
       source-backed loading, disk error/rollback evidence and all regressions
       pass; any still-unmeasured variant remains a named stop and queued.
       - **M2.2f4b1 Same-file duplicate model correction.** The Mac accepts

@@ -1555,3 +1555,43 @@ M2.2f4a2, before native integration resumes.
 The full host suite passes. No native runtime code changed in this reference
 checkpoint; existing native regression results remain the ab2a3ff baseline.
 No owner decision is needed.
+
+
+### Resource permissions and creation reference (M2.2f4a2a)
+
+`mac_resource_permissions.lua` exclusively creates one scratch name, proves
+ownership before deleting/recreating it, and captures 59 CPU-only calls. The
+final headless MAME run exits zero and deletes/unlocks the scratch file. The
+checker validates the Engine gate plus Core+$46F2/$4780/$4830/$48BE original
+call pairs, seeded registers/errors, stack, handles and exact reopened bytes.
+
+Measured contract:
+- CreateResFile creates an absent file/map. Repeating it on an existing valid
+  map returns -48, leaves D0=4 and preserves MemErr; its resource stays intact.
+  The earlier resource-file fixture separately covers an existing data file
+  with no map. An empty resource fork and a 16-byte all-zero header both fail
+  OpenRFPerm with -39 and reference -1. The raw write's actual count is 16;
+  this does not establish a universal error for every malformed layout.
+- OpenRFPerm permissions 0–4 all open an unlocked file and read the exact
+  four-byte `ABCD` resource. On a locked file, permissions 0/1 still open/read;
+  2/3/4 return -54 and reference -1, with zero-extended D0 and cleared MemErr.
+- On a read-only open, ChangedResource returns -61 without setting the changed
+  attribute. WriteResource then succeeds without writing the modified resident
+  `EFGH` bytes. AddResource returns -61 and leaves the resource count at one.
+- RmveResource on that read-only map succeeds in memory, clears the resource
+  flag and preserves the handle/body. UpdateResFile then returns -61 while
+  preserving D0/MemErr. CloseResFile also returns -61 but **does close the file**:
+  CurResFile is the application afterward. Reopening retrieves original `ABCD`;
+  the failed added ID is absent. The detached body still exists independently.
+  Native implementation must separate in-memory map mutation from disk write
+  permission and must not retain a read-only file just because its update fails.
+
+The strict checker rejects ten timeout/incomplete/corrupted evidence cases,
+including bad lock errors, malformed-header write count, read-only count/body/
+attributes, current-file restoration, close error and stack cleanup. Native
+permission and mutation behavior is still queued in M2.2f4b. Dirty lifecycle
+and exit reference coverage remains M2.2f4a2b. No original assets change and no
+owner decision is needed.
+
+The full host suite passes. This checkpoint changes reference tooling only;
+native runtime regression evidence remains the ab2a3ff baseline.
