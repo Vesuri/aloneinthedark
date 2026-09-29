@@ -167,7 +167,7 @@ static AitdScreen* s_loudStopScreen;
 static ResourceForks s_resourceForks;
 static MacFiles s_files;
 struct DataSource {
-    uint32_t id=0;bool resource=false;
+    uint32_t id=0,storedSize=0;bool resource=false;
     FileAccess::ReadStream* backing=0;
     FileWriteBuffer writes;
 };
@@ -640,6 +640,7 @@ static const TrapName s_trapNames[] = {
     {0xa9e3,"MEMORY MANAGER","PTRTOHAND"},
     {0xa1ad,"OS","GESTALT"},
     {0xa860,"EVENT MANAGER","WAITNEXTEVENT"},
+    {0xa207,"FILE MANAGER","HGETVINFO"},
     {0xa060,"FILE MANAGER","FSDISPATCH"},
     {0xa260,"FILE MANAGER","HFSDISPATCH"},
     {0xa9af,"RESOURCE MANAGER","RESERROR"}, {0xa992,"RESOURCE MANAGER","DETACHRESOURCE"},
@@ -4911,6 +4912,7 @@ static void releaseFilePage(uint8_t* bytes,uint32_t size) { FreeMem(bytes,size);
 static int16_t flushDataSource(DataSource& source,FileAccess::ReadStream& stream,bool restored=false) {
     bool changed=source.writes.dirty();
     int16_t error=restored ? FileAccess::flushRestoredStream(stream,source.writes) : FileAccess::flushStream(stream,source.writes);
+    if(!error)source.storedSize=source.writes.size();
     if(!error && changed)s_files.touchMetadata(source.id,FileAccess::metadataTime());
     const MacFiles::Entry* entry=s_files.entry(source.id);
     if(!error && entry->metadataDirty) {
@@ -5052,7 +5054,7 @@ static bool dispatchFileData(uint16_t trap,uint32_t* regs) {
                         else {
                             source->backing=&slot->stream;
                             error=source->writes.bind(length,readDataSource,source,allocateFilePage,releaseFilePage);
-                            if(!error) { source->id=id;source->resource=resource;newSource=true; }
+                            if(!error) { source->id=id;source->storedSize=length;source->resource=resource;newSource=true; }
                         }
                     }
                     if(!error && !source) {
@@ -5151,12 +5153,35 @@ static bool isUserService(uint16_t trap)
 #ifdef AITD_SERVICE_PROBE
     if((trap&0xfeff)==0xa0fc || trap==0xabfb)return true;
 #endif
-    return (trap&0xf8ff)==0xa060 || trap==0xa014 || trap==0xa015 || trap==0xa214 || trap==0xa215 || isFileDataService(trap) || isFileCatalogService(trap);
+    return (trap&0xf8ff)==0xa060 || trap==0xa014 || trap==0xa015 || trap==0xa214 || trap==0xa215 || trap==0xa207 || isFileDataService(trap) || isFileCatalogService(trap);
 }
-// Metadata-only File Manager selectors. Unsupported layouts fall through to
-// the named trap stop; no OS call is made inside this helper.
+// File Manager metadata and volume selectors. Unsupported layouts fall through
+// to the named trap stop; native volume queries use a user-mode OS window.
 static bool dispatchFileMetadata(uint16_t trap,uint32_t* regs)
 {
+    if(trap==0xa207) {
+        uint8_t* pb=(uint8_t*)regs[8];if(!pb)return false;
+        uint8_t* name=(uint8_t*)read32(pb+18);char volume[256];
+        uint16_t length=name ? name[0] : 0;
+        for(uint16_t i=0;i<length;++i)volume[i]=name[i+1];volume[length]=0;
+        uint32_t directory=0;int16_t ref=(int16_t)read16(pb+22);
+        int16_t error=s_files.selectVolume(ref,(int16_t)read16(pb+28),volume,directory);
+        if(!error) {
+            MacVolumeBacking backing;
+            error=FileAccess::volumeBacking(backing);
+            if(!error) {
+                for(uint16_t i=0;i<MacFiles::maxOpen;++i)if(s_dataSources[i].id)
+                    backing.reserveGrowth(s_dataSources[i].writes.size(),s_dataSources[i].storedSize);
+                error=s_files.volumeInfo(directory,backing,pb);
+            }
+            if(!error && name) {
+                const char* text=s_files.entry(2)->name;uint16_t n=0;
+                while(text[n]) { name[n+1]=text[n];++n; }name[0]=n;
+            }
+        }
+        if(error==MacFiles::unsupported)return false;
+        write16(pb+22,ref);write16(pb+16,error);regs[0]=(uint32_t)(int32_t)error;return true;
+    }
     if(trap==0xa014 || trap==0xa214) { // Synchronous volume/default-directory queries.
         uint8_t* pb=(uint8_t*)regs[8];
         if(!pb)return false;

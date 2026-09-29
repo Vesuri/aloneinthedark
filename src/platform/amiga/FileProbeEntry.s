@@ -91,3 +91,5 @@ aitdProbeHOpenDF:
     .word 0xa260
     move.w ccr,g_fileProbeCCR
     rts
+
+    filetrap aitdProbeHGetVInfo,0xa207

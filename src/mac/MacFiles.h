@@ -1,6 +1,7 @@
 #ifndef AITD_MAC_FILES_H
 #define AITD_MAC_FILES_H
 #include "FileMetadata.h"
+#include "MacVolume.h"
 // Portable metadata/open-fork model. File payloads and host allocation are external.
 class MacFiles {
 public:
@@ -35,6 +36,8 @@ public:
     int16_t openData(uint32_t id,uint8_t permission,bool locked,int16_t& ref) { return openFork(id,false,permission,locked,ref); }
     int16_t volume(int16_t ref,const char* name) const;
     int16_t volumeParameters(int16_t ref,const char* name,uint8_t* buffer,uint32_t requested,uint32_t& actual) const;
+    int16_t selectVolume(int16_t& ref,int16_t index,const char* name,uint32_t& directory) const;
+    int16_t volumeInfo(uint32_t directory,const MacVolumeBacking& backing,uint8_t* parameterBlock) const;
     void modified(int16_t ref);
     void flushed(uint32_t id,bool resource=false);
     const Fork* fork(int16_t ref) const;

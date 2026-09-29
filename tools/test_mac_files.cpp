@@ -3,6 +3,40 @@
 #include <cstring>
 #include <initializer_list>
 #include "../src/mac/MacFiles.h"
+static unsigned vword(const unsigned char* p,unsigned o) { return (p[o]<<8)|p[o+1]; }
+static uint32_t vlong(const unsigned char* p,unsigned o) { return (uint32_t)vword(p,o)<<16|vword(p,o+2); }
+static void volumeInfo() {
+    MacFiles c;c.reset();c.application=c.add(2,"Game","PROGDIR:",true);
+    c.system=c.add(2,"System Folder","",true);assert(!c.initializeDirectories());
+    auto file=c.add(c.application,"File","PROGDIR:File",false,4);
+    assert(c.add(c.application,"Subdir","PROGDIR:Subdir",true)>0);
+    int16_t ref=99;uint32_t directory=0;
+    assert(!c.selectVolume(ref,1,"ignored",directory) && ref==-1 && directory==2);
+    ref=-1;assert(c.selectVolume(ref,2,0,directory)==-35 && !ref);
+    ref=99;assert(c.selectVolume(ref,0,"Alone:",directory)==-35 && ref==99);
+    assert(!c.selectVolume(ref,-1,"Alone:",directory) && ref==-1 && directory==2);
+    ref=0;assert(!c.selectVolume(ref,0,0,directory) && directory==c.application);
+    ref=c.applicationWD;assert(!c.selectVolume(ref,0,0,directory) && directory==c.application);
+    MacVolumeBacking backing={1000000,250000,512,0x12345678,0x23456789,false};
+    unsigned char pb[128];memset(pb,0xcc,sizeof(pb));
+    assert(!c.volumeInfo(directory,backing,pb));
+    assert(vlong(pb,30)==backing.created && vlong(pb,34)==backing.modified);
+    assert(vword(pb,38)==0 && vword(pb,40)==2 && !vword(pb,42) && !vword(pb,44));
+    assert(vword(pb,46)==62500 && vlong(pb,48)==8192 && vlong(pb,52)==8192);
+    assert(!vword(pb,56) && vlong(pb,58)==7 && vword(pb,62)==46875);
+    assert(vword(pb,64)==0x4244 && vword(pb,66)==1 && vword(pb,68)==65535);
+    for(unsigned i=70;i<82;++i)assert(!pb[i]);
+    assert(vlong(pb,82)==1 && vlong(pb,86)==3 && vlong(pb,90)==c.system && !vlong(pb,94) && vlong(pb,98)==c.application);
+    for(unsigned i=102;i<122;++i)assert(!pb[i]);
+    for(unsigned i=0;i<30;++i)assert(pb[i]==0xcc);
+    for(unsigned i=122;i<128;++i)assert(pb[i]==0xcc);
+    backing.locked=true;assert(!c.volumeInfo(2,backing,pb) && vword(pb,38)==0x80 && !vword(pb,40));
+    backing.used=backing.blocks+1;assert(c.volumeInfo(2,backing,pb)==c.unsupported);
+    backing={100,20,512,1,2,false};backing.reserveGrowth(513,1);assert(backing.used==21);
+    backing.reserveGrowth(1,513);assert(backing.used==21);backing.reserveGrowth(0xffffffff,0);assert(backing.used==100);
+    assert(!c.remove(file));backing={100,20,512,1,2,false};
+    assert(!c.volumeInfo(c.application,backing,pb) && vword(pb,40)==1 && !vlong(pb,82) && vlong(pb,58)==7);
+}
 static void volumeParameters() {
     MacFiles c;c.reset();c.application=c.add(2,"Game","PROGDIR:",true);
     c.system=c.add(2,"System Folder","",true);
@@ -113,7 +147,7 @@ static void catalogLifetime() {
     assert(c.planCreate(0,0x1234,"new",plan)==c.dirNFErr);
 }
 int main() {
-    volumeParameters();indexedFiles();
+    volumeInfo();volumeParameters();indexedFiles();
     dualForks();
     catalogLifetime();
     MacFiles c;c.reset();assert(c.count()==1 && c.entry(2)->parent==1);

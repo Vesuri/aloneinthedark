@@ -629,8 +629,8 @@ Classic GetFInfo uses the current default directory and ignores the hierarchical
 PB directory field. These cases match the 218-call System 7.5.5 fixture.
 
 The native fixture passes the corresponding Line-A cases and exact returned
-names, metadata and lifetime checks. The current File-write regression uses 345 runtime windows, including the
-later OpenDF fixture. Production still stops at Get1NamedResource.
+names, metadata and lifetime checks. The current File-write regression uses 353 runtime windows, including the
+later OpenDF and HGetVInfo fixtures. Production still stops at Get1NamedResource.
 
 ## Application namespace boundary (M2.1b2c9c2b)
 
@@ -677,7 +677,7 @@ The operation uses catalog state and opens no system window.
 
 Original Core+$43F4 is `7030 A260`. The caller requests six bytes and tests the
 `bNoSysDir` bit (`$00020000`) at +$4404. The reference attributes leave it clear,
-so the caller proceeds to HGetVInfo at +$4424; that remaining service stays queued.
+so the caller proceeds to HGetVInfo at +$4424, implemented below.
 The maintained 22-call Mac fixture measures lengths 0–32, name/reference/WD
 selection, untouched tails and missing-volume outputs. Host and native fixtures
 check every count 0–32, exact bytes, errors and null zero-length buffers.
@@ -704,3 +704,34 @@ queries retain their previous separately measured error semantics.
 The 69-call Mac fixture and native stage 48 cover permissions, locked files,
 conflicting/shared opens, independent marks, exact data and cleanup. Host tests
 cover open-specific path errors; all native regression gates remain in place.
+
+
+## Hierarchical volume information (M2.1b2c9c2c3)
+
+Synchronous HGetVInfo (`A207`) selects the volume by positive enumeration index,
+reference for index zero, or name/reference for a negative index. A positive
+index ignores both name and reference; only index 1 exists. Exhausted enumeration
+returns -35 and clears the reference. Other invalid selections preserve the
+reference, name and record payload. Success returns the canonical volume name
+and real volume reference. Default/WD selections report that directory's valence
+(files plus directories); explicit root selections report only root files.
+
+The virtual HFS record uses catalog counts and IDs, signature `$4244`, drive 1
+and driver reference -1. Finder slot 0 identifies System (ID 4) and slot 2 the
+application (ID 3). Original Core+$3CEA (`A207 661A`) and +$4424 (`A207 3E00`)
+consume slot 0 at PB+90; opening/querying that ID returns the real System working
+directory. A closed/reopened WD can have a new reference, preserving its identity.
+
+One user-mode system window queries DOS capacity, write protection, volume
+creation date and PROGDIR directory modification date. Dates use the Mac epoch.
+Native blocks are aggregated until total/free counts fit HFS's 16-bit fields;
+both counts round down. Pending buffered growth reserves additional native
+blocks, while unflushed truncation earns no free-space credit. This is a capacity
+snapshot, not a promise that a subsequent write will fit.
+
+The port has no serialized HFS allocation bitmap or volume header: their physical
+locations, allocation cursor, backup/sequence/write counters and unused Finder
+slots are zero; its clump size is one virtual allocation block. These are virtual
+volume fields, not copies of the reference disk's geometry, dates or counts.
+Invalid native geometry, dates or unhandled disk states stop loudly. Classic and
+async volume-information forms remain unsupported unless separately measured.

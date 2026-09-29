@@ -236,6 +236,47 @@ int16_t MacFiles::volume(int16_t ref,const char* name) const {
     if(ref==1)return noErr; // Single native volume is virtual drive 1.
     uint32_t directory=0;return directoryFor(ref,directory);
 }
+int16_t MacFiles::selectVolume(int16_t& ref,int16_t index,const char* name,uint32_t& directory) const {
+    if(index>0) {
+        if(index!=1) { ref=0;return nsvErr; }
+        directory=2;ref=volumeRef;return noErr;
+    }
+    int16_t error=volume(ref,index<0 ? name : 0);if(error)return error;
+    bool absolute=false;
+    if(index<0 && name && *name!=':')for(const char* p=name;*p;++p)if(*p==':')absolute=true;
+    if(absolute || ref==1)directory=2;
+    else { error=directoryFor(ref,directory);if(error)return error; }
+    ref=volumeRef;return noErr;
+}
+static void volumeWord(uint8_t* pb,uint16_t offset,uint16_t value) { pb[offset]=value>>8;pb[offset+1]=value; }
+static void volumeLong(uint8_t* pb,uint16_t offset,uint32_t value) { volumeWord(pb,offset,value>>16);volumeWord(pb,offset+2,value); }
+int16_t MacFiles::volumeInfo(uint32_t directory,const MacVolumeBacking& backing,uint8_t* pb) const {
+    if(!pb || !entry(directory) || !entry(directory)->directory || !entry(system)
+        || !backing.blocks || backing.used>backing.blocks || !backing.blockBytes)return unsupported;
+    uint32_t groups=1,blockBytes=backing.blockBytes;
+    // Both HFS counts are 16-bit. Aggregate whole native blocks, rounding
+    // capacity/free space down so the virtual volume never overstates either.
+    while(backing.blocks/groups>65535) {
+        if(blockBytes>0x7fffffffUL || groups>0x7fffffffUL)return unsupported;
+        blockBytes*=2;groups*=2;
+    }
+    uint32_t files=0,directories=0,valence=0;
+    for(uint16_t i=0;i<used_;++i) {
+        const Entry& e=entries_[i];if(!e.id || e.id==2)continue;
+        if(e.directory)++directories;else ++files;
+        if(e.parent==directory && (directory!=2 || !e.directory))++valence;
+    }
+    for(uint16_t i=30;i<122;++i)pb[i]=0;
+    volumeLong(pb,30,backing.created);volumeLong(pb,34,backing.modified);
+    volumeWord(pb,38,backing.locked ? 0x80 : 0);volumeWord(pb,40,valence);
+    volumeWord(pb,46,backing.blocks/groups);volumeLong(pb,48,blockBytes);
+    volumeLong(pb,52,blockBytes);volumeLong(pb,58,nextID_);
+    volumeWord(pb,62,(backing.blocks-backing.used)/groups);
+    volumeWord(pb,64,0x4244);volumeWord(pb,66,1);volumeWord(pb,68,0xffff);
+    volumeLong(pb,82,files);volumeLong(pb,86,directories);
+    volumeLong(pb,90,system);volumeLong(pb,98,application);
+    return noErr;
+}
 void MacFiles::modified(int16_t ref) {
     Fork* f=const_cast<Fork*>(fork(ref));if(f)f->modified=true;
 }

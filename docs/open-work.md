@@ -44,11 +44,9 @@ required.
 ## M2 Startup to intro
 
 - **M2.1b2c9c2c Remaining File Manager dispatch variants.**
-  - Complete HGetVInfo and async census variants.
-    Synchronous HGetVolParms and FSDispatch OpenDF are complete
-    (M2.1b2c9c2c1/c2).
-    HGetVInfo is required by the byte-checked Core+$4424 fallback as well as
-    Core+$3CEA; include both callers and their consumed fields in its acceptance.
+  - Complete the async census variants.
+    Synchronous HGetVolParms, FSDispatch OpenDF and HGetVInfo are complete
+    (M2.1b2c9c2c1/c2/c3).
     Keep per-fork state and system-window boundaries (design §4.5).
   - Unknown flags, paths and unsupported layouts remain named stops.
 

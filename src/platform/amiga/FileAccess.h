@@ -1,5 +1,6 @@
 #ifndef AITD_FILE_ACCESS_H
 #define AITD_FILE_ACCESS_H
+struct MacVolumeBacking;
 // All backends use bounded byte ranges. A short successful read is EOF.
 class FileWriteBuffer;
 namespace FileAccess {
@@ -19,6 +20,7 @@ int32_t flushStream(ReadStream& stream,FileWriteBuffer& buffer);
 // Shutdown only: caller has fully restored OS ownership and scheduling.
 int32_t flushRestoredStream(ReadStream& stream,FileWriteBuffer& buffer);
 int32_t closeRestoredStream(ReadStream& stream);
+int32_t volumeBacking(MacVolumeBacking& result);
 extern const Backend dos;
 extern const Backend whdload;
 // Slave supplies the resident resload entry table before starting the runtime.
