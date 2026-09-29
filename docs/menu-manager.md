@@ -1,0 +1,100 @@
+# Menu records
+
+D7 keeps menu data and keyboard commands without drawing a menu bar. The
+original Engine startup loops over MENU 128–131, counts their items, reads their
+Pascal labels and removes the `|command` suffix through SetMenuItemText. The
+port implements those record operations; the game's code still interprets and
+stores the commands. Menu rendering and Mac MDEF execution are not involved.
+
+## Original contract
+
+`mac_menu_records.lua` observes original Engine+$2DEE CountMItems,
++$2E0C GetMenuItemText and +$2EC2 SetMenuItemText. It changes no instructions,
+arguments, menu data or RNG. Original bytes through the loop's return are
+fingerprinted by `check_menu_reference.py`.
+
+The bounded reference reaches the second Times lookup with 33 menu calls:
+4 counts, 17 reads and 12 text replacements. Counts are 3/4/6/4. Every count
+returns a word in the caller's reserved slot, popping four argument bytes;
+text calls pop ten. D0 returns zero, and D3–D7/A2–A6 are preserved. Volatile
+registers, including D1/D2 and A0/A1, are not a preservation contract. Native
+calls preserve additional scratch registers; the original loop does not depend
+on their reference clobbers.
+
+Count/read leave the menu record unchanged. SetMenuItemText replaces only the
+requested label, preserving all item icon/key/mark/style bytes, other labels,
+title, flags and MDEF field. It invalidates cached width/height to -1. The input
+Pascal string is unchanged. The capture checks the actual records before and
+after every call, rather than assuming the result from the returned count.
+
+### System-only item
+
+The reference System appends `\0\0Control Panels` to Apple MENU 128 through
+AddResMenu. It is absent from the original application MENU resource. The native
+application/data/overlay resource chain contains no DRVR resources and appends
+nothing. Its Apple count is therefore **2**, and it performs 32 calls: four
+counts, sixteen reads and the same twelve mutations. No count is invented to
+match a different resource set.
+
+This System-only label has no `|` command suffix. The original loop's null
+`strchr('|')` branch skips registration; its leading NUL also converts to an
+empty C label. It provides no game command, key equivalent or menu bar in D7's
+native environment. The paired checker requires exactly this reference-only
+extra item and compares every application item, including its metadata. It
+never ignores other count/text differences.
+
+Mac menu dimensions/MDEF pointers established by the system before these calls
+are platform-specific. Native GetMenu retains the original resource values and
+D7 does not draw the bar or execute MDEF code. The comparison therefore checks
+ID/title/flags and all packed items; within each run, count/read preserve the
+whole record, and replacements must invalidate dimensions and preserve MDEF.
+
+## Native implementation
+
+`MenuRecords.h` parses bounded title/item records. Native CountMItems reads the
+actual handle; GetMenuItemText copies the selected Pascal label. SetMenuItemText
+saves its input before any handle relocation, grows before moving a tail and
+shrinks afterward, keeping the same master pointer. Byte copies use a volatile
+intermediate to avoid the known GCC shared-base postincrement defect.
+
+Nil/malformed records, invalid item numbers and empty replacement labels remain
+named trap stops until their behavior is required and measured. Host sanitizer
+checks cover 510 length-changing replacements (1–255 bytes, both first and last
+items), exact metadata/tails, output guards, empty menus and truncated records.
+The native original-call observer validates all 32 calls and compares each
+record and text with the Mac. The next stop is Core+$4B48 GetDeviceList; this is
+not second-font, graphics or complete startup acceptance.
+
+## Reproduce
+
+The reference probe reuses the shared MAME input library and byte-verified
+System 7.5.5 dispatcher. It reads the internal debugger console to expose action
+errors. Earlier missing-call runs were rejected; the console identified an
+unsupported conditional debugger command before the probe moved to the three
+original call-site breakpoints. See MAME's
+[debugger Lua API](https://docs.mamedev.org/luascript/ref-debugger.html).
+
+```sh
+. amiga/env.sh
+SDL_VIDEODRIVER=dummy timeout -k 5 90 mame maciix \
+  -rompath ref/mame/roms -nb9 mdc48 -ramsize 8M \
+  -hard ref/mame/hd/aitd_755.hd -video none -sound none -window \
+  -skip_gameinfo -nothrottle -seconds_to_run 180 \
+  -snapshot_directory ref/mame/snap -cfg_directory ref/mame/cfg \
+  -nvram_directory ref/mame/nvram -debug -debugger none -oslog \
+  -autoboot_script tools/mac_menu_records.lua >tmp/m2-menu-reference.log 2>&1
+reference_status=$?
+python3 tools/check_menu_reference.py tmp/m2-menu-reference.log \
+  --status "$reference_status"
+(cd amiga && GDBTAIL=300 EXTRA_ARGS=--warp_mode=1 \
+  GDBSCRIPT=menu_records.gdb ./diag_run.sh 60) >tmp/m2-menu-native.log 2>&1
+native_status=$?
+python3 tools/check_native_menu.py tmp/m2-menu-native.log \
+  --status "$native_status" --reference tmp/m2-menu-reference.log \
+  --reference-status "$reference_status"
+```
+
+Both checkers require normal status, exact call order/count, original bytes,
+positive completion, stack/register evidence and complete records. The paired
+checker also rejects deliberately corrupted versions of the actual capture.
+Logs, record dumps and original data remain local-only.

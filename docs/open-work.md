@@ -10,7 +10,8 @@ design.md §5.
 - The executable builds and loads the original resource fork.
 - Original CODE 1 expands the A5 world, relocates Core and enters `main`, then
   passes directory initialization, the first Times lookup and both native
-  driver startup calls, then stops at Engine+$2DEE `COUNTMITEMS`. The original
+  driver startup calls and menu-record initialization, then stops at
+  Core+$4B48 `GETDEVICELIST`. The original
   mixer is never loaded.
 - The original runs in MAME on the System 7.5.5 reference volume.
 
@@ -44,25 +45,27 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.1c3c2b Startup menu-record prerequisite.**
-  - Native Jnth startup calls 21/24 now pass. Original execution next reaches
-    Engine+$2DEE CountMItems before the second Times lookup. The Mac M0.2 trace
-    confirms intervening CountMItems/GetMenuItemText/SetMenuItemText calls at
-    Engine+$2DEE/+$2E0C/+$2EC2. These are data operations, not a menu bar (D7).
-  - Measure the original arguments, returned counts/text and changed menu
-    records. Implement the reached operations over the existing menu handles,
-    preserving their packed records and the measured trap ABI. Reject malformed
-    or unsupported records explicitly; do not return invented counts or strings.
+- **M2.1c3c2c Graphics-device startup prerequisite (M2.4).**
+  - Original menu-record initialization now passes paired Mac/native checks.
+    Core+$4B48 GetDeviceList is the next stop, still before the second Times call.
+  - Measure the original device-list traversal and requested GDevice/PixMap
+    fields against the 8-bit reference. Bring forward the required logical
+    device model from §4.7, with real backing storage consistent with its
+    advertised layout; do not return a guessed handle or advertise an unsupported
+    depth. Keep unimplemented graphics operations named stops.
+  - Preserve M2.3/M2.4's full drawing, 320×200 selection and viewport acceptance;
+    passing this startup subset does not complete those items.
 
-  *Done when* original menu-record initialization passes paired Mac/native
-  count/text/mutation checks, the next stop is named, and relevant regressions
-  pass. The driver/font integrated acceptance below remains required.
+  *Done when* original device-list startup calls return a valid, measured
+  logical 8-bit device chain, relevant state matches the Mac, the next stop is
+  named, and startup regressions pass. Driver/font integrated acceptance below
+  remains required.
 - **M2.1c3c2 Native-driver integrated startup acceptance (D8).**
   - M2.1c3c2a supplies the port-owned Jnth 11 stub through the original loader,
     with no original instructions changed. Selectors 21/24 initialize native
     state and quality; other operations/configurations stop explicitly.
   - Both original call returns match the Mac register/stack/state contract.
-    The first CountMItems stop prevents reaching the second Times call; this
+    The GetDeviceList stop prevents reaching the second Times call; this
     original acceptance requirement is retained, not counted as passed.
   - Keep the MDRV guard and verify through any newly reached startup services.
     The independent Mac contract and installed seam are in
@@ -101,7 +104,7 @@ required.
   evidence before revising that requirement; absence from one route is not proof.
 - **M1.6b Final startup requirements acceptance (after file/resource services).**
   - M1.6a implements the measured identity records and verifies all eleven
-    Engine capability flags. Full startup is still stopped in CountMItems, before
+    Engine capability flags. Full startup is still stopped in GetDeviceList, before
     Core's initialization-result/alert branches; it is not a successful launch.
   - After M2.1/M2.2, verify Core+$0460 is reached with initialization result zero,
     without taking its failure-alert branches ($0410/$044E).

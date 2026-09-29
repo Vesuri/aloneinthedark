@@ -219,9 +219,9 @@ The original startup path is implemented (M1.1–M1.3):
 **Verified:** the host check `tools/a5world_check.py` passes: it runs
 CODE 1's expansion algorithm on the resource bytes and compares, byte for byte,
 with the A5 world the Amiga dumps (via gdb) when it enters `main`. The current
-loud stop is `MENU MANAGER / COUNTMITEMS`, after the original startup
+loud stop is `COLOR MANAGER / GETDEVICELIST`, after the original startup
 directories, General lookup, first Times font lookup and two native driver
-initialization calls. The second Times lookup still needs intervening startup
+initialization calls and menu-record initialization. The second Times lookup still needs intervening startup
 services. Original MDRV loading remains forbidden.
 
 ### 4.3 Low memory
@@ -712,7 +712,7 @@ no unexpected loud stop. The cases are added as their milestone lands:
   was introduced in M0; positive acceptance passes on `a1200-020` (M1.3a).
 - `resource-read`: map-only startup, original CODE validation, bounded runtime
   resource reads and byte-exact debugger samples through the General lookup,
-  continuing to the explicit CountMItems startup stop.
+  continuing to the explicit GetDeviceList startup stop.
 - `file-write`: native Line-A and DOS backend writes, zero-count extension,
   truncation/mark updates, read-only errors, exact readback, close and dirty
   shutdown; host-file bytes and bounded transfer/window counts are required.

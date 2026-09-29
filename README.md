@@ -15,7 +15,8 @@ The executable builds and runs the original CODE 1 startup on the 68020. Its
 75,616-byte A5 globals match the host model exactly. The original segment loader
 relocates Core and reaches `main`; initialization passes directory setup, the General resource lookup and the
 first Times font lookup and the two native sound-driver startup calls (D8).
-It then stops explicitly at `MENU MANAGER / COUNTMITEMS`; the original mixer
+Menu-record initialization also passes. It then stops explicitly at
+`COLOR MANAGER / GETDEVICELIST`; the original mixer
 is never loaded. The game is not playable yet.
 Other processors and performance work remain deferred.
 
@@ -28,7 +29,7 @@ serve memory and resource handles. System identity and all eleven derived
 capability flags match the Mac reference. The user-mode service bridge passes
 its native ABI probe. OS windows and DOS/resload adapters pass the native/host
 core probes; rendered-picture acceptance is owner-deferred (M1.7b2). The next
-item is startup menu-record support before original PAK read acceptance.
+item is the logical graphics-device model before original PAK read acceptance.
 Extraction and staging now
 match the original installer: ListBod2.PAK belongs under Alone Data. The original
 Mac idle presentation now completes all 15 images and reads both PAKs. Native
@@ -37,7 +38,7 @@ of the second original Times lookup.
 Resource bodies now stream from disk into zone handles; startup retains the
 4,998-byte map instead of the 1,424,934-byte application fork. The `resource-read`
 regression verifies original bytes and bounded runtime resource reads; the
-current stop is in menu initialization; original MDRV loading stays forbidden. Named/ID/indexed lookup, resource counts and metadata, purge/reload and release now
+current stop is in graphics-device initialization; original MDRV loading stays forbidden. Named/ID/indexed lookup, resource counts and metadata, purge/reload and release now
 pass paired Mac/native checks. Native resource staging now passes exact publication,
 abort, rollback and stale-file checks. Resource-file open/create/update/close,
 AddResource, multi-fork search, noncurrent close and invalid update pass a

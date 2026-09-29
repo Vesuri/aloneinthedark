@@ -7,6 +7,7 @@
 #include "MacHeap.h"
 #include "BitmapFont.h"
 #include "SoundDriver.h"
+#include "MenuRecords.h"
 #include "MacFiles.h"
 #include "FileReadCache.h"
 #include "FileWriteBuffer.h"
@@ -676,6 +677,7 @@ static const TrapName s_trapNames[] = {
     {0xa02e,"MEMORY MANAGER","BLOCKMOVE"}, {0xa9f1,"SEGMENT MANAGER","UNLOADSEG"},
     {0xa86e,"QUICKDRAW","INITGRAF"},
     {0xa8fe,"FONT MANAGER","INITFONTS"}, {0xa912,"WINDOW MANAGER","INITWINDOWS"},
+    {0xa946,"MENU MANAGER","GETMENUITEMTEXT"}, {0xa947,"MENU MANAGER","SETMENUITEMTEXT"},
     {0xa950,"MENU MANAGER","COUNTMITEMS"}, {0xa930,"MENU MANAGER","INITMENUS"}, {0xa9cc,"TEXTEDIT","TEINIT"},
     {0xa97b,"DIALOG MANAGER","INITDIALOGS"},
     {0xa997,"RESOURCE MANAGER","OPENRESFILE"},
@@ -715,7 +717,7 @@ static const TrapName s_trapNames[] = {
     {0xa92c,"WINDOW MANAGER","FINDWINDOW"},
     {0xaa92,"PALETTE MANAGER","GETNEWPALETTE"}, {0xaa93,"PALETTE MANAGER","DISPOSEPALETTE"},
     {0xa873,"QUICKDRAW","SETPORT"},
-    {0xaa28,"COLOR MANAGER","GETCTSEED"}, {0xaa39,"COLOR MANAGER","MAKEITABLE"},
+    {0xaa29,"COLOR MANAGER","GETDEVICELIST"}, {0xaa28,"COLOR MANAGER","GETCTSEED"}, {0xaa39,"COLOR MANAGER","MAKEITABLE"},
     {0xa91f,"WINDOW MANAGER","SELECTWINDOW"},
     {0xa922,"WINDOW MANAGER","BEGINUPDATE"}, {0xa923,"WINDOW MANAGER","ENDUPDATE"},
     {0xa883,"QUICKDRAW","DRAWCHAR"}, {0xa884,"QUICKDRAW","DRAWSTRING"},
@@ -4099,6 +4101,20 @@ static void initMenus()
     for (uint32_t i = 0; i < (512 / 2) * 20; ++i) s_colorScreen[i] = 0;
 }
 
+static bool setMenuItemText(uint8_t** menu,uint16_t number,const uint8_t* text)
+{
+    if(!menu || !*menu || !text)return false;
+    uint32_t oldSize=handleSize(menu),newSize=0;MenuRecords::Item item;
+    if(!MenuRecords::replacement(*menu,oldSize,number,text[0],item,newSize))return false;
+    // The text may alias a movable handle. Save it before resizing/compacting.
+    uint8_t stable[256];
+    for(uint16_t n=0;n<=text[0];++n)MenuRecords::copyByte(stable+n,text+n);
+    if(newSize>oldSize && setHandleSize(menu,newSize))return false;
+    MenuRecords::replace(*menu,oldSize,item,stable);
+    if(newSize<oldSize && setHandleSize(menu,newSize))return false;
+    return true;
+}
+
 static bool disableMenuItem(uint8_t** menu, uint16_t item)
 {
     // Intro updates the future game-menu state before Load has obtained MENU
@@ -4250,9 +4266,11 @@ static bool addResourceMenu(uint8_t** menu, uint32_t type)
     if (!menu || !*menu || handleSize(menu) < 16) return false;
 
     // AddResMenu appends the names of resources of the requested type.  The
-    // shipped application and data forks contain no DRVR resources, so the
-    // measured desk-accessory-menu call is an empty append.  Keep a loud stop
-    // if a different archive does contain a named match: encoding those names
+    // native application/data/overlay chain contains no DRVR resources, so
+    // this environment adds no desk accessories. The Mac reference adds a
+    // System-only Control Panels item with no game command suffix; D7 supplies
+    // no menu bar or desk accessories. Keep a loud stop if the native chain
+    // does contain a named match: encoding those names
     // as menu items is observable state and must not be silently omitted.
     for (uint32_t i = 0; i < s_resourceForks.resourceCount(); ++i) {
         ResourceForks::Item item;
@@ -5722,6 +5740,23 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         initMenus();
         if (g_stageCDepth < 7) g_stageCDepth = 7;
         return 1;
+    }
+    if(trap==0xa950) { // CountMItems(menu) -> word
+        uint8_t** menu=(uint8_t**)read32(userStack);MenuRecords::Item item;uint16_t count;
+        if(menu && *menu && MenuRecords::scan(*menu,handleSize(menu),0,item,count)) {
+            write16(userStack+4,count);regs[0]=0;return 5;
+        }
+    }
+    if(trap==0xa946) { // GetMenuItemText(menu, item, Pascal output)
+        uint8_t** menu=(uint8_t**)read32(userStack+6);
+        if(menu && *menu && MenuRecords::get(*menu,handleSize(menu),read16(userStack+4),(uint8_t*)read32(userStack))) {
+            regs[0]=0;return 11;
+        }
+    }
+    if(trap==0xa947) { // SetMenuItemText(menu, item, Pascal input)
+        if(setMenuItemText((uint8_t**)read32(userStack+6),read16(userStack+4),(const uint8_t*)read32(userStack))) {
+            regs[0]=0;return 11;
+        }
     }
     if (trap == 0xa93a) {                    // DisableItem(menu, item)
         if (disableMenuItem((uint8_t**)read32(userStack + 2), read16(userStack))) {
