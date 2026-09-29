@@ -2805,7 +2805,7 @@ with their corresponding Mac observers and paired checkers. The contracts and
 local evidence are in [window-geometry.md](window-geometry.md). Host geometry
 checks are part of `make host-tests`. ShowHide's background clear is verified
 against its full complex region and must leave the viewport, palette and frame
-queue unchanged. Current startup observers pin SetPt at Dark+$4F88; a timeout or a different stop is not acceptance.
+queue unchanged. Current startup observers pin NewRgn at Misc2+$1DA6; a timeout or a different stop is not acceptance.
 
 
 ## Startup clock query
@@ -2842,3 +2842,16 @@ Existing/fresh startup and AGA publication checks pass on the final executable:
 and all 256 colours. Original preferences are restored; A5 matches all 75,616
 bytes. Original MDRV remains absent. Rendered-window and intro acceptance remain
 pending; no owner decision changed.
+
+
+## Drawing point initialization
+
+SetPt at Dark+$4F88 now writes the original vertical/horizontal words into
+the point, with the measured stack/register contract. The paired original/native
+check validates live instruction bytes, the exact four-byte write and preserved
+neighbouring storage. The final bounded runs in `tmp/m2-setpt-final-*` pass
+SetPt, original startup and AGA publication on the same executable. All 75,616
+A5 bytes match; no-float and 78-symbol link audits pass. Original resource reads remain 39 / 177,820 bytes, with 75 OS handbacks and
+129 services.
+Original MDRV is absent. Startup now stops at QUICKDRAW / NEWRGN, Misc2+$1DA6.
+See [amiga-arch.md](amiga-arch.md) for the byte guard and contract.

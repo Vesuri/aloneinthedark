@@ -750,7 +750,7 @@ static const TrapName s_trapNames[] = {
     {0xa43c,"TEXT UTILITIES","CMPSTRING"}, {0xa63c,"TEXT UTILITIES","CMPSTRING"},
     {0xa033,"VERTICAL RETRACE","VINSTALL"}, {0xa034,"VERTICAL RETRACE","VREMOVE"},
     {0xa998,"RESOURCE MANAGER","USERESFILE"}, {0xa994,"RESOURCE MANAGER","CURRESFILE"},
-    {0xaa18,"COLOR QUICKDRAW","GETCTABLE"}, {0xa880,"QUICKDRAW","SETPT"},
+    {0xaa18,"COLOR QUICKDRAW","GETCTABLE"}, {0xa880,"QUICKDRAW","SETPT"}, {0xa8d8,"QUICKDRAW","NEWRGN"},
     {0xaa46,"WINDOW MANAGER","GETNEWCWINDOW"}, {0xa91b,"WINDOW MANAGER","MOVEWINDOW"},
     {0xa915,"WINDOW MANAGER","SHOWWINDOW"}, {0xa916,"WINDOW MANAGER","HIDEWINDOW"}, {0xa908,"WINDOW MANAGER","SHOWHIDE"},
     {0xa91d,"WINDOW MANAGER","SIZEWINDOW"}, {0xa924,"WINDOW MANAGER","FRONTWINDOW"}, {0xa925,"WINDOW MANAGER","DRAGWINDOW"},
@@ -6619,6 +6619,14 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         }
         if (g_stageCDepth < 83) g_stageCDepth = 83;
         return 5;
+    }
+    if(trap==0xa880) {                       // SetPt(Point*, h, v)
+        uint8_t* point=(uint8_t*)read32(userStack+4);
+        if(!point)goto unsupportedTrap;
+        // Pascal arguments already place signed v/h in Point memory order.
+        write32(point,read32(userStack));
+        regs[8]=read32(frame+2)+2;
+        return 9;
     }
     if (trap == 0xa8a7) {                    // SetRect(Rect*, left, top, right, bottom)
         uint8_t* rectangle = (uint8_t*)read32(userStack + 8);

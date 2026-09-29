@@ -45,6 +45,17 @@ CLUT. The current mode is PAL, with one-times fetch; NTSC and visible-pointer
 palette ownership remain M2.5 requirements. The pointer stays hidden for this
 startup path. See [aga-display.md](aga-display.md) for evidence and limitations.
 
+### Point setup
+
+`SetPt` writes the two signed 16-bit coordinates in Macintosh vertical/horizontal
+memory order and pops eight argument bytes. The original Dark+$4F88 call writes
+only its four-byte point, preserves surrounding stack storage and all registers
+except scratch A0, which returns the following instruction address. Null output
+pointers retain a named stop. No original instruction changes or floating-point
+operations are involved. `mac_setpt.lua`, `setpt.gdb` and `check_setpt.py` pair
+that original call; Dark+$4F7A–$4F89 has SHA-256
+`6e383555df80d58e37af9cd2bfa00fa3592060e1864a5782a2b4fde84d5bd102`.
+
 ## Timing and input
 
 The VBI advances `g_vbiCount` per PAL field and Macintosh Ticks at 60 Hz. CIA
