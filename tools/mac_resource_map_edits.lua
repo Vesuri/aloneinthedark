@@ -6,6 +6,7 @@ local meta=dofile('tmp/mac-trap-map.lua')
 local cpu=manager.machine.devices[':maincpu'];local mem=cpu.spaces.program
 local dbg=assert(manager.machine.debugger,'RESOURCE MAP EDITS / DEBUGGER REQUIRED')
 local armed=false
+local valid=os.getenv('AITD_RESOURCE_MAP_VALID')=='1'
 emu.register_frame_done(function()
  if armed or mac.frontmost()~='Alone In The Dark' then return end
  local a5=mem:read_u32(0x904)&0xffffff
@@ -17,7 +18,7 @@ emu.register_frame_done(function()
  end
  if not base then return end
  assert(mem:read_u32(base+0x3cdc)==0xa820245f,'RESOURCE MAP EDITS / ORIGINAL BYTES')
- if os.getenv('AITD_RESOURCE_MAP_DIAGNOSTICS')=='1' then
+ if not valid and os.getenv('AITD_RESOURCE_MAP_DIAGNOSTICS')=='1' then
   assert(mem:read_u16(0x4081319c)==0xa002 and mem:read_u16(0x408130c8)==0xa027,'UNWRITTEN LOAD / ROM BYTES')
  cpu.debug:bpset(0x4081319c,'temp0==0x10','logerror "UNWRITTEN read req=%08X pos=%08X before=%08X\\n",d@(a0+24),d@(a0+2e),d@(d@(a0+20));g')
  cpu.debug:bpset(0x4081319e,'temp0==0x10','logerror "UNWRITTEN read error=%08X actual=%08X after=%08X\\n",d0,d@(a0+28),d@(d@(a0+20));g')
@@ -60,6 +61,12 @@ emu.register_frame_done(function()
  allocate('allocate-b','42424242');attach('add-b',129,'304')
  write('write-with-unwritten-peer','300');state('attrs-written-a','300');state('attrs-unwritten-b','304')
  empty('empty-written-a','300');load('reload-written-a','300')
+ if valid then
+  refcall('update-peers',0xa999,'temp4');empty('empty-published-b','304');load('reload-published-b','304');state('attrs-published-b','304')
+  refcall('close-first',0xa99a,'temp4');open('reopen-first','200','temp4')
+  lookup('lookup-first-a',128);steps[#steps].after=steps[#steps].after..'d@(temp2+300)=temp3;'
+  lookup('lookup-first-b',129);steps[#steps].after=steps[#steps].after..'d@(temp2+304)=temp3;'
+ else
  empty('empty-unwritten-b','304');state('attrs-empty-unwritten-b','304')
  handle('load-unwritten-b',0xa9a2,select('304'));state('attrs-after-unwritten-load','304')
  add('size-unwritten-loaded',0xa025,'a0=temp3;','d0')
@@ -70,6 +77,7 @@ emu.register_frame_done(function()
  missing('lookup-first-removed-b',129)
  allocate('allocate-again-b','42424242');attach('add-again-b',129,'304')
  refcall('update-baseline',0xa999,'temp4')
+ end
  handle('remove-stored-b',0xa9ad,select('304'),'w@a60==0')
  change('change-a','300','43434343');write('write-with-removed-peer','300');state('attrs-written-again-a','300')
  empty('empty-again-a','300');load('reload-again-a','300');missing('lookup-removed-b',129)
@@ -96,7 +104,7 @@ emu.register_frame_done(function()
   cpu.debug:bpset(base+0x3cde,cond..(q.guard and ' && ('..q.guard..')' or ''),q.after..report..nextaction)
   if q.guard then cpu.debug:bpset(base+0x3cde,cond..' && !('..q.guard..')',report..'logerror "FAIL resource map-edit scratch ownership/setup; retained for recovery\\n";quit') end
  end
- armed=true;print('ARM resource-map-edit Engine+$3CDC bytes=a820245f')
+ armed=true;print('ARM resource-map-edit Engine+$3CDC bytes=a820245f'..(valid and ' mode=valid' or ''))
 end)
 mac.run(function()
  local ok,err=pcall(function() assert(mac.launch(),'RESOURCE MAP EDITS / LAUNCH FAILED');mac.wait(3600);error('RESOURCE MAP EDITS / NO COMPLETION') end)

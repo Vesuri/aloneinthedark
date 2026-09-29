@@ -33,9 +33,9 @@ struct Sink {
     ResourceWriter::Sink sink() { return {this,begin,write,finish}; }
 };
 struct Selection {
-    uint32_t identity;Data* body;int32_t error=0;uint32_t calls=0;bool invalid=false;
+    uint32_t identity;Data* body;int32_t error=0;uint32_t calls=0;bool invalid=false;uint32_t omit=0;
     static int32_t select(void* c,uint32_t id,ResourceForks::Source& source,uint32_t& offset,uint32_t& size) {
-        auto& s=*(Selection*)c;++s.calls;if(s.error)return s.error;
+        auto& s=*(Selection*)c;++s.calls;if(s.error)return s.error;if(id==s.omit)return ResourceDirectory::omitEntry;
         if(id==s.identity) { source=s.body->source();offset=0;size=s.invalid ? source.size+1 : source.size; }return 0;
     }
 };
@@ -85,6 +85,45 @@ int main(int argc,char** argv) {
     publishedB.metadata=false;assert(!dir.read(a.identity,0,bytes,4) && bytes[0]=='C');
     assert(!dir.read(b.identity,0,bytes,3) && bytes[0]=='D');
     assert(dir.at(7,0,v) && v.identity==a.identity && dir.at(7,1,v) && v.identity==b.identity);
+    // A new peer has no saved payload. Keep it live without reading/writing it.
+    ResourceDirectory pending;assert(!pending.create(9));
+    Data freshA,freshB;freshA.bytes.assign(4,'A');freshB.bytes.assign(4,'B');
+    auto ea=recipe[0],eb=recipe[1];ea.source=freshA.source();eb.source=freshB.source();eb.offset=0;
+    uint32_t aid=0,bid=0;assert(!pending.add(9,ea,aid) && !pending.add(9,eb,bid));
+    Selection skipB={aid,&freshA};skipB.omit=bid;
+    Sink writtenA;assert(!pending.serialize(9,writtenA.sink(),Selection::select,&skipB));
+    assert(!freshB.calls && pending.count(9)==2 && pending.dirty(9));
+    for(uint32_t boundary=1;boundary<=writtenA.writes+1;++boundary) {
+        Sink failed;failed.failAt=boundary<=writtenA.writes?boundary:0;failed.failCommit=boundary>writtenA.writes;
+        assert(pending.serialize(9,failed.sink(),Selection::select,&skipB)==-36);
+        assert(failed.target==std::vector<uint8_t>({1,2,3}) && failed.stage.empty());
+        assert(pending.get(bid,v) && v.entry.source.context==&freshB && !freshB.calls);
+    }
+    Data savedA;savedA.bytes=writtenA.target;savedA.metadata=true;
+    assert(pending.rebase(9,savedA.source())==-50);
+    assert(pending.get(aid,v) && v.entry.source.context==&freshA);
+    auto ac=freshA.calls;savedA.calls=0;
+    assert(!pending.rebase(9,savedA.source(),Selection::select,&skipB));
+    assert(savedA.calls==3 && freshA.calls==ac && !freshB.calls && pending.dirty(9));
+    assert(pending.count(9)==2 && pending.get(bid,v) && v.entry.source.context==&freshB && v.entry.name[0]=='S');
+    savedA.metadata=false;freshA.bytes.assign(4,'X');
+    assert(!pending.read(aid,0,bytes,4) && bytes[0]=='A');
+    assert(!pending.read(bid,0,bytes,4) && bytes[0]=='B');
+    Sink both;assert(!pending.serialize(9,both.sink()));Data savedBoth;savedBoth.bytes=both.target;savedBoth.metadata=true;
+    assert(!pending.rebase(9,savedBoth.source()) && !pending.dirty(9) && pending.count(9)==2);
+    savedBoth.metadata=false;
+    // Omit a map-borrowed name as well: rebase must retain valid owned metadata.
+    Sink withoutB;assert(!pending.serialize(9,withoutB.sink(),Selection::select,&skipB));
+    Data secondA;secondA.bytes=withoutB.target;secondA.metadata=true;
+    assert(!pending.rebase(9,secondA.source(),Selection::select,&skipB));
+    assert(pending.get(bid,v) && v.entry.name && v.entry.name[0]=='S' && pending.dirty(9));
+    assert(!pending.read(bid,0,bytes,4) && bytes[0]=='B');
+    assert(!pending.remove(bid));freshA.bytes.assign(4,'C');
+    Sink removed;assert(!pending.serialize(9,removed.sink(),Selection::select,&skipB));
+    Data savedRemoved;savedRemoved.bytes=removed.target;savedRemoved.metadata=true;
+    assert(!pending.rebase(9,savedRemoved.source(),Selection::select,&skipB));
+    assert(!pending.dirty(9) && pending.count(9)==1 && !pending.get(bid,v) && pending.get(aid,v));
+    if(argc>4) { save(argv[3],both.target);save(argv[4],removed.target); }
     if(argc>2) { save(argv[1],onlyA.target);save(argv[2],onlyB.target); }
     std::puts("PASS selective resource publication: independent bodies/sizes, bounded reads, no preload, failed selection/write/read/commit/rebase atomicity, stable identity and saved sources");
 }

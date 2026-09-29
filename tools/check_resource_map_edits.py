@@ -16,7 +16,10 @@ lookup-removed-b update-second close-second reopen-second lookup-final-a
 lookup-final-removed-b close-final dispose-stored-b delete current-final'''.split()
 
 
-def validate(text, status, resources):
+VALID_LABELS = (LABELS[:13] + 'update-peers empty-published-b reload-published-b attrs-published-b close-first reopen-first lookup-first-a lookup-first-b'.split() + LABELS[28:])
+
+
+def validate(text, status, resources, valid=False):
     if (status or any(x in text for x in ('FAIL ', 'LUA ERROR', 'Error in breakpoint'))
             or text.count('PASS resource map-edit capture complete; scratch deleted') != 1
             or text.count('ARM resource-map-edit Engine+$3CDC bytes=a820245f') != 1):
@@ -24,8 +27,10 @@ def validate(text, status, resources):
     rows = [{k: v if k == 'label' else int(v, 16)
              for k, v in re.findall(r'(\w+)=(\S+)', line)}
             for line in text.splitlines() if line.startswith('RMAPEDIT label=')]
-    if [r['label'] for r in rows] != LABELS:
-        raise ValueError('ordered 44-call sequence')
+    if [r['label'] for r in rows] != (VALID_LABELS if valid else LABELS):
+        raise ValueError('ordered call sequence')
+    if text.count('bytes=a820245f mode=valid') != int(valid):
+        raise ValueError('fixture mode')
     by = {r['label']: r for r in rows}
     app = by['application']['result']
     for n, r in enumerate(rows, 1):
@@ -72,13 +77,19 @@ def validate(text, status, resources):
     }
     for body, names in bodies.items():
         for s in names.split():
+            if s not in by: continue
             r = by[s]
             flag = 0 if s.startswith('allocate-') or s == 'remove-stored-b' else 0x20
             if r['body'] != body or not r['master'] & 0xffffff or r['master'] >> 24 != flag:
                 raise ValueError(s + ' exact live body/flags')
     # EOF did not restore BBBB. Do not assert failed-read bytes or the allocation
     # size: ROM/I/O tracing finds unrelated bytes beyond the saved empty map.
-    for s in ('load-unwritten-b', 'attrs-after-unwritten-load', 'size-unwritten-loaded', 'remove-unwritten-b'):
+    if valid:
+        for s in ('reload-published-b', 'attrs-published-b', 'lookup-first-b'):
+            r = by[s]
+            if r['body'] != 0x42424242 or not r['master'] & 0xffffff or r['master'] >> 24 != 0x20:
+                raise ValueError(s + ' published peer body/flags')
+    for s in (() if valid else ('load-unwritten-b', 'attrs-after-unwritten-load', 'size-unwritten-loaded', 'remove-unwritten-b')):
         r = by[s]
         if not r['master'] & 0xffffff or r['master'] >> 24 != (0 if s.startswith('remove-') else 0x20):
             raise ValueError(s + ' observed resident state')
@@ -88,6 +99,8 @@ def validate(text, status, resources):
         'lookup-first-a change-a write-with-removed-peer attrs-written-again-a empty-again-a reload-again-a',
         'allocate-again-b add-again-b update-baseline remove-stored-b dispose-stored-b',
     ]
+    if valid:
+        groups = [groups[0], 'allocate-b add-b attrs-unwritten-b empty-published-b reload-published-b attrs-published-b', groups[2], 'lookup-first-b remove-stored-b dispose-stored-b']
     for group in groups:
         if len({by[s]['handle'] for s in group.split()}) != 1:
             raise ValueError('live handle identity')
@@ -98,6 +111,8 @@ def validate(text, status, resources):
         segment = next(r.body for r in resources if r.kind == b'CODE' and r.rid == rid)
         if segment[offset:offset + 4] != bytes.fromhex(raw):
             raise ValueError('original resource call bytes')
+    if valid:
+        return 'PASS resource map-edit reference: 37 valid calls; pending-add/remove writes, unselected peer publication/reload, exact reopen and cleanup'
     return ('PASS resource map-edit reference: 44 calls; pending-add/remove writes, selected reloads, '
             'reopen/removal and cleanup; unwritten reload EOF observed, undefined size/body excluded')
 
@@ -107,8 +122,9 @@ if __name__ == '__main__':
     p.add_argument('log', type=Path)
     p.add_argument('--status', type=int, required=True)
     p.add_argument('--original', type=Path, required=True)
+    p.add_argument('--valid', action='store_true')
     a = p.parse_args()
     try:
-        print(validate(a.log.read_text(), a.status, read_resource_fork(a.original)))
+        print(validate(a.log.read_text(), a.status, read_resource_fork(a.original), a.valid))
     except (ValueError, KeyError, OSError, StopIteration) as e:
         raise SystemExit('FAIL resource map-edit reference: ' + str(e))

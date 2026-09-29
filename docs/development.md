@@ -1795,7 +1795,7 @@ without freeing the caller's body, allowing re-add under another ID. Nil/add and
 nil/removed change/write/remove errors use the measured results. Clean writes
 without ChangedResource do not publish resident edits. Dirty release preserves
 the handle; dirty detach returns -198 without changing it. Unmeasured operations
-retain named stops, including writes amid unpublished peers or pending map edits.
+retain named stops, including empty/reload of never-published handles.
 
 The native fixture runs the 50-call mutation and 40-call isolation contracts,
 checking exact error/register/stack results, defined attributes, body bytes,
@@ -1859,3 +1859,46 @@ rejected. The separate raw scratch-fork diagnostic also completes with cleanup
 and exit zero. The full host suite passes. This reference-only checkpoint
 leaves native runtime and its e81915f regression baseline unchanged; native
 integration is M2.2f4b3c2. No owner decision changes.
+
+
+### Native writes amid pending map edits (M2.2f4b3c2)
+
+ResourceDirectory publication can omit an entry from the saved map while keeping
+its live identity, metadata and independent source. Rebase retains those entries,
+owns any name previously borrowed from the old map, and keeps the directory dirty.
+Validation and required name allocations happen before live metadata changes.
+WriteResource uses this only for other never-published resources: their resident
+bodies are neither read nor saved. A later UpdateResFile publishes them normally.
+A pending removal is included in the selected write; the following clean update
+preserves MemErr as measured. Newly written additions retain the separate map-work
+flag used by the previously measured update contract.
+
+`AITD_RESOURCE_MAP_VALID=1` selects the 37-call valid reference path; the checker
+requires `--valid`. It verifies writing A while B is unpublished, A's exact reload,
+B's unchanged resident bytes/dirty flag, explicit update followed by B's exact
+reload, both resources after reopening, then removal of B and another write/reload
+of A. The reference exits zero, restores current-file state and deletes its scratch
+file. Both reference modes pass, and ten corrupted/timeout valid-mode captures
+are rejected. The undefined unpublished empty/reload case remains a named stop
+under M2.2f4b5; its accidental bytes/allocation are not emulated.
+
+The native fixture matches all 37 calls, including errors, MemErr, D0, stack,
+handle states and exact bytes. Four new injected failures cover publish rename
+and backup removal while a peer is unpublished and while a removal is pending.
+Each preserves live dirty state and the previous fork. Independent readers verify
+the empty/both-resource rollback targets, the selected-only fork, later both-resource
+publication and final single-resource fork, with no transaction leftovers and
+complete scratch cleanup. Combined native coverage is 304 paired resource calls,
+six mutation rollback cases and nine staging cases; file-write uses 837 windows
+and 160 File Manager reads / 869,391 bytes, at most 65,536 per transfer.
+
+The sanitizer fixture verifies omitted bodies are not read, metadata/source identity
+survives rebase, later publication/removal is exact, and failed selection/staging/
+rebase keeps live state intact. The full host suite passes. The expanded native
+fixture exceeded its old 60-second limit; that run failed and was not accepted.
+File-write now has a 120-second bound, with all other regression bounds unchanged.
+All five native 68020 regressions and all four startup observers pass with normal
+exits. All 75,616 A5 bytes match. Production still reaches GetFNum after the same
+16 resource reads / 96,648 bytes. Final production link/no-float/probe audits pass;
+MacLoader and ResourceDirectory objects have no shared-base postincrement byte
+copies. No owner decision changed; rendered-video acceptance remains deferred.

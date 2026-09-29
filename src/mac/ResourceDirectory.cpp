@@ -119,36 +119,55 @@ int32_t ResourceDirectory::read(uint32_t id,uint32_t offset,uint8_t* out,uint32_
     View v={};if(!get(id,v))return -192;if(offset>v.entry.size || size>v.entry.size-offset)return -50;
     return directoryRead(v.entry.source,v.entry.offset+offset,out,size);
 }
+int32_t ResourceDirectory::publication(int16_t f,PayloadOverride select,void* context,Entry*& recipe,uint16_t* indices,uint16_t& n) const {
+    uint16_t total=order(f,indices);n=0;recipe=total ? new Entry[total] : 0;if(total && !recipe)return -108;
+    for(uint16_t i=0;i<total;++i) {
+        const auto& r=records_[indices[i]];Entry e=r.entry;
+        int32_t error=select ? select(context,r.identity,e.source,e.offset,e.size) : 0;
+        if(error==omitEntry)continue;
+        if(error) { delete[] recipe;recipe=0;return error; }
+        recipe[n]=e;indices[n++]=indices[i];
+    }
+    return 0;
+}
 int32_t ResourceDirectory::serialize(int16_t ref,const ResourceWriter::Sink& sink,PayloadOverride select,void* context) const {
     int16_t f=forkIndex(ref);if(f<0)return -193;if(!forks_[f].writable)return -54;
-    uint16_t n=count(ref);Entry* recipe=n ? new Entry[n] : 0;if(n && !recipe)return -108;
-    uint16_t indices[maximumResources];order(f,indices);
-    int32_t error=0;
-    for(uint16_t i=0;i<n && !error;++i) {
-        const auto& r=records_[indices[i]];auto& e=recipe[i];e=r.entry;
-        if(select)error=select(context,r.identity,e.source,e.offset,e.size);
-    }
+    Entry* recipe=0;uint16_t indices[maximumResources],n=0;
+    int32_t error=publication(f,select,context,recipe,indices,n);
     if(!error)error=ResourceWriter::serialize(recipe,n,sink);delete[] recipe;return error;
 }
 int32_t ResourceDirectory::rebase(int16_t ref,const ResourceForks::Source& source,PayloadOverride select,void* context) {
     int16_t f=forkIndex(ref);if(f<0)return -193;uint8_t* map=0;Entry* entries=0;uint16_t n=0;
     int32_t error=parse(source,map,entries,n);if(error)return error;
-    uint16_t indices[maximumResources],canonical[maximumResources],total=order(f,indices),position=0;
-    for(uint16_t i=0;i<total;++i) {
-        uint32_t type=records_[indices[i]].entry.type;bool seen=false;
-        for(uint16_t j=0;j<i;++j)if(records_[indices[j]].entry.type==type)seen=true;
-        if(!seen)for(uint16_t j=i;j<total;++j)if(records_[indices[j]].entry.type==type)canonical[position++]=indices[j];
+    Entry* recipe=0;uint16_t indices[maximumResources],canonical[maximumResources],total=0,position=0;
+    error=publication(f,select,context,recipe,indices,total);
+    for(uint16_t i=0;i<total && !error;++i) {
+        uint32_t type=recipe[i].type;bool seen=false;
+        for(uint16_t j=0;j<i;++j)if(recipe[j].type==type)seen=true;
+        if(!seen)for(uint16_t j=i;j<total;++j)if(recipe[j].type==type)canonical[position++]=j;
     }
-    if(n!=total)error=-50;
+    if(!error && n!=total)error=-50;
     for(uint16_t i=0;i<n && !error;++i) {
-        const auto& r=records_[canonical[i]];Entry old=r.entry;const Entry& e=entries[i];
-        if(select) { error=select(context,r.identity,old.source,old.offset,old.size);if(error)break; }
+        const Entry& old=recipe[canonical[i]];const Entry& e=entries[i];
         if(old.type!=e.type || old.id!=e.id || old.attrs!=e.attrs || old.size!=e.size || old.nameLength!=e.nameLength || bool(old.name)!=bool(e.name)) { error=-50;break; }
         for(uint16_t j=0;j<e.nameLength;++j)if(e.name[j]!=old.name[j]) { error=-50;break; }
     }
-    if(!error) {
-        for(uint16_t i=0;i<n;++i) { auto& r=records_[canonical[i]];delete[] r.name;r.name=0;r.entry=entries[i]; }
-        delete[] forks_[f].map;forks_[f].map=map;map=0;forks_[f].dirty=false;
+    // An omitted name may borrow the old map. Own it before releasing that map;
+    // allocation/validation failure must leave every live record unchanged.
+    uint8_t* names[maximumResources]={};bool included[maximumResources]={};bool omitted=false;
+    for(uint16_t i=0;i<total && !error;++i)included[indices[i]]=true;
+    for(uint16_t i=0;i<maximumResources && !error;++i) {
+        const auto& r=records_[i];
+        if(r.identity && r.fork==f && !included[i]) {
+            omitted=true;
+            if(!r.name && r.entry.name) { names[i]=copyName(r.entry);if(!names[i])error=-108; }
+        }
     }
-    delete[] map;delete[] entries;return error;
+    if(!error) {
+        for(uint16_t i=0;i<n;++i) { auto& r=records_[indices[canonical[i]]];delete[] r.name;r.name=0;r.entry=entries[i]; }
+        for(uint16_t i=0;i<maximumResources;++i)if(names[i]) { auto& r=records_[i];r.name=names[i];r.entry.name=r.name;names[i]=0; }
+        delete[] forks_[f].map;forks_[f].map=map;map=0;forks_[f].dirty=omitted;
+    }
+    for(auto name:names)delete[] name;
+    delete[] recipe;delete[] map;delete[] entries;return error;
 }

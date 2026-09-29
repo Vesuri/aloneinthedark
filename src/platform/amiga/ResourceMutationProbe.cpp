@@ -10,7 +10,7 @@ uint8_t** aitdRFileAllocate();
 int32_t aitdProbeCreate(void*),aitdProbeDelete(void*);
 void aitdProbeResState(uint8_t**,uint32_t);
 void aitdRFileCur(),aitdRFileOpen(),aitdRFileCreate(),aitdRFileUpdate(),aitdRFileClose(),aitdRFileAdd();
-void aitdRMutRelease(),aitdRMutDetach();
+void aitdRMutRelease(),aitdRMutDetach(),aitdRMutDispose();
 void aitdRMutChanged(),aitdRMutWrite(),aitdRMutRemove(),aitdRMutAttrs(),aitdRMutCount(),aitdRMutLookup(),aitdRMutIndex(),aitdRMutLoad(),aitdRMutEmpty();
 }
 static void w(uint8_t* p,uint16_t v) { p[0]=v>>8;p[1]=v; }
@@ -119,14 +119,54 @@ static const Expected expected1[]={
  {0x8888,0x7777,0x0}, // delete
  {0x8888,0x7777,0x12345678}, // current-final
 };
+static const Expected expected2[]={
+ {0x8888,0x7777,0x12345678}, // application
+ {0x8888,0x7777,0x00000000}, // create
+ {0x0000,0x7777,0x00000004}, // map
+ {0x0000,0x0000,0x12345678}, // open
+ {0x8888,0x0000,0x00000000}, // allocate-a
+ {0x0000,0x0000,0x00000000}, // add-a
+ {0x8888,0x0000,0x00000000}, // allocate-b
+ {0x0000,0x0000,0x00000000}, // add-b
+ {0x0000,0x0000,0x00000000}, // write-with-unwritten-peer
+ {0x0000,0x7777,0x12345678}, // attrs-written-a
+ {0x0000,0x7777,0x12345678}, // attrs-unwritten-b
+ {0x8888,0x0000,0x00000000}, // empty-written-a
+ {0x0000,0x0000,0x12345678}, // reload-written-a
+ {0x0000,0x0000,0x12345678}, // update-peers
+ {0x8888,0x0000,0x00000000}, // empty-published-b
+ {0x0000,0x0000,0x12345678}, // reload-published-b
+ {0x0000,0x7777,0x12345678}, // attrs-published-b
+ {0x0000,0x0000,0x00000000}, // close-first
+ {0x0000,0x0000,0x12345678}, // reopen-first
+ {0x0000,0x0000,0x00000000}, // lookup-first-a
+ {0x0000,0x0000,0x00000000}, // lookup-first-b
+ {0x0000,0x0000,0x00000000}, // remove-stored-b
+ {0x0000,0x0000,0x00000000}, // change-a
+ {0x0000,0x0000,0x00000000}, // write-with-removed-peer
+ {0x0000,0x7777,0x12345678}, // attrs-written-again-a
+ {0x8888,0x0000,0x00000000}, // empty-again-a
+ {0x0000,0x0000,0x12345678}, // reload-again-a
+ {0x0000,0x7777,0x00000000}, // lookup-removed-b
+ {0x0000,0x7777,0x12345678}, // update-second
+ {0x0000,0x0000,0x00000000}, // close-second
+ {0x0000,0x0000,0x12345678}, // reopen-second
+ {0x0000,0x0000,0x00000000}, // lookup-final-a
+ {0x0000,0x7777,0x00000000}, // lookup-final-removed-b
+ {0x0000,0x0000,0x00000000}, // close-final
+ {0x8888,0x0000,0x00000000}, // dispose-stored-b
+ {0x8888,0x7777,0x00000000}, // delete
+ {0x8888,0x7777,0x12345678}, // current-final
+};
 extern "C" bool aitdResourceMutationProbe() {
  uint32_t start=g_systemWindows;
- for(uint16_t phase=0;phase<2;++phase) {
+ for(uint16_t phase=0;phase<3;++phase) {
   static const uint8_t writeName[]="\044:Alone Saved Games:Resource Mutation";
   static const uint8_t isolateName[]="\045:Alone Saved Games:Resource Isolation";
-  const uint8_t* name=phase?isolateName:writeName;uint32_t type=phase?0x49534f4c:0x5257524b;
+  static const uint8_t mapName[]="\045:Alone Saved Games:Resource Map Edits";
+  const uint8_t* name=phase==2?mapName:phase?isolateName:writeName;uint32_t type=phase?0x49534f4c:0x5257524b;
   uint16_t app=0,ref=0;uint8_t** h=0,**other=0,**first=0,**ha=0,**hb=0;
-  for(uint16_t n=1;n<=(phase?40:50);++n) {
+  for(uint16_t n=1;n<=(phase==2?37:phase?40:50);++n) {
    g_resourceMutationStep=phase*100+n;g_resourceFileStackError=0;
    if(!phase && n==10)for(uint16_t fault=1;fault<=2;++fault) {
     g_resourceMutationStep=900+fault;g_resourceStageFault=fault;
@@ -135,7 +175,7 @@ extern "C" bool aitdResourceMutationProbe() {
     if(hcall(aitdRMutAttrs,h,2)!=2 || word(g_macLowMemory+140) || !*h || lng(*h)!=0x42424242)return false;
     aitdResourceMutationRolledBack();++g_resourceMutationFaultChecks;
    }
-   if(phase && n==12) {
+   if(phase==1 && n==12) {
     w(g_macLowMemory+100,0x7777);w(g_macLowMemory+140,0x8888);g_resourceMutationStep=801;
     if(hcall(aitdRMutRelease,ha)||word(g_macLowMemory+140)||word(g_macLowMemory+100)!=0x7777||g_resourceLookupD0!=0x12345678||g_resourceFileStackError||!*ha||lng(*ha)!=0x43434343)return false;
     ++g_resourceMutationLifecycleChecks;g_resourceMutationStep=802;
@@ -143,6 +183,15 @@ extern "C" bool aitdResourceMutationProbe() {
     ++g_resourceMutationLifecycleChecks;g_resourceMutationStep=803;
     if(hcall(aitdRMutAttrs,ha,2)!=2||word(g_macLowMemory+140)||word(g_macLowMemory+100)!=0x7777||g_resourceLookupD0!=0x12345678||g_resourceFileStackError)return false;
     ++g_resourceMutationLifecycleChecks;
+   }
+   if(phase==2 && (n==9 || n==24))for(uint16_t fault=1;fault<=2;++fault) {
+    g_resourceMutationStep=1000+n*10+fault;g_resourceStageFault=fault;
+    uint32_t result=hcall(aitdRMutWrite,ha);g_resourceStageFault=0;
+    if(result || g_resourceFileStackError || word(g_macLowMemory+140)!=0xffdc || g_resourceLookupD0!=0xffdc)return false;
+    if(hcall(aitdRMutAttrs,ha,2)!=2 || word(g_macLowMemory+140) || !*ha || lng(*ha)!=(n==9?0x41414141:0x43434343))return false;
+    if(!hb || !*hb || lng(*hb)!=0x42424242)return false;
+    if(n==9 && (hcall(aitdRMutAttrs,hb,2)!=2 || word(g_macLowMemory+140)))return false;
+    aitdResourceMutationRolledBack();++g_resourceMutationFaultChecks;
    }
    g_resourceMutationStep=phase*100+n;
    w(g_macLowMemory+140,0x8888);w(g_macLowMemory+100,0x7777);
@@ -168,7 +217,7 @@ extern "C" bool aitdResourceMutationProbe() {
    case 49:result=file(false,name);break;
    case 50:result=aitdRFileCall(aitdRFileCur,0,0,2);wanted=app;break;
    }
-   else switch(n) {
+   else if(phase==1)switch(n) {
    case 1:app=result=aitdRFileCall(aitdRFileCur,0,0,2);scalar=false;break;
    case 2:result=file(true,name);break;
    case 3:result=named(aitdRFileCreate,name);break;
@@ -186,6 +235,27 @@ extern "C" bool aitdResourceMutationProbe() {
    case 39:result=file(false,name);break;
    case 40:result=aitdRFileCall(aitdRFileCur,0,0,2);wanted=app;break;
    }
+   else switch(n) {
+   case 1:app=result=aitdRFileCall(aitdRFileCur,0,0,2);scalar=false;break;
+   case 2:result=file(true,name);break;
+   case 3:result=named(aitdRFileCreate,name);break;
+   case 4:case 19:case 31:ref=result=named(aitdRFileOpen,name,2);if(!ref||ref==0xffff||ref==app)return false;scalar=false;break;
+   case 5:case 7:h=aitdRFileAllocate();if(!h||!*h)return false;if(n==5)ha=h;else { hb=h;if(hb==ha)return false; }l(*h,n==5?0x41414141:0x42424242);break;
+   case 6:case 8:result=add(h,type,n==6?128:129);break;
+   case 9:case 24:h=ha;result=hcall(aitdRMutWrite,h);body=n==9?0x41414141:0x43434343;flags=0x20;break;
+   case 10:case 11:case 17:case 25:h=n==11||n==17?hb:ha;result=hcall(aitdRMutAttrs,h,2);wanted=n==11?2:0;body=n==11||n==17?0x42424242:n==10?0x41414141:0x43434343;flags=0x20;break;
+   case 12:case 15:case 26:h=n==15?hb:ha;result=hcall(aitdRMutEmpty,h);if(*h)return false;break;
+   case 13:case 16:case 27:h=n==16?hb:ha;result=hcall(aitdRMutLoad,h);body=n==13?0x41414141:n==16?0x42424242:0x43434343;flags=0x20;break;
+   case 14:case 29:result=refcall(aitdRFileUpdate,ref);break;
+   case 18:case 30:case 34:result=refcall(aitdRFileClose,ref);break;
+   case 20:case 21:case 32:h=lookup(type,n==21?129:128);if(n==20)ha=h;if(n==21){hb=h;if(ha==hb)return false;}body=n==20?0x41414141:n==21?0x42424242:0x43434343;flags=0x20;break;
+   case 22:h=hb;result=hcall(aitdRMutRemove,h);body=0x42424242;flags=0;break;
+   case 23:h=ha;l(*h,0x43434343);result=hcall(aitdRMutChanged,h);body=0x43434343;flags=0x20;break;
+   case 28:case 33:result=(uint32_t)lookup(type,129);break;
+   case 35:result=hcall(aitdRMutDispose,hb);break;
+   case 36:result=file(false,name);break;
+   case 37:result=aitdRFileCall(aitdRFileCur,0,0,2);wanted=app;break;
+   }
    if(!phase) {
     if(n==6) { body=0x41414141;flags=0x20; }
     if(n==10) { body=0x42424242;flags=0x20; }
@@ -193,14 +263,14 @@ extern "C" bool aitdResourceMutationProbe() {
     if(n>=35&&n<=39) { body=0x42424242;flags=0; }
     if(n==41) { body=0x42424242;flags=0x20; }
    }
-   const auto& e=phase?expected1[n-1]:expected0[n-1];
+   const auto& e=phase==2?expected2[n-1]:phase?expected1[n-1]:expected0[n-1];
    g_resourceMutationValue=result;g_resourceMutationError=word(g_macLowMemory+140);g_resourceMutationMemory=word(g_macLowMemory+100);
    if(g_resourceFileStackError||g_resourceMutationError!=e.error||g_resourceMutationMemory!=e.memory||g_resourceLookupD0!=e.d0||(scalar&&result!=wanted))return false;
    if(body&&(!h||!*h||lng(*h)!=body))return false;
    if(flags>=0) { aitdProbeResState(h,0x12345678);if(g_resourceLookupD0!=(uint32_t)flags)return false; }
-   if((!phase&&n==48)||(phase&&n==38))aitdResourceMutationPersisted();
+   if((!phase&&n==48)||(phase==1&&n==38)||(phase==2&&(n==9||n==14||n==34)))aitdResourceMutationPersisted();
   }
  }
- g_resourceMutationWindows=g_systemWindows-start;g_resourceMutationStep=141;return true;
+ g_resourceMutationWindows=g_systemWindows-start;g_resourceMutationStep=238;return true;
 }
 #endif

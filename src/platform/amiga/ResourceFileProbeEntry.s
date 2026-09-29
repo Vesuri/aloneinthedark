@@ -49,6 +49,11 @@ aitdRMutEmpty:
     move.l (sp)+,a0
     .word 0xa02b
     bra.w rfileAfter
+    .globl aitdRMutDispose
+aitdRMutDispose:
+    move.l (sp)+,a0
+    .word 0xa023
+    bra.w rfileAfter
 rfileAfter:
     move.l d0,g_resourceLookupD0
     move.l sp,d0

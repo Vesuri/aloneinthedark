@@ -3,6 +3,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 . ./env.sh
+deadline=60
 case "${1:-boot}" in
   boot) flags=(); observer=boot.gdb ;;
   resource-read)
@@ -14,7 +15,7 @@ case "${1:-boot}" in
     python3 ../tools/check_file_read_probe.py --prepare
     ;;
   file-write)
-    flags=(FILEPROBE=1 FILEWRITEPROBE=1); observer=file_write.gdb
+    flags=(FILEPROBE=1 FILEWRITEPROBE=1); observer=file_write.gdb; deadline=120
     python3 ../tools/check_file_read_probe.py --prepare --write
     ;;
   window-core)
@@ -32,7 +33,7 @@ if ! make -j4 "${flags[@]}" >> .run/regression-build.log 2>&1; then
   exit 1
 fi
 status=0
-GDBTAIL=120 EXTRA_ARGS=--warp_mode=1 GDBSCRIPT="$observer" ./diag_run.sh 60 || status=$?
+GDBTAIL=120 EXTRA_ARGS=--warp_mode=1 GDBSCRIPT="$observer" ./diag_run.sh "$deadline" || status=$?
 if [[ "$observer" == resource_read.gdb ]]; then
   python3 ../tools/check_resource_reads.py --status "$status"
 elif [[ "$observer" == file_read.gdb ]]; then

@@ -61,6 +61,7 @@ struct ResourceSelection {
     static int32_t payload(void* context,uint32_t identity,ResourceForks::Source& source,uint32_t& offset,uint32_t& size) {
         auto& selection=*(ResourceSelection*)context;
         for(uint32_t i=0;i<s_resourceForks.resourceCount();++i)if(s_resourceForks.identity(i)==identity) {
+            if(selection.only>=0 && (uint32_t)selection.only!=i && (s_resourceChanges[i]&2))return ResourceDirectory::omitEntry;
             if((s_resourceChanges[i]&1) && (selection.only<0 || (uint32_t)selection.only==i)) {
                 auto h=s_resourceHandles[i];auto* zone=handleZone(h);
                 if(!zone || !*h)return -32760;
@@ -75,21 +76,13 @@ static int32_t updateResourceFile(uint16_t key,int32_t only=-1) {
         if(only<0 && s_resourceMapTouched[key]) { s_resourceMapTouched[key]=false;memoryResult(0); }
         return 0;
     }
-    if(only>=0) {
-        // No reference yet for a selected write amid other never-written entries
-        // or pending removals. Keep those combinations explicit.
-        for(uint32_t i=0;i<s_resourceForks.resourceCount();++i) { ResourceForks::Item item;
-            if(i!=(uint32_t)only && (s_resourceChanges[i]&2) && s_resourceForks.item(i,item) && item.fork==key) {
-                loaderStop("RESOURCE WRITE WITH UNWRITTEN PEER",0);showLoaderStop();
-            }
-        }
-        if(directory->dirty(key) && !(s_resourceChanges[only]&2)) { loaderStop("RESOURCE WRITE WITH PENDING MAP EDIT",0);showLoaderStop(); }
-    }
     auto* stream=resourceStream(key);const auto* fork=s_files.fork(s_resourceFileRefs[key]);
     if(!stream || !fork || !fork->writable || !stream->source || stream->source->writes.dirty())return -32760;
     // Mixing raw resource-fork streams with Resource Manager updates is not yet measured.
     for(const auto& other:s_dataForks)if(other.ref && &other!=stream && other.source==stream->source)return -32760;
-    const bool mapChanged=directory->dirty(key)||s_resourceMapTouched[key];
+    // A newly written entry leaves map work for UpdateResFile. A write after
+    // removal alone does not: the measured following update preserves MemErr.
+    const bool mapChanged=s_resourceMapTouched[key] || (only>=0 && (s_resourceChanges[only]&2));
     ResourcePublication publication;publication.stream=stream;
     if(s_files.forkPath(fork->id,true,publication.path,sizeof(publication.path)) || !publication.stage.bind(publication.path))return -32760;
     ResourceWriter::Sink sink={&publication,ResourcePublication::begin,ResourcePublication::write,ResourcePublication::finish};

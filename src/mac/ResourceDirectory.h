@@ -31,11 +31,15 @@ public:
     // Select a publication body without changing live metadata or saved sources.
     // The caller keeps this selection and its sources stable through rebase.
     // Unselected entries retain their existing source; no body is preloaded.
+    // Returning omitEntry excludes a record from disk but retains its live identity,
+    // name and original source. That source must survive publication independently.
+    static const int32_t omitEntry=1;
     using PayloadOverride=int32_t (*)(void*,uint32_t identity,ResourceForks::Source&,uint32_t& offset,uint32_t& size);
     // Successful serialization does not release old sources or clear dirty.
     int32_t serialize(int16_t ref,const ResourceWriter::Sink& sink,PayloadOverride select=0,void* context=0) const;
     // Validate a just-published map against current metadata, then atomically
-    // rebind sources/offsets and clear dirty while retaining resource identities.
+    // rebind included sources/offsets while retaining resource identities. Omitted
+    // entries keep the map dirty until a later complete publication.
     int32_t rebase(int16_t ref,const ResourceForks::Source& source,PayloadOverride select=0,void* context=0);
 private:
     struct Fork { bool active=false,writable=false,dirty=false;int16_t ref=0;uint32_t opened=0;uint8_t* map=0; };
@@ -46,6 +50,7 @@ private:
     int16_t recordIndex(uint32_t identity) const;
     int32_t mutation(int16_t fork,int16_t replaced,const Entry* entry) const;
     static int32_t parse(const ResourceForks::Source&,uint8_t*& map,Entry*& entries,uint16_t& count);
+    int32_t publication(int16_t fork,PayloadOverride,void*,Entry*& recipe,uint16_t* indices,uint16_t& count) const;
     static uint8_t* copyName(const Entry& entry);
 };
 #endif

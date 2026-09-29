@@ -67,19 +67,6 @@ required.
       uninitialized upper-byte scratch (traced and poison-verified). Return a
       zero-extended attribute byte natively. Unmeasured variants remain named
       stops and queued.
-      - **M2.2f4b3c2 Native writes amid pending map edits.** The 44-call Mac
-        reference establishes successful writes with an unwritten peer and after
-        a stored peer is removed; selected bodies reload exactly and removed
-        entries stay absent after update/close/reopen. Extend source-backed
-        publication to retain unpublished peers without saving their bodies.
-        The existing `RESOURCE WRITE WITH UNWRITTEN PEER` / `RESOURCE WRITE WITH
-        PENDING MAP EDIT` stops remain until paired native acceptance. Keep
-        empty/reload of an unpublished peer stopped: the Mac consumes unrelated
-        fork bytes as its length before EOF (M2.2f4b5), not a valid saved payload.
-        *Done when* native fixtures verify selected reload, unselected resident
-        bytes/dirty state and eventual explicit publication, pending removals,
-        exact reopened forks, rollback and cleanup without body preloading,
-        with all regressions passing.
       - **M2.2f4b4 Permissions and creation variants.** Implement the measured
         59-call permissions/creation contract, including read-only in-memory
         removal and close-after-update-error. *Done when* the native fixture
