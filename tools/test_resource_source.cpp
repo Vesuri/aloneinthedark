@@ -91,6 +91,20 @@ int main() {
     for(auto slot:remap)assert(slot==-1);
     assert(!directory->open(0,source,false) && forks.refresh(remap));
     assert(forks.identity(0)!=appIdentity && !forks.item(2,item) && !forks.identity(2));
+    // Duplicate keys in one native view follow insertion identities after reuse.
+    directory->clear();assert(!directory->create(7) && forks.refresh(remap));
+    body.id=128;body.offset=260;body.size=1;uint32_t first,second,third;
+    auto before=disk.calls;
+    assert(!directory->add(7,body,first));body.offset=261;assert(!directory->add(7,body,second));
+    assert(forks.refresh(remap) && forks.find(7,body.type,128,item,&index) && index==0 && forks.identity(index)==first);
+    assert(!directory->remove(first));body.offset=262;assert(!directory->add(7,body,third));
+    assert(forks.refresh(remap) && remap[0]==-1 && remap[1]==0);
+    assert(forks.find(7,body.type,128,item,&index) && index==0 && forks.identity(index)==second && !item.data);
+    assert(forks.item(1,item) && forks.identity(1)==third && !item.data && disk.calls==before);
+    assert(!forks.read(0,out.data(),out.size()) && out[0]==disk.bytes[261]);
+    assert(!forks.read(1,out.data(),out.size()) && out[0]==disk.bytes[262]);
+    assert(!directory->remove(second) && forks.refresh(remap) && remap[0]==-1 && remap[1]==0);
+    assert(forks.find(7,body.type,128,item,&index) && forks.identity(index)==third);
     forks.close();assert(!forks.item(0,item));
     puts("PASS resource-source: metadata-only open, 64KiB reads, exact bytes, errors/short reads, dynamic 16-fork identity/remap, zero resource, cleanup");
 }

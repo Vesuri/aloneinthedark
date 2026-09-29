@@ -36,7 +36,9 @@ int main(int argc,char** argv) {
         assert(!map.open(h.data(),1096,bad.data(),bad.size()) && !map.count());
     }
     auto duplicate=m;w(duplicate,28,0);w(duplicate,34,1);w(duplicate,58,0xfffe);
-    assert(!map.open(h.data(),1096,duplicate.data(),duplicate.size()));
+    assert(map.open(h.data(),1096,duplicate.data(),duplicate.size()) && map.count()==2);
+    assert(map.entry(0,e) && e.type==0x54455354 && e.id==-2 && e.lengthOffset==264 && e.nameLength==1);
+    assert(map.entry(1,e) && e.type==0x54455354 && e.id==-2 && e.lengthOffset==276 && !e.name);
     auto emptyH=h;std::vector<uint8_t> empty(30);l(emptyH,8,0);l(emptyH,12,30);
     std::copy(emptyH.begin(),emptyH.end(),empty.begin());w(empty,24,28);w(empty,26,30);w(empty,28,65535);
     assert(map.open(emptyH.data(),1054,empty.data(),30) && !map.count() && !map.entry(0,e));

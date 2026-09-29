@@ -65,13 +65,7 @@ required.
       returns unusual GetResAttrs upper bits (`$E002`, then `$0600` after reload);
       trace their origin before choosing the native full-word result. Unmeasured
       variants remain named stops and queued.
-      - **M2.2f4b1 Same-file duplicate model correction.** The Mac accepts
-        duplicate type/ID pairs in one map, persists both in insertion order,
-        and ID lookup selects the first. ResourceMap/ResourceWriter currently
-        reject them. Preserve per-entry identity through remove/rebase and slot
-        reuse. *Done when* parser, writer, directory and native-view host tests
-        cover exact duplicate round trips and lookup order without body preload,
-        and existing original-fork/native regressions pass.
+
 
 
   - Implement writable prefs/save resource forks and the port overlay fork

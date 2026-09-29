@@ -76,7 +76,11 @@ bool ResourceDirectory::at(int16_t ref,uint16_t ordinal,View& out) const {
     uint16_t n=order(f,indices);return ordinal<n && get(records_[indices[ordinal]].identity,out);
 }
 bool ResourceDirectory::find(int16_t ref,uint32_t type,int16_t id,View& out) const {
-    int16_t f=forkIndex(ref);if(f>=0)for(const auto& r:records_)if(r.identity && r.fork==f && r.entry.type==type && r.entry.id==id)return get(r.identity,out);return false;
+    int16_t f=forkIndex(ref);uint32_t first=0;
+    // Slots are reused after removal; the earliest surviving insertion wins.
+    if(f>=0)for(const auto& r:records_)if(r.identity && r.fork==f && r.entry.type==type && r.entry.id==id
+        && (!first || r.identity<first))first=r.identity;
+    return first && get(first,out);
 }
 uint8_t* ResourceDirectory::copyName(const Entry& e) {
     if(!e.name)return 0;uint8_t* name=new uint8_t[e.nameLength ? e.nameLength : 1];

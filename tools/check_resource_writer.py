@@ -17,6 +17,7 @@ with tempfile.TemporaryDirectory(prefix='aitd-resource-writer-') as work:
     entries=read_resource_fork(out)
     expected=bytes((i*37+(i>>8))&255 for i in range(100003))
     assert [(r.kind,r.rid,r.attrs,r.name,r.body) for r in entries]==[(b'TEST',128,0x28,'Aé\0',expected),(b'TEST',-1,0x10,'',expected[17:20]),(b'OTHR',-3,0,'',b'')]
+    assert [(r.kind,r.rid,r.attrs,r.name,r.body) for r in read_resource_fork(Path(str(out)+'.duplicates'))]==[(b'TEST',128,0x28,'Aé\0',expected),(b'TEST',128,0x10,'',expected[17:20]),(b'OTHR',-3,0,'',b'')]
     assert read_resource_fork(empty)==[]
     if a.original:
         assert read_resource_fork(a.original)==read_resource_fork(d/'original-copy')

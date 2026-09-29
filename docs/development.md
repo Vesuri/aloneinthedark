@@ -938,7 +938,7 @@ original type/reference order, signed IDs, attribute bytes and Pascal names.
 Each exposes a length-word file offset. Only after the caller reads that word
 does `payload` validate the body range and return its stream offset. Zero-length
 resources and a valid empty map are supported. Invalid/overlapping map regions,
-truncated names/references, duplicate types/IDs, capacity overflow and invalid
+truncated names/references, duplicate type blocks, capacity overflow and invalid
 payload lengths fail explicitly; a failed open leaves no visible entries.
 
 To check local original bytes without committing assets:
@@ -1314,7 +1314,8 @@ canonical header, length-prefixed data and resource map. Type order follows firs
 appearance; each type's reference order follows the recipe. Named-empty and
 unnamed entries stay distinct. No resource payload is retained by the writer.
 
-Preflight rejects duplicate type/ID pairs, invalid source ranges, missing source
+Duplicate type/ID pairs retain independent bodies and recipe order. Preflight
+rejects invalid source ranges, missing source
 callbacks, impossible names, resource count overflow, 24-bit data offsets and
 16-bit map/name offsets before opening the sink. Memory consists of bounded
 position/type tables, a map (capped at 256 KiB) and one 64 KiB transfer buffer.
@@ -1349,14 +1350,15 @@ records. Payload sources stay caller-owned. Opening reads only the header, map
 and length words; it publishes the new fork only after validation succeeds.
 Each fork has a reference, open order, write permission and dirty state. Newest/
 older traversal supplies the measured chain order without owning current-file
-selection. Identical type/ID pairs in different forks have separate identities.
+selection. Identical type/ID pairs in the same or different forks have separate
+identities; ID lookup selects the earliest surviving insertion.
 
 Resource identities are monotonic and never reused, including after close/clear;
 removed slots may be reused without reviving stale identities. Within each fork,
 entry insertion order remains stable. Add/replace deep-copy names, retain source
 ranges and preflight the complete candidate serialization through the writer's
-new allocation-free `measure` operation. Failed duplicates, range/capacity/name
-limits or read-only mutations leave the prior directory intact. Replacement
+allocation-free `measure` operation. Failed range/capacity/name limits or
+read-only mutations leave the prior directory intact. Replacement
 preserves identity; removal invalidates it. Reads remain bounded to 64 KiB.
 These are portable model results; native trap error translation remains f3.
 
@@ -1368,8 +1370,8 @@ metadata mismatch. The caller must retain old readable sources until rebase
 succeeds, and owns file closure/publication. Native persistence is not yet wired.
 
 `check_resource_directory.py` tests metadata-only opens/rebases, duplicate IDs
-across forks, source reads, copied names, stable order/identity, change/remove/add,
-read-only and duplicate/range rejection, failed writes/opens/rebases, close/reopen
+within and across forks, source reads, copied names, stable order/identity,
+change/remove/add, read-only and range rejection, failed writes/opens/rebases, close/reopen
 and slot reuse, all 16 fork slots and the 768-resource capacity. ASan/UBSan and an
 independent reader verify the changed 70,001-byte resource and added/removed
 entries. An original-fork run opens and rebases all 212 entries using exactly 214
@@ -1527,7 +1529,7 @@ Measured contract:
   Both survive UpdateResFile, close and reopen. Get1IndResource returns them in
   insertion order; Get1Resource selects the first. Removing that first handle
   leaves the other resource under the same ID. This contradicts the portable
-  map/writer duplicate-rejection assumption; correction is queued as M2.2f4b1.
+  earlier map/writer duplicate-rejection assumption; M2.2f4b1 corrects the model.
 - AddResource and ChangedResource set attribute bit `$02`; WriteResource clears
   it. GetResAttrs preserves D0 and MemErr. WriteResource without ChangedResource
   succeeds but does not persist a changed body: resident `CCCC` reopens as the
@@ -1634,5 +1636,31 @@ ordered exit/Finder/reopen evidence, exact body, registers, stack and cleanup.
 Both checkers reject a combined 16 timeout, incomplete and corrupted captures.
 The full host suite passes. Native runtime code is unchanged, so its five
 regressions/four startup observers remain at the ab2a3ff baseline. Native variants
-resume at M2.2f4b1; application-file closure and mixed raw/resource updates stay
+continue in M2.2f4b; application-file closure and mixed raw/resource updates stay
 named stops until measured. No owner decision changed.
+
+
+### Same-file duplicate model correction (M2.2f4b1)
+
+ResourceMap and ResourceWriter now accept repeated type/ID keys within one type
+reference list, as measured by the 50-call Mac mutation fixture. Each duplicate
+retains its own name, attributes, payload range and insertion position. Existing
+range, capacity, overlapping-reference and duplicate-type-block checks remain.
+ResourceDirectory selects the lowest surviving insertion identity for ID lookup,
+so removing an older entry and reusing its physical slot cannot move a new
+entry ahead of an existing duplicate. Rebase retains each entry's identity.
+
+ASan/UBSan fixtures cover parser order, independent duplicate payloads/names,
+writer round trips through an independent Python reader, directory remove/add/
+replace/rebase/reopen, and native ResourceForks handle-index remapping. Metadata
+operations and lookup read no resource bodies. The directory fixture reopens
+and rebases the two duplicates using exactly four metadata reads each. The
+original-fork checks retain all 212 entries and 1,418,832 payload bytes exactly.
+
+The full host suite, all five native 68020 regressions and all four startup
+observers pass with normal exits. File-write retains 173 paired calls, nine
+staging cases and 521 windows; resource-read retains 16 runtime reads / 96,648
+bytes. All 75,616 A5 bytes match, and the three changed resource-model objects
+pass the generated copy audit. Production startup still stops at GetFNum;
+remaining resource mutation/permission/lifecycle traps are M2.2f4b. No owner
+decision changed; rendered-video verification remains owner-deferred.

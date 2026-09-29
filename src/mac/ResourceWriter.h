@@ -20,7 +20,7 @@ public:
         int32_t (*finish)(void*,bool publish);
     };
     // Types follow first appearance; reference lists retain recipe order within
-    // each type. Duplicate type/ID pairs are rejected before touching the sink.
+    // each type, including duplicate type/ID pairs (Mac reference M2.2f4a1).
     // Validate without reading payloads or allocating staging storage.
     static int32_t measure(const Entry* entries,uint16_t count,uint32_t& size);
     static int32_t serialize(const Entry* entries,uint16_t count,const Sink& sink);

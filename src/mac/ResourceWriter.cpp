@@ -24,7 +24,6 @@ static int32_t prepare(const ResourceWriter::Entry* entries,uint16_t count,Write
         const ResourceWriter::Entry& e=entries[i];
         if(!e.source.read || e.offset>e.source.size || e.size>e.source.size-e.offset || (!e.name && e.nameLength)
             || dataBytes>0xffffff || e.size>0xffffffffUL-dataBytes-4)return -50;
-        for(uint16_t j=0;j<i;++j)if(entries[j].type==e.type && entries[j].id==e.id)return -50;
         uint16_t t=0;while(t<typeCount && types[t]!=e.type)++t;
         if(t==typeCount)types[typeCount++]=e.type;
         positions[i]={dataBytes,0xffff,t};dataBytes+=4+e.size;

@@ -17,6 +17,7 @@ with tempfile.TemporaryDirectory(prefix='aitd-resource-directory-') as work:
     if a.original:
         assert read_resource_fork(a.original)==read_resource_fork(Path(work)/'original-copy')
         print('PASS resource directory independent original round trip')
+    assert [(r.kind,r.rid,r.attrs,r.name,r.body) for r in read_resource_fork(Path(str(out)+'.duplicates'))]==[(b'TEST',128,0x28,'Old',bytes([40])),(b'TEST',128,0x28,'Old',bytes([30]))]
     entries=read_resource_fork(out)
     assert [(r.kind,r.rid,r.attrs,r.name,r.body) for r in entries]==[(b'TEST',128,0x10,'New',bytes((i*19)&255 for i in range(70001))),(b'TEST',7,0,'',bytes((20,30)))]
     print('PASS resource directory independent changed/removed/added fork round trip')

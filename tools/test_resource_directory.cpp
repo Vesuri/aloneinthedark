@@ -47,7 +47,6 @@ int main(int argc,char** argv) {
     int16_t ref=0;assert(directory.newest(ref) && ref==20);assert(directory.older(20,ref) && ref==10 && !directory.older(10,ref));
     auto calls=source.calls;assert(directory.open(10,source.source(),true)==-48 && source.calls==calls);
     uint32_t id=0xabcdef;assert(directory.add(20,e,id)==-54 && id==0xabcdef);assert(directory.replace(b.identity,e)==-54 && directory.remove(b.identity)==-54);
-    assert(directory.add(10,e,id)==-50 && id==0xabcdef && !directory.dirty(10));
     auto invalid=e;invalid.size=0xffffffff;assert(directory.replace(a.identity,invalid)==-50 && !directory.dirty(10));
     assert(directory.get(a.identity,v) && v.entry.size==4 && v.entry.name[0]=='O');
     Data changed;changed.bytes.resize(70001);for(uint32_t i=0;i<changed.bytes.size();++i)changed.bytes[i]=i*19;
@@ -77,6 +76,32 @@ int main(int argc,char** argv) {
     assert(!directory.open(20,source.source(),false) && directory.find(20,e.type,e.id,v) && v.identity!=b.identity);
     assert(directory.newest(ref) && ref==20);
     directory.clear();assert(!directory.get(a.identity,v) && !directory.active(10));
+    // Same-file duplicates retain independent identity/body even after slot reuse.
+    assert(!directory.create(10));uint32_t first,older,newer;
+    auto duplicate=e;duplicate.size=1;
+    assert(!directory.add(10,duplicate,first));duplicate.offset=1;
+    assert(!directory.add(10,duplicate,older));
+    assert(directory.find(10,e.type,e.id,v) && v.identity==first);
+    assert(!directory.remove(first));duplicate.offset=2;
+    assert(!directory.add(10,duplicate,newer)); // Reuses first's physical slot.
+    assert(first!=older && older!=newer && first!=newer);
+    assert(directory.find(10,e.type,e.id,v) && v.identity==older);
+    assert(directory.at(10,0,v) && v.identity==older && directory.at(10,1,v) && v.identity==newer);
+    duplicate.offset=3;assert(!directory.replace(older,duplicate));
+    Sink duplicates;assert(!directory.serialize(10,duplicates.sink()));
+    if(argc>1)save((std::string(argv[1])+".duplicates").c_str(),duplicates.target);
+    Data duplicateDisk;duplicateDisk.bytes=duplicates.target;duplicateDisk.metadataOnly=true;
+    assert(!directory.rebase(10,duplicateDisk.source()) && duplicateDisk.calls==4);
+    assert(directory.find(10,e.type,e.id,v) && v.identity==older && !directory.get(first,v));
+    duplicateDisk.metadataOnly=false;
+    assert(!directory.read(older,0,data,1) && data[0]==40);
+    assert(!directory.read(newer,0,data,1) && data[0]==30);
+    assert(!directory.remove(older) && directory.find(10,e.type,e.id,v) && v.identity==newer);
+    directory.clear();duplicateDisk.metadataOnly=true;duplicateDisk.calls=0;
+    assert(!directory.open(10,duplicateDisk.source(),true) && duplicateDisk.calls==4);
+    assert(directory.find(10,e.type,e.id,v) && v.identity!=older && v.identity!=newer);
+    duplicateDisk.metadataOnly=false;assert(!directory.read(v.identity,0,data,1) && data[0]==40);
+    directory.clear();
     // Exhaust each independent capacity without changing existing maps.
     for(uint16_t i=0;i<16;++i)assert(!directory.create(i));
     assert(directory.create(16)==-108 && directory.newest(ref) && ref==15);directory.clear();
@@ -96,5 +121,5 @@ int main(int argc,char** argv) {
         for(uint16_t i=0;i<identities.size();++i)assert(directory.at(100,i,v) && v.identity==identities[i]);
         std::puts("PASS resource directory original: 212 entries, metadata-only open/rebase, stable identities and streamed serialization");
     }
-    std::puts("PASS resource directory: metadata-only opens, independent identities, ordered mutations, readonly/duplicate/overflow atomicity, staged serialization and identity-preserving rebase");
+    std::puts("PASS resource directory: metadata-only opens, independent identities, ordered mutations, duplicate identity/order, readonly/overflow atomicity, staged serialization and identity-preserving rebase");
 }

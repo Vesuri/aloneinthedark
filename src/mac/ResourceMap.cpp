@@ -34,7 +34,6 @@ bool ResourceMap::open(const uint8_t* header,uint32_t sourceSize,const uint8_t* 
             const uint8_t* ref=map+refs+r*12;
             uint32_t relative=(uint32_t)ref[5]<<16|word(ref+6);
             if(!range(relative,4,v.dataLength))return false;
-            for(uint32_t old=0;old<r;++old)if(word(map+refs+old*12)==word(ref))return false;
             uint16_t name=word(ref+2);
             if(name!=0xffff) {
                 uint32_t pos=names+name;

@@ -80,8 +80,12 @@ int main(int argc,char** argv) {
         if(mode==3)badEntry.source.read=0;
         assert(ResourceWriter::serialize(&badEntry,1,bad.sink())==-50 && !bad.begins);
     }
-    { auto duplicate=entries[0];ResourceWriter::Entry badEntries[]={entries[0],duplicate};Output bad;
-      assert(ResourceWriter::serialize(badEntries,2,bad.sink())==-50 && !bad.begins); }
+    { auto duplicate=entries[0];duplicate.offset=17;duplicate.size=3;duplicate.attrs=0x10;duplicate.name=0;duplicate.nameLength=0;
+      ResourceWriter::Entry duplicates[]={entries[0],entries[1],duplicate};Output saved;
+      auto calls=input.calls;uint32_t size;
+      assert(!ResourceWriter::measure(duplicates,3,size) && input.calls==calls);
+      assert(!ResourceWriter::serialize(duplicates,3,saved.sink()) && saved.target.size()==size);checkMap(saved.target,3);
+      if(argc>1)save((std::string(argv[1])+".duplicates").c_str(),saved.target); }
     { ResourceWriter::Entry tooFar[]={entries[0],entries[1]};Output bad;
       tooFar[0].source.size=0xffffffff;tooFar[0].size=0xffffff;
       assert(ResourceWriter::serialize(tooFar,2,bad.sink())==-50 && !bad.begins); }
@@ -104,5 +108,5 @@ int main(int argc,char** argv) {
         assert(original.total==total);checkMap(result.target,source.count());save(argv[4],result.target);
         std::printf("PASS resource writer original: entries=%u payload-bytes=%u bounded-reads=%u\n",source.count(),total,original.calls);
     }
-    std::puts("PASS resource writer: order/names/empty, bounded streaming, duplicate/overflow rejection, staged write/read/commit failure atomicity");
+    std::puts("PASS resource writer: order/names/empty, bounded streaming, duplicate order, overflow rejection, staged write/read/commit failure atomicity");
 }
