@@ -36,8 +36,8 @@ serve memory and resource handles. System identity and all eleven derived
 capability flags match the Mac reference. The user-mode service bridge passes
 its native ABI probe. OS windows and DOS/resload adapters pass the native/host
 core probes; rendered-picture acceptance is owner-deferred (M1.7b2). The next
-item is original WIND 128 selection acceptance, followed by window-title state and
-original PAK read acceptance.
+item is title state for the original background-hider window, followed by
+WIND 128 selection and original PAK read acceptance.
 The logical device has real 640×480×8 storage; its four selection calls match
 the Mac. Drawing, palette realization and eight-plane output remain pending.
 Extraction and staging now

@@ -47,6 +47,19 @@ required.
 
 ## M2 Startup to intro
 
+- **M2.1c3c2c5b2c2d Window title state prerequisite.**
+  - Native startup first requests WIND 131 ("Background Hider") at Misc1+$1272,
+    then reaches A91A SetWTitle at +$1296, before the main WIND 128 request at
+    +$109A. This measured prerequisite must precede main-window acceptance.
+  - Measure the original title request and window-record effects.
+  - Implement the title as compatibility state without drawing Mac window
+    chrome, a menu bar or dialogs. Preserve original instructions and keep
+    unsupported forms as named stops.
+
+  *Done when* paired Mac/native checks prove the original title request and
+  record effects, startup reaches the next named stop with original MDRV absent,
+  and relevant startup regressions pass. This does not imply window rendering
+  or viewport acceptance.
 - **M2.1c3c2c5b2c2c Fixed-selection WIND 128 acceptance (D4/M2.4).**
   - Retains the unfinished integrated acceptance of M2.1c3c2c5b2c2. Native
     preference mapping alone is not evidence that WIND 128 was requested.
@@ -59,17 +72,6 @@ required.
   *Done when* fresh and existing-preference startup request WIND 128 through
   the original instructions, both size inputs match the reference, the next
   stop is named, and relevant startup regressions pass.
-- **M2.1c3c2c5b2c2d Window title state prerequisite.**
-  - Native startup after default-palette binding reaches A91A SetWTitle at
-    Misc1+$1296. Measure the original request and window-record effects.
-  - Implement the title as compatibility state without drawing Mac window
-    chrome, a menu bar or dialogs. Preserve original instructions and keep
-    unsupported forms as named stops.
-
-  *Done when* paired Mac/native checks prove the original title request and
-  record effects, startup reaches the next named stop with original MDRV absent,
-  and relevant startup regressions pass. This does not imply window rendering
-  or viewport acceptance.
 - **M2.1c3c2 Native-driver integrated startup acceptance (D8).**
   - M2.1c3c2a supplies the port-owned Jnth 11 stub through the original loader,
     with no original instructions changed. Selectors 21/24 initialize native

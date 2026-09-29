@@ -2,9 +2,10 @@
 
 D4 requires 320×200 and no displayed size dialog. Hidden construction,
 positioning, automatic item-2 selection, item lookup/disposal and restoration of
-the main world are implemented. Native startup now passes font metrics and Apple Event registration and stops at GetCTable,
-Engine+$110E, before the original WIND 128 request. That request remains a separate
-acceptance requirement. No Mac dialog presentation is authorized (D5).
+the main world are implemented. Native startup now passes palette binding and
+first requests WIND 131 ("Background Hider") at Misc1+$1272. It stops at that
+window's SetWTitle call (+$1296), before the main WIND 128 request (+$109A).
+Title-state support is therefore a prerequisite for main-window acceptance. No Mac dialog presentation is authorized (D5).
 
 Original bytes establish the following:
 
@@ -170,12 +171,12 @@ relationships, item fields, private ownership cleanup and preference mapping:
 
 ```sh
 python3 tools/check_choice_services.py tmp/m2-choice-services-reference.log --status 0 \
-  --native tmp/m2-choice-native.log --native-status 0
+  --native tmp/m2-setpalette-accepted-choice_services.log --native-status 0
 ```
 
 The subsequent GetFontInfo/CharWidth calls now pass; see [font-manager.md](font-manager.md).
-The current stop is `COLOR QUICKDRAW / GETCTABLE`,
-Engine+$110E, trap $AA18. Preference zero does not by itself prove WIND 128 acceptance.
+The current stop is `WINDOW MANAGER / SETWTITLE`,
+Misc1+$1296, trap $A91A. Preference zero does not by itself prove WIND 128 acceptance.
 Full drawing, replacement in-game interfaces, window/viewport and frame acceptance
 remain required by the queue.
 
@@ -187,3 +188,22 @@ on-disk preferences. Those selection-only captures ended with 36/62 windows and 
 services. Current startup also loads the metric fonts, ending with 64/90 windows
 and 118/126 services. Original application reads remain 28 / 123,387 bytes. The checker also
 rejects visibility, cleanup, preference, duplicate-capture and timeout failures.
+
+
+## Main-window acceptance dependency
+
+A read-only extension of the selection observer stopped at the first original
+GetNewCWindow after selection and palette setup. It measured resource 131 at
+Misc1+$1272, not resource 128 at +$109A. The original resource names 131
+"Background Hider". Original Misc1+$1250–$1297 bytes have SHA256
+`1a1d6c325582244a437981e80f2f0ff7c21f35ab366a9ff238d33be9284cbd52`;
+they push 131 for AA46 at +$1272 and reach A91A at +$1296. The existing named
+stop prevents reaching the main-window request. This does not invalidate the
+Mac reference's two WIND 128 selection captures, but native acceptance is still
+unproven. Title-state work now precedes it in the queue.
+
+Local evidence is `tmp/m2-wind-site-probe.log` (an intentionally rejected
+main-window capture with explicit actual site/id), and the previously accepted
+SetPalette endpoint captures. The attempted observer/checker extensions are
+preserved in `tmp/wind-attempt-*`; maintained startup checks remain unchanged.
+No runtime code, original instructions, UI policy or owner decision changed.
