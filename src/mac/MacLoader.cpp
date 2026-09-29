@@ -272,6 +272,7 @@ struct WindowSlot {
     uint8_t* updateRegionMaster;
     uint8_t title[256];
     uint8_t* titleMaster;
+    MacHeap::Handle ownedTitle; // WIND title; dialogs retain their separate compatibility records.
     int16_t procID;
     int16_t resourceID; // Original WIND/DLOG identity, retained for presentation.
     uint8_t** palette;
@@ -481,6 +482,7 @@ static int16_t s_memoryError;
 static void releaseZones()
 {
     g_defaultPalette=0;
+    for(uint16_t i=0;i<8;++i)s_windows[i].ownedTitle=0;
     for(uint16_t i=0;i<32;++i) {
         s_createdPalettes[i].handle=0;s_createdPalettes[i].privateHandle=0;
     }
@@ -1331,12 +1333,9 @@ static int16_t getFontNumber(const uint8_t* name)
 
 // Load the selected installed definition on demand, in a user-mode service.
 // Exact intrinsic size/style associations only; no synthesized fallback metrics.
-static bool fontForCurrentPort(BitmapFont& font)
+static bool fontForSelection(BitmapFont& font,int16_t id,uint16_t size,uint16_t style)
 {
-    if(!s_fontManager.initialized || !s_qdThePort)return false;
-    uint8_t* port=(uint8_t*)read32(s_qdThePort);if(!port || read32(port+76))return false;
-    int16_t id=(int16_t)read16(port+68);uint16_t size=read16(port+74),style=port[70];
-    if(!size)return false;
+    if(!s_fontManager.initialized || !size)return false;
     uint16_t keys[ResourceForks::kForkCount];
     uint16_t count=s_resourceForks.searchOrder(s_currentResourceFork,0x464f4e44UL,false,keys);
     for(uint16_t n=0;n<count;++n) {
@@ -1352,6 +1351,27 @@ static bool fontForCurrentPort(BitmapFont& font)
         return bitmapHandle && *bitmapHandle && font.open(*bitmapHandle,bitmapItem.size,family);
     }
     return false;
+}
+
+static bool fontForCurrentPort(BitmapFont& font)
+{
+    if(!s_qdThePort)return false;
+    uint8_t* port=(uint8_t*)read32(s_qdThePort);if(!port || read32(port+76))return false;
+    return fontForSelection(font,(int16_t)read16(port+68),read16(port+74),port[70]);
+}
+
+// Hidden window title metrics use the Window Manager's system font. No drawing.
+static bool windowTitleWidth(const uint8_t* title,uint16_t& width)
+{
+    if(!title || !s_windowManager.initialized)return false;
+    BitmapFont font;
+    if(!fontForSelection(font,s_fontManager.systemFont,s_fontManager.systemSize,0))return false;
+    width=0;
+    for(uint16_t i=1;i<=title[0];++i) {
+        if(title[i]<32 || title[i]>126)return false;
+        width+=font.charWidth(title[i]);
+    }
+    return true;
 }
 
 static bool pascalEquals(const uint8_t* value, const char* expected)
@@ -1598,11 +1618,20 @@ static uint8_t* newColorWindow(int16_t id, uint8_t* storage, uint8_t* behind)
     uint8_t** resource = getResource(0x57494e44UL, id); // 'WIND'
     if (!resource || !*resource) return 0;
     const uint8_t* wind = *resource;
+    uint32_t windBytes=handleZone(resource)->handleSize(resource);
+    uint16_t titleWidth=0;
+    if(windBytes<19 || uint32_t(19+wind[18])>windBytes
+       || !windowTitleWidth(wind+18,titleWidth)) {
+        loaderStop("WINDOW TITLE DEFINITION",0);showLoaderStop();
+    }
 
     WindowSlot* slot = 0;
     for (uint16_t i = 0; i < sizeof(s_windows) / sizeof(s_windows[0]); ++i)
         if (!s_windows[i].used) { slot = &s_windows[i]; break; }
     if (!slot) return 0;
+    slot->ownedTitle=s_applicationZone.newHandle(uint32_t(wind[18])+1);
+    if(!slot->ownedTitle) { loaderStop("WINDOW TITLE ALLOCATION",0);showLoaderStop(); }
+    for(uint16_t i=0;i<=wind[18];++i)(*slot->ownedTitle)[i]=wind[18+i];
     slot->used = true;
     slot->dialog = false;
     slot->resourceID = id;
@@ -1634,18 +1663,15 @@ static uint8_t* newColorWindow(int16_t id, uint8_t* storage, uint8_t* behind)
 
     write16(window + 108, 0);                         // windowKind
     window[110] = wind[10];                           // visible
-    window[112] = wind[11];                           // goAwayFlag
+    window[112] = wind[12];                           // goAwayFlag
     write32(window + 114, (uint32_t)&slot->structureRegionMaster);
     write32(window + 118, (uint32_t)&slot->contentRegionMaster);
     write32(window + 122, (uint32_t)&slot->updateRegionMaster);
     slot->procID = (int16_t)read16(wind + 8);         // WDEF selection for later operations
-    uint8_t titleLength = wind[16];
-    slot->title[0] = titleLength;
-    for (uint16_t i = 0; i < titleLength; ++i) slot->title[i + 1] = wind[17 + i];
-    slot->titleMaster = slot->title;
-    write32(window + 134, (uint32_t)&slot->titleMaster);
+    write32(window + 134, (uint32_t)slot->ownedTitle);
+    write16(window + 138, titleWidth);
     write32(window + 144, (uint32_t)s_windowList);
-    write32(window + 152, read32(wind + 12));         // refCon
+    write32(window + 152, read32(wind + 14));         // refCon
     s_windowList = window;                            // front of our window chain
     (void)behind;                                     // both shipped calls use behindWindow=-1
     return window;
@@ -1897,6 +1923,9 @@ static bool disposeWindow(uint8_t* window)
         write32(s_qdThePort, (uint32_t)s_windowManagerPort);
     window[110] = 0;
     write32(window + 144, 0);
+    if(slot->ownedTitle) {
+        s_applicationZone.disposeHandle(slot->ownedTitle);slot->ownedTitle=0;
+    }
     slot->used = false;
     slot->window = 0;
     slot->dialog = false;
@@ -5471,7 +5500,7 @@ static bool isUserService(uint16_t trap)
 #ifdef AITD_SERVICE_PROBE
     if((trap&0xfeff)==0xa0fc || trap==0xabfb)return true;
 #endif
-    return trap==0xaa18 || trap==0xa88b || trap==0xa88d || trap==0xa0f8 || trap==0xa900 || trap==0xa9f4 || trap==0xa997 || trap==0xa9c4 || trap==0xa81a || trap==0xa9b1 || trap==0xa81b || trap==0xa999 || trap==0xa99a || trap==0xa9ab || trap==0xa9aa || trap==0xa9b0 || trap==0xa9ad
+    return trap==0xa91a || trap==0xaa18 || trap==0xa88b || trap==0xa88d || trap==0xa0f8 || trap==0xa900 || trap==0xa9f4 || trap==0xa997 || trap==0xa9c4 || trap==0xa81a || trap==0xa9b1 || trap==0xa81b || trap==0xa999 || trap==0xa99a || trap==0xa9ab || trap==0xa9aa || trap==0xa9b0 || trap==0xa9ad
         || trap==0xa80e || trap==0xa9a2 || trap==0xa81f || trap==0xa820 || trap==0xa9a0 || trap==0xa9a1 || trap==0xa930 || trap==0xa9bf
         || trap==0xaa46 || trap==0xaa92 || trap==0xa9b9 || trap==0xa9bc || trap==0xa97c
         || trap==0xa40c || trap==0xa608 || trap==0xa60a || trap==0xa60c || trap==0xa60d || trap==0xa614 || trap==0xa615
@@ -6303,6 +6332,24 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         write32(userStack + 10, (uint32_t)window);
         if (g_stageCDepth < 24) g_stageCDepth = 24;
         return 11;
+    }
+    if(trap==0xa91a) {                     // SetWTitle(window, Pascal title)
+        WindowSlot* slot=windowSlot((uint8_t*)read32(userStack+4));
+        const uint8_t* title=(const uint8_t*)read32(userStack);
+        uint16_t width=0;
+        if(!slot || slot->dialog || slot->window[110] || !slot->ownedTitle
+           || read32(slot->window+134)!=(uint32_t)slot->ownedTitle
+           || !s_applicationZone.isHandle(slot->ownedTitle)
+           || !windowTitleWidth(title,width))goto unsupportedTrap;
+        // Copy first: the caller may supply the current handle's body.
+        uint8_t copy[256];uint16_t length=title[0];
+        for(uint16_t i=0;i<=length;++i)copy[i]=title[i];
+        if(s_applicationZone.setHandleSize(slot->ownedTitle,length+1)!=0) {
+            loaderStop("WINDOW TITLE RESIZE",0);showLoaderStop();
+        }
+        for(uint16_t i=0;i<=length;++i)(*slot->ownedTitle)[i]=copy[i];
+        write16(slot->window+138,width);
+        return 9;
     }
     if (trap == 0xa91b) {                    // MoveWindow(window, h, v, front)
         WindowSlot* slot=windowSlot((uint8_t*)read32(userStack+6));

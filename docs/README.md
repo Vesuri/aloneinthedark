@@ -20,6 +20,7 @@ Start with the [project README](../README.md).
 - [Apple Events](apple-events.md): original registration and table-state contracts.
 - [Colour table](color-table.md): Mac/native GetCTable bytes, ownership and seed contracts.
 - [Palette](palette.md): Mac/native NewPalette records, copying and disposal contracts.
+- [Window titles](window-title.md): hidden title ownership, measured advances and paired effects.
 - [Open work](open-work.md): the ordered work queue.
 
 The Vette! repository (`~/Documents/Vette/docs`) holds the complete versions of

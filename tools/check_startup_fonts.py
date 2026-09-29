@@ -18,6 +18,7 @@ def main():
     with tempfile.TemporaryDirectory(prefix='aitd-startup-font-') as work:
         work=Path(work)
         for kind,rid,_,body in families+bitmaps:(work/(kind.decode().lower()+str(rid))).write_bytes(body)
+        (work/'system-widths').write_bytes(bytes(faces[0]['printableWidths']))
         (work/'cases').write_bytes(b''.join(struct.pack('>10H',f,sz,st,256+i,*m) for i,(f,sz,st,*m) in enumerate(expected)))
         exe=work/'check'
         subprocess.run([os.environ.get('HOST_CXX','c++'),'-std=c++17','-Wall','-Wextra','-Werror','-fsanitize=address,undefined',str(ROOT/'tools/test_startup_fonts.cpp'),'-o',str(exe)],check=True)

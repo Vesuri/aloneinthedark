@@ -2686,3 +2686,34 @@ are in [palette.md](palette.md); final host evidence is
 The next named stop is Misc1+$1296 SETWTITLE. Original WIND 128 request acceptance
 is next in the queue, followed by measured window-title state. Original MDRV is
 absent; no Mac dialog/menu presentation or rendered-intro acceptance is claimed.
+
+
+## Hidden window title state
+
+M2.1c3c2c5b2c2d implements the original hidden title update using owned title
+handles and the installed system font's 95 measured printable advances. The
+paired original call preserves its input, ports, regions and all window-record
+bytes except cached title width (85 to 34); the result is a six-byte Pascal
+`Hider` string. WIND title/goAway/refCon offsets are corrected against original
+bytes. No original instructions or Mac UI presentation are introduced.
+See [window-title.md](window-title.md) for scope and reproduction.
+
+The full host suite, twenty startup observers and paired contracts, fresh/low
+preference variants, clean boot/resource-read and final title capture all pass
+with normal exits. A5 is exact across 75,616 bytes; low-memory sites remain
+58 validated / 55 applied. No-float and 78-symbol audits pass. The clean binary
+matches the one used for startup regressions, and original preferences are
+restored. Existing/fresh runs complete 68/94 OS windows and 124/132 services;
+original resource bodies are 32 / 130,692 bytes, overlay bodies 31 / 80,650.
+
+The initial native capture had stale overlay metrics and was rejected. The
+regenerated overlay is 81,462 bytes; the host suite's old exact-size assertion
+was updated after independently measuring the new artifact. A reference-checker
+WIND offset error was also rejected and corrected. Accepted evidence uses
+`tmp/m2-title-reference-contract.log`, `tmp/m2-title-native-final.log`,
+`tmp/m2-title-startup-suite.log` and `tmp/m2-title-host-final.log`.
+
+Startup now stops at window SetPalette, Misc1+$10FA, with original MDRV absent.
+Integrated WIND 128 selection acceptance is next, followed by the newly queued
+window-binding form. Second Times, original PAK reads and rendered intro remain
+pending; no owner decision changed.

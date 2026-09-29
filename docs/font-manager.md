@@ -191,7 +191,9 @@ missing/duplicate completion and timeout. Native implementation and integrated p
 `startup_fonts.py` builds proportional monochrome NFNTs and three FONDs with
 explicit size/style associations, using only the existing port-owned glyph
 shapes. Ascent, descent, maximum width, leading and the two requested advances
-match the Mac. Other character advances are explicitly placeholder design, not
+match the Mac. The plain system face now also uses all 95 measured printable
+advances for [hidden window titles](window-title.md). Other character advances
+are explicitly placeholder design, not
 claimed Mac measurements: space uses its measured width, M/W/@ and the missing
 box use maximum width, and other ASCII characters use the zero-character width.
 Bold/italic forms are owned bitmap variants; full legibility/layout and display

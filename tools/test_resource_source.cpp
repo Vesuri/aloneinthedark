@@ -165,7 +165,7 @@ int main(int argc,char** argv) {
     FontOverlay empty;empty.bytes.assign(std::istreambuf_iterator<char>(file),{});empty.indexPrefixes();
     appCalls=app.calls;
     assert(forks.openWithOverlay(app.source(),empty.source()));
-    assert(empty.bytes.size()==81612 && empty.calls==33 && empty.total==572);
+    assert(empty.bytes.size()==81462 && empty.calls==33 && empty.total==572);
     assert(forks.forkCount()==2 && forks.resourceCount()==33 && app.calls==appCalls+4);
     assert(forks.item(0,item) && item.fork==ResourceForks::kOverlayFork && !item.data);
     assert(forks.item(31,item) && item.fork==0 && !item.data);

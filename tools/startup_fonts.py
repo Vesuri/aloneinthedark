@@ -11,6 +11,12 @@ def bitmap(face):
     ascent,descent,maximum=face['ascent'],face['descent'],face['widMax']
     # Other advances are explicit placeholder design, not measured Mac widths.
     advances=[face['spaceWidth'] if c==32 else maximum if c in (64,77,87,127) else face['zeroWidth'] for c in range(32,128)]
+    # System plain face also carries measured printable advances for window titles.
+    if 'printableWidths' in face:
+        measured=face['printableWidths']
+        if len(measured)!=95 or any(type(w)!=int or not 0<w<=maximum for w in measured):
+            raise ValueError('invalid printable font advances')
+        advances=measured+[maximum]
     spans=[0 if n==0 else max(1,w-1) for n,w in enumerate(advances)]
     locations=[0]
     for width in spans:locations.append(locations[-1]+width)

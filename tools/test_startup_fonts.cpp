@@ -20,6 +20,14 @@ int main(int argc,char** argv) {
         assert(font.open(nfnt.data(),nfnt.size(),family));
         assert(font.ascent()==w(p+8) && font.descent()==w(p+10) && font.advance()==w(p+12) && font.leading()==w(p+14));
         assert(font.charWidth('0')==w(p+16) && font.charWidth(' ')==w(p+18));
+        if(i==0) {
+            auto advances=read(root+"/system-widths");assert(advances.size()==95);
+            for(unsigned c=32;c<127;++c)assert(font.charWidth(c)==advances[c-32]);
+            unsigned titleWidth=0;for(char c:std::string("Hider"))titleWidth+=font.charWidth(c);
+            assert(titleWidth==34);
+            titleWidth=0;for(char c:std::string("New Window"))titleWidth+=font.charWidth(c);
+            assert(titleWidth==85);
+        }
         assert(font.height()==font.ascent()+font.descent());
         bool ink=false;
         for(unsigned y=0;y<font.height();++y)for(unsigned x=0;x<font.advance();++x) {
