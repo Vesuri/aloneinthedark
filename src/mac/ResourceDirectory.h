@@ -26,7 +26,7 @@ public:
     bool find(int16_t ref,uint32_t type,int16_t id,View& out) const;
     int32_t add(int16_t ref,const Entry& entry,uint32_t& identity);
     int32_t replace(uint32_t identity,const Entry& entry);
-    int32_t remove(uint32_t identity);
+    int32_t remove(uint32_t identity); // In-memory removal also works on read-only maps.
     int32_t read(uint32_t identity,uint32_t offset,uint8_t* out,uint32_t size) const;
     // Select a publication body without changing live metadata or saved sources.
     // The caller keeps this selection and its sources stable through rebase.

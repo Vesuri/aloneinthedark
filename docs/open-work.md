@@ -67,10 +67,6 @@ required.
       uninitialized upper-byte scratch (traced and poison-verified). Return a
       zero-extended attribute byte natively. Unmeasured variants remain named
       stops and queued.
-      - **M2.2f4b4 Permissions and creation variants.** Implement the measured
-        59-call permissions/creation contract, including read-only in-memory
-        removal and close-after-update-error. *Done when* the native fixture
-        matches the Mac errors/registers/bytes and all regressions pass.
       - **M2.2f4b5 Remaining dirty lifecycle and exit.** Complete paired dirty
         lifecycle and exit persistence. Never-published empty/reload and dirty
         resize/dispose/purge remain explicit stops until their reached contract

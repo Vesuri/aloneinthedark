@@ -77,3 +77,10 @@ aitdRFileAllocate:
     move.l d0,g_resourceLookupD0
     move.l a0,d0
     rts
+
+    .globl aitdRPermissionProtect
+aitdRPermissionProtect:
+    move.l 4(sp),d0
+    .word 0xa0f9
+    move.l d0,g_resourceLookupD0
+    rts

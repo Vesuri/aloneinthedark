@@ -46,7 +46,10 @@ int main(int argc,char** argv) {
     assert(directory.at(10,0,v) && v.identity==a.identity);assert(directory.at(10,1,v) && v.entry.id==-3);uint32_t removed=v.identity;
     int16_t ref=0;assert(directory.newest(ref) && ref==20);assert(directory.older(20,ref) && ref==10 && !directory.older(10,ref));
     auto calls=source.calls;assert(directory.open(10,source.source(),true)==-48 && source.calls==calls);
-    uint32_t id=0xabcdef;assert(directory.add(20,e,id)==-54 && id==0xabcdef);assert(directory.replace(b.identity,e)==-54 && directory.remove(b.identity)==-54);
+    uint32_t id=0xabcdef;assert(directory.add(20,e,id)==-54 && id==0xabcdef);assert(directory.replace(b.identity,e)==-54);
+    assert(!directory.remove(b.identity) && !directory.get(b.identity,v) && directory.dirty(20));
+    Sink readonly;assert(directory.serialize(20,readonly.sink())==-54 && readonly.target==std::vector<uint8_t>({1,2,3}));
+    assert(directory.find(10,e.type,e.id,v) && v.identity==a.identity && source.calls==calls);
     auto invalid=e;invalid.size=0xffffffff;assert(directory.replace(a.identity,invalid)==-50 && !directory.dirty(10));
     assert(directory.get(a.identity,v) && v.entry.size==4 && v.entry.name[0]=='O');
     Data changed;changed.bytes.resize(70001);for(uint32_t i=0;i<changed.bytes.size();++i)changed.bytes[i]=i*19;

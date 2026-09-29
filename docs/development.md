@@ -1902,3 +1902,46 @@ exits. All 75,616 A5 bytes match. Production still reaches GetFNum after the sam
 16 resource reads / 96,648 bytes. Final production link/no-float/probe audits pass;
 MacLoader and ResourceDirectory objects have no shared-base postincrement byte
 copies. No owner decision changed; rendered-video acceptance remains deferred.
+
+
+### Native resource permissions and creation (M2.2f4b4)
+
+Resource-file opens now use the File Manager's measured permissions 0–4,
+including locked-file read/default opens and rejected locked writes. Resource
+metadata and bodies still use direct bounded reads on read-only streams, without
+filling the data-fork read cache. CreateResFile creates an absent catalog/data file
+before initializing its resource map; an existing valid resource fork returns
+-48 and stays intact. Empty forks and the measured 16-byte zero malformed header
+return -39 with a failed reference and closed stream. Other malformed layouts,
+creation over malformed content, application closure and mixed raw/resource
+writes retain their existing loud stops.
+
+ChangedResource and AddResource reject read-only maps with -61 and the measured
+MemErr/D0 results. A clean WriteResource remains successful without persisting
+resident edits. RmveResource works in memory, detaches the handle and leaves its
+body owned by the caller. UpdateResFile then reports -61; CloseResFile reports
+the same error but closes the read-only map/stream and restores current-file
+selection. Writable publication failures retain their previous close behavior.
+The portable directory rejects serialization of a read-only map even after its
+in-memory removal; its host fixture verifies the original source remains intact.
+
+The native 59-step fixture follows the Mac capture with exact errors, registers,
+stack, attributes, live bodies and reopen checks. Its two lock/unlock setup steps
+use native DOS protection through the existing system-window/diagnostic-service
+pattern; they do not implement Mac SetFLock/RstFLock game traps. The other 57 calls
+are paired traps, bringing combined coverage to 361 calls. Detached and rejected-add
+handles are disposed explicitly after the fixture. Three independent disk checks
+prove the original `ABCD` resource, name, ID, attributes, empty data fork and absent
+transaction leftovers survive create-existing and read-only errors. The scratch
+file and companions must be deleted before acceptance.
+
+The permissions fixture adds 107 windows. Complete file-write totals are 944
+windows, 207 reads / 870,393 bytes, 25 writes / 470,085 bytes, 19 flushes and two
+restored closes; transfers remain at most 65,536 bytes. All six prior mutation
+rollback cases and nine staging cases remain required. The original-byte/reference
+checker and full host suite pass. All five native 68020 regressions and four
+startup observers exit normally and pass. The final file-write rerun also verifies
+the guard that limits close-after-permission-error to read-only files. All 75,616
+A5 bytes match; production remains at GetFNum after 16 resource reads / 96,648 bytes.
+MacLoader/ResourceDirectory generated-copy audits and the restored clean production
+build's no-float/probe audits pass. No owner decision changed.

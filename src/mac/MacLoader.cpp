@@ -5189,7 +5189,7 @@ static uint16_t synchronousFileTrap(uint16_t trap,uint16_t selector) {
 static bool isUserService(uint16_t trap)
 {
 #ifdef AITD_FILE_WRITE_PROBE
-    if(trap==0xa0fb || trap==0xa0fa)return true;
+    if(trap==0xa0fb || trap==0xa0fa || trap==0xa0f9)return true;
 #endif
 #ifdef AITD_WINDOW_PROBE
     if(trap==0xa1fc)return true;
@@ -5375,6 +5375,10 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     }
 #endif
 #ifdef AITD_FILE_WRITE_PROBE
+    if(inUserService && trap==0xa0f9) {
+        extern int32_t aitdResourcePermissionProtection(uint32_t);
+        regs[0]=(uint32_t)aitdResourcePermissionProtection(regs[0]);return 1;
+    }
     if(inUserService && trap==0xa0fa) {
         extern bool aitdResourceStageProbe();
         regs[0]=aitdResourceStageProbe() ? 0 : (uint32_t)-36;return 1;

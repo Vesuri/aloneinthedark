@@ -37,7 +37,9 @@ abort, rollback and stale-file checks. Resource-file open/create/update/close,
 AddResource, multi-fork search, noncurrent close and invalid update pass a
 64-call native fixture paired with Mac contracts. Resource mutations, isolated
 writes, pending map edits and dirty release/detach pass 130 additional paired
-calls and six native rollback cases. Remaining permission and lifecycle variants are next. The metadata model preserves duplicate
+calls and six native rollback cases. Permissions 0–4, creation errors and read-only
+mutation/close behavior pass a further 59-step fixture. Remaining lifecycle
+variants are next. The metadata model preserves duplicate
 type/ID entries within one file and resolves the first surviving insertion.
 The metadata-only catalog and application-fork identity are verified (M2.1b1):
 32 data files, 5,315,994 bytes; no data payload preloading. SetVol, the three

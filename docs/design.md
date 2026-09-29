@@ -364,8 +364,9 @@ Native trap probes, host fragmentation tests and paired heap captures verify it:
     stable identities and validated post-write rebasing (M2.2f2b). Native
     ResourceForks/loader uses the directory, persistent streams and transactional
     staging for resource-file services. Per-entry publication preserves unrelated
-    saved bodies during WriteResource. Remaining permission and lifecycle
-    variants are M2.2f4.
+    saved bodies during WriteResource. Resource opens support permissions 0–4;
+    read-only removal stays in memory, and close reports the failed update while
+    still closing the file. Remaining lifecycle variants are M2.2f4.
 
 ### 4.6 Resource Manager
 
