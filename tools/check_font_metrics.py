@@ -22,9 +22,10 @@ CASES=(
 def original(path):
     b=next(r.body for r in read_resource_fork(path) if r.kind==b'CODE' and r.rid==9)
     if hashlib.sha256(b[0x534:0x66c]).hexdigest()!='364f0d6ecb13463d7382b639f6d6dd460023ced401f22c52ee43f77a9f019f15':raise ValueError('original metric loop bytes')
-def check(text,status):
+def check(text,status,native=False):
     if status!=0 or any(x in text for x in ('FAIL','[LUA ERROR]','unknown command','Error in','timeout')):raise ValueError('failed observer')
-    if any(text.count(x)!=1 for x in ('PASS original font metrics calls=4B','Exited via the debugger','ARM metrics dispatcher bytes=2f0a2f02246f000a')):raise ValueError('completion')
+    markers=('PASS native font metrics calls=4B next=AEINSTALLEVENTHANDLER','[Inferior 1 (Remote target) detached]','ARM native metrics original bytes') if native else ('PASS original font metrics calls=4B','Exited via the debugger','ARM metrics dispatcher bytes=2f0a2f02246f000a')
+    if any(text.count(x)!=1 for x in markers):raise ValueError('completion')
     entered=re.findall(r'^METRIC_ENTER label=(\w+) (.*)$',text,re.M)
     returned=re.findall(r'^METRIC_RETURN label=(\w+) (.*)$',text,re.M)
     labels=['INFO','ZERO','SPACE']*25
@@ -56,16 +57,26 @@ def check(text,status):
             if args[:4]!=struct.pack('>HH',character,0) or r['result']!=metrics[4 if label=='ZERO' else 5]:raise ValueError('character/result slot')
     done=fields(one(text,r'METRIC_DONE (.*)'))
     if done!={**saved,'error':0}:raise ValueError('restored text state/result')
+    if native:
+        one(text,r'METRIC_NEXT state=3 trap=A816 selector=91F segment=7 offset=1038 manager=APPLE EVENT MANAGER routine=AEINSTALLEVENTHANDLER windows=(?:64|90) services=(?:118/118|126/126) app=28/123387 overlay=31/80800 prep=64/81372 resources=244')
+        from build_overlay import definitions
+        rows=re.findall(r'^FONT_INSTALLED type=([0-9A-F]+) id=(\d+) size=(\d+)$',text,re.M)
+        expected=[(kind,rid,body) for kind,rid,_,body in definitions() if kind in (b'FOND',b'NFNT')]
+        if len(rows)!=len(expected) or len(set(rows))!=len(rows):raise ValueError('installed font coverage')
+        for kind,rid,body in expected:
+            key=f'{int.from_bytes(kind,"big"):X}'
+            if (key,str(rid),str(len(body))) not in rows or Path(f'tmp/metrics-font-{key}-{rid}.bin').read_bytes()!=body:raise ValueError('installed font bytes')
     return wanted
 class Checks(unittest.TestCase):
     def test_incomplete(self):
         for status in (None,124,0):
             with self.assertRaises(ValueError):check('PASS original font metrics calls=4B',status)
 if __name__=='__main__':
-    p=argparse.ArgumentParser(description=__doc__);p.add_argument('log',type=Path,nargs='?');p.add_argument('--status',type=int);p.add_argument('--selftest',action='store_true');a=p.parse_args()
+    p=argparse.ArgumentParser(description=__doc__);p.add_argument('log',type=Path,nargs='?');p.add_argument('--status',type=int);p.add_argument('--native',type=Path);p.add_argument('--native-status',type=int);p.add_argument('--selftest',action='store_true');a=p.parse_args()
     if a.selftest:raise SystemExit(not unittest.TextTestRunner().run(unittest.defaultTestLoader.loadTestsFromTestCase(Checks)).wasSuccessful())
     try:
         original(Path('tmp/runtime-data/Alone In The Dark'));text=a.log.read_text();check(text,a.status)
+        if a.native:check(a.native.read_text(),a.native_status,True)
         for old,new in [('result=8','result=9'),('face=20','face=10'),('000C0003000E0001','000C0003000F0001'),('PASS original font metrics calls=4B','')]:
             try:check(text.replace(old,new,1),0)
             except ValueError:continue
@@ -74,5 +85,5 @@ if __name__=='__main__':
             try:check(bad,status)
             except ValueError:continue
             raise ValueError('incomplete/duplicate accepted')
-        print('PASS original font metrics: 25 records, 50 widths, original tables/bytes, output extents, stack/registers and restored text state')
+        print('PASS '+('paired native font metrics (30 installed bodies): ' if a.native else 'original font metrics: ')+'25 records, 50 widths, original tables/bytes, output extents, stack/registers and restored text state')
     except (ValueError,OSError,KeyError,AttributeError) as e:raise SystemExit('FAIL font metrics: '+str(e))

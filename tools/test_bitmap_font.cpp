@@ -26,7 +26,7 @@ int main(int argc,char** argv) {
     assert(!BitmapFont::nameEquals(nullptr,name,5));assert(!BitmapFont::family(fond.data(),fond.size(),21,family));
     for(unsigned n=0;n<fond.size();++n)assert(!BitmapFont::family(fond.data(),n,20,family));
     for(unsigned n:{0,2,4,6,16,28,50,52,54,56}) {
-        auto bad=fond;bad[n]^=0x80;assert(!BitmapFont::family(bad.data(),bad.size(),20,family));
+        auto bad=fond;bad[n]^=n==0 ? 0x20 : 0x80;assert(!BitmapFont::family(bad.data(),bad.size(),20,family));
     }
     assert(BitmapFont::family(fond.data(),fond.size(),20,family));
     for(unsigned n=0;n<nfnt.size();++n)assert(!font.open(nfnt.data(),n,family));

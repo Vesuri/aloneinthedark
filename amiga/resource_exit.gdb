@@ -24,7 +24,7 @@ commands
   quit 1
 end
 # CODE 1+$AA is reached after CREL and before its original jump-table fill.
-if g_overlayChainVerified!=1 || g_overlaySourceOpen!=1 || g_overlaySourceReads!=5 || g_overlaySourceBytes!=124 || g_startupCode == 0 || g_code3Base != 0 || g_loadedCodeMask != 3 || *(unsigned long *)(g_startupCode+0xaa) != 0x4eba013a
+if g_overlayChainVerified!=1 || g_overlaySourceOpen!=1 || g_overlaySourceReads!=33 || g_overlaySourceBytes!=572 || g_startupCode == 0 || g_code3Base != 0 || g_loadedCodeMask != 3 || *(unsigned long *)(g_startupCode+0xaa) != 0x4eba013a
   echo resource-exit FAIL: startup residency or loader byte mismatch\n
   detach
   quit 1

@@ -7,22 +7,30 @@ from resource_fork import parse_resource_fork
 from placeholder_font import build as font_definition, FAMILY, BITMAP
 
 OUTPUT=Path(__file__).resolve().parents[1]/'resources/overlay.rsrc'
+def definitions():
+    from startup_fonts import resources
+    fond,nfnt=font_definition();families,bitmaps=resources()
+    return [(b'FOND',FAMILY,'Times',fond)]+families+[(b'NFNT',BITMAP,'',nfnt)]+bitmaps+[(b'Jnth',11,'',bytes.fromhex('a0f84e75'))]
 def build():
-    fond,nfnt=font_definition()
-    driver=bytes.fromhex('a0f84e75') # private native driver trap; RTS
-    bodies=struct.pack('>I',len(fond))+fond+struct.pack('>I',len(nfnt))+nfnt+struct.pack('>I',len(driver))+driver
-    # Three types, one resource each. Reference offsets are relative to type list.
-    types=struct.pack('>H4sHH4sHH4sHH',2,b'FOND',0,26,b'NFNT',0,38,b'Jnth',0,50)
-    refs=struct.pack('>hHII',FAMILY,0,0,0)+struct.pack('>hHII',BITMAP,0xffff,len(fond)+4,0)+struct.pack('>hHII',11,0xffff,len(fond)+len(nfnt)+8,0)
-    names=b'\x05Times';map_length=28+len(types)+len(refs)+len(names)
+    rows=definitions();kinds=list(dict.fromkeys(row[0] for row in rows))
+    bodies=bytearray();names=bytearray();refs=bytearray();types=bytearray(struct.pack('>H',len(kinds)-1))
+    for kind in kinds:
+        entries=[r for r in rows if r[0]==kind]
+        types+=struct.pack('>4sHH',kind,len(entries)-1,2+len(kinds)*8+len(refs))
+        for _,rid,name,body in entries:
+            name_offset=len(names) if name else 65535
+            if name:
+                encoded=name.encode('mac_roman');names+=bytes((len(encoded),))+encoded
+            refs+=struct.pack('>hHII',rid,name_offset,len(bodies),0)
+            bodies+=struct.pack('>I',len(body))+body
+    map_length=28+len(types)+len(refs)+len(names)
     header=struct.pack('>IIII',256,256+len(bodies),len(bodies),map_length)
     resource_map=header+bytes(8)+struct.pack('>HH',28,28+len(types)+len(refs))+types+refs+names
     return header+bytes(240)+bodies+resource_map
 
 def check(data):
     rows=parse_resource_fork(data)
-    fond,nfnt=font_definition()
-    if [(r.kind,r.rid,r.name,r.attrs,r.body) for r in rows]!=[(b'FOND',FAMILY,'Times',0,fond),(b'NFNT',BITMAP,'',0,nfnt),(b'Jnth',11,'',0,bytes.fromhex('a0f84e75'))]:
+    if [(r.kind,r.rid,r.name,r.attrs,r.body) for r in rows]!=[(kind,rid,name,0,body) for kind,rid,name,body in definitions()]:
         raise ValueError('OVERLAY / RESOURCE DEFINITION')
 
 if __name__=='__main__':

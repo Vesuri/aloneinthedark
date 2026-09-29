@@ -1,0 +1,280 @@
+{
+  "description": "Port-owned placeholder metric definitions; measured startup contracts, no Mac font artwork.",
+  "faces": [
+    {
+      "family": 0,
+      "size": 12,
+      "style": 0,
+      "ascent": 12,
+      "descent": 3,
+      "widMax": 14,
+      "leading": 1,
+      "zeroWidth": 8,
+      "spaceWidth": 4
+    },
+    {
+      "family": 0,
+      "size": 12,
+      "style": 1,
+      "ascent": 12,
+      "descent": 3,
+      "widMax": 15,
+      "leading": 1,
+      "zeroWidth": 9,
+      "spaceWidth": 5
+    },
+    {
+      "family": 0,
+      "size": 12,
+      "style": 2,
+      "ascent": 12,
+      "descent": 3,
+      "widMax": 14,
+      "leading": 1,
+      "zeroWidth": 8,
+      "spaceWidth": 4
+    },
+    {
+      "family": 0,
+      "size": 12,
+      "style": 32,
+      "ascent": 12,
+      "descent": 3,
+      "widMax": 13,
+      "leading": 1,
+      "zeroWidth": 7,
+      "spaceWidth": 3
+    },
+    {
+      "family": 0,
+      "size": 12,
+      "style": 33,
+      "ascent": 12,
+      "descent": 3,
+      "widMax": 14,
+      "leading": 1,
+      "zeroWidth": 8,
+      "spaceWidth": 4
+    },
+    {
+      "family": 3,
+      "size": 9,
+      "style": 0,
+      "ascent": 10,
+      "descent": 2,
+      "widMax": 10,
+      "leading": 0,
+      "zeroWidth": 6,
+      "spaceWidth": 3
+    },
+    {
+      "family": 3,
+      "size": 9,
+      "style": 1,
+      "ascent": 10,
+      "descent": 2,
+      "widMax": 11,
+      "leading": 0,
+      "zeroWidth": 7,
+      "spaceWidth": 4
+    },
+    {
+      "family": 3,
+      "size": 9,
+      "style": 2,
+      "ascent": 10,
+      "descent": 2,
+      "widMax": 10,
+      "leading": 0,
+      "zeroWidth": 6,
+      "spaceWidth": 3
+    },
+    {
+      "family": 3,
+      "size": 9,
+      "style": 32,
+      "ascent": 10,
+      "descent": 2,
+      "widMax": 9,
+      "leading": 0,
+      "zeroWidth": 5,
+      "spaceWidth": 2
+    },
+    {
+      "family": 3,
+      "size": 9,
+      "style": 33,
+      "ascent": 10,
+      "descent": 2,
+      "widMax": 10,
+      "leading": 0,
+      "zeroWidth": 6,
+      "spaceWidth": 3
+    },
+    {
+      "family": 21,
+      "size": 9,
+      "style": 0,
+      "ascent": 7,
+      "descent": 3,
+      "widMax": 11,
+      "leading": 0,
+      "zeroWidth": 5,
+      "spaceWidth": 2
+    },
+    {
+      "family": 21,
+      "size": 9,
+      "style": 1,
+      "ascent": 7,
+      "descent": 3,
+      "widMax": 12,
+      "leading": 0,
+      "zeroWidth": 5,
+      "spaceWidth": 3
+    },
+    {
+      "family": 21,
+      "size": 9,
+      "style": 2,
+      "ascent": 7,
+      "descent": 3,
+      "widMax": 11,
+      "leading": 0,
+      "zeroWidth": 5,
+      "spaceWidth": 2
+    },
+    {
+      "family": 21,
+      "size": 9,
+      "style": 32,
+      "ascent": 7,
+      "descent": 3,
+      "widMax": 11,
+      "leading": 0,
+      "zeroWidth": 4,
+      "spaceWidth": 2
+    },
+    {
+      "family": 21,
+      "size": 9,
+      "style": 33,
+      "ascent": 7,
+      "descent": 3,
+      "widMax": 11,
+      "leading": 0,
+      "zeroWidth": 5,
+      "spaceWidth": 2
+    },
+    {
+      "family": 21,
+      "size": 18,
+      "style": 0,
+      "ascent": 14,
+      "descent": 5,
+      "widMax": 22,
+      "leading": 0,
+      "zeroWidth": 10,
+      "spaceWidth": 5
+    },
+    {
+      "family": 21,
+      "size": 18,
+      "style": 1,
+      "ascent": 14,
+      "descent": 5,
+      "widMax": 23,
+      "leading": 0,
+      "zeroWidth": 11,
+      "spaceWidth": 6
+    },
+    {
+      "family": 21,
+      "size": 18,
+      "style": 2,
+      "ascent": 14,
+      "descent": 5,
+      "widMax": 22,
+      "leading": 0,
+      "zeroWidth": 10,
+      "spaceWidth": 5
+    },
+    {
+      "family": 21,
+      "size": 18,
+      "style": 32,
+      "ascent": 14,
+      "descent": 5,
+      "widMax": 21,
+      "leading": 0,
+      "zeroWidth": 9,
+      "spaceWidth": 4
+    },
+    {
+      "family": 21,
+      "size": 18,
+      "style": 33,
+      "ascent": 14,
+      "descent": 5,
+      "widMax": 22,
+      "leading": 0,
+      "zeroWidth": 10,
+      "spaceWidth": 5
+    },
+    {
+      "family": 21,
+      "size": 36,
+      "style": 0,
+      "ascent": 28,
+      "descent": 10,
+      "widMax": 44,
+      "leading": 0,
+      "zeroWidth": 20,
+      "spaceWidth": 10
+    },
+    {
+      "family": 21,
+      "size": 36,
+      "style": 1,
+      "ascent": 28,
+      "descent": 10,
+      "widMax": 46,
+      "leading": 0,
+      "zeroWidth": 22,
+      "spaceWidth": 12
+    },
+    {
+      "family": 21,
+      "size": 36,
+      "style": 2,
+      "ascent": 28,
+      "descent": 10,
+      "widMax": 44,
+      "leading": 0,
+      "zeroWidth": 20,
+      "spaceWidth": 10
+    },
+    {
+      "family": 21,
+      "size": 36,
+      "style": 32,
+      "ascent": 28,
+      "descent": 10,
+      "widMax": 42,
+      "leading": 0,
+      "zeroWidth": 18,
+      "spaceWidth": 8
+    },
+    {
+      "family": 21,
+      "size": 36,
+      "style": 33,
+      "ascent": 28,
+      "descent": 10,
+      "widMax": 44,
+      "leading": 0,
+      "zeroWidth": 20,
+      "spaceWidth": 10
+    }
+  ]
+}

@@ -66,6 +66,6 @@ Local captures: `tmp/m2-sane-height-reference.log`,
 
 The subsequent hidden MoveWindow now passes its measured old-style port
 contract; see [screen-choice.md](screen-choice.md). The current stop is
-Misc1+$0610 `FONT MANAGER / GETFONTINFO`, after the hidden choice, item
-lookup/disposal and main-world restoration. WIND 128 request acceptance, the
+Engine+$1038 `APPLE EVENT MANAGER / AEINSTALLEVENTHANDLER`, after the
+hidden choice, item lookup/disposal, main-world restoration and font metrics. WIND 128 request acceptance, the
 second Times call and all rendering acceptance remain pending. This change does not draw dialogs or accept visible Mac UI.

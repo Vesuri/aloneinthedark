@@ -91,9 +91,10 @@ host suite passes. A standalone parser translation unit also compiles with the
 repository’s 68020 flags and compatibility prelude without unresolved helpers;
 this is a compiler check, not native runtime acceptance.
 
-The overlay publishes both fonts and the native Jnth driver stub (1,682 bytes
-total). Its map preparation uses five reads / 124 bytes; the first lookup reads the two bodies in two bounded
-windows / 1,314 bytes. Startup retains 215 resource entries including the fonts and stub.
+The overlay now publishes the Times definition, 25 startup faces in three
+additional families, and the native Jnth driver stub (81,612 bytes total).
+Its metadata-only preparation uses 33 reads / 572 bytes; the first lookup reads the two bodies in two bounded
+windows / 1,314 bytes. Startup retains 243 resource entries before preferences, including the fonts and stub.
 GetFNum traverses the resource chain, validates the matching FOND and linked NFNT,
 and returns the installed family ID. It preserves D0 and the measured error
 behavior; unsupported collation, formats and missing linked definitions stop
@@ -103,7 +104,7 @@ named trap stops pending M2.9 instead of silently drawing the Vette fixed font.
 The native observer checks the live original trap bytes, Pascal Times name,
 result 20, eight-byte stack cleanup, D0 and error globals at Dan1+$0014. It dumps
 both installed bodies for exact host comparison and requires the next named
-`GETFONTINFO` stop at Misc1+$0610, with no original MDRV body resident. The original
+`AEINSTALLEVENTHANDLER` stop at Engine+$1038, with no original MDRV body resident. The original
 second lookup has not been reached natively: graphics initialization and further
 startup services lie between these calls. The two native driver calls now pass. This is partial M2.1c3 acceptance, not a completed font/startup item.
 
@@ -114,11 +115,11 @@ M2.1c3 retains the second-call requirement after the newly reached services.
 
 
 Startup counters distinguish two measured inputs. With the original default
-`PREF` 128 already present, the graphics boundary uses 36 OS windows and 43/43
+`PREF` 128 already present, the event-registration boundary uses 64 OS windows and 118/118
 service entries/completions. Without preferences, original startup creates the
-file and uses 62 windows and 51/51 services. All services complete before the
+file and uses 90 windows and 126/126 services. All services complete before the
 graphics stop. Both paths read 28 original resource bodies / 123,387 bytes plus
-three overlay bodies / 1,318 bytes. `check_startup_prefs.py` classifies
+31 overlay bodies / 80,800 bytes. `check_startup_prefs.py` classifies
 the starting fixture before launch and supplies exact expected counters; it
 rejects partial, nonregular or unmeasured preference contents without deleting
 them. These observer restrictions do not alter production preference handling.
@@ -181,6 +182,49 @@ The accepted reference exits normally with exactly 75 calls and positive
 completion. The checker guards original bytes, both tables, call order, all
 metrics/widths, output guards, stack/registers and restoration of saved text
 state (font/size/face 0/0/0, result zero). It rejects changed values/styles,
-missing/duplicate completion and timeout. Native service implementation and
-integrated progression remain M2.1c3c2c5b2c2b2; this reference-only prerequisite
-does not advance the native stop.
+missing/duplicate completion and timeout. Native implementation and integrated progression now pass as described below.
+
+
+## Installed startup faces and native metrics
+
+`resources/startup-fonts.json` describes the 25 measured faces. The generator
+`startup_fonts.py` builds proportional monochrome NFNTs and three FONDs with
+explicit size/style associations, using only the existing port-owned glyph
+shapes. Ascent, descent, maximum width, leading and the two requested advances
+match the Mac. Other character advances are explicitly placeholder design, not
+claimed Mac measurements: space uses its measured width, M/W/@ and the missing
+box use maximum width, and other ASCII characters use the zero-character width.
+Bold/italic forms are owned bitmap variants; full legibility/layout and display
+acceptance remain M2.9, and no drawing trap is enabled by this work.
+
+`BitmapFont` validates bounded association tables, unique ordered size/style
+keys, flags, bitmap extents, glyph locations and proportional offset/width
+entries. Point size is distinct from ascent+descent. It rejects unsupported
+associations, optional tables and invalid bounds. The original Times definition
+remains byte-identical. Sanitizer fixtures cover every required face, every
+truncation, malformed fields, missing selections, glyph bounds and empty space.
+Format details follow Apple's [NFNT record](https://dev.os9.ca/techpubs/mac/Text/Text-250.html),
+[font flags](https://dev.os9.ca/techpubs/mac/Text/Text-251.html) and
+[FOND record](https://dev.os9.ca/techpubs/mac/Text/Text-269.html).
+
+GetFontInfo and CharWidth run through the user-mode service bridge and find the
+selected family in resource search order. They load only its exact intrinsic
+size/style definition on demand. Unsupported sizes, styles, missing definitions,
+nonzero spaceExtra or malformed data stop under the requested routine name.
+There is no guessed scaling, fallback font or native metric-result table.
+All 25 records and 50 widths match the reference, including register/stack and
+output-bound checks. All 30 installed FOND/NFNT bodies match the generated bytes.
+
+```sh
+python3 tools/check_font_metrics.py tmp/m2-font-metrics-reference-accepted.log --status 0 \
+  --native tmp/m2-metrics-native-final.log --native-status 0
+```
+
+Run `amiga/font_metrics.gdb` with the bounded native diagnostic launcher. The
+first entry is read from the actual saved Line-A frame after Misc1 loads; later
+calls use sequential original-site breakpoints. The observer never writes game
+memory or registers. At completion the original restores font/size/face 0/0/0
+and returns zero. It then stops at Engine+$1038 Pack8/$091F, now named
+`APPLE EVENT MANAGER / AEINSTALLEVENTHANDLER`. The second Times lookup and WIND
+128 request remain unverified behind that next dependency. Original MDRV is
+absent. These are metric/data contracts, not rendered-font acceptance.

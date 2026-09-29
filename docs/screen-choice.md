@@ -2,8 +2,8 @@
 
 D4 requires 320×200 and no displayed size dialog. Hidden construction,
 positioning, automatic item-2 selection, item lookup/disposal and restoration of
-the main world are implemented. Native startup now stops at GetFontInfo,
-Misc1+$0610, before the original WIND 128 request. That request remains a separate
+the main world are implemented. Native startup now passes font metrics and stops at AEInstallEventHandler,
+Engine+$1038, before the original WIND 128 request. That request remains a separate
 acceptance requirement. No Mac dialog presentation is authorized (D5).
 
 Original bytes establish the following:
@@ -173,9 +173,9 @@ python3 tools/check_choice_services.py tmp/m2-choice-services-reference.log --st
   --native tmp/m2-choice-native.log --native-status 0
 ```
 
-The current explicit stop is `FONT MANAGER / GETFONTINFO`, Misc1+$0610, A88B.
-The original then calls CharWidth for '0' and space. These metrics precede
-window creation; preference zero does not by itself prove WIND 128 acceptance.
+The subsequent GetFontInfo/CharWidth calls now pass; see [font-manager.md](font-manager.md).
+The current stop is `APPLE EVENT MANAGER / AEINSTALLEVENTHANDLER`,
+Engine+$1038, selector $091F. Preference zero does not by itself prove WIND 128 acceptance.
 Full drawing, replacement in-game interfaces, window/viewport and frame acceptance
 remain required by the queue.
 
@@ -183,6 +183,7 @@ Native evidence uses `tmp/m2-choice-native.log`, `tmp/m2-choice-fresh.log` and
 `tmp/m2-choice-low.log`, all normal exits with positive completion. The fresh
 run creates the default size-one PREF; existing inputs one and zero both become
 zero with all nine unrelated bytes preserved. The tests restore the original
-on-disk preferences. Existing/fresh window counts remain 36/62, with 43/51
-completed services; resource reads remain 28 / 123,387 bytes. The checker also
+on-disk preferences. Those selection-only captures ended with 36/62 windows and 43/51 completed
+services. Current startup also loads the metric fonts, ending with 64/90 windows
+and 118/126 services. Original application reads remain 28 / 123,387 bytes. The checker also
 rejects visibility, cleanup, preference, duplicate-capture and timeout failures.

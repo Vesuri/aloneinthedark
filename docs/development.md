@@ -2468,3 +2468,32 @@ This is a reference-only prerequisite: native code and its GetFontInfo stop are
 unchanged, so the previous native regression evidence remains applicable.
 Installed definitions and native service acceptance remain at the top of the
 queue. Reproduction and measured cases are in [font-manager.md](font-manager.md).
+
+## Installed startup font metrics
+
+M2.1c3c2c5b2c2b2 installs 25 port-owned bitmap faces and implements GetFontInfo
+and CharWidth from their FOND/NFNT bodies. All 75 original calls match the Mac
+contracts, including output bounds, stack/register preservation and restored
+text state. Existing, fresh and low-resolution preferences pass; all 30 installed
+font bodies match the generator byte-for-byte. The final guarded run is
+`tmp/m2-metrics-native-final.log`, paired with
+`tmp/m2-font-metrics-reference-accepted.log`. No original instructions changed,
+no FPU is required, and these services draw no dialogs. Other glyph advances
+remain explicitly placeholder design; rendered-font acceptance remains M2.9.
+
+The full host suite (including font sanitizer checks), fifteen startup observers,
+paired service checks and clean production boot/resource-read regressions pass.
+File-write and all eight save/preference exit phases pass; original save and
+preference directories are restored. A5 matches all 75,616 bytes, low-memory
+sites remain 58 validated / 55 applied, and no-float/76-symbol probe audits pass.
+Original resource reads remain 28 / 123,387 bytes. Existing/fresh runs complete
+64/90 windows and 118/126 services respectively. Overlay metadata preparation
+uses 33 reads / 572 bytes; runtime bodies total 31 / 80,800 bytes.
+
+Early observer failures (unloaded segment and debugger macro argument parsing)
+were rejected and corrected. A run affected by editing its active launcher was
+also rejected; the stable-launcher reruns passed. Evidence uses
+`tmp/m2-metrics-accepted-*` and `tmp/m2-metrics-regression-*`.
+Startup now stops explicitly at Engine+$1038 AEInstallEventHandler, selector
+$091F. Handler registration is the next dependency; WIND 128, the second Times
+lookup, rendering and full M2 acceptance remain pending. Original MDRV stays absent.

@@ -2,7 +2,7 @@
 set pagination off
 set confirm off
 source .run/startup-state.gdb
-if g_overlayChainVerified!=1 || g_overlaySourceOpen!=1 || g_overlaySourceReads!=5 || g_overlaySourceBytes!=124 || g_overlayRuntimeReads!=0 || g_overlayRuntimeBytes!=0 || g_resourceSourceOpen != 1 || g_resourceRuntimeReads != 0 || g_resourceRuntimeBytes != 0 || g_resourceSourceReads != 228 || g_resourceSourceBytes != 201058 || g_resourceCount != 215 || g_loadedCodeMask != 3 || g_lowMemoryValidatedSites != 58
+if g_overlayChainVerified!=1 || g_overlaySourceOpen!=1 || g_overlaySourceReads!=33 || g_overlaySourceBytes!=572 || g_overlayRuntimeReads!=0 || g_overlayRuntimeBytes!=0 || g_resourceSourceOpen != 1 || g_resourceRuntimeReads != 0 || g_resourceRuntimeBytes != 0 || g_resourceSourceReads != 228 || g_resourceSourceBytes != 201058 || g_resourceCount!=243 || g_loadedCodeMask != 3 || g_lowMemoryValidatedSites != 58
  echo FAIL resource-read: preparation, CODE validation or residency\n
  detach
  quit 1
@@ -52,7 +52,7 @@ end
 dump binary memory ../tmp/resource-general.bin $general $general+612
 break AitdScreen::showLoudStop
 continue
-if g_stageBState != 3 || g_trapWord!=0xa88b || g_trapSegment!=9 || g_trapOffset!=0x610 || *(unsigned long*)g_trapRoutine!=0x47455446 || *(unsigned long*)(g_trapRoutine+4)!=0x4f4e5449 || *(unsigned short*)(g_trapRoutine+8)!=0x4e46 || g_trapRoutine[10]!=0x4f || g_trapRoutine[11]!=0 || g_trapSelector!=0xffffffff || g_resourceRuntimeReads != 28 || g_resourceRuntimeBytes != 123387 || g_systemWindows != $startup_windows || g_resourceSourceMax > 65536 || g_macServiceEntered != $startup_entered || g_macServiceCompleted != $startup_completed || g_macServiceActive != 0
+if g_stageBState != 3 || g_trapWord!=0xa816 || g_trapSegment!=7 || g_trapOffset!=0x1038 || *(unsigned long*)(g_trapRoutine+0)!=0x4145494e || *(unsigned long*)(g_trapRoutine+4)!=0x5354414c || *(unsigned long*)(g_trapRoutine+8)!=0x4c455645 || *(unsigned long*)(g_trapRoutine+12)!=0x4e544841 || *(unsigned long*)(g_trapRoutine+16)!=0x4e444c45 || g_trapRoutine[20]!=0x52 || g_trapRoutine[21]!=0x00 || g_trapSelector!=0x91f || g_resourceRuntimeReads != 28 || g_resourceRuntimeBytes != 123387 || g_systemWindows != $startup_windows || g_resourceSourceMax > 65536 || g_macServiceEntered != $startup_entered || g_macServiceCompleted != $startup_completed || g_macServiceActive != 0
  printf "DIAGNOSTIC resource boundary: stage=%u trap=%x segment=%u app=%u/%u overlay=%u/%u windows=%u services=%u/%u active=%u code=%x lowmem=%u\n",g_stageBState,g_trapWord,g_trapSegment,g_resourceRuntimeReads,g_resourceRuntimeBytes,g_overlayRuntimeReads,g_overlayRuntimeBytes,g_systemWindows,g_macServiceEntered,g_macServiceCompleted,g_macServiceActive,g_loadedCodeMask,g_lowMemoryAppliedSites
  echo FAIL resource-read: runtime stop, service balance or bounded reads\n
  detach
@@ -88,6 +88,6 @@ if $samples != 3
  detach
  quit 1
 end
-printf "PASS resource-read: maps=215 preparation=201058 runtime=28/123387 windows=%u samples=3 next=GETFONTINFO\n",g_systemWindows
+printf "PASS resource-read: maps=243 preparation=201058 runtime=28/123387 windows=%u samples=3 next=AEINSTALLEVENTHANDLER\n",g_systemWindows
 detach
 quit 0

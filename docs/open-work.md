@@ -11,8 +11,8 @@ design.md §5.
 - Original CODE 1 expands the A5 world, relocates Core and enters `main`, then
   passes directory initialization, the first Times lookup and both native
   driver startup calls, menu-record initialization, device selection, SetDepth, GetGWorld, hidden dialog construction/positioning and fixed
-  low-resolution selection/cleanup, then stops at
-  Misc1+$0610 `FONT MANAGER / GETFONTINFO`. The original
+  low-resolution selection/cleanup and all 75 font-metrics calls, then stops at
+  Engine+$1038 `APPLE EVENT MANAGER / AEINSTALLEVENTHANDLER`. The original
   mixer is never loaded.
 - The original runs in MAME on the System 7.5.5 reference volume.
 
@@ -46,28 +46,25 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.1c3c2c5b2c2b2 Installed definitions for startup font metrics.**
-  - The reference prerequisite M2.1c3c2c5b2c2b1 measures all 25 GetFontInfo
-    records and 50 CharWidth results, including font/style tables, output extents,
-    stack/registers and restored state. See [font-manager.md](font-manager.md).
-  - Supply port-owned definitions for family/size pairs (0,12), (3,9), (21,9),
-    (21,18), (21,36), each with styles 0,1,2,32,33. The existing Times 14-point
-    definition does not cover these requests. Reuse the placeholder glyph source
-    under D6; do not import Mac font artwork or invent reference metrics.
-  - Extend the installed-definition parser with bounds/format checks, then bind
-    GetFontInfo at Misc1+$0610 and CharWidth at +$0618/+$0626 to those definitions.
-    Keep unsupported font/service forms as named stops. No drawing acceptance
-    is implied; full font rendering remains M2.9.
+- **M2.1c3c2c5b2c2b3 Startup Apple Event handler registration.**
+  - The 25 original GetFontInfo and 50 CharWidth calls now pass from installed
+    port-owned definitions. Startup next reaches Engine+$1038, Pack8 selector
+    $091F (AEInstallEventHandler), before WIND 128 creation.
+  - Measure the four original registrations (+$1038/+$1056/+$1074/+$1092),
+    including callback/refCon/system-handler arguments, stack/results and any
+    observable replacement/lookup behavior. Preserve actual handler state;
+    do not silently ignore registration or run callbacks inside an interrupt.
+  - Full Apple Event delivery remains M3.4. Any newly reached unimplemented
+    selector remains a named stop; keep original MDRV loading forbidden.
 
-  *Done when* host checks validate every required installed definition, original
-  font-metrics calls pass paired Mac/native checks with verified inputs and
-  output extents, and bounded startup reaches the next named stop with relevant
-  regressions passing.
+  *Done when* the original registration calls pass paired Mac/native contracts,
+  state ownership and unsupported forms are verified, and bounded startup
+  reaches the next named stop with relevant regressions passing.
 - **M2.1c3c2c5b2c2c Fixed-selection WIND 128 acceptance (D4/M2.4).**
   - Retains the unfinished integrated acceptance of M2.1c3c2c5b2c2. Native
     preference mapping alone is not evidence that WIND 128 was requested.
-  - Observe the original Misc1+$109A GetNewCWindow request after the font
-    prerequisite. Both incoming size flags must take the low-resolution path,
+  - Observe the original Misc1+$109A GetNewCWindow request after the font and event-registration
+    prerequisites. Both incoming size flags must take the low-resolution path,
     without showing DLOG 1000 or changing unrelated preference bytes.
   - Keep full window/viewport, drawing and palette acceptance in M2.3/M2.4/M2.7,
     and the integrated second Times/driver acceptance immediately below.
@@ -80,7 +77,7 @@ required.
     with no original instructions changed. Selectors 21/24 initialize native
     state and quality; other operations/configurations stop explicitly.
   - Both original call returns match the Mac register/stack/state contract.
-    The font-metrics stop prevents reaching the second Times call; this
+    The event-registration stop prevents reaching the second Times call; this
     original acceptance requirement is retained, not counted as passed.
   - Keep the MDRV guard and verify through any newly reached startup services.
     The independent Mac contract and installed seam are in

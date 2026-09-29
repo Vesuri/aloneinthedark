@@ -690,7 +690,8 @@ static const TrapName s_trapNames[] = {
     {0xa97b,"DIALOG MANAGER","INITDIALOGS"},
     {0xa997,"RESOURCE MANAGER","OPENRESFILE"},
     {0xa900,"FONT MANAGER","GETFNUM"},
-    {0xa88b,"FONT MANAGER","GETFONTINFO"},
+    {0xa816,"APPLE EVENT MANAGER","PACK8"},
+    {0xa88b,"FONT MANAGER","GETFONTINFO"}, {0xa88d,"FONT MANAGER","CHARWIDTH"},
     {0xa99b,"RESOURCE MANAGER","SETRESLOAD"}, {0xa9a8,"RESOURCE MANAGER","GETRESINFO"},
     {0xa9a2,"RESOURCE MANAGER","LOADRESOURCE"},
     {0xa80d,"RESOURCE MANAGER","COUNT1RESOURCES"}, {0xa99c,"RESOURCE MANAGER","COUNTRESOURCES"},
@@ -1304,6 +1305,31 @@ static int16_t getFontNumber(const uint8_t* name)
     }
     if(name[0])memoryResult(0);
     resourceResult(-192);return 0;
+}
+
+// Load the selected installed definition on demand, in a user-mode service.
+// Exact intrinsic size/style associations only; no synthesized fallback metrics.
+static bool fontForCurrentPort(BitmapFont& font)
+{
+    if(!s_fontManager.initialized || !s_qdThePort)return false;
+    uint8_t* port=(uint8_t*)read32(s_qdThePort);if(!port || read32(port+76))return false;
+    int16_t id=(int16_t)read16(port+68);uint16_t size=read16(port+74),style=port[70];
+    if(!size)return false;
+    uint16_t keys[ResourceForks::kForkCount];
+    uint16_t count=s_resourceForks.searchOrder(s_currentResourceFork,0x464f4e44UL,false,keys);
+    for(uint16_t n=0;n<count;++n) {
+        ResourceForks::Item familyItem;uint32_t familyIndex;
+        if(!s_resourceForks.find(keys[n],0x464f4e44UL,id,familyItem,&familyIndex))continue;
+        uint8_t** familyHandle=loadResource(familyIndex,familyItem,true);
+        BitmapFont::Family family;
+        if(!familyHandle || !*familyHandle
+           || !BitmapFont::family(*familyHandle,familyItem.size,id,family,size,style))return false;
+        ResourceForks::Item bitmapItem;uint32_t bitmapIndex;
+        if(!s_resourceForks.find(keys[n],0x4e464e54UL,family.bitmap,bitmapItem,&bitmapIndex))return false;
+        uint8_t** bitmapHandle=loadResource(bitmapIndex,bitmapItem,true);
+        return bitmapHandle && *bitmapHandle && font.open(*bitmapHandle,bitmapItem.size,family);
+    }
+    return false;
 }
 
 static bool pascalEquals(const uint8_t* value, const char* expected)
@@ -5417,7 +5443,7 @@ static bool isUserService(uint16_t trap)
 #ifdef AITD_SERVICE_PROBE
     if((trap&0xfeff)==0xa0fc || trap==0xabfb)return true;
 #endif
-    return trap==0xa0f8 || trap==0xa900 || trap==0xa9f4 || trap==0xa997 || trap==0xa9c4 || trap==0xa81a || trap==0xa9b1 || trap==0xa81b || trap==0xa999 || trap==0xa99a || trap==0xa9ab || trap==0xa9aa || trap==0xa9b0 || trap==0xa9ad
+    return trap==0xa88b || trap==0xa88d || trap==0xa0f8 || trap==0xa900 || trap==0xa9f4 || trap==0xa997 || trap==0xa9c4 || trap==0xa81a || trap==0xa9b1 || trap==0xa81b || trap==0xa999 || trap==0xa99a || trap==0xa9ab || trap==0xa9aa || trap==0xa9b0 || trap==0xa9ad
         || trap==0xa80e || trap==0xa9a2 || trap==0xa81f || trap==0xa820 || trap==0xa9a0 || trap==0xa9a1 || trap==0xa930 || trap==0xa9bf
         || trap==0xaa46 || trap==0xaa92 || trap==0xa9b9 || trap==0xa9bc || trap==0xa97c
         || trap==0xa40c || trap==0xa608 || trap==0xa60a || trap==0xa60c || trap==0xa60d || trap==0xa614 || trap==0xa615
@@ -5880,6 +5906,16 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         int16_t family=getFontNumber((const uint8_t*)read32(userStack+4));
         write16((uint8_t*)read32(userStack),(uint16_t)family);
         return 9; // Procedure: preserve D0, consume both pointers.
+    }
+    if(trap==0xa88b || trap==0xa88d) {
+        BitmapFont font;
+        if(!fontForCurrentPort(font))goto unsupportedTrap;
+        if(trap==0xa88b) {
+            uint8_t* out=(uint8_t*)read32(userStack);if(!out)goto unsupportedTrap;
+            write16(out,font.ascent());write16(out+2,font.descent());
+            write16(out+4,font.advance());write16(out+6,font.leading());return 5;
+        }
+        write16(userStack+2,font.charWidth(read16(userStack)));return 3;
     }
     // Inherited Vette text drawing ignores the selected font/size. Until M2.9
     // consumes validated fonts, original text calls must stop instead of using it.
@@ -6777,6 +6813,7 @@ unsupportedTrap:
         }
     if (trap == 0xa9c9 || trap == 0xa198) g_trapSelector = (uint16_t)regs[0];
     if (trap == 0xab1d || trap==0xaaa2) g_trapSelector = (uint16_t)regs[0];
+    if(trap==0xa816) { g_trapSelector=(uint16_t)regs[0];if(g_trapSelector==0x091f)routine="AEINSTALLEVENTHANDLER"; }
     if (trap == 0xa823) g_trapSelector=(uint16_t)regs[0];
     if (trap == 0xa1ad) g_trapSelector = (int32_t)regs[0];
     if (trap == 0xa060 || trap == 0xa260 || trap == 0xa660) {
