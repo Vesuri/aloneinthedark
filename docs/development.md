@@ -1741,3 +1741,37 @@ publication and native integration are M2.2f4b3b. Native runtime is unchanged;
 its regression baseline remains abbbf61. No owner decision is needed.
 
 The full host suite passes for this reference-tooling checkpoint.
+
+
+### Selective resource publication model (M2.2f4b3b1)
+
+ResourceDirectory serialization and rebase accept an optional per-identity
+payload selector. It can substitute only a body's source, offset and size;
+keys, names, attributes and ordering stay unchanged. Selection occurs on a
+publication recipe, leaving live metadata and saved sources intact until
+successful rebase. Unselected resources stream from their existing saved source.
+Rebase validates metadata against that same selection and switches all offsets
+while preserving identities. The caller must keep selection and sources stable
+through both calls. Calls without a selector retain their prior behavior.
+
+The ASan/UBSan fixture writes A as 70,001 `C` bytes while B remains saved `BBBB`,
+then writes B as three `D` bytes while A stays unchanged. An independent Python
+reader checks both complete forks, including names, IDs, attributes and order.
+Changing the old resident A buffer afterward does not change its saved/reloaded
+body. Opens and rebases use four metadata-only reads; body transfers are bounded
+to 64 KiB. No pending resource body is copied into retained staging memory.
+
+The fixture rejects selector errors and invalid ranges before staging starts,
+and injects failures at every write boundary plus source reads and publication.
+Failed serialization keeps the prior target and live metadata intact; failed
+rebase and mismatched selection preserve the original metadata/source bindings.
+The full host suite and all 212 original resources pass, including exact
+original-fork serialization and stable-identity metadata-only rebase. Native
+mutation dispatch is the next component, M2.2f4b3b2.
+
+Acceptance: all five native 68020 regressions and four startup observers pass
+with normal exits. File-write retains 174 calls / nine staging cases / 521
+windows; startup resource reads remain 16 / 96,648 bytes before GetFNum. All
+75,616 A5 bytes match, and the changed directory object passes the generated
+copy audit. No owner decision changed. This commits the independent publication
+model; the native traps remain explicit stops until their integration fixture.

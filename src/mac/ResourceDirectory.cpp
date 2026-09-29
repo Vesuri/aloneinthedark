@@ -119,14 +119,18 @@ int32_t ResourceDirectory::read(uint32_t id,uint32_t offset,uint8_t* out,uint32_
     View v={};if(!get(id,v))return -192;if(offset>v.entry.size || size>v.entry.size-offset)return -50;
     return directoryRead(v.entry.source,v.entry.offset+offset,out,size);
 }
-int32_t ResourceDirectory::serialize(int16_t ref,const ResourceWriter::Sink& sink) const {
+int32_t ResourceDirectory::serialize(int16_t ref,const ResourceWriter::Sink& sink,PayloadOverride select,void* context) const {
     int16_t f=forkIndex(ref);if(f<0)return -193;if(!forks_[f].writable)return -54;
     uint16_t n=count(ref);Entry* recipe=n ? new Entry[n] : 0;if(n && !recipe)return -108;
     uint16_t indices[maximumResources];order(f,indices);
-    for(uint16_t i=0;i<n;++i)recipe[i]=records_[indices[i]].entry;
-    int32_t error=ResourceWriter::serialize(recipe,n,sink);delete[] recipe;return error;
+    int32_t error=0;
+    for(uint16_t i=0;i<n && !error;++i) {
+        const auto& r=records_[indices[i]];auto& e=recipe[i];e=r.entry;
+        if(select)error=select(context,r.identity,e.source,e.offset,e.size);
+    }
+    if(!error)error=ResourceWriter::serialize(recipe,n,sink);delete[] recipe;return error;
 }
-int32_t ResourceDirectory::rebase(int16_t ref,const ResourceForks::Source& source) {
+int32_t ResourceDirectory::rebase(int16_t ref,const ResourceForks::Source& source,PayloadOverride select,void* context) {
     int16_t f=forkIndex(ref);if(f<0)return -193;uint8_t* map=0;Entry* entries=0;uint16_t n=0;
     int32_t error=parse(source,map,entries,n);if(error)return error;
     uint16_t indices[maximumResources],canonical[maximumResources],total=order(f,indices),position=0;
@@ -137,7 +141,8 @@ int32_t ResourceDirectory::rebase(int16_t ref,const ResourceForks::Source& sourc
     }
     if(n!=total)error=-50;
     for(uint16_t i=0;i<n && !error;++i) {
-        const Entry& old=records_[canonical[i]].entry;const Entry& e=entries[i];
+        const auto& r=records_[canonical[i]];Entry old=r.entry;const Entry& e=entries[i];
+        if(select) { error=select(context,r.identity,old.source,old.offset,old.size);if(error)break; }
         if(old.type!=e.type || old.id!=e.id || old.attrs!=e.attrs || old.size!=e.size || old.nameLength!=e.nameLength || bool(old.name)!=bool(e.name)) { error=-50;break; }
         for(uint16_t j=0;j<e.nameLength;++j)if(e.name[j]!=old.name[j]) { error=-50;break; }
     }

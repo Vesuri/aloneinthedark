@@ -67,13 +67,15 @@ required.
       uninitialized upper-byte scratch (traced and poison-verified). Return a
       zero-extended attribute byte natively. Unmeasured variants remain named
       stops and queued.
-      - **M2.2f4b3b Selective publication.** WriteResource saves only its selected
-        resource; another dirty resource must retain its old reloadable bytes.
-        Add source-backed per-entry publication overrides with atomic failure and
-        identity-preserving rebase, then bind native mutation traps to them.
-        *Done when* host fixtures verify selective payload/size changes, unrelated
-        saved bodies, rollback and no preloading, and native fixtures match the
-        50-call mutation and 40-call isolation reference contracts.
+      - **M2.2f4b3b2 Native mutation integration.** Bind ChangedResource,
+        WriteResource, RmveResource and attribute state to the selective payload
+        publisher. Keep pending resident changes distinct from the saved sources
+        used for reload, and preserve independent duplicate identities.
+        *Done when* native fixtures match the 50-call mutation and 40-call
+        isolation references, exact saved forks and cleanup are checked,
+        rollback/error evidence and all regressions pass. Any unmeasured
+        combination must retain a named stop and its own acceptance item.
+
 
 
   - Implement writable prefs/save resource forks and the port overlay fork

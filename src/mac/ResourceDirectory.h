@@ -28,11 +28,15 @@ public:
     int32_t replace(uint32_t identity,const Entry& entry);
     int32_t remove(uint32_t identity);
     int32_t read(uint32_t identity,uint32_t offset,uint8_t* out,uint32_t size) const;
+    // Select a publication body without changing live metadata or saved sources.
+    // The caller keeps this selection and its sources stable through rebase.
+    // Unselected entries retain their existing source; no body is preloaded.
+    using PayloadOverride=int32_t (*)(void*,uint32_t identity,ResourceForks::Source&,uint32_t& offset,uint32_t& size);
     // Successful serialization does not release old sources or clear dirty.
-    int32_t serialize(int16_t ref,const ResourceWriter::Sink& sink) const;
+    int32_t serialize(int16_t ref,const ResourceWriter::Sink& sink,PayloadOverride select=0,void* context=0) const;
     // Validate a just-published map against current metadata, then atomically
     // rebind sources/offsets and clear dirty while retaining resource identities.
-    int32_t rebase(int16_t ref,const ResourceForks::Source& source);
+    int32_t rebase(int16_t ref,const ResourceForks::Source& source,PayloadOverride select=0,void* context=0);
 private:
     struct Fork { bool active=false,writable=false,dirty=false;int16_t ref=0;uint32_t opened=0;uint8_t* map=0; };
     struct Record { uint32_t identity=0;uint16_t fork=0;Entry entry={};uint8_t* name=0; };
