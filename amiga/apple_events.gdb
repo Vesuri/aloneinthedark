@@ -171,13 +171,13 @@ end
 echo PASS native Apple Event registrations calls=4\n
 continue
 printf "AE_NEXT state=%u trap=%X selector=%X segment=%u offset=%X manager=%s routine=%s windows=%u services=%u/%u\n",g_stageBState,g_trapWord,g_trapSelector,g_trapSegment,g_trapOffset,g_trapManager,g_trapRoutine,g_systemWindows,g_macServiceEntered,g_macServiceCompleted
-if g_stageBState!=3 || g_trapWord!=0xaa18 || g_trapSelector!=-1 || g_trapSegment!=7 || g_trapOffset!=0x110e || g_macServiceActive!=0 || g_systemWindows!=$startup_windows || g_macServiceEntered!=$startup_entered || g_macServiceCompleted!=$startup_completed || g_resourceRuntimeReads!=28 || g_resourceRuntimeBytes!=123387 || g_overlayRuntimeReads!=31 || g_overlayRuntimeBytes!=80800 || g_appleEventHandlers.count!=4
+if g_stageBState!=3 || g_trapWord!=0xaa91 || g_trapSelector!=-1 || g_trapSegment!=7 || g_trapOffset!=0x1158 || g_macServiceActive!=0 || g_systemWindows!=$startup_windows || g_macServiceEntered!=$startup_entered || g_macServiceCompleted!=$startup_completed || g_resourceRuntimeReads!=29 || g_resourceRuntimeBytes!=125443 || g_overlayRuntimeReads!=31 || g_overlayRuntimeBytes!=80800 || g_appleEventHandlers.count!=4
  echo FAIL Apple Event next stop/counters\n
  detach
  quit 1
 end
-if *(unsigned short*)($engine+0x110a)!=0x3f3c || *(unsigned short*)($engine+0x110c)!=128 || *(unsigned short*)($engine+0x110e)!=0xaa18
- echo FAIL next GetCTable original bytes\n
+if *(unsigned short*)($engine+0x1158)!=0xaa91
+ echo FAIL next NewPalette original bytes\n
  detach
  quit 1
 end
@@ -190,6 +190,6 @@ while $i<g_resourceCount
  end
  set $i=$i+1
 end
-echo PASS native Apple Event startup next=GETCTABLE original-MDRV=absent\n
+echo PASS native Apple Event startup next=NEWPALETTE original-MDRV=absent\n
 detach
 quit 0

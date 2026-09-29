@@ -191,11 +191,11 @@ continue
 printf "CHOICE_PREF after=%08X%08X%04X\n",*(unsigned long*)$pref,*(unsigned long*)($pref+4),*(unsigned short*)($pref+8)
 continue
 printf "CHOICE_NEXT state=%u trap=%X selector=%X segment=%u offset=%X manager=%s routine=%s windows=%u services=%u/%u reads=%u bytes=%u\n",g_stageBState,g_trapWord,g_trapSelector,g_trapSegment,g_trapOffset,g_trapManager,g_trapRoutine,g_systemWindows,g_macServiceEntered,g_macServiceCompleted,g_resourceRuntimeReads,g_resourceRuntimeBytes
-if g_stageBState!=3 || g_trapWord!=0xaa18 || g_trapSegment!=7 || g_trapOffset!=0x110e || g_trapSelector!=-1 || g_macServiceActive!=0 || g_systemWindows!=$startup_windows || g_macServiceEntered!=$startup_entered || g_macServiceCompleted!=$startup_completed || g_resourceRuntimeReads!=28 || g_resourceRuntimeBytes!=123387
+if g_stageBState!=3 || g_trapWord!=0xaa91 || g_trapSegment!=7 || g_trapOffset!=0x1158 || g_trapSelector!=-1 || g_macServiceActive!=0 || g_systemWindows!=$startup_windows || g_macServiceEntered!=$startup_entered || g_macServiceCompleted!=$startup_completed || g_resourceRuntimeReads!=29 || g_resourceRuntimeBytes!=125443
  echo FAIL fixed-choice progression\n
  detach
  quit 1
 end
-echo PASS native fixed-choice services next=GETCTABLE\n
+echo PASS native fixed-choice services next=NEWPALETTE\n
 detach
 quit 0

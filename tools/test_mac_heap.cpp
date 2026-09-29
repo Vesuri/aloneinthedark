@@ -13,8 +13,11 @@ int main() {
     auto original=h.freeBytes();
     auto a=h.newHandle(300,true);auto b=h.newHandle(500);auto pin=h.newPtr(200);
     CHECK(a&&b&&pin);CHECK(patternIs(*a,300,0));pattern(*a,300,0x23);pattern(*b,500,0x45);pattern(pin,200,0x67);
+    CHECK(!h.isFreeHandleSlot(a));CHECK(!h.isFreeHandleSlot(nullptr));
+    CHECK(!h.isFreeHandleSlot((MacHeap::Handle)pin));
+    CHECK(!h.isFreeHandleSlot((MacHeap::Handle)((uint8_t*)a+1)));
     auto before=*b;CHECK(h.setState(b,0xa0)==0);CHECK(h.state(b)==0xa0);
-    CHECK(h.disposeHandle(a)==0);h.compact();CHECK(*b==before);CHECK(patternIs(*b,500,0x45));CHECK(patternIs(pin,200,0x67));
+    CHECK(h.disposeHandle(a)==0);CHECK(h.isFreeHandleSlot(a));CHECK(!h.isHandle(a));h.compact();CHECK(*b==before);CHECK(patternIs(*b,500,0x45));CHECK(patternIs(pin,200,0x67));
     CHECK(h.emptyHandle(b)==MacHeap::memPurErr);CHECK(h.moveHigh(b)==MacHeap::memLockedErr);
     CHECK(h.setState(b,0x20)==0);h.compact();CHECK(h.check());CHECK(h.recoverHandle(*b+100)==b);
     CHECK(h.moveHigh(b)==0);CHECK(h.check());CHECK(patternIs(*b,500,0x45));

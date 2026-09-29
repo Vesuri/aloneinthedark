@@ -12,7 +12,8 @@ design.md §5.
   passes directory initialization, the first Times lookup and both native
   driver startup calls, menu-record initialization, device selection, SetDepth, GetGWorld, hidden dialog construction/positioning and fixed
   low-resolution selection/cleanup, all 75 font-metrics calls and four Apple Event
-  registrations, then stops at Engine+$110E `COLOR QUICKDRAW / GETCTABLE`. The original
+  registrations and colour-table loading/mutations, then stops at Engine+$1158
+  `PALETTE MANAGER / NEWPALETTE`. The original
   mixer is never loaded.
 - The original runs in MAME on the System 7.5.5 reference volume.
 
@@ -46,26 +47,24 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.1c3c2c5b2c2b3c2 Native startup colour-table loading (M2.7 prerequisite).**
-  - Original startup now passes the four Apple Event registrations and requests
-    GetCTable(128) at Engine+$110E, before WIND 128 creation. Original bytes are
-    `3f3c0080aa18` at +$110A; no patch is needed.
-  - Reference prerequisite b3c1 is complete in [color-table.md](color-table.md):
-    original bytes/mutations and 21 fixtures establish detach/reload ownership,
-    seed sequence, handle state, disposal and missing-table behavior.
-  - Implement the original table request using the actual resource body and
-    measured detachment/seed semantics. Returning a copy while leaving a resident
-    resource handle in the map would violate the measured alias contract.
-    Unsupported forms stay named stops.
-  - Full palette realization and reference video transfer remain M2.7/M2.7a.
+- **M2.1c3c2c5b2c2b3d Startup palette construction (M2.7 prerequisite).**
+  - Original GetCTable(128), all 256 index mutations and detach/reload ownership
+    now pass; see [color-table.md](color-table.md).
+  - The next original request is NewPalette at Engine+$1158 (`AA91`), before
+    WIND 128 creation. Measure its arguments, returned palette bytes, ownership
+    and stack/register contract on the Mac, then implement the reached form.
+    Reuse Vette's palette code where it matches the measured eight-bit contract.
+  - Keep original instructions unchanged and unsupported forms as named stops.
+    Palette activation, device CLUT realization and video colour transfer remain
+    M2.7/M2.7a; this prerequisite must not claim their acceptance.
 
-  *Done when* paired Mac/native checks prove the original GetCTable request and
-  returned table/ownership, bounded startup reaches the next named stop, original
-  MDRV stays absent, and relevant regressions pass.
+  *Done when* paired Mac/native checks prove the original NewPalette request,
+  returned records and ownership, bounded startup reaches the next named stop,
+  original MDRV stays absent, and relevant regressions pass.
 - **M2.1c3c2c5b2c2c Fixed-selection WIND 128 acceptance (D4/M2.4).**
   - Retains the unfinished integrated acceptance of M2.1c3c2c5b2c2. Native
     preference mapping alone is not evidence that WIND 128 was requested.
-  - Observe the original Misc1+$109A GetNewCWindow request after the font, event-registration and colour-table
+  - Observe the original Misc1+$109A GetNewCWindow request after the font, event-registration, colour-table and palette
     prerequisites. Both incoming size flags must take the low-resolution path,
     without showing DLOG 1000 or changing unrelated preference bytes.
   - Keep full window/viewport, drawing and palette acceptance in M2.3/M2.4/M2.7,
@@ -79,7 +78,7 @@ required.
     with no original instructions changed. Selectors 21/24 initialize native
     state and quality; other operations/configurations stop explicitly.
   - Both original call returns match the Mac register/stack/state contract.
-    The colour-table stop prevents reaching the second Times call; this
+    The palette-construction stop prevents reaching the second Times call; this
     original acceptance requirement is retained, not counted as passed.
   - Keep the MDRV guard and verify through any newly reached startup services.
     The independent Mac contract and installed seam are in

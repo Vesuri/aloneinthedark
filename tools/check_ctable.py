@@ -29,20 +29,25 @@ def source(path):
     return next(r.body for r in rows if r.kind==b'clut' and r.rid==128)
 def preserved(e,r,pop):
     if r['sp']!=e['sp']+pop or any(e[k]!=r[k] for k in PRESERVED):raise ValueError('stack/register preservation')
-def check(text,status,resource,folder,fixture=False):
+def check(text,status,resource,folder,fixture=False,native=False):
     if status!=0 or any(x in text for x in ('FAIL','Error in','[LUA ERROR]','timeout')):raise ValueError('failed observer')
-    for marker in ('ARM ctable dispatcher bytes=2f0a2f02246f000a','PASS original GetCTable and mutations','Exited via the debugger'):
+    markers=('ARM native ctable original bytes','PASS original GetCTable and mutations','PASS native GetCTable detached next=NEWPALETTE original-MDRV=absent') if native else ('ARM ctable dispatcher bytes=2f0a2f02246f000a','PASS original GetCTable and mutations','Exited via the debugger')
+    if native and fixture:markers=('ARM native ctable CPU fixture','PASS CPU GetCTable and mutations','PASS native ctable CPU fixture shutdown sources=0/0 lineA=0 result=0')
+    for marker in markers:
         if text.count(marker)!=1:raise ValueError('completion')
     e=fields(one(text,r'CTABLE_ENTER (.*)'));r=fields(one(text,r'CTABLE_RETURN (.*)'))
     m=fields(one(text,r'CTABLE_MUTATED (.*)'));preserved(e,r,2)
     if e['id']!=128 or e['slot']!=0 or one(text,r'CTABLE_ENTER .*bytes=([0-9A-F/]+) .*')!='3F3C0080/AA18':raise ValueError('original input/bytes')
     if not r['handle'] or not r['body'] or r['master']!=r['body'] or (r['flags'],r['size'])!=(0x8000,255):raise ValueError('returned table header')
     if m!={'handle':r['handle'],'body':r['body'],'seed':r['seed'],'flags':0,'size':255,'count':256}:raise ValueError('original mutation state')
-    before=(folder/'ctable-reference-return.bin').read_bytes();after=(folder/'ctable-reference-mutated.bin').read_bytes()
+    prefix='ctable-native' if native else 'ctable-reference'
+    before=(folder/(prefix+'-return.bin')).read_bytes();after=(folder/(prefix+'-mutated.bin')).read_bytes()
     if len(resource)!=2056 or before!=struct.pack('>I',r['seed'])+resource[4:]:raise ValueError('returned resource bytes/seed')
     expected=bytearray(before);expected[4:6]=b'\0\0'
     for i in range(256):struct.pack_into('>H',expected,8+i*8,i)
     if after!=expected:raise ValueError('original index/flags mutations')
+    if native and not fixture:
+        one(text,r'CTABLE_NEXT state=3 trap=AA91 selector=FFFFFFFF segment=7 offset=1158 manager=PALETTE MANAGER routine=NEWPALETTE windows=(?:65|91) services=(?:119/119|127/127) reads=29 bytes=125443')
     if not fixture:
         if 'CTABLE_FIX_' in text:raise ValueError('unexpected fixture')
         return
@@ -86,13 +91,13 @@ class Checks(unittest.TestCase):
         for status in (None,124,0):
             with self.assertRaises(ValueError):check('PASS original GetCTable and mutations',status,b'',Path('tmp'))
 if __name__=='__main__':
-    p=argparse.ArgumentParser(description=__doc__);p.add_argument('log',type=Path,nargs='?');p.add_argument('--status',type=int);p.add_argument('--fixture',action='store_true');p.add_argument('--folder',type=Path,default=Path('tmp'));p.add_argument('--selftest',action='store_true');a=p.parse_args()
+    p=argparse.ArgumentParser(description=__doc__);p.add_argument('log',type=Path,nargs='?');p.add_argument('--status',type=int);p.add_argument('--fixture',action='store_true');p.add_argument('--native',action='store_true');p.add_argument('--folder',type=Path,default=Path('tmp'));p.add_argument('--selftest',action='store_true');a=p.parse_args()
     if a.selftest:raise SystemExit(not unittest.TextTestRunner().run(unittest.defaultTestLoader.loadTestsFromTestCase(Checks)).wasSuccessful())
     try:
-        resource=source(Path('tmp/runtime-data/Alone In The Dark'));text=a.log.read_text();check(text,a.status,resource,a.folder,a.fixture)
+        resource=source(Path('tmp/runtime-data/Alone In The Dark'));text=a.log.read_text();check(text,a.status,resource,a.folder,a.fixture,a.native)
         for bad,status in ((text,124),(text,None),(text+text,0),(text.replace('id=80','id=81',1),0),(text.replace('count=100','count=FF',1),0)):
-            try:check(bad,status,resource,a.folder,a.fixture)
+            try:check(bad,status,resource,a.folder,a.fixture,a.native)
             except ValueError:continue
             raise ValueError('invalid capture accepted')
-        print('PASS original GetCTable: bytes, original mutations and stack/registers'+('; 21 ownership/seed/disposal fixtures' if a.fixture else ''))
+        print('PASS GetCTable: bytes, mutations and stack/registers'+('; 21 ownership/seed/disposal fixtures' if a.fixture else ''))
     except (OSError,ValueError,KeyError,AttributeError) as e:raise SystemExit('FAIL GetCTable: '+str(e))

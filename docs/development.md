@@ -2557,3 +2557,31 @@ suite passes. A checker line-anchoring mistake was corrected before acceptance;
 no failed capture was counted as a pass. Native code is unchanged, so the
 previous native regression evidence remains applicable. Native detachment and
 paired acceptance remain b3c2 at the top of the queue.
+
+
+## Native startup colour table
+
+M2.1c3c2c5b2c2b3c2 implements the original GetCTable(128) request through the
+user-mode resource service. The returned handle is detached, gets a fresh seed,
+and survives all 256 original index mutations with its RGB values intact.
+The 21 CPU-executed ownership cases match the Mac, including alias mutation,
+reload, disposal, missing tables and interleaved seeds. The fixture uncovered
+an unsupported disposed-handle size query; released master slots now return the
+measured -111 error. Arbitrary pointers remain named stops. No original game
+instructions changed. Reproduction and scope are in [color-table.md](color-table.md).
+
+The full host suite, 17 startup observers with paired contracts, clean boot and
+resource-read regressions pass. Fresh and existing preference inputs pass;
+original preferences are restored. Final fixture and production captures exit
+normally with positive markers. All 75,616 A5 bytes match the original model;
+low-memory sites remain 58 validated / 55 applied. No-float and 77-symbol link
+audits pass. Evidence is `tmp/m2-ctable-accepted-*`, `tmp/m2-ctable-host.log`,
+`tmp/m2-ctable-final-runs.log`, `tmp/m2-ctable-native-fixture-final.log` and
+`tmp/m2-ctable-native-final.log`; final fixture dumps are preserved separately.
+
+Startup now completes 65/91 OS windows and 119/127 user services for existing/
+fresh preferences. Original runtime resource reads total 29 / 125,443 bytes;
+overlay bodies remain 31 / 80,800. The next named stop is NewPalette at
+Engine+$1158. Original MDRV remains absent. WIND 128, the second Times lookup,
+PAK-read acceptance and rendered intro output remain pending. D4/D5/D7 still
+exclude Mac dialog/menu presentation; no owner decision is needed here.

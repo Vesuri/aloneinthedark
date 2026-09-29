@@ -57,6 +57,7 @@ uint8_t* MacHeap::flags(Handle handle) const
     return 0;
 }
 bool MacHeap::isHandle(Handle handle) const { uint8_t* f=flags(handle);return f && (*f&1); }
+bool MacHeap::isFreeHandleSlot(Handle handle) const { uint8_t* f=flags(handle);return f && !(*f&1); }
 uint32_t MacHeap::findPtr(const uint8_t* ptr, uint32_t kind) const
 {
     if (!owns(ptr)) return 0;

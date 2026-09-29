@@ -121,6 +121,9 @@ volatile uint32_t g_identityProbeStage=0;
 void aitd_identity_probe();
 __attribute__((noinline)) void aitdIdentityProbeReturned() { __asm__ volatile("" ::: "memory"); }
 #endif
+#ifdef AITD_CTABLE_PROBE
+void aitdCTableProbe();
+#endif
 #ifdef AITD_APPLE_EVENT_PROBE
 volatile uint32_t g_aeProbeForm=AITD_APPLE_EVENT_FORM;
 void aitdAppleEventProbe();
@@ -733,6 +736,7 @@ static const TrapName s_trapNames[] = {
     {0xa915,"WINDOW MANAGER","SHOWWINDOW"}, {0xa916,"WINDOW MANAGER","HIDEWINDOW"},
     {0xa924,"WINDOW MANAGER","FRONTWINDOW"}, {0xa925,"WINDOW MANAGER","DRAGWINDOW"},
     {0xa92c,"WINDOW MANAGER","FINDWINDOW"},
+    {0xaa91,"PALETTE MANAGER","NEWPALETTE"},
     {0xaa92,"PALETTE MANAGER","GETNEWPALETTE"}, {0xaa93,"PALETTE MANAGER","DISPOSEPALETTE"},
     {0xa873,"QUICKDRAW","SETPORT"},
     {0xaa29,"COLOR MANAGER","GETDEVICELIST"}, {0xaa2b,"COLOR MANAGER","GETNEXTDEVICE"},
@@ -5116,7 +5120,13 @@ static bool dispatchMemoryTrap(uint16_t trap,uint32_t* regs)
         owner=handleZone(handle);if(!owner)return false;
         error=owner->setHandleSize(handle,regs[0]);break;
     case 0xa025:
-        owner=handleZone(handle);if(!owner)return false;
+        owner=handleZone(handle);
+        if(!owner) {
+            // Measured disposed alias: a released master slot reports memWZErr.
+            // Arbitrary pointers and manager-owned permanent handles still stop.
+            if(!s_applicationZone.isFreeHandleSlot(handle) && !s_systemZone.isFreeHandleSlot(handle))return false;
+            error=MacHeap::memWZErr;break;
+        }
         regs[0]=owner->handleSize(handle);error=owner->error();resultInD0=false;break;
     case 0xa026:
         owner=handleZone(handle);if(!owner)return false;
@@ -5450,7 +5460,7 @@ static bool isUserService(uint16_t trap)
 #ifdef AITD_SERVICE_PROBE
     if((trap&0xfeff)==0xa0fc || trap==0xabfb)return true;
 #endif
-    return trap==0xa88b || trap==0xa88d || trap==0xa0f8 || trap==0xa900 || trap==0xa9f4 || trap==0xa997 || trap==0xa9c4 || trap==0xa81a || trap==0xa9b1 || trap==0xa81b || trap==0xa999 || trap==0xa99a || trap==0xa9ab || trap==0xa9aa || trap==0xa9b0 || trap==0xa9ad
+    return trap==0xaa18 || trap==0xa88b || trap==0xa88d || trap==0xa0f8 || trap==0xa900 || trap==0xa9f4 || trap==0xa997 || trap==0xa9c4 || trap==0xa81a || trap==0xa9b1 || trap==0xa81b || trap==0xa999 || trap==0xa99a || trap==0xa9ab || trap==0xa9aa || trap==0xa9b0 || trap==0xa9ad
         || trap==0xa80e || trap==0xa9a2 || trap==0xa81f || trap==0xa820 || trap==0xa9a0 || trap==0xa9a1 || trap==0xa930 || trap==0xa9bf
         || trap==0xaa46 || trap==0xaa92 || trap==0xa9b9 || trap==0xa9bc || trap==0xa97c
         || trap==0xa40c || trap==0xa608 || trap==0xa60a || trap==0xa60c || trap==0xa60d || trap==0xa614 || trap==0xa615
@@ -6404,6 +6414,28 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         if (g_stageCDepth < 96) g_stageCDepth = 96;
         return 5;
     }
+    if (trap == 0xaa18) {                    // GetCTable: detach the loaded clut.
+        const int16_t id=(int16_t)read16(userStack);
+        // System-generated tables and disabled resource loading are unmeasured.
+        if(id<128 || !s_portLowMemory[MacLowMemory::resLoad])goto unsupportedTrap;
+        MacHeap::Handle handle=getResource(0x636c7574UL,id);
+        if(handle) {
+            MacHeap* zone=handleZone(handle);
+            int32_t index=resourceHandleIndex(handle);
+            // Only the reached 256-entry application table layout is supported.
+            if(!zone || !*handle || index<0 || dirtyResourceHandle(handle)
+                || zone->state(handle)!=0x20 || zone->handleSize(handle)!=2056
+                || read16(*handle+4)!=0x8000 || read16(*handle+6)!=255)
+                goto unsupportedTrap;
+            s_resourceHandles[index]=0;
+            zone->setState(handle,0);
+            write32(*handle,s_colorSeed++);
+            memoryResult(0);
+        }
+        regs[0]=regs[8]=(uint32_t)handle;
+        write32(userStack+2,(uint32_t)handle);
+        return 3;
+    }
     if (trap == 0xaa28) {                    // GetCTSeed() -> unique long seed
         write32(userStack, s_colorSeed++);
         if (g_stageCDepth < 28) g_stageCDepth = 28;
@@ -6838,6 +6870,7 @@ unsupportedTrap:
         }
     if (trap == 0xa9c9 || trap == 0xa198) g_trapSelector = (uint16_t)regs[0];
     if (trap == 0xab1d || trap==0xaaa2) g_trapSelector = (uint16_t)regs[0];
+    if(trap==0xaa18)g_trapSelector=read16(userStack);
     if(trap==0xa816) { g_trapSelector=(uint16_t)regs[0];if(g_trapSelector==0x091f)routine="AEINSTALLEVENTHANDLER";if(g_trapSelector==0x0921)routine="AEGETEVENTHANDLER";if(g_trapSelector==0x021b)routine="AEPROCESSAPPLEEVENT"; }
     if (trap == 0xa823) g_trapSelector=(uint16_t)regs[0];
     if (trap == 0xa1ad) g_trapSelector = (int32_t)regs[0];
@@ -7167,6 +7200,12 @@ bool MacLoader::run(AitdScreen* screen)
                       g_macStackBase + 65536);
     restoreLineAVector();
     aitdHeapProbeComplete();
+#endif
+#ifdef AITD_CTABLE_PROBE
+    installLineAVector();
+    aitd_call_mac_code((void*)aitdCTableProbe,a5,g_macStackBase+65536);
+    restoreLineAVector();
+    return true;
 #endif
 #ifdef AITD_APPLE_EVENT_PROBE
     installLineAVector();

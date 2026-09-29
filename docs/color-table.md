@@ -2,7 +2,7 @@
 
 The original GetCTable(128) contract is measured by
 `tools/mac_ctable.lua` and checked by `tools/check_ctable.py`.
-Native implementation remains M2.1c3c2c5b2c2b3c2. Full palette realization
+Native GetCTable now implements the reached application table form. Full palette realization
 and video colour transfer remain M2.7/M2.7a.
 
 ## Original request and mutations [M]
@@ -72,6 +72,43 @@ make host-tests
 Logs, raw dumps and original resource data remain local-only. The checker rejects
 missing/duplicate captures, timeout/missing status, changed inputs and incorrect
 mutation counts. The syntax/literal audits cover all 45 maintained Mac scripts.
-This reference prerequisite changes no native behavior; the production stop is
-still GetCTable at Engine+$110E. The implementation must preserve detach/reload
-ownership and seed identity, with named stops for unsupported forms.
+The native production observer is `amiga/ctable.gdb`. It checks the original
+call and mutation loop, exact returned bytes, detachment from the resource map,
+and the next named stop: Engine+$1158 `PALETTE MANAGER / NEWPALETTE`. Original
+MDRV stays absent. The table adds one bounded resource read (2,056 bytes) and
+one completed user service/window to startup.
+
+`CTABLEPROBE=1` builds the CPU-executed ownership fixture in `CTableProbe.s`.
+Its read-only observer is `amiga/ctable_fixture.gdb`; debugger writes are not
+used. The same 21 Mac cases check stack/register preservation, bytes, seeds,
+aliases and errors, then verify actual native shutdown closes both resource
+streams, removes Line-A and returns zero. A disposed master slot now returns
+`GetHandleSize=-111`; arbitrary non-handle pointers still stop. Host heap checks
+cover free-slot classification, live handles, null, pointers and misalignment.
+
+Supported GetCTable inputs use application IDs (128 or higher), enabled resource
+loading, and a clean unlocked/nonpurgeable 2,056-byte table with flags `$8000`
+and 256 entries. The loaded handle is detached, receives one fresh seed and
+becomes caller-owned. Missing application tables return nil without consuming a
+seed or changing MemError. System-generated IDs, disabled loading, dirty handles
+and other table layouts remain named GetCTable stops with the requested ID.
+This does not implement palette realization or establish rendered acceptance.
+
+```sh
+# Clean when switching between the fixture and production configurations.
+. amiga/env.sh
+make -C amiga clean
+make -C amiga CTABLEPROBE=1
+(cd amiga && EXTRA_ARGS=--warp_mode=1 GDBSCRIPT=ctable_fixture.gdb ./diag_run.sh 120)
+# Check the saved observer log with its actual terminal status:
+python3 tools/check_ctable.py tmp/m2-ctable-native-fixture-final.log --native \
+  --fixture --status 0 --folder tmp/ctable-native-fixture-final
+make -C amiga clean
+make -C amiga
+(cd amiga && EXTRA_ARGS=--warp_mode=1 GDBSCRIPT=ctable.gdb ./diag_run.sh 120)
+```
+
+The native fixture first exposed the missing disposed-alias error. That rejected
+run is retained locally; the corrected run completes all 21 cases with status
+zero. Capture checks reject missing/duplicate records, timeouts, changed inputs,
+wrong mutations, ownership, errors and seed sequences.

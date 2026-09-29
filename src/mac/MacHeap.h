@@ -25,6 +25,7 @@ public:
     uint32_t handleSize(Handle handle);
     int16_t setHandleSize(Handle handle, uint32_t bytes);
     bool isHandle(Handle handle) const;
+    bool isFreeHandleSlot(Handle handle) const;
     uint8_t state(Handle handle);
     int16_t setState(Handle handle, uint8_t state);
     Handle recoverHandle(uint8_t* ptr);
