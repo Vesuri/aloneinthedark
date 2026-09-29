@@ -11,6 +11,7 @@ Start with the [project README](../README.md).
 - [Source inventory](source-inventory.md): original application/resource layout.
 - [Static map](static-map.md): CODE segments, A5 world and CPU requirements.
 - [Macintosh reference](mac-reference-loop.md): local oracle setup and capture.
+- [Font Manager](font-manager.md): measured font lookup contract and reference probes.
 - [Open work](open-work.md): the ordered work queue.
 
 The Vette! repository (`~/Documents/Vette/docs`) holds the complete versions of

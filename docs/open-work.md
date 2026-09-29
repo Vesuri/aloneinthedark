@@ -47,8 +47,8 @@ required.
   - Original startup still stops at GetFNum, Dan1+$0012; a second Times lookup
     follows at +$0038 before the first original PAK load. This must be implemented
     before native read acceptance can advance.
-  - Establish the measured GetFNum name/result/stack contract and back the Times
-    family with a valid port-owned placeholder font definition in the overlay
+  - The original/reference-fixture GetFNum contract is measured; see
+    [font-manager.md](font-manager.md). Back the Times family with a valid port-owned placeholder font definition in the overlay
     (D6). Do not return a font ID without a real installed definition. Remaining
     unsupported text/font operations must retain named stops; full rendered-font
     acceptance remains M2.9.
