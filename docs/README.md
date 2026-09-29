@@ -19,6 +19,7 @@ Start with the [project README](../README.md).
 - [Font Manager](font-manager.md): measured font lookup contract and reference probes.
 - [Apple Events](apple-events.md): original registration and table-state contracts.
 - [Colour table](color-table.md): Mac/native GetCTable bytes, ownership and seed contracts.
+- [Palette](palette.md): original NewPalette records, copying and disposal contracts.
 - [Open work](open-work.md): the ordered work queue.
 
 The Vette! repository (`~/Documents/Vette/docs`) holds the complete versions of

@@ -112,6 +112,7 @@ host-tests:
 	@python3 tools/check_font_metrics.py --selftest
 	@python3 tools/check_apple_events.py --selftest
 	@python3 tools/check_ctable.py --selftest
+	@python3 tools/check_palette.py --selftest
 	@python3 tools/check_apple_event_handlers.py
 	@python3 tools/check_mame_literals.py
 	@python3 tools/check_sane.py

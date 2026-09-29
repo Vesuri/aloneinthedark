@@ -47,13 +47,17 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.1c3c2c5b2c2b3d Startup palette construction (M2.7 prerequisite).**
+- **M2.1c3c2c5b2c2b3d2 Native startup palette construction (M2.7 prerequisite).**
   - Original GetCTable(128), all 256 index mutations and detach/reload ownership
     now pass; see [color-table.md](color-table.md).
-  - The next original request is NewPalette at Engine+$1158 (`AA91`), before
-    WIND 128 creation. Measure its arguments, returned palette bytes, ownership
-    and stack/register contract on the Mac, then implement the reached form.
-    Reuse Vette's palette code where it matches the measured eight-bit contract.
+  - Reference prerequisite b3d1 is complete in [palette.md](palette.md): the
+    original NewPalette call at Engine+$1158 (`AA91`) requests 256 entries,
+    usage `$000A`, tolerance zero. Implement the reached record/ownership form.
+  - The 4,112-byte palette copies RGBs independently and owns a separate four-byte
+    private block. DisposePalette frees both while preserving the source table;
+    twelve reference fixtures establish sizes, state, aliases, errors and cleanup.
+    Vette has no NewPalette constructor; reuse its surrounding palette helpers
+    only where they match the measured eight-bit contract.
   - Keep original instructions unchanged and unsupported forms as named stops.
     Palette activation, device CLUT realization and video colour transfer remain
     M2.7/M2.7a; this prerequisite must not claim their acceptance.

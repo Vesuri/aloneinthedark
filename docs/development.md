@@ -2585,3 +2585,22 @@ overlay bodies remain 31 / 80,800. The next named stop is NewPalette at
 Engine+$1158. Original MDRV remains absent. WIND 128, the second Times lookup,
 PAK-read acceptance and rendered intro output remain pending. D4/D5/D7 still
 exclude Mac dialog/menu presentation; no owner decision is needed here.
+
+## Original NewPalette construction contract
+
+M2.1c3c2c5b2c2b3d1 measures the original 256-entry NewPalette request, full
+4,112-byte result and twelve ownership/lifecycle cases. RGBs are copied, usage
+is $000A and tolerance is zero. The palette owns a separate four-byte private
+allocation; DisposePalette frees both without changing the source table.
+Original/live bytes, exact data extents, stack/register preservation, fixture
+input readback, mutation isolation and errors pass. See [palette.md](palette.md).
+
+Both bounded Mac captures exit normally, all 46 scripts pass syntax/literal
+checks, and the full host suite passes. Accepted evidence is
+`tmp/m2-palette-reference-accepted.log`, `tmp/m2-palette-ownership-accepted.log`
+and `tmp/m2-palette-reference-host.log`, with each capture's dumps preserved.
+A checker initially rejected missing floppy-sound samples as capture errors;
+that overly broad check was corrected before the accepted runs. Native code is
+unchanged from 5e568da and retains its verified NEWPALETTE stop. Native
+construction is b3d2 at the queue head; no palette realization or intro-frame
+acceptance is claimed.
