@@ -1340,3 +1340,44 @@ found no shared-base postincrement byte-copy instruction. No native runtime
 behavior changed; the helper is not connected to resource-file traps yet.
 F2b must supply mutable independent maps and stable identity before f3 binds
 this writer to staging streams and verifies the Mac/native resource-file calls.
+
+
+### Mutable resource metadata directory (M2.2f2b)
+
+`ResourceDirectory` owns up to 16 independent maps and 768 resource metadata
+records. Payload sources stay caller-owned. Opening reads only the header, map
+and length words; it publishes the new fork only after validation succeeds.
+Each fork has a reference, open order, write permission and dirty state. Newest/
+older traversal supplies the measured chain order without owning current-file
+selection. Identical type/ID pairs in different forks have separate identities.
+
+Resource identities are monotonic and never reused, including after close/clear;
+removed slots may be reused without reviving stale identities. Within each fork,
+entry insertion order remains stable. Add/replace deep-copy names, retain source
+ranges and preflight the complete candidate serialization through the writer's
+new allocation-free `measure` operation. Failed duplicates, range/capacity/name
+limits or read-only mutations leave the prior directory intact. Replacement
+preserves identity; removal invalidates it. Reads remain bounded to 64 KiB.
+These are portable model results; native trap error translation remains f3.
+
+Serialization uses the existing staging sink and deliberately retains dirty
+state and old sources. `rebase` validates a newly published map's canonical
+ordering, keys, names, sizes and attributes before switching all source ranges
+and clearing dirty. It retains identities and publishes nothing on parse/read or
+metadata mismatch. The caller must retain old readable sources until rebase
+succeeds, and owns file closure/publication. Native persistence is not yet wired.
+
+`check_resource_directory.py` tests metadata-only opens/rebases, duplicate IDs
+across forks, source reads, copied names, stable order/identity, change/remove/add,
+read-only and duplicate/range rejection, failed writes/opens/rebases, close/reopen
+and slot reuse, all 16 fork slots and the 768-resource capacity. ASan/UBSan and an
+independent reader verify the changed 70,001-byte resource and added/removed
+entries. An original-fork run opens and rebases all 212 entries using exactly 214
+metadata reads each, retains every identity, and streams an independently exact
+round trip of all metadata/payloads. No original bodies are read while opening.
+
+Acceptance: both independent round trips and all host tests passed. A clean
+68020 build passed no-float/probe audits. The directory and writer target objects
+contain no shared-base postincrement byte-copy instruction. This change supplies
+portable helpers; f3 must connect them to native streams, resource handles and
+the 63-call Mac resource-file fixture before that API scope is accepted.

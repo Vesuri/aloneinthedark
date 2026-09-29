@@ -62,13 +62,9 @@ required.
     - M2.2f2a's bounded transactional serializer is complete; it round-trips all
       212 original resources without preloading payloads and preserves the old
       target on injected failures. Native write integration remains f3.
-    - **M2.2f2b Mutable fork directory next.** Add independent
-      open-fork metadata, stable resource identity, original-order entries and
-      validated serialization for added/changed/removed resources, without
-      preloading original payloads. *Done when* host round trips match an
-      independent fork reader, duplicate IDs across forks remain distinct,
-      mutation/overflow errors preserve existing data, and source tests
-      still prove on-demand reads.
+    - M2.2f2b's mutable directory is complete: 16 independent maps, stable
+      identities, source-backed add/replace/remove, transactional serialization
+      and validated rebase pass host/sanitizer and original-fork round trips.
     - **M2.2f3 Native resource-file integration.** Bind the directory to the
       existing File Manager streams and match f1's current/search/count/close
       and reopen contract. *Done when* the paired 63-call native fixture and

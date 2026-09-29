@@ -360,8 +360,10 @@ Native trap probes, host fragmentation tests and paired heap captures verify it:
   - This extends `ResourceForks.cpp` from a read-only parser to a writable fork
     model, rewritten at `UpdateResFile`/close. `ResourceWriter` now serializes
     immutable entry recipes using bounded source reads and an isolated staging
-    sink (M2.2f2a). The mutable directory and native stream binding remain f2b/f3;
-    no resource-file write trap is implemented merely by having this helper.
+    sink (M2.2f2a). `ResourceDirectory` now supplies independent mutable maps,
+    stable identities and validated post-write rebasing (M2.2f2b). Native
+    ResourceForks/loader and stream integration remains f3; these helpers do
+    not yet implement resource-file write traps.
 
 ### 4.6 Resource Manager
 

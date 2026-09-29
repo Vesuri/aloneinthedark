@@ -10,14 +10,18 @@ static int32_t writeExact(const ResourceWriter::Sink& sink,uint32_t at,const uin
     }
     return 0;
 }
-int32_t ResourceWriter::serialize(const Entry* entries,uint16_t count,const Sink& sink) {
-    if(count>ResourceForks::kMaximumResources || (count && !entries) || !sink.begin || !sink.write || !sink.finish)return -50;
-    struct Position { uint32_t data;uint16_t name,type; };
+struct Position { uint32_t data;uint16_t name,type; };
+struct WriterLayout {
     Position positions[ResourceForks::kMaximumResources];
     uint32_t types[ResourceForks::kMaximumResources];
-    uint16_t typeCount=0;uint32_t dataBytes=0,nameBytes=0;
+    uint16_t typeCount=0;uint32_t dataBytes=0,namesOffset=0,mapBytes=0,mapOffset=0,total=0;
+};
+static int32_t prepare(const ResourceWriter::Entry* entries,uint16_t count,WriterLayout& layout) {
+    if(count>ResourceForks::kMaximumResources || (count && !entries))return -50;
+    uint16_t& typeCount=layout.typeCount;uint32_t& dataBytes=layout.dataBytes;uint32_t nameBytes=0;
+    auto* positions=layout.positions;auto* types=layout.types;
     for(uint16_t i=0;i<count;++i) {
-        const Entry& e=entries[i];
+        const ResourceWriter::Entry& e=entries[i];
         if(!e.source.read || e.offset>e.source.size || e.size>e.source.size-e.offset || (!e.name && e.nameLength)
             || dataBytes>0xffffff || e.size>0xffffffffUL-dataBytes-4)return -50;
         for(uint16_t j=0;j<i;++j)if(entries[j].type==e.type && entries[j].id==e.id)return -50;
@@ -31,7 +35,19 @@ int32_t ResourceWriter::serialize(const Entry* entries,uint16_t count,const Sink
     }
     uint32_t namesOffset=30+8*typeCount+12*count,mapBytes=namesOffset+nameBytes;
     if(namesOffset>0xffff || mapBytes>ResourceForks::maximumMapBytes || dataBytes>0xffffffffUL-257-mapBytes)return -50;
-    uint32_t mapOffset=(256+dataBytes+1)&~1UL,total=mapOffset+mapBytes;
+    layout.namesOffset=namesOffset;layout.mapBytes=mapBytes;
+    layout.mapOffset=(256+dataBytes+1)&~1UL;layout.total=layout.mapOffset+mapBytes;return 0;
+}
+
+int32_t ResourceWriter::measure(const Entry* entries,uint16_t count,uint32_t& size) {
+    WriterLayout layout;int32_t error=prepare(entries,count,layout);if(!error)size=layout.total;return error;
+}
+int32_t ResourceWriter::serialize(const Entry* entries,uint16_t count,const Sink& sink) {
+    if(!sink.begin || !sink.write || !sink.finish)return -50;
+    WriterLayout layout;int32_t checked=prepare(entries,count,layout);if(checked)return checked;
+    const auto* positions=layout.positions;const auto* types=layout.types;
+    const uint16_t typeCount=layout.typeCount;
+    const uint32_t dataBytes=layout.dataBytes,namesOffset=layout.namesOffset,mapBytes=layout.mapBytes,mapOffset=layout.mapOffset,total=layout.total;
     uint8_t* map=new uint8_t[mapBytes];uint8_t* buffer=new uint8_t[ResourceForks::chunkBytes];
     if(!map || !buffer) { delete[] map;delete[] buffer;return -108; }
     for(uint32_t i=0;i<mapBytes;++i)map[i]=0;

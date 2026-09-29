@@ -21,6 +21,8 @@ public:
     };
     // Types follow first appearance; reference lists retain recipe order within
     // each type. Duplicate type/ID pairs are rejected before touching the sink.
+    // Validate without reading payloads or allocating staging storage.
+    static int32_t measure(const Entry* entries,uint16_t count,uint32_t& size);
     static int32_t serialize(const Entry* entries,uint16_t count,const Sink& sink);
 };
 #endif
