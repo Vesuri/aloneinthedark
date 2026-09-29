@@ -362,8 +362,10 @@ Native trap probes, host fragmentation tests and paired heap captures verify it:
     immutable entry recipes using bounded source reads and an isolated staging
     sink (M2.2f2a). `ResourceDirectory` now supplies independent mutable maps,
     stable identities and validated post-write rebasing (M2.2f2b). Native
-    ResourceForks/loader now uses the directory for existing resource reads
-    (f3a). Staged native writes and dynamic resource-file traps remain f3b/f3c.
+    ResourceForks/loader uses the directory, persistent streams and transactional
+    staging for resource-file services. Per-entry publication preserves unrelated
+    saved bodies during WriteResource. Remaining permission and lifecycle
+    variants are M2.2f4.
 
 ### 4.6 Resource Manager
 
@@ -375,7 +377,7 @@ Native trap probes, host fragmentation tests and paired heap captures verify it:
   - `DetachResource` hands a clean block over to the caller; dirty detach
     returns -198. `ReleaseResource` frees clean resources but leaves dirty
     resources resident. Dirty resource files persist on close and OS exit
-    (scratch-only Mac reference M2.2f4a2b; native variants pending).
+    (Mac reference M2.2f4a2b; native close is implemented, dirty exit pending).
   - Whole-fork startup loading is removed (M2.2b2). Before takeover, validate
     each original CODE resource using temporary storage, then discard it; only
     CODE 0 metadata and CODE 1 remain resident. Runtime resource misses use

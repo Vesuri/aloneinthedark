@@ -7,12 +7,12 @@ static DataFork* resourceStream(uint16_t key) {
 }
 static bool remapResourceHandles() {
     int16_t remap[ResourceForks::kMaximumResources];
-    MacHeap::Handle old[ResourceForks::kMaximumResources];
-    for(uint16_t i=0;i<ResourceForks::kMaximumResources;++i)old[i]=s_resourceHandles[i];
+    MacHeap::Handle old[ResourceForks::kMaximumResources];uint8_t changes[ResourceForks::kMaximumResources];
+    for(uint16_t i=0;i<ResourceForks::kMaximumResources;++i){ old[i]=s_resourceHandles[i];changes[i]=s_resourceChanges[i]; }
     if(!s_resourceForks.refresh(remap))return false;
-    for(auto& h:s_resourceHandles)h=0;
+    for(auto& h:s_resourceHandles)h=0;for(auto& c:s_resourceChanges)c=0;
     for(uint16_t i=0;i<ResourceForks::kMaximumResources;++i)if(old[i]) {
-        if(remap[i]>=0)s_resourceHandles[remap[i]]=old[i];
+        if(remap[i]>=0) { s_resourceHandles[remap[i]]=old[i];s_resourceChanges[remap[i]]=changes[i]; }
         else { MacHeap* zone=handleZone(old[i]);if(!zone || zone->disposeHandle(old[i]))return false; }
     }
     g_resourceCount=s_resourceForks.resourceCount();return true;
@@ -50,23 +50,62 @@ struct ResourcePublication {
         return error;
     }
 };
-static int32_t updateResourceFile(uint16_t key) {
+static bool resourceFileDirty(uint16_t key) {
+    if(s_resourceForks.directory()->dirty(key))return true;
+    for(uint32_t i=0;i<s_resourceForks.resourceCount();++i) { ResourceForks::Item item;
+        if((s_resourceChanges[i]&1) && s_resourceForks.item(i,item) && item.fork==key)return true;
+    }return false;
+}
+struct ResourceSelection {
+    uint16_t key;int32_t only;
+    static int32_t payload(void* context,uint32_t identity,ResourceForks::Source& source,uint32_t& offset,uint32_t& size) {
+        auto& selection=*(ResourceSelection*)context;
+        for(uint32_t i=0;i<s_resourceForks.resourceCount();++i)if(s_resourceForks.identity(i)==identity) {
+            if((s_resourceChanges[i]&1) && (selection.only<0 || (uint32_t)selection.only==i)) {
+                auto h=s_resourceHandles[i];auto* zone=handleZone(h);
+                if(!zone || !*h)return -32760;
+                size=zone->handleSize(h);source={h,size,resourceHandleRead};offset=0;
+            }return 0;
+        }return -32760;
+    }
+};
+static int32_t updateResourceFile(uint16_t key,int32_t only=-1) {
     auto* directory=s_resourceForks.directory();
-    if(!directory->dirty(key))return 0;
+    if(!resourceFileDirty(key)) {
+        if(only<0 && s_resourceMapTouched[key]) { s_resourceMapTouched[key]=false;memoryResult(0); }
+        return 0;
+    }
+    if(only>=0) {
+        // No reference yet for a selected write amid other never-written entries
+        // or pending removals. Keep those combinations explicit.
+        for(uint32_t i=0;i<s_resourceForks.resourceCount();++i) { ResourceForks::Item item;
+            if(i!=(uint32_t)only && (s_resourceChanges[i]&2) && s_resourceForks.item(i,item) && item.fork==key) {
+                loaderStop("RESOURCE WRITE WITH UNWRITTEN PEER",0);showLoaderStop();
+            }
+        }
+        if(directory->dirty(key) && !(s_resourceChanges[only]&2)) { loaderStop("RESOURCE WRITE WITH PENDING MAP EDIT",0);showLoaderStop(); }
+    }
     auto* stream=resourceStream(key);const auto* fork=s_files.fork(s_resourceFileRefs[key]);
     if(!stream || !fork || !fork->writable || !stream->source || stream->source->writes.dirty())return -32760;
     // Mixing raw resource-fork streams with Resource Manager updates is not yet measured.
     for(const auto& other:s_dataForks)if(other.ref && &other!=stream && other.source==stream->source)return -32760;
+    const bool mapChanged=directory->dirty(key)||s_resourceMapTouched[key];
     ResourcePublication publication;publication.stream=stream;
     if(s_files.forkPath(fork->id,true,publication.path,sizeof(publication.path)) || !publication.stage.bind(publication.path))return -32760;
     ResourceWriter::Sink sink={&publication,ResourcePublication::begin,ResourcePublication::write,ResourcePublication::finish};
-    int32_t error=directory->serialize(key,sink);if(error)return error;
+    ResourceSelection selection={key,only};
+    int32_t error=directory->serialize(key,sink,ResourceSelection::payload,&selection);if(error)return error;
     if(s_files.setSize(fork->ref,publication.size,true))return -32760;
     auto& source=*stream->source;
     source.writes.clear();
     if(source.writes.bind(publication.size,readDataSource,&source,allocateFilePage,releaseFilePage))return -32760;
     source.storedSize=publication.size;
-    if(directory->rebase(key,resourceStreamSource(key)) || !remapResourceHandles())return -32760;
+    if(directory->rebase(key,resourceStreamSource(key),ResourceSelection::payload,&selection))return -32760;
+    for(uint32_t i=0;i<s_resourceForks.resourceCount();++i) { ResourceForks::Item item;
+        if((only<0 || (uint32_t)only==i) && s_resourceForks.item(i,item) && item.fork==key)s_resourceChanges[i]=0;
+    }
+    if(!remapResourceHandles())return -32760;
+    s_resourceMapTouched[key]=only>=0 && mapChanged;memoryResult(0);
     s_files.flushed(fork->id,true);s_files.touchMetadata(fork->id,FileAccess::metadataTime());
     const auto* entry=s_files.entry(fork->id);
     error=FileAccess::storeMetadata(entry->path,entry->metadata);
@@ -82,7 +121,7 @@ static int32_t closeResourceFile(uint16_t key) {
     int16_t older=0;
     if(s_currentResourceFork==key && !s_resourceForks.directory()->older(key,older))return -32760;
     if(s_resourceForks.directory()->close(key) || !remapResourceHandles())return -32760;
-    s_resourceFileRefs[key]=0;if(s_currentResourceFork==key)s_currentResourceFork=older;
+    s_resourceFileRefs[key]=0;s_resourceMapTouched[key]=false;if(s_currentResourceFork==key)s_currentResourceFork=older;memoryResult(0);
     return 0;
 }
 static int32_t openResourceFile(const uint8_t* name,int16_t volume,uint32_t parent,uint8_t permission,bool create,int16_t& result) {
@@ -113,7 +152,7 @@ static int32_t openResourceFile(const uint8_t* name,int16_t volume,uint32_t pare
     }
     if(!remapResourceHandles())return -32760;
     if(create)return closeResourceFile(key);
-    s_currentResourceFork=key;result=s_resourceFileRefs[key];return 0;
+    s_currentResourceFork=key;result=s_resourceFileRefs[key];memoryResult(0);return 0;
 }
 static uint32_t dispatchResourceFiles(uint16_t trap,uint32_t* regs,uint8_t* stack) {
     int32_t error=0;uint16_t pop=0;bool preserve=false;
@@ -124,7 +163,9 @@ static uint32_t dispatchResourceFiles(uint16_t trap,uint32_t* regs,uint8_t* stac
         if(trap==0xa9c4) { permission=stack[0];volume=(int16_t)read16(stack+2);name=read32(stack+4);pop=8; }
         if(trap==0xa81a) { permission=stack[0];name=read32(stack+2);parent=read32(stack+6);volume=(int16_t)read16(stack+10);pop=12; }
         if(trap==0xa81b) { name=read32(stack);parent=read32(stack+4);volume=(int16_t)read16(stack+8);pop=10; }
+        int16_t savedMemory=(int16_t)read16(s_portLowMemory+100);
         error=openResourceFile((uint8_t*)name,volume,parent,permission,create,result);
+        if(create)memoryResult(savedMemory);
         if(error==-32760)return 0;
         if(!create)write16(stack+pop,result);
         preserve=trap==0xa997;if(create)regs[0]=pop;
@@ -138,14 +179,33 @@ static uint32_t dispatchResourceFiles(uint16_t trap,uint32_t* regs,uint8_t* stac
         if(!preserve)regs[0]=(uint16_t)error;
     } else if(trap==0xa9ab) {
         auto handle=(MacHeap::Handle)read32(stack+10);auto* zone=handleZone(handle);const uint8_t* name=(const uint8_t*)read32(stack);
+        if(!handle) { resourceResult(-194);memoryResult(0);regs[0]=0xff3e;return 15; }
         if(!zone || !*handle || !name || resourceHandleIndex(handle)>=0)return 0;
         uint32_t size=zone->handleSize(handle),identity=0;
         ResourceWriter::Entry entry={read32(stack+6),(int16_t)read16(stack+4),0,name+1,name[0],{handle,size,resourceHandleRead},0,size};
         error=s_resourceForks.directory()->add(s_currentResourceFork,entry,identity);
-        if(error)return 0; // Additional AddResource errors await reference fixtures.
+        if(error)return 0; // Additional AddResource variants remain explicit stops.
         if(!remapResourceHandles())return 0;
-        for(uint32_t i=0;i<s_resourceForks.resourceCount();++i)if(s_resourceForks.identity(i)==identity) { s_resourceHandles[i]=handle;break; }
-        zone->setState(handle,(zone->state(handle)|0x20)&~0x40);regs[0]=0;pop=14;
+        for(uint32_t i=0;i<s_resourceForks.resourceCount();++i)if(s_resourceForks.identity(i)==identity) { s_resourceHandles[i]=handle;s_resourceChanges[i]=3;break; }
+        zone->setState(handle,(zone->state(handle)|0x20)&~0x40);memoryResult(0);regs[0]=0;pop=14;
+    } else if(trap==0xa9aa || trap==0xa9b0 || trap==0xa9ad) {
+        auto handle=(MacHeap::Handle)read32(stack);int32_t index=resourceHandleIndex(handle);ResourceForks::Item item;
+        if(index<0 || !s_resourceForks.item(index,item))error=trap==0xa9ad ? -196 : -192;
+        else {
+            auto* zone=handleZone(handle);if(!zone || !*handle || !item.fork)return 0;
+            if(trap==0xa9aa) { s_resourceChanges[index]|=1;memoryResult(0); }
+            else if(trap==0xa9b0) {
+                if(s_resourceChanges[index]&1)error=updateResourceFile(item.fork,index);
+                if(error==-32760)return 0;if(!error)memoryResult(0);
+            } else {
+                error=s_resourceForks.directory()->remove(s_resourceForks.identity(index));
+                if(error)return 0;
+                s_resourceHandles[index]=0;s_resourceChanges[index]=0;
+                zone->setState(handle,zone->state(handle)&~0x20);
+                if(!remapResourceHandles())return 0;memoryResult(0);
+            }
+        }
+        regs[0]=(uint16_t)error;pop=4;
     } else return 0;
     resourceResult(error);return pop+1;
 }

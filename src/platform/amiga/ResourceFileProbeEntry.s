@@ -34,6 +34,21 @@ aitdRFileCall:
     rfile aitdRFileUpdate,0xa999
     rfile aitdRFileClose,0xa99a
     rfile aitdRFileAdd,0xa9ab
+    rfile aitdRMutRelease,0xa9a3
+    rfile aitdRMutDetach,0xa992
+    rfile aitdRMutChanged,0xa9aa
+    rfile aitdRMutWrite,0xa9b0
+    rfile aitdRMutRemove,0xa9ad
+    rfile aitdRMutAttrs,0xa9a6
+    rfile aitdRMutCount,0xa80d
+    rfile aitdRMutLookup,0xa81f
+    rfile aitdRMutIndex,0xa80e
+    rfile aitdRMutLoad,0xa9a2
+    .globl aitdRMutEmpty
+aitdRMutEmpty:
+    move.l (sp)+,a0
+    .word 0xa02b
+    bra.w rfileAfter
 rfileAfter:
     move.l d0,g_resourceLookupD0
     move.l sp,d0
@@ -44,7 +59,10 @@ rfileAfter:
     cmpi.l #2,d2
     bne.s 3f
     move.w (sp),d0
-3:  move.l a3,sp
+3:  cmpi.l #4,d2
+    bne.s 4f
+    move.l (sp),d0
+4:  move.l a3,sp
     movem.l (sp)+,d2-d3/a2-a3
     rts
     .globl aitdRFileAllocate

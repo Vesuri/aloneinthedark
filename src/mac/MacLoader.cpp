@@ -192,6 +192,8 @@ static int16_t s_resourceFileRefs[ResourceForks::kForkCount];
 MacFiles& MacLoader::files() { return s_files; }
 extern "C" { volatile int16_t g_applicationFileRef=0; }
 static MacHeap::Handle s_resourceHandles[ResourceForks::kMaximumResources];
+static uint8_t s_resourceChanges[ResourceForks::kMaximumResources]; // bit 0 dirty, bit 1 never published
+static bool s_resourceMapTouched[ResourceForks::kForkCount];
 static int16_t s_resourceError;
 static uint8_t s_quickDrawScreen[(512 / 8) * 320];
 static uint8_t s_colorScreen[(512 / 2) * 320];
@@ -1016,6 +1018,7 @@ static uint8_t** loadResource(uint32_t index,const ResourceForks::Item& item,boo
         zone->setState(handle,zone->state(handle)|0x20);resourceResult(0);return handle;
     }
     if(!*handle) {
+        if(s_resourceChanges[index]&2) { loaderStop("RESOURCE RELOAD BEFORE FIRST WRITE",0);showLoaderStop(); }
         if(zone->reallocateHandle(handle,item.size)!=0) { memoryResult(zone->error());resourceResult(zone->error());return 0; }
         memoryResult(zone->error());
         int32_t error=s_resourceForks.read(index,*handle,item.size);
@@ -1024,6 +1027,7 @@ static uint8_t** loadResource(uint32_t index,const ResourceForks::Item& item,boo
             if(error==-32760) { loaderStop("RESOURCE READ OUTSIDE USER SERVICE",0);showLoaderStop(); }
             return 0;
         }
+        s_resourceChanges[index]=0;
         zone->setState(handle,0x20|((item.attrs&0x10)?0x80:0)|((item.attrs&0x20)?0x40:0));
         if(item.fork==0 && item.type==0x434f4445UL && item.id>0) {
             if(item.id>=kMaximumSegments || !MacLowMemory::patch(item.id,*handle,item.size)) {
@@ -4806,14 +4810,14 @@ static void forgetHandle(uint8_t** handle)
 }
 static bool dirtyResourceHandle(uint8_t** handle) {
     int32_t i=resourceHandleIndex(handle);ResourceForks::Item item;
-    return i>=0 && s_resourceForks.item(i,item) && s_resourceForks.directory()->dirty(item.fork);
+    return i>=0 && s_resourceForks.item(i,item) && (s_resourceChanges[i]&1);
 }
 static void stopDirtyResourceMutation(uint8_t** handle) {
     if(dirtyResourceHandle(handle)) { loaderStop("DIRTY RESOURCE HANDLE MUTATION UNMEASURED",0);showLoaderStop(); }
 }
 static bool releaseResource(uint8_t** handle)
 {
-    stopDirtyResourceMutation(handle);
+    if(dirtyResourceHandle(handle)) { resourceResult(0);return true; }
     int32_t index=resourceHandleIndex(handle);MacHeap* zone=handleZone(handle);
     if(index<0 || !zone) { resourceResult(-192);return false; }
     memoryResult(zone->disposeHandle(handle));forgetHandle(handle);refreshCodeViews();
@@ -4830,7 +4834,8 @@ static bool dispatchMemoryTrap(uint16_t trap,uint32_t* regs)
     MacHeap* zone=(trap&0x400) ? &s_systemZone : s_currentZone;
     uint8_t* ptr=(uint8_t*)regs[8];MacHeap::Handle handle=(MacHeap::Handle)ptr;
     MacHeap* owner=0;int16_t error=0;bool resultInD0=true;
-    if(op==0xa023 || op==0xa024 || op==0xa02b || op==0xa049 || op==0xa06a)stopDirtyResourceMutation(handle);
+    if(op==0xa023 || op==0xa024 || op==0xa027 || op==0xa049 || op==0xa06a)stopDirtyResourceMutation(handle);
+    if(op==0xa02b && resourceHandleIndex(handle)>=0 && (s_resourceChanges[resourceHandleIndex(handle)]&2))stopDirtyResourceMutation(handle);
     switch(op) {
     case 0xa01a: regs[8]=(uint32_t)s_currentZone->base();break;
     case 0xa01b:
@@ -5192,7 +5197,7 @@ static bool isUserService(uint16_t trap)
 #ifdef AITD_SERVICE_PROBE
     if((trap&0xfeff)==0xa0fc || trap==0xabfb)return true;
 #endif
-    return trap==0xa997 || trap==0xa9c4 || trap==0xa81a || trap==0xa9b1 || trap==0xa81b || trap==0xa999 || trap==0xa99a || trap==0xa9ab
+    return trap==0xa997 || trap==0xa9c4 || trap==0xa81a || trap==0xa9b1 || trap==0xa81b || trap==0xa999 || trap==0xa99a || trap==0xa9ab || trap==0xa9aa || trap==0xa9b0 || trap==0xa9ad
         || trap==0xa80e || trap==0xa9a2 || trap==0xa81f || trap==0xa820 || trap==0xa9a0 || trap==0xa9a1 || trap==0xa930 || trap==0xa9bf
         || trap==0xaa46 || trap==0xaa92 || trap==0xa9b9 || trap==0xa9bc || trap==0xa97c
         || trap==0xa40c || trap==0xa608 || trap==0xa60a || trap==0xa60c || trap==0xa60d || trap==0xa614 || trap==0xa615
@@ -5415,6 +5420,12 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     if(trap==0xa99b) { // Pascal Boolean occupies the high byte of its stack word.
         s_portLowMemory[MacLowMemory::resLoad]=userStack[0];return 3;
     }
+    if(trap==0xa9a6) {
+        int32_t i=resourceHandleIndex((MacHeap::Handle)read32(userStack));ResourceForks::Item item;
+        bool found=i>=0 && s_resourceForks.item(i,item);
+        write16(userStack+4,found ? item.attrs|((s_resourceChanges[i]&1)?2:0) : 0);
+        resourceResult(found ? 0 : -192);return 5;
+    }
     if(trap==0xa9a8 && read32(userStack) && read32(userStack+4) && read32(userStack+8)) {
         int32_t index=resourceHandleIndex((MacHeap::Handle)read32(userStack+12));
         ResourceForks::Item item;
@@ -5437,7 +5448,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     if(trap==0xa992) {
         if(!read32(userStack)) { resourceResult(-192);regs[0]=0xff40;return 5; }
         MacHeap::Handle handle=(MacHeap::Handle)read32(userStack);
-        stopDirtyResourceMutation(handle);
+        if(dirtyResourceHandle(handle)) { resourceResult(-198);regs[0]=0xff3a;return 5; }
         int32_t index=resourceHandleIndex(handle);MacHeap* zone=handleZone(handle);
         if(index>=0 && zone) {
             s_resourceHandles[index]=0;zone->setState(handle,zone->state(handle)&~0x20);
@@ -5462,7 +5473,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     }
 
     if (trap == 0xa9f4) {                    // original ExitToShell after patch cleanup
-        for(uint16_t key=0;key<ResourceForks::kForkCount;++key)if(s_resourceForks.directory()->dirty(key)) { loaderStop("DIRTY RESOURCE EXIT UNMEASURED",0);showLoaderStop(); }
+        for(uint16_t key=0;key<ResourceForks::kForkCount;++key)if(resourceFileDirty(key) || s_resourceMapTouched[key]) { loaderStop("DIRTY RESOURCE EXIT UNMEASURED",0);showLoaderStop(); }
         g_macVBLCallbackEntry = 0;
         g_macVBLCallbackTask = 0;
         g_macVBLCallbackA5 = 0;
@@ -5545,7 +5556,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
             ResourceForks::Item item;
             if(s_resourceForks.item(i,item) && (trap==0xa99c || item.fork==s_currentResourceFork) && item.type==type)++count;
         }
-        write16(userStack+4,count);resourceResult(0);regs[0]=0;return 5;
+        write16(userStack+4,count);resourceResult(0);memoryResult(0);regs[0]=0;return 5;
     }
     if(trap==0xa80e) {
         int16_t ordinal=(int16_t)read16(userStack);uint32_t type=read32(userStack+2);
@@ -6478,7 +6489,8 @@ bool MacLoader::prepareResourceForks(const ResourceForks::Source& application)
     s_resourceForks.close();
     clearResidentSegments();
     g_resourceCount = 0;
-    for(uint16_t i=0;i<ResourceForks::kMaximumResources;++i)s_resourceHandles[i]=0;
+    for(uint16_t i=0;i<ResourceForks::kMaximumResources;++i) { s_resourceHandles[i]=0;s_resourceChanges[i]=0; }
+    for(auto& touched:s_resourceMapTouched)touched=false;
     resourceResult(0);
     if(!prepareZones()) { s_preparationError="MEMORY MANAGER / FAST RAM ZONES";return false; }
     if (!s_resourceForks.open(application)

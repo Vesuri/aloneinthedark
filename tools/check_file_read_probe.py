@@ -20,7 +20,7 @@ if a.prepare:
         prefs=drive/'prefs'
         if prefs.exists():prefs.rmdir() # Fail rather than remove any pre-existing contents.
         saves=drive/'Saved Games';saves.mkdir(exist_ok=True)
-        for basename in ['Resource Probe A','Resource Probe B','.async-probe','.opendf-probe','catalog-probe.bin','metadata-seed.bin','metadata-durable.bin','fork-probe.bin','fork-seed.bin','fork-durable.bin','iZx','i_x','iAx','i0x','i`x']:
+        for basename in ['Resource Mutation','Resource Isolation','Resource Probe A','Resource Probe B','.async-probe','.opendf-probe','catalog-probe.bin','metadata-seed.bin','metadata-durable.bin','fork-probe.bin','fork-seed.bin','fork-durable.bin','iZx','i_x','iAx','i0x','i`x']:
             for suffix in ['', '.finfo','.finfo.new','.finfo.old','.rsrc','.rsrc.aitd-new','.rsrc.aitd-old']:(saves/(basename+suffix)).unlink(missing_ok=True)
         (drive/'data'/'Alone In The Dark.data').unlink(missing_ok=True)
         (saves/'fork-seed.bin').write_bytes(bytes.fromhex('12345678'))
@@ -43,7 +43,7 @@ if a.prepare:
 else:
     log=(root/'amiga/.run/gdb-out.log').read_text()
     marker='PASS file-read: Line-A open/read/seek/EOF/position/close bytes=exact CCR=checked windows=10 DOS-reads=6 max=65536 cleanup=1 GetVol=WD/root/null-name FCB=index/exact/errors HVol=directory/state/errors WD=query/close/filter'
-    if a.write:marker='PASS file-write: Line-A/backend bytes=exact windows=521 writes=24 max=65536 flushes=18 EOF=17/3 cleanup=2 sharing=coherent permissions=0-4/locked volume=name/ref catalog=metadata/durable forks=independent installed=original index=HFS volparms=exact opendf=dot/aliases vinfo=native/catalog async=51/nested/user resources=174/exact staging=9/exact'
+    if a.write:marker='PASS file-write: Line-A/backend bytes=exact windows=727 writes=24 max=65536 flushes=18 EOF=17/3 cleanup=2 sharing=coherent permissions=0-4/locked volume=name/ref catalog=metadata/durable forks=independent installed=original index=HFS volparms=exact opendf=dot/aliases vinfo=native/catalog async=51/nested/user resources=267/exact mutation-faults=2 staging=9/exact'
     if a.status or re.search(r'FAIL|Error in sourced command file|Program received signal',log) or log.count(marker)!=1:
         raise SystemExit('FAIL file-read: missing completion or runner/observer failure')
     if a.write and (drive/'write-probe.bin').read_bytes()!=bytes((i*37+(i>>8))&255 for i in range(17)):
@@ -53,9 +53,11 @@ else:
     if a.write and (drive/'sharing-probe.bin').read_bytes()!=bytes.fromhex('abcdef015678'):
         raise SystemExit('FAIL file-write: shared-writer host bytes after close')
     if a.write:
+        for phase in ['mutation','isolation','rollback']:
+            if log.count('PASS resource '+phase+' disk: exact bodies/IDs/names/attributes/order, empty data fork, no transaction leftovers')!=(2 if phase=='rollback' else 1):raise SystemExit('FAIL file-write: resource mutation/isolation disk acceptance missing')
         if log.count('PASS resource files disk: six exact resources, names/IDs/order, independent data forks, no transaction leftovers')!=1:
             raise SystemExit('FAIL file-write: resource-file disk acceptance missing')
-        for basename in ['Resource Probe A','Resource Probe B']:
+        for basename in ['Resource Mutation','Resource Isolation','Resource Probe A','Resource Probe B']:
             for suffix in ['', '.rsrc','.finfo','.rsrc.aitd-new','.rsrc.aitd-old']:
                 if (drive/'Saved Games'/(basename+suffix)).exists():raise SystemExit('FAIL file-write: resource-file scratch cleanup')
         from resource_fork import read_resource_fork

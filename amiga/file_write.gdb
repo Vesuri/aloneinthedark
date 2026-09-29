@@ -23,9 +23,26 @@ commands
  shell python3 ../tools/check_resource_file_outputs.py
  continue
 end
+break aitdResourceMutationRolledBack
+commands
+ silent
+ shell python3 ../tools/check_resource_mutation_outputs.py rollback
+ continue
+end
+break aitdResourceMutationPersisted
+commands
+ silent
+ if g_resourceMutationStep == 48
+  shell python3 ../tools/check_resource_mutation_outputs.py mutation
+ else
+  shell python3 ../tools/check_resource_mutation_outputs.py isolation
+ end
+ continue
+end
 tbreak aitdFileProbeFinished
 continue
-if g_fileProbeDone != 1 || g_fileProbeError != 0 || g_fileProbeStage != 56 || g_resourceFileStep != 65 || g_resourceFileWindows != 78 || g_resourceFileStackError != 0 || g_resourceStageStep != 10 || g_resourceStageWindows != 56 || g_resourceStageHash != 0xa04280df || g_resourceStageFault != 0 || g_resourceStageError != 0 || g_resourceEnumerationStep != 45 || g_resourceEnumerationHash != 0x8d35d0be || g_resourceLifecycleStep != 29 || g_resourceLifecycleHash != 0x8d35d0be || g_resourceHandleStep != 19 || g_resourceHandleHash != 0x20ac017e || g_resourceLookupStep != 21 || g_resourceLookupHash != 0x54b9dc7d || g_resourceRuntimeReads != 11 || g_resourceRuntimeBytes != 9344 || g_fileAsyncStep != 67 || g_fileAsyncCallbacks != 51 || g_fileAsyncNestedOK != 1 || g_macFileCompletionDepth != 0 || g_fileVInfoProbeStep != 12 || g_fileOpenDFProbeStep != 17 || g_fileVolumeProbeStep != 35 || g_fileProbeWindows != 521 || g_fileIndexProbeStep != 9 || g_fileInstalledProbeStep != 10 || g_fileForkProbeStep != 14 || g_fileCatalogProbeStep != 15 || g_fileOpenHandles != 2 || g_fileReadCalls != 57 || g_fileReadBytes != 867323 || g_fileReadMax != 65536 || g_macServiceActive != 0 || g_macServiceEntered != g_macServiceCompleted
+if g_fileProbeDone != 1 || g_fileProbeError != 0 || g_fileProbeStage != 57 || g_resourceMutationStep != 141 || g_resourceMutationWindows != 206 || g_resourceMutationFaultChecks != 2 || g_resourceMutationLifecycleChecks != 3 || g_resourceFileStep != 65 || g_resourceFileWindows != 78 || g_resourceFileStackError != 0 || g_resourceStageStep != 10 || g_resourceStageWindows != 56 || g_resourceStageHash != 0xa04280df || g_resourceStageFault != 0 || g_resourceStageError != 0 || g_resourceEnumerationStep != 45 || g_resourceEnumerationHash != 0x8d35d0be || g_resourceLifecycleStep != 29 || g_resourceLifecycleHash != 0x8d35d0be || g_resourceHandleStep != 19 || g_resourceHandleHash != 0x20ac017e || g_resourceLookupStep != 21 || g_resourceLookupHash != 0x54b9dc7d || g_resourceRuntimeReads != 11 || g_resourceRuntimeBytes != 9344 || g_fileAsyncStep != 67 || g_fileAsyncCallbacks != 51 || g_fileAsyncNestedOK != 1 || g_macFileCompletionDepth != 0 || g_fileVInfoProbeStep != 12 || g_fileOpenDFProbeStep != 17 || g_fileVolumeProbeStep != 35 || g_fileProbeWindows != 727 || g_fileIndexProbeStep != 9 || g_fileInstalledProbeStep != 10 || g_fileForkProbeStep != 14 || g_fileCatalogProbeStep != 15 || g_fileOpenHandles != 2 || g_fileReadCalls != 132 || g_fileReadBytes != 868833 || g_fileReadMax != 65536 || g_macServiceActive != 0 || g_macServiceEntered != g_macServiceCompleted
+ printf "resource mutation: step=%u value=%08x error=%04x memory=%04x windows=%u D0=%08x\n",g_resourceMutationStep,g_resourceMutationValue,g_resourceMutationError,g_resourceMutationMemory,g_resourceMutationWindows,g_resourceLookupD0
  printf "resource files: step=%u result=%08x stack=%d windows=%u D0=%08x total=%u reads=%u bytes=%u flushes=%u\n",g_resourceFileStep,g_resourceFileResult,g_resourceFileStackError,g_resourceFileWindows,g_resourceLookupD0,g_systemWindows,g_fileReadCalls,g_fileReadBytes,g_fileFlushCalls
  printf "resource staging: error=%d step=%u windows=%u hash=%08x fault=%u total=%u\n",g_resourceStageError,g_resourceStageStep,g_resourceStageWindows,g_resourceStageHash,g_resourceStageFault,g_systemWindows
  printf "FAIL file-write: stage=%u step=%u catalog=%u forks=%u installed=%u index=%u error=%u windows=%u reads=%u bytes=%u max=%u services=%u/%u\n",g_fileProbeStage,g_fileWriteProbeStep,g_fileCatalogProbeStep,g_fileForkProbeStep,g_fileInstalledProbeStep,g_fileIndexProbeStep,g_fileProbeError,g_fileProbeWindows,g_fileReadCalls,g_fileReadBytes,g_fileReadMax,g_macServiceEntered,g_macServiceCompleted
@@ -44,6 +61,6 @@ if g_fileWriteCalls != 24 || g_fileWriteBytes != 470069 || g_fileFlushCalls != 1
  detach
  quit 1
 end
-printf "PASS file-write: Line-A/backend bytes=exact windows=521 writes=24 max=65536 flushes=18 EOF=17/3 cleanup=2 sharing=coherent permissions=0-4/locked volume=name/ref catalog=metadata/durable forks=independent installed=original index=HFS volparms=exact opendf=dot/aliases vinfo=native/catalog async=51/nested/user resources=174/exact staging=9/exact\n"
+printf "PASS file-write: Line-A/backend bytes=exact windows=727 writes=24 max=65536 flushes=18 EOF=17/3 cleanup=2 sharing=coherent permissions=0-4/locked volume=name/ref catalog=metadata/durable forks=independent installed=original index=HFS volparms=exact opendf=dot/aliases vinfo=native/catalog async=51/nested/user resources=267/exact mutation-faults=2 staging=9/exact\n"
 detach
 quit 0

@@ -1494,10 +1494,10 @@ General names, attributes, order, empty data forks and absent staging leftovers.
 Final host checks require both files and companions deleted.
 
 This measured scope covers default/explicit read-write opens and creating maps
-in already-created files. Other permissions/errors, creating absent files,
-ChangedResource/WriteResource/RmveResource and dirty-handle disposal still need
-paired coverage. Unsupported forms stop by trap name. Dirty-resource mutation
-and exit stop explicitly rather than silently losing changes. Application-file
+in already-created files. Other permissions/errors, creating absent files and
+dirty-handle disposal still need paired coverage. ChangedResource, WriteResource
+and RmveResource are now covered by M2.2f4b3b2 below. Unsupported forms stop by
+trap name. Unmeasured dirty-handle operations and dirty exit still stop explicitly. Application-file
 closure and mixed raw-stream/resource updates remain unmeasured loud stops.
 
 The 64-call fixture adds 78 windows and 24 disk reads / 590 bytes. Combined
@@ -1775,3 +1775,52 @@ windows; startup resource reads remain 16 / 96,648 bytes before GetFNum. All
 75,616 A5 bytes match, and the changed directory object passes the generated
 copy audit. No owner decision changed. This commits the independent publication
 model; the native traps remain explicit stops until their integration fixture.
+
+
+### Native resource mutations and isolation (M2.2f4b3b2)
+
+The loader tracks per-entry dirty/never-published state alongside handles, remapped
+by stable identity. ChangedResource marks a resident body without replacing the
+saved source. WriteResource selects only that body's handle source for staged
+publication; UpdateResFile selects every remaining dirty body. Successful rebase
+switches saved offsets and clears only published state. Empty/reload of an
+already saved dirty resource reads its old source and discards the pending change.
+Map-change bookkeeping remains separate from body dirtiness, preserving the
+measured MemErr difference between an initial-map update and a clean update.
+
+AddResource sets the changed attribute. GetResAttrs zero-extends the defined
+attribute byte and preserves D0/MemErr; removed handles return zero/-192.
+RmveResource invalidates the resource identity and clears its handle association
+without freeing the caller's body, allowing re-add under another ID. Nil/add and
+nil/removed change/write/remove errors use the measured results. Clean writes
+without ChangedResource do not publish resident edits. Dirty release preserves
+the handle; dirty detach returns -198 without changing it. Unmeasured operations
+retain named stops, including writes amid unpublished peers or pending map edits.
+
+The native fixture runs the 50-call mutation and 40-call isolation contracts,
+checking exact error/register/stack results, defined attributes, body bytes,
+independent duplicate handles and first-duplicate lookup. Two injected publication
+failures (publish rename and backup cleanup) retain the dirty handle and exact
+old empty fork, verified independently before a successful retry. Independent
+readers also check the final mutation fork (duplicate ID 128 `DDDD`, re-added ID
+129 `BBBB`) and isolation fork (`EEEE`/`FFFF`), names, attributes, reference order,
+empty data forks and absent transaction leftovers. Final acceptance requires
+both scratch files and companions deleted.
+
+Three additional native calls check dirty ReleaseResource, rejected dirty
+DetachResource and retained changed attributes against the dirty-lifecycle Mac
+capture. All preserve the handle/body and measured D0/MemErr. Combined acceptance
+is 267 paired resource calls, nine existing staging cases and two mutation
+rollback cases. The mutation fixture adds 206 windows; complete file-write totals
+are 727 windows and 132 File Manager reads / 868,833 bytes, maximum 65,536.
+
+Validation: original-byte/reference checkers, full host suite, all five native
+68020 regressions and all four startup observers pass with normal exits. The
+final file-write rerun includes direct dirty release/detach checks and both
+independent rollback/final-fork readers. All 75,616 A5 bytes match; production
+still stops at GetFNum after 16 resource reads / 96,648 bytes. A clean production
+build restores the non-probe executable with no-float/probe audits passing.
+No owner decision changed; rendered-video acceptance remains owner-deferred.
+
+The final MacLoader object has no shared-base postincrement byte-copy occurrences.
+The queued QuickDraw pattern dump remains necessary before accepting M2.3a.

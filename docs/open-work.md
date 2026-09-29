@@ -67,14 +67,24 @@ required.
       uninitialized upper-byte scratch (traced and poison-verified). Return a
       zero-extended attribute byte natively. Unmeasured variants remain named
       stops and queued.
-      - **M2.2f4b3b2 Native mutation integration.** Bind ChangedResource,
-        WriteResource, RmveResource and attribute state to the selective payload
-        publisher. Keep pending resident changes distinct from the saved sources
-        used for reload, and preserve independent duplicate identities.
-        *Done when* native fixtures match the 50-call mutation and 40-call
-        isolation references, exact saved forks and cleanup are checked,
-        rollback/error evidence and all regressions pass. Any unmeasured
-        combination must retain a named stop and its own acceptance item.
+      - **M2.2f4b3c Writes amid pending map edits.** The native traps now match
+        ordinary dirty writes, duplicates, removal/re-add and saved-resource write
+        isolation. Writes with another never-published entry or a pending map
+        edit remain `RESOURCE WRITE WITH UNWRITTEN PEER` / `RESOURCE WRITE WITH
+        PENDING MAP EDIT` stops. *Done when* exclusive Mac fixtures establish both
+        contracts and native fixtures verify exact selected/unselected reload and
+        persisted bytes, rollback and cleanup without body preloading.
+      - **M2.2f4b4 Permissions and creation variants.** Implement the measured
+        59-call permissions/creation contract, including read-only in-memory
+        removal and close-after-update-error. *Done when* the native fixture
+        matches the Mac errors/registers/bytes and all regressions pass.
+      - **M2.2f4b5 Remaining dirty lifecycle and exit.** Complete paired dirty
+        lifecycle and exit persistence. Never-published empty/reload and dirty
+        resize/dispose/purge remain explicit stops until their reached contract
+        is measured. *Done when* native fixtures cover the 45-call lifecycle and
+        exit persistence references, required newly reached variants, exact saved
+        bytes, restoration/cleanup, and all regressions.
+
 
 
 
