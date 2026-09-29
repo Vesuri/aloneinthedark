@@ -1,0 +1,92 @@
+#!/usr/bin/env python3
+"""Compare owned eight-bit GWorld records, lookup tables and untouched screen."""
+import argparse
+import hashlib
+import re
+import struct
+from pathlib import Path
+from check_choice_services import one, PRESERVED
+from check_getgworld import fields
+from resource_fork import read_resource_fork
+
+NAMES=['pixmap','pixels','ctable','visibility','clip','grafvars','backpat','penpat','fillpat','backpat-map','backpat-data','backpat-xdata','backpat-xmap','penpat-map','penpat-data','penpat-xdata','penpat-xmap','fillpat-map','fillpat-data','fillpat-xdata','fillpat-xmap','grafvars-child','backpat-table','penpat-table','fillpat-table','device-map','device-inverse']
+POINTERS={'port':{2:'pixmap',8:'grafvars',24:'visibility',28:'clip',32:'backpat',58:'penpat',62:'fillpat'},'pixmap':{0:'pixels',42:'ctable'},'device-map':{0:'pixels',42:'ctable'},'grafvars':{26:'grafvars-child'},'grafvars-child':{6:'device-inverse',22:'device-map'}}
+for name in ('backpat','penpat','fillpat'):
+    POINTERS[name]={2:name+'-map',6:name+'-data',10:name+'-xdata',16:name+'-xmap'}
+    POINTERS[name+'-map']={42:name+'-table'}
+
+
+def u32(data,at=0):
+    return struct.unpack_from('>I',data,at)[0]
+
+
+def check(reference,native,reference_status,native_status,resource,folder):
+    code=next(r.body for r in read_resource_fork(resource) if r.kind==b'CODE' and r.rid==10)[0x50:0x76]
+    assert hashlib.sha256(code).hexdigest()=='4a24b196d92950126c330581d9d5c728c555769313b05bcbfd61cd0c9699d5a5','original constructor bytes'
+    captures={};records={}
+    for side,text,status in [('reference',reference,reference_status),('native',native,native_status)]:
+        assert status==0 and not any(x in text for x in ('FAIL','Error in','LUA ERROR','TIMEOUT','Program received signal')),side+' bounded run'
+        marker='PASS original NewGWorld ownership' if side=='reference' else 'PASS native NewGWorld next-stop original-MDRV=absent'
+        ending='Exited via the debugger' if side=='reference' else '[Inferior 1 (Remote target) detached]'
+        assert text.count(marker)==text.count(ending)==1,side+' positive normal completion'
+        e=fields(one(text,r'GW_ENTER (.*)'));r=fields(one(text,r'GW_RETURN (.*)'))
+        assert bytes.fromhex(one(text,r'GW_BYTES data=([0-9A-F]+)'))==code,side+' live bytes'
+        assert (e['flags'],e['device'],e['depth'])==(8,0,8) and e['ctable'] and e['output'],side+' original arguments'
+        assert r['sp']==e['sp']+22 and r['result']==0 and r['world'] and r['d0']==r['d1']==r['d2']==0 and r['a0']==e['output'],side+' return contract'
+        assert all(e[k]==r[k] for k in PRESERVED),side+' preserved registers'
+        records[side]={name:fields(one(text,rf'GW_AUX label={name} (.*)')) for name in NAMES}
+        assert len(set(v['handle'] for v in records[side].values()))==27,side+' independent owned handles'
+        assert r['clutHandle']!=e['ctable'],side+' distinct copied colour handle'
+        assert r['a1']==records[side]['visibility']['body'],side+' returned visibility scratch pointer'
+        captures[side]={name:(folder/f'gworld-{side}-aux-{name}.bin').read_bytes() for name in NAMES}
+        captures[side]['port']=(folder/f'gworld-{side}-port.bin').read_bytes()
+        for name,record in records[side].items():
+            assert len(captures[side][name])==record['size'],side+'/'+name+' complete body'
+        bounds=(folder/f'gworld-{side}-bounds.bin').read_bytes()
+        assert bounds==bytes.fromhex('0000000001910288'),side+' bounds'
+        assert captures[side]['ctable']==(folder/f'gworld-{side}-input-clut.bin').read_bytes(),side+' independent exact colour copy'
+        assert captures[side]['device-inverse'][:4]==captures[side]['ctable'][:4],side+' inverse seed matches copied colours'
+        assert records[side]['pixels']['size']==652*401,side+' pixel extent'
+        for name in ('device','pixels'):
+            assert (folder/f'gworld-{side}-before-{name}.bin').read_bytes()==(folder/f'gworld-{side}-after-{name}.bin').read_bytes(),side+' unchanged screen '+name
+        for name,data in captures[side].items():
+            for at,target in POINTERS.get(name,{}).items():
+                assert u32(data,at)==records[side][target]['handle'],side+'/'+name+' owned '+target
+        assert r['base']==records[side]['pixels']['handle'] and r['baseLong']==records[side]['pixels']['body'],side+' unlocked pixel handle'
+        if side=='reference':
+            for name in NAMES:
+                flags=fields(one(text,rf'GW_FLAGS label={name} (.*)'));owner=fields(one(text,rf'GW_OWNER label={name} (.*)'))
+                assert flags=={'flags':0,'memerr':0} and owner['owner']==owner['zone']==e['zone'] and owner['memerr']==0,'reference '+name+' ownership'
+        else:
+            heap=(folder/'gworld-native-heap.bin').read_bytes();zone=e['zone'];masters={};at=64
+            while at<len(heap)-16:
+                span,logical,owner,kind,_,_=struct.unpack_from('>6I',heap,at)
+                assert span>=24 and at+span<=len(heap)-16,'heap block chain'
+                if kind==3:
+                    for i in range(owner):masters[zone+at+24+i*4]=(u32(heap,at+24+i*4),heap[at+24+owner*4+i])
+                at+=span
+            for name,v in records[side].items():
+                assert masters[v['handle']]==(v['body'],1),name+' active unlocked nonpurgeable master'
+                assert v['kind']==2 and v['owner']==v['handle']-zone,name+' owning block'
+                assert u32(heap,v['body']-zone-20)==v['size'],name+' logical size'
+            assert u32(heap,r['world']-zone-20)==108 and u32(heap,r['world']-zone-12)==1,'owned fixed port pointer'
+    for name in NAMES+['port']:
+        if name=='pixels':continue # NewGWorld pixel contents are uninitialized, not a frame.
+        normalized=[]
+        for side in ('reference','native'):
+            data=bytearray(captures[side][name])
+            for at in POINTERS.get(name,{}):data[at:at+4]=bytes(4)
+            if name in ('ctable','device-inverse'):data[:4]=bytes(4)
+            if name=='device-inverse':data=data[:4364] # Exclude undefined tail scratch bytes.
+            normalized.append(data)
+        assert normalized[0]==normalized[1],'paired '+name+' defined bytes'
+    print('PASS paired NewGWorld: 27 owned handles, port/PixMaps/patterns/device, 4096 inverse entries and collision links, exact colour copy, 261452 pixel bytes; '+one(native,r'GW_NEXT (state=3 trap=AB1D selector=6 segment=10 offset=8E manager=QUICKDRAW routine=SETGWORLD windows=(?:75|101) services=(?:129/129|137/137))'))
+
+
+if __name__=='__main__':
+    p=argparse.ArgumentParser(description=__doc__)
+    p.add_argument('reference',type=Path);p.add_argument('native',type=Path)
+    p.add_argument('--reference-status',type=int,required=True);p.add_argument('--native-status',type=int,required=True)
+    p.add_argument('--resource',type=Path,default=Path('tmp/runtime-data/Alone In The Dark'))
+    p.add_argument('--folder',type=Path,default=Path('tmp'))
+    a=p.parse_args();check(a.reference.read_text(),a.native.read_text(),a.reference_status,a.native_status,a.resource,a.folder)

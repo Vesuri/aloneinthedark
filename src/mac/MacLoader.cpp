@@ -9,6 +9,7 @@
 #include "Palette8.h"
 #include "WindowGeometry.h"
 #include "RegionRows.h"
+#include "GWorld8.h"
 #include "SoundDriver.h"
 #include "MenuRecords.h"
 #include "AppleEventHandlers.h"
@@ -409,17 +410,13 @@ static uint32_t probeNonzeroBytes(const uint8_t* data, uint16_t bytes)
 #endif
 
 struct GWorldSlot {
-    uint8_t port[108];
-    uint8_t pixMap[50];
-    uint8_t* pixMapMaster;
-    uint8_t colorTable[8 + 16 * 8];
-    uint8_t* colorTableMaster;
-    uint8_t** palette;
-    uint8_t visRegion[10];
-    uint8_t* visRegionMaster;
-    uint8_t clipRegion[10];
-    uint8_t* clipRegionMaster;
+    uint8_t* port;
+    uint8_t* pixMap;
+    uint8_t* colorTable;
     uint8_t* pixels;
+    uint8_t** handles[27]; // PM, pixels, table, regions, GrafVars, patterns/device.
+    MacHeap* owner;
+    uint8_t** palette;
     bool used;
     bool locked;
     bool purgeable;
@@ -1047,8 +1044,23 @@ static void blockFill(uint8_t* destination, uint32_t count, uint8_t value)
     if (count) *destination = value;
 }
 
+static void refreshGWorldViews()
+{
+    for(uint16_t i=0;i<8;++i) {
+        GWorldSlot& w=s_gworlds[i];
+        if(!w.used)continue;
+        w.pixMap=w.handles[0] ? *w.handles[0] : 0;
+        w.pixels=w.handles[1] ? *w.handles[1] : 0;
+        w.colorTable=w.handles[2] ? *w.handles[2] : 0;
+        if(w.pixMap)write32(w.pixMap,w.locked ? (uint32_t)w.pixels : (uint32_t)w.handles[1]);
+        if(w.handles[25] && *w.handles[25])
+            write32(*w.handles[25],w.locked ? (uint32_t)w.pixels : (uint32_t)w.handles[1]);
+    }
+}
+
 static void refreshCodeViews()
 {
+    refreshGWorldViews();
     g_loadedCodeMask=s_segments[0].begin ? 1 : 0;
     for(uint16_t n=1;n<s_segmentCount;++n) {
         Segment& segment=s_segments[n];
@@ -4386,68 +4398,84 @@ static void activatePalette(uint8_t* window)
     }
 }
 
-static void initGWorldColorTable(uint8_t* table)
+static void releaseGWorld(GWorldSlot& world)
 {
-    // With a null CTable and GDevice, NewGWorld copies the current device
-    // color table.  It must remain a snapshot: Vette changes the window palette
-    // after creating the rotating-car world, then CopyBits maps between them.
-    blockMove(s_windowManagerColors, table, sizeof(s_windowManagerColors));
+    if(world.owner) {
+        for(uint16_t i=0;i<27;++i)if(world.handles[i])world.owner->disposeHandle(world.handles[i]);
+        if(world.port)world.owner->disposePtr(world.port);
+    }
+    for(uint16_t i=0;i<27;++i)world.handles[i]=0;
+    world.port=world.pixMap=world.colorTable=world.pixels=0;
+    world.owner=0;world.palette=0;world.used=world.locked=world.purgeable=false;
 }
 
-static uint8_t* newGWorld(const uint8_t* bounds, uint16_t depth)
+static uint8_t* newGWorld(const uint8_t* bounds,uint16_t depth,MacHeap::Handle colors)
 {
-    GWorldSlot* slot = 0;
-    for (uint16_t i = 0; i < sizeof(s_gworlds) / sizeof(s_gworlds[0]); ++i)
-        if (!s_gworlds[i].used) { slot = &s_gworlds[i]; break; }
-    if (!slot || !bounds) return 0;
-    for (uint16_t i = 0; i < sizeof(slot->port); ++i) slot->port[i] = 0;
-    for (uint16_t i = 0; i < sizeof(slot->pixMap); ++i) slot->pixMap[i] = 0;
-    int16_t top = (int16_t)read16(bounds);
-    int16_t left = (int16_t)read16(bounds + 2);
-    int16_t bottom = (int16_t)read16(bounds + 4);
-    int16_t right = (int16_t)read16(bounds + 6);
-    uint16_t pixelDepth = depth ? depth : 4;
-    uint16_t width = (uint16_t)(right - left);
-    uint16_t height = (uint16_t)(bottom - top);
-    // Color VETTE! predates System 7.1 and directly relies on the original
-    // NewGWorld stride: round to a 32-bit boundary, then reserve one more
-    // 32-bit slop word.  Omitting that word makes its 3D renderer advance 260
-    // bytes through a PixMap advertised as 256 bytes wide, producing the
-    // characteristic repeating/cyclic corruption seen on newer Mac systems.
-    uint16_t rowBytes = (uint16_t)((((uint32_t)width * pixelDepth + 31) >> 5 << 2) + 4);
-    uint32_t pixelBytes = (uint32_t)rowBytes * height;
-    slot->pixels = (uint8_t*)AllocMem(pixelBytes, MEMF_CLEAR);
-    if (!slot->pixels) return 0;
-    s_gworldAllocationBytes[slot - s_gworlds] = pixelBytes;
-    slot->used = true;
-    slot->locked = false;
-    slot->purgeable = true;
-    slot->palette = 0;
-    slot->pixMapMaster = slot->pixMap;
-    slot->colorTableMaster = slot->colorTable;
-    initGWorldColorTable(slot->colorTable);
-    write32(slot->pixMap, (uint32_t)slot->pixels);
-    write16(slot->pixMap + 4, (uint16_t)(0x8000 | rowBytes));
-    writeRect(slot->pixMap + 6, top, left, bottom, right);
-    write32(slot->pixMap + 22, 72UL << 16);
-    write32(slot->pixMap + 26, 72UL << 16);
-    write16(slot->pixMap + 30, 0);
-    write16(slot->pixMap + 32, pixelDepth);
-    write16(slot->pixMap + 34, 1);
-    write16(slot->pixMap + 36, pixelDepth);
-    write32(slot->pixMap + 42, (uint32_t)&slot->colorTableMaster);
-    initRegion(slot->visRegion, slot->visRegionMaster, top, left, bottom, right);
-    initRegion(slot->clipRegion, slot->clipRegionMaster, top, left, bottom, right);
-    initColorPort(slot->port, &slot->visRegionMaster, &slot->clipRegionMaster,
-                  top, left, bottom, right);
-    write32(slot->port + 2, (uint32_t)&slot->pixMapMaster);
-    return slot->port;
+    MacHeap* colorOwner=handleZone(colors);
+    if(!bounds || depth!=8 || !colorOwner || !*colors || colorOwner->handleSize(colors)!=2056
+       || read16(*colors+6)!=255 || read16(*colors+4)!=0)return 0;
+    GWorld8::Rect r{(int16_t)read16(bounds),(int16_t)read16(bounds+2),
+        (int16_t)read16(bounds+4),(int16_t)read16(bounds+6)};
+    GWorld8::Layout layout;
+    if(!GWorld8::layout(r,layout))return 0;
+    GWorldSlot* slot=0;
+    for(uint16_t i=0;i<8;++i)if(!s_gworlds[i].used) { slot=&s_gworlds[i];break; }
+    if(!slot)return 0; // Explicit unsupported stop, not a guessed memFullErr.
+    // Allocations can compact or purge either zone. Keep the caller's source
+    // table resident until the independent copy is complete, then restore flags.
+    struct RestoreColorState {
+        MacHeap* owner;MacHeap::Handle handle;uint8_t state;
+        ~RestoreColorState() { owner->setState(handle,state); }
+    } restore{colorOwner,colors,colorOwner->state(colors)};
+    colorOwner->setState(colors,restore.state|0x80);
+    slot->owner=s_currentZone;
+    slot->port=slot->owner->newPtr(108,true);
+    if(!slot->port) { releaseGWorld(*slot);return 0; }
+    const uint32_t sizes[27]={50,layout.pixelBytes,2056,10,10,46,28,28,28,
+        50,8,2,22,50,8,2,22,50,8,2,22,62,24,24,24,50,4620};
+    for(uint16_t i=0;i<27;++i) {
+        slot->handles[i]=slot->owner->newHandle(sizes[i],i!=1);
+        if(!slot->handles[i]) { releaseGWorld(*slot);memoryResult(MacHeap::memFullErr);return 0; }
+    }
+    uint8_t*** h=slot->handles;
+    // All allocations are finished before dereferencing movable bodies.
+    for(uint16_t i=0;i<2056;++i)MenuRecords::copyByte(*h[2]+i,*colors+i);
+    GWorld8::pixmap(*h[0],(uint32_t)h[1],(uint32_t)h[2],r,layout);
+    GWorld8::pixmap(*h[25],(uint32_t)h[1],(uint32_t)h[2],r,layout);
+    write16(*h[3],10);GWorld8::rect(*h[3]+2,r);
+    write16(*h[4],10);GWorld8::rect(*h[4]+2,{-32767,-32767,32767,32767});
+    write16(*h[5]+24,0x8000);write32(*h[5]+26,(uint32_t)h[21]);(*h[5])[30]=1;
+    uint8_t* gd=*h[21];
+    write32(gd+6,(uint32_t)h[26]);write16(gd+10,4);write16(gd+20,0x4001);
+    write32(gd+22,(uint32_t)h[25]);GWorld8::rect(gd+34,r);write32(gd+42,0xffffffffUL);
+    for(uint16_t pat=0;pat<3;++pat) {
+        uint16_t first=9+pat*4;
+        uint8_t* pattern=*h[6+pat];uint8_t* pm=*h[first];uint8_t* ct=*h[22+pat];
+        write32(pattern+2,(uint32_t)h[first]);write32(pattern+6,(uint32_t)h[first+1]);
+        write32(pattern+10,(uint32_t)h[first+2]);write16(pattern+14,0xffff);
+        write32(pattern+16,(uint32_t)h[first+3]);
+        for(uint16_t i=0;i<8;++i) { pattern[20+i]=(i&1)?0x55:0xaa;(*h[first+1])[i]=pat?255:0; }
+        write16(pm+4,1);writeRect(pm+6,0,0,8,8);write32(pm+22,72UL<<16);write32(pm+26,72UL<<16);
+        write16(pm+32,1);write16(pm+34,1);write16(pm+36,1);write32(pm+42,(uint32_t)h[22+pat]);
+        write32(ct,1);write16(ct+6,1);write16(ct+10,0xffff);write16(ct+12,0xffff);write16(ct+14,0xffff);write16(ct+16,1);
+    }
+    // Temporary colour-search workspace, never a shadow framebuffer.
+    uint16_t* workspace=(uint16_t*)AllocMem((5832UL+4096)*2,MEMF_FAST);
+    if(!workspace) { releaseGWorld(*slot);return 0; }
+    bool built=GWorld8::inverse(*h[2],4,*h[26],workspace,workspace+5832);
+    FreeMem(workspace,(5832UL+4096)*2);
+    if(!built) { releaseGWorld(*slot);return 0; }
+    GWorld8::port(slot->port,(uint32_t)h[0],(uint32_t)h[5],(uint32_t)h[3],(uint32_t)h[4],
+        (uint32_t)h[6],(uint32_t)h[7],(uint32_t)h[8],r);
+    slot->used=true;slot->locked=false;slot->purgeable=false;slot->palette=0;
+    s_gworldAllocationBytes[slot-s_gworlds]=layout.pixelBytes;
+    memoryResult(0);return slot->port;
 }
 
 static GWorldSlot* gWorldForPixMap(uint8_t** pixMap)
 {
     for (uint16_t i = 0; i < sizeof(s_gworlds) / sizeof(s_gworlds[0]); ++i)
-        if (s_gworlds[i].used && &s_gworlds[i].pixMapMaster == pixMap) return &s_gworlds[i];
+        if (s_gworlds[i].used && s_gworlds[i].handles[0] == pixMap) return &s_gworlds[i];
     return 0;
 }
 
@@ -5841,7 +5869,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     if(read16(s_windowManagerPixMap+32)==8) {
         switch(trap) {
         case 0xab1d:
-            if((uint16_t)regs[0]!=5 && (uint16_t)regs[0]!=6) { unsupportedGraphics=true;goto unsupportedTrap; }
+            if((uint16_t)regs[0]!=0 && (uint16_t)regs[0]!=5 && (uint16_t)regs[0]!=6) { unsupportedGraphics=true;goto unsupportedTrap; }
             break;
         case 0xa8f6: case 0xa8a1: case 0xa8a3: case 0xa8a4: case 0xa8a5:
         case 0xa8ec: case 0xa90d: case 0xa91f:
@@ -7227,12 +7255,15 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         if (g_stageCDepth < 55) g_stageCDepth = 55;
         return 5;
     }
-    if (trap == 0xab1d && (uint16_t)regs[0] == 0) {    // QDExtensions: NewGWorld
-        const uint8_t* bounds = (const uint8_t*)read32(userStack + 12);
-        uint8_t* world = newGWorld(bounds, read16(userStack + 16));
-        write32((uint8_t*)read32(userStack + 18), (uint32_t)world);
-        write16(userStack + 22, world ? 0 : (uint16_t)-108);
-        if (g_stageCDepth < 40) g_stageCDepth = 40;
+    if (trap == 0xab1d && (uint16_t)regs[0] == 0) {    // NewGWorld: measured keepLocal 8-bit request
+        uint8_t* output=(uint8_t*)read32(userStack+18);
+        if(!output || read32(userStack)!=8 || read32(userStack+4))goto unsupportedTrap;
+        uint8_t* world=newGWorld((const uint8_t*)read32(userStack+12),read16(userStack+16),
+            (MacHeap::Handle)read32(userStack+8));
+        if(!world)goto unsupportedTrap;
+        write32(output,(uint32_t)world);write16(userStack+22,0);
+        regs[0]=regs[1]=regs[2]=0;regs[8]=(uint32_t)output;
+        regs[9]=(uint32_t)*gWorldForPort(world)->handles[3];
         return 23;
     }
     if (trap == 0xab1d && (uint16_t)regs[0] == 1) {    // QDExtensions: LockPixels
@@ -7458,18 +7489,10 @@ static void releaseRuntimeAllocations()
 #endif
     for (uint16_t i = 0; i < sizeof(s_gworlds) / sizeof(s_gworlds[0]); ++i) {
         GWorldSlot& world = s_gworlds[i];
-        if (world.pixels) {
-            FreeMem(world.pixels, s_gworldAllocationBytes[i]);
 #ifdef AITD_PROBE
-            ++g_probeReleasedGWorlds;
+        if(world.used)++g_probeReleasedGWorlds;
 #endif
-        }
-        world.pixels = 0;
-        s_gworldAllocationBytes[i] = 0;
-        world.used = false;
-        world.locked = false;
-        world.purgeable = false;
-        world.palette = 0;
+        releaseGWorld(world);s_gworldAllocationBytes[i]=0;
     }
 
 }

@@ -2805,7 +2805,7 @@ with their corresponding Mac observers and paired checkers. The contracts and
 local evidence are in [window-geometry.md](window-geometry.md). Host geometry
 checks are part of `make host-tests`. ShowHide's background clear is verified
 against its full complex region and must leave the viewport, palette and frame
-queue unchanged. Current startup observers pin NewGWorld at Misc2+$0074; a timeout or a different stop is not acceptance.
+queue unchanged. Current startup observers pin offscreen SetGWorld at Misc2+$008E; a timeout or a different stop is not acceptance.
 
 
 ## Startup clock query
@@ -2872,3 +2872,25 @@ passes including 2,500 fragmentation operations; both link audits pass. All
 handbacks and 129 services; original MDRV is absent. The next named stop is
 QUICKDRAW / NEWGWORLD, selector 0, Misc2+$0074. Full region drawing and intro
 acceptance remain pending.
+
+
+## Owned eight-bit offscreen allocation
+
+NewGWorld at Misc2+$0074 now constructs a real eight-bit world, including its
+pixel handle, 27 owned auxiliary handles and private device. Complete defined
+records and pointer relationships match the Mac. The measured inverse-table
+builder matches all 4,096 entries and 256 collision links; source colour-table
+flags are preserved across protected allocation. Main device and screen bytes
+remain unchanged. See [gworld.md](gworld.md) for contracts and reproduction.
+
+The full host suite, exact inverse reference comparison, final native allocation,
+original startup and AGA publication pass. The accepted final runtime evidence
+is `tmp/m2-newgworld-final2-*`; the reference is
+`tmp/m2-newgworld-ownership-all.log`. Both link audits pass, and all 75,616 A5
+bytes match. Original resource reads remain 39 / 177,820 bytes, with
+75 OS handbacks and 129 services. Original MDRV is absent. A stale expected-stop value in an
+earlier startup observer was corrected; that rejected run is not acceptance.
+
+The next stop is offscreen SetGWorld, Misc2+$008E. The subsequent original
+bind/clip/lock/erase/unlock/restore sequence is one coherent queue item; this
+allocation does not claim initialized offscreen pixels or logo/intro acceptance.

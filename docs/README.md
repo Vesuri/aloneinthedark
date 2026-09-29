@@ -11,6 +11,7 @@ Start with the [project README](../README.md).
 - [Source inventory](source-inventory.md): original application/resource layout.
 - [Static map](static-map.md): CODE segments, A5 world and CPU requirements.
 - [Macintosh reference](mac-reference-loop.md): local oracle setup and capture.
+- [Offscreen worlds](gworld.md): owned eight-bit worlds and measured inverse colour tables.
 - [Graphics device](graphics-device.md): measured original selection and display records.
 - [Screen choice](screen-choice.md): hidden fixed-size selection and original contracts.
 - [SANE positioning](sane.md): integer-only arithmetic, original inputs and verification.

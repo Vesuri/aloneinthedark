@@ -73,6 +73,9 @@ Misc2+$1D9C–$1DA9 has SHA-256
 `fb490c8d89ec18e2450bab69eff1861a43f579444050b9850a75e26b8c3390b7`.
 Broader region operations and clipped drawing remain M2.8 work.
 
+See [offscreen worlds](gworld.md) for the real eight-bit allocation, private
+device, owned auxiliary handles and measured inverse-colour lookup.
+
 ## Timing and input
 
 The VBI advances `g_vbiCount` per PAL field and Macintosh Ticks at 60 Hz. CIA
