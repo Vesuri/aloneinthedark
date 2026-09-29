@@ -28,6 +28,9 @@ measured system-font advances. Startup realizes all 256 device colours and clear
 area. The eight-plane display publishes that clear and its complete 256-colour
 palette during vertical blank. Window palette binding now matches the Mac;
 the already-realized ActivatePalette call also passes without changing colours.
+Colour-window constructors and movement now use the measured local coordinates,
+per-window pixel maps and independent regions. The first client frame still
+matches the reference and publishes through all eight AGA planes; no Mac chrome is drawn.
 Startup stops explicitly at `SHOWHIDE` (Misc1+$0FC6). The original mixer
 is never loaded. The game is not playable yet.
 Other processors and performance work remain deferred.

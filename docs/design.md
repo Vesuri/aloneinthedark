@@ -525,14 +525,17 @@ Native trap probes, host fragmentation tests and paired heap captures verify it:
   screen: `SetWTitle`, `SizeWindow`, `BringToFront`, `SendBehind`, `TrackGoAway`,
   and the rest. The "Background Hider" (WIND 131) is a full-screen black window.
   It stays; the viewport shows the game window over it.
+  Colour windows use local port rectangles and independent PixMap headers over
+  shared screen pixels. Their hidden/moved/shown regions follow the measured
+  contracts in [window-geometry.md](window-geometry.md); structure metadata does
+  not draw Mac chrome.
 - **Screen size (D4).** Only 320×200 is supported, and the screen-size dialog
   (DLOG 1000) is never shown.
   - Original Core+$050E calls the selector unconditionally: a `PREF` override
     cannot suppress the dialog. The measured service seam is `ModalDialog`
     returning item 2 for DLOG 1000, with dialog presentation suppressed (D4).
     Hidden construction, positioning, selection, item lookup/disposal and main-world
-    restoration are verified. Native WIND 128 request acceptance remains behind
-    the newly reached colour-table prerequisite.
+    restoration and the native WIND 128 request are verified.
   - The original updates only PREF byte 7 and picks WIND 128 at Misc1+$1084
     (the high-resolution branch at +$107E picks WIND 132). See
     [screen-choice.md](screen-choice.md) for both preference-input captures.

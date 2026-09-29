@@ -7,6 +7,7 @@
 #include "MacHeap.h"
 #include "BitmapFont.h"
 #include "Palette8.h"
+#include "WindowGeometry.h"
 #include "SoundDriver.h"
 #include "MenuRecords.h"
 #include "AppleEventHandlers.h"
@@ -262,8 +263,10 @@ static uint8_t* s_mouseGlobalsA5;
 struct WindowSlot {
     uint8_t record[170];                    // WindowRecord plus DialogRecord tail
     uint8_t* window;
+    uint8_t pixelMap[50];
+    uint8_t* pixelMapMaster;
     bool used;
-    uint8_t structureRegion[10];
+    uint8_t structureRegion[44];
     uint8_t* structureRegionMaster;
     uint8_t contentRegion[10];
     uint8_t* contentRegionMaster;
@@ -1662,15 +1665,21 @@ static uint8_t* newColorWindow(int16_t id, uint8_t* storage, uint8_t* behind)
     if (storage)
         for (uint16_t i = 0; i < 156; ++i) storage[i] = 0;
 
-    initRegion(slot->structureRegion, slot->structureRegionMaster,
-               top, left, bottom, right);
-    initRegion(slot->contentRegion, slot->contentRegionMaster,
-               top, left, bottom, right);
-    initRegion(slot->clipRegion, slot->clipRegionMaster,
-               top, left, bottom, right);
-    initRegion(slot->updateRegion, slot->updateRegionMaster, 0, 0, 0, 0);
-    initColorPort(window, &slot->contentRegionMaster, &slot->clipRegionMaster,
-                  top, left, bottom, right);
+    WindowGeometry::Rect port,pixels;
+    if(!WindowGeometry::layout({top,left,bottom,right},port,pixels)) {
+        loaderStop("WINDOW GEOMETRY",0);showLoaderStop();
+    }
+    initRegion(slot->visibilityRegion,slot->visibilityRegionMaster,0,0,0,0);
+    initRegion(slot->structureRegion,slot->structureRegionMaster,0,0,0,0);
+    initRegion(slot->contentRegion,slot->contentRegionMaster,0,0,0,0);
+    initRegion(slot->clipRegion,slot->clipRegionMaster,-32767,-32767,32767,32767);
+    initRegion(slot->updateRegion,slot->updateRegionMaster,0,0,0,0);
+    initColorPort(window,&slot->visibilityRegionMaster,&slot->clipRegionMaster,
+                  port.top,port.left,port.bottom,port.right);
+    for(uint16_t i=0;i<50;++i)MenuRecords::copyByte(slot->pixelMap+i,s_windowManagerPixMap+i);
+    slot->pixelMapMaster=slot->pixelMap;
+    writeRect(slot->pixelMap+6,pixels.top,pixels.left,pixels.bottom,pixels.right);
+    write32(window+2,(uint32_t)&slot->pixelMapMaster);
     for(uint16_t i=0;i<3;++i)write16(window+42+i*2,read16(*colors+10+i*2));
     // The reached wctb backgrounds and initial foreground are exact black.
     // Other colour matching requires its own measured Color Manager contract.
@@ -1679,7 +1688,7 @@ static uint8_t* newColorWindow(int16_t id, uint8_t* storage, uint8_t* behind)
     }
     write32(window+80,255);write32(window+84,255);
 
-    write16(window + 108, 0);                         // windowKind
+    write16(window + 108, 8);                         // measured colour user window
     window[110] = wind[10];                           // visible
     window[112] = wind[12];                           // goAwayFlag
     write32(window + 114, (uint32_t)&slot->structureRegionMaster);
@@ -1888,12 +1897,51 @@ static bool prepareWindowPalette(MacHeap::Handle palette)
     return flags==0xc002 && state==1;
 }
 
+static bool colorWindowFrame(const WindowSlot& slot,WindowGeometry::Rect& bounds)
+{
+    if(slot.dialog || !slot.window || slot.pixelMapMaster!=slot.pixelMap
+       || read32(slot.window+2)!=(uint32_t)&slot.pixelMapMaster)return false;
+    WindowGeometry::Rect port{(int16_t)read16(slot.window+16),(int16_t)read16(slot.window+18),
+        (int16_t)read16(slot.window+20),(int16_t)read16(slot.window+22)};
+    WindowGeometry::Rect pixels{(int16_t)read16(slot.pixelMap+6),(int16_t)read16(slot.pixelMap+8),
+        (int16_t)read16(slot.pixelMap+10),(int16_t)read16(slot.pixelMap+12)};
+    return WindowGeometry::frame(port,pixels,bounds);
+}
+
+static bool moveHiddenColorWindow(WindowSlot& slot,int16_t h,int16_t v,bool /*front*/)
+{
+    // Already frontmost: either front flag leaves the window chain unchanged.
+    WindowGeometry::Rect old;
+    if(!colorWindowFrame(slot,old) || slot.window[110] || slot.window!=s_windowList)return false;
+    int32_t bottom=int32_t(v)+old.bottom-old.top,right=int32_t(h)+old.right-old.left;
+    if(!WindowGeometry::wordRange(bottom) || !WindowGeometry::wordRange(right))return false;
+    WindowGeometry::Rect port,pixels;
+    if(!WindowGeometry::layout({v,h,int16_t(bottom),int16_t(right)},port,pixels))return false;
+    if(read16(slot.visibilityRegion)!=10 || read32(slot.visibilityRegion+2)
+       || read32(slot.visibilityRegion+6))return false;
+    uint8_t* regions[]={slot.structureRegion,slot.contentRegion,slot.updateRegion};
+    int16_t tops[3],lefts[3];
+    for(uint16_t i=0;i<3;++i) {
+        if(read16(regions[i])!=10 || read32(regions[i]+2)!=read32(regions[i]+6))return false;
+        int32_t top=int32_t((int16_t)read16(regions[i]+2))+v-old.top;
+        int32_t left=int32_t((int16_t)read16(regions[i]+4))+h-old.left;
+        if(!WindowGeometry::wordRange(top) || !WindowGeometry::wordRange(left))return false;
+        tops[i]=int16_t(top);lefts[i]=int16_t(left);
+    }
+    if(!prepareWindowPalette(g_defaultPalette))return false;
+    writeRect(slot.pixelMap+6,pixels.top,pixels.left,pixels.bottom,pixels.right);
+    for(uint16_t i=0;i<3;++i)writeRect(regions[i]+2,tops[i],lefts[i],tops[i],lefts[i]);
+    return true;
+}
+
 static bool showColorWindow(WindowSlot& slot)
 {
-    if(slot.dialog || slot.window!=s_windowList || slot.window[110])return false;
-    const uint8_t* bounds=slot.contentRegion+2;
-    int16_t top=(int16_t)read16(bounds),left=(int16_t)read16(bounds+2);
-    int16_t bottom=(int16_t)read16(bounds+4),right=(int16_t)read16(bounds+6);
+    WindowGeometry::Rect bounds;
+    if(slot.dialog || slot.window!=s_windowList || slot.window[110] || slot.procID!=4
+       || !colorWindowFrame(slot,bounds))return false;
+    int16_t top=bounds.top,left=bounds.left,bottom=bounds.bottom,right=bounds.right;
+    uint8_t structure[44];
+    if(!WindowGeometry::structure4(bounds,structure))return false;
     if(top<0 || left<0 || bottom<=top || right<=left || bottom>kScreenHeight
        || right>kScreenWidth || !Palette8::rgb(slot.window+42,0))return false;
     MacHeap::Handle palette=slot.palette ? slot.palette : g_defaultPalette;
@@ -1905,6 +1953,10 @@ static bool showColorWindow(WindowSlot& slot)
                          *privateHandle,4,s_colorSeed))return false;
     ++s_colorSeed;
     s_activePalette=palette;
+    for(uint16_t i=0;i<44;++i)MenuRecords::copyByte(slot.structureRegion+i,structure+i);
+    initRegion(slot.contentRegion,slot.contentRegionMaster,top,left,bottom,right);
+    initRegion(slot.updateRegion,slot.updateRegionMaster,top,left,bottom,right);
+    initRegion(slot.visibilityRegion,slot.visibilityRegionMaster,0,0,bottom-top,right-left);
     // Clear only client content. The Mac's desktop, frame and title are never
     // drawn; physical AGA publication is the separate display-backend step.
     for(int16_t y=top;y<bottom;++y)
@@ -6416,6 +6468,12 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         }
         for(uint16_t i=0;i<=length;++i)(*slot->ownedTitle)[i]=copy[i];
         write16(slot->window+138,width);
+        // The hidden colour window's title recalculation empties its WDEF
+        // structure/content regions; its translated update region is retained.
+        if(read16(s_windowManagerPixMap+32)==8) {
+            initRegion(slot->structureRegion,slot->structureRegionMaster,0,0,0,0);
+            initRegion(slot->contentRegion,slot->contentRegionMaster,0,0,0,0);
+        }
         return 9;
     }
     if (trap == 0xa91b) {                    // MoveWindow(window, h, v, front)
@@ -6425,8 +6483,11 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
                                      (int16_t)read16(userStack+2),userStack[0]!=0))goto unsupportedTrap;
             return 11;
         }
-        if(read16(s_windowManagerPixMap+32)==8
-           && (!slot || !prepareWindowPalette(g_defaultPalette)))goto unsupportedTrap;
+        if(read16(s_windowManagerPixMap+32)==8) {
+            if(!slot || !moveHiddenColorWindow(*slot,(int16_t)read16(userStack+4),
+                (int16_t)read16(userStack+2),userStack[0]!=0))goto unsupportedTrap;
+            return 11;
+        }
         moveWindow((uint8_t*)read32(userStack + 6),
                    (int16_t)read16(userStack + 4), (int16_t)read16(userStack + 2),
                    userStack[0] != 0);

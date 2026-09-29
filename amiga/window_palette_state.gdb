@@ -18,6 +18,18 @@ printf "WP_STATE label=move phase=before window=%X palette=%X body=%X private=%X
 dump binary memory ../tmp/windowstate-native-move-before-palette.bin (char*)$body (char*)$body+4112
 dump binary memory ../tmp/windowstate-native-move-before-private.bin (char*)$privatebody (char*)$privatebody+4
 dump binary memory ../tmp/windowstate-native-move-before-window.bin (char*)$window (char*)$window+156
+set $windowpm=*(unsigned long*)*(unsigned long*)($window+2)
+dump binary memory ../tmp/windowstate-native-move-before-windowpm.bin (char*)$windowpm (char*)$windowpm+50
+set $region=*(unsigned long*)*(unsigned long*)($window+24)
+dump binary memory ../tmp/windowstate-native-move-before-visibility.bin (char*)$region (char*)$region+*(unsigned short*)$region
+set $region=*(unsigned long*)*(unsigned long*)($window+28)
+dump binary memory ../tmp/windowstate-native-move-before-clip.bin (char*)$region (char*)$region+*(unsigned short*)$region
+set $region=*(unsigned long*)*(unsigned long*)($window+114)
+dump binary memory ../tmp/windowstate-native-move-before-structure.bin (char*)$region (char*)$region+*(unsigned short*)$region
+set $region=*(unsigned long*)*(unsigned long*)($window+118)
+dump binary memory ../tmp/windowstate-native-move-before-content.bin (char*)$region (char*)$region+*(unsigned short*)$region
+set $region=*(unsigned long*)*(unsigned long*)($window+122)
+dump binary memory ../tmp/windowstate-native-move-before-update.bin (char*)$region (char*)$region+*(unsigned short*)$region
 dump binary memory ../tmp/windowstate-native-move-before-gd.bin (char*)s_mainDevice (char*)s_mainDevice+62
 dump binary memory ../tmp/windowstate-native-move-before-pm.bin (char*)s_windowManagerPixMap (char*)s_windowManagerPixMap+50
 dump binary memory ../tmp/windowstate-native-move-before-clut.bin (char*)s_windowManagerColors (char*)s_windowManagerColors+2056
@@ -39,6 +51,18 @@ printf "WP_STATE label=move phase=after window=%X palette=%X body=%X private=%X 
 dump binary memory ../tmp/windowstate-native-move-after-palette.bin (char*)$body (char*)$body+4112
 dump binary memory ../tmp/windowstate-native-move-after-private.bin (char*)$privatebody (char*)$privatebody+4
 dump binary memory ../tmp/windowstate-native-move-after-window.bin (char*)$window (char*)$window+156
+set $windowpm=*(unsigned long*)*(unsigned long*)($window+2)
+dump binary memory ../tmp/windowstate-native-move-after-windowpm.bin (char*)$windowpm (char*)$windowpm+50
+set $region=*(unsigned long*)*(unsigned long*)($window+24)
+dump binary memory ../tmp/windowstate-native-move-after-visibility.bin (char*)$region (char*)$region+*(unsigned short*)$region
+set $region=*(unsigned long*)*(unsigned long*)($window+28)
+dump binary memory ../tmp/windowstate-native-move-after-clip.bin (char*)$region (char*)$region+*(unsigned short*)$region
+set $region=*(unsigned long*)*(unsigned long*)($window+114)
+dump binary memory ../tmp/windowstate-native-move-after-structure.bin (char*)$region (char*)$region+*(unsigned short*)$region
+set $region=*(unsigned long*)*(unsigned long*)($window+118)
+dump binary memory ../tmp/windowstate-native-move-after-content.bin (char*)$region (char*)$region+*(unsigned short*)$region
+set $region=*(unsigned long*)*(unsigned long*)($window+122)
+dump binary memory ../tmp/windowstate-native-move-after-update.bin (char*)$region (char*)$region+*(unsigned short*)$region
 dump binary memory ../tmp/windowstate-native-move-after-gd.bin (char*)s_mainDevice (char*)s_mainDevice+62
 dump binary memory ../tmp/windowstate-native-move-after-pm.bin (char*)s_windowManagerPixMap (char*)s_windowManagerPixMap+50
 dump binary memory ../tmp/windowstate-native-move-after-clut.bin (char*)s_windowManagerColors (char*)s_windowManagerColors+2056
@@ -60,6 +84,18 @@ printf "WP_STATE label=show phase=before window=%X palette=%X body=%X private=%X
 dump binary memory ../tmp/windowstate-native-show-before-palette.bin (char*)$body (char*)$body+4112
 dump binary memory ../tmp/windowstate-native-show-before-private.bin (char*)$privatebody (char*)$privatebody+4
 dump binary memory ../tmp/windowstate-native-show-before-window.bin (char*)$window (char*)$window+156
+set $windowpm=*(unsigned long*)*(unsigned long*)($window+2)
+dump binary memory ../tmp/windowstate-native-show-before-windowpm.bin (char*)$windowpm (char*)$windowpm+50
+set $region=*(unsigned long*)*(unsigned long*)($window+24)
+dump binary memory ../tmp/windowstate-native-show-before-visibility.bin (char*)$region (char*)$region+*(unsigned short*)$region
+set $region=*(unsigned long*)*(unsigned long*)($window+28)
+dump binary memory ../tmp/windowstate-native-show-before-clip.bin (char*)$region (char*)$region+*(unsigned short*)$region
+set $region=*(unsigned long*)*(unsigned long*)($window+114)
+dump binary memory ../tmp/windowstate-native-show-before-structure.bin (char*)$region (char*)$region+*(unsigned short*)$region
+set $region=*(unsigned long*)*(unsigned long*)($window+118)
+dump binary memory ../tmp/windowstate-native-show-before-content.bin (char*)$region (char*)$region+*(unsigned short*)$region
+set $region=*(unsigned long*)*(unsigned long*)($window+122)
+dump binary memory ../tmp/windowstate-native-show-before-update.bin (char*)$region (char*)$region+*(unsigned short*)$region
 dump binary memory ../tmp/windowstate-native-show-before-gd.bin (char*)s_mainDevice (char*)s_mainDevice+62
 dump binary memory ../tmp/windowstate-native-show-before-pm.bin (char*)s_windowManagerPixMap (char*)s_windowManagerPixMap+50
 dump binary memory ../tmp/windowstate-native-show-before-clut.bin (char*)s_windowManagerColors (char*)s_windowManagerColors+2056
@@ -81,13 +117,25 @@ printf "WP_STATE label=show phase=after window=%X palette=%X body=%X private=%X 
 dump binary memory ../tmp/windowstate-native-show-after-palette.bin (char*)$body (char*)$body+4112
 dump binary memory ../tmp/windowstate-native-show-after-private.bin (char*)$privatebody (char*)$privatebody+4
 dump binary memory ../tmp/windowstate-native-show-after-window.bin (char*)$window (char*)$window+156
+set $windowpm=*(unsigned long*)*(unsigned long*)($window+2)
+dump binary memory ../tmp/windowstate-native-show-after-windowpm.bin (char*)$windowpm (char*)$windowpm+50
+set $region=*(unsigned long*)*(unsigned long*)($window+24)
+dump binary memory ../tmp/windowstate-native-show-after-visibility.bin (char*)$region (char*)$region+*(unsigned short*)$region
+set $region=*(unsigned long*)*(unsigned long*)($window+28)
+dump binary memory ../tmp/windowstate-native-show-after-clip.bin (char*)$region (char*)$region+*(unsigned short*)$region
+set $region=*(unsigned long*)*(unsigned long*)($window+114)
+dump binary memory ../tmp/windowstate-native-show-after-structure.bin (char*)$region (char*)$region+*(unsigned short*)$region
+set $region=*(unsigned long*)*(unsigned long*)($window+118)
+dump binary memory ../tmp/windowstate-native-show-after-content.bin (char*)$region (char*)$region+*(unsigned short*)$region
+set $region=*(unsigned long*)*(unsigned long*)($window+122)
+dump binary memory ../tmp/windowstate-native-show-after-update.bin (char*)$region (char*)$region+*(unsigned short*)$region
 dump binary memory ../tmp/windowstate-native-show-after-gd.bin (char*)s_mainDevice (char*)s_mainDevice+62
 dump binary memory ../tmp/windowstate-native-show-after-pm.bin (char*)s_windowManagerPixMap (char*)s_windowManagerPixMap+50
 dump binary memory ../tmp/windowstate-native-show-after-clut.bin (char*)s_windowManagerColors (char*)s_windowManagerColors+2056
 dump binary memory ../tmp/windowstate-native-show-after-logical.bin (char*)s_colorScreen (char*)s_colorScreen+307200
 printf "WP_NATIVE label=show phase=after active=%X seed=%X\n",s_activePalette,s_colorSeed
-printf "WP_DIRTY pending=%u count=%u rect=%d/%d/%d/%d\n",s_pixelsDirty,s_dirtyRectCount,s_dirtyRects[0].left,s_dirtyRects[0].top,s_dirtyRects[0].right,s_dirtyRects[0].bottom
-if !s_pixelsDirty || s_dirtyRectCount!=1 || s_dirtyRects[0].left!=160 || s_dirtyRects[0].top!=150 || s_dirtyRects[0].right!=480 || s_dirtyRects[0].bottom!=350
+printf "WP_DIRTY pending=%u count=%u queued=%u rect=%d/%d/%d/%d\n",s_pixelsDirty,s_dirtyRectCount,g_macFramesQueued,s_dirtyRects[0].left,s_dirtyRects[0].top,s_dirtyRects[0].right,s_dirtyRects[0].bottom
+if !((s_pixelsDirty && s_dirtyRectCount==1 && g_macFramesQueued==0) || (!s_pixelsDirty && s_dirtyRectCount==0 && g_macFramesQueued==1)) || s_dirtyRects[0].left!=160 || s_dirtyRects[0].top!=150 || s_dirtyRects[0].right!=480 || s_dirtyRects[0].bottom!=350
  echo FAIL content dirty rectangle\n
  detach
  quit 1

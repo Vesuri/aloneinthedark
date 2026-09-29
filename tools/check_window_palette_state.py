@@ -107,6 +107,34 @@ def check(reference, native, reference_status, native_status, folder, resource):
             a, b = (captured[kind, label, phase] for kind in ('reference', 'native'))
             require(a['palette'][:12]+a['palette'][16:] == b['palette'][:12]+b['palette'][16:], 'paired complete palette')
             require(a['clut'][4:] == b['clut'][4:], 'paired complete CLUT')
+    # Per-window coordinates and complete regions, independently captured on both sides.
+    for label in ('move', 'show'):
+        for phase in ('before', 'after'):
+            records = []
+            for kind in ('reference', 'native'):
+                prefix = folder/f'windowstate-{kind}-{label}-{phase}'
+                pm = Path(str(prefix)+'-windowpm.bin').read_bytes()
+                port = captured[kind, label, phase]['window']
+                require(len(pm) == 50, kind+' window PixMap extent')
+                expected_port = (0, 0, 16000, 16000) if label == 'move' else (0, 0, 200, 320)
+                expected_pm = (8000, 8000, 8480, 8640) if label == 'move' else (-150, -160, 330, 480)
+                require(struct.unpack_from('>4h', port, 16) == expected_port and
+                        struct.unpack_from('>4h', pm, 6) == expected_pm, kind+' local/global geometry')
+                regions = {}
+                handles = []
+                for name, offset in (('visibility',24), ('clip',28), ('structure',114), ('content',118), ('update',122)):
+                    handles.append(u32(port, offset))
+                    region = Path(str(prefix)+'-'+name+'.bin').read_bytes()
+                    require(len(region) >= 10 and int.from_bytes(region[:2], 'big') == len(region), kind+' region extent')
+                    regions[name] = region
+                    if name == 'clip':
+                        require(region == bytes.fromhex('000a800180017fff7fff'), kind+' unrestricted clip')
+                    elif label == 'move' or phase == 'before':
+                        expected = '000affee004effee004e' if label == 'show' and name == 'update' else '000a0000000000000000'
+                        require(region == bytes.fromhex(expected), kind+' hidden empty region')
+                require(all(handles) and len(set(handles)) == 5, kind+' independent regions')
+                records.append(regions)
+            require(records[0] == records[1], label+'/'+phase+' paired complete window regions')
     for rid in (128, 131):
         original = next(r.body for r in rows if r.kind == b'wctb' and r.rid == rid)
         require(original == bytes.fromhex('000000000000000400000000000000000001000000000000000200000000000000030000000000000004ffffffffffff'), 'original window colour resource')
@@ -154,7 +182,7 @@ def check(reference, native, reference_status, native_status, folder, resource):
             active_after['seed'] == active_before['seed']+1 and
             u32(captured['native','show','after']['clut']) == active_before['seed'], 'native active palette / seed allocation')
     one(native, r'WP_NEXT state=3 trap=A908 segment=9 offset=FC6 manager=WINDOW MANAGER routine=SHOWHIDE windows=(?:70|96) services=(?:124/124|132/132)')
-    one(native, r'WP_DIRTY pending=1 count=1 rect=160/150/480/350')
+    one(native, r'WP_DIRTY (?:pending=1 count=1 queued=0|pending=0 count=0 queued=1) rect=160/150/480/350')
     one(native, r'WP_COUNTS app=34/130788 overlay=31/80650 prep=64/81222 resources=244')
     print(f'PASS paired window palette state: 256 colours, exact client clear, {differences} explained Mac cursor pixels; next=SHOWHIDE')
 
