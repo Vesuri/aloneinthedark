@@ -86,22 +86,27 @@ dump binary memory ../tmp/windowstate-native-show-after-pm.bin (char*)s_windowMa
 dump binary memory ../tmp/windowstate-native-show-after-clut.bin (char*)s_windowManagerColors (char*)s_windowManagerColors+2056
 dump binary memory ../tmp/windowstate-native-show-after-logical.bin (char*)s_colorScreen (char*)s_colorScreen+307200
 printf "WP_NATIVE label=show phase=after active=%X seed=%X\n",s_activePalette,s_colorSeed
+printf "WP_DIRTY pending=%u count=%u rect=%d/%d/%d/%d\n",s_pixelsDirty,s_dirtyRectCount,s_dirtyRects[0].left,s_dirtyRects[0].top,s_dirtyRects[0].right,s_dirtyRects[0].bottom
+if !s_pixelsDirty || s_dirtyRectCount!=1 || s_dirtyRects[0].left!=160 || s_dirtyRects[0].top!=150 || s_dirtyRects[0].right!=480 || s_dirtyRects[0].bottom!=350
+ echo FAIL content dirty rectangle\n
+ detach
+ quit 1
+end
 echo PASS native window palette state calls=2\n
 continue
+if s_pixelsDirty || s_dirtyRectCount!=0 || g_macFramesQueued!=1
+ echo FAIL clear not queued\n
+ detach
+ quit 1
+end
 printf "WP_NEXT state=%u trap=%X segment=%u offset=%X manager=%s routine=%s windows=%u services=%u/%u\n",g_stageBState,g_trapWord,g_trapSegment,g_trapOffset,g_trapManager,g_trapRoutine,g_systemWindows,g_macServiceEntered,g_macServiceCompleted
-if g_stageBState!=2 || g_trapWord!=0 || g_trapSegment!=0 || g_trapOffset!=0xffffffff || g_macServiceActive!=0
+if g_stageBState!=3 || g_trapWord!=0xaa95 || g_trapSegment!=9 || g_trapOffset!=0x10fa || g_macServiceActive!=0
  echo FAIL window palette presentation stop\n
  detach
  quit 1
 end
-if *(unsigned long*)g_trapRoutine!=0x382d4249 || *(unsigned long*)(g_trapRoutine+4)!=0x54205052 || *(unsigned long*)(g_trapRoutine+8)!=0x4553454e || *(unsigned long*)(g_trapRoutine+12)!=0x54415449 || *(unsigned short*)(g_trapRoutine+16)!=0x4f4e || g_trapRoutine[18]!=0
- echo FAIL expected 8-BIT PRESENTATION\n
- detach
- quit 1
-end
-printf "WP_DIRTY pending=%u count=%u rect=%d/%d/%d/%d\n",s_pixelsDirty,s_dirtyRectCount,s_dirtyRects[0].left,s_dirtyRects[0].top,s_dirtyRects[0].right,s_dirtyRects[0].bottom
-if !s_pixelsDirty || s_dirtyRectCount!=1 || s_dirtyRects[0].left!=160 || s_dirtyRects[0].top!=150 || s_dirtyRects[0].right!=480 || s_dirtyRects[0].bottom!=350
- echo FAIL content dirty rectangle\n
+if *(unsigned long*)(g_trapRoutine+0)!=0x53455450 || *(unsigned long*)(g_trapRoutine+4)!=0x414c4554 || *(unsigned short*)(g_trapRoutine+8)!=0x5445 || g_trapRoutine[10]!=0
+ echo FAIL expected SETPALETTE\n
  detach
  quit 1
 end

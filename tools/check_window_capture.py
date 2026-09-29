@@ -25,11 +25,11 @@ else:
         raise SystemExit(f"FAIL window-core: runner status={a.status} or observer failure")
     if log.count("PASS window-read: bytes=1048576 chunks=16 checksum=59bc1dc5")!=1:
         raise SystemExit("FAIL window-core: missing/duplicate positive completion")
-    expected=bytearray(98304)
-    for y in range(384):
-        for x in range(64):
-            for plane in range(4):
-                expected[y*256+plane*64+x]=255 if ((x//2+y//16)&15)&(1<<plane) else 0
+    expected=bytearray(64000)
+    for y in range(200):
+        for x in range(40):
+            for plane in range(8):
+                expected[y*320+plane*40+x]=255 if ((x//2+y//16)&15)&(1<<plane) else 0
     for stage in ("before","during","after"):
         if (work/f"window-{stage}.bin").read_bytes()!=expected:
             raise SystemExit(f"FAIL window-core: {stage} bitplanes differ")

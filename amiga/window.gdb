@@ -11,7 +11,7 @@ end
 tbreak aitdWindowProbeBefore
 continue
 set $window_late=g_beamPresentsLate
-dump binary memory ../tmp/window-before.bin g_windowProbePicture g_windowProbePicture+98304
+dump binary memory ../tmp/window-before.bin g_windowProbePicture g_windowProbePicture+64000
 break aitdWindowProbeInside if g_windowProbeChunk==8
 continue
 if g_systemWindowActive != 1 || g_macLineAInstalled != 0 || ((struct ExecBase*)SysBase)->TDNestCnt != -1
@@ -19,7 +19,7 @@ if g_systemWindowActive != 1 || g_macLineAInstalled != 0 || ((struct ExecBase*)S
  detach
  quit 1
 end
-dump binary memory ../tmp/window-during.bin g_windowProbePicture g_windowProbePicture+98304
+dump binary memory ../tmp/window-during.bin g_windowProbePicture g_windowProbePicture+64000
 printf "window inside: fields=%u ticks=%u OS multitasking active\n",g_windowFields,g_macTicks
 tbreak aitdWindowProbeAfter
 continue
@@ -34,7 +34,7 @@ if g_beamPresentsLate != $window_late
  detach
  quit 1
 end
-dump binary memory ../tmp/window-after.bin g_windowProbePicture g_windowProbePicture+98304
+dump binary memory ../tmp/window-after.bin g_windowProbePicture g_windowProbePicture+64000
 printf "window display: late-fields=%u max-line=%u\n",g_beamPresentsLate-$window_late,g_beamPresentMax
 printf "window measured: hash=$%x fields=%u ticks=%u inside-fields=%u entry=%u exit=%u\n",g_windowProbeHash,g_windowProbeFields,g_windowProbeTicks,g_windowFields,g_windowEnterTicks,g_windowExitTicks
 printf "window Paula: interrupts=%u inside=%u positive-windows=%u\n",g_windowProbeAudio,g_windowProbeAudioInside,g_windowProbeAudioWindows

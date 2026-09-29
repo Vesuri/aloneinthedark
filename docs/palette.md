@@ -257,9 +257,9 @@ Accepted evidence: `tmp/m2-window-state-reference-cursor.log`,
 The suite's first paired pass rejected a zero-padding mismatch in its device
 checker; the corrected expectation passed against the same successful capture.
 
-The pending dirty rectangle now exposes `8-BIT PRESENTATION` at the next trap
-boundary. This is the M2.5a display prerequisite, before window binding; no AGA
-output or rendered intro acceptance is claimed. The original subsequent
+The display path now consumes the dirty rectangle and queues the first AGA
+frame before window binding; see [aga-display.md](aga-display.md). Rendered
+intro acceptance remains pending. The original subsequent
 SetPalette call at Misc1+$10FA is measured to leave the already-realized state
 unchanged, with GetPalette(window) returning the default handle. Its instruction
 range +$10E8–$10FB has SHA-256

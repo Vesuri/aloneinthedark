@@ -112,6 +112,9 @@ host-tests:
 	@python3 tools/check_font_metrics.py --selftest
 	@python3 tools/check_apple_events.py --selftest
 	@python3 tools/check_ctable.py --selftest
+	@python3 tools/check_planar8.py
+	@python3 tools/check_aga_palette.py
+	@python3 tools/check_video_transfer.py
 	@python3 tools/check_palette8.py
 	@python3 tools/check_palette.py --selftest
 	@python3 tools/check_setpalette.py --selftest

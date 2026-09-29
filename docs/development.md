@@ -2750,3 +2750,21 @@ existing/fresh runs use 70/96 OS windows and 124/132 services. Original resource
 reads are 34 / 130,788 bytes; overlay reads remain 31 / 80,650. The paired checker
 also validates the exact reference cursor exception and rejects corrupt captures.
 This is logical state/pixel acceptance; rendered AGA/intro checks remain pending.
+
+
+## First eight-plane client publication
+
+M2.5a converts the live WIND 128 client rectangle into eight AGA planes and
+publishes complete bitmap/palette state during VBI. The first clear matches the
+Mac logical CLUT and measured video colours, then startup reaches window
+SetPalette at Misc1+$10FA. No original game instruction changes. The integer
+reference converter uses explicit dirty rectangles and Vette's previous-update
+synchronization; optimization remains deferred.
+
+The independent five-frame native fixture verifies full and partial updates,
+palette-only preservation, viewport movement, alternating buffers and restored
+OS cleanup. All 21 startup observers and paired contracts, preference variants,
+host tests, clean boot/resource-read and system-window memory checks pass.
+See [aga-display.md](aga-display.md) for commands, captures and the exact build.
+Rendered output, PAL/NTSC and pointer acceptance, and full intro verification
+remain in the ordered M2 queue.

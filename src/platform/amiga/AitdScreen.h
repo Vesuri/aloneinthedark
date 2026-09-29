@@ -6,8 +6,7 @@
  * two files happen to hold matching literals.  Every one of them is derived here
  * from the constants below and written in one place.  (See docs/amiga-arch.md.)
  *
- * The current bootstrap display retains the inherited four-plane crop until
- * M2.4 replaces it with the 320x200 eight-plane target. This class owns all mode
+ * The single display mode is 320x200 with eight planes. This class owns all mode
  * register writes and publishes complete copper lists during blanking.
  */
 #ifndef AITD_SCREEN_H
@@ -23,18 +22,18 @@ public:
     };
     static const uint16_t kMaxDirtyRects = 32;
 
-    // Inherited bootstrap surface; the 320x200 eight-plane conversion is M2.4.
-    static const uint16_t kWidth  = 512;
-    static const uint16_t kHeight = 384;
-    static const uint16_t kMacHeight = 320;
-    static const uint16_t kMacTop = (kHeight - kMacHeight) / 2;
-    static const uint16_t kLoresLeft = 80;
-    static const uint16_t kLoresWidth = 368;
+    // Fixed physical display; the logical Mac source remains 640x480.
+    static const uint16_t kWidth  = 320;
+    static const uint16_t kHeight = 200;
+    static const uint16_t kMacHeight = 480;
+    static const uint16_t kMacTop = 0;
+    static const uint16_t kLoresLeft = 0;
+    static const uint16_t kLoresWidth = 320;
     static const uint16_t kLoresRight = kLoresLeft + kLoresWidth;
-    static const uint16_t kLoresHeight = 283;
-    static const uint16_t kPlanes = 4;
-    static const uint16_t kBytesPerRow = kWidth / 8;                 // 64
-    static const uint16_t kRowStride   = kBytesPerRow * kPlanes;     // 256, interleaved
+    static const uint16_t kLoresHeight = 200;
+    static const uint16_t kPlanes = 8;
+    static const uint16_t kBytesPerRow = kWidth / 8;                 // 40
+    static const uint16_t kRowStride   = kBytesPerRow * kPlanes;     // 320, interleaved
     static const uint32_t kPictureBytes = (uint32_t)kRowStride * kHeight;
 
     // Copies `picture` (kPictureBytes of interleaved bitplanes) into chip RAM and
@@ -48,10 +47,11 @@ public:
     // input/audio work, then restart the Copper during blanking.
     void vbiUpdate(bool install = true);
 
-    // Convert a Macintosh 4-bpp chunky surface and ColorTable into the Amiga's
+    // Convert a Macintosh 8-bpp 640x480 surface and device ColorTable into the Amiga's
     // interleaved planes.  The completed frame is swapped in by vbiUpdate(), so
     // the copper never scans a half-converted picture.
-    bool presentMacFrame(const uint8_t* chunky, const uint8_t* colorTable,
+    // Returns 1 when queued, 0 while a previous frame is pending, -1 for unsupported input.
+    int16_t presentMacFrame(const uint8_t* chunky, const uint8_t* colorTable,
                          const DirtyRect* dirtyRects, uint16_t dirtyRectCount,
                          uint16_t cropLeft = kLoresLeft, uint16_t cropTop = 0,
                          bool mouseAllowed = false);
@@ -94,15 +94,17 @@ private:
     bool m_mouseCoordinatesInitialized = false;
     bool m_mouseAllowed = false, m_nextMouseAllowed = false;
     void writeModeRegisters();
+    void queueFrame(uint16_t left,uint16_t top,bool mouseAllowed);
     void updateMouseSprite();
 
     uint32_t* m_copper = 0;
     uint32_t* m_copperAllocation = 0;
+    uint32_t* m_nextCopper = 0;
     uint8_t*  m_chip = 0;
     uint8_t*  m_back = 0;
     uint32_t  m_checksum = 0;
     uint16_t  m_ptrIndex = 0;      // copper-list index of the first BPLxPT move
-    uint16_t  m_nextPalette[16] = {0};
+    uint32_t  m_nextPalette[256] = {0};
     volatile bool m_framePending = false;
     uint16_t* m_mouseSprite = 0;
     uint16_t* m_emptySprite = 0;

@@ -14,7 +14,8 @@ design.md §5.
   low-resolution selection/cleanup, all 75 font-metrics calls and four Apple Event
   registrations, colour-table loading/mutations, palette construction and default
   binding, hidden window-title state and the verified WIND 128 request. Startup realizes the palette and clears the game client area, then stops at
-  `8-BIT PRESENTATION` before window binding. The original
+  window `SETPALETTE` at Misc1+$10FA, after the first client frame is
+  published through the eight-plane AGA display. The original
   mixer is never loaded.
 - The original runs in MAME on the System 7.5.5 reference volume.
 
@@ -48,25 +49,9 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.5a First eight-bit client presentation prerequisite.**
-  - The measured ShowWindow clear creates the first 320×200 dirty rectangle.
-    At the next trap boundary, the display backend stops explicitly at
-    `SEGMENT LOADER / 8-BIT PRESENTATION`, before window palette binding.
-  - Bring forward the necessary M2.4–M2.6 display path: derive the viewport
-    from WIND 128's live content rectangle, convert eight-bit pixels into eight
-    AGA planes, and publish complete display/palette state in VBI on 68020.
-    Reuse Vette's publication and dirty-rectangle conventions. Preserve D4/D5/D7;
-    never pass these pixels through the inherited four-bit converter.
-  - Keep this requirement part of M2.5/M2.6; no performance or other CPU work.
-
-  *Done when* the first clear is published from exactly its dirty client rectangle,
-  plane and palette captures match the logical source, a bounded original run
-  reaches the next named stop, and relevant startup regressions pass. The full
-  colour ramp, video transfer, rendered output and intro checks remain required
-  by M2.5/M2.7a/M2.10.
 - **M2.1c3c2c5b2c2e Window palette binding prerequisite.**
   - The original SetPalette request at Misc1+$10FA follows the first client
-    presentation, currently blocked by M2.5a. The implemented default-window (-1) binding does not
+    presentation. The implemented default-window (-1) binding does not
     cover this form.
   - Measure its window/palette/update arguments and binding, palette, device and
     display effects. Implement the reached form, including any state transition
@@ -155,19 +140,22 @@ required.
   *Done when* a fresh start (no prefs) never shows DLOG 1000, the game creates
   WIND 128, and the viewport equals its content rectangle.
 - **M2.5 AGA 8-plane display.**
-  - Lores 320×200×8 in `AitdScreen`.
-  - A 256-colour copper palette through BPLCON3 banks, plus the sprite bank.
+  - Lores 320×200×8 in `AitdScreen`, centred for PAL and NTSC. The M2.5a
+    prerequisite currently supplies the pinned PAL configuration.
+  - A 256-colour copper palette through BPLCON3 banks, plus verified sprite
+    palette ownership before enabling the pointer; preserve all game colours.
   - Publication in the VBI.
 
   *Done when* a test pattern and a 256-colour ramp display correctly (by eye, plus
-  a gdb register dump) on `a1200-030` and `a1200-020`.
+  a gdb register dump) on `a1200-020` in PAL and NTSC, and the visible pointer
+  preserves game colours. Other processors remain deferred (D2).
 - **M2.6 8-bit C2P with dirty rectangles.**
-  - An asm kernel based on Kalms' `c2p1x1_8_c5_030`, with a C oracle under
-    `VERIFY=1`.
+  - Verify the eight-bit converter against an independent C oracle. Assembly
+    optimization and timing work remain deferred to M5 (D2).
   - Rectangles aligned to 32 pixels.
 
-  *Done when* the verifier reports zero mismatches over the intro, and the
-  full-screen cost is measured on `a1200-030`.
+  *Done when* the verifier reports zero mismatches over the intro on
+  `a1200-020`, including preservation across partial updates.
 - **M2.7 Palette Manager realisation.** Implement NewPalette, SetPalette,
   ActivatePalette, GetCTable and PaletteDispatch as on the 8-bit reference.
 
@@ -300,7 +288,8 @@ required.
   - One measured optimisation per commit, with before and after numbers. Record
     rejected attempts in their commit message.
   - Candidates:
-    - dirty-box C2P tuning;
+    - dirty-box C2P tuning and a verified assembly kernel (evaluate Kalms'
+      `c2p1x1_8_c5_030` against the retained C oracle);
     - FMODE;
     - a fast srcCopy;
     - a fast path for the SetGWorld/GetGWorld traps (138 sites);

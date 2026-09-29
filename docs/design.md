@@ -459,12 +459,12 @@ Native trap probes, host fragmentation tests and paired heap captures verify it:
   word remains. M2.4 replaces the bootstrap crop with the target display.
 - **C2P (task M2.6).**
   - Convert the Mac screen's dirty rectangles inside the viewport: 8-bit chunky to
-    8 planes, x aligned to 32 pixels. Start from Kalms' public-domain `c2p1x1_8_c5_030`
-    ([external](https://github.com/Kalmalyzer/kalms-c2p)). A C reference keeps the
-    `VERIFY=1` oracle, as in Vette.
-  - Budget: a full 320×200 conversion is about one PAL frame on a 68030/50
-    [external estimate]. The engine redraws only boxes, so typical frames should be
-    far cheaper.
+    8 planes, x aligned to 32 destination pixels. Verify full and partial updates
+    with an independent decoder and compare intro pixels with the reference.
+  - Use the integer C implementation for functional bring-up on 68020. Assembly
+    optimization, including evaluation of Kalms' public-domain `c2p1x1_8_c5_030`
+    ([external](https://github.com/Kalmalyzer/kalms-c2p)), and timing measurements
+    are deferred to M5 under D2. Retain the C oracle for any future assembly path.
 - **Dirty rectangles.** Keep the explicit list. They come from every QuickDraw
   write to the screen port, plus the presentation `CopyBits` dest rectangle. The
   back buffer inherits the previous update's rectangles.
@@ -478,8 +478,10 @@ Native trap probes, host fragmentation tests and paired heap captures verify it:
   - Startup MoveWindow/ShowWindow now reproduce the measured initial palette
     state and realization, including retained duplicate endpoint colours.
     ShowWindow clears only client content and records its dirty rectangle.
-    The next boundary stops at `8-BIT PRESENTATION` until M2.5a; this does not
-    claim AGA publication or full ActivatePalette acceptance. See [palette.md](palette.md).
+    The display path now queues that clear for AGA publication and reaches
+    window SetPalette at Misc1+$10FA. Full ActivatePalette and rendered intro
+    acceptance remain pending. See [palette.md](palette.md) and
+    [aga-display.md](aga-display.md).
 - **Fonts.** See 4.11 and D6.
 
 ### 4.8 QuickDraw and offscreen worlds

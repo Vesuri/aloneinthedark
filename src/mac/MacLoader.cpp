@@ -4885,26 +4885,30 @@ extern "C" void aitdVBLCallbackComplete()
 static void presentMacRuntime()
 {
     if (!s_loudStopScreen) return;
-    // Eight-bit presentation is not implemented yet. Do not feed real chunky
-    // pixels to the inherited four-bit converter, or claim they were presented.
-    if(read16(s_windowManagerPixMap+32)==8) {
-        if(s_pixelsDirty) { loaderStop("8-BIT PRESENTATION",0);showLoaderStop(); }
+    if(!s_screenDirty && !s_pixelsDirty)return;
+    if(read16(s_windowManagerPixMap+32)!=8) {
+        if(s_pixelsDirty) {loaderStop("DISPLAY DEPTH",0);showLoaderStop();}
         return;
     }
-    // Vette chose a crop and pointer visibility per original WIND identity.
-    // Alone in the Dark has not been mapped yet: present the default viewport.
-    uint16_t cropLeft = 80, cropTop = 0;
-    bool mouseAllowed = false;
-    if (!s_screenDirty && s_loudStopScreen->matchesViewport(cropLeft, cropTop)
-        && s_loudStopScreen->matchesMouseVisibility(mouseAllowed)) return;
-    bool presented = s_loudStopScreen->presentMacFrame(
-        s_colorScreen, s_windowManagerColors, s_dirtyRects, s_dirtyRectCount,
-        cropLeft, cropTop, mouseAllowed);
-    if (presented) {
-        s_screenDirty = false;
-        s_pixelsDirty = false;
-        s_dirtyRectCount = 0;
+    WindowSlot* game=0;
+    for(uint16_t i=0;i<8;++i)if(s_windows[i].used && !s_windows[i].dialog
+        && s_windows[i].resourceID==128 && s_windows[i].window && s_windows[i].window[110]) {
+        if(game) {loaderStop("DISPLAY WINDOW IDENTITY",0);showLoaderStop();}
+        game=&s_windows[i];
     }
+    if(!game) {
+        if(s_pixelsDirty) {loaderStop("DISPLAY VIEWPORT MISSING",0);showLoaderStop();}
+        return;
+    }
+    const uint8_t* bounds=game->contentRegion+2;
+    int16_t top=read16(bounds),left=read16(bounds+2),bottom=read16(bounds+4),right=read16(bounds+6);
+    if(top<0 || left<0 || bottom>480 || right>640 || bottom-top!=200 || right-left!=320) {
+        loaderStop("DISPLAY VIEWPORT GEOMETRY",0);showLoaderStop();
+    }
+    int16_t result=s_loudStopScreen->presentMacFrame(s_colorScreen,s_windowManagerColors,
+        s_dirtyRects,s_dirtyRectCount,left,top,false);
+    if(result<0) {loaderStop("DISPLAY INPUT",0);showLoaderStop();}
+    if(result>0) {s_screenDirty=false;s_pixelsDirty=false;s_dirtyRectCount=0;}
 }
 
 static void serviceMacRuntime()

@@ -12,6 +12,9 @@
 #include "framework/AmigaHardware.h"
 #include "framework/CopperList.h"   /* copperMove() -- the list entries, nothing else */
 #include "AitdScreen.h"
+#include "Planar8.h"
+#include "AgaPalette.h"
+#include "VideoColor.h"
 #include "PerfProbe.h"
 #include "mac/MacLoader.h"
 
@@ -68,99 +71,21 @@ static uint16_t beamLine()
     return (uint16_t)(((high & 1u) << 8) | (low >> 8));
 }
 
-// Four Macintosh chunky bytes describe eight pixels.  Each table entry places
-// one such pixel pair into the correct two bit positions of four packed Amiga
-// plane bytes, so four lookups and ORs perform the complete 8-pixel transpose.
-// Building this once costs 4 KiB of fast RAM and removes the per-pixel/per-plane
-// inner loop that was too slow to keep up with the intro on a 68000.
-static uint32_t s_pairToPlanes[4][256];
-static bool s_pairToPlanesReady = false;
-#ifdef AITD_C2P_ASM
-// Four packed pixels -> four plane nibbles. The first 256 KiB table places
-// them in each byte's high half; the second is pre-shifted into the low half.
-// Entries are rotated by half the table so the assembly can use the 68020's
-// sign-extended word index directly from a base at the physical midpoint.
-static uint32_t s_quadToPlanes[2][65536];
-#endif
-
-static void convertC2PSpanC(const uint8_t* source, uint8_t* destination, uint16_t groups)
-{
-    for (uint16_t group = 0; group < groups; ++group, source += 4, ++destination) {
-        uint32_t packed = s_pairToPlanes[0][source[0]] | s_pairToPlanes[1][source[1]]
-                        | s_pairToPlanes[2][source[2]] | s_pairToPlanes[3][source[3]];
-        destination[0] = (uint8_t)(packed >> 24);
-        destination[AitdScreen::kBytesPerRow] = (uint8_t)(packed >> 16);
-        destination[AitdScreen::kBytesPerRow * 2] = (uint8_t)(packed >> 8);
-        destination[AitdScreen::kBytesPerRow * 3] = (uint8_t)packed;
-    }
-}
-
-#ifdef AITD_C2P_VERIFY
-static uint8_t s_c2pVerifyBytes[AitdScreen::kRowStride];
-#endif
-#ifdef AITD_C2P_SPLIT
-static uint8_t s_c2pSplitFast[AitdScreen::kPictureBytes];
-#endif
-
-static void initializePairToPlanes()
-{
-    if (s_pairToPlanesReady) return;
-    for (uint16_t position = 0; position < 4; ++position) {
-        uint16_t shift = (uint16_t)(6 - position * 2);
-        for (uint16_t value = 0; value < 256; ++value) {
-            uint16_t highPixel = value >> 4;
-            uint16_t lowPixel = value & 15;
-            uint32_t packed = 0;
-            for (uint16_t plane = 0; plane < 4; ++plane) {
-                uint32_t pair = ((highPixel >> plane) & 1) << 1;
-                pair |= (lowPixel >> plane) & 1;
-                packed |= pair << (24 - plane * 8 + shift);
-            }
-            s_pairToPlanes[position][value] = packed;
-        }
-    }
-#ifdef AITD_C2P_ASM
-    for (uint32_t high = 0; high < 256; ++high) {
-        for (uint32_t low = 0; low < 256; ++low) {
-            uint32_t packed = s_pairToPlanes[0][high] | s_pairToPlanes[1][low];
-            uint16_t logicalIndex = (uint16_t)((high << 8) | low);
-            uint16_t physicalIndex = (uint16_t)(logicalIndex ^ 0x8000u);
-            s_quadToPlanes[0][physicalIndex] = packed;
-            s_quadToPlanes[1][physicalIndex] = packed >> 4;
-        }
-    }
-#endif
-    s_pairToPlanesReady = true;
-}
-
-// Bootstrap four-plane crop. M2.4 installs the target 320x200 eight-plane mode.
-// DIWHIGH must be written: HSTOP/VSTOP both have bit 8 set; OS state is not valid.
+// One AGA lores mode. PAL's conventional 256-line window begins at 44;
+// centre the 200-line client within it. FMODE remains 1x (D2/M5).
 #define VS_DIWHIGH 0x2100
-#define VS_BPLCON0 ((AitdScreen::kPlanes << 12) | 0x0201)
+#define VS_BPLCON0 0x0211 // BPU3, COLOR, ECSENA; no HAM/dual playfield
 #define VS_BPLCON2 0x0024
-static_assert(VS_BPLCON0 == 0x4201, "bootstrap four-plane mode");
-static_assert(VS_BPLCON2 == ((4 << 3) | 4), "sprite priority");
-
-static_assert(AitdScreen::kLoresLeft % 16 == 0 && AitdScreen::kLoresWidth % 16 == 0,
-              "lores crop must be word aligned");
-static_assert(0x00d8 == 0x0028 + 8 * (AitdScreen::kLoresWidth / 16 - 1),
-              "lores DDF must fetch exactly the cropped width");
-// RKM table 3-13: PAL blanking stops at $1d, leaving 312 - 29 = 283
-// displayable lines. The display stop is exclusive.
-static const uint16_t kLoresVStart = 0x1d;
-static const uint16_t kLoresVStop = kLoresVStart + AitdScreen::kLoresHeight;
-static_assert(kLoresVStop == 312, "lores PAL window height");
-
-// Copper-list layout. Pointers come first so DMA sees complete addresses before
-// the display opens. Every sprite pointer is owned: sprite 0 uses the cursor,
-// while channels 1..7 share a cleared zero-height sprite. Sprite 0 uses colours
-// 17..19 independently of the game's sixteen-colour palette.
-#define VS_CL_PTRS       0                   /* 8 moves: BPL1PTH..BPL4PTL */
-#define VS_CL_SPRITES    (VS_CL_PTRS + 8)    /* 16 moves: SPR0PT..SPR7PT */
-#define VS_CL_COLORS     (VS_CL_SPRITES + 16)/* 16 moves: COLOR00..COLOR15 */
-#define VS_CL_SPRCOLORS  (VS_CL_COLORS + 16) /* COLOR17..COLOR19 */
-#define VS_CL_END        (VS_CL_SPRCOLORS + 3)
-#define VS_CL_LONGS  (VS_CL_END + 1)
+static const uint16_t kLoresVStart=72;
+static const uint16_t kLoresVStop=kLoresVStart+AitdScreen::kLoresHeight;
+static_assert(AitdScreen::kPlanes==8 && AitdScreen::kWidth==320, "eight-plane lores");
+static_assert(AitdScreen::kPictureBytes==Planar8::bytes, "planar layout");
+static_assert(0xd0==0x38+8*(AitdScreen::kWidth/16-1), "fetch width");
+#define VS_CL_PTRS 0
+#define VS_CL_SPRITES (VS_CL_PTRS+16)
+#define VS_CL_COLORS (VS_CL_SPRITES+16)
+#define VS_CL_END (VS_CL_COLORS+AgaPalette::moves)
+#define VS_CL_LONGS (VS_CL_END+1)
 
 // Allocate all sixteen cursor rows.
 // Include the control pair and a mandatory zero terminator.
@@ -185,7 +110,6 @@ static uint32_t rotXorChecksum(const uint8_t* p, uint32_t n)
 
 bool AitdScreen::initialize(const uint8_t* picture, const uint16_t* palette16)
 {
-    initializePairToPlanes();
     // ⚠ The picture MUST live in chip RAM: FS-UAE runs this port with --fast_memory=8192, so
     // a linked-in blob lands in fast RAM, which the display DMA cannot reach.  The failure is
     // not a crash -- the copper happily fetches whatever chip address the truncated pointer
@@ -228,8 +152,8 @@ bool AitdScreen::initialize(const uint8_t* picture, const uint16_t* palette16)
 
     m_ptrIndex = VS_CL_PTRS;
     for (uint16_t k = 0; k < kPlanes; k++) {
-        m_copper[VS_CL_PTRS + k * 2 + 0] = copperMove(bpl1pth + k * 4, 0);
-        m_copper[VS_CL_PTRS + k * 2 + 1] = copperMove(bpl1ptl + k * 4, 0);
+        m_copper[VS_CL_PTRS + k * 2 + 0] = copperMove(bpl1pth + k * 4, (uint32_t)(m_chip+k*kBytesPerRow)>>16);
+        m_copper[VS_CL_PTRS + k * 2 + 1] = copperMove(bpl1ptl + k * 4, (uint32_t)(m_chip+k*kBytesPerRow)&65535);
     }
     for (uint16_t channel = 0; channel < 8; ++channel) {
         uint32_t sprite = (uint32_t)(channel == 0 ? m_mouseSprite : m_emptySprite);
@@ -238,12 +162,13 @@ bool AitdScreen::initialize(const uint8_t* picture, const uint16_t* palette16)
         m_copper[VS_CL_SPRITES + channel * 2 + 1]
             = copperMove(spr1ptl + channel * 4, (uint16_t)sprite);
     }
-    for (uint16_t i = 0; i < 16; i++)
-        m_copper[VS_CL_COLORS + i] = copperMove(color00 + i * 2,
-                                                palette16 ? palette16[i] : 0);
-    m_copper[VS_CL_SPRCOLORS + 0] = copperMove(color00 + 17 * 2, 0x000); // black
-    m_copper[VS_CL_SPRCOLORS + 1] = copperMove(color00 + 18 * 2, 0x888); // XOR fallback
-    m_copper[VS_CL_SPRCOLORS + 2] = copperMove(color00 + 19 * 2, 0xfff); // white
+    for(uint16_t i=0;i<256;++i)m_nextPalette[i]=0;
+    if(palette16)for(uint16_t i=0;i<16;++i) {
+        uint16_t c=palette16[i];
+        m_nextPalette[i]=uint32_t((c>>8)&15)*17*65536
+                       +uint32_t((c>>4)&15)*17*256+(c&15)*17;
+    }
+    AgaPalette::build(m_copper+VS_CL_COLORS,m_nextPalette);
     m_copper[VS_CL_END] = 0xfffffffe;
 
     // Publish valid bitplane pointers before enabling display DMA.
@@ -260,81 +185,61 @@ bool AitdScreen::initialize(const uint8_t* picture, const uint16_t* palette16)
 
 void AitdScreen::writeModeRegisters()
 {
-    // Lores: window (97,29)..(465,312), 23 fetched words per plane.
-    // Word-aligned pointers select each scene's 368-pixel crop without scrolling.
-    // HSTOP/VSTOP both have bit 8 set (DIWHIGH=$2100).
-    // ⭐⭐ ONE PLACE, ONE TIME.  Nothing else in the port writes any of these.
-    *fmodePointer   = 0x0000;      // OCS fetch mode, so an AGA machine behaves like an A500
-    *bplcon0Pointer = VS_BPLCON0;
-    *bplcon1Pointer = 0; // no scrolling
-    *bplcon2Pointer = VS_BPLCON2;  // all sprite pairs in front of both playfields
-    *bplcon3Pointer = 0x0c40; // AGA SPRRES: low resolution
-    *diwstrtPointer = (kLoresVStart << 8) | 0x61;
-    *diwstopPointer = ((kLoresVStop & 0xff) << 8) | 0xd1;
-    *diwhighPointer = VS_DIWHIGH;  // ⚠ must be written, not inherited -- see above
-    *ddfstrtPointer = 0x0028;
-    *ddfstopPointer = 0x00d8;
-    *bpl1modPointer = kRowStride - kLoresWidth / 8;
-    *bpl2modPointer = kRowStride - kLoresWidth / 8;
+    *fmodePointer=0;
+    *bplcon0Pointer=VS_BPLCON0;
+    *bplcon1Pointer=0;
+    *bplcon2Pointer=VS_BPLCON2;
+    *bplcon3Pointer=AgaPalette::control;
+    *bplcon4Pointer=0x0011; // no bitplane XOR; hidden sprite banks explicitly owned
+    *diwstrtPointer=(kLoresVStart<<8)|0x81;
+    *diwstopPointer=((kLoresVStop&255)<<8)|0xc1;
+    *diwhighPointer=VS_DIWHIGH;
+    *ddfstrtPointer=0x0038;
+    *ddfstopPointer=0x00d0;
+    *bpl1modPointer=kRowStride-kBytesPerRow;
+    *bpl2modPointer=kRowStride-kBytesPerRow;
+}
+
+void AitdScreen::queueFrame(uint16_t left,uint16_t top,bool mouseAllowed)
+{
+    uint32_t* next=m_copper==m_copperAllocation ? m_copperAllocation+VS_CL_LONGS : m_copperAllocation;
+    for(uint16_t i=0;i<VS_CL_LONGS;++i)next[i]=m_copper[i];
+    for(uint16_t plane=0;plane<kPlanes;++plane) {
+        uint32_t p=(uint32_t)(m_back+plane*kBytesPerRow);
+        next[VS_CL_PTRS+plane*2]=copperMove(bpl1pth+plane*4,p>>16);
+        next[VS_CL_PTRS+plane*2+1]=copperMove(bpl1ptl+plane*4,p&65535);
+    }
+    AgaPalette::build(next+VS_CL_COLORS,m_nextPalette);
+    m_nextCopper=next;m_nextCropLeft=left;m_nextCropTop=top;m_nextMouseAllowed=mouseAllowed;
+    ++g_macFramesQueued;
+    __asm__ volatile("" ::: "memory");
+    m_framePending=true;
 }
 
 void AitdScreen::vbiUpdate(bool install)
 {
-    if (!m_copper || !m_chip) return;   // the ISR must never see a half-built screen
-
-    // Never modify instructions the Copper may already be fetching. Preserve
-    // unchanged colours and sprite pointers in the inactive list as well.
-    uint32_t* previous = m_copper;
-    m_copper = previous == m_copperAllocation
-        ? m_copperAllocation + VS_CL_LONGS : m_copperAllocation;
-    for (uint16_t i = 0; i < VS_CL_LONGS; ++i) m_copper[i] = previous[i];
-    bool present = m_framePending;
-    if (present) {
-        uint8_t* oldFront = m_chip;
-        m_chip = m_back;
-        m_back = oldFront;
-        m_cropLeft = m_nextCropLeft;
-        m_cropTop = m_nextCropTop;
-        m_mouseAllowed = m_nextMouseAllowed;
-        for (uint16_t i = 0; i < 16; ++i)
-            m_copper[VS_CL_COLORS + i] = copperMove(color00 + i * 2, m_nextPalette[i]);
+    if(!m_copper || !m_chip)return;
+    bool present=m_framePending;
+    if(present) {
+        uint8_t* previous=m_chip;m_chip=m_back;m_back=previous;
+        m_copper=m_nextCopper;
+        m_cropLeft=m_nextCropLeft;m_cropTop=m_nextCropTop;m_mouseAllowed=m_nextMouseAllowed;
     }
-
-    uint32_t base = (uint32_t)m_chip
-        + (uint32_t)(kMacTop + m_cropTop) * kRowStride + m_cropLeft / 8;
-
-    for (uint16_t k = 0; k < kPlanes; k++) {
-        uint32_t p = base + (uint32_t)k * kBytesPerRow;
-        m_copper[m_ptrIndex + k * 2 + 0] = copperMove(bpl1pth + k * 4, (uint16_t)(p >> 16));
-        m_copper[m_ptrIndex + k * 2 + 1] = copperMove(bpl1ptl + k * 4, (uint16_t)p);
+    // Publish the already-complete copper list before input/audio work.
+    if(install) {
+        uint16_t line=beamLine();g_beamPresentLine=line;
+        if(line<g_beamPresentMin)g_beamPresentMin=line;
+        if(line>g_beamPresentMax)g_beamPresentMax=line;
+        ++g_beamPresents;if(line>=16)++g_beamPresentsLate;
+        *cop1lcPointer=m_copper;*copjmp1Pointer=0;
     }
-
-    // Classic Mac OS tracks the mouse from vertical retrace. Do this only
-    // after the time-critical bitplane pointer writes, but before sprite 0 is
-    // built, so every field sees the newest hardware counters even when the
-    // game has not called GetNextEvent (or any Toolbox trap) for a long time.
+    if(present) {
+        ++g_macFramesPresented;
+        __asm__ volatile("" ::: "memory");
+        m_framePending=false;
+    }
     aitdMacMouseVBI();
     updateMouseSprite();
-    if (install) {
-        // Measure the actual handoff on EVERY field, not merely entry to
-        // the handler on fields that happen to have a new game frame.
-        uint16_t line = beamLine();
-        g_beamPresentLine = line;
-        if (line < g_beamPresentMin) g_beamPresentMin = line;
-        if (line > g_beamPresentMax) g_beamPresentMax = line;
-        ++g_beamPresents;
-        if (line >= 16) ++g_beamPresentsLate;
-        // Both halves of COP1LC are ready before the explicit restart. The
-        // old list remains immutable until this handoff, and all pointer
-        // MOVEs execute in blanking, before sprite/bitplane DMA fetches.
-        *cop1lcPointer = m_copper;
-        *copjmp1Pointer = 0;
-    }
-    // Only now may the main thread reuse the former front bitmap.
-    if (present) {
-        ++g_macFramesPresented;
-        m_framePending = false;
-    }
 }
 
 void AitdScreen::setMouseCursor(const uint8_t* cursor, int16_t x, int16_t y,
@@ -401,7 +306,7 @@ void AitdScreen::updateMouseSprite()
     bool visible = m_mouseAllowed && m_cursorVisible
         && left < (int16_t)kLoresWidth
         && left + 16 > 0 && rows;
-    uint16_t hstart = (uint16_t)(97 + (left > 0 ? left : 0));
+    uint16_t hstart = (uint16_t)(129 + (left > 0 ? left : 0));
     uint16_t vstart = (uint16_t)(kLoresVStart + top + firstSourceRow);
     uint16_t vstop = (uint16_t)(vstart + rows);
     uint8_t* control = (uint8_t*)sprite;
@@ -427,305 +332,49 @@ void AitdScreen::updateMouseSprite()
 
     sprite[2 + rows * 2] = sprite[3 + rows * 2] = 0;
 
-    // Select this field's sprite before its DMA fetches begin in blanking.
-    uint32_t pointer = (uint32_t)sprite;
-    m_copper[VS_CL_SPRITES] = copperMove(spr1pth, (uint16_t)(pointer >> 16));
-    m_copper[VS_CL_SPRITES + 1] = copperMove(spr1ptl, (uint16_t)pointer);
+
 }
 
-#ifdef AITD_FILLWATCH
-static void validateConvertedFrame(const uint8_t* chunky, const uint8_t* planar, uint16_t cropLeft, uint16_t cropTop)
+int16_t AitdScreen::presentMacFrame(const uint8_t* chunky,const uint8_t* colorTable,
+                                  const DirtyRect* dirtyRects,uint16_t dirtyRectCount,
+                                  uint16_t cropLeft,uint16_t cropTop,bool mouseAllowed)
 {
-    static uint16_t nextRow = 0;
-    bool bad = false;
-    // Decode eight visible rows per frame: a complete crop in 36 frames.
-    for (uint16_t checked = 0; checked < 8; ++checked) {
-        uint16_t y = cropTop + nextRow++;
-        if (nextRow >= AitdScreen::kLoresHeight) nextRow = 0;
-        const uint8_t* source = chunky + (uint32_t)y * (AitdScreen::kWidth / 2);
-        const uint8_t* row = planar
-            + (uint32_t)(y + AitdScreen::kMacTop) * AitdScreen::kRowStride;
-        for (uint16_t x = cropLeft;
-             x < (cropLeft + AitdScreen::kLoresWidth); ++x) {
-            uint8_t packed = source[x >> 1];
-            uint8_t expected = (x & 1) ? (packed & 15) : (packed >> 4);
-            uint8_t mask = (uint8_t)(0x80u >> (x & 7));
-            uint8_t actual = 0;
-            for (uint16_t plane = 0; plane < AitdScreen::kPlanes; ++plane)
-                if (row[(uint32_t)plane * AitdScreen::kBytesPerRow + (x >> 3)] & mask)
-                    actual |= (uint8_t)(1u << plane);
-            if (actual == expected) continue;
-            if (!bad) {
-                g_fillBadX = x;
-                g_fillBadY = y;
-                g_fillBadExpected = expected;
-                g_fillBadActual = actual;
-            }
-            bad = true;
-            ++g_fillBadPixels;
-        }
-        ++g_fillWatchRows;
+    Planar8::Rect viewport{int16_t(cropTop),int16_t(cropLeft),int16_t(cropTop+200),int16_t(cropLeft+320)};
+    if(!chunky || !colorTable || !m_back || !Planar8::viewportValid(viewport)
+       || dirtyRectCount>kMaxDirtyRects || (dirtyRectCount && !dirtyRects) || mouseAllowed
+       || colorTable[4]!=0x80 || colorTable[5]!=0 || colorTable[6]!=0 || colorTable[7]!=255)return -1;
+    if(m_framePending)return 0;
+    Planar8::Rect normalized[kMaxDirtyRects];uint16_t count=0;
+    if(!matchesViewport(cropLeft,cropTop)) {
+        normalized[count++]={0,0,200,320};
+    } else for(uint16_t i=0;i<dirtyRectCount;++i) {
+        const DirtyRect& d=dirtyRects[i];Planar8::Rect local;
+        if(!Planar8::normalize(viewport,{d.top,d.left,d.bottom,d.right},local))return -1;
+        if(local.top<local.bottom && local.left<local.right)normalized[count++]=local;
     }
-    ++g_fillWatchFrames;
-    if (bad) ++g_fillBadFrames;
-}
-#endif
-
-static uint8_t gammaToOcs(uint16_t component)
-{
-    static const uint8_t thresholds[15] = {
-        2, 10, 20, 32, 46, 61, 77, 95, 113, 133, 153, 175, 197, 220, 243
-    };
-    uint8_t value = (uint8_t)(component >> 8), result = 0;
-    while (result < 15 && value >= thresholds[result]) ++result;
-    return result;
-}
-
-static bool rectangleContains(const AitdScreen::DirtyRect& outer,
-                              const AitdScreen::DirtyRect& inner)
-{
-    return outer.top <= inner.top && outer.left <= inner.left
-        && outer.bottom >= inner.bottom && outer.right >= inner.right;
-}
-
-static bool rectanglesMergeLosslessly(const AitdScreen::DirtyRect& a,
-                                      const AitdScreen::DirtyRect& b)
-{
-    if (rectangleContains(a, b) || rectangleContains(b, a)) return true;
-    bool sameColumns = a.left == b.left && a.right == b.right
-        && a.top <= b.bottom && a.bottom >= b.top;
-    bool sameRows = a.top == b.top && a.bottom == b.bottom
-        && a.left <= b.right && a.right >= b.left;
-    return sameColumns || sameRows;
-}
-
-bool AitdScreen::presentMacFrame(const uint8_t* chunky, const uint8_t* colorTable,
-                                  const DirtyRect* dirtyRects, uint16_t dirtyRectCount,
-                                  uint16_t cropLeft, uint16_t cropTop, bool mouseAllowed)
-{
-    if (!chunky || !colorTable || !m_back) return false;
-    if (m_framePending) {
-#ifdef AITD_PROBE
-        AitdProfileScope profileWait(kProfileWait);
-#endif
-        return false;
-    }
-
-#ifdef AITD_PROBE
-    AitdProfileScope profilePresent(kProfilePresent);
-    if (g_probeSkipC2P) {
-        // Diagnostic only: retain all original chunky composition and dirty
-        // publication, but remove conversion/display cost so probes can
-        // distinguish those two halves of a slow scene.
-        ++g_macFramesQueued;
-        ++g_macFramesPresented;
-        return true;
-    }
-#endif
-
-
-    // A newly exposed area may never have been converted. Rebuild the whole
-    // new viewport, then publish its origin with the completed buffer in VBI.
-    if (cropLeft > kWidth - kLoresWidth || cropTop > kMacHeight - kLoresHeight
-        || (cropLeft & 15)) return false;
-    DirtyRect fullCrop = { (int16_t)cropTop, (int16_t)cropLeft,
-                          (int16_t)(cropTop + kLoresHeight),
-                          (int16_t)(cropLeft + kLoresWidth) };
-    if (!matchesViewport(cropLeft, cropTop)) {
-        dirtyRects = &fullCrop;
-        dirtyRectCount = 1;
-        // The full new crop supersedes any pending synchronization. Never
-        // carry rectangles from the old crop into the new conversion bounds.
-        m_syncRectCount = 0;
-    }
-
-    DirtyRect normalized[kMaxDirtyRects];
-    uint16_t normalizedCount = 0;
-    for (uint16_t i = 0; i < dirtyRectCount && i < kMaxDirtyRects; ++i) {
-        DirtyRect rectangle = dirtyRects[i];
-        if (rectangle.top < 0) rectangle.top = 0;
-        if (rectangle.left < 0) rectangle.left = 0;
-        if (rectangle.bottom > (int16_t)kMacHeight) rectangle.bottom = kMacHeight;
-        if (rectangle.right > (int16_t)kWidth) rectangle.right = kWidth;
-        rectangle.left &= (int16_t)~15;
-        rectangle.right = (int16_t)((rectangle.right + 15) & ~15);
-        // Clip AFTER alignment so neither edge converts outside the lores crop.
-        if (rectangle.left < fullCrop.left) rectangle.left = fullCrop.left;
-        if (rectangle.right > fullCrop.right) rectangle.right = fullCrop.right;
-        if (rectangle.top < fullCrop.top) rectangle.top = fullCrop.top;
-        if (rectangle.bottom > fullCrop.bottom) rectangle.bottom = fullCrop.bottom;
-        if (rectangle.top >= rectangle.bottom || rectangle.left >= rectangle.right) continue;
-
-        // Horizontal C2P alignment can make two source rectangles overlap.
-        // Fold those together here so no plane span is converted twice.
-        bool merged;
-        do {
-            merged = false;
-            for (uint16_t j = 0; j < normalizedCount; ++j) {
-                if (!rectanglesMergeLosslessly(rectangle, normalized[j])) continue;
-                if (normalized[j].top < rectangle.top) rectangle.top = normalized[j].top;
-                if (normalized[j].left < rectangle.left) rectangle.left = normalized[j].left;
-                if (normalized[j].bottom > rectangle.bottom)
-                    rectangle.bottom = normalized[j].bottom;
-                if (normalized[j].right > rectangle.right) rectangle.right = normalized[j].right;
-                normalized[j] = normalized[--normalizedCount];
-                merged = true;
-                break;
-            }
-        } while (merged);
-        normalized[normalizedCount++] = rectangle;
-    }
-    bool pixelsDirty = normalizedCount != 0;
-#ifdef AITD_PROBE
-    if (pixelsDirty) {
-        ++g_probeC2PFrames;
-        g_probeC2PRects += normalizedCount;
-        for (uint16_t i = 0; i < normalizedCount; ++i) {
-            uint16_t width = (uint16_t)(normalized[i].right - normalized[i].left);
-            for (int16_t y = normalized[i].top; y < normalized[i].bottom; ++y)
-                g_probeC2PPixels += width;
+    // Vette's explicit synchronization: bring the previous frame's changed
+    // spans to the inactive bitmap before converting this frame's spans.
+    for(uint16_t i=0;i<m_syncRectCount;++i) {
+        const DirtyRect& r=m_syncRects[i];
+        for(int16_t y=r.top;y<r.bottom;++y)for(uint16_t plane=0;plane<kPlanes;++plane) {
+            uint32_t base=uint32_t(y)*kRowStride+plane*kBytesPerRow;
+            for(int16_t x=r.left/8;x<r.right/8;++x)m_back[base+x]=m_chip[base+x];
         }
     }
-#endif
-
-    // After the previous swap m_back is the frame from two updates ago. Bring
-    // forward each rectangle changed last time unless one of this frame's
-    // conversions replaces it completely.
-    if (m_syncRectCount) {
-#ifdef AITD_PROBE
-        AitdProfileScope profileSync(kProfileSync);
-#endif
-        for (uint16_t i = 0; i < m_syncRectCount; ++i) {
-            bool replaced = false;
-            for (uint16_t j = 0; j < normalizedCount; ++j)
-                if (rectangleContains(normalized[j], m_syncRects[i])) {
-                    replaced = true;
-                    break;
-                }
-            if (replaced) continue;
-            uint16_t byteLeft = (uint16_t)m_syncRects[i].left / 8;
-            uint16_t byteRight = (uint16_t)m_syncRects[i].right / 8;
-            for (int16_t y = m_syncRects[i].top; y < m_syncRects[i].bottom; ++y) {
-                uint32_t row = (uint32_t)(y + kMacTop) * kRowStride;
-                for (uint16_t plane = 0; plane < kPlanes; ++plane) {
-                    uint32_t offset = row + (uint32_t)plane * kBytesPerRow + byteLeft;
-                    for (uint16_t x = byteLeft; x < byteRight; ++x, ++offset)
-                        m_back[offset] = m_chip[offset];
-                }
-            }
-        }
+    for(uint16_t i=0;i<count;++i) {
+        const Planar8::Rect& r=normalized[i];Planar8::Rect converted;
+        Planar8::Rect global{int16_t(r.top+cropTop),int16_t(r.left+cropLeft),
+                            int16_t(r.bottom+cropTop),int16_t(r.right+cropLeft)};
+        if(!Planar8::convert(chunky,m_back,viewport,global,converted))return -1;
+        m_syncRects[i]={r.top,r.left,r.bottom,r.right};
     }
-    m_syncRectCount = 0;
-
-    if (pixelsDirty) {
-#ifdef AITD_C2P_SPLIT
-        ++g_c2pSplitFrames;
-#endif
-#ifdef AITD_PROBE
-        AitdProfileScope profileC2P(kProfileC2P);
-#endif
-        for (uint16_t rectangle = 0; rectangle < normalizedCount; ++rectangle) {
-            const DirtyRect& dirty = normalized[rectangle];
-            uint16_t firstByte = (uint16_t)dirty.left / 8;
-            uint16_t groups = (uint16_t)(dirty.right - dirty.left) / 8;
-#ifdef AITD_C2P_ASM
-            const uint8_t* rectangleSource = chunky + (uint32_t)dirty.top * (kWidth / 2)
-                                           + (uint16_t)dirty.left / 2;
-            uint8_t* rectangleDestination = m_back
-                                          + (uint32_t)(dirty.top + kMacTop) * kRowStride
-                                          + firstByte;
-#ifdef AITD_C2P_SPLIT
-            uint8_t* fastDestination = s_c2pSplitFast
-                                     + (uint32_t)(dirty.top + kMacTop) * kRowStride
-                                     + firstByte;
-            uint32_t splitStart = aitdProfileBeamEpoch();
-#endif
-#ifdef AITD_C2P_VERIFY
-            uint32_t start = aitdProfileBeamEpoch();
-#endif
-            aitdC2PRectAsm(rectangleSource, rectangleDestination, s_quadToPlanes[0],
-                            groups, (uint16_t)(dirty.bottom - dirty.top));
-#ifdef AITD_C2P_SPLIT
-            g_c2pSplitChipTicks += aitdProfileBeamEpoch() - splitStart;
-            splitStart = aitdProfileBeamEpoch();
-            aitdC2PRectAsm(rectangleSource, fastDestination, s_quadToPlanes[0],
-                            groups, (uint16_t)(dirty.bottom - dirty.top));
-            g_c2pSplitFastTicks += aitdProfileBeamEpoch() - splitStart;
-            ++g_c2pSplitRects;
-            uint16_t splitWidth = (uint16_t)(dirty.right - dirty.left);
-            for (int16_t splitY = dirty.top; splitY < dirty.bottom; ++splitY)
-                g_c2pSplitPixels += splitWidth;
-#endif
-#ifdef AITD_C2P_VERIFY
-            g_c2pAsmTicks += aitdProfileBeamEpoch() - start;
-#endif
-#endif
-            for (int16_t y = dirty.top; y < dirty.bottom; ++y) {
-                const uint8_t* source = chunky + (uint32_t)y * (kWidth / 2)
-                                      + (uint16_t)dirty.left / 2;
-                uint8_t* destination = m_back + (uint32_t)(y + kMacTop) * kRowStride
-                                     + firstByte;
-#ifdef AITD_C2P_ASM
-#ifdef AITD_C2P_VERIFY
-                for (uint16_t plane = 0; plane < kPlanes; ++plane)
-                    for (uint16_t x = 0; x < groups; ++x)
-                        s_c2pVerifyBytes[plane * kBytesPerRow + x]
-                            = destination[plane * kBytesPerRow + x];
-                uint32_t start = aitdProfileBeamEpoch();
-                convertC2PSpanC(source, destination, groups);
-                g_c2pCTicks += aitdProfileBeamEpoch() - start;
-                ++g_c2pVerifyCalls;
-                g_c2pVerifyBytes += (uint32_t)groups * kPlanes;
-                for (uint16_t plane = 0; plane < kPlanes; ++plane)
-                    for (uint16_t x = 0; x < groups; ++x)
-                        if (s_c2pVerifyBytes[plane * kBytesPerRow + x]
-                            != destination[plane * kBytesPerRow + x])
-                            ++g_c2pVerifyFailures;
-#endif
-#else
-                convertC2PSpanC(source, destination, groups);
-#endif
-            }
-        }
-        for (uint16_t i = 0; i < normalizedCount; ++i) m_syncRects[i] = normalized[i];
-        m_syncRectCount = normalizedCount;
+    m_syncRectCount=count;
+    for(uint16_t i=0;i<256;++i) {
+        const uint8_t* c=colorTable+10+i*8;
+        m_nextPalette[i]=VideoColor::rgb(uint16_t(c[0])<<8|c[1],uint16_t(c[2])<<8|c[3],uint16_t(c[4])<<8|c[5]);
     }
-
-#ifdef AITD_PROBE
-    {
-        AitdProfileScope profilePalette(kProfilePalette);
-#endif
-    uint16_t finalIndex = (uint16_t)(colorTable[6] << 8 | colorTable[7]);
-    if (finalIndex > 15) finalIndex = 15;
-    bool deviceTable = (colorTable[4] & 0x80) != 0;
-    for (uint16_t i = 0; i < 16; ++i) m_nextPalette[i] = 0;
-    for (uint16_t i = 0; i <= finalIndex; ++i) {
-        const uint8_t* spec = colorTable + 8 + i * 8;
-        // A device ColorTable uses its array position as the physical pen.
-        // ColorSpec.value is private Color Manager state (protected/tolerant
-        // ownership flags in System 6), not an index suitable for COLORxx.
-        uint16_t index = deviceTable ? i : (uint16_t)(spec[0] << 8 | spec[1]);
-        if (index >= 16) continue;
-        uint8_t red = gammaToOcs((uint16_t)(spec[2] << 8 | spec[3]));
-        uint8_t green = gammaToOcs((uint16_t)(spec[4] << 8 | spec[5]));
-        uint8_t blue = gammaToOcs((uint16_t)(spec[6] << 8 | spec[7]));
-        m_nextPalette[index] = (uint16_t)(red << 8 | green << 4 | blue);
-    }
-#ifdef AITD_PROBE
-    }
-#endif
-#ifdef AITD_FILLWATCH
-    // Rolling validation is intentionally diagnostic: it proves that dirty
-    // synchronization plus the converted rectangle leave the back buffer an
-    // exact planar encoding of the visible part of the 4-bit chunky surface.
-    validateConvertedFrame(chunky, m_back, cropLeft, cropTop);
-#endif
-    m_nextCropLeft = cropLeft;
-    m_nextCropTop = cropTop;
-    m_nextMouseAllowed = mouseAllowed;
-    ++g_macFramesQueued;
-    m_framePending = true;
-    return true;
+    queueFrame(cropLeft,cropTop,false);
+    return 1;
 }
 
 void AitdScreen::shutdown()
@@ -784,14 +433,11 @@ static void setWhitePixel(uint8_t* chip, uint16_t x, uint16_t y)
 
 static void drawLine(uint8_t* chip, uint16_t x, uint16_t y, const char* text)
 {
-    for (; *text; ++text, x += 12) {
+    for (; *text; ++text, x += 6) {
         for (uint16_t row = 0; row < 7; ++row) {
             uint8_t bits = glyphRow(*text, row);
             for (uint16_t col = 0; col < 5; ++col) if (bits & (16u >> col)) {
-                setWhitePixel(chip, x + col * 2,     y + row * 2);
-                setWhitePixel(chip, x + col * 2 + 1, y + row * 2);
-                setWhitePixel(chip, x + col * 2,     y + row * 2 + 1);
-                setWhitePixel(chip, x + col * 2 + 1, y + row * 2 + 1);
+                setWhitePixel(chip,x+col,y+row);
             }
         }
     }
@@ -808,21 +454,78 @@ static void appendHex(char*& p, uint32_t value, uint16_t digits)
 void AitdScreen::showLoudStop(const char* manager, const char* routine, int32_t selector,
                                const char* segment, uint32_t offset, uint16_t trapWord)
 {
-    if (!m_chip) return;
-    for (uint32_t i = 0; i < kPictureBytes; ++i) m_chip[i] = 0;
+    if(!m_chip || !m_back)return;
+    // Let an already queued game frame complete before reusing its bitmap.
+    while(m_framePending) { __asm__ volatile("nop"); }
+    for(uint32_t i=0;i<kPictureBytes;++i)m_back[i]=0;
 
     char line[48]; char* p;
-    drawLine(m_chip, 24, 24, "STAGE B LOUD STOP");
+    drawLine(m_back, 24, 24, "STAGE B LOUD STOP");
     p = line; append(p, "TRAP: $"); appendHex(p, trapWord, 4); *p = 0;
-    drawLine(m_chip, 24, 58, line);
+    drawLine(m_back, 24, 58, line);
     p = line; append(p, "MANAGER: "); append(p, manager); *p = 0;
-    drawLine(m_chip, 24, 82, line);
+    drawLine(m_back, 24, 82, line);
     p = line; append(p, "ROUTINE: "); append(p, routine); *p = 0;
-    drawLine(m_chip, 24, 106, line);
+    drawLine(m_back, 24, 106, line);
     p = line; append(p, "SELECTOR: ");
     if (selector < 0) append(p, "N/A"); else appendHex(p, (uint32_t)selector, 8);
-    *p = 0; drawLine(m_chip, 24, 130, line);
+    *p = 0; drawLine(m_back, 24, 130, line);
     p = line; append(p, "CALLER: "); append(p, segment); *p++ = '+';
     appendHex(p, offset, 4); *p = 0;
-    drawLine(m_chip, 24, 154, line);
+    drawLine(m_back, 24, 154, line);
+    for(uint16_t i=0;i<256;++i)m_nextPalette[i]=0;
+    m_nextPalette[255]=0xffffff;
+    m_syncRectCount=0;
+    queueFrame(m_cropLeft,m_cropTop,false);
 }
+
+
+#ifdef AITD_AGA_PROBE
+extern "C" {
+volatile uint16_t g_agaProbeStage=0,g_agaProbeError=0,g_agaProbeDone=0;
+AitdScreen* g_agaProbeScreen=0;
+const uint8_t* g_agaProbeSource=0;
+const uint8_t* g_agaProbeColors=0;
+int16_t g_agaProbeViewport[4]={0,0,0,0};
+extern volatile uint16_t g_vbiCount;
+__attribute__((noinline,used)) void aitdAgaProbeCheckpoint() { __asm__ volatile("nop" ::: "memory"); }
+
+bool aitdRunAgaProbe(AitdScreen* screen)
+{
+    static uint8_t source[640*480],colors[2056];
+    g_agaProbeScreen=screen;g_agaProbeSource=source;g_agaProbeColors=colors;
+    for(uint16_t y=0;y<480;++y)for(uint16_t x=0;x<640;++x)
+        source[uint32_t(y)*640+x]=uint8_t(x*37+y*71+(x^y));
+    colors[4]=0x80;colors[7]=255;
+    for(uint16_t i=0;i<256;++i) {
+        uint8_t* c=colors+8+i*8;c[0]=8;
+        c[2]=c[3]=uint8_t(i);c[4]=c[5]=uint8_t(255-i);c[6]=c[7]=uint8_t(i*71);
+    }
+    uint16_t left=160,top=150;
+    for(uint16_t frame=0;frame<5;++frame) {
+        AitdScreen::DirtyRect dirty={150,160,350,480};uint16_t count=1;
+        if(frame==1 || frame==2) {
+            dirty=frame==1 ? AitdScreen::DirtyRect{153,195,155,229} : AitdScreen::DirtyRect{180,400,183,404};
+            for(int16_t y=dirty.top;y<dirty.bottom;++y)for(int16_t x=dirty.left;x<dirty.right;++x)
+                source[uint32_t(y)*640+x]=frame==1 ? 0x69 : 0xc3;
+        }
+        if(frame==3) {count=0;colors[10+42*8]=colors[11+42*8]=17;}
+        if(frame==4) {left=161;top=151;count=0;}
+        g_agaProbeViewport[0]=top;g_agaProbeViewport[1]=left;
+        g_agaProbeViewport[2]=top+200;g_agaProbeViewport[3]=left+320;
+        if(screen->presentMacFrame(source,colors,&dirty,count,left,top,false)!=1) {
+            g_agaProbeError=frame+1;return false;
+        }
+        while(g_macFramesPresented<frame+1) {__asm__ volatile("nop");}
+        uint16_t start=g_vbiCount;
+        while(uint16_t(g_vbiCount-start)<2) {__asm__ volatile("nop");}
+        g_agaProbeStage=frame+1;aitdAgaProbeCheckpoint();
+    }
+    return true;
+}
+void aitdAgaProbeRestored(uint16_t success)
+{
+    g_agaProbeDone=success;g_agaProbeStage=99;aitdAgaProbeCheckpoint();
+}
+}
+#endif

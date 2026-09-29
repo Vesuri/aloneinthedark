@@ -100,24 +100,15 @@ EXTRA_DEFINES += -DAITD_MAPPED_COPY_VERIFY
 endif
 endif
 
-# Chunky-to-planar rectangle kernel (Vette's four-plane version).  The C table
-# implementation remains the oracle.  ⚠ This game draws 8-bit pixels; the kernel
-# must be replaced, not tuned, when the display moves to eight planes.
-ifneq ($(C2P_C),1)
-EXTRA_DEFINES += -DAITD_C2P_ASM
-ifdef VERIFY
-EXTRA_DEFINES += -DAITD_C2P_VERIFY
+# Eight-plane reference conversion is active. The measured assembly kernel and
+# optimization belongs to M5; inherited four-plane assembly must never be selected.
+ifeq ($(C2P_C),0)
+$(error eight-plane assembly optimization is deferred to M5)
 endif
+ifeq ($(C2P_SPLIT),1)
+$(error C2P split profiling is deferred to M5)
 endif
 
-# Diagnostic only: run each normalized C2P rectangle once to the real chip-RAM
-# back buffer and once to an equivalent fast-RAM buffer, timing both destinations.
-ifeq ($(C2P_SPLIT),1)
-ifndef PROBES
-$(error C2P_SPLIT=1 requires PROBES=1)
-endif
-EXTRA_DEFINES += -DAITD_C2P_SPLIT
-endif
 
 # `make PROBES=1` — the sub-frame timing accumulators, read via the gdb stub (amiga/diag_run.sh).
 # OFF by default: the probes read chip registers several times per iteration, which is exactly
@@ -159,6 +150,11 @@ EXTRA_DEFINES += -DAITD_FILE_PROBE
 PROBE_SYMS_FILE = g_fileCloseErrors g_fileOpenHandles g_fileRestoredCloses g_fileReadCalls g_fileReadBytes g_fileReadMax g_fileProbeStage g_fileProbeError g_fileProbeDone g_fileProbeCCR g_fileProbeWindows
 endif
 
+ifeq ($(AGAPROBE),1)
+EXTRA_DEFINES += -DAITD_AGA_PROBE
+PROBE_SYMS_AGA = g_agaProbeStage g_agaProbeError g_agaProbeDone g_agaProbeScreen g_agaProbeSource g_agaProbeColors g_agaProbeViewport
+endif
+
 ifeq ($(WINDOWPROBE),1)
 ifndef PROBES
 $(error WINDOWPROBE=1 requires PROBES=1 for window boundary measurements)
@@ -193,7 +189,7 @@ EXTRA_DEFINES += -DAITD_FPSCOUNT
 endif
 
 ifeq ($(FILLWATCH),1)
-EXTRA_DEFINES += -DAITD_FILLWATCH
+$(error inherited four-plane FILLWATCH is unsupported; use AGAPROBE for eight-plane capture checks)
 endif
 
 ifdef PROBEFIELDS
@@ -251,7 +247,7 @@ PROBE_SYMS = g_catalogEntries g_catalogDataFiles g_catalogDataBytes g_applicatio
              g_stageBState g_trapWord g_trapSelector g_trapSegment g_trapOffset \
              g_trapPC g_trapRegisters g_trapUserStack g_resourceCount g_jumpEntryCount \
              g_blockMoveCount g_trapManager g_trapRoutine
-PROBE_SYMS += $(PROBE_SYMS_FILE) $(PROBE_SYMS_FILEWRITE) $(PROBE_SYMS_RESOURCEEXIT)
+PROBE_SYMS += $(PROBE_SYMS_AGA) $(PROBE_SYMS_FILE) $(PROBE_SYMS_FILEWRITE) $(PROBE_SYMS_RESOURCEEXIT)
 PROBE_SYMS += $(PROBE_SYMS_AE) g_defaultPalette g_appleEventHandlers g_soundDriver g_soundDriverHandle g_soundDriverCalls
 PROBE_SYMS += g_overlayChainVerified g_overlaySourceReads g_overlaySourceBytes g_overlaySourceMax g_overlayRuntimeReads g_overlayRuntimeBytes g_overlaySourceOpen g_overlaySourceCloseErrors
 PROBE_SYMS += g_resourceSourceReads g_resourceSourceBytes g_resourceSourceMax g_resourceRuntimeReads g_resourceRuntimeBytes g_resourceSourceOpen g_resourceSourceCloseErrors
@@ -275,16 +271,6 @@ PROBE_SYMS += g_mappedCopyAsmTicks g_mappedCopyCTicks g_mappedCopyVerifyCalls \
               g_mappedCopyVerifyBytes \
               g_mappedCopyVerifyFailures
 endif
-endif
-ifneq ($(C2P_C),1)
-ifdef VERIFY
-PROBE_SYMS += g_c2pAsmTicks g_c2pCTicks g_c2pVerifyCalls g_c2pVerifyBytes \
-              g_c2pVerifyFailures
-endif
-endif
-ifeq ($(C2P_SPLIT),1)
-PROBE_SYMS += g_c2pSplitChipTicks g_c2pSplitFastTicks g_c2pSplitFrames \
-              g_c2pSplitRects g_c2pSplitPixels
 endif
 ifdef PROBES
 PROBE_SYMS += g_probeSkipC2P g_probeC2PFrames g_probeC2PRects g_probeC2PPixels \

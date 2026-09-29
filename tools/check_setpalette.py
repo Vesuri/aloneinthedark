@@ -99,7 +99,7 @@ def check_native(text, status, folder, code):
     changed[6] = 0xe0
     if load('after', 'palette') != changed:
         raise ValueError('native palette mutation')
-    for kind, size in (('private', 4), ('gd', 62), ('pm', 50), ('clut', 2056), ('physical', 307200), ('pending', 32), ('copper', 64)):
+    for kind, size in (('private', 4), ('gd', 62), ('pm', 50), ('clut', 2056), ('physical', 307200), ('pending', 1024), ('copper', 2248)):
         a, b = load('before', kind), load('after', kind)
         if len(a) != size or a != b:
             raise ValueError('native changed device/private state: ' + kind)
@@ -107,7 +107,7 @@ def check_native(text, status, folder, code):
         raise ValueError('native private block')
     if fields(one(text, r'SET_NATIVE_SIZE (.*)')) != dict(palette=4112, private=4):
         raise ValueError('native allocation sizes')
-    one(text, r'SET_NEXT state=2 trap=0 selector=FFFFFFFF segment=0 offset=FFFFFFFF manager=SEGMENT LOADER routine=8-BIT PRESENTATION windows=(?:70|96) services=(?:124/124|132/132)')
+    one(text, r'SET_NEXT state=3 trap=AA95 selector=FFFFFFFF segment=9 offset=10FA manager=PALETTE MANAGER routine=SETPALETTE windows=(?:70|96) services=(?:124/124|132/132)')
     for phase in ('before', 'after'):
         reference = (folder/('setpalette-reference-'+phase+'-palette.bin')).read_bytes()
         native = load(phase, 'palette')

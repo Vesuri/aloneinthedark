@@ -34,6 +34,10 @@ extern "C" void aitdFileCleanupFinished();
 extern "C" { void aitdResourceExitCleanupFinished();extern volatile uint32_t g_resourceExitCleanupOK; }
 #endif
 #include "AitdScreen.h"
+#ifdef AITD_AGA_PROBE
+extern "C" bool aitdRunAgaProbe(AitdScreen*);
+extern "C" void aitdAgaProbeRestored(uint16_t);
+#endif
 #include "PerfProbe.h"
 #include "mac/MacLoader.h"
 
@@ -363,8 +367,8 @@ bool PlatformAmiga::run()
         0x555,0x55f,0x5f5,0x5ff,0xf55,0xf5f,0xff5,0xfff};
     for(uint32_t y=0;y<AitdScreen::kHeight;++y)
         for(uint32_t x=0;x<AitdScreen::kBytesPerRow;++x)
-            for(uint32_t plane=0;plane<4;++plane)
-                pattern[y*256+plane*64+x]=(((x/2+y/16)&15)&(1<<plane)) ? 255 : 0;
+            for(uint32_t plane=0;plane<AitdScreen::kPlanes;++plane)
+                pattern[y*AitdScreen::kRowStride+plane*AitdScreen::kBytesPerRow+x]=(((x/2+y/16)&15)&(1<<plane)) ? 255 : 0;
     bool ok=screen.initialize(pattern,colors);
     extern uint8_t* g_windowProbePicture;
     g_windowProbePicture=screen.picture();
@@ -398,7 +402,11 @@ bool PlatformAmiga::run()
     // services the one prerequisite (_BlockMove), then deliberately stops on the first
     // unimplemented trap and paints the full diagnostic into this screen.
     resourceFiles.runtime=true;overlayFile.runtime=true;
+#ifdef AITD_AGA_PROBE
+    if(ok)ok=aitdRunAgaProbe(&screen);
+#else
     if (ok) ok = loader.run(&screen);
+#endif
     resourceFiles.runtime=false;overlayFile.runtime=false;
 
     // Keep multitasking forbidden through the Wait()-free hardware handback.
@@ -483,5 +491,8 @@ bool PlatformAmiga::run()
         CloseLibrary((struct Library*)DOSBase);
         DOSBase = 0;
     }
-    return filesClosed;
+#ifdef AITD_AGA_PROBE
+    aitdAgaProbeRestored(filesClosed && ok);
+#endif
+    return filesClosed && ok;
 }

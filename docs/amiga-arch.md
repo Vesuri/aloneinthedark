@@ -31,15 +31,19 @@ Alone in the Dark makes arrives as a loud stop.
 
 ## Display
 
-`AitdScreen` retains the bootstrap four-plane crop with a single cursor sprite
-buffer; the alternate display mode and field-parity probes are removed. It
-currently draws 16 colors from a packed
-4-bit 512×320 Macintosh surface, with a double-buffered chip-RAM bitmap, copper
-lists published in VBI, an explicit dirty-rectangle list and a hardware-sprite
-mouse pointer. Alone in the Dark draws 8-bit pixels through a 256-entry `clut`,
-so the surface, C2P kernel and palette path must move to eight planes (AGA). The
-dirty-rectangle and VBI publication rules stay. Per-window crops are keyed by the
-original WIND ID; none are mapped for this game yet.
+`AitdScreen` owns one 320×200 eight-plane display, using the live WIND 128
+content rectangle within the 640×480×8 logical Mac screen. Each chip bitmap
+contains 200 interleaved rows of eight 40-byte planes (64,000 bytes). Explicit
+dirty rectangles align to 32 destination pixels. The back bitmap inherits the
+previous frame's changed spans before receiving the new changes.
+
+Main-thread conversion prepares the inactive bitmap and complete copper list.
+VBI swaps both together before input/audio work. The list includes all 256
+RGB24 colours, using BPLCON3 banks and high/low nibble writes. An integer lookup
+reproduces the measured Mac video transfer while preserving the logical RGB16
+CLUT. The current mode is PAL, with one-times fetch; NTSC and visible-pointer
+palette ownership remain M2.5 requirements. The pointer stays hidden for this
+startup path. See [aga-display.md](aga-display.md) for evidence and limitations.
 
 ## Timing and input
 

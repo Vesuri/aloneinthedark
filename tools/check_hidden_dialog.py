@@ -18,7 +18,7 @@ def original(path):
 
 def calls(text,status,native=False):
     if status!=0 or any(s in text for s in ('FAIL','[LUA ERROR]','unknown command','Error in','timeout','Program received signal')):raise ValueError('failed run')
-    markers=('PASS native hidden dialog next=8-BIT-PRESENTATION','[Inferior 1 (Remote target) detached]') if native else ('PASS original hidden dialog constructor','Exited via the debugger')
+    markers=('PASS native hidden dialog next=SETPALETTE','[Inferior 1 (Remote target) detached]') if native else ('PASS original hidden dialog constructor','Exited via the debugger')
     if any(text.count(s)!=1 for s in markers):raise ValueError('missing/duplicate completion')
     pairs=[]
     for label in ('DIALOG_ENTER','DIALOG_RETURN'):
