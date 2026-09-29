@@ -164,9 +164,9 @@ static bool run() {
     g_fileProbeStage=43;
     if(!aitdFileCatalogProbe() || g_systemWindows!=start+203)return false;
     g_fileProbeStage=44;
-    if(!aitdFileInstalledProbe() || g_systemWindows!=start+214)return false;
+    if(!aitdFileInstalledProbe() || g_systemWindows!=start+213)return false;
     g_fileProbeStage=45;
-    if(!aitdFileForkProbe() || g_systemWindows!=start+275)return false;
+    if(!aitdFileForkProbe() || g_systemWindows!=start+274)return false;
     g_fileProbeStage=46;
     if(!aitdFileIndexProbe())return false;
     g_fileProbeStage=47;

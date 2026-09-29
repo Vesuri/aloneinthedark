@@ -17,8 +17,8 @@ def validate(text,root,status):
     for line in text.splitlines():
         if line.startswith('INSTALLED label='):
             f=dict(re.findall(r'(\w+)=(\S+)',line));rows.append({k:v if k=='label' else int(v,16) for k,v in f.items()})
-    names=[('application','Alone In The Dark'),('camera','Alone Data/Camera00.PAK'),('ress','Alone Data/ITD_Ress.PAK'),('present','Alone Data/Present.PAK'),('listbod','ListBod2.PAK'),('quick','Quick Reference'),('register','Register Triple A Pack')]
-    if len(rows)!=13:raise ValueError('stage count')
+    names=[('application','Alone In The Dark'),('camera','Alone Data/Camera00.PAK'),('ress','Alone Data/ITD_Ress.PAK'),('present','Alone Data/Present.PAK'),('listbod','Alone Data/ListBod2.PAK'),('quick','Quick Reference'),('register','Register Triple A Pack')]
+    if len(rows)!=12:raise ValueError('stage count')
     for n,(row,(label,name)) in enumerate(zip(rows,names),1):
         if (row['label'],row['stage'],row['state'],row['trap'],row['d0'],row['result'])!=(label,n,n,0xa20c,0,0):raise ValueError(label+' sequence/result')
         info=(root/(name+'.finfo')).read_bytes()
@@ -36,12 +36,12 @@ def validate(text,root,status):
         resource=root/(name+'.rsrc')
         resource_size=resource.stat().st_size if resource.exists() else 0
         if row['data']!=(0 if n==1 else size) or row['resource']!=(size if n==1 else resource_size) or row['attr']!=(0x84 if n==1 else 0):raise ValueError(label+' fork sizes/attributes')
-    for index,source in enumerate([rows[0],rows[4],rows[5],rows[6]],1):
+    for index,source in enumerate([rows[0],rows[5],rows[6]],1):
         row=rows[6+index]
         if (row['label'],row['stage'],row['state'],row['result'],row['d0'])!=(f'index{index}',7+index,7+index,0,0):raise ValueError('index sequence/result')
         for field in ['id','data','resource','finder0','finder1','finder2','finder3','created','modified']:
             if row[field]!=source[field]:raise ValueError('indexed identity '+field)
-    for n,label in [(12,'index-end'),(13,'missing')]:
+    for n,label in [(11,'index-end'),(12,'missing')]:
         row=rows[n-1]
         if (row['label'],row['stage'],row['state'],row['result'],row['d0']&65535)!=(label,n,n,0xffd5,0xffd5):raise ValueError('missing result')
     return 'PASS installed reference: type/creator/forks exact; explicit reference import date offset=-7200 and Finder initialized/icon differences'

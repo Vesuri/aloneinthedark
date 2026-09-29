@@ -41,14 +41,14 @@ extern "C" bool aitdFileVInfoProbe() {
     g_fileVInfoProbeStep=1;l(18,0);w(22,0xffff);l(48,3);
     if(!result(aitdProbeHSetVol(pb)))return false;
     g_fileVInfoProbeStep=2;if(!query(0,-1,0,0))return false;
-    g_fileVInfoProbeStep=3;if(!query(0,0,0,6))return false;
-    g_fileVInfoProbeStep=4;if(!query(0,-32000,0,6))return false;
+    g_fileVInfoProbeStep=3;if(!query(0,0,0,5))return false;
+    g_fileVInfoProbeStep=4;if(!query(0,-32000,0,5))return false;
     g_fileVInfoProbeStep=5;if(!query(0,1,0,0) || !query(0,2,0,0,-35))return false;
     g_fileVInfoProbeStep=6;if(!query(0,0x1234,0,0,-35))return false;
     g_fileVInfoProbeStep=7;if(!query(1,0x1234,"ignored",0) || !query(2,-1,"ignored",0,-35))return false;
     g_fileVInfoProbeStep=8;if(!query(0,-1,"ignored",0))return false;
     g_fileVInfoProbeStep=9;if(!query(-1,0x1234,"Alone",0,-35) || !query(-1,0x1234,"Alone:",0))return false;
-    g_fileVInfoProbeStep=10;if(!query(-1,-1,"Absent:",0,-35) || !query(-1,0,"ignored",6))return false;
+    g_fileVInfoProbeStep=10;if(!query(-1,-1,"Absent:",0,-35) || !query(-1,0,"ignored",5))return false;
     // Both original callers consume ioVFndrInfo[0] as a real System directory ID.
     g_fileVInfoProbeStep=11;l(48,get(90));l(18,0);w(22,0xffff);l(28,0x4552494b);
     if(!result(aitdProbeOpenWD(pb)) || (int16_t)(get(22)>>16)>=-1)return false;

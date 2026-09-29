@@ -32,13 +32,13 @@ emu.register_frame_done(function()
  add('camera',0xa20c,named(':Alone Data:Camera00.PAK'),nil,fatal)
  add('ress',0xa20c,named(':Alone Data:ITD_Ress.PAK'),nil,fatal)
  add('present',0xa20c,named(':Alone Data:Present.PAK'),nil,fatal)
- add('listbod',0xa20c,named('ListBod2.PAK'),nil,fatal)
+ add('listbod',0xa20c,named(':Alone Data:ListBod2.PAK'),nil,fatal)
  add('quick',0xa20c,named('Quick Reference'),nil,fatal)
  add('register',0xa20c,named('Register Triple A Pack'),nil,fatal)
- for i=1,4 do
+ for i=1,3 do
   add('index'..i,0xa20c,named('ignored')..string.format('w@(a0+1c)=%x;',i),nil,fatal)
  end
- add('index-end',0xa20c,named('ignored')..'w@(a0+1c)=5;')
+ add('index-end',0xa20c,named('ignored')..'w@(a0+1c)=4;')
  add('missing',0xa20c,named('AITD Absent Namespace Probe'))
  local function enter(n)
   local s=steps[n]

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Install the original game onto a classic-Mac HFS hard-disk image for MAME.
 
-The extracted installer payload (see extract_original_data.py) is copied as-is
+The extracted installer payload (see extract_original_data.py) is installed
 into a top-level folder of the volume's Desktop Folder (so it shows on the System 7 desktop, or the root
 if the volume has none): the application with its resource fork, `Alone Data`,
 the empty `Alone Saved Games` folder and the extras.  Every file travels as MacBinary
@@ -9,9 +9,8 @@ through `hcopy -m`, the only hfsutils path that keeps both forks together with
 type, creator and Finder flags.  Nothing here is committed: the image lives in
 ignored ref/.
 
-This currently preserves archive layout. The verified original installer moves
-ListBod2.PAK from the payload root into Alone Data; M2.1c1b must apply that same
-placement here before accepting the original idle-presentation route.
+The verified original installer moves ListBod2.PAK from the payload root into
+Alone Data. This tool applies that same path change, preserving both forks.
 
     python3 tools/install_reference_volume.py tmp/AloneInTheDark.img_.sit \\
         ref/mame/hd/aitd_755.hd
@@ -28,6 +27,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from extract_original_data import unpack_payload  # noqa: E402
 from macbin import encode  # noqa: E402
+from install_layout import installed_path
 
 FOLDER = "Alone in the Dark"
 
@@ -58,7 +58,7 @@ def main() -> int:
             base = parent + ":" + args.folder
             count = 0
             for source in sorted(root.rglob("*")):
-                relative = source.relative_to(root)
+                relative = installed_path(source.relative_to(root))
                 target = base + ":" + ":".join(relative.parts)
                 if source.is_dir():
                     continue
@@ -72,7 +72,7 @@ def main() -> int:
             # Empty folders (Alone Saved Games) have no file to create them above.
             for source in sorted(root.rglob("*")):
                 if source.is_dir():
-                    relative = source.relative_to(root)
+                    relative = installed_path(source.relative_to(root))
                     subprocess.run(["hmkdir", base + "".join(
                         ":" + p for p in relative.parts)], capture_output=True)
             listing = hfs("hls", "-laR", base)

@@ -43,20 +43,6 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.1c1b Reproduce the verified original installation layout.**
-  - The completed original installer places `ListBod2.PAK` under `Alone Data`,
-    although its archive entry is at the root. All 36 installed data forks and
-    all resource maps/payloads match extraction; only unused resource-header
-    bytes differ. Original game instructions are unchanged.
-  - Correct extraction, reference-volume population, native staging and metadata
-    probes to use that path. Preserve the original archive-derived metadata and
-    reject conflicting stale files instead of deleting unknown user data.
-  - The corrected catalog has 33 data files / 5,584,424 bytes; total catalog
-    entries stay 42. Root-file enumeration must reflect the verified layout.
-
-  *Done when* fresh and repeated extraction/staging reproduce the original
-  installer layout and exact bytes, host checks and the six native regressions
-  pass, and catalog/metadata observers verify the corrected location and totals.
 - **M2.1c2 Capture the original idle presentation route.**
   - Original-byte checks locate PRESENT at Dan2+$2D16, called by Dark+$52AC
     after the main-menu timeout, idle demo and two intro calls. Its 15 image

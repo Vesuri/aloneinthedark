@@ -27,9 +27,9 @@ serve memory and resource handles. System identity and all eleven derived
 capability flags match the Mac reference. The user-mode service bridge passes
 its native ABI probe. OS windows and DOS/resload adapters pass the native/host
 core probes; rendered-picture acceptance is owner-deferred (M1.7b2). The next
-item is original-game PAK read acceptance (M2.1c). Its idle reference route
-encounters the original missing-ListBod2.PAK alert. The original installer has
-confirmed that this file belongs under Alone Data; correcting staging is next.
+item is original-game PAK read acceptance (M2.1c). Extraction and staging now
+match the original installer: ListBod2.PAK belongs under Alone Data. The idle
+presentation reference capture is next.
 Resource bodies now stream from disk into zone handles; startup retains the
 4,998-byte map instead of the 1,424,934-byte application fork. The `resource-read`
 regression verifies original bytes and 16 runtime read windows before the current
@@ -46,7 +46,7 @@ publication checks under both saves and preferences. The empty port overlay is
 open below the application; dialog overrides have a tested search route. The
 metadata model preserves duplicate type/ID entries within one file and resolves the first surviving insertion.
 The metadata-only catalog and application-fork identity are verified (M2.1b1):
-32 data files, 5,315,994 bytes; no data payload preloading. SetVol, the three
+33 data files, 5,584,424 bytes; no data payload preloading. SetVol, the three
 startup working directories, Preferences lookup and the optional movies error
 are verified against the Mac (M2.1b2a). Read-only data forks now use persistent
 DOS handles and per-fork 64 KiB caches. The native `file-read` regression verifies
@@ -69,7 +69,7 @@ Async completion preserves the measured Mac callback behavior at safe user-mode
 return points, including nested file-service calls. Data and resource forks now use independent streams;
 companion creation/reload/deletion and application resource preservation pass
 Mac/native/host checks.
-Final startup requirements acceptance awaits the file/resource services.
+Final startup requirements acceptance remains pending beyond GetFNum.
 
 ## Requirements (provisional)
 

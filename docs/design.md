@@ -792,7 +792,7 @@ state". Task-level detail and acceptance checks are in
 | CREL | 7,329 entries; 7,210 even (A5), 119 odd (STRS) |
 | Live trap sites / distinct | 1,129 / 244 (including runtime-installed CODE 1 handlers) |
 | `SIZE` | 3,145,728 preferred and minimum |
-| Data files | `Alone Data` 5.2 MB; app resource fork 1.4 MB |
+| Data files | `Alone Data`: 33 files / 5,584,424 bytes; app resource fork 1,424,934 bytes |
 | MDRV (not run, D8) | 12,630 packed → 29,256 bytes; 22,254.5 Hz, 2×370-byte buffers |
 
 ## 11. Trap census (live walk)

@@ -23,7 +23,7 @@ stage_aitd_original_data()
     return 1
   }
   local source_root="$(dirname "$AITD_APP_RSRC")" name suffix
-  for name in 'ListBod2.PAK' 'Quick Reference' 'Register Triple A Pack'; do
+  for name in 'Quick Reference' 'Register Triple A Pack'; do
     for suffix in '' '.finfo'; do
       [ -f "$source_root/$name$suffix" ] || {
         echo "Original application-folder file missing: $name$suffix; rerun extractor" >&2
@@ -38,10 +38,11 @@ stage_aitd_original_data()
   # Preserve arbitrary user contents: catalog validation must see unknown layouts.
   local assets="$destination/data"
   mkdir -p "$assets"
+  python3 ../tools/install_layout.py "$assets" "$AITD_DATA_DIR/ListBod2.PAK" || return 1
   cp -f ../resources/overlay.rsrc "$destination/overlay.rsrc" || return 1
   cp -f "$AITD_APP_RSRC" "$assets/Alone In The Dark"
   cp -f "$AITD_APP_RSRC.finfo" "$assets/Alone In The Dark.finfo"
-  for name in 'ListBod2.PAK' 'Quick Reference' 'Register Triple A Pack'; do
+  for name in 'Quick Reference' 'Register Triple A Pack'; do
     cp -f "$source_root/$name" "$source_root/$name.finfo" "$assets/"
   done
   for name in 'Quick Reference' 'Register Triple A Pack'; do

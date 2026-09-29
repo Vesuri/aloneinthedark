@@ -40,7 +40,7 @@ def validate(text,status):
         else:
             if row['volume']!=0xffff:raise ValueError(label+' volume reference')
             for field in datafields:
-                wanted=6 if field=='valence' and label in ['default','wd','negative-default'] else 3 if field=='valence' else base[field]
+                wanted=5 if field=='valence' and label in ['default','wd','negative-default'] else 3 if field=='valence' else base[field]
                 if row[field]!=wanted:raise ValueError(label+' '+field)
         if label in ['index1','zero-name','named-colon','negative-default']:
             name=b''.join(struct.pack('>I',row['name'+str(i)]) for i in range(4))

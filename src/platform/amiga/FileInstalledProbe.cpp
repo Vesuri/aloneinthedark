@@ -10,7 +10,7 @@ static void l(uint16_t o,uint32_t v) { w(o,v>>16);w(o+2,v); }
 static uint32_t get(uint16_t o) { return (uint32_t)pb[o]<<24|(uint32_t)pb[o+1]<<16|(uint32_t)pb[o+2]<<8|pb[o+3]; }
 extern "C" bool aitdFileInstalledProbe() {
     // Measured original StuffIt headers; timestamps retain their raw Mac values.
-    static const char* paths[]={"Alone In The Dark",":Alone Data:Camera00.PAK",":Alone Data:ITD_Ress.PAK",":Alone Data:Present.PAK","ListBod2.PAK","Quick Reference","Register Triple A Pack"};
+    static const char* paths[]={"Alone In The Dark",":Alone Data:Camera00.PAK",":Alone Data:ITD_Ress.PAK",":Alone Data:Present.PAK",":Alone Data:ListBod2.PAK","Quick Reference","Register Triple A Pack"};
     static const uint32_t created[]={0xaae67ed8,0xa701add8,0xa7c501ba,0xa7393b8c,0xa7c516c2,0xaae3108a,0xaaf6b2bb};
     static const uint32_t modified[]={0xaae68edd,0xa701add8,0xaa77d6fb,0xa7393b8c,0xaa77ec13,0xac99c8dc,0xac99c817};
     static const uint32_t sizes[]={0,142907,362108,267190,268430,4973,0};
@@ -29,8 +29,8 @@ extern "C" bool aitdFileInstalledProbe() {
             || get(64)!=resources[i] || pb[30]!=(i ? 0 : 0x84))return false;
     }
     g_fileInstalledProbeStep=8;
-    static const uint16_t order[]={0,4,5,6};
-    for(uint16_t i=0;i<4;++i) {
+    static const uint16_t order[]={0,5,6};
+    for(uint16_t i=0;i<3;++i) {
         l(48,3);w(28,i+1);
         if(aitdProbeHInfo(pb) || (get(16)>>16) || (g_fileProbeCCR&15)!=4
             || get(54)!=sizes[order[i]] || get(64)!=resources[order[i]])return false;
@@ -38,7 +38,7 @@ extern "C" bool aitdFileInstalledProbe() {
         while(expected[n]) { if(name[n+1]!=expected[n])return false;++n; }
         if(name[0]!=n)return false;
     }
-    g_fileInstalledProbeStep=9;l(48,3);w(28,5);
+    g_fileInstalledProbeStep=9;l(48,3);w(28,4);
     if(aitdProbeHInfo(pb)!=-43 || (int16_t)(get(16)>>16)!=-43 || (g_fileProbeCCR&15)!=8)return false;
     const char* missing="AITD Absent Namespace Probe";uint16_t n=0;
     while(missing[n]) { name[n+1]=missing[n];++n; }name[0]=n;

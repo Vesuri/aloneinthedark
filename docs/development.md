@@ -59,8 +59,8 @@ All three launchers share these settings and write the emulator core log to
 `stage_original_data.sh` copies the original application folder into `data/`
 beneath the executable directory on the emulated hard drive. The port executable
 and diagnostic files remain outside this Mac-visible namespace. Override
-`AITD_APP_RSRC` and `AITD_DATA_DIR` for extraction locations; the three original
-root files and companions must be beside `AITD_APP_RSRC`. Saves and preferences
+`AITD_APP_RSRC` and `AITD_DATA_DIR` for extraction locations; the two original
+root extras and companions must be beside `AITD_APP_RSRC`. Saves and preferences
 retain their separate `Saved Games/` and `prefs/` native mappings. The launcher
 also stages the port-owned `resources/overlay.rsrc` beside the executable. A
 manual installation must copy that file to `PROGDIR:overlay.rsrc`; a missing or
@@ -2091,3 +2091,14 @@ copy audit. All 75,616 A5 bytes match. Original application preparation remains
 Original runtime remains 16 resource reads / 96,648 bytes. File-write remains
 406 paired calls / 1,040 windows. No timeout or failed exploratory run is counted;
 rendered-window acceptance remains owner-deferred. No owner decision changed.
+
+### M2.1c1b — installed data layout
+
+The original installer places ListBod2.PAK in Alone Data. Extraction, staging and
+reference population now reproduce this; see `install-original-data.md` for the
+original installation evidence and `file-manager.md` for native acceptance.
+Fresh/repeated extraction and staging preserve exact bytes and reject conflicting
+legacy root copies. All six native 68020 cases, four startup observers and the
+full host suite pass. Current catalog totals are 42 entries, 33 data files and
+5,584,424 data bytes. File-write's corrected root enumeration uses 1,039 windows;
+all other transfer totals remain unchanged. Startup still stops at GetFNum.

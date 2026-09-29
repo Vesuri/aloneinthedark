@@ -16,7 +16,8 @@ then verifies.  The output directory receives:
 
   Alone In The Dark   the application's raw resource fork (not AppleDouble)
   Alone Data/         the .PAK/.ITD data-fork files, unchanged
-  ListBod2.PAK, Quick Reference, Register Triple A Pack: original root files
+  ListBod2.PAK is placed under Alone Data, as by the original installer
+  Quick Reference, Register Triple A Pack: original root files
   *.rsrc              raw resource companions for ordinary files
   *.finfo             validated Finder records and original Mac timestamps
 
@@ -41,6 +42,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from resource_fork import parse_resource_fork  # noqa: E402
 from installed_metadata import archive_entries, metadata_for
+from install_layout import installed_path, retire_legacy, BODY
 
 APPLICATION = "Alone In The Dark"
 DATA_FOLDER = "Alone Data"
@@ -136,6 +138,10 @@ def main() -> int:
         args.destination.mkdir(parents=True, exist_ok=True)
         (args.destination / APPLICATION).write_bytes(fork)
         (args.destination / (APPLICATION+".finfo")).write_bytes(app_metadata)
+        target = args.destination / DATA_FOLDER
+        if target.exists():
+            shutil.rmtree(target)
+        target.mkdir()
         for name in ROOT_FILES:
             source = root / name
             info = metadata_for(archive, entries, name, source)
@@ -146,17 +152,15 @@ def main() -> int:
                         if sizes.get(True, 0) else b'')
             if len(data) != sizes.get(False, 0) or len(resource) != sizes.get(True, 0):
                 raise ValueError('EXTRACT / FORK SIZE: '+name)
-            (args.destination / name).write_bytes(data)
+            output = args.destination / installed_path(name)
+            output.write_bytes(data)
             if resource:
-                (args.destination / (name+'.rsrc')).write_bytes(resource)
-            elif (args.destination / (name+'.rsrc')).exists():
+                Path(str(output)+'.rsrc').write_bytes(resource)
+            elif Path(str(output)+'.rsrc').exists():
                 raise ValueError('EXTRACT / UNEXPECTED RESOURCE COMPANION: '+name)
-            (args.destination / (name+'.finfo')).write_bytes(info)
-        target = args.destination / DATA_FOLDER
-        if target.exists():
-            shutil.rmtree(target)
-        target.mkdir()
-        count = 0
+            Path(str(output)+'.finfo').write_bytes(info)
+            if name==BODY:retire_legacy(args.destination,data,info)
+        count = 1
         for source in sorted((root / DATA_FOLDER).iterdir()):
             if source.suffix == ".rsrc" or not source.is_file():
                 continue

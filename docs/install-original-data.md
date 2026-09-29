@@ -24,7 +24,7 @@ resource fork) is never run.
 - `Alone In The Dark`: the application's raw resource fork, 1,424,934 bytes,
   sha256 `b5848c06…a6352db2`. `unar -k visible` writes forks as AppleDouble;
   the tool unwraps entry 2. Its data fork is empty.
-- `Alone Data/`: 32 data-fork files: `Camera00-07.PAK`, `Etage00-07.PAK`,
+- `Alone Data/`: 33 data-fork files: `Camera00-07.PAK`, `Etage00-07.PAK`,
   `List*.PAK`, `ITD_Ress.PAK`, `Present.PAK`, `EndSeq.PAK`, `USA.PAK`,
   `Test.PAK`, and the `Defines`, `Objets`, `Priority` and `Vars` `.ITD` tables.
 
@@ -35,9 +35,9 @@ completion and the resulting ListBod2 is 268,430 bytes, SHA-256
 `5c552161db462f80e82346494a304d133ca502c92ab299a77b82ca988fd1893e`.
 The installed layout contains 33 data files / 5,584,424 bytes, three root files
 (application, Quick Reference, registration application), and the empty saves
-folder. M2.1c1b must correct the current extraction/staging tools, which still
-preserve the archive's root placement. This mismatch makes the original idle
-demo receive fnfErr for `:Alone Data:ListBod2.PAK` and show its missing-file alert.
+folder. Extraction, native staging and reference-volume population now apply
+that path mapping. The former root placement made the original idle demo receive
+fnfErr for `:Alone Data:ListBod2.PAK` and show its missing-file alert.
 
 All 36 installed data forks match extraction exactly. Resource-fork headers,
 maps and payloads also match outside reserved bytes [16,256): the application
@@ -66,3 +66,10 @@ the port to reproduce or pace around, not a reason to change game logic.
 A release installer will need the same chain without `unar`/`hfsutils`. Vette's
 standalone helper (`~/Documents/Vette/tools/install-data`) already decodes
 StuffIt method 13 and is the intended starting point.
+
+Fresh and repeated extraction preserve the original fork bytes and archive-derived
+Finder metadata. Migration removes an old root ListBod2 file and its `.finfo`
+only when both match the verified source exactly. A conflicting file, symlink
+or unexpected resource companion causes a named failure; it is not removed.
+Native staging applies the same guarded migration. Reference population refuses
+an existing destination folder; use a fresh folder for independent comparisons.

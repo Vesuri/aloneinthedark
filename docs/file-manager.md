@@ -108,9 +108,9 @@ that point and exits with a diagnostic-only marker. Local
 `ref/mame/snap/m2-pak-idle-wait.png` visibly shows the original missing-file alert.
 The paired Misc3+$0FBE Open requests `:Alone Data:ListBod2.PAK` and returns
 -43. Dark+$5254 stores the random low bit selecting the alternate body set;
-the captured result is 1. The archive and current extracted installation keep
+the captured result is 1. The archive and the pre-correction extracted installation keep
 ListBod2 at the application root. The subsequent original-installer run proves
-that it belongs under Alone Data; M2.1c1b records the required correction.
+that it belongs under Alone Data; extraction and staging now reproduce that.
 See [installation evidence](install-original-data.md) for exact fork comparisons. No original bytes or files were moved to hide
 this error, and no missing-file run counts as PAK acceptance.
 
@@ -838,3 +838,37 @@ refer to the pre-streaming baseline. Resource source reads have separate counter
 from File Manager streams, so the native file-read/write byte totals are unchanged.
 Their shutdown observers additionally require the resource source to be closed
 with zero close errors. The metadata catalog still has 42 entries / 32 data files.
+
+## Verified installed layout (M2.1c1b)
+
+Extraction and reference-volume population now apply the original installer's
+root → `Alone Data` mapping for ListBod2.PAK. Native staging uses the same layout.
+The file's original bytes and archive-derived metadata are unchanged. A shared
+helper removes earlier root copies only after exact data/metadata comparison;
+conflicting bytes, symlinks and unexpected resource forks cause named failures.
+Fresh, repeated and migrated extraction/staging agree byte-for-byte, and a fresh
+HFS population preserves all 36 original data/resource fork pairs exactly.
+The original-installer comparison and its reserved-header differences remain
+separately documented in `install-original-data.md`.
+
+The native catalog retains 42 entries but now has 33 data files / 5,584,424 bytes.
+Named metadata queries find ListBod2 under Alone Data; indexed application-folder
+queries return the application, Quick Reference and registration application.
+The next index fails as expected. Twelve Mac metadata calls pass, and the native
+fixture matches their defined metadata/fork/index results. The sixteen-call
+volume reference confirms application-folder valence 5; a native parameter-block
+dump independently measured the same value before replacing the old fixture's 6.
+The reference capture initially found a stale LIFE 128 / Scratch / EXIT diagnostic
+file at the application root. Its exact contents were verified and preserved in
+a local MacBinary capture before cleanup; the clean capture passes.
+
+The full host suite, all six native 68020 regression cases and four startup
+observers pass with normal termination. File-write retains 406 paired resource
+calls, six mutation rollback cases and nine staging cases. It now uses 1,039 OS
+windows (one fewer indexed root-file query), with unchanged 237 reads / 871,061
+bytes, 25 writes / 470,085 bytes and 19 flushes. All eight exit-persistence runs
+pass. All 75,616 A5 bytes match the host model. Original resource preparation and
+runtime remain 201,058 bytes and 16 reads / 96,648 bytes, ending at GetFNum.
+The rejected initial fixture runs are not acceptance; no timeout counts as a pass.
+Original idle-presentation capture is next (M2.1c2), and native PAK payload
+acceptance remains pending. No owner decision or game instruction changed.
