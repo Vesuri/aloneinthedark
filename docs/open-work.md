@@ -64,6 +64,15 @@ required.
   - **M2.2g Writable prefs/save and overlay integration.** Implement writable
     prefs/save resource forks and the port overlay fork (empty at first),
     preserving design §4.6 search order and dialog overrides.
+    - The source-backed overlay API and generated empty port fork are ready;
+      host fixtures prove ordering, lazy bodies and failed-open cleanup.
+    - **M2.2g2 Native overlay and writable-path acceptance.** Wire the generated
+      fork into startup/cleanup as the oldest read-only map, preserve the
+      application current file, and add paired native prefs/save fixtures.
+      Keep dialog override routing explicit for D5 without inventing layouts.
+      *Done when* original startup has the empty overlay below the application,
+      native prefs/save create/write/reopen/delete has exact independent readback,
+      source/stream cleanup is complete, and all regressions pass.
     *Done when* native fixtures verify writable prefs/save forks, the empty
     overlay's place in the search chain and on-demand bodies, with exact fork
     readback, cleanup and all resource/startup regressions passing.

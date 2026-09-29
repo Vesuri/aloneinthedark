@@ -2017,3 +2017,26 @@ audits are clear. All 75,616 A5 bytes match. File-write remains at 406 paired
 calls / 1,040 windows; original startup remains at GetFNum with 16 resource reads
 / 96,648 bytes. Both successful exit phases balance 11 user-service calls and
 reach native main result zero and the final CRT return. No timeout is counted.
+
+### M2.2g1 — source-backed port overlay foundation
+
+`tools/build_overlay.py` deterministically generates the committed
+`resources/overlay.rsrc`: an empty 286-byte classic resource fork containing no
+original game data. `--check` verifies regeneration and independent parsing;
+`make host-tests` requires it. Fonts and measured dialog layouts remain at their
+planned milestones. The narrow Git exception applies only to this port-owned
+fork; original resource forks remain ignored.
+
+`ResourceForks::openWithOverlay` opens the overlay at reserved key 15 before the
+application at key 0. Both maps are read-only. Later dynamic maps precede the
+application, whose older map is the overlay. Sanitized callback-backed fixtures
+verify this ordering, no body reads during opening/traversal/remapping, exact
+bounded overlay payload reads, rejection of overlay writes, and complete rollback
+if either source fails. The generated empty map takes two reads / 46 bytes and
+adds no resources to the application view. Existing resource-source fixtures
+continue to pass. This independent foundation does not yet wire the overlay into
+native startup; M2.2g2 retains that and writable prefs/save path acceptance.
+The full host suite and a clean production `resource-read` regression pass with
+normal completion. Production still has 212 resources, 201,058 preparation bytes
+and 16 runtime reads / 96,648 bytes, with the same GetFNum stop; the new API is
+not yet selected by native startup.

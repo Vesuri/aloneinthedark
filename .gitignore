@@ -23,6 +23,8 @@
 *.dsk
 *.img
 *.rsrc
+# Deterministic port-owned overlay; contains no original game resources.
+!/resources/overlay.rsrc
 *.dmg
 *.toast
 *.iso

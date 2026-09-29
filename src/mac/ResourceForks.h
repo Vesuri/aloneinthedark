@@ -11,6 +11,7 @@ public:
     ResourceForks& operator=(const ResourceForks&)=delete;
     static const uint16_t kForkCount=16,kMaximumResources=768;
     static const uint32_t chunkBytes=65536,maximumMapBytes=262144;
+    static const uint16_t kOverlayFork=kForkCount-1;
     struct Source {
         void* context;
         uint32_t size;
@@ -25,6 +26,9 @@ public:
     // Resident compatibility entry, removed from startup when platform I/O lands.
     bool open(const uint8_t* application,uint32_t applicationSize,const uint8_t* data,uint32_t dataSize);
     bool open(const Source& application,const Source* data=0);
+    // Overlay is older than the application; later dynamic files precede both.
+    // Both sources remain read-only and bodies are fetched only on demand.
+    bool openWithOverlay(const Source& application,const Source& overlay);
     void close();
     // Native mutation uses the directory, then refreshes this dense view before
     // any indexed access. Internal fork keys must remain in [0,kForkCount).

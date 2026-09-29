@@ -2,6 +2,8 @@
 #include <cstdio>
 #include <vector>
 #include <algorithm>
+#include <fstream>
+#include <iterator>
 #include "../src/mac/ResourceForks.h"
 #include "../src/mac/ResourceDirectory.h"
 static void w(std::vector<uint8_t>& b,uint32_t o,uint32_t v) { b[o]=v>>8;b[o+1]=v; }
@@ -28,7 +30,16 @@ struct Disk {
     }
     ResourceForks::Source source() { return {this,(uint32_t)bytes.size(),read}; }
 };
-int main() {
+struct EmptyOverlay {
+    std::vector<uint8_t> bytes;uint32_t calls=0,total=0;
+    static int32_t read(void* p,uint32_t at,uint8_t* out,uint32_t size,uint32_t& actual) {
+        auto& disk=*(EmptyOverlay*)p;++disk.calls;disk.total+=size;
+        assert((at==0 && size==16) || (at==256 && size==30));
+        assert(at+size<=disk.bytes.size());std::copy_n(disk.bytes.data()+at,size,out);actual=size;return 0;
+    }
+    ResourceForks::Source source() { return {this,(uint32_t)bytes.size(),read}; }
+};
+int main(int argc,char** argv) {
     Disk disk;ResourceForks forks;auto source=disk.source();
     assert(forks.open(source) && forks.resourceCount()==2 && forks.forkCount()==1);
     assert(disk.calls==4 && disk.total==86 && disk.max==62); // No body read on open.
@@ -106,5 +117,41 @@ int main() {
     assert(!directory->remove(second) && forks.refresh(remap) && remap[0]==-1 && remap[1]==0);
     assert(forks.find(7,body.type,128,item,&index) && forks.identity(index)==third);
     forks.close();assert(!forks.item(0,item));
+    // System overlay is oldest, independent of its numeric key. No body is
+    // fetched during map construction, search-order traversal or handle remap.
+    Disk app,overlay;assert(forks.openWithOverlay(app.source(),overlay.source()));
+    directory=forks.directory();int16_t key;
+    assert(forks.forkCount()==2 && forks.resourceCount()==4);
+    assert(app.calls==4 && overlay.calls==4 && app.total==86 && overlay.total==86);
+    assert(directory->newest(key) && key==0 && directory->older(0,key) && key==ResourceForks::kOverlayFork);
+    assert(!directory->older(key,key));
+    assert(!directory->open(1,source,true) && forks.refresh(remap));
+    assert(directory->newest(key) && key==1 && directory->older(1,key) && key==0);
+    assert(directory->older(0,key) && key==ResourceForks::kOverlayFork);
+    assert(forks.find(ResourceForks::kOverlayFork,body.type,128,item,&index) && !item.data);
+    overlay.payload=true;assert(!forks.read(index,out.data(),out.size()));
+    assert(overlay.calls==6 && app.calls==4);
+    assert(std::equal(out.begin(),out.begin()+100003,overlay.bytes.begin()+260));
+    assert(directory->add(ResourceForks::kOverlayFork,body,added)==-54);
+    assert(!directory->close(1) && forks.refresh(remap));
+    assert(directory->newest(key) && key==0);
+    // Either source failing leaves neither partial map nor stale dense items.
+    overlay.fail=overlay.calls+1;auto appCalls=app.calls;
+    assert(!forks.openWithOverlay(app.source(),overlay.source()) && !forks.forkCount() && !forks.resourceCount());
+    assert(app.calls==appCalls);overlay.fail=0;app.fail=app.calls+1;
+    assert(!forks.openWithOverlay(app.source(),overlay.source()) && !forks.directory());
+    app.fail=0;
+    // Read the committed generated empty fork through the same bounded API.
+    assert(argc==2);std::ifstream file(argv[1],std::ios::binary);assert(file.good());
+    EmptyOverlay empty;empty.bytes.assign(std::istreambuf_iterator<char>(file),{});
+    appCalls=app.calls;
+    assert(forks.openWithOverlay(app.source(),empty.source()));
+    assert(empty.bytes.size()==286 && empty.calls==2 && empty.total==46);
+    assert(forks.forkCount()==2 && forks.resourceCount()==2 && app.calls==appCalls+4);
+    assert(forks.item(0,item) && item.fork==0 && !item.data);
+    assert(forks.directory()->older(0,key) && key==ResourceForks::kOverlayFork);
+    assert(!forks.find(ResourceForks::kOverlayFork,body.type,128,item));
+    forks.close();assert(!forks.directory() && !forks.forkCount());
+    puts("PASS overlay-source: application/overlay/dynamic order, read-only map, lazy exact bodies, failed-open rollback, generated empty fork");
     puts("PASS resource-source: metadata-only open, 64KiB reads, exact bytes, errors/short reads, dynamic 16-fork identity/remap, zero resource, cleanup");
 }

@@ -34,6 +34,11 @@ bool ResourceForks::open(const Source& app,const Source* data) {
     close();if(!appendFork(0,app) || (data && !appendFork(1,*data))) { close();return false; }
     return finish();
 }
+bool ResourceForks::openWithOverlay(const Source& app,const Source& overlay) {
+    close();
+    if(!appendFork(kOverlayFork,overlay) || !appendFork(0,app)) { close();return false; }
+    return finish();
+}
 bool ResourceForks::item(uint32_t index,Item& out) const {
     if(!m_open || index>=m_count)return false;out=m_items[index].item;return true;
 }
@@ -67,7 +72,7 @@ bool ResourceForks::refresh(int16_t* oldToNew) {
     for(uint16_t i=0;i<oldCount;++i)previous[i]=m_items[i].identity;
     for(uint16_t i=0;i<kMaximumResources;++i)oldToNew[i]=-1;
     uint16_t count=0;
-    // Oldest map first keeps the application view unchanged; each map retains
+    // Oldest map first keeps existing map order; each map retains
     // insertion/reference order. Search order is provided by the directory.
     for(uint16_t f=forks;f;--f)for(uint16_t n=0;n<m_directory->count(keys[f-1]);++n) {
         ResourceDirectory::View view={};if(!m_directory->at(keys[f-1],n,view))return false;

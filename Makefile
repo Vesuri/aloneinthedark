@@ -77,6 +77,7 @@ lowmem-check:
 	@python3 tools/check_lowmem.py --resource "$(RUNTIME_DATA)/Alone In The Dark"
 
 host-tests:
+	@python3 tools/build_overlay.py --check
 	@python3 tools/test_native_resource_exit.py
 	@python3 tools/check_resource_map.py
 	@python3 tools/check_resource_source.py
