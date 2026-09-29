@@ -1032,3 +1032,43 @@ all 75,616 debugger-dumped bytes (zero mismatches). File-write/read, window-core
 boot, resource-read and the original directory observer complete with explicit
 PASS records and normal runner exits. The bitplane snapshot hash is unchanged;
 actual rendered-video acceptance remains owner-deferred.
+
+
+### Named/ID resource lookup reference (M2.2c1)
+
+Run `tools/mac_resource_named.lua` with the documented headless MAME command,
+then check its actual exit status:
+
+```sh
+python3 tools/check_resource_named.py tmp/LOG --status STATUS \
+  --original 'amiga/.run/dh1/data/Alone In The Dark'
+```
+
+The observer byte-checks original Engine+$3CDC (`A820 245F`) and its STR# argument,
+then captures the original Pascal name `General` and successful handle. It executes
+20 read-only calls through a scratch stub without changing original instructions.
+Before each call it seeds ResErr ($A60) with $8888 and D0 with $12345678, so stale
+success cannot pass. It requires Pascal stack cleanup, cached-handle identity,
+errors and D0 results. The captured STR# 128 body must equal all 612 original
+bytes (SHA256 `76033c1f20d7086387ee1baf6a7fc255f162961f217421a4c77373ea6e260af1`).
+The script removes its owned prior dump before launch; no original file is written.
+
+Measured on this System 7.5.5 volume:
+
+- Get1NamedResource accepts General/general/GENERAL as the same cached handle.
+  An accented spelling, absent name, differently cased type code and empty name
+  return nil with ResErr -192. Empty names do not select unnamed STRS 0.
+- GetNamedResource gives the same named results but preserves incoming D0.
+  Get1NamedResource returns the zero-extended ResErr word in D0.
+- Get1Resource/GetResource reuse the same General handle by ID. Missing IDs
+  (zero, positive and negative) and an absent type return nil with **ResErr 0**,
+  clearing the deliberately seeded error. This is measured reference behavior;
+  do not replace it with the named lookup's -192 assumption. Their D0 is zero.
+- Error Messages resolves to a distinct nonnull handle; later General lookups
+  still reuse the original handle and clear the previous named-lookup error.
+
+Original Dan1 Get1Resource callers at +$35CE/+$36EA/+$39E4/+$3A66 all contain
+`A81F 285F`; their ID lookup implementation remains next. Native Get1NamedResource
+is still the current stop. Multi-fork search order, SetResLoad/purge/reload,
+writable-resource naming and non-ASCII case-pair tests remain M2.2 acceptance;
+this single-current-fork fixture does not establish those semantics.

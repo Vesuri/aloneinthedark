@@ -47,7 +47,9 @@ required.
   - Map parsing and file-backed loading (M2.2a/b) are complete; the application
     no longer preloads its whole fork. Continue with the design §4.6 call set,
     including the current Get1NamedResource stop, search/handle semantics and
-    purge/reload behavior (M2.2c).
+    purge/reload behavior (M2.2c). The original General request and a 20-call
+    named/ID lookup reference are measured (M2.2c1); implement the native lookup
+    family next, preserving its distinct named versus ID error results.
   - Replace the inherited OpenResFile helper that currently returns -1 without
     opening a fork; no guessed missing-file result may hide unsupported work.
   - Implement writable prefs/save resource forks and the port overlay fork
