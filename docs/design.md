@@ -390,7 +390,12 @@ Native trap probes, host fragmentation tests and paired heap captures verify it:
   counts/search and the writable-file calls in 4.5 remain M2.2f.
 - **Search order.** Open resource files first, then the application, then the
   port overlay, which stands in for the System file. The one exception is the
-  dialog layouts, which the overlay supplies ahead of the application. Resources the game expects from the System file (fonts, `snd `
+  dialog layouts, which the overlay supplies ahead of the application.
+  The M2.2f1 reference establishes that ordinary lookup starts at the current
+  file and follows older files, whereas CountResources counts all open maps,
+  including duplicate IDs, regardless of the current selection. Resource-file
+  integration and this multi-fork behavior remain pending M2.2f2/f3.
+  Resources the game expects from the System file (fonts, `snd `
   beeps, `CURS`) are listed and supplied by the port (4.11). A missing one is a
   loud stop.
 

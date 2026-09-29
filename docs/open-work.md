@@ -57,6 +57,20 @@ required.
     by name. *Done when* paired fixtures prove open/current/close state, search
     precedence, counts with duplicate types/IDs, file errors and independent
     handles, with all existing regressions passing.
+    - M2.2f1 reference is measured: `mac_resource_files.lua` / its checker cover
+      63 calls and delete both exclusively created scratch files on success.
+    - **M2.2f2 Mutable fork directory and serialization next.** Add independent
+      open-fork metadata, stable resource identity, original-order entries and
+      validated serialization for added/changed/removed resources, without
+      preloading original payloads. *Done when* host round trips match an
+      independent fork reader, duplicate IDs across forks remain distinct,
+      malformed/overflow/write errors preserve existing data, and source tests
+      still prove on-demand reads.
+    - **M2.2f3 Native resource-file integration.** Bind the directory to the
+      existing File Manager streams and match f1's current/search/count/close
+      and reopen contract. *Done when* the paired 63-call native fixture and
+      all existing regressions pass; add measured coverage for additional
+      write/permission/error cases before claiming those variants complete.
   - Implement writable prefs/save resource forks and the port overlay fork
     (empty at first), preserving design §4.6 search order and dialog overrides.
 

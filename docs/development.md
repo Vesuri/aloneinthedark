@@ -1258,3 +1258,48 @@ and four startup observers passed with normal exits. All 75,616 A5 globals match
 Original startup remains GetFNum Dan1+$0012, 16 runtime resource reads / 96,648
 bytes and 23 balanced services. No owner decision changed; rendered-picture
 verification remains deferred.
+
+
+### Resource-file and search reference (M2.2f1)
+
+`mac_resource_files.lua` runs 63 CPU-only calls after checking Engine+$3CDC.
+It exclusively creates `AITD Resource Probe A/B` through the File Manager, then
+initializes their resource maps with CreateResFile/HCreateResFile. An existing
+scratch name aborts before mutation. OpenResFile, OpenRFPerm and HOpenResFile,
+AddResource, UpdateResFile, CurResFile, UseResFile and CloseResFile exercise two
+independent maps. Both scratch files are closed and deleted on success. The final
+run exited zero, and `check_resource_files.py` passed. Its checker rejects a
+timeout, missing completion/cleanup and changed counts/current state/data/errors.
+No original resource or game file is modified. Native integration remains f3.
+
+Measured rules:
+- Opening makes a file current. Reopening already-open A returns the same
+  reference. UseResFile changes the lookup start without reordering the chain.
+- Named/ID chain lookup starts at the current file, then visits older files.
+  B finds its own STR# 128, then A-only data when missing locally. Selecting A
+  hides newer B from lookup; selecting the application restores its original
+  General resource. Get1Resource remains strictly current-file-only.
+- CountResources traverses **all open maps regardless of current file**, and
+  counts duplicate IDs separately. The scratch RPRB type has four entries,
+  including ID 7 in both A and B; count remains four with B, A or the application
+  current. B's Count1Resources is two. The two shadowing STR# 128 entries add
+  two to the pre-open STR# count. Reference baseline is 76 (including System
+  resources); native acceptance must compare the delta to its own overlay,
+  rather than fabricating the reference System's unused resources.
+- Closing current B selects A, then closing A selects the application. Invalid
+  UseResFile and repeated CloseResFile return -193 with D0 `$FF3F`, preserving
+  the current selection. CurResFile preserves seeded ResErr/D0.
+- OpenResFile preserves D0 and returns -1 / ResErr -43 when absent. OpenRFPerm
+  and HOpenResFile success leave D0 zero; CreateResFile/HCreateResFile leave
+  D0 4/10 in these measured calls. UseResFile/CloseResFile/AddResource clear D0
+  on success; UpdateResFile preserves it.
+- Update/close followed by HOpenResFile yields the exact four-byte A resource
+  again. The six added resource handles are independent; repeated lookups reuse
+  each file's handle. Cleanup is positively observed, including a missing-open
+  after deletion and restored application current-file state.
+
+The checker validates original Core instruction pairs at +$46F2 (`A81A 3D5F`),
++$4830 (`A81B 6000`), +$4780 (`A9C4 3D5F`) and +$48BE (`A9B1 558F`). This fixture
+uses read/write permission 3; it does not establish all permission/error/write
+variants. F2 first provides the mutable on-demand fork model and serialization;
+f3 connects it to the existing streams and reproduces these native calls.
