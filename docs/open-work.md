@@ -13,7 +13,7 @@ design.md §5.
   driver startup calls, menu-record initialization, device selection, SetDepth, GetGWorld, hidden dialog construction/positioning and fixed
   low-resolution selection/cleanup, all 75 font-metrics calls and four Apple Event
   registrations, colour-table loading/mutations, palette construction and default
-  binding and hidden window-title state, then stops at Misc1+$10FA
+  binding, hidden window-title state and the verified WIND 128 request, then stops at Misc1+$10FA
   `PALETTE MANAGER / SETPALETTE` for a window binding. The original
   mixer is never loaded.
 - The original runs in MAME on the System 7.5.5 reference volume.
@@ -48,18 +48,6 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.1c3c2c5b2c2c Fixed-selection WIND 128 acceptance (D4/M2.4).**
-  - Retains the unfinished integrated acceptance of M2.1c3c2c5b2c2. Native
-    preference mapping alone is not evidence that WIND 128 was requested.
-  - Observe the original Misc1+$109A GetNewCWindow request after the font, event-registration, colour-table and palette
-    prerequisites. Both incoming size flags must take the low-resolution path,
-    without showing DLOG 1000 or changing unrelated preference bytes.
-  - Keep full window/viewport, drawing and palette acceptance in M2.3/M2.4/M2.7,
-    and the integrated second Times/driver acceptance immediately below.
-
-  *Done when* fresh and existing-preference startup request WIND 128 through
-  the original instructions, both size inputs match the reference, the next
-  stop is named, and relevant startup regressions pass.
 - **M2.1c3c2c5b2c2e Window palette binding prerequisite.**
   - Startup now reaches the original SetPalette request at Misc1+$10FA after
     hidden title updates. The implemented default-window (-1) binding does not

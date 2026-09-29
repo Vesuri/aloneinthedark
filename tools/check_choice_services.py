@@ -49,29 +49,65 @@ def check(text,status,native=False):
         want=bytearray(before);want[7]=0
         result,old=one(text,r'CHOICE_RESULT d0=([0-9A-F]+) pref=([0-9A-F]+)')
         if before[7] not in (0,1) or after!=want or int(old,16)!=before[7] or int(result,16)&65535!=1-before[7]:raise ValueError('original preference mapping')
+        if one(text,r'CHOICE_WINDOW id=([0-9A-F]+) opcode=([0-9A-F]+)')!=('80','AA46'):
+            raise ValueError('original WIND 128 request')
+        site=fields(one(text,r'WINDOW_SITE (.*)'))
+        if site['offset']!=0x109a or site['pc']!=site['base']+0x109a or site['id']!=128 or site['builtin'] or site['service']:
+            raise ValueError('original main-window call site')
+        window=fields(one(text,r'WINDOW_REQUEST (.*)'))
+        if window['storage'] or window['result'] or window['behind']!=0xffffffff or window['pref']:
+            raise ValueError('original window arguments')
+        code=bytearray.fromhex(one(text,r'WINDOW_BYTES data=([0-9A-F]+)'))
+        if len(code)!=44 or int.from_bytes(code[2:6],'big')!=window['operand'] or window['operand']!=window['a5']-0x11b54:
+            raise ValueError('window instruction relocation')
+        code[2:6]=bytes.fromhex('fffee4ac')
+        if hashlib.sha256(code).hexdigest()!='474f8a03c2ddd2d18c9367305105c552f8e79613077ee7cb114d754752f9e5fe':
+            raise ValueError('live original window instructions')
         one(text,r'CHOICE_NEXT state=3 trap=AA95 selector=FFFFFFFF segment=9 offset=10FA manager=PALETTE MANAGER routine=SETPALETTE windows=(?:68|94) services=(?:124/124|132/132) reads=32 bytes=130692')
     return True
+
+def check_selection(reference,status,native):
+    from check_screen_choice import check as selection
+    before=bytes.fromhex(one(native,r'CHOICE_PREF before=([0-9A-F]{20})'))
+    after=bytes.fromhex(one(native,r'CHOICE_PREF after=([0-9A-F]{20})'))
+    if selection(reference,status,before[7])!=(before,after):
+        raise ValueError('paired original window-selection preferences')
+    if one(reference,r'CHOICE_WINDOW id=([0-9A-F]+) opcode=([0-9A-F]+)')!=one(native,r'CHOICE_WINDOW id=([0-9A-F]+) opcode=([0-9A-F]+)'):
+        raise ValueError('paired window request')
+
 
 def bytecheck(path):
     original(path)
     body=next(r.body for r in read_resource_fork(path) if r.kind==b'CODE' and r.rid==13)
     if hashlib.sha256(body[0x344a:0x34fa]).hexdigest()!='4924dfc55f932aabd4d4cabe52aab96b5810f40573f68fc7fe823b0e71ce95b7':raise ValueError('original item/disposal bytes')
 class Checks(unittest.TestCase):
+    def test_paired_selection(self):
+        from check_screen_choice import Checks as SelectionChecks
+        for size in (0,1):
+            reference=SelectionChecks().fixture(size)
+            check_selection(reference,0,reference)
+            for bad in (reference.replace('FF800001','FF800002'),reference.replace('id=80','id=84'),SelectionChecks().fixture(1-size)):
+                with self.assertRaises(ValueError):check_selection(reference,0,bad)
+            with self.assertRaises(ValueError):check_selection(reference,124,reference)
     def test_incomplete(self):
         for status in (None,124,0):
             with self.assertRaises(ValueError):check('PASS original fixed-choice services',status)
 if __name__=='__main__':
-    p=argparse.ArgumentParser(description=__doc__);p.add_argument('reference',type=Path,nargs='?');p.add_argument('--status',type=int);p.add_argument('--native',type=Path);p.add_argument('--native-status',type=int);p.add_argument('--selftest',action='store_true');a=p.parse_args()
+    p=argparse.ArgumentParser(description=__doc__);p.add_argument('reference',type=Path,nargs='?');p.add_argument('--status',type=int);p.add_argument('--native',type=Path);p.add_argument('--native-status',type=int);p.add_argument('--selftest',action='store_true');p.add_argument('--selection-reference',type=Path);p.add_argument('--selection-status',type=int);a=p.parse_args()
     if a.selftest:raise SystemExit(not unittest.TextTestRunner().run(unittest.defaultTestLoader.loadTestsFromTestCase(Checks)).wasSuccessful())
     try:
         bytecheck(Path('tmp/runtime-data/Alone In The Dark'));ref=a.reference.read_text();check(ref,a.status)
         if a.native:
             native=a.native.read_text();check(native,a.native_status,True)
-            corruptions=[native.replace('visible=0','visible=1'),native.replace('freeDelta=384','freeDelta=383'),native.replace('flags=00000000','flags=00000001'),native.replace('after=FF800001010101000000','after=FF800001000101000000'),native+native]
+            corruptions=[native.replace('visible=0','visible=1'),native.replace('freeDelta=384','freeDelta=383'),native.replace('flags=00000000','flags=00000001'),native.replace('after=FF800001010101000000','after=FF800001000101000000'),native+native,native.replace('CHOICE_WINDOW id=80','CHOICE_WINDOW id=84'),native.replace('WINDOW_BYTES data=2079','WINDOW_BYTES data=2078'),native.replace('offset=109A','offset=1272')]
             for bad,status in [(n,0) for n in corruptions]+[(native,124),(native,None)]:
                 try:check(bad,status,True)
                 except ValueError:continue
                 raise ValueError('native corruption accepted')
+        if a.selection_reference:
+            if not a.native:raise ValueError('selection comparison needs native capture')
+            check_selection(a.selection_reference.read_text(),a.selection_status,native)
+            print('PASS paired original WIND 128 selection and complete preference bytes')
         for old,new in [('type=4','type=5'),('rect=003C001D00500081','rect=003C001D00500082'),('PASS original fixed-choice services','')]:
             try:check(ref.replace(old,new),0)
             except ValueError:continue

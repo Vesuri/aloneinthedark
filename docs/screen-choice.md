@@ -5,7 +5,9 @@ positioning, automatic item-2 selection, item lookup/disposal and restoration of
 the main world are implemented. Native startup passes default palette binding,
 WIND 131 ("Background Hider") and its hidden title update; see
 [window-title.md](window-title.md). It now stops at window-palette binding,
-Misc1+$10FA. Integrated WIND 128 request acceptance is next in the queue.
+Misc1+$10FA. Fresh and existing-preference startup now prove the original
+WIND 128 request at Misc1+$109A. Both input size flags match the Mac selection
+contract, with only the size preference byte changed.
 No Mac dialog presentation is authorized (D5).
 
 Original bytes establish the following:
@@ -59,7 +61,8 @@ The native implementation uses the D4-authorized ModalDialog seam with real
 logical dialog state and no presentation of DLOG 1000. The measured constructor,
 positioning, item and restoration services are implemented; unrelated unsupported
 operations retain named stops. Fresh/existing native selection passes as below.
-WIND 128 request and full window/viewport/frame acceptance remain pending.
+The WIND 128 request now passes the integrated checks below; full
+window/viewport/frame acceptance remains pending.
 
 ## Hidden native constructor
 
@@ -177,7 +180,7 @@ python3 tools/check_choice_services.py tmp/m2-choice-services-reference.log --st
 
 The subsequent GetFontInfo/CharWidth calls now pass; see [font-manager.md](font-manager.md).
 The current stop is `PALETTE MANAGER / SETPALETTE`,
-Misc1+$10FA, trap $AA95. Preference zero does not by itself prove WIND 128 acceptance.
+Misc1+$10FA, trap $AA95. The integrated observer now proves the actual WIND 128 request as well as preference zero.
 Full drawing, replacement in-game interfaces, window/viewport and frame acceptance
 remain required by the queue.
 
@@ -186,25 +189,42 @@ Native evidence uses `tmp/m2-choice-native.log`, `tmp/m2-choice-fresh.log` and
 run creates the default size-one PREF; existing inputs one and zero both become
 zero with all nine unrelated bytes preserved. The tests restore the original
 on-disk preferences. Those selection-only captures ended with 36/62 windows and 43/51 completed
-services. Current startup also loads the metric fonts, ending with 64/90 windows
-and 118/126 services. Original application reads remain 28 / 123,387 bytes. The checker also
+services. Current startup reaches window-palette binding with 68/94 windows and 124/132
+services; original resource bodies total 32 / 130,692 bytes. The checker also
 rejects visibility, cleanup, preference, duplicate-capture and timeout failures.
 
 
-## Main-window acceptance dependency
+## Integrated main-window acceptance
 
-A read-only extension of the selection observer stopped at the first original
-GetNewCWindow after selection and palette setup. It measured resource 131 at
-Misc1+$1272, not resource 128 at +$109A. The original resource names 131
-"Background Hider". Original Misc1+$1250–$1297 bytes have SHA256
-`1a1d6c325582244a437981e80f2f0ff7c21f35ab366a9ff238d33be9284cbd52`;
-they push 131 for AA46 at +$1272 and reach A91A at +$1296. That former stop prevented main-window acceptance. Title-state support now
-passes paired checks and startup reaches Misc1+$10FA, but integrated WIND 128
-selection acceptance still needs its own observer. The Mac reference's two
-WIND 128 selection captures remain valid.
+`amiga/choice_services.gdb` now continues from hidden item selection through the
+actual Misc1+$109A GetNewCWindow call. It distinguishes that call from the earlier
+WIND 131 background-hider request at +$1272. The previous attempt that stopped at
+131 remains rejected; title-state support removed its prerequisite.
 
-Local evidence is `tmp/m2-wind-site-probe.log` (an intentionally rejected
-main-window capture with explicit actual site/id), and the previously accepted
-SetPalette endpoint captures. The attempted observer/checker extensions are
-preserved in `tmp/wind-attempt-*`. Current startup checks advance to the
-window-palette stop; original instructions and UI policy remain unchanged.
+The accepted call requests WIND 128, null storage and behindWindow=-1, with an
+initial zero result slot and size preference zero. The checker normalizes only
+the verified A5-relative address relocation in the 44 original bytes at
+Misc1+$1070–$109B (SHA-256
+`474f8a03c2ddd2d18c9367305105c552f8e79613077ee7cb114d754752f9e5fe`).
+It validates the live site, full instruction bytes and operand=A5−$11B54.
+
+Existing size-one, fresh preferences and existing size-zero runs all pass with
+actual exit zero: `tmp/m2-wind-native-existing.log`,
+`tmp/m2-wind-final-fresh.log` and `tmp/m2-wind-final-low.log`.
+The complete before/after preference bytes and requested window match the two
+Mac captures. Hidden dialog state, item selection, disposal and world restoration
+remain checked, and the next stop is window SetPalette at Misc1+$10FA.
+Original preferences are restored.
+
+```sh
+python3 tools/check_choice_services.py tmp/m2-choice-services-reference.log --status 0 \
+  --native tmp/m2-wind-native-existing.log --native-status 0 \
+  --selection-reference tmp/m2-screen-choice-reference.log --selection-status 0
+```
+
+For the size-zero native capture, use `tmp/m2-screen-choice-low-reference.log`.
+Checker fixtures reject wrong sites/IDs/instructions, unrelated preference
+changes, mismatched inputs, visibility, incomplete runs and timeouts. The native
+executable is unchanged from the fully validated title commit, so its twenty
+startup regressions, host suite, boot/resource-read and no-float audits remain
+applicable. This proves selection, not window geometry, viewport or rendering.

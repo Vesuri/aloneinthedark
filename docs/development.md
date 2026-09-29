@@ -2717,3 +2717,19 @@ Startup now stops at window SetPalette, Misc1+$10FA, with original MDRV absent.
 Integrated WIND 128 selection acceptance is next, followed by the newly queued
 window-binding form. Second Times, original PAK reads and rendered intro remain
 pending; no owner decision changed.
+
+
+## Integrated WIND 128 selection
+
+M2.1c3c2c5b2c2c extends the fixed-choice observer to the actual original
+Misc1+$109A request, distinguishing it from WIND 131. Existing size-one, fresh
+preferences and existing size-zero runs request WIND 128 and match the Mac's
+complete preference byte changes. The live instructions and sole relocated
+operand pass original-byte checks. Hidden dialog/service checks still pass and
+the next stop remains window SetPalette, Misc1+$10FA.
+
+All three bounded runs exit zero with positive markers; checker rejection cases
+and original byte checks pass. Original preferences are restored. The runtime
+executable is unchanged from 4b54e82, whose full host suite, twenty startup checks,
+boot/resource-read and link audits remain applicable. This is selection acceptance,
+not viewport or rendered output. See [screen-choice.md](screen-choice.md).
