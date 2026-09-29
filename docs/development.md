@@ -2497,3 +2497,14 @@ also rejected; the stable-launcher reruns passed. Evidence uses
 Startup now stops explicitly at Engine+$1038 AEInstallEventHandler, selector
 $091F. Handler registration is the next dependency; WIND 128, the second Times
 lookup, rendering and full M2 acceptance remain pending. Original MDRV stays absent.
+
+## Original Apple Event registration contracts
+
+M2.1c3c2c5b2c2b3a measures all four original registrations and 17 separate
+lookup/replacement/error fixtures. Both bounded Mac modes exit normally with
+positive markers and pass the independent checker, including input readback,
+output bounds, stack/registers and malformed-capture rejection. All 44 Mac
+scripts pass syntax and literal audits; the full host suite passes. The native
+executable is unchanged and still stops at AEInstallEventHandler, so its previous
+regression evidence remains applicable. Native state and paired acceptance are
+retained as b3b at the top of the queue. See [apple-events.md](apple-events.md).

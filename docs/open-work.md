@@ -46,14 +46,16 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.1c3c2c5b2c2b3 Startup Apple Event handler registration.**
+- **M2.1c3c2c5b2c2b3b Native startup Apple Event handler registration.**
   - The 25 original GetFontInfo and 50 CharWidth calls now pass from installed
     port-owned definitions. Startup next reaches Engine+$1038, Pack8 selector
     $091F (AEInstallEventHandler), before WIND 128 creation.
-  - Measure the four original registrations (+$1038/+$1056/+$1074/+$1092),
-    including callback/refCon/system-handler arguments, stack/results and any
-    observable replacement/lookup behavior. Preserve actual handler state;
-    do not silently ignore registration or run callbacks inside an interrupt.
+  - The independent reference contract is complete in [apple-events.md](apple-events.md):
+    four original calls and 17 table fixtures establish callback/refCon ownership,
+    replacement, exact lookup, missing entries, invalid pointers and stack/registers.
+  - Implement the measured application registration state and verify it against
+    those captures. Do not silently ignore registration or run callbacks inside
+    an interrupt. Unsupported forms remain named stops.
   - Full Apple Event delivery remains M3.4. Any newly reached unimplemented
     selector remains a named stop; keep original MDRV loading forbidden.
 

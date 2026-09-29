@@ -17,6 +17,7 @@ Start with the [project README](../README.md).
 - [Menu records](menu-manager.md): original counts, labels and native mutations.
 - [Sound driver](sound-driver.md): original startup contract and native D8 seam.
 - [Font Manager](font-manager.md): measured font lookup contract and reference probes.
+- [Apple Events](apple-events.md): original registration and table-state contracts.
 - [Open work](open-work.md): the ordered work queue.
 
 The Vette! repository (`~/Documents/Vette/docs`) holds the complete versions of
