@@ -2455,3 +2455,16 @@ bytes; low-memory validation/application remains 58/55. The 68020 no-float and
 without completion and was rejected; its retry completed and passed the full
 paired check. A debugger expression error in the initial choice observer was
 also rejected and corrected before the accepted three preference runs.
+
+## Original startup font-metrics contract
+
+M2.1c3c2c5b2c2b1 captures and verifies 25 GetFontInfo records and 50 CharWidth
+results for the original five font/size and five style combinations. The bounded
+MAME run exits normally; original bytes, input tables, eight-byte output extents,
+stack/register preservation and saved text-state restoration all pass. Rejection
+checks and the full host suite pass; the literal audit now covers 43 scripts.
+The native first-call input and both tables match in a read-only stop snapshot.
+This is a reference-only prerequisite: native code and its GetFontInfo stop are
+unchanged, so the previous native regression evidence remains applicable.
+Installed definitions and native service acceptance remain at the top of the
+queue. Reproduction and measured cases are in [font-manager.md](font-manager.md).

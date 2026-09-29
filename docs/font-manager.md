@@ -103,7 +103,7 @@ named trap stops pending M2.9 instead of silently drawing the Vette fixed font.
 The native observer checks the live original trap bytes, Pascal Times name,
 result 20, eight-byte stack cleanup, D0 and error globals at Dan1+$0014. It dumps
 both installed bodies for exact host comparison and requires the next named
-`FP68K` selector $200E stop, with no original MDRV body resident. The original
+`GETFONTINFO` stop at Misc1+$0610, with no original MDRV body resident. The original
 second lookup has not been reached natively: graphics initialization and further
 startup services lie between these calls. The two native driver calls now pass. This is partial M2.1c3 acceptance, not a completed font/startup item.
 
@@ -133,3 +133,54 @@ and four startup observers pass. Both preference-start modes pass resource-byte
 checks; all 75,616 original A5 bytes match. The font observer and independent
 body checker pass with normal completion. This verifies the implementation and
 first original call, while retaining the second-call acceptance in the queue.
+
+
+## Original startup metrics
+
+M2.1c3c2c5b2c2b1 measures the original Misc1+$05A0 initializer after hidden
+size selection. Original bytes +$0534–+$066B validate table identities, iterate
+five font/size records and five style records, then restore the previous font,
+size and face. This initializes text layout data; these calls do not draw text,
+dialogs or menus.
+
+| Family ID | Point sizes |
+| --- | --- |
+| 0 | 12 |
+| 3 | 9 |
+| 21 | 9, 18, 36 |
+
+Each pair uses styles 0, 1, 2, 32, 33 (plain, bold, italic, condensed and
+bold-condensed). The original tables reside at A5−$0F10 and A5−$0EF2. Native
+startup reaches the same first input: family 0, size 12, face 0, extra 0.
+A read-only native snapshot confirms both tables. The existing Times/family-20
+14-point overlay therefore cannot satisfy this new call.
+
+GetFontInfo at +$0610 writes eight bytes (ascent, descent, maximum width,
+leading), pops four bytes and preserves D3–D7/A2–A6 and the current port.
+CharWidth at +$0618/+$0626 measures '0'/space, pops the two-byte character
+argument and returns a word in the caller's preallocated result slot. It
+preserves the same registers and port. D0–D2/A0–A1 are volatile; original code
+uses the result slot. The 25 FontInfo records and 50 widths are measured facts
+in `check_font_metrics.py`, not a runtime shortcut or font artwork.
+
+The values require per-style definitions. For example family 21 at 9 points
+has zero-character width 5 in both plain and bold, while space grows 2→3.
+At 36 points bold grows both by two pixels. A uniform guessed style increment
+would be incorrect. Point size also differs from ascent+descent, and family 0
+has leading 1. These properties must be represented by the installed native
+font definitions. Placeholder drawing remains D6/M2.9 work.
+
+Run the documented headless MAME command with
+`-autoboot_script tools/mac_font_metrics.lua`, then:
+
+```sh
+python3 tools/check_font_metrics.py tmp/m2-font-metrics-reference-accepted.log --status 0
+```
+
+The accepted reference exits normally with exactly 75 calls and positive
+completion. The checker guards original bytes, both tables, call order, all
+metrics/widths, output guards, stack/registers and restoration of saved text
+state (font/size/face 0/0/0, result zero). It rejects changed values/styles,
+missing/duplicate completion and timeout. Native service implementation and
+integrated progression remain M2.1c3c2c5b2c2b2; this reference-only prerequisite
+does not advance the native stop.
