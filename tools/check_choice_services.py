@@ -15,7 +15,7 @@ def one(text,pattern):
     return matches[0]
 def check(text,status,native=False):
     if status!=0 or any(x in text for x in ('FAIL','[LUA ERROR]','unknown command','Error in','timeout','Program received signal')):raise ValueError('failed observer')
-    marker='PASS native fixed-choice services next=NEWPALETTE' if native else 'PASS original fixed-choice services'
+    marker='PASS native fixed-choice services next=SETPALETTE' if native else 'PASS original fixed-choice services'
     if text.count(marker)!=1 or text.count('[Inferior 1 (Remote target) detached]' if native else 'Exited via the debugger')!=1:raise ValueError('completion')
     entries=re.findall(r'^SERVICE_ENTER label=(\w+) (.*)$',text,re.M)
     returns=re.findall(r'^SERVICE_RETURN label=(\w+) (.*)$',text,re.M)
@@ -49,7 +49,7 @@ def check(text,status,native=False):
         want=bytearray(before);want[7]=0
         result,old=one(text,r'CHOICE_RESULT d0=([0-9A-F]+) pref=([0-9A-F]+)')
         if before[7] not in (0,1) or after!=want or int(old,16)!=before[7] or int(result,16)&65535!=1-before[7]:raise ValueError('original preference mapping')
-        one(text,r'CHOICE_NEXT state=3 trap=AA91 selector=FFFFFFFF segment=7 offset=1158 manager=PALETTE MANAGER routine=NEWPALETTE windows=(?:65|91) services=(?:119/119|127/127) reads=29 bytes=125443')
+        one(text,r'CHOICE_NEXT state=3 trap=AA95 selector=FFFFFFFF segment=7 offset=1172 manager=PALETTE MANAGER routine=SETPALETTE windows=(?:65|91) services=(?:119/119|127/127) reads=29 bytes=125443')
     return True
 
 def bytecheck(path):

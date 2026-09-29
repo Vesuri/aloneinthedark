@@ -50,6 +50,20 @@ def check(text,status,native=False):
             if len(frame)!=10 or [int(x[0],16) for x in frame]!=list(range(1,11)):raise ValueError('native exception-frame coverage')
             frames.append(frame)
         if frames[0]!=frames[1]:raise ValueError('native exception-frame flags changed')
+        diagnostics=[fields(x) for x in re.findall(r'^SANE_FRAME_DIAGNOSTIC (.*)$',text,re.M)]
+        live=[fields(x) for x in re.findall(r'^SANE_LIVE_RETURN (.*)$',text,re.M)]
+        callbacks=[fields(x) for x in re.findall(r'^SANE_VBL_RETURN (.*)$',text,re.M)]
+        if len(diagnostics)!=10 or len(live)!=10 or len({x['seq'] for x in callbacks})!=len(callbacks):raise ValueError('live-frame coverage')
+        callback_by_seq={x['seq']:x for x in callbacks}
+        used_callbacks=set();engine=diagnostics[0]['expectedPC']-OFFSETS[0]-2
+        for n,(d,l) in enumerate(zip(diagnostics,live),1):
+            saved=int(frames[0][n-1][1],16)
+            if d['seq']!=n or l['seq']!=n or d['pc']!=d['rte'] or d['sp']!=d['frame'] or l['sp']!=d['sp'] or l['frame']!=d['frame']:raise ValueError('live frame identity')
+            if (d['savedSR'],d['actualSR'],l['expected'],l['live'])!=(saved,)*4 or l['next']!=d['actualPC'] or d['expectedPC']!=engine+OFFSETS[n-1]+2:raise ValueError('live frame flags/PC')
+            if d['actualPC']!=d['expectedPC']:
+                if not d['callback'] or d['callbackReturn']!=d['expectedPC'] or callback_by_seq.get(n)!={'seq':n,'sr':saved,'next':d['expectedPC']}:raise ValueError('callback flag restoration')
+                used_callbacks.add(n)
+        if used_callbacks!=set(callback_by_seq):raise ValueError('unexpected callback restoration')
     return semantics
 class Checks(unittest.TestCase):
     def test_incomplete(self):
@@ -72,6 +86,7 @@ if __name__=='__main__':
                   (text.replace('shadow=20','shadow=0'),0),(text.replace('fp=0','fp=1',1),0),
                   (text.replace('offset=47C2','offset=47C4',1),0),
                   (re.sub(r'(SANE_DEST_AFTER seq=1 data=)[0-9A-F]',r'\g<1>F',text,count=1),0)]
+            if native:bads.append((re.sub(r'actualSR=[0-9A-F]+','actualSR=FFFF',text,count=1),0))
             for bad,status in bads:
                 try:check(bad,status,native)
                 except ValueError:continue

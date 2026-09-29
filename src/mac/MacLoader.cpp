@@ -121,6 +121,9 @@ volatile uint32_t g_identityProbeStage=0;
 void aitd_identity_probe();
 __attribute__((noinline)) void aitdIdentityProbeReturned() { __asm__ volatile("" ::: "memory"); }
 #endif
+#ifdef AITD_PALETTE_PROBE
+void aitdPaletteProbe();
+#endif
 #ifdef AITD_CTABLE_PROBE
 void aitdCTableProbe();
 #endif
@@ -287,6 +290,8 @@ static WindowSlot s_windows[8];
 static uint8_t* s_windowList;
 static uint32_t s_colorSeed = 1;
 static uint8_t** s_activePalette;
+struct CreatedPalette { uint8_t** handle;uint8_t** privateHandle; };
+static CreatedPalette s_createdPalettes[32];
 static bool s_screenDirty = true;
 static bool s_pixelsDirty = false;
 static int16_t s_dirtyTop, s_dirtyLeft, s_dirtyBottom, s_dirtyRight;
@@ -474,6 +479,9 @@ static int16_t s_memoryError;
 
 static void releaseZones()
 {
+    for(uint16_t i=0;i<32;++i) {
+        s_createdPalettes[i].handle=0;s_createdPalettes[i].privateHandle=0;
+    }
     s_applicationZone.reset();s_systemZone.reset();
     if(s_applicationArena)FreeMem(s_applicationArena,kApplicationZoneBytes);
     if(s_systemArena)FreeMem(s_systemArena,kSystemZoneBytes);
@@ -6390,6 +6398,31 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
             return 5;
         }
     }
+    if(trap==0xaa91) { // Original eight-bit NewPalette: independent owned copy.
+        MacHeap::Handle source=(MacHeap::Handle)read32(userStack+4);
+        MacHeap* owner=handleZone(source);
+        if(read16(userStack)!=0 || read16(userStack+2)!=10 || read16(userStack+8)!=256
+            || !owner || !*source || owner->handleSize(source)!=2056
+            || read16(*source+4)!=0 || read16(*source+6)!=255)goto unsupportedTrap;
+        for(uint16_t i=0;i<256;++i)if(read16(*source+8+i*8)!=i)goto unsupportedTrap;
+        uint16_t slot=0;while(slot<32 && s_createdPalettes[slot].handle)++slot;
+        if(slot==32)goto unsupportedTrap;
+        MacHeap::Handle palette=newHandle(4112,true);
+        if(!palette)goto unsupportedTrap;
+        MacHeap::Handle privateHandle=newHandle(4,true);
+        if(!privateHandle) { handleZone(palette)->disposeHandle(palette);goto unsupportedTrap; }
+        write16(*palette,256);write32(*palette+4,2);
+        write32(*palette+12,(uint32_t)privateHandle);
+        for(uint16_t i=0;i<256;++i) {
+            uint8_t* entry=*palette+16+i*16;
+            for(uint16_t j=0;j<6;++j)entry[j]=(*source)[10+i*8+j];
+            write16(entry+6,10);
+        }
+        s_createdPalettes[slot].handle=palette;
+        s_createdPalettes[slot].privateHandle=privateHandle;
+        write32(userStack+10,(uint32_t)palette);regs[0]=0;
+        return 11;
+    }
     if (trap == 0xaa92) {                    // GetNewPalette(id) -> PaletteHandle
         write32(userStack + 2,
                 (uint32_t)getResource(0x706c7474UL, (int16_t)read16(userStack))); // 'pltt'
@@ -6398,6 +6431,20 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     }
     if (trap == 0xaa93) {                    // DisposePalette(palette)
         uint8_t** palette = (uint8_t**)read32(userStack);
+        uint16_t created=0;while(created<32 && s_createdPalettes[created].handle!=palette)++created;
+        MacHeap* paletteOwner=0;MacHeap* privateOwner=0;
+        if(created<32) {
+            paletteOwner=handleZone(palette);
+            privateOwner=handleZone(s_createdPalettes[created].privateHandle);
+            if(!paletteOwner || !privateOwner || !*palette
+                || paletteOwner->handleSize(palette)!=4112
+                || read32(*palette+12)!=(uint32_t)s_createdPalettes[created].privateHandle
+                || s_activePalette==palette)goto unsupportedTrap;
+            // Attached/realized palettes need the later Palette Manager contract.
+            for(uint16_t i=0;i<8;++i)if(s_windows[i].used && s_windows[i].palette==palette)goto unsupportedTrap;
+            for(uint16_t i=0;i<sizeof(s_gworlds)/sizeof(s_gworlds[0]);++i)
+                if(s_gworlds[i].used && s_gworlds[i].palette==palette)goto unsupportedTrap;
+        }
         for (uint16_t i = 0; i < sizeof(s_windows) / sizeof(s_windows[0]); ++i) {
             if (!s_windows[i].used || s_windows[i].palette != palette) continue;
             s_windows[i].palette = 0;
@@ -6410,7 +6457,12 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         // GetNewPalette is represented by the corresponding 'pltt' resource
         // master. Releasing it provides the Palette Manager ownership boundary;
         // a later request can materialize the same resource again.
-        releaseResource(palette);
+        if(created<32) {
+            privateOwner->disposeHandle(s_createdPalettes[created].privateHandle);
+            memoryResult(paletteOwner->disposeHandle(palette));
+            s_createdPalettes[created].handle=0;s_createdPalettes[created].privateHandle=0;
+            regs[0]=0;
+        } else releaseResource(palette);
         if (g_stageCDepth < 96) g_stageCDepth = 96;
         return 5;
     }
@@ -6885,7 +6937,7 @@ unsupportedTrap:
     }
     if(trap==0xaaa2 && (uint16_t)regs[0]==0x0a13)routine="SETDEPTH";
     if(trap==0xaaa2 && (uint16_t)regs[0]==0x0a14)routine="HASDEPTH";
-    if(unsupportedGraphics)routine="8-BIT DRAWING / PALETTE";
+    if(unsupportedGraphics)routine=trap==0xaa95 ? "SETPALETTE" : "8-BIT DRAWING / PALETTE";
     if(trap==0xab1d && (uint16_t)regs[0]==5)routine="GETGWORLD";
     if(trap==0xab1d && (uint16_t)regs[0]==6)routine="SETGWORLD";
     if(trap==0xa0f8) { manager="SOUND DRIVER";routine=driverStop ? driverStop : "SELECTOR";g_trapSelector=read32(userStack+4); }
@@ -7200,6 +7252,12 @@ bool MacLoader::run(AitdScreen* screen)
                       g_macStackBase + 65536);
     restoreLineAVector();
     aitdHeapProbeComplete();
+#endif
+#ifdef AITD_PALETTE_PROBE
+    installLineAVector();
+    aitd_call_mac_code((void*)aitdPaletteProbe,a5,g_macStackBase+65536);
+    restoreLineAVector();
+    return true;
 #endif
 #ifdef AITD_CTABLE_PROBE
     installLineAVector();

@@ -1,8 +1,8 @@
 # Startup palette construction
 
 The original NewPalette request is measured by `tools/mac_palette.lua` and
-validated by `tools/check_palette.py`. Native construction remains
-M2.1c3c2c5b2c2b3d2; activation and device/video colour realization remain M2.7/M2.7a.
+validated by `tools/check_palette.py`. Native construction implements the measured startup form; activation and
+device/video colour realization remain M2.7/M2.7a.
 Vette has GetNewPalette resource loading but no NewPalette constructor to reuse.
 
 ## Original request and returned record [M]
@@ -73,5 +73,37 @@ syntax and literal audits. The checker rejects missing/duplicate records,
 timeouts/missing status, changed request arguments and changed live bytes.
 Its initial broad error-word rejection caught missing emulator floppy sound
 samples; validation now distinguishes those startup messages from capture errors.
-The native executable remains at Engine+$1158 NEWPALETTE, so the previous native
-regression evidence remains applicable. Raw captures and original data stay local.
+Raw captures and original data stay local.
+
+## Native implementation and verification
+
+NewPalette accepts the measured 256-entry form, usage `$000A`, tolerance zero,
+and an indexed source table with flags zero. It allocates and copies the full
+record and its four-byte private block, tracking their ownership separately from
+Resource Manager handles. Unattached DisposePalette releases both allocations
+and preserves the source. Attached/realized disposal, other constructor forms,
+allocation failures and exhaustion of the 32-record ownership table stop loudly.
+The ownership table is cleared when the zones are released.
+
+`amiga/palette.gdb` observes the original request/return, captures all palette and
+source bytes and reaches Engine+$1172 SETPALETTE, with original MDRV absent.
+`PALETTEPROBE=1` builds the CPU-executed twelve-case fixture; its read-only observer
+is `amiga/palette_fixture.gdb`. Actual shutdown must return zero, close both
+resource streams, remove Line-A and release both zones. No debugger writes or
+original-code patches are used.
+
+```sh
+. amiga/env.sh
+make -C amiga clean
+make -C amiga PALETTEPROBE=1
+(cd amiga && EXTRA_ARGS=--warp_mode=1 GDBSCRIPT=palette_fixture.gdb ./diag_run.sh 120)
+# Check a saved log with its actual terminal status and matching preserved dumps:
+python3 tools/check_palette.py tmp/m2-palette-native-fixture-final.log --native \
+  --fixture --status 0 --folder tmp/palette-native-fixture-final
+make -C amiga clean
+make -C amiga
+(cd amiga && EXTRA_ARGS=--warp_mode=1 GDBSCRIPT=palette.gdb ./diag_run.sh 120)
+```
+
+This is construction/lifecycle acceptance. It does not establish palette binding,
+activation, video colour transfer or rendered-intro acceptance.

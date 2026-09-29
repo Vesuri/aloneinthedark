@@ -69,3 +69,18 @@ contract; see [screen-choice.md](screen-choice.md). The current stop is
 Engine+$110E `COLOR QUICKDRAW / GETCTABLE`, after the
 hidden choice, item lookup/disposal, main-world restoration, font metrics and Apple Event registration. WIND 128 request acceptance, the
 second Times call and all rendering acceptance remain pending. This change does not draw dialogs or accept visible Mac UI.
+
+
+### Live return-frame verification
+
+The native observer checks flags immediately before Line-A's guarded `RTE`.
+If that return routes through the VBL trampoline, it also checks the live saved
+CCR and resume PC immediately before the guarded `move.w (sp)+,ccr; rts`.
+The caller's stack, registers and arithmetic results remain checked afterward.
+It never treats the former exception-frame stack address as live after return.
+
+Palette-startup regression instrumentation demonstrated why: a due callback
+preserved CCR=0 at both restoration points but reused the old frame storage,
+which read as 4 by the original caller's breakpoint. That rejected old-observer
+run was not a SANE arithmetic failure. `tmp/m2-palette-sane-live-frames.log`
+records both live points and the reused storage; no runtime/SANE code changed.

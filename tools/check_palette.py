@@ -23,16 +23,22 @@ def original(path):
     code=next(r.body for r in rows if r.kind==b'CODE' and r.rid==7)[0x114a:0x1170]
     if hashlib.sha256(code).hexdigest()!='9c49481e014b240b50e4f2c2441e3382ae48f8955171df072cd946e7ae3b5d30':raise ValueError('original NewPalette bytes')
     return code,next(r.body for r in rows if r.kind==b'clut' and r.rid==128)
-def check(text,status,folder,code,clut,fixture=False):
+def check(text,status,folder,code,clut,fixture=False,native=False):
     if status!=0 or any(x in text for x in ('FAIL','Error in','[LUA ERROR]','timeout','unknown command')):raise ValueError('failed observer')
     end='PASS NewPalette ownership fixture calls=C' if fixture else 'PASS original NewPalette capture'
-    for marker in ('ARM palette dispatcher bytes=2f0a2f02246f000a',end,'Exited via the debugger'):
+    markers=('ARM palette dispatcher bytes=2f0a2f02246f000a',end,'Exited via the debugger')
+    if native:markers=('ARM native palette original bytes','PASS native NewPalette capture','PASS native palette original-MDRV=absent')
+    if native and fixture:markers=('ARM native palette CPU fixture',end,'PASS native palette CPU fixture shutdown zones=0 sources=0/0 lineA=0 result=0')
+    for marker in markers:
         if text.count(marker)!=1:raise ValueError('completion')
-    if bytes.fromhex(one(text,r'PALETTE_BYTES data=([0-9A-F]+)'))!=code:raise ValueError('live original bytes')
+    if native and fixture:
+        if one(text,r'PALETTE_FIX_CODE data=([0-9A-F]+)')!='42A73F3C01002F2C01004878000AAA91':raise ValueError('fixture instruction bytes')
+    elif bytes.fromhex(one(text,r'PALETTE_BYTES data=([0-9A-F]+)'))!=code:raise ValueError('live original bytes')
     e=fields(one(text,r'PALETTE_ENTER (.*)'));r=fields(one(text,r'PALETTE_RETURN (.*)'));preserved(e,r,10)
     args=bytes.fromhex(one(text,r'PALETTE_ENTER .*args=([0-9A-F/]+) .*').replace('/',''))
     if args!=struct.pack('>HHIHI',0,10,e['source'],256,0):raise ValueError('original arguments')
-    def load(name):return (folder/('palette-reference-'+name+'.bin')).read_bytes()
+    prefix='palette-native-' if native else 'palette-reference-'
+    def load(name):return (folder/(prefix+name+'.bin')).read_bytes()
     source=load('source');palette=load('body')
     expected=bytearray(clut);expected[:4]=source[:4];expected[4:6]=b'\0\0'
     for i in range(256):struct.pack_into('>H',expected,8+8*i,i)
@@ -42,6 +48,8 @@ def check(text,status,folder,code,clut,fixture=False):
     if not all((r['handle'],r['body'],e['source'],e['body'],private)) or len({r['handle'],e['source'],private})!=3 or r['body']==e['body']:raise ValueError('independent handles')
     entries=b''.join(source[10+8*i:16+8*i]+bytes.fromhex('000a0000000000000000') for i in range(256))
     if palette[16:]!=entries:raise ValueError('palette RGB/usage/tolerance/private fields')
+    if native and not fixture:
+        one(text,r'PALETTE_NEXT state=3 trap=AA95 selector=FFFFFFFF segment=7 offset=1172 manager=PALETTE MANAGER routine=SETPALETTE windows=(?:65|91) services=(?:119/119|127/127)')
     if not fixture:
         if 'PALETTE_FIX_' in text or fields(one(text,r'PALETTE_SIZE (.*)'))!={'size':4112,'mem':0}:raise ValueError('allocated size')
         return
@@ -72,13 +80,13 @@ class Checks(unittest.TestCase):
         for status in (None,124,0):
             with self.assertRaises(ValueError):check('PASS original NewPalette capture',status,Path('tmp'),b'',b'')
 if __name__=='__main__':
-    p=argparse.ArgumentParser(description=__doc__);p.add_argument('log',type=Path,nargs='?');p.add_argument('--status',type=int);p.add_argument('--fixture',action='store_true');p.add_argument('--folder',type=Path,default=Path('tmp'));p.add_argument('--selftest',action='store_true');a=p.parse_args()
+    p=argparse.ArgumentParser(description=__doc__);p.add_argument('log',type=Path,nargs='?');p.add_argument('--status',type=int);p.add_argument('--fixture',action='store_true');p.add_argument('--native',action='store_true');p.add_argument('--folder',type=Path,default=Path('tmp'));p.add_argument('--selftest',action='store_true');a=p.parse_args()
     if a.selftest:raise SystemExit(not unittest.TextTestRunner().run(unittest.defaultTestLoader.loadTestsFromTestCase(Checks)).wasSuccessful())
     try:
         code,clut=original(Path('tmp/runtime-data/Alone In The Dark'));text=a.log.read_text()
-        check(text,a.status,a.folder,code,clut,a.fixture)
-        for bad,status in ((text,124),(text,None),(text+text,0),(text.replace('args=0000000A','args=0000000B',1),0),(text.replace('PALETTE_BYTES data=42A7','PALETTE_BYTES data=42A6'),0)):
-            try:check(bad,status,a.folder,code,clut,a.fixture)
+        check(text,a.status,a.folder,code,clut,a.fixture,a.native)
+        for bad,status in ((text,124),(text,None),(text+text,0),(text.replace('args=0000000A','args=0000000B',1),0),(text.replace('PALETTE_FIX_CODE data=42A7','PALETTE_FIX_CODE data=42A6').replace('PALETTE_BYTES data=42A7','PALETTE_BYTES data=42A6'),0)):
+            try:check(bad,status,a.folder,code,clut,a.fixture,a.native)
             except ValueError:continue
             raise ValueError('invalid capture accepted')
         print('PASS NewPalette: original bytes, arguments, stack/registers, exact records'+('; 12 ownership/disposal cases' if a.fixture else ''))

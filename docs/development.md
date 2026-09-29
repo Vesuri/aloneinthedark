@@ -2604,3 +2604,36 @@ that overly broad check was corrected before the accepted runs. Native code is
 unchanged from 5e568da and retains its verified NEWPALETTE stop. Native
 construction is b3d2 at the queue head; no palette realization or intro-frame
 acceptance is claimed.
+
+## Native palette construction and disposal
+
+M2.1c3c2c5b2c2b3d2 implements the measured NewPalette form and unattached
+DisposePalette ownership. The original constructor and twelve CPU-executed
+lifecycle cases match the Mac: complete 256-entry records, independent RGB
+copies, source preservation, both owned allocations freed, and exact stack/
+register/error contracts. Actual probe shutdown releases both zones, closes
+resource streams, removes Line-A and returns zero. Other forms remain named
+stops. No original instructions changed; see [palette.md](palette.md).
+
+All nineteen startup observers and paired contracts pass, as do the host suite,
+fresh/existing preferences, boot/resource-read and final clean fixture/production
+runs. The final production executable matches the startup regression binary.
+All 75,616 A5 bytes match; low-memory sites remain 58 validated / 55 applied.
+No-float and 77-symbol audits pass. Native palette construction adds no resource
+reads or OS windows: existing/fresh runs remain 65/91 windows and 119/127
+services, original resource bodies 29 / 125,443 bytes, overlay 31 / 80,800.
+Original preferences are restored. Evidence is `tmp/m2-palette-accepted-*`,
+`tmp/m2-palette-native-host.log`, `tmp/m2-palette-final-runs.log`,
+`tmp/m2-palette-native-fixture-final.log` and `tmp/m2-palette-native-final.log`.
+
+The initial SANE observer failed because it inspected released supervisor-stack
+storage after a VBL callback. Instrumentation verified CCR=0 before RTE and at
+the callback's restore point, while the reused old frame read 4 afterward. The
+observer/checker now validate live frames and callback routing/restoration;
+no SANE or trap-return runtime code changed. Rejected runs remain local; the
+accepted evidence is `tmp/m2-palette-sane-live-frames.log`.
+
+Startup advances to Engine+$1172 SETPALETTE. Its binding and device effects are
+the next ordered prerequisite. Original MDRV remains absent; WIND 128, second
+Times, original PAK reads, palette realization and intro-frame acceptance remain
+pending. There is no Mac UI rendering or owner decision change.

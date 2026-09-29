@@ -12,8 +12,8 @@ design.md §5.
   passes directory initialization, the first Times lookup and both native
   driver startup calls, menu-record initialization, device selection, SetDepth, GetGWorld, hidden dialog construction/positioning and fixed
   low-resolution selection/cleanup, all 75 font-metrics calls and four Apple Event
-  registrations and colour-table loading/mutations, then stops at Engine+$1158
-  `PALETTE MANAGER / NEWPALETTE`. The original
+  registrations, colour-table loading/mutations and palette construction, then stops
+  at Engine+$1172 `PALETTE MANAGER / SETPALETTE`. The original
   mixer is never loaded.
 - The original runs in MAME on the System 7.5.5 reference volume.
 
@@ -47,24 +47,19 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.1c3c2c5b2c2b3d2 Native startup palette construction (M2.7 prerequisite).**
-  - Original GetCTable(128), all 256 index mutations and detach/reload ownership
-    now pass; see [color-table.md](color-table.md).
-  - Reference prerequisite b3d1 is complete in [palette.md](palette.md): the
-    original NewPalette call at Engine+$1158 (`AA91`) requests 256 entries,
-    usage `$000A`, tolerance zero. Implement the reached record/ownership form.
-  - The 4,112-byte palette copies RGBs independently and owns a separate four-byte
-    private block. DisposePalette frees both while preserving the source table;
-    twelve reference fixtures establish sizes, state, aliases, errors and cleanup.
-    Vette has no NewPalette constructor; reuse its surrounding palette helpers
-    only where they match the measured eight-bit contract.
+- **M2.1c3c2c5b2c2b3e Startup palette binding (M2.7 prerequisite).**
+  - Original NewPalette construction and its twelve ownership/disposal cases
+    now pass; see [palette.md](palette.md).
+  - The next call is SetPalette at Engine+$1172 (`AA95`). The original pushes
+    window -1, the palette at A4+$24 and update=true. Measure its return, binding,
+    palette-private state and any device-table effects before implementing it.
   - Keep original instructions unchanged and unsupported forms as named stops.
-    Palette activation, device CLUT realization and video colour transfer remain
-    M2.7/M2.7a; this prerequisite must not claim their acceptance.
+    Match every observable effect of this call; full activation/video acceptance
+    remains M2.7/M2.7a rather than being implied by constructor/binding checks.
 
-  *Done when* paired Mac/native checks prove the original NewPalette request,
-  returned records and ownership, bounded startup reaches the next named stop,
-  original MDRV stays absent, and relevant regressions pass.
+  *Done when* paired Mac/native checks prove the original SetPalette request,
+  resulting binding and palette/device state, bounded startup reaches the next
+  named stop, original MDRV stays absent, and relevant regressions pass.
 - **M2.1c3c2c5b2c2c Fixed-selection WIND 128 acceptance (D4/M2.4).**
   - Retains the unfinished integrated acceptance of M2.1c3c2c5b2c2. Native
     preference mapping alone is not evidence that WIND 128 was requested.
@@ -82,7 +77,7 @@ required.
     with no original instructions changed. Selectors 21/24 initialize native
     state and quality; other operations/configurations stop explicitly.
   - Both original call returns match the Mac register/stack/state contract.
-    The palette-construction stop prevents reaching the second Times call; this
+    The palette-binding stop prevents reaching the second Times call; this
     original acceptance requirement is retained, not counted as passed.
   - Keep the MDRV guard and verify through any newly reached startup services.
     The independent Mac contract and installed seam are in
