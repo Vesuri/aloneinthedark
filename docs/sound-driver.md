@@ -2,7 +2,7 @@
 
 D8 replaces the original software mixer at its driver interface. The native
 startup implementation supplies Jnth 11 and the two measured initialization
-calls. Production stops later at GetDeviceList without loading any MDRV body.
+calls. Production stops later at SetDepth without loading any MDRV body.
 Integrated acceptance through the second Times lookup remains pending; neither
 this startup subset nor its reference capture proves audio acceptance.
 
@@ -104,7 +104,7 @@ and selector. M4 extends this interface and supplies playback.
 `SoundDriver.h` has sanitizer-backed state and rejection checks. The native
 `driver_startup.gdb` checks both original call sites, the installed stub, packet,
 D0/D1, all thirteen preserved registers, stack and real native state. It also
-requires the next exact Core+$4B48 GetDeviceList stop with no MDRV resident.
+requires the next exact Core+$0500 SetDepth stop with no MDRV resident.
 `check_native_driver.py LOG --status STATUS` rejects missing or duplicated
 controls, wrong ordering, observer errors and nonzero/timeout status.
 
@@ -112,7 +112,7 @@ The first attempt to require the second Times call stopped at CountMItems and
 was rejected. The original M0.2 trace likewise has menu initialization between
 the driver and second font call. The full second-call acceptance is retained in
 M2.1c3c2/M2.1c3 after intervening startup services. Menu-record initialization
-now passes; the current stop is GetDeviceList. No render,
+now passes; the current stop is SetDepth. No render,
 audio or full startup success is claimed by this subset.
 
 Run the native observer with the normal production build, then check its log:

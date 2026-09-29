@@ -202,8 +202,9 @@ static MacHeap::Handle s_resourceHandles[ResourceForks::kMaximumResources];
 static uint8_t s_resourceChanges[ResourceForks::kMaximumResources]; // bit 0 dirty, bit 1 never published
 static bool s_resourceMapTouched[ResourceForks::kForkCount];
 static int16_t s_resourceError;
-static uint8_t s_quickDrawScreen[(512 / 8) * 320];
-static uint8_t s_colorScreen[(512 / 2) * 320];
+static const uint16_t kScreenWidth=640,kScreenHeight=480;
+static uint8_t s_quickDrawScreen[(kScreenWidth / 8) * kScreenHeight];
+static uint8_t s_colorScreen[kScreenWidth * kScreenHeight];
 // The first driving frame expands its roadside panorama as 512x24 8-bit
 // strips.  Keep one strip's decode storage resident so all 38 calls share the
 // same small working set instead of entering Exec's allocator for every PICT.
@@ -219,7 +220,7 @@ static uint8_t s_mainDevice[62];
 static uint8_t* s_mainDeviceMaster;
 static uint8_t s_mainDeviceITable[6 + 4096];
 static uint8_t* s_mainDeviceITableMaster;
-static uint8_t s_windowManagerColors[8 + 16 * 8];
+static uint8_t s_windowManagerColors[8 + 256 * 8];
 static uint8_t* s_windowManagerColorsMaster;
 static uint8_t s_windowManagerVisRgn[10];
 static uint8_t* s_windowManagerVisRgnMaster;
@@ -717,7 +718,8 @@ static const TrapName s_trapNames[] = {
     {0xa92c,"WINDOW MANAGER","FINDWINDOW"},
     {0xaa92,"PALETTE MANAGER","GETNEWPALETTE"}, {0xaa93,"PALETTE MANAGER","DISPOSEPALETTE"},
     {0xa873,"QUICKDRAW","SETPORT"},
-    {0xaa29,"COLOR MANAGER","GETDEVICELIST"}, {0xaa28,"COLOR MANAGER","GETCTSEED"}, {0xaa39,"COLOR MANAGER","MAKEITABLE"},
+    {0xaa29,"COLOR MANAGER","GETDEVICELIST"}, {0xaa2b,"COLOR MANAGER","GETNEXTDEVICE"},
+    {0xaaa2,"PALETTE MANAGER","PALETTEDISPATCH"}, {0xa8a8,"QUICKDRAW","OFFSETRECT"}, {0xaa28,"COLOR MANAGER","GETCTSEED"}, {0xaa39,"COLOR MANAGER","MAKEITABLE"},
     {0xa91f,"WINDOW MANAGER","SELECTWINDOW"},
     {0xa922,"WINDOW MANAGER","BEGINUPDATE"}, {0xa923,"WINDOW MANAGER","ENDUPDATE"},
     {0xa883,"QUICKDRAW","DRAWCHAR"}, {0xa884,"QUICKDRAW","DRAWSTRING"},
@@ -843,9 +845,8 @@ static bool buildA5World(uint8_t*& a5)
 
 static void blockMove(const uint8_t* source, uint8_t* destination, uint32_t count)
 {
-    // The driving renderer uses _BlockMove as a direct packed-pixel primitive,
-    // bypassing QuickDraw's rectangle calls.  Convert the touched byte span to
-    // a conservative screen-space dirty rectangle before the pointers move.
+    // Direct screen writes bypass QuickDraw rectangle calls. Convert the
+    // touched eight-bit byte span to a conservative screen-space rectangle.
     uint8_t* screenEnd = s_colorScreen + sizeof(s_colorScreen);
     uint8_t* moveEnd = destination + count;
     if (!s_suppressDirectScreenDirty
@@ -854,12 +855,12 @@ static void blockMove(const uint8_t* source, uint8_t* destination, uint32_t coun
         uint8_t* final = moveEnd < screenEnd ? moveEnd : screenEnd;
         uint32_t firstOffset = (uint32_t)(first - s_colorScreen);
         uint32_t finalOffset = (uint32_t)(final - s_colorScreen);
-        int16_t top = (int16_t)(firstOffset / 256);
-        int16_t bottom = (int16_t)((finalOffset + 255) / 256);
-        int16_t left = 0, right = 512;
+        int16_t top = (int16_t)(firstOffset / kScreenWidth);
+        int16_t bottom = (int16_t)((finalOffset + kScreenWidth-1) / kScreenWidth);
+        int16_t left = 0, right = kScreenWidth;
         if (top + 1 == bottom) {
-            left = (int16_t)((firstOffset & 255) * 2);
-            right = (int16_t)(((finalOffset - 1) & 255) * 2 + 2);
+            left = (int16_t)(firstOffset % kScreenWidth);
+            right = (int16_t)(((finalOffset - 1) % kScreenWidth) + 1);
         }
         markDirtyBounds(top, left, bottom, right);
     }
@@ -1341,11 +1342,11 @@ static void initGraf(uint8_t* thePort)
     // screenBits is a one-bit BitMap describing the whole logical screen.
     uint8_t* screenBits = thePort - 122;
     write32(screenBits, (uint32_t)s_quickDrawScreen);
-    write16(screenBits + 4, 512 / 8);
+    write16(screenBits + 4, kScreenWidth / 8);
     write16(screenBits + 6, 0);             // bounds.top
     write16(screenBits + 8, 0);             // bounds.left
-    write16(screenBits + 10, 320);          // bounds.bottom
-    write16(screenBits + 12, 512);          // bounds.right
+    write16(screenBits + 10, kScreenHeight);          // bounds.bottom
+    write16(screenBits + 12, kScreenWidth);          // bounds.right
     write32(thePort - 126, 1);               // randSeed
     write32(thePort, 0);                     // no current GrafPort until InitWindows/SetPort
 }
@@ -1381,26 +1382,22 @@ static void initWindowManagerPort()
     for (uint16_t i = 0; i < sizeof(s_windowManagerColors); ++i) s_windowManagerColors[i] = 0;
 
     s_windowManagerColorsMaster = s_windowManagerColors;
-    write32(s_windowManagerColors, 1);      // ctSeed
-    write16(s_windowManagerColors + 4, 0);  // ctFlags
-    write16(s_windowManagerColors + 6, 15); // ctSize is the final array index
-    for (uint16_t i = 0; i < 16; ++i) {
-        uint8_t* spec = s_windowManagerColors + 8 + i * 8;
-        write16(spec, i);
-        uint16_t level = (uint16_t)((15 - i) * 0x1111U);
-        write16(spec + 2, level); write16(spec + 4, level); write16(spec + 6, level);
-    }
+    // Storage is a real 256-entry device table. Palette realization remains
+    // a named stop: no unmeasured startup colours are published to the display.
+    write32(s_windowManagerColors, 1);
+    write16(s_windowManagerColors + 4, 0x8000);
+    write16(s_windowManagerColors + 6, 255);
 
     s_windowManagerPixMapMaster = s_windowManagerPixMap;
     write32(s_windowManagerPixMap, (uint32_t)s_colorScreen);
-    write16(s_windowManagerPixMap + 4, 0x8000 | (512 / 2));
-    writeRect(s_windowManagerPixMap + 6, 0, 0, 320, 512);
+    write16(s_windowManagerPixMap + 4, 0x8000 | kScreenWidth);
+    writeRect(s_windowManagerPixMap + 6, 0, 0, kScreenHeight, kScreenWidth);
     write32(s_windowManagerPixMap + 22, 72UL << 16); // hRes
     write32(s_windowManagerPixMap + 26, 72UL << 16); // vRes
     write16(s_windowManagerPixMap + 30, 0);          // indexed pixelType
-    write16(s_windowManagerPixMap + 32, 4);          // pixelSize
+    write16(s_windowManagerPixMap + 32, 8);          // pixelSize
     write16(s_windowManagerPixMap + 34, 1);          // cmpCount
-    write16(s_windowManagerPixMap + 36, 4);          // cmpSize
+    write16(s_windowManagerPixMap + 36, 8);          // cmpSize
     write32(s_windowManagerPixMap + 42, (uint32_t)&s_windowManagerColorsMaster);
 
     // One active screen GDevice is sufficient for the shipped single-monitor game.
@@ -1412,21 +1409,22 @@ static void initWindowManagerPort()
     write16(s_mainDevice + 4, 0);           // clutType
     write32(s_mainDevice + 6, (uint32_t)&s_mainDeviceITableMaster); // gdITable
     write16(s_mainDevice + 10, 4);          // gdResPref
-    write16(s_mainDevice + 20, 1);          // screenDevice
+    write16(s_mainDevice + 20, 0xb921);          // screenDevice
     write32(s_mainDevice + 22, (uint32_t)&s_windowManagerPixMapMaster);
-    writeRect(s_mainDevice + 34, 0, 0, 320, 512);
+    writeRect(s_mainDevice + 34, 0, 0, kScreenHeight, kScreenWidth);
+    write32(s_mainDevice + 42, 0x83); // reference 640x480x8 mode
 
-    initRegion(s_windowManagerVisRgn, s_windowManagerVisRgnMaster, 0, 0, 320, 512);
+    initRegion(s_windowManagerVisRgn, s_windowManagerVisRgnMaster, 0, 0, kScreenHeight, kScreenWidth);
     initRegion(s_windowManagerClipRgn, s_windowManagerClipRgnMaster,
                -32767, -32767, 32767, 32767);
-    initRegion(s_grayRgn, s_grayRgnMaster, 20, 0, 320, 512);
+    initRegion(s_grayRgn, s_grayRgnMaster, 20, 0, kScreenHeight, kScreenWidth);
 
     // WMgrPort remains an old-style GrafPort on this system.  Vette reads its
     // embedded BitMap directly to obtain the screen bounds before centering windows.
-    write32(s_windowManagerPort + 2, (uint32_t)s_colorScreen);
-    write16(s_windowManagerPort + 6, 512 / 2);
-    writeRect(s_windowManagerPort + 8, 0, 0, 320, 512);
-    writeRect(s_windowManagerPort + 16, 0, 0, 320, 512);
+    write32(s_windowManagerPort + 2, (uint32_t)s_quickDrawScreen);
+    write16(s_windowManagerPort + 6, kScreenWidth / 8);
+    writeRect(s_windowManagerPort + 8, 0, 0, kScreenHeight, kScreenWidth);
+    writeRect(s_windowManagerPort + 16, 0, 0, kScreenHeight, kScreenWidth);
     write32(s_windowManagerPort + 24, (uint32_t)&s_windowManagerVisRgnMaster);
     write32(s_windowManagerPort + 28, (uint32_t)&s_windowManagerClipRgnMaster);
     for (uint16_t i = 0; i < 8; ++i) {
@@ -4097,8 +4095,7 @@ static void initMenus()
         }
     }
 
-    // The initialized menu list is empty, so the menu bar is its white background.
-    for (uint32_t i = 0; i < (512 / 2) * 20; ++i) s_colorScreen[i] = 0;
+    // D7 has no menu bar. InitMenus initializes records without drawing pixels.
 }
 
 static bool setMenuItemText(uint8_t** menu,uint16_t number,const uint8_t* text)
@@ -4614,6 +4611,12 @@ extern "C" void aitdVBLCallbackComplete()
 static void presentMacRuntime()
 {
     if (!s_loudStopScreen) return;
+    // Eight-bit presentation is not implemented yet. Do not feed real chunky
+    // pixels to the inherited four-bit converter, or claim they were presented.
+    if(read16(s_windowManagerPixMap+32)==8) {
+        if(s_pixelsDirty) { loaderStop("8-BIT PRESENTATION",0);showLoaderStop(); }
+        return;
+    }
     // Vette chose a crop and pointer visibility per original WIND identity.
     // Alone in the Dark has not been mapped yet: present the default viewport.
     uint16_t cropLeft = 80, cropTop = 0;
@@ -5434,6 +5437,8 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
 {
     uint32_t pc = read32(frame + 2);
     const char* driverStop=0;
+    bool unsupportedGraphics=false;
+    uint16_t fileTrap=0;
 #ifdef AITD_PROBE
     // Empty same-rate bracket: its total bounds the profiler's per-dispatch
     // observer cost and catches a timer whose apparent resolution is fiction.
@@ -5448,6 +5453,14 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     // due VBL work, then to present the pixels drawn since the last boundary.
     scheduleVBLTask();
     presentMacRuntime();
+    if(read16(s_windowManagerPixMap+32)==8) {
+        switch(trap) {
+        case 0xa8f6: case 0xa8a1: case 0xa8a3: case 0xa8a4: case 0xa8a5:
+        case 0xa8ec: case 0xa90d: case 0xaa95: case 0xaa94: case 0xa91f:
+        case 0xab1d: // inherited GWorld storage still has a sixteen-entry table
+            unsupportedGraphics=true;goto unsupportedTrap;
+        }
+    }
     if (!builtin) {
         uint32_t routed = routePatchedTrap(trap, regs, frame, userStack);
         if (routed) return routed;
@@ -5506,7 +5519,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         }
     }
     if(!(trap&0x0800) && dispatchMemoryTrap(trap,regs))return 1;
-    uint16_t fileTrap=synchronousFileTrap(trap,(uint16_t)regs[0]);
+    fileTrap=synchronousFileTrap(trap,(uint16_t)regs[0]);
     if(inUserService && dispatchFileMetadata(fileTrap,regs))return 1;
     if(inUserService && dispatchFileData(fileTrap,regs))return 1;
     if(inUserService && dispatchFileCatalog(fileTrap,regs))return 1;
@@ -5915,6 +5928,31 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         regs[0]=0;
         if (g_stageCDepth < 17) g_stageCDepth = 17;
         return 1;
+    }
+    if(trap==0xaa29) { // GetDeviceList: actual single-device chain
+        if(s_windowManager.initialized) { write32(userStack,(uint32_t)&s_mainDeviceMaster);return 1; }
+    }
+    if(trap==0xaa2b) { // GetNextDevice
+        if((uint8_t**)read32(userStack)==&s_mainDeviceMaster) {
+            write32(userStack+4,read32(s_mainDevice+30));return 5;
+        }
+    }
+    if(trap==0xaaa2 && (uint16_t)regs[0]==0x0a14) { // HasDepth
+        if((uint8_t**)read32(userStack+6)==&s_mainDeviceMaster
+           && read16(userStack+4)==read16(s_windowManagerPixMap+32)
+           && read16(userStack+2)==1 && read16(userStack)==0) {
+            write16(userStack+10,(uint16_t)read32(s_mainDevice+42));
+            regs[0]=8;return 11;
+        }
+    }
+    if(trap==0xa8a8) { // OffsetRect: signed 16-bit coordinates wrap modulo 65536
+        uint8_t* rect=(uint8_t*)read32(userStack+4);
+        if(rect) {
+            uint16_t dv=read16(userStack),dh=read16(userStack+2);
+            write16(rect,read16(rect)+dv);write16(rect+2,read16(rect+2)+dh);
+            write16(rect+4,read16(rect+4)+dv);write16(rect+6,read16(rect+6)+dh);
+            return 9;
+        }
     }
     if (trap == 0xaa32) {                    // GetGDevice() -> GDHandle
         write32(userStack, (uint32_t)&s_mainDeviceMaster);
@@ -6478,6 +6516,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         return 5;
     }
 
+unsupportedTrap:
     g_stageBState = 3;
     g_trapWord = trap;
     g_trapPC = pc;
@@ -6503,7 +6542,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
             manager = s_trapNames[i].manager; routine = s_trapNames[i].routine; break;
         }
     if (trap == 0xa9c9 || trap == 0xa198) g_trapSelector = (uint16_t)regs[0];
-    if (trap == 0xab1d) g_trapSelector = (uint16_t)regs[0];
+    if (trap == 0xab1d || trap==0xaaa2) g_trapSelector = (uint16_t)regs[0];
     if (trap == 0xa823) g_trapSelector=(uint16_t)regs[0];
     if (trap == 0xa1ad) g_trapSelector = (int32_t)regs[0];
     if (trap == 0xa060 || trap == 0xa260 || trap == 0xa660) {
@@ -6515,6 +6554,9 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         if(g_trapSelector==0x1a)routine="OPENDF";
         if(g_trapSelector==0x30)routine="HGETVOLPARMS";
     }
+    if(trap==0xaaa2 && (uint16_t)regs[0]==0x0a13)routine="SETDEPTH";
+    if(trap==0xaaa2 && (uint16_t)regs[0]==0x0a14)routine="HASDEPTH";
+    if(unsupportedGraphics)routine="8-BIT DRAWING / PALETTE";
     if(trap==0xa0f8) { manager="SOUND DRIVER";routine=driverStop ? driverStop : "SELECTOR";g_trapSelector=read32(userStack+4); }
     copyString(g_trapManager, manager);
     copyString(g_trapRoutine, routine);

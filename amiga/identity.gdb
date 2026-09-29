@@ -6,12 +6,12 @@ set $id_flags=0
 break AitdScreen::showLoudStop
 commands
  silent
- if g_stageBState != 3 || g_trapWord != 0xaa29 || g_trapSegment != 3 || g_trapOffset != 0x4b48 || *(unsigned long*)g_trapRoutine!=0x47455444 || *(unsigned long*)(g_trapRoutine+4)!=0x45564943 || *(unsigned long*)(g_trapRoutine+8)!=0x454c4953 || *(unsigned short*)(g_trapRoutine+12)!=0x5400 || $id_calls != 8 || $id_flags != 1
+ if g_stageBState != 3 || g_trapWord != 0xaaa2 || g_trapSegment != 3 || g_trapOffset != 0x0500 || *(unsigned long*)g_trapRoutine!=0x53455444 || *(unsigned long*)(g_trapRoutine+4)!=0x45505448 || *(unsigned char*)(g_trapRoutine+8)!=0 || g_trapSelector!=0x0a13 || $id_calls != 8 || $id_flags != 1
   printf "identity FAIL: calls=%u flags=%u %s / %s\n",$id_calls,$id_flags,g_trapManager,g_trapRoutine
   detach
   quit 1
  end
- printf "PASS identity: SysEnvRec=16 Gestalt=8 Engine-flags=11 next=GETDEVICELIST\n"
+ printf "PASS identity: SysEnvRec=16 Gestalt=8 Engine-flags=11 next=SETDEPTH\n"
  detach
  quit 0
 end

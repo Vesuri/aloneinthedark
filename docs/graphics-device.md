@@ -1,9 +1,9 @@
 # Graphics-device startup
 
-The next native prerequisite is the logical 640×480, eight-bit screen in
-design.md §4.7. The inherited Vette records still describe 512×320 at four bits;
-they must not be relabelled as eight-bit without matching pixel storage and
-consistent QuickDraw records. Native startup still stops at GetDeviceList.
+The logical device now has a real 640×480, eight-bit screen in fast RAM, as
+specified in design.md §4.7. Original device selection passes; native startup
+stops next at Core+$0500 SetDepth ($AAA2, selector $0A13). Drawing and AGA
+presentation are not accepted by this prerequisite.
 
 ## Measured original selection
 
@@ -50,13 +50,35 @@ reads; the video base address retains all 32 bits.
   probe establishes the header only. Full realized palette values and output
   color transfer remain M2.7/M2.7a; it does not claim palette acceptance.
 
-The native implementation must allocate the real logical screen, keep these
-observable fields consistent, and stop at unsupported drawing rather than
-letting inherited four-bit paths consume eight-bit pixels. The new device must
-remain the same object across traversal and main/current-device APIs. General
-rectangle behavior and unmeasured depth requests need real semantics or named
-stops. Passing this startup subset does not complete M2.3/M2.4 or rendered
-frame comparison.
+## Native implementation and limits
+
+The main GDevice points to the window manager's eight-bit PixMap, backed by a
+307,200-byte buffer. The PixMap and GDevice share 640×480 bounds and mode $83;
+the table has space for 256 entries. The classic monochrome screenBits and
+window-manager BitMap instead have their own 38,400-byte buffer and 80-byte
+stride, with the same bounds. Clip/visible/gray region bounds are updated.
+GetGDevice and GetDeviceList use the same stable master pointer; GetNextDevice
+reads its actual next pointer. HasDepth validates the measured depth/flags/device
+request and returns the stored mode; unsupported requests remain named stops.
+OffsetRect adds the signed offsets to each coordinate modulo 65536. The paired
+original call checks its zero-offset rectangle result; broader rectangle and
+rendering acceptance remains queued.
+
+The device color table has the measured header, but its zero-filled entries are
+**un-realized storage**, not a reproduced Mac palette. Palette/drawing operations
+remain explicit stops. The inherited GWorld paths are also stopped before they
+could copy 256 colors into their sixteen-entry storage. Eight-bit pixels never
+enter the inherited four-bit presenter: dirty pixel publication stops explicitly;
+startup with no drawn pixels retains the bootstrap display without claiming an
+eight-bit frame. InitMenus does not draw a bar (D7).
+
+`device_startup.gdb` checks original bytes, all four calls' preserved registers
+and stack, HasDepth mode, rectangle preservation, nil chain end, and the actual
+one-device selection. It dumps the full 307,200-byte backing and device records.
+`check_native_device.py` compares relevant fields and D0 results with the checked
+Mac capture, validates extent/untouched pixels, and rejects corrupted acceptance
+inputs. OS-specific driver references, pointers and unrealized palette colors
+are not claimed equal. No frame, palette or full M2.3/M2.4 acceptance is implied.
 
 ## Reproduce and acceptance
 
@@ -83,5 +105,19 @@ Boolean HasDepth result, wrong stride and wrong selected-device count.
 
 An initial probe had a Lua format-escaping error and no completion; it was
 rejected despite MAME exiting with status zero. The corrected bounded capture
-passes. Dumps and original inputs remain local-only. No native runtime behavior
-changed in this reference-contract step.
+passes. Dumps and original inputs remain local-only. The original reference contract remains independent of the native implementation.
+
+For the native comparison, run the production observer after the reference:
+
+```sh
+(cd amiga && GDBTAIL=300 EXTRA_ARGS=--warp_mode=1 \
+  GDBSCRIPT=device_startup.gdb ./diag_run.sh 60) >tmp/m2-device-native.log 2>&1
+native_status=$?
+python3 tools/check_native_device.py tmp/m2-device-native.log \
+  --status "$native_status" --reference tmp/m2-device-reference.log \
+  --reference-status "$run_status"
+```
+
+The native marker also requires the exact next SetDepth caller/selector and
+balanced services. Initial palette realization, SetDepth, other device APIs and
+the second original Times call remain separate work.

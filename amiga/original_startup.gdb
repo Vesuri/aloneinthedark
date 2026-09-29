@@ -6,12 +6,12 @@ set $startup_main=0
 break AitdScreen::showLoudStop
 commands
  silent
- if g_macServiceEntered != $startup_entered || g_macServiceCompleted != $startup_completed || g_macServiceActive != 0 || $startup_main != 1 || g_stageBState != 3 || g_trapWord != 0xaa29 || g_trapSegment != 3 || g_trapOffset != 0x4b48 || *(unsigned long*)g_trapRoutine!=0x47455444 || *(unsigned long*)(g_trapRoutine+4)!=0x45564943 || *(unsigned long*)(g_trapRoutine+8)!=0x454c4953 || *(unsigned short*)(g_trapRoutine+12)!=0x5400
+ if g_macServiceEntered != $startup_entered || g_macServiceCompleted != $startup_completed || g_macServiceActive != 0 || $startup_main != 1 || g_stageBState != 3 || g_trapWord != 0xaaa2 || g_trapSegment != 3 || g_trapOffset != 0x0500 || *(unsigned long*)g_trapRoutine!=0x53455444 || *(unsigned long*)(g_trapRoutine+4)!=0x45505448 || *(unsigned char*)(g_trapRoutine+8)!=0 || g_trapSelector!=0x0a13
   printf "startup FAIL: %s / %s CODE %u+$%04x\n",g_trapManager,g_trapRoutine,g_trapSegment,g_trapOffset
   detach
   quit 1
  end
- printf "startup PASS: original main, next stop %s / %s CODE 3+$4b48\n",g_trapManager,g_trapRoutine
+ printf "startup PASS: original main, next stop %s / %s CODE 3+$0500\n",g_trapManager,g_trapRoutine
  detach
  quit 0
 end

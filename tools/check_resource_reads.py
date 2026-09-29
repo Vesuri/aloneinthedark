@@ -14,7 +14,7 @@ else:
     log=(root/'amiga/.run/gdb-out.log').read_text()
     modes=re.findall(r'^STARTUP_PREFS existing=([01]) windows=(32|58) services=(40/40|48/48)$',log,re.M)
     if len(modes)!=1 or modes[0] not in [('1','32','40/40'),('0','58','48/48')]:raise SystemExit('FAIL resource-read: missing/invalid starting preference fixture')
-    marker=f'PASS resource-read: maps=215 preparation=201058 runtime=24/104667 windows={modes[0][1]} samples=3 next=GETDEVICELIST'
+    marker=f'PASS resource-read: maps=215 preparation=201058 runtime=24/104667 windows={modes[0][1]} samples=3 next=SETDEPTH'
     if a.status or log.count(marker)!=1 or any(bad in log for bad in ['FAIL','Error in sourced command file','Program received signal']):
         raise SystemExit('FAIL resource-read: runner, observer or completion')
     resources={(r.kind,r.rid):r.body for r in read_resource_fork(root/'amiga/.run/dh1/data/Alone In The Dark')}
