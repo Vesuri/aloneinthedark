@@ -1483,7 +1483,8 @@ identity, and update catalog size and Finder metadata. Closing updates first,
 then disposes the closed map's handles and selects the next older map when
 necessary. Reopening an already open file returns its existing reference.
 
-The native ResourceFileProbe repeats the 63-call reference sequence, using only
+The native ResourceFileProbe extends the 63-call reference sequence with the
+measured dirty-noncurrent-close and invalid-update contracts, using only
 named scratch files under Alone Saved Games. It checks errors, D0, Pascal stack
 cleanup, current refs, six independent handles, search identity and exact bytes,
 including reopen. Its STR# chain count uses the measured +2 delta to the native
@@ -1499,8 +1500,8 @@ paired coverage. Unsupported forms stop by trap name. Dirty-resource mutation
 and exit stop explicitly rather than silently losing changes. Application-file
 closure and mixed raw-stream/resource updates remain unmeasured loud stops.
 
-The 63-call fixture adds 78 windows and 24 disk reads / 590 bytes. Combined
-file-write acceptance is 173 paired calls, nine staging cases, 521 windows and
+The 64-call fixture adds 78 windows and 24 disk reads / 590 bytes. Combined
+file-write acceptance is 174 paired calls, nine staging cases, 521 windows and
 57 File Manager reads / 867,323 bytes (maximum 65,536). File Manager write,
 flush and restored-close totals remain 24 / 18 / 2; ResourceStage writes are
 separately covered by staging/independent disk checks. Production startup retains
@@ -1683,3 +1684,33 @@ zero and `check_resource_dirty.py --poison` passes. The unpoisoned traced run
 also exits zero and passes its checker. Native GetResAttrs should zero-extend
 the defined attribute byte; it must not reproduce stack garbage. No game
 instructions or original files change, and no owner decision is needed.
+
+
+### Noncurrent resource close and invalid update (M2.2f4b2)
+
+The resource-file dispatcher now allows closing a noncurrent map and returns
+-193 for an invalid UpdateResFile reference, preserving D0. Existing closure
+updates the requested map, closes its stream and disposes its associated handles;
+it changes current selection only when that map was current. Application closure
+and unmeasured raw/resource-stream mixing remain explicit stops.
+
+The native fixture now leaves B's three added resources dirty until close while
+the application is current. It checks current-file selection after closing B,
+a repeated invalid close, and closing clean noncurrent A; resource lookup still
+selects the original application's General resource. The independent disk reader
+checks all six exact A/B bodies, names/IDs/order and empty data forks before
+scratch deletion. A new 64th call checks invalid update's error, D0 and Pascal
+stack cleanup. The fixture composes the original 63-call file-reference contract
+with the dirty-close and mutation-error reference captures; those checkers also
+revalidate original call bytes. Total file-write coverage is 174 calls, nine
+staging cases and unchanged 521 windows / 57 reads / 867,323 bytes.
+
+Before implementing WriteResource via the whole-map publisher, M2.2f4b3a must
+establish the isolation of one resource write from another dirty resource.
+That dependency is explicit rather than assuming UpdateResFile is equivalent.
+
+Acceptance: both Mac reference checkers pass, the full host suite and all five
+68020 regressions exit normally, and all four startup observers pass. All
+75,616 A5 bytes match. Production resource reads remain 16 / 96,648 bytes before
+GetFNum Dan1+$0012; no original instructions changed. No owner decision is
+needed. Rendered-video acceptance is still owner-deferred.

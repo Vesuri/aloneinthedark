@@ -132,8 +132,6 @@ static uint32_t dispatchResourceFiles(uint16_t trap,uint32_t* regs,uint8_t* stac
     } else if(trap==0xa999 || trap==0xa99a) {
         int16_t ref=(int16_t)read16(stack);uint16_t key=0;
         while(key<ResourceForks::kForkCount && (!s_resourceForks.directory()->active(key) || s_resourceFileRefs[key]!=ref))++key;
-        if((trap==0xa999 && key==ResourceForks::kForkCount)
-            || (trap==0xa99a && key<ResourceForks::kForkCount && key!=s_currentResourceFork))return 0;
         error=key==ResourceForks::kForkCount ? -193 : trap==0xa999 ? updateResourceFile(key) : closeResourceFile(key);
         if(error==-32760)return 0;
         pop=2;preserve=trap==0xa999;

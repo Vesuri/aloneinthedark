@@ -34,7 +34,8 @@ regression verifies original bytes and 16 runtime read windows before the curren
 GetFNum stop. Named/ID/indexed lookup, resource counts and metadata, purge/reload and release now
 pass paired Mac/native checks. Native resource staging now passes exact publication,
 abort, rollback and stale-file checks. Resource-file open/create/update/close,
-AddResource and multi-fork search pass a paired 63-call fixture; remaining
+AddResource, multi-fork search, noncurrent close and invalid update pass a
+64-call native fixture paired with Mac contracts; remaining
 writable-resource variants are next. The metadata model preserves duplicate
 type/ID entries within one file and resolves the first surviving insertion.
 The metadata-only catalog and application-fork identity are verified (M2.1b1):

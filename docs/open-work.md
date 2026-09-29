@@ -52,7 +52,8 @@ required.
   - Count1Resources/Get1IndResource and single-fork CountResources now pass
     paired enumeration fixtures (M2.2e), including original map order.
   - Resource-file open/create/update/close, AddResource and multi-fork search
-    now pass the paired 63-call fixture, with exact persisted forks and cleanup.
+    now pass a 64-call native fixture with paired Mac contracts, including
+    noncurrent clean/dirty close and invalid update, with exact saved forks and cleanup.
     Native handles remap by stable identity; bodies remain source-backed.
   - **M2.2f4 Remaining writable resource variants.** Extend the measured scope
     before enabling the remaining resource mutations and error paths.
@@ -66,8 +67,13 @@ required.
       uninitialized upper-byte scratch (traced and poison-verified). Return a
       zero-extended attribute byte natively. Unmeasured variants remain named
       stops and queued.
-
-
+      - **M2.2f4b3a WriteResource isolation reference.** Before implementing
+        mutation traps, measure writing one resource while another remains dirty
+        in the same map. The current backend publishes whole maps; simply routing
+        WriteResource through UpdateResFile could save unrelated dirty bodies.
+        *Done when* an exclusively created two-resource Mac fixture checks each
+        resource's attributes, empty/reload bodies, update/close/reopen and cleanup,
+        establishing exactly which bytes one WriteResource commits.
 
   - Implement writable prefs/save resource forks and the port overlay fork
     (empty at first), preserving design §4.6 search order and dialog overrides.
