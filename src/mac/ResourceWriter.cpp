@@ -85,6 +85,6 @@ int32_t ResourceWriter::serialize(const Entry* entries,uint16_t count,const Sink
     if(!error && mapOffset>256+dataBytes) { buffer[0]=0;error=writeExact(sink,mapOffset-1,buffer,1); }
     if(!error)error=writeExact(sink,mapOffset,map,mapBytes);
     if(!error)error=sink.finish(sink.context,true);
-    if(error)sink.finish(sink.context,false);
+    if(error) { int32_t aborted=sink.finish(sink.context,false);if(aborted)error=aborted; }
     delete[] buffer;delete[] map;return error;
 }

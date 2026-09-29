@@ -20,7 +20,7 @@ struct Input {
 };
 struct Output {
     std::vector<uint8_t> target={0x11,0x22,0x33},stage;
-    uint32_t writes=0,begins=0,commits=0,aborts=0,fail=0;bool shortWrite=false,failBegin=false,failCommit=false;
+    uint32_t writes=0,begins=0,commits=0,aborts=0,fail=0;bool shortWrite=false,failBegin=false,failCommit=false,failAbort=false;
     static int32_t begin(void* c,uint32_t size) { auto& s=*(Output*)c;++s.begins;s.stage.assign(size,0xcc);return s.failBegin ? -36 : 0; }
     static int32_t write(void* c,uint32_t at,const uint8_t* bytes,uint32_t size,uint32_t& actual) {
         auto& s=*(Output*)c;++s.writes;assert(size<=65536 && at<=s.stage.size() && size<=s.stage.size()-at);
@@ -31,7 +31,7 @@ struct Output {
     static int32_t finish(void* c,bool publish) {
         auto& s=*(Output*)c;
         if(publish) { ++s.commits;if(s.failCommit)return -36;s.target.swap(s.stage); }
-        else ++s.aborts;
+        else { ++s.aborts;if(s.failAbort)return -32760; }
         s.stage.clear();return 0;
     }
     ResourceWriter::Sink sink() { return {this,begin,write,finish}; }
@@ -68,6 +68,10 @@ int main(int argc,char** argv) {
         assert(bad.target==std::vector<uint8_t>({0x11,0x22,0x33}) && bad.aborts==1 && bad.stage.empty());
         input.shortRead=false;input.fail=0;
     }
+    { Output bad;bad.failCommit=true;bad.failAbort=true;
+      assert(ResourceWriter::serialize(entries,3,bad.sink())==-32760);
+      assert(bad.aborts==1 && bad.commits==1 && !bad.stage.empty());
+      assert(bad.target==std::vector<uint8_t>({0x11,0x22,0x33})); }
     for(uint16_t mode=0;mode<4;++mode) {
         auto badEntry=entries[0];Output bad;
         if(mode==0)badEntry.offset=100004;

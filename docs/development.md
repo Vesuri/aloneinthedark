@@ -1404,9 +1404,37 @@ exits. All 75,616 A5 globals match. Source opening/error/short-read tests now li
 and exercise the same directory/writer implementation used by the native loader.
 No owner decision changed; rendered-picture verification remains deferred.
 
-The next native write prerequisite is f3b. Existing FileAccess stream flush
-updates files in place; it cannot implement ResourceWriter's isolated staging
-contract. FileMetadataIO's temporary/backup replacement pattern supplies the
-local precedent, but resource payloads need bounded streamed writes, publication
-rollback and handling of the old source stream before directory rebase. Those
-operations must be verified before f3c enables dynamic resource-file writes.
+
+
+### Native staged resource writes (M2.2f3b)
+
+`ResourceStage` supplies the writer's explicit-lifetime DOS sink. It creates a
+separate `.aitd-new` file, writes sequential chunks of at most 64 KiB, then
+flushes/closes it before publication. An existing target moves to `.aitd-old`;
+publication replaces it and removes the backup. Publication or backup-removal
+failure rolls back to the previous target. A failed rollback/abort returns the
+explicit recovery-required error (-32760), retains evidence and prevents reuse.
+Existing staging/backup names are rejected without touching them. Callers must
+close target streams before publication; dynamic resource traps and directory
+rebase remain M2.2f3c. This is operation-failure rollback, not a power-loss guarantee.
+
+The sink callbacks require the active user-service bridge. File-write stage 55
+uses diagnostic-only trap A0FA to exercise that same bridge and OS-window guard.
+The nine cases cover new/replacement publication, explicit/incomplete abort,
+injected publication and backup-cleanup failure with different replacement
+bytes, stale temporary/backup preservation, and payload-source failure. Native
+readback verifies the entire 70,003-byte payload (FNV `$A04280DF`) and resource
+metadata. Independent host parsing checks both 70,314-byte output forks, all
+payload bytes, no transaction leftovers and unchanged stale-file sentinels.
+The stage uses 56 windows; the combined probe requires 443, with prior File
+Manager transfer/cleanup totals and 110 resource-call checks unchanged.
+
+ResourceWriter now propagates abort failure instead of hiding it behind the
+initial write error. Its sanitizer fixture verifies the recovery error and
+preserved target/staging evidence. No original game instructions are patched.
+
+Acceptance: full host suite, all five 68020 regressions and catalog, original
+startup, identity and low-memory observers pass with normal exits. The target
+copy audit is clean. A5 globals have zero mismatches across 75,616 bytes.
+Production startup remains at GetFNum Dan1+$0012 with unchanged resource I/O.
+No owner decision is needed; rendered-picture acceptance remains deferred.

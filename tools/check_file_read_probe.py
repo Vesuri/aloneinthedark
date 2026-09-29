@@ -27,6 +27,13 @@ if a.prepare:
         (saves/'fork-seed.bin.rsrc').write_bytes(bytes.fromhex('abcdef012345'))
         (saves/'metadata-seed.bin').write_bytes(b'')
         (saves/'metadata-seed.bin.finfo').write_bytes(metadata())
+        for stem in ['stage-probe.rsrc','stage-created.rsrc','stage-stale.rsrc','stage-backup.rsrc']:
+            for suffix in ['', '.aitd-new', '.aitd-old']:(drive/(stem+suffix)).unlink(missing_ok=True)
+        (drive/'stage-probe.rsrc').write_bytes(b'OLD!')
+        (drive/'stage-stale.rsrc').write_bytes(b'OLD!')
+        (drive/'stage-backup.rsrc').write_bytes(b'OLD!')
+        (drive/'stage-stale.rsrc.aitd-new').write_bytes(b'KEEP')
+        (drive/'stage-backup.rsrc.aitd-old').write_bytes(b'KEEP')
         (drive/'write-probe.bin').write_bytes(bytes((i*37+(i>>8))&255 for i in range(200003)))
         (drive/'mutation-probe.bin').write_bytes(b'')
         (drive/'sharing-probe.bin').write_bytes(b'')
@@ -36,7 +43,7 @@ if a.prepare:
 else:
     log=(root/'amiga/.run/gdb-out.log').read_text()
     marker='PASS file-read: Line-A open/read/seek/EOF/position/close bytes=exact CCR=checked windows=10 DOS-reads=6 max=65536 cleanup=1 GetVol=WD/root/null-name FCB=index/exact/errors HVol=directory/state/errors WD=query/close/filter'
-    if a.write:marker='PASS file-write: Line-A/backend bytes=exact windows=387 writes=24 max=65536 flushes=18 EOF=17/3 cleanup=2 sharing=coherent permissions=0-4/locked volume=name/ref catalog=metadata/durable forks=independent installed=original index=HFS volparms=exact opendf=dot/aliases vinfo=native/catalog async=51/nested/user resources=110/exact'
+    if a.write:marker='PASS file-write: Line-A/backend bytes=exact windows=443 writes=24 max=65536 flushes=18 EOF=17/3 cleanup=2 sharing=coherent permissions=0-4/locked volume=name/ref catalog=metadata/durable forks=independent installed=original index=HFS volparms=exact opendf=dot/aliases vinfo=native/catalog async=51/nested/user resources=110/exact staging=9/exact'
     if a.status or re.search(r'FAIL|Error in sourced command file|Program received signal',log) or log.count(marker)!=1:
         raise SystemExit('FAIL file-read: missing completion or runner/observer failure')
     if a.write and (drive/'write-probe.bin').read_bytes()!=bytes((i*37+(i>>8))&255 for i in range(17)):
@@ -46,6 +53,17 @@ else:
     if a.write and (drive/'sharing-probe.bin').read_bytes()!=bytes.fromhex('abcdef015678'):
         raise SystemExit('FAIL file-write: shared-writer host bytes after close')
     if a.write:
+        from resource_fork import read_resource_fork
+        payload=bytes((i*37+(i>>8))&255 for i in range(70003))
+        for stem in ['stage-probe.rsrc','stage-created.rsrc']:
+            path=drive/stem;resources=read_resource_fork(path)
+            if path.stat().st_size!=70314 or len(resources)!=1 or (resources[0].kind,resources[0].rid,resources[0].attrs,resources[0].name,resources[0].body)!=(b'RSRC',128,0,'',payload):
+                raise SystemExit('FAIL file-write: staged resource metadata/payload')
+            for suffix in ['.aitd-new','.aitd-old']:
+                if (drive/(stem+suffix)).exists():raise SystemExit('FAIL file-write: staging transaction left temporary/backup')
+        for stem,sentinel,absent in [('stage-stale.rsrc','.aitd-new','.aitd-old'),('stage-backup.rsrc','.aitd-old','.aitd-new')]:
+            if (drive/stem).read_bytes()!=b'OLD!' or (drive/(stem+sentinel)).read_bytes()!=b'KEEP' or (drive/(stem+absent)).exists():
+                raise SystemExit('FAIL file-write: stale staging evidence changed')
         import struct
         saves=drive/'Saved Games';file=saves/'metadata-durable.bin'
         metadata=(saves/'metadata-durable.bin.finfo').read_bytes()

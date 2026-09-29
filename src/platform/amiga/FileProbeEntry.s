@@ -53,6 +53,12 @@ aitdProbeWriteBackend:
     move.w ccr,g_fileProbeCCR
     rts
 
+    .globl aitdProbeResourceStage
+aitdProbeResourceStage:
+    .word 0xa0fa
+    move.w ccr,g_fileProbeCCR
+    rts
+
     filetrap aitdProbeWrite,0xa003
     filetrap aitdProbeSetEOF,0xa012
     filetrap aitdProbeFlush,0xa013
