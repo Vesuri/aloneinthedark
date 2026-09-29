@@ -13,9 +13,9 @@ and Toolbox layer are carried over from Vette!; see
 
 The executable builds and runs the original CODE 1 startup on the 68020. Its
 75,616-byte A5 globals match the host model exactly. The original segment loader
-relocates Core and reaches `main`; initialization then stops explicitly at
-`FONT MANAGER / GETFNUM`, Dan1+$0012, after directory initialization and
-the original General resource lookup. The game is not playable yet.
+relocates Core and reaches `main`; initialization passes directory setup, the General resource lookup and the
+first Times font lookup. It then stops explicitly at `NATIVE SOUND DRIVER`
+before loading the original software mixer (D8). The game is not playable yet.
 Other processors and performance work remain deferred.
 
 The M0 tools checkpoint includes the trap census, original Mac runtime/frame
@@ -27,14 +27,16 @@ serve memory and resource handles. System identity and all eleven derived
 capability flags match the Mac reference. The user-mode service bridge passes
 its native ABI probe. OS windows and DOS/resload adapters pass the native/host
 core probes; rendered-picture acceptance is owner-deferred (M1.7b2). The next
-item is original-game PAK read acceptance (M2.1c). Extraction and staging now
+item is the native-driver startup prerequisite for original PAK read acceptance.
+Extraction and staging now
 match the original installer: ListBod2.PAK belongs under Alone Data. The original
 Mac idle presentation now completes all 15 images and reads both PAKs. Native
-read acceptance first needs the current GetFNum dependency.
+read acceptance still needs the native sound-driver startup prerequisite and
+verification of the second original Times lookup.
 Resource bodies now stream from disk into zone handles; startup retains the
 4,998-byte map instead of the 1,424,934-byte application fork. The `resource-read`
-regression verifies original bytes and 16 runtime read windows before the current
-GetFNum stop. Named/ID/indexed lookup, resource counts and metadata, purge/reload and release now
+regression verifies original bytes and bounded runtime resource reads; the
+current stop precedes original MDRV loading. Named/ID/indexed lookup, resource counts and metadata, purge/reload and release now
 pass paired Mac/native checks. Native resource staging now passes exact publication,
 abort, rollback and stale-file checks. Resource-file open/create/update/close,
 AddResource, multi-fork search, noncurrent close and invalid update pass a
@@ -43,7 +45,7 @@ writes, pending map edits and the full dirty-handle lifecycle pass 175 additiona
 calls and six native rollback cases. Permissions 0–4, creation errors and read-only
 mutation/close behavior pass a further 59-step fixture. Dirty-resource exit
 persistence passes the original runtime exit, fresh-launch readback and failed
-publication checks under both saves and preferences. The empty port overlay is
+publication checks under both saves and preferences. The port overlay contains the port-owned Times placeholder FOND/NFNT and is
 open below the application; dialog overrides have a tested search route. The
 metadata model preserves duplicate type/ID entries within one file and resolves the first surviving insertion.
 The metadata-only catalog and application-fork identity are verified (M2.1b1):
@@ -70,7 +72,7 @@ Async completion preserves the measured Mac callback behavior at safe user-mode
 return points, including nested file-service calls. Data and resource forks now use independent streams;
 companion creation/reload/deletion and application resource preservation pass
 Mac/native/host checks.
-Final startup requirements acceptance remains pending beyond GetFNum.
+Final startup requirements acceptance remains pending beyond the native-driver stop.
 
 ## Requirements (provisional)
 

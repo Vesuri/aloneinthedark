@@ -5,6 +5,7 @@
 #include "MacLoader.h"
 #include "LowMemory.h"
 #include "MacHeap.h"
+#include "BitmapFont.h"
 #include "MacFiles.h"
 #include "FileReadCache.h"
 #include "FileWriteBuffer.h"
@@ -1050,6 +1051,9 @@ static uint8_t** loadResource(uint32_t index,const ResourceForks::Item& item,boo
 }
 static uint8_t** getResource(uint32_t type,int16_t id,bool currentOnly=false)
 {
+    // D8 forbids entering the original software mixer. The native driver seam
+    // is still a startup prerequisite; never hand executable MDRV code back.
+    if(type==0x4d445256UL) { loaderStop("NATIVE SOUND DRIVER",3);showLoaderStop(); }
     uint16_t keys[ResourceForks::kForkCount];
     uint16_t count=s_resourceForks.searchOrder(s_currentResourceFork,type,currentOnly,keys);
     for(uint16_t n=0;n<count;++n) {
@@ -1237,6 +1241,40 @@ static uint8_t** getNamedResource(uint32_t type, const uint8_t* name,bool curren
             }
         }
     }
+    resourceResult(-192);return 0;
+}
+
+static int16_t getFontNumber(const uint8_t* name)
+{
+    if(!s_fontManager.initialized) { loaderStop("FONT MANAGER NOT INITIALIZED",0);showLoaderStop(); }
+    // Only the measured ASCII name contract is implemented at this milestone.
+    for(uint16_t n=0;n<name[0];++n)if(name[n+1]>=128) {
+        loaderStop("FONT NAME COLLATION",0);showLoaderStop();
+    }
+    int16_t previousMemory=(int16_t)read16(s_portLowMemory+100);
+    uint16_t keys[ResourceForks::kForkCount];
+    uint16_t count=s_resourceForks.searchOrder(s_currentResourceFork,0x464f4e44UL,false,keys);
+    for(uint16_t n=0;n<count;++n)for(uint32_t i=0;i<s_resourceForks.resourceCount();++i) {
+        ResourceForks::Item familyItem;
+        if(!s_resourceForks.item(i,familyItem)) { loaderStop("FONT RESOURCE DIRECTORY",0);showLoaderStop(); }
+        if(familyItem.fork!=keys[n] || familyItem.type!=0x464f4e44UL || !BitmapFont::nameEquals(name,familyItem.name,familyItem.nameLength))continue;
+        uint8_t** familyHandle=loadResource(i,familyItem,true);
+        if(!familyHandle || !*familyHandle) { loaderStop("FONT FAMILY READ",0);showLoaderStop(); }
+        BitmapFont::Family family;
+        if(!BitmapFont::family(*familyHandle,familyItem.size,familyItem.id,family)) {
+            loaderStop("FONT FAMILY DEFINITION",0);showLoaderStop();
+        }
+        ResourceForks::Item bitmapItem;uint32_t bitmapIndex;
+        if(!s_resourceForks.find(familyItem.fork,0x4e464e54UL,family.bitmap,bitmapItem,&bitmapIndex)) {
+            loaderStop("FONT BITMAP MISSING",0);showLoaderStop();
+        }
+        uint8_t** bitmapHandle=loadResource(bitmapIndex,bitmapItem,true);
+        if(!bitmapHandle || !*bitmapHandle) { loaderStop("FONT BITMAP READ",0);showLoaderStop(); }
+        BitmapFont bitmap;
+        if(!bitmap.open(*bitmapHandle,bitmapItem.size,family)) { loaderStop("FONT BITMAP DEFINITION",0);showLoaderStop(); }
+        memoryResult(previousMemory);resourceResult(0);return familyItem.id;
+    }
+    if(name[0])memoryResult(0);
     resourceResult(-192);return 0;
 }
 
@@ -5206,7 +5244,7 @@ static bool isUserService(uint16_t trap)
 #ifdef AITD_SERVICE_PROBE
     if((trap&0xfeff)==0xa0fc || trap==0xabfb)return true;
 #endif
-    return trap==0xa9f4 || trap==0xa997 || trap==0xa9c4 || trap==0xa81a || trap==0xa9b1 || trap==0xa81b || trap==0xa999 || trap==0xa99a || trap==0xa9ab || trap==0xa9aa || trap==0xa9b0 || trap==0xa9ad
+    return trap==0xa900 || trap==0xa9f4 || trap==0xa997 || trap==0xa9c4 || trap==0xa81a || trap==0xa9b1 || trap==0xa81b || trap==0xa999 || trap==0xa99a || trap==0xa9ab || trap==0xa9aa || trap==0xa9b0 || trap==0xa9ad
         || trap==0xa80e || trap==0xa9a2 || trap==0xa81f || trap==0xa820 || trap==0xa9a0 || trap==0xa9a1 || trap==0xa930 || trap==0xa9bf
         || trap==0xaa46 || trap==0xaa92 || trap==0xa9b9 || trap==0xa9bc || trap==0xa97c
         || trap==0xa40c || trap==0xa608 || trap==0xa60a || trap==0xa60c || trap==0xa60d || trap==0xa614 || trap==0xa615
@@ -5627,6 +5665,14 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         if (g_stageCDepth < 5) g_stageCDepth = 5;
         return 1;
     }
+    if (trap == 0xa900 && read32(userStack) && read32(userStack+4)) { // GetFNum(name, &family)
+        int16_t family=getFontNumber((const uint8_t*)read32(userStack+4));
+        write16((uint8_t*)read32(userStack),(uint16_t)family);
+        return 9; // Procedure: preserve D0, consume both pointers.
+    }
+    // Inherited Vette text drawing ignores the selected font/size. Until M2.9
+    // consumes validated fonts, original text calls must stop instead of using it.
+    if(trap==0xa883 || trap==0xa884 || trap==0xa885)return 0;
     if (trap == 0xa912) {                    // InitWindows()
         if (!s_qdThePort || !s_fontManager.initialized) return 0;
         initWindowManagerPort();

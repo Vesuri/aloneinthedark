@@ -6,12 +6,12 @@ set $id_flags=0
 break AitdScreen::showLoudStop
 commands
  silent
- if g_trapWord != 0xa900 || g_trapSegment != 12 || g_trapOffset != 0x12 || $id_calls != 7 || $id_flags != 1
+ if g_stageBState != 2 || g_trapWord != 0 || g_trapSegment != 3 || (*(unsigned long*)(g_trapRoutine+0)!=0x4e415449 || *(unsigned long*)(g_trapRoutine+4)!=0x56452053 || *(unsigned long*)(g_trapRoutine+8)!=0x4f554e44 || *(unsigned long*)(g_trapRoutine+12)!=0x20445249 || *(unsigned long*)(g_trapRoutine+16)!=0x56455200) || $id_calls != 8 || $id_flags != 1
   printf "identity FAIL: calls=%u flags=%u %s / %s\n",$id_calls,$id_flags,g_trapManager,g_trapRoutine
   detach
   quit 1
  end
- printf "PASS identity: SysEnvRec=16 Gestalt=7 Engine-flags=11 next=GETFNUM\n"
+ printf "PASS identity: SysEnvRec=16 Gestalt=8 Engine-flags=11 next=NATIVE_SOUND_DRIVER\n"
  detach
  quit 0
 end
@@ -50,7 +50,8 @@ end
 break *(g_code3Base+0x3d36)
 commands
  silent
- set $id_expected=0
+ set $id_expected=-1
+ set $id_error=0
  if $id_calls == 0 && $d0 == 0x73797376
   set $id_expected=0x755
  end
@@ -60,6 +61,10 @@ commands
  if $id_calls == 2 && $d0 == 0x71642020
   set $id_expected=0x230
  end
+ if $id_calls == 7 && $d0 == 0x612f7578
+  set $id_expected=0
+  set $id_error=0xea52
+ end
  if ($id_calls == 3 && $d0 == 0x68656c70) || ($id_calls == 4 && $d0 == 0x666f6c64) || ($id_calls == 5 && $d0 == 0x65766e74) || ($id_calls == 6 && $d0 == 0x666f6c64)
   set $id_expected=1
  end
@@ -68,7 +73,7 @@ end
 break *(g_code3Base+0x3d38)
 commands
  silent
- if $id_expected == 0 || $d0 != 0 || (unsigned long)$a0 != $id_expected
+ if $id_expected == -1 || $d0 != $id_error || (unsigned long)$a0 != $id_expected
   printf "identity FAIL: Gestalt call=%u D0=$%x A0=$%x expected=$%x\n",$id_calls,$d0,$a0,$id_expected
   detach
   quit 1

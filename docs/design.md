@@ -219,8 +219,9 @@ The original startup path is implemented (M1.1–M1.3):
 **Verified:** the host check `tools/a5world_check.py` passes: it runs
 CODE 1's expansion algorithm on the resource bytes and compares, byte for byte,
 with the A5 world the Amiga dumps (via gdb) when it enters `main`. The current
-loud stop is `GetFNum` at Dan1+$0012 during `main` initialization,
-after the original startup directory calls and General resource lookup.
+loud stop is `NATIVE SOUND DRIVER` before MDRV loading, after the original
+startup directories, General lookup and first Times font lookup. The second
+Times lookup still needs the native-driver startup prerequisite.
 
 ### 4.3 Low memory
 
@@ -251,9 +252,9 @@ after the original startup directory calls and General resource lookup.
   - $260 SdVolume on the Sound Manager 3 path;
   - $160/$266/$1D4 only on the legacy path, which the port never enables.
 
-  Patch MDRV at a verified hook where the game stores its entry pointer at
-  A5−$6AC (Core+$1CC6), or supply the values some other way the census
-  justifies.
+  This census describes the original reference driver only. D8 supersedes
+  executing or patching it in the port: use a native driver at the documented
+  interface instead. Core+$1CC6 calls the loader; +$1CF4 stores A5−$6AC.
 - **VBI.** The VBI updates the Ticks shadow at A5+shadow. Mouse and button state
   stay in the private prefix, as in Vette.
 
@@ -303,7 +304,7 @@ Native trap probes, host fragmentation tests and paired heap captures verify it:
   and open-fork references are distinct. The application resource fork has a
   file-table reference shared by CurApRefNum and CurResFile/UseResFile. Original
   GetFCBInfo/OpenWD, SetVol and Preferences FindFolder pass (M2.1b2a).
-  Get1NamedResource now passes; GetFNum at Dan1+$0012 is the next stop. Named Finder metadata and independent
+  Get1NamedResource and the first GetFNum now pass. Named Finder metadata and independent
   data/resource streams, installed-file metadata and the application namespace
   are implemented; remaining dispatch variants are pending
   M2.1b2c9c2c. Integrated original
@@ -568,8 +569,10 @@ on a 68020/030.
     entry. The entry is a 68k stub of a private Line-A trap in a zone block.
   - Install the stub at one verified point, chosen in task M4.1 by byte check:
     either a port-supplied `Jnth` resource (the game looks for `Jnth` before
-    `MDRV`; check what it does with it), or a hook where Core+$1CC6 stores the
-    entry pointer.
+    `MDRV` at Core+$10E2/+$1102), or a guarded loader/interface hook.
+    Core+$1CC6 calls the loader and +$1CF4 stores the entry pointer. The native
+    startup now reaches this dependency before the second Times lookup, so its
+    initialization subset is brought forward as M2.1c3c.
   - The game code stays unchanged. The original `MDRV` is never run.
 - **The API (task M4.1).** Decode every selector the game uses from the unpacked
   driver (`tmp/plan/MDRV_11.bin`, its 27-way dispatch table) and from Halestorm's
@@ -707,7 +710,8 @@ no unexpected loud stop. The cases are added as their milestone lands:
 - `boot`: reaches main, then ends the observer before main executes. The harness
   was introduced in M0; positive acceptance passes on `a1200-020` (M1.3a).
 - `resource-read`: map-only startup, original CODE validation, bounded runtime
-  resource reads and byte-exact debugger samples through the General lookup, stopping at GetFNum.
+  resource reads and byte-exact debugger samples through the General lookup,
+  continuing to the explicit native-driver prerequisite stop.
 - `file-write`: native Line-A and DOS backend writes, zero-count extension,
   truncation/mark updates, read-only errors, exact readback, close and dirty
   shutdown; host-file bytes and bounded transfer/window counts are required.

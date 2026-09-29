@@ -30,11 +30,11 @@ struct Disk {
     }
     ResourceForks::Source source() { return {this,(uint32_t)bytes.size(),read}; }
 };
-struct EmptyOverlay {
-    std::vector<uint8_t> bytes;uint32_t calls=0,total=0;
+struct FontOverlay {
+    std::vector<uint8_t> bytes;uint32_t calls=0,total=0;bool payload=false;
     static int32_t read(void* p,uint32_t at,uint8_t* out,uint32_t size,uint32_t& actual) {
-        auto& disk=*(EmptyOverlay*)p;++disk.calls;disk.total+=size;
-        assert((at==0 && size==16) || (at==256 && size==30));
+        auto& disk=*(FontOverlay*)p;++disk.calls;disk.total+=size;
+        assert(disk.payload || (at==0 && size==16) || (at==1578 && size==76) || ((at==256 || at==320) && size==4));
         assert(at+size<=disk.bytes.size());std::copy_n(disk.bytes.data()+at,size,out);actual=size;return 0;
     }
     ResourceForks::Source source() { return {this,(uint32_t)bytes.size(),read}; }
@@ -153,17 +153,25 @@ int main(int argc,char** argv) {
     assert(app.calls==appCalls);overlay.fail=0;app.fail=app.calls+1;
     assert(!forks.openWithOverlay(app.source(),overlay.source()) && !forks.directory());
     app.fail=0;
-    // Read the committed generated empty fork through the same bounded API.
+    // Read the committed generated font fork through the same bounded API.
     assert(argc==2);std::ifstream file(argv[1],std::ios::binary);assert(file.good());
-    EmptyOverlay empty;empty.bytes.assign(std::istreambuf_iterator<char>(file),{});
+    FontOverlay empty;empty.bytes.assign(std::istreambuf_iterator<char>(file),{});
     appCalls=app.calls;
     assert(forks.openWithOverlay(app.source(),empty.source()));
-    assert(empty.bytes.size()==286 && empty.calls==2 && empty.total==46);
-    assert(forks.forkCount()==2 && forks.resourceCount()==2 && app.calls==appCalls+4);
-    assert(forks.item(0,item) && item.fork==0 && !item.data);
+    assert(empty.bytes.size()==1654 && empty.calls==4 && empty.total==100);
+    assert(forks.forkCount()==2 && forks.resourceCount()==4 && app.calls==appCalls+4);
+    assert(forks.item(0,item) && item.fork==ResourceForks::kOverlayFork && !item.data);
+    assert(forks.item(2,item) && item.fork==0 && !item.data);
     assert(forks.directory()->older(0,key) && key==ResourceForks::kOverlayFork);
     assert(!forks.find(ResourceForks::kOverlayFork,body.type,128,item));
+    assert(forks.find(ResourceForks::kOverlayFork,0x464f4e44,20,item,&index) && item.size==60 && item.nameLength==5);
+    empty.payload=true;assert(!forks.read(index,out.data(),out.size()));
+    assert(std::equal(out.begin(),out.begin()+60,empty.bytes.begin()+260));
+    assert(forks.find(ResourceForks::kOverlayFork,0x4e464e54,128,item,&index) && item.size==1254);
+    assert(!forks.read(index,out.data(),out.size()));
+    assert(std::equal(out.begin(),out.begin()+1254,empty.bytes.begin()+324));
+    assert(empty.calls==6 && empty.total==1414);
     forks.close();assert(!forks.directory() && !forks.forkCount());
-    puts("PASS overlay-source: application/overlay/dynamic order, read-only map, lazy exact bodies, failed-open rollback, generated empty fork");
+    puts("PASS overlay-source: application/overlay/dynamic order, read-only map, lazy exact bodies, failed-open rollback, generated font fork");
     puts("PASS resource-source: metadata-only open, 64KiB reads, exact bytes, errors/short reads, dynamic 16-fork identity/remap, zero resource, cleanup");
 }

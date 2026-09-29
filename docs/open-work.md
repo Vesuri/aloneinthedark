@@ -9,8 +9,8 @@ design.md §5.
 **Current state:**
 - The executable builds and loads the original resource fork.
 - Original CODE 1 expands the A5 world, relocates Core and enters `main`, then
-  passes directory initialization and stops at
-  `FONT MANAGER / GETFNUM`, Dan1+$0012, after the original General lookup.
+  passes directory initialization and the first Times lookup, then stops at
+  `NATIVE SOUND DRIVER` before loading the original mixer.
 - The original runs in MAME on the System 7.5.5 reference volume.
 
 Each item gives the **goal**, then the scope, then *done when*: the evidence
@@ -43,15 +43,30 @@ required.
 
 ## M2 Startup to intro
 
+- **M2.1c3c Native sound-driver startup prerequisite (D8).**
+  - After the first original Times lookup, startup reaches Core+$1102's MDRV
+    request before the second lookup. The exploratory run entered decrypted
+    code and stopped on `.BD_PAS16`; it is not an accepted execution path.
+    Production now stops before returning any MDRV body.
+  - Use the verified `Jnth` lookup at Core+$10E2 to install the port driver,
+    as D8 already requires. Core+$1CC6 calls the loader; the actual entry-pointer
+    store is +$1CF4. Preserve original instructions and register/stack contracts.
+  - Bring forward the startup portion of M4.1: measure and implement the reached
+    driver selectors with real state, retaining named stops for unsupported
+    selectors. Do not return invented success or enable the original mixer.
+
+  *Done when* original startup reaches the second Times lookup through the native
+  driver, no original MDRV body executes, original-byte and reference contracts
+  pass, and bounded native regressions pass. Full selector/intro acceptance
+  remains M4.1; this does not claim rendered or audio acceptance.
 - **M2.1c3 Font availability prerequisite for original PAK reads.**
-  - Original startup still stops at GetFNum, Dan1+$0012; a second Times lookup
-    follows at +$0038 before the first original PAK load. This must be implemented
-    before native read acceptance can advance.
+  - The installed font and GetFNum now pass the first original call at
+    Dan1+$0012. The second call at +$0038 remains unverified natively behind the
+    sound-driver prerequisite above. Keep this original acceptance requirement.
   - The original/reference-fixture GetFNum contract is measured; see
     [font-manager.md](font-manager.md). The port-owned 14-point FOND/NFNT
-    definition and native parser pass host checks. Install them in the overlay
-    and connect GetFNum to validated resource bodies (D6). Do not return a font
-    ID without a real installed definition. Remaining
+    definition, native parser and installed-body lookup pass host/first-call
+    checks. GetFNum reads and validates the installed FOND/NFNT (D6). Remaining
     unsupported text/font operations must retain named stops; full rendered-font
     acceptance remains M2.9.
 
@@ -201,8 +216,8 @@ required.
 - **M4.1 Driver interface.**
   - Decode every SoundMusicSys selector the game uses (M0.2 log,
     `tmp/plan/MDRV_11.bin`, `SoundMusicSystem.h`).
-  - Choose the install point by byte check (`Jnth` resource or the Core+$1CC6
-    store) and install a native driver stub. Unimplemented selectors are loud
+  - Extend the native startup seam from M2.1c3c (`Jnth`; original loader call
+    Core+$1CC6, entry store +$1CF4) and the native driver stub. Unimplemented selectors are loud
     stops. The original MDRV never runs.
 
   *Done when* the game runs through the intro with the native driver answering

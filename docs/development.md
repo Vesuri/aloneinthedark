@@ -2102,3 +2102,37 @@ legacy root copies. All six native 68020 cases, four startup observers and the
 full host suite pass. Current catalog totals are 42 entries, 33 data files and
 5,584,424 data bytes. File-write's corrected root enumeration uses 1,039 windows;
 all other transfer totals remain unchanged. Startup still stops at GetFNum.
+
+
+### Installed font lookup and native-driver boundary (M2.1c3 implementation)
+
+The overlay now contains the port-owned Times FOND/NFNT. GetFNum loads and
+validates the family and linked bitmap before returning its ID. The first
+original Dan1 lookup returns 20 with the Mac stack/D0/error contract; both
+resident resource bodies compare exactly with the generated source. Unsupported
+font layouts/collation and text rendering retain named stops. The second
+original lookup is still pending behind M2.1c3c; M2.1c3 is not complete.
+
+Continuing startup exposed execution of the original MDRV and its `.BD_PAS16`
+probe. That exploratory run is rejected under D8. Production now stops explicitly
+at `NATIVE SOUND DRIVER` before loading any MDRV body. Original bytes identify
+Core+$10E2's Jnth search before +$1102's MDRV fallback, +$1CC6's loader call and
++$1CF4's entry-pointer store. Native driver initialization is the next prerequisite.
+No original code is patched by this change.
+
+All six native 68020 regression cases, all four startup observers and the full
+host suite pass with normal completion. Resource-read passes both fresh and
+existing default-preference inputs: 53/27 OS windows and 43/42 or 35/34 service
+entries/completions respectively, with one service active at the deliberate stop.
+Original application preparation stays at 228 reads / 201,058 bytes. Overlay
+preparation is four reads / 100 bytes. Runtime application reads are 20 / 104,340
+bytes; font bodies add two / 1,314. File-write retains its 406 paired calls,
+1,039 windows, six mutation rollback cases and nine staging cases.
+
+The catalog observer now verifies one GetVol and all four original SetVol calls,
+including the preferences selection and named restoration, against the Mac trace.
+The identity observer includes the eighth `a/ux` query returning -5550/A0=0,
+already measured in M0.2. The 75,616-byte A5 comparison has zero mismatches.
+The clean production build passes no-float/probe audits (73 symbols). No timeout
+or failed exploratory observer is counted as a pass; rendered-window verification
+remains owner-deferred. No owner decision changed.

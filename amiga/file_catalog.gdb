@@ -1,30 +1,34 @@
 # Production observer; byte-check the original callers, then inspect real returns.
 set pagination off
 set confirm off
+source .run/startup-state.gdb
 set $catalog_fcb=0
 set $catalog_wd=0
 set $catalog_setvol=0
+set $catalog_getvol=0
+set $catalog_restore_name=0
 set $catalog_folder=0
 break AitdScreen::showLoudStop
 commands
  silent
- if $catalog_fcb != 1 || $catalog_wd != 4 || $catalog_setvol != 2 || $catalog_folder != 1 || g_trapWord != 0xa900 || g_trapSegment != 12 || g_trapOffset != 0x12 || g_macServiceEntered != 23 || g_macServiceCompleted != 23 || g_systemWindows != 16 || g_resourceRuntimeReads != 16 || g_resourceRuntimeBytes != 96648
+ if $catalog_fcb != 1 || $catalog_wd != 4 || $catalog_setvol != 4 || $catalog_getvol != 1 || $catalog_folder != 1 || g_stageBState != 2 || g_trapWord != 0 || g_trapSegment != 3 || (*(unsigned long*)(g_trapRoutine+0)!=0x4e415449 || *(unsigned long*)(g_trapRoutine+4)!=0x56452053 || *(unsigned long*)(g_trapRoutine+8)!=0x4f554e44 || *(unsigned long*)(g_trapRoutine+12)!=0x20445249 || *(unsigned long*)(g_trapRoutine+16)!=0x56455200) || g_macServiceEntered != $startup_entered || g_macServiceCompleted != $startup_completed || g_systemWindows != $startup_windows || g_resourceRuntimeReads != 20 || g_resourceRuntimeBytes != 104340
   printf "FAIL file-catalog: FCB=%u WD=%u next=%s/%s\n",$catalog_fcb,$catalog_wd,g_trapManager,g_trapRoutine
   detach
   quit 1
  end
- printf "PASS file-catalog: entries=%u data-files=%u data-bytes=%u FCB=1 OpenWD=3 missing-movies=1 SetVol=2 FindFolder=1 windows=%u next=GETFNUM\n",g_catalogEntries,g_catalogDataFiles,g_catalogDataBytes,g_systemWindows
+ printf "PASS file-catalog: entries=%u data-files=%u data-bytes=%u FCB=1 OpenWD=3 missing-movies=1 SetVol=4 GetVol=1 FindFolder=1 windows=%u next=NATIVE_SOUND_DRIVER\n",g_catalogEntries,g_catalogDataFiles,g_catalogDataBytes,g_systemWindows
  detach
  quit 0
 end
-if g_catalogEntries != 42 || g_catalogDataFiles != 33 || g_catalogDataBytes != 5584424 || g_applicationFileRef <= 0
+printf "CATALOG measured entries=%u data-files=%u data-bytes=%u application-ref=%d expected-entries=%u\n",g_catalogEntries,g_catalogDataFiles,g_catalogDataBytes,g_applicationFileRef,$startup_catalog
+if g_catalogEntries != $startup_catalog || g_catalogDataFiles != 33 || g_catalogDataBytes != 5584424 || g_applicationFileRef <= 0
  echo FAIL file-catalog: original metadata totals\n
  detach
  quit 1
 end
 tbreak *(g_startupCode+0xaa)
 continue
-if *(unsigned long *)(g_code3Base+0x4142) != 0x7008a260 || *(unsigned long *)(g_code3Base+0x40dc) != 0x7001a260 || *(unsigned short *)(g_code3Base+0x4066) != 0xa015 || *(unsigned long*)(g_code3Base+0x4354) != 0x7000a823
+if *(unsigned long *)(g_code3Base+0x403e)!=0xa0143d40 || *(unsigned long *)(g_code3Base+0x4142) != 0x7008a260 || *(unsigned long *)(g_code3Base+0x40dc) != 0x7001a260 || *(unsigned short *)(g_code3Base+0x4066) != 0xa015 || *(unsigned long*)(g_code3Base+0x4354) != 0x7000a823
  echo FAIL file-catalog: original trap bytes\n
  detach
  quit 1
@@ -113,15 +117,43 @@ commands
  set $catalog_wd=$catalog_wd+1
  continue
 end
+# Original preferences setup saves and restores the default directory by name/WD.
+break *(g_code3Base+0x4040)
+commands
+ silent
+ set $pb=(unsigned char*)$a0
+ set $catalog_restore_name=*(unsigned char**)($pb+18)
+ if $d0!=0 || *(short*)($pb+16)!=0 || *(short*)($pb+22)!=-32000 || $catalog_restore_name==0
+  echo FAIL file-catalog: original GetVol result\n
+  detach
+  quit 1
+ end
+ if *(unsigned long*)$catalog_restore_name!=0x05416c6f || *(unsigned short*)($catalog_restore_name+4)!=0x6e65
+  echo FAIL file-catalog: original GetVol volume name\n
+  detach
+  quit 1
+ end
+ set $catalog_getvol=$catalog_getvol+1
+ continue
+end
 break *(g_code3Base+0x4066)
 commands
  silent
  set $pb=(unsigned char*)$a0
- if *(unsigned long*)($pb+18) != 0 || *(short*)($pb+22) != -32000
-  echo FAIL file-catalog: original SetVol request\n
+ set $setvol_ref=-32000
+ set $setvol_name=0
+ if $catalog_setvol==2
+  set $setvol_ref=-31997
+ end
+ if $catalog_setvol==3
+  set $setvol_name=$catalog_restore_name
+ end
+ if $catalog_setvol>3 || *(unsigned long*)($pb+18)!=$setvol_name || *(short*)($pb+22)!=$setvol_ref || ($catalog_setvol==3 && $catalog_getvol!=1)
+  printf "FAIL file-catalog: original SetVol call=%u ref=%d name=%x\n",$catalog_setvol,*(short*)($pb+22),*(unsigned long*)($pb+18)
   detach
   quit 1
  end
+
  continue
 end
 break *(g_code3Base+0x4068)

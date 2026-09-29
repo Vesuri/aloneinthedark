@@ -32,6 +32,11 @@ mkdir -p "$DH0/s" "$DH1" "$RUN/state" "$RUN/logs" "$GDBHOME"
 printf 'cd dh1:\nAlone\n' > "$DH0/s/startup-sequence"
 cp -f out/Alone.exe "$DH1/Alone"
 stage_aitd_original_data "$DH1"
+case "${GDBSCRIPT:-runtime_status.gdb}" in
+  resource_read.gdb|font_lookup.gdb|original_startup.gdb|file_catalog.gdb)
+    python3 ../tools/check_startup_prefs.py --folder "$DH1/prefs" --gdb "$RUN/startup-state.gdb"
+    ;;
+esac
 rm -f "$RUN"/state/*.uss
 : > "$RUN/gdb-out.log"
 

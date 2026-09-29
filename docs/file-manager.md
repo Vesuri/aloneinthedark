@@ -916,3 +916,22 @@ Pass the actual exit status to `check_pak_idle.py LOG --status STATUS`, then run
 from f6e58c2's six-case regression and four-observer acceptance. The next measured
 native dependency is GetFNum; M2.1c3 requires a real D6 placeholder font definition
 before reporting Times available. No owner decision changed.
+
+
+### Font integration startup boundary
+
+Continuing past the first Times lookup reaches the original preferences setup
+before the native-driver prerequisite. The Core+$403E GetVol saves the
+application WD and volume name; Core+$4066 then selects the Preferences WD
+and restores the saved application WD with the returned name. The Mac reference
+shows these same four SetVol calls in total, with one GetVol; numeric WD refs
+and the mounted volume name differ by platform as already documented.
+The native catalog observer checks the exact call order, names, refs, results
+and original trap bytes. It retains the three successful OpenWD calls, missing
+movies error and FindFolder checks.
+
+The initial metadata-only catalog has 42 entries with no preference file, or
+43 with the measured original default Alone Prefs present. Both retain 33
+Alone Data files / 5,584,424 bytes. The fixture classifier does not erase or
+rewrite pre-existing preferences. Fresh and existing preference runs require
+53 and 27 OS windows respectively at the explicit native-driver stop.

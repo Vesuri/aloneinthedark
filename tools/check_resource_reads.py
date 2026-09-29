@@ -2,6 +2,7 @@
 """Validate debugger-captured streamed resources against local original bytes."""
 import argparse
 import hashlib
+import re
 from pathlib import Path
 from resource_fork import read_resource_fork
 p=argparse.ArgumentParser(description=__doc__);p.add_argument('--prepare',action='store_true');p.add_argument('--status',type=int,default=0);a=p.parse_args()
@@ -11,7 +12,9 @@ if a.prepare:
     for path in files:path.unlink(missing_ok=True)
 else:
     log=(root/'amiga/.run/gdb-out.log').read_text()
-    marker='PASS resource-read: maps=212 preparation=201058 runtime=16/96648 windows=16 samples=3 next=GETFNUM'
+    modes=re.findall(r'^STARTUP_PREFS existing=([01]) windows=(27|53) services=(35/34|43/42)$',log,re.M)
+    if len(modes)!=1 or modes[0] not in [('1','27','35/34'),('0','53','43/42')]:raise SystemExit('FAIL resource-read: missing/invalid starting preference fixture')
+    marker=f'PASS resource-read: maps=214 preparation=201058 runtime=20/104340 windows={modes[0][1]} samples=3 next=NATIVE_SOUND_DRIVER'
     if a.status or log.count(marker)!=1 or any(bad in log for bad in ['FAIL','Error in sourced command file','Program received signal']):
         raise SystemExit('FAIL resource-read: runner, observer or completion')
     resources={(r.kind,r.rid):r.body for r in read_resource_fork(root/'amiga/.run/dh1/data/Alone In The Dark')}

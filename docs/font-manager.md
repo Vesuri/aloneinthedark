@@ -35,10 +35,8 @@ a validated port-owned font definition in the overlay. Full text drawing and
 rendered-font acceptance remain M2.9.
 
 The independent M2.1c3a reference prerequisite passes both bounded captures
-with process status zero and the full host suite. Native implementation is still
-M2.1c3 at the top of the queue; production still stops at GetFNum. No runtime
-code changed, so native regression results from the preceding checkpoint are
-unchanged, not newly rerun.
+with process status zero and the full host suite. That reference-only checkpoint did not change runtime code. Native integration
+evidence and its remaining startup dependency are recorded below.
 
 ## Reproduction
 
@@ -93,7 +91,45 @@ host suite passes. A standalone parser translation unit also compiles with the
 repository’s 68020 flags and compatibility prelude without unresolved helpers;
 this is a compiler check, not native runtime acceptance.
 
-This independently tested M2.1c3b definition is not installed yet: the committed
-overlay remains empty and native GetFNum still stops loudly. M2.1c3 must publish
-these resources, connect the lookup to validated installed bodies, and verify
-both original calls before this prerequisite is complete.
+The overlay now publishes both resources (1,654 bytes total). Its map preparation
+uses four reads / 100 bytes; the first lookup reads the two bodies in two bounded
+windows / 1,314 bytes. Startup retains 214 resource entries including the fonts.
+GetFNum traverses the resource chain, validates the matching FOND and linked NFNT,
+and returns the installed family ID. It preserves D0 and the measured error
+behavior; unsupported collation, formats and missing linked definitions stop
+explicitly. Inherited font-independent DrawChar/DrawString/DrawText now remain
+named trap stops pending M2.9 instead of silently drawing the Vette fixed font.
+
+The native observer checks the live original trap bytes, Pascal Times name,
+result 20, eight-byte stack cleanup, D0 and error globals at Dan1+$0014. It dumps
+both installed bodies for exact host comparison and requires the next named
+`NATIVE SOUND DRIVER` stop, with no original MDRV body resident. The original
+second lookup has not been reached natively: the driver prerequisite lies between
+these calls. This is partial M2.1c3 acceptance, not a completed font/startup item.
+
+`amiga/font_lookup.gdb` plus `tools/check_native_font.py LOG --status STATUS`
+provide that bounded first-call check; `--prepare` removes old diagnostic dumps.
+The checker rejects missing/duplicate completion, bad status and observer errors.
+M2.1c3 retains the second-call requirement after M2.1c3c's native driver seam.
+
+
+Startup counters distinguish two measured inputs. With the original default
+`PREF` 128 already present, the driver boundary uses 27 OS windows and 35/34
+service entries/completions. Without preferences, original startup creates the
+file and uses 53 windows and 43/42 services. One service remains active at the
+intentional MDRV stop. Both paths read 20 original resource windows / 104,340
+bytes plus two overlay bodies / 1,314 bytes. `check_startup_prefs.py` classifies
+the starting fixture before launch and supplies exact expected counters; it
+rejects partial, nonregular or unmeasured preference contents without deleting
+them. These observer restrictions do not alter production preference handling.
+
+The native checker additionally fingerprints Core's original Jnth/MDRV loader
+and entry-handle/entry-pointer sequence. It does not count the exploratory
+`.BD_PAS16` stop as acceptance: that path entered the forbidden original mixer.
+
+
+Integration verification: the complete host suite, six native regression cases
+and four startup observers pass. Both preference-start modes pass resource-byte
+checks; all 75,616 original A5 bytes match. The font observer and independent
+body checker pass with normal completion. This verifies the implementation and
+first original call, while retaining the second-call acceptance in the queue.
