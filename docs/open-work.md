@@ -45,15 +45,19 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.1c3c2c5 Fixed 320×200 startup selection (D4/M2.4).**
+- **M2.1c3c2c5b Fixed 320×200 startup selection (D4/M2.4).**
   - Original GetGWorld now returns the real current window-manager port and
     main device with the measured record/stack/register contract. The next
     request is Dan2+$341C GetNewDialog(1000), explicitly stopped as
     `SCREEN SIZE SELECTION` before constructing or showing the excluded dialog.
-  - Measure the original preferences and screen-choice path; implement D4's
-    verified fixed low-resolution seam from §4.9. Prefer the cleanest measured
-    route through original game decisions, preserving unrelated preferences.
-    Do not show the size dialog or invent a successful dialog operation.
+  - M2.1c3c2c5a measures the original path: Core calls the selector
+    unconditionally, so a PREF override cannot suppress the dialog. Item 2
+    selects WIND 128 for both size inputs and changes only PREF byte 7.
+    See [screen-choice.md](screen-choice.md).
+  - Implement the measured ModalDialog item-2 policy and the real logical
+    dialog services it needs, suppressing presentation for DLOG 1000 under D4.
+    Preserve unrelated preferences and original instructions. Do not invent
+    successful unsupported dialog operations.
   - Retain M2.3/M2.4/M2.7's full drawing, offscreen, window/viewport and palette
     acceptance. Current-world state changes such as SetGWorld still require
     measured implementation if the selected seam reaches them.

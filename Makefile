@@ -106,6 +106,7 @@ host-tests:
 	@python3 tools/check_device_startup.py --selftest
 	@python3 tools/check_setdepth.py --selftest
 	@python3 tools/check_getgworld.py --selftest
+	@python3 tools/check_screen_choice.py --selftest
 	@python3 tools/check_native_driver.py --selftest
 	@python3 tools/check_resload_access.py
 	@python3 tools/check_mac_heap.py

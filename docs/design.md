@@ -516,10 +516,13 @@ Native trap probes, host fragmentation tests and paired heap captures verify it:
   It stays; the viewport shows the game window over it.
 - **Screen size (D4).** Only 320×200 is supported, and the screen-size dialog
   (DLOG 1000) is never shown.
-  - Find the cleanest seam before implementing (task M2.4). Candidates: a
-    port-supplied "Alone Prefs" `PREF` that already holds the 320×200 choice, so
-    the game never asks; or `ModalDialog` returning item 2 for DLOG 1000.
-  - Either way the game's own code picks WIND 128 (Misc1+$107E).
+  - Original Core+$050E calls the selector unconditionally: a `PREF` override
+    cannot suppress the dialog. The measured service seam is `ModalDialog`
+    returning item 2 for DLOG 1000, with dialog presentation suppressed (D4).
+    Its required logical dialog services remain to be implemented and verified.
+  - The original updates only PREF byte 7 and picks WIND 128 at Misc1+$1084
+    (the high-resolution branch at +$107E picks WIND 132). See
+    [screen-choice.md](screen-choice.md) for both preference-input captures.
 - **Menus (D7): no menu bar.** The DOS version had none, and the menus hold
   nothing the keyboard lacks:
   - Apple: About (credits);

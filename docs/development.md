@@ -2299,3 +2299,15 @@ preferences were restored afterward. Runtime reads remain 26/123,247 original
 bytes and 3/1,318 overlay bytes; low-memory checks validate 58 sites with 55
 applied. Every bounded acceptance run exited normally with its positive marker.
 No owner decision changed.
+
+## Original screen-choice contract
+
+M2.1c3c2c5a separates the original/reference measurement prerequisite from
+the pending native D4 implementation. Both original size inputs reach item 2
+and WIND 128, with only PREF byte 7 changed to zero. The original call is
+unconditional; a preference override cannot remove the dialog. Original-byte
+guards cover preference loading/defaults, the selector/caller and window
+selection. Both headless captures exit normally with positive markers; the
+checker rejects eight malformed/status/input cases. Full host tests pass.
+Native behavior is unchanged from the GetGWorld checkpoint; its next stop
+remains SCREEN SIZE SELECTION. See [screen-choice.md](screen-choice.md).
