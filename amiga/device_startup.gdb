@@ -170,7 +170,7 @@ if $d0!=$device || ($d7&0xffff)!=1
 end
 printf "PASS native device selection calls=4 count=1\n"
 continue
-if g_stageBState!=3 || g_trapWord!=0xa8d8 || g_trapSelector!=-1 || g_trapSegment!=10 || g_trapOffset!=0x1da6 || *(unsigned long*)(g_trapRoutine+0)!=0x4e455752 || g_trapRoutine[4]!=0x47 || g_trapRoutine[5]!=0x4e || g_trapRoutine[6]!=0 || g_systemWindows!=$startup_windows || g_macServiceEntered!=$startup_entered || g_macServiceCompleted!=$startup_completed || g_macServiceActive!=0
+if g_stageBState!=3 || g_trapWord!=0xab1d || g_trapSelector!=0 || g_trapSegment!=10 || g_trapOffset!=0x74 || *(unsigned long*)(g_trapRoutine+0)!=0x4e455747 || *(unsigned long*)(g_trapRoutine+4)!=0x574f524c || g_trapRoutine[8]!=0x44 || g_trapRoutine[9]!=0 || g_systemWindows!=$startup_windows || g_macServiceEntered!=$startup_entered || g_macServiceCompleted!=$startup_completed || g_macServiceActive!=0
  echo FAIL device next named stop\n
  detach
  quit 1

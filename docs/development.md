@@ -2805,7 +2805,7 @@ with their corresponding Mac observers and paired checkers. The contracts and
 local evidence are in [window-geometry.md](window-geometry.md). Host geometry
 checks are part of `make host-tests`. ShowHide's background clear is verified
 against its full complex region and must leave the viewport, palette and frame
-queue unchanged. Current startup observers pin NewRgn at Misc2+$1DA6; a timeout or a different stop is not acceptance.
+queue unchanged. Current startup observers pin NewGWorld at Misc2+$0074; a timeout or a different stop is not acceptance.
 
 
 ## Startup clock query
@@ -2855,3 +2855,20 @@ A5 bytes match; no-float and 78-symbol link audits pass. Original resource reads
 129 services.
 Original MDRV is absent. Startup now stops at QUICKDRAW / NEWRGN, Misc2+$1DA6.
 See [amiga-arch.md](amiga-arch.md) for the byte guard and contract.
+
+
+## Empty-region allocation
+
+NewRgn at Misc2+$1DA6 now allocates a real empty ten-byte region in the current
+heap. Original Memory Manager queries establish size, flags and owning zone;
+the native observer verifies the real master slot and owning block. Paired
+bytes, contents, error state and stack/register checks pass. See
+[amiga-arch.md](amiga-arch.md) for the contract and original-byte guard.
+
+`tmp/m2-newrgn-final-*` contains normal-exit passes for the paired region call,
+original startup and AGA publication on the final executable. The heap suite
+passes including 2,500 fragmentation operations; both link audits pass. All
+75,616 A5 bytes match. Resource reads remain 39 / 177,820 bytes, with 75 OS
+handbacks and 129 services; original MDRV is absent. The next named stop is
+QUICKDRAW / NEWGWORLD, selector 0, Misc2+$0074. Full region drawing and intro
+acceptance remain pending.

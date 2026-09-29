@@ -14,8 +14,8 @@ design.md §5.
   low-resolution selection/cleanup, all 75 font-metrics calls and four Apple Event
   registrations, colour-table loading/mutations, palette construction and default
   binding, hidden window-title state and the verified WIND 128 request. Startup realizes the palette and clears the game client area, then stops at
-  `NEWRGN` at Misc2+$1DA6 after palette binding/activation, first-frame AGA
-  publication, background ShowHide, game-port binding, TickCount, unchanged window geometry and point setup. The original
+  `NEWGWORLD` at Misc2+$0074 after palette binding/activation, first-frame AGA
+  publication, background ShowHide, game-port binding, TickCount, unchanged window geometry, point setup and empty-region allocation. The original
   mixer is never loaded.
 - The original runs in MAME on the System 7.5.5 reference volume.
 
@@ -49,22 +49,23 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.3f Drawing setup NewRgn prerequisite.**
-  - Original Misc2+$1DA6 calls NewRgn ($A8D8). Measure the allocated handle,
-    initial region bytes, ownership and stack/register contract.
-  - Implement real empty-region allocation through the existing heap model.
-    This brings the reached allocation dependency forward from M2.8; broader
-    region operations and clipped drawing retain their own acceptance.
+- **M2.3g Eight-bit offscreen world prerequisite.**
+  - Original Misc2+$0074 calls NewGWorld (QDExtensions $AB1D, selector 0).
+    Measure its eight-bit request, returned port/PixMap/device/colour table,
+    storage ownership and stack/register contract.
+  - Adapt Vette's existing GWorld allocator to this real eight-bit format and
+    preserve explicit stops for unsupported configurations. This brings the
+    reached allocation dependency forward from M2.3; broader drawing remains.
 
   *Done when* original-byte-guarded native execution matches the original
-  allocation/result contract, advances to the next named stop with original
-  MDRV absent, and relevant startup/display regressions pass.
+  offscreen allocation contract, advances to the next named stop with original
+  MDRV absent, and relevant host/startup/display regressions pass.
 - **M2.1c3c2 Native-driver integrated startup acceptance (D8).**
   - M2.1c3c2a supplies the port-owned Jnth 11 stub through the original loader,
     with no original instructions changed. Selectors 21/24 initialize native
     state and quality; other operations/configurations stop explicitly.
   - Both original call returns match the Mac register/stack/state contract.
-    The region-allocation stop prevents reaching the second Times call; this
+    The offscreen-allocation stop prevents reaching the second Times call; this
     original acceptance requirement is retained, not counted as passed.
   - Keep the MDRV guard and verify through any newly reached startup services.
     The independent Mac contract and installed seam are in

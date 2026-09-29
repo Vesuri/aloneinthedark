@@ -56,6 +56,23 @@ operations are involved. `mac_setpt.lua`, `setpt.gdb` and `check_setpt.py` pair
 that original call; Dark+$4F7A–$4F89 has SHA-256
 `6e383555df80d58e37af9cd2bfa00fa3592060e1864a5782a2b4fde84d5bd102`.
 
+### Empty regions
+
+`NewRgn` allocates a real ten-byte handle in the current zone through the shared
+heap allocator. Its bytes are `000a0000000000000000`: a ten-byte region with
+an empty bounding rectangle. The handle is movable, unlocked and non-purgeable;
+it participates in normal heap ownership and zone cleanup. Allocation failure
+remains a named stop. The measured Misc2+$1DA6 call leaves the stack pointer
+unchanged, writes its result handle into the reserved stack slot, returns the
+body end in A0 and preserves the other registers.
+
+`mac_newrgn.lua` queries the original result with CPU-executed GetHandleSize,
+HGetState and HandleZone. `newrgn.gdb` verifies the native master slot, owning
+block, logical length and flags; `check_newrgn.py` pairs the contracts. Original
+Misc2+$1D9C–$1DA9 has SHA-256
+`fb490c8d89ec18e2450bab69eff1861a43f579444050b9850a75e26b8c3390b7`.
+Broader region operations and clipped drawing remain M2.8 work.
+
 ## Timing and input
 
 The VBI advances `g_vbiCount` per PAL field and Macintosh Ticks at 60 Hz. CIA

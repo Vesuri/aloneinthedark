@@ -36,7 +36,7 @@ viewport unchanged. SetGWorld binds the game drawing port and startup loads
 Dark. TickCount reads the existing 60 Hz integer clock with the measured Mac
 calling convention. The following size/origin requests preserve the already-correct
 320×200 window. SetPt initializes the drawing point; startup then stops explicitly
-at `NEWRGN` (Misc2+$1DA6). The original mixer
+at `NEWGWORLD` (Misc2+$0074), after allocating the original empty region. The original mixer
 is never loaded. The game is not playable yet.
 Other processors and performance work remain deferred.
 
@@ -49,7 +49,7 @@ serve memory and resource handles. System identity and all eleven derived
 capability flags match the Mac reference. The user-mode service bridge passes
 its native ABI probe. OS windows and DOS/resload adapters pass the native/host
 core probes; rendered-picture acceptance is owner-deferred (M1.7b2). The next
-item is the drawing-region allocator (NewRgn), followed by the retained second-Times and
+item is the 8-bit offscreen world allocator (NewGWorld), followed by the retained second-Times and
 original PAK read acceptance. Fresh and existing preferences now request WIND 128
 through the original instructions, with only the size byte changed.
 The logical device has real 640×480×8 storage; its four selection calls match
@@ -62,7 +62,7 @@ of the second original Times lookup.
 Resource bodies now stream from disk into zone handles; startup retains the
 4,998-byte map instead of the 1,424,934-byte application fork. The `resource-read`
 regression verifies original bytes and bounded runtime resource reads; the
-current stop is the region allocator (NewRgn); original MDRV loading stays forbidden. Named/ID/indexed lookup, resource counts and metadata, purge/reload and release now
+current stop is the offscreen world allocator (NewGWorld); original MDRV loading stays forbidden. Named/ID/indexed lookup, resource counts and metadata, purge/reload and release now
 pass paired Mac/native checks. Native resource staging now passes exact publication,
 abort, rollback and stale-file checks. Resource-file open/create/update/close,
 AddResource, multi-fork search, noncurrent close and invalid update pass a

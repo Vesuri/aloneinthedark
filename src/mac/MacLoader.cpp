@@ -6620,6 +6620,14 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         if (g_stageCDepth < 83) g_stageCDepth = 83;
         return 5;
     }
+    if(trap==0xa8d8) {                       // NewRgn() -> owned empty RgnHandle
+        MacHeap::Handle region=newHandle(10,true);
+        if(!region)goto unsupportedTrap;
+        write16(*region,10);
+        write32(userStack,(uint32_t)region);
+        regs[8]=(uint32_t)*region+10;
+        return 1;
+    }
     if(trap==0xa880) {                       // SetPt(Point*, h, v)
         uint8_t* point=(uint8_t*)read32(userStack+4);
         if(!point)goto unsupportedTrap;
@@ -7284,6 +7292,7 @@ unsupportedTrap:
     if(trap==0xaaa2 && (uint16_t)regs[0]==0x0a14)routine="HASDEPTH";
     if(unsupportedGraphics)routine=trap==0xaa95 ? "SETPALETTE"
         : trap==0xaa94 ? "ACTIVATEPALETTE" : "8-BIT DRAWING / PALETTE";
+    if(trap==0xab1d && (uint16_t)regs[0]==0)routine="NEWGWORLD";
     if(trap==0xab1d && (uint16_t)regs[0]==5)routine="GETGWORLD";
     if(trap==0xab1d && (uint16_t)regs[0]==6)routine="SETGWORLD";
     if(trap==0xa0f8) { manager="SOUND DRIVER";routine=driverStop ? driverStop : "SELECTOR";g_trapSelector=read32(userStack+4); }
