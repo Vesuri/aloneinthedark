@@ -109,8 +109,9 @@ that point and exits with a diagnostic-only marker. Local
 The paired Misc3+$0FBE Open requests `:Alone Data:ListBod2.PAK` and returns
 -43. Dark+$5254 stores the random low bit selecting the alternate body set;
 the captured result is 1. The archive and current extracted installation keep
-ListBod2 at the application root. Installer placement remains unverified;
-M2.1c1 records that prerequisite. No original bytes or files were moved to hide
+ListBod2 at the application root. The subsequent original-installer run proves
+that it belongs under Alone Data; M2.1c1b records the required correction.
+See [installation evidence](install-original-data.md) for exact fork comparisons. No original bytes or files were moved to hide
 this error, and no missing-file run counts as PAK acceptance.
 
 The full host suite and byte guards pass. This changes reference diagnostics

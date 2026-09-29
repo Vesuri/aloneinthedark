@@ -43,20 +43,20 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.1c1 Verify the installed ListBod2.PAK location.**
-  - The original idle route randomly selects one of two body archives. The captured
-    branch requests `:Alone Data:ListBod2.PAK` and returns fnfErr (-43), then
-    displays the original missing-file alert. The extracted payload places that
-    file at the application root; the original installer has not yet been run.
-  - Run the unmodified installer on an isolated reference-volume copy and inspect
-    its resulting paths and fork checksums. Do not silently relocate a file or
-    bypass the original alert. Correct extraction/staging only if that reproduces
-    the verified installation; an original-release defect requiring a behavior
-    change goes to the owner.
+- **M2.1c1b Reproduce the verified original installation layout.**
+  - The completed original installer places `ListBod2.PAK` under `Alone Data`,
+    although its archive entry is at the root. All 36 installed data forks and
+    all resource maps/payloads match extraction; only unused resource-header
+    bytes differ. Original game instructions are unchanged.
+  - Correct extraction, reference-volume population, native staging and metadata
+    probes to use that path. Preserve the original archive-derived metadata and
+    reject conflicting stale files instead of deleting unknown user data.
+  - The corrected catalog has 33 data files / 5,584,424 bytes; total catalog
+    entries stay 42. Root-file enumeration must reflect the verified layout.
 
-  *Done when* a normally completed original installation establishes the exact
-  ListBod2 path and bytes, and any necessary staging correction has host/native
-  verification; otherwise record the specific original defect for an owner decision.
+  *Done when* fresh and repeated extraction/staging reproduce the original
+  installer layout and exact bytes, host checks and the six native regressions
+  pass, and catalog/metadata observers verify the corrected location and totals.
 - **M2.1c2 Capture the original idle presentation route.**
   - Original-byte checks locate PRESENT at Dan2+$2D16, called by Dark+$52AC
     after the main-menu timeout, idle demo and two intro calls. Its 15 image

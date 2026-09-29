@@ -28,12 +28,35 @@ resource fork) is never run.
   `List*.PAK`, `ITD_Ress.PAK`, `Present.PAK`, `EndSeq.PAK`, `USA.PAK`,
   `Test.PAK`, and the `Defines`, `Objets`, `Priority` and `Vars` `.ITD` tables.
 
-The payload also holds `ListBod2.PAK` at its root, an empty `Alone Saved Games`
-folder, `Quick Reference` and a registration application. Whether the installer
-places `ListBod2.PAK` in the data folder is unknown; extraction and staging
-preserve it at the root. The original idle demo has now been observed requesting
-`:Alone Data:ListBod2.PAK`, receiving fnfErr and displaying a missing-file alert.
-M2.1c1 must establish the actual installer layout before changing these paths.
+The payload holds `ListBod2.PAK` at its root, but the **original installer moves
+it into `Alone Data`**. This was verified by running its unchanged data/resource
+forks on an isolated System 7.5.5 volume: the installer displays successful
+completion and the resulting ListBod2 is 268,430 bytes, SHA-256
+`5c552161db462f80e82346494a304d133ca502c92ab299a77b82ca988fd1893e`.
+The installed layout contains 33 data files / 5,584,424 bytes, three root files
+(application, Quick Reference, registration application), and the empty saves
+folder. M2.1c1b must correct the current extraction/staging tools, which still
+preserve the archive's root placement. This mismatch makes the original idle
+demo receive fnfErr for `:Alone Data:ListBod2.PAK` and show its missing-file alert.
+
+All 36 installed data forks match extraction exactly. Resource-fork headers,
+maps and payloads also match outside reserved bytes [16,256): the application
+has 21 changed bytes at offsets 68–117; Quick Reference has 27 at 68–121; the
+registration application has 21 at 71–117. Resource data/map offsets are at or
+beyond 256, and independent parsing finds identical application resources.
+Keep the known original extracted application fork and its existing byte guards;
+do not replace it with installer-written reserved metadata.
+
+Local evidence: `tmp/m2-installer-progress.log` terminates normally (status 0);
+`ref/mame/snap/m2-installer-progress-06.png` and later internal frames show
+"Installation was successful". `tmp/m2-installer-forks.log` records all 36
+fork comparisons and the installed ListBod2 location. The test volume is
+`tmp/m2-installer-reference.hd`; the established reference volume was unchanged.
+For the known Finder launch location only, the installer file was renamed on
+that isolated copy and its icon position copied from the game. Its complete
+data/resource fork bytes were checked unchanged before execution. The first
+short observation ended at file 4/36 and was rejected; it is not completion
+evidence. The accepted run installed into a fresh `Installer Result` folder.
 
 The HFS volume also holds the manual (PDF), `Quick Reference` and a "Stair Bug
 Fix" folder: G3Throttle, with a note that the storeroom stairs fail on a fast

@@ -9,9 +9,9 @@ through `hcopy -m`, the only hfsutils path that keeps both forks together with
 type, creator and Finder flags.  Nothing here is committed: the image lives in
 ignored ref/.
 
-This preserves archive layout, not a verified installer result. In particular,
-ListBod2.PAK is at the payload root, while the original idle demo requests it
-under Alone Data. M2.1c1 must verify the original installer before changing this.
+This currently preserves archive layout. The verified original installer moves
+ListBod2.PAK from the payload root into Alone Data; M2.1c1b must apply that same
+placement here before accepting the original idle-presentation route.
 
     python3 tools/install_reference_volume.py tmp/AloneInTheDark.img_.sit \\
         ref/mame/hd/aitd_755.hd
