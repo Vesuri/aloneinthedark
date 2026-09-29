@@ -363,7 +363,7 @@ Native trap probes, host fragmentation tests and paired heap captures verify it:
 ### 4.6 Resource Manager
 
 - **Resource data is read on demand (D1).** Keep only each fork's resource
-  map in memory; the application's map is about 7 KB. `GetResource` reads the
+  map in memory; the application's map is 4,998 bytes (212 resources). `GetResource` reads the
   data into a zone handle, through a system window, when the handle is empty,
   exactly as the Mac's Resource Manager does. Purgeable resources may be
   purged and reloaded (`LoadResource`).

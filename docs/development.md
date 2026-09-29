@@ -927,3 +927,38 @@ of all `.async-probe` data/resource/metadata companions. Host tests, file-read,
 window-core, production boot and the directory observer pass. The original run
 still stops at Get1NamedResource; completing census variants is not original
 PAK-read or successful-startup acceptance.
+
+
+### Map-only resource parser (M2.2a)
+
+`make host-tests` includes `tools/check_resource_map.py`. The portable
+`ResourceMap` accepts a 16-byte header and a separately retained map; it never
+receives a payload pointer or performs allocation/I/O. Its entries preserve the
+original type/reference order, signed IDs, attribute bytes and Pascal names.
+Each exposes a length-word file offset. Only after the caller reads that word
+does `payload` validate the body range and return its stream offset. Zero-length
+resources and a valid empty map are supported. Invalid/overlapping map regions,
+truncated names/references, duplicate types/IDs, capacity overflow and invalid
+payload lengths fail explicitly; a failed open leaves no visible entries.
+
+To check local original bytes without committing assets:
+
+```sh
+python3 tools/check_resource_map.py --original 'amiga/.run/dh1/data/Alone In The Dark'
+```
+
+The ASan/UBSan fixture copies the header/map into separate buffers and compares
+all 212 entries against the existing independent Python fork reader, including
+name bytes, IDs, attributes, sizes, order and payload FNV checksums. The measured
+map is 4,998 bytes; the full application resource fork is 1,424,934 bytes. The
+synthetic fixture includes malformed maps, duplicate IDs, empty maps and lengths
+that exceed the data region or overflow naive arithmetic.
+
+This is a parser foundation, not completed on-demand loading. Vette's
+`ResourceForks` and `PlatformAmiga` also preload whole forks; their parsing
+conventions are reused, while bounded I/O must come from this port's File Manager.
+The runtime still uses the inherited resident `ResourceForks` path until M2.2b.
+Its acceptance must cover direct and indirect resource loads through user-mode
+system windows, all original CODE-byte validation, sample resource checksums,
+startup window counts and all existing native regressions. Writable maps,
+Resource Manager search/handle semantics and overlay support remain M2.2 work.

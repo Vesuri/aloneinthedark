@@ -44,6 +44,11 @@ required.
 ## M2 Startup to intro
 
 - **M2.2 Resource Manager on demand.**
+  - The map-only parser foundation (M2.2a) passes host/original-byte checks;
+    it is not yet connected to runtime loading. Integrate it next (M2.2b),
+    including indirect Toolbox resource loads through the user-mode bridge.
+    Preserve startup's all-CODE byte validation with temporary bounded storage,
+    then discard those validation buffers.
   - Keep only the resource maps in memory; load data into zone handles on
     `GetResource` through system windows.
   - Replace the inherited OpenResFile helper that currently returns -1 without
