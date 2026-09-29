@@ -372,8 +372,10 @@ Native trap probes, host fragmentation tests and paired heap captures verify it:
   data into a zone handle, through a system window, when the handle is empty,
   exactly as the Mac's Resource Manager does. Purgeable resources may be
   purged and reloaded (`LoadResource`).
-  - `DetachResource` hands the block over to the caller. `ReleaseResource`
-    frees it.
+  - `DetachResource` hands a clean block over to the caller; dirty detach
+    returns -198. `ReleaseResource` frees clean resources but leaves dirty
+    resources resident. Dirty resource files persist on close and OS exit
+    (scratch-only Mac reference M2.2f4a2b; native variants pending).
   - Whole-fork startup loading is removed (M2.2b2). Before takeover, validate
     each original CODE resource using temporary storage, then discard it; only
     CODE 0 metadata and CODE 1 remain resident. Runtime resource misses use

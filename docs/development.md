@@ -1595,3 +1595,44 @@ owner decision is needed.
 
 The full host suite passes. This checkpoint changes reference tooling only;
 native runtime regression evidence remains the ab2a3ff baseline.
+
+
+### Dirty resource lifecycle and exit reference (M2.2f4a2b)
+
+The scratch-only `mac_resource_dirty.lua` capture completes 45 calls and deletes
+both exclusively created files. Two bounded CPU-only MAME runs exit zero with
+identical results. `check_resource_dirty.py` checks stage order, seeded D0,
+ResErr/MemErr, Pascal stack cleanup, live handle identity, flags and exact bytes.
+It deliberately does not interpret stale master pointers after a file closes.
+
+- ReleaseResource leaves a dirty handle resident and associated, with attribute
+  bit 2 set; it preserves seeded D0/MemErr. Lookup returns that same body/handle.
+- DetachResource on the dirty handle returns -198 (`$FF3A`), preserves MemErr,
+  and leaves the body/association intact. After WriteResource it detaches
+  successfully, clears the resource flag and preserves the body. A later lookup
+  creates an independent resource handle containing the written `CCCC` bytes.
+- EmptyHandle discards dirty `DDDD`; LoadResource retrieves the previously written
+  `CCCC` under the same handle. The captured full GetResAttrs word is `$E002`
+  while empty and `$0600` after reload in both runs. These upper bits are recorded,
+  not interpreted as portable resource attribute bits; their source needs tracing
+  before a native full-word result is chosen. UpdateResFile then preserves MemErr.
+- Closing a current dirty map persists `EEEE`. Closing either a clean or dirty
+  noncurrent map preserves the application current file. Reopening the dirty
+  noncurrent map retrieves its exact `FFFF` resource, then both files are deleted.
+
+`mac_resource_exit.lua` adds 13 calls around a real Mac application exit. It
+checks the Engine+$3CDC gate and all original CODE 1+$0048 main-return and
++$04AA trap-unpatch bytes, exclusively creates a resource containing `EXIT`,
+and leaves it dirty/open. It enters that original return path to restore the
+runtime's trap patches and call the OS ExitToShell, avoiding game preference
+cleanup. Finder is positively observed, then a fresh application launch opens
+and reads the exact resource before closing/deleting the scratch file. This
+proves OS-exit persistence, not game quit-path or reset/power-loss durability.
+The run exits zero; `check_resource_exit.py` requires both launch byte guards,
+ordered exit/Finder/reopen evidence, exact body, registers, stack and cleanup.
+
+Both checkers reject a combined 16 timeout, incomplete and corrupted captures.
+The full host suite passes. Native runtime code is unchanged, so its five
+regressions/four startup observers remain at the ab2a3ff baseline. Native variants
+resume at M2.2f4b1; application-file closure and mixed raw/resource updates stay
+named stops until measured. No owner decision changed.

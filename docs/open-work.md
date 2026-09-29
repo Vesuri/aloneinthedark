@@ -56,18 +56,15 @@ required.
     Native handles remap by stable identity; bodies remain source-backed.
   - **M2.2f4 Remaining writable resource variants.** Extend the measured scope
     before enabling the remaining resource mutations and error paths.
-    - **M2.2f4a2b Dirty lifecycle reference.** Capture dirty-handle
-      release/detach/empty, noncurrent-file close and exit persistence.
-      Application-file closure and mixing raw resource streams with resource
-      updates are currently explicit stops; establish their reached semantics
-      before enabling them. Use exclusively created scratch files and retain
-      originals unchanged. *Done when* bounded Mac fixtures check original
-      call bytes, results/registers, state, exact saved bytes and cleanup.
     - **M2.2f4b Native variants.** Implement the measured contracts through the
       current directory/staging backend, including read-only in-memory removal
       and closing after a failed read-only update. *Done when* paired native fixtures,
       source-backed loading, disk error/rollback evidence and all regressions
-      pass; any still-unmeasured variant remains a named stop and queued.
+      pass. Application-file closure and mixed raw/resource updates remain named
+      stops: measure their reached contracts before enabling them. Dirty EmptyHandle
+      returns unusual GetResAttrs upper bits (`$E002`, then `$0600` after reload);
+      trace their origin before choosing the native full-word result. Unmeasured
+      variants remain named stops and queued.
       - **M2.2f4b1 Same-file duplicate model correction.** The Mac accepts
         duplicate type/ID pairs in one map, persists both in insertion order,
         and ID lookup selects the first. ResourceMap/ResourceWriter currently
