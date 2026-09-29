@@ -2796,7 +2796,7 @@ See [palette.md](palette.md) for the original bytes and paired capture procedure
 Six relevant startup observers and paired checks, host tests, fresh/low
 preferences, clean boot/resource reads and exact A5 comparison pass. Original
 preferences are restored and original MDRV remains absent. The next prerequisite
-is TickCount at Dark+$41F4 after ShowHide and game-port binding; intro
+is SizeWindow at Misc1+$0F8C after ShowHide, game-port binding and TickCount; intro
 and rendered acceptance remain pending.
 
 ## Colour-window geometry and background visibility
@@ -2806,4 +2806,20 @@ with their corresponding Mac observers and paired checkers. The contracts and
 local evidence are in [window-geometry.md](window-geometry.md). Host geometry
 checks are part of `make host-tests`. ShowHide's background clear is verified
 against its full complex region and must leave the viewport, palette and frame
-queue unchanged. Current startup observers pin TickCount at Dark+$41F4; a timeout or a different stop is not acceptance.
+queue unchanged. Current startup observers pin SizeWindow at Misc1+$0F8C; a timeout or a different stop is not acceptance.
+
+
+## Startup clock query
+
+TickCount now returns the existing private Macintosh clock with the measured
+stack/register contract. Original bytes, the full-width Mac fixture and native
+clock source pass paired checks; see [amiga-arch.md](amiga-arch.md). The bounded
+window-core run verifies 407 PAL fields / 489 ticks and exact 1 MiB reads across
+OS handbacks. Host tests, existing/fresh startup, AGA publication and resource-read
+regressions pass. All 75,616 A5 bytes match, both link audits pass, and original
+preferences are restored. Existing/fresh startup uses 75/101 OS windows and
+129/137 services; original resource reads total 39 / 177,820 bytes. Original
+MDRV remains absent. Evidence is in local `tmp/m2-tickcount-*` logs.
+
+The next named stop is SizeWindow at Misc1+$0F8C. Logo/intro and rendered-window
+acceptance remain pending; no owner decision changed.

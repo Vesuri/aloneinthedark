@@ -54,6 +54,19 @@ polls GetKeys/KeyMap. Original VBL tasks run at safe user-mode trap-return
 boundaries, never from the ISR. `FramePacer` remains available for
 maximum-rate pacing of identified animation loops.
 
+`TickCount` reads the same private, unsigned 32-bit Ticks shadow as the original
+redirected low-memory accesses. It preserves the existing counter and its wrap
+behavior. The measured Dark+$41F4 call writes its stack result without popping
+bytes, clears D1, returns the result-slot address in A1, and preserves the other
+registers. A Mac scratch fixture confirms a full `$FEDCBA98` result and clears
+all of a `$DEADBEEF` D1 input. No floating-point arithmetic is involved.
+`mac_tickcount.lua`, `tickcount.gdb` and `check_tickcount.py` check the original
+bytes, ABI, clock source and native field accounting. Original Dark+$41EC–$41F7
+has SHA-256 `5e243de4915947497349652df6eab9bad8c9017ada06ca40f852a143ac6e82d1`.
+The existing `window-core` regression also verifies clock continuity across
+OS handbacks: the current run measured 407 PAL fields and 489 Mac ticks while
+reading the exact 1 MiB fixture. This does not claim rendered-window acceptance.
+
 ## Audio
 
 The Paula restart/quiesce primitives and `PaulaSample` (sampled-sound layout

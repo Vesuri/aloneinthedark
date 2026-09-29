@@ -753,7 +753,7 @@ static const TrapName s_trapNames[] = {
     {0xaa18,"COLOR QUICKDRAW","GETCTABLE"},
     {0xaa46,"WINDOW MANAGER","GETNEWCWINDOW"}, {0xa91b,"WINDOW MANAGER","MOVEWINDOW"},
     {0xa915,"WINDOW MANAGER","SHOWWINDOW"}, {0xa916,"WINDOW MANAGER","HIDEWINDOW"}, {0xa908,"WINDOW MANAGER","SHOWHIDE"},
-    {0xa924,"WINDOW MANAGER","FRONTWINDOW"}, {0xa925,"WINDOW MANAGER","DRAGWINDOW"},
+    {0xa91d,"WINDOW MANAGER","SIZEWINDOW"}, {0xa924,"WINDOW MANAGER","FRONTWINDOW"}, {0xa925,"WINDOW MANAGER","DRAGWINDOW"},
     {0xa92c,"WINDOW MANAGER","FINDWINDOW"},
     {0xaa91,"PALETTE MANAGER","NEWPALETTE"},
     {0xaa92,"PALETTE MANAGER","GETNEWPALETTE"}, {0xaa93,"PALETTE MANAGER","DISPOSEPALETTE"},
@@ -6472,6 +6472,12 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         return 3;
     }
 
+    if(trap==0xa975) {                       // TickCount() -> unsigned long stack result
+        if(!g_macTicksAddress)goto unsupportedTrap;
+        write32(userStack,*g_macTicksAddress);
+        regs[1]=0;regs[9]=(uint32_t)userStack;
+        return 1;
+    }
     if (trap == 0xa03b) {                    // Delay(ticks in A0) -> final ticks in D0
 #ifdef AITD_PROBE
         ++g_probeDelayCalls;
