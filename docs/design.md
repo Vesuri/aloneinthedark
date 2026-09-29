@@ -358,7 +358,10 @@ Native trap probes, host fragmentation tests and paired heap captures verify it:
   `UseResFile`, `CloseResFile`, `AddResource`, `RmveResource`, `WriteResource`
   and `ChangedResource` work on the prefs and save-game resource forks.
   - This extends `ResourceForks.cpp` from a read-only parser to a writable fork
-    model, rewritten at `UpdateResFile`/close.
+    model, rewritten at `UpdateResFile`/close. `ResourceWriter` now serializes
+    immutable entry recipes using bounded source reads and an isolated staging
+    sink (M2.2f2a). The mutable directory and native stream binding remain f2b/f3;
+    no resource-file write trap is implemented merely by having this helper.
 
 ### 4.6 Resource Manager
 

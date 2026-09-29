@@ -35,7 +35,7 @@ def parse_resource_fork(raw: bytes, label: str = "resource fork") -> list[Resour
     type_offset, name_offset = struct.unpack_from(">HH", resource_map, 24)
     if type_offset + 2 > map_length or name_offset > map_length:
         raise ValueError(f"{label}: invalid type/name list offset")
-    type_count = struct.unpack_from(">H", resource_map, type_offset)[0] + 1
+    type_count = (struct.unpack_from(">H", resource_map, type_offset)[0] + 1) & 0xFFFF
     if type_count > 4096 or type_offset + 2 + type_count * 8 > map_length:
         raise ValueError(f"{label}: invalid resource type count")
 

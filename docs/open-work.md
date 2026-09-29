@@ -59,12 +59,15 @@ required.
     handles, with all existing regressions passing.
     - M2.2f1 reference is measured: `mac_resource_files.lua` / its checker cover
       63 calls and delete both exclusively created scratch files on success.
-    - **M2.2f2 Mutable fork directory and serialization next.** Add independent
+    - M2.2f2a's bounded transactional serializer is complete; it round-trips all
+      212 original resources without preloading payloads and preserves the old
+      target on injected failures. Native write integration remains f3.
+    - **M2.2f2b Mutable fork directory next.** Add independent
       open-fork metadata, stable resource identity, original-order entries and
       validated serialization for added/changed/removed resources, without
       preloading original payloads. *Done when* host round trips match an
       independent fork reader, duplicate IDs across forks remain distinct,
-      malformed/overflow/write errors preserve existing data, and source tests
+      mutation/overflow errors preserve existing data, and source tests
       still prove on-demand reads.
     - **M2.2f3 Native resource-file integration.** Bind the directory to the
       existing File Manager streams and match f1's current/search/count/close

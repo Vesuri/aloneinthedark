@@ -1303,3 +1303,40 @@ The checker validates original Core instruction pairs at +$46F2 (`A81A 3D5F`),
 uses read/write permission 3; it does not establish all permission/error/write
 variants. F2 first provides the mutable on-demand fork model and serialization;
 f3 connects it to the existing streams and reproduces these native calls.
+
+
+### Streaming resource-fork serialization (M2.2f2a)
+
+`ResourceWriter` accepts immutable entries containing type/ID/attributes, borrowed
+names and a source/offset/length for each payload. Added or changed resources can
+supply their own source; unchanged originals remain disk-backed. It emits a
+canonical header, length-prefixed data and resource map. Type order follows first
+appearance; each type's reference order follows the recipe. Named-empty and
+unnamed entries stay distinct. No resource payload is retained by the writer.
+
+Preflight rejects duplicate type/ID pairs, invalid source ranges, missing source
+callbacks, impossible names, resource count overflow, 24-bit data offsets and
+16-bit map/name offsets before opening the sink. Memory consists of bounded
+position/type tables, a map (capped at 256 KiB) and one 64 KiB transfer buffer.
+Each source read and sink write is at most 64 KiB; short I/O is an error.
+The sink must stage into storage separate from the original and publish only on
+successful completion. Read/write/begin/commit failures trigger abort; the sink
+contract requires failed publication to preserve the old target. This is a
+portable transaction contract, not yet a claim about native durable writes.
+
+`check_resource_writer.py` compiles the fixture with ASan/UBSan and compares its
+output with the independent Python fork reader. Tests cover a 100,003-byte body,
+non-ASCII/embedded-NUL and empty/absent names, interleaved input types, an empty
+fork, duplicate keys, source/count/offset/name overflows, short reads/writes and
+injected failure at every write boundary, source read, begin and commit. The
+original target remains exact in every failure case. The Python reader now
+recognizes the canonical `$FFFF` zero-type count for empty forks.
+
+The original-file round trip passed all 212 entries, every name/attribute and
+all 1,418,832 payload bytes (212 bounded source reads). The full host suite and a
+clean 68020 build passed, including no-float/probe link audits. Explicit volatile
+byte-copy destinations avoid the known GCC copy defect; the target object audit
+found no shared-base postincrement byte-copy instruction. No native runtime
+behavior changed; the helper is not connected to resource-file traps yet.
+F2b must supply mutable independent maps and stable identity before f3 binds
+this writer to staging streams and verifies the Mac/native resource-file calls.
