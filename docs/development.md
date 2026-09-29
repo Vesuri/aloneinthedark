@@ -1438,3 +1438,27 @@ startup, identity and low-memory observers pass with normal exits. The target
 copy audit is clean. A5 globals have zero mismatches across 75,616 bytes.
 Production startup remains at GetFNum Dan1+$0012 with unchanged resource I/O.
 No owner decision is needed; rendered-picture acceptance remains deferred.
+
+
+### Dynamic resource index remapping (M2.2f3c1)
+
+The ResourceForks view now supports the directory's 16 fork keys. Its mutation
+interface exposes the owned directory and an explicit refresh step. Refresh
+rebuilds the dense resource index in map-open order and per-map reference order;
+search still belongs to the measured current-to-older traversal. It returns an
+old-index-to-new-index mapping based only on stable resource identity. Removed
+identities map to -1. New/reopened resources cannot inherit a prior association,
+even when directory slots or type/ID pairs are reused. Refreshed bodies remain
+source-backed, with null resident compatibility pointers.
+
+The caller must refresh after a directory mutation and apply the mapping to
+cached handles before indexed access. Native trap integration and disposal of
+removed handles remain M2.2f3c2; existing runtime calls have not been enabled or
+made to claim success. The sanitizer source fixture covers add, replace, remove,
+close, reopen, duplicate keys across files, nonnumeric open order, all 16 maps,
+clear/reopen, identity invalidation and exact changed payload reads.
+
+Acceptance: full host suite and the expanded ASan/UBSan source fixture pass.
+All five native 68020 regressions and four startup observers exit normally with
+unchanged counts and GetFNum boundary. The generated resource-view copy audit
+is clean; all 75,616 captured A5 bytes match. No owner decision changed.

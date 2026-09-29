@@ -9,7 +9,7 @@ public:
     ~ResourceForks() { close(); }
     ResourceForks(const ResourceForks&)=delete;
     ResourceForks& operator=(const ResourceForks&)=delete;
-    static const uint16_t kForkCount=2,kMaximumResources=768;
+    static const uint16_t kForkCount=16,kMaximumResources=768;
     static const uint32_t chunkBytes=65536,maximumMapBytes=262144;
     struct Source {
         void* context;
@@ -26,6 +26,15 @@ public:
     bool open(const uint8_t* application,uint32_t applicationSize,const uint8_t* data,uint32_t dataSize);
     bool open(const Source& application,const Source* data=0);
     void close();
+    // Native mutation uses the directory, then refreshes this dense view before
+    // any indexed access. Internal fork keys must remain in [0,kForkCount).
+    ResourceDirectory* directory() { return m_directory; }
+    uint32_t identity(uint32_t index) const;
+    // oldToNew has kMaximumResources entries. Removed identities map to -1;
+    // surviving identities let callers move their handle associations safely.
+    // A refreshed view is source-backed (resident compatibility pointers clear).
+    bool refresh(int16_t* oldToNew);
+
     uint16_t forkCount() const { return m_open ? m_forks : 0; }
     uint32_t resourceCount() const { return m_count; }
     // Items retain each fork's original map reference-list order.

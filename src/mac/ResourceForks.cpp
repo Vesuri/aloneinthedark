@@ -51,3 +51,30 @@ int32_t ResourceForks::read(uint32_t index,uint8_t* out,uint32_t capacity) const
     if(!m_open || index>=m_count || capacity<m_items[index].item.size)return -50;
     const Record& r=m_items[index];return m_directory->read(r.identity,0,out,r.item.size);
 }
+
+uint32_t ResourceForks::identity(uint32_t index) const {
+    return m_open && index<m_count ? m_items[index].identity : 0;
+}
+bool ResourceForks::refresh(int16_t* oldToNew) {
+    if(!m_directory || !oldToNew)return false;
+    int16_t keys[kForkCount],key;uint16_t forks=0,total=0;
+    if(m_directory->newest(key))do {
+        if(key<0 || key>=kForkCount || forks==kForkCount)return false;
+        keys[forks++]=key;total+=m_directory->count(key);
+    } while(m_directory->older(key,key));
+    if(total>kMaximumResources)return false;
+    uint32_t previous[kMaximumResources];uint16_t oldCount=m_count;
+    for(uint16_t i=0;i<oldCount;++i)previous[i]=m_items[i].identity;
+    for(uint16_t i=0;i<kMaximumResources;++i)oldToNew[i]=-1;
+    uint16_t count=0;
+    // Oldest map first keeps the application view unchanged; each map retains
+    // insertion/reference order. Search order is provided by the directory.
+    for(uint16_t f=forks;f;--f)for(uint16_t n=0;n<m_directory->count(keys[f-1]);++n) {
+        ResourceDirectory::View view={};if(!m_directory->at(keys[f-1],n,view))return false;
+        const auto& e=view.entry;
+        m_items[count]={{(uint16_t)view.ref,e.id,e.type,e.attrs,e.name,e.nameLength,0,e.size},view.identity};
+        for(uint16_t i=0;i<oldCount;++i)if(previous[i]==view.identity) { oldToNew[i]=count;break; }
+        ++count;
+    }
+    m_count=count;m_forks=forks;m_open=true;return true;
+}

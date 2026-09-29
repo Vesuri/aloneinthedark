@@ -3,6 +3,7 @@
 #include <vector>
 #include <algorithm>
 #include "../src/mac/ResourceForks.h"
+#include "../src/mac/ResourceDirectory.h"
 static void w(std::vector<uint8_t>& b,uint32_t o,uint32_t v) { b[o]=v>>8;b[o+1]=v; }
 static void l(std::vector<uint8_t>& b,uint32_t o,uint32_t v) { w(b,o,v>>16);w(b,o+2,v); }
 struct Disk {
@@ -57,6 +58,39 @@ int main() {
     assert(forks.open(disk.bytes.data(),disk.bytes.size(),nullptr,0));
     assert(forks.find(0,0x54455354,128,item,&index) && item.data==disk.bytes.data()+260);
     assert(!forks.read(index,out.data(),out.size()));
+    // Dynamic maps may reuse directory slots; cached handles follow identity,
+    // never a reused slot or a duplicate type/ID in a different fork.
+    assert(forks.open(source));
+    const uint32_t appIdentity=forks.identity(0);int16_t remap[ResourceForks::kMaximumResources];
+    auto* directory=forks.directory();
+    assert(!directory->open(7,source,true) && forks.refresh(remap));
+    assert(forks.resourceCount()==4 && forks.forkCount()==2 && remap[0]==0 && remap[1]==1);
+    assert(forks.find(7,0x54455354,128,item,&index) && index==2);
+    const uint32_t otherIdentity=forks.identity(index);assert(otherIdentity!=appIdentity);
+    auto body=ResourceWriter::Entry{0x54455354,9,0,0,0,source,260,3};uint32_t added;
+    assert(!directory->add(7,body,added) && forks.refresh(remap));
+    assert(forks.find(7,body.type,9,item,&index) && index==4 && forks.identity(index)==added);
+    body.size=2;body.id=10;
+    assert(!directory->replace(added,body) && forks.refresh(remap));
+    assert(remap[4]==4 && forks.identity(4)==added);
+    assert(forks.find(7,body.type,10,item,&index) && item.size==2 && !forks.find(7,body.type,9,item));
+    assert(!forks.read(4,out.data(),out.size()) && out[0]==disk.bytes[260] && out[1]==disk.bytes[261]);
+    assert(!directory->remove(otherIdentity) && forks.refresh(remap));
+    assert(remap[0]==0 && remap[1]==1 && remap[2]==-1 && remap[3]==2 && remap[4]==3);
+    assert(forks.identity(0)==appIdentity && !forks.find(7,body.type,128,item));
+    assert(!directory->close(7) && forks.refresh(remap) && forks.resourceCount()==2 && remap[2]==-1 && remap[3]==-1);
+    assert(!directory->open(7,source,true) && forks.refresh(remap));
+    assert(forks.find(7,body.type,128,item,&index) && forks.identity(index)!=otherIdentity);
+    // Opening older numeric keys must still enumerate in actual open order.
+    assert(!directory->open(3,source,false) && forks.refresh(remap));
+    assert(forks.item(4,item) && item.fork==3 && remap[2]==2);
+    for(uint16_t f=0;f<ResourceForks::kForkCount;++f)if(!directory->active(f))assert(!directory->create(f));
+    assert(forks.refresh(remap) && forks.forkCount()==16);
+    assert(directory->create(16)==-108);
+    directory->clear();assert(forks.refresh(remap) && !forks.resourceCount() && !forks.forkCount());
+    for(auto slot:remap)assert(slot==-1);
+    assert(!directory->open(0,source,false) && forks.refresh(remap));
+    assert(forks.identity(0)!=appIdentity && !forks.item(2,item) && !forks.identity(2));
     forks.close();assert(!forks.item(0,item));
-    puts("PASS resource-source: metadata-only open, 64KiB reads, exact bytes, errors/short reads, two forks, zero resource, cleanup");
+    puts("PASS resource-source: metadata-only open, 64KiB reads, exact bytes, errors/short reads, dynamic 16-fork identity/remap, zero resource, cleanup");
 }

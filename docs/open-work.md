@@ -72,6 +72,10 @@ required.
       and reopen contract. *Done when* the paired 63-call native fixture and
       all existing regressions pass; add measured coverage for additional
       write/permission/error cases before claiming those variants complete.
+      - **M2.2f3c2 Trap/backend integration.** Apply that remapping to native
+        handles and bind file open/create/update/close plus multi-fork search.
+        *Done when* f3c's paired 63-call fixture and full regressions pass.
+
   - Implement writable prefs/save resource forks and the port overlay fork
     (empty at first), preserving design §4.6 search order and dialog overrides.
 
