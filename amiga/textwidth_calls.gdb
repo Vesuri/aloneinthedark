@@ -138,6 +138,9 @@ while $tw_finished==0
     tbreak *(g_code3Base+0xfc8)
     continue
     source driver15_call.gdb
+    tbreak *(g_code3Base+0x1fc8)
+    continue
+    source driver4_call.gdb
     continue
     loop_break
    end

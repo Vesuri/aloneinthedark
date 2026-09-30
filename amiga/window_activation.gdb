@@ -53,7 +53,7 @@ dump binary memory ../tmp/activation-native-activate-after-pending.bin (char*)s_
 echo PASS native window activation capture\n
 continue
 printf "ACT_NEXT state=%u trap=%X segment=%u offset=%X manager=%s routine=%s windows=%u services=%u/%u\n",g_stageBState,g_trapWord,g_trapSegment,g_trapOffset,g_trapManager,g_trapRoutine,g_systemWindows,g_macServiceEntered,g_macServiceCompleted
-if g_stageBState!=3 || g_trapWord!=0xa0f8 || g_trapSegment!=3 || g_trapOffset!=0x1fc8 || g_trapSelector!=4 || g_macServiceActive!=1 || g_macServiceActive!=1
+if g_stageBState!=3 || g_trapWord!=0xa8df || g_trapSegment!=4 || g_trapOffset!=0x3d46 || g_trapSelector!=0xffffffff || g_macServiceActive!=0 || g_macServiceActive!=0
  echo FAIL next window activation boundary\n
  detach
  quit 1

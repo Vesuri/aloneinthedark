@@ -3999,3 +3999,33 @@ Live music adds timing-dependent safe-point services. The observed baseline is
 and the single-pending-service invariant remain required. Fresh-start, rendered
 and full-intro frame acceptance remain open. The full host suite and final
 production/fixture no-float and 83/87-probe audits pass.
+
+
+## Song status query
+
+M2.3g40 is complete. Selector 4 reproduces the original enabled/control/track
+scan and D0/D1/CCR result. The original call and seven isolated cases pass in
+`tmp/m2-driver4-reference.log`; the native original call passes in
+`tmp/m2-driver4-native-full.log` (both exit zero). All 36 prior integrated
+comparisons pass in `tmp/m2-driver4-regressions.log`, with song resource
+ownership and the clock query separately paired from that same capture.
+The first interrupted native run is not accepted evidence.
+
+The intro returns D0=0 at 5,554 frames / 47,452 ticks; final publication is
+5,557/5,557. The next stop is RectRgn at Dark+$3D46, outside a deferred service:
+3,825 entered/completed, zero pending, 249 windows. There are 1,365 completed
+effect queries and 1,408 driver calls; all 16 effects are stopped without
+remaining DMA allocation. Song playback is at 820 events / pulse 1963,
+410 starts, 154 steals and zero drops. The 41 song resources remain owned,
+with application reads 109/826,832 bytes, overlay 31/82,238, preparation
+64/82,810, 244 resource records, 58 low-memory sites and CODE mask $3FFB.
+Original MDRV remains absent.
+
+The observed service baseline is 2,460/2,460 after effect queries. Endpoint
+checks require equal service totals and preserve exact resource/window counts;
+timing-dependent music work is not forced to an exact service total. Existing
+minimum 1,390/1,390 and fresh derived 1,398/1,398 remain lower bounds.
+The production build passes no-float and 83-probe link audits. The host suite
+passes in `tmp/m2-driver4-final-host-tests.log`. Standalone endpoint guards
+are advanced to the observed stop; their individual emulator replays are not
+claimed. Stale standalone AGA publication assumptions remain M2.10a.

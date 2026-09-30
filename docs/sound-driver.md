@@ -578,3 +578,48 @@ Active music can defer additional ordinary traps to safe user mode, so service
 counts after song start are no longer a fixed baseline plus effect queries.
 The endpoint retains exact resource/window checks, a service-count minimum and
 one explicitly pending service. Each capture reports its actual totals.
+
+
+## Song status query (M2.3g40)
+
+Core+$1FC8 calls selector 4 with only the selector pushed. Original
++$1FC0–$1FCB bytes are `48780004206df9544e90588f`; the caller removes four
+bytes. The driver still reads the following stack longword into D1 internally,
+but this is not a declared argument. Dispatch +$0044 (`6000030e`) reaches
++$0354 (`70ff610012e6394000086000fd4a`) and the status scan at +$163E.
+
+The status scan first tests state+$36 (sequencing enabled). If zero it returns
+zero and preserves the following stack longword in D1. If enabled and the
+control word at +$38 is nonzero, it returns $FFFF with that same D1. Otherwise
+it scans the first byte of each of 24 four-byte track records at +$1A28.
+The first nonzero byte returns $FFFF and D1=23−slot; no active track returns
+zero and D1=$0000FFFF. The entry zero-extends D0.W. X/V/C are clear, N is set
+for $FFFF, and Z is set for zero. D2–D7/A0–A6 and the pre-JSR stack are preserved.
+Only the dispatch selector/following-word/error fields change in driver state.
+
+`tmp/m2-driver4-reference.log` exits zero. The real call returns D0=$0000FFFF,
+D1=$17 and CCR=$08. Seven isolated original-CPU cases cover disabled sequencing,
+nonzero control, first/last/middle active tracks, no active tracks and a nonzero
+low byte with a zero high byte. Full 12,360-byte before/after snapshots match
+these exact transitions. Five negative checks reject timeout, missing completion,
+wrong flags/registers and observer error.
+
+The native model scans a bounded 24-bit active-track mask. The supported
+format-0 MIDI supplies bit 0 from the sequencer's active flag. It does not use
+remaining Paula voices as a proxy for track status: sample release tails can
+outlive the final MIDI event. The real-trap bridge reproduces the measured
+16-bit status flags and clears X explicitly. Other selectors remain named stops.
+`tmp/m2-driver4-native-full.log` exits zero: the original call returns
+D0=$0000FFFF, D1=$17 and CCR=$08, preserving stack, registers and driver
+configuration. All 36 prior integrated comparisons pass in
+`tmp/m2-driver4-regressions.log`; the song ownership and driver-clock checks
+also pass on this capture. The full playback fixture remains valid because
+this change only queries sequencer status and does not alter playback.
+The next explicit stop is RectRgn at Dark+$3D46, outside a deferred service.
+The first native run was interrupted before completion and is retained as
+`tmp/m2-driver4-native-interrupted-full.log`; it is not accepted evidence.
+
+```sh
+python3 tools/check_driver4.py tmp/m2-driver4-reference.log --status 0 \
+  --native tmp/m2-driver4-native-full.log --native-status 0
+```

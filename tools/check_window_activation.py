@@ -55,7 +55,7 @@ def check(reference, native, reference_status, native_status, folder, resource):
     require(r[:12]+r[16:] == n[:12]+n[16:],'paired palette excluding private pointer')
     require(captures['reference','clut'][4:] == captures['native','clut'][4:],'paired device CLUT excluding allocated seed')
     require(native.count('PASS native window activation next-stop original-MDRV=absent') == 1,'next-stop/MDRV guard')
-    one(native, r'ACT_NEXT state=3 trap=A0F8 segment=3 offset=1FC8 manager=SOUND DRIVER routine=SELECTOR windows=(?:249|275) services=\d+/\d+')
+    one(native, r'ACT_NEXT state=3 trap=A8DF segment=4 offset=3D46 manager=UNKNOWN MANAGER routine=UNKNOWN TRAP windows=(?:249|275) services=\d+/\d+')
     print('PASS paired ActivatePalette: original bytes, stack/registers, realized binding, unchanged full palette/device/pixels/copper')
 
 

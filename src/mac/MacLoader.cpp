@@ -6535,6 +6535,12 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
             }
             else if(selector==13)driverStop=g_soundDriver.setSongControl(argument);
             else if(selector==15)driverStop=g_soundDriver.clock(g_macTicks,clockResult);
+            else if(selector==4) {
+                // The supported format-0 MIDI has one track in original slot 0.
+                // Status follows that track, not any remaining Paula release tail.
+                driverStop=g_soundDriver.songStatus(g_song.description.data!=0,
+                    g_song.timeline.active ? 1 : 0,driverResult,scratch);
+            }
             else if(selector==24) {
                 driverStop=g_soundDriver.quality(argument);
 #ifdef AITD_SONG_PROBE
@@ -6543,7 +6549,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
             }
             else driverStop="SELECTOR";
             if(!driverStop) {
-                ++g_soundDriverCalls;regs[0]=selector==15 ? clockResult : driverResult;regs[1]=selector==0 ? 12 : selector==24 ? 1 : (selector==22 || selector==17 || selector==20 || selector==13 || selector==15) ? scratch : 0;
+                ++g_soundDriverCalls;regs[0]=selector==15 ? clockResult : driverResult;regs[1]=selector==0 ? 12 : selector==24 ? 1 : (selector==22 || selector==17 || selector==20 || selector==13 || selector==15 || selector==4) ? scratch : 0;
                 return 1; // C caller owns arguments; stub executes RTS.
             }
         }
@@ -8156,7 +8162,7 @@ extern "C" uint8_t* aitdUserServiceDispatch(uint8_t* parked)
 {
     ++g_macServiceEntered;
     const uint16_t trap=s_userService.trap,selector=(uint16_t)read32(parked);
-    const bool driverClock=trap==0xa0f8 && read32(s_userService.arguments+4)==15;
+    const uint32_t driverSelector=trap==0xa0f8 ? read32(s_userService.arguments+4) : 0xffffffffUL;
     const uint16_t fileTrap=synchronousFileTrap(trap,selector);
     uint8_t* pb=(uint8_t*)read32(parked+32);
     const bool async=fileTrap!=trap;
@@ -8194,8 +8200,10 @@ extern "C" uint8_t* aitdUserServiceDispatch(uint8_t* parked)
         --g_macFileCompletionDepth;
         write32(parked,value);
     }
-    if(driverClock) {
+    if(driverSelector==15) {
         ccr=(ccr&0xffe0)|SoundDriver::clockCCR(read32(parked));
+    } else if(driverSelector==4) {
+        ccr=(ccr&0xffe0)|SoundDriver::songStatusCCR(read16(parked+2));
     } else if(!(trap&0x0800)) {
         ccr&=0xfff0;
         int16_t d0=(int16_t)read16(parked+2);

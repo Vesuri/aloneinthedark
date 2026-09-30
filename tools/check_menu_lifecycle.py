@@ -49,5 +49,5 @@ for i in range(1,5):
  assert ri==ni,(i,'original application items')
 print('PASS paired menu lifecycle: clear, four ordered owned menus, draw suppression, exact application records, preserved registers/stack, unchanged game client; reference nonempty clear preserves menu records')
 
-endpoint=re.search(r'MLIST_NEXT state=3 trap=A0F8 selector=4 segment=3 offset=1FC8 manager=SOUND DRIVER routine=SELECTOR windows=249 services=(\d+)/(\d+) reads=109 bytes=826832', a.native.read_text())
+endpoint=re.search(r'MLIST_NEXT state=3 trap=A8DF selector=FFFFFFFF segment=4 offset=3D46 manager=UNKNOWN MANAGER routine=UNKNOWN TRAP windows=249 services=(\d+)/(\d+) reads=109 bytes=826832', a.native.read_text())
 assert endpoint and int(endpoint[1])==int(endpoint[2])

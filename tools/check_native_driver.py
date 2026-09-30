@@ -8,10 +8,10 @@ import unittest
 CALLS=['PASS native driver call: selector=21 D0=0 D1=0 preserved=13 stack=unchanged rate=22 voices=6/2/2',
        'PASS native driver call: selector=24 D0=0 D1=1 preserved=13 stack=unchanged rate=11 voices=6/2/2']
 SECOND = r'PASS font second: Dan1\+003A result=20 stack=\$[0-9a-fA-F]{8} native-driver-calls=2'
-ENDPOINT = 'MLIST_NEXT state=3 trap=A0F8 selector=4 segment=3 offset=1FC8 manager=SOUND DRIVER routine=SELECTOR windows=249 services=3822/3821 reads=109 bytes=826832'
+ENDPOINT = 'MLIST_NEXT state=3 trap=A8DF selector=FFFFFFFF segment=4 offset=3D46 manager=UNKNOWN MANAGER routine=UNKNOWN TRAP windows=249 services=3825/3825 reads=109 bytes=826832'
 GUARD = 'PASS menu-list next-stop original-MDRV=absent'
 DETACHED = '[Inferior 1 (Remote target) detached]'
-COMPLETE = 'PASS native driver startup: Jnth=11 calls=2 second-Times=20 next=DRIVER4 original-MDRV=absent'
+COMPLETE = 'PASS native driver startup: Jnth=11 calls=2 second-Times=20 next=RECTRGN original-MDRV=absent'
 
 def check(text, status):
     if status != 0 or any(bad in text for bad in ('FAIL', 'Error in sourced command file', 'Program received signal', 'timeout')):
@@ -19,8 +19,8 @@ def check(text, status):
     second = re.findall(SECOND, text)
     if len(second) != 1:
         raise ValueError('missing/duplicate second Times lookup')
-    endpoints=re.findall(r'^MLIST_NEXT state=3 trap=A0F8 selector=4 segment=3 offset=1FC8 manager=SOUND DRIVER routine=SELECTOR windows=249 services=(\d+)/(\d+) reads=109 bytes=826832$',text,re.M)
-    if len(endpoints)!=1 or int(endpoints[0][0])!=int(endpoints[0][1])+1 or int(endpoints[0][1])<1389:
+    endpoints=re.findall(r'^MLIST_NEXT state=3 trap=A8DF selector=FFFFFFFF segment=4 offset=3D46 manager=UNKNOWN MANAGER routine=UNKNOWN TRAP windows=249 services=(\d+)/(\d+) reads=109 bytes=826832$',text,re.M)
+    if len(endpoints)!=1 or int(endpoints[0][0])!=int(endpoints[0][1]) or int(endpoints[0][1])<1390:
         raise ValueError('next stop / completed service ledger')
     endpoint=re.sub(r'services=\d+/\d+', 'services='+'/'.join(endpoints[0]), ENDPOINT)
     markers = CALLS + second + [endpoint, GUARD, DETACHED]
@@ -37,12 +37,12 @@ class Checks(unittest.TestCase):
         markers = CALLS + [second, ENDPOINT, GUARD, DETACHED]
         good = '\n'.join(markers)
         check(good, 0)
-        check(good.replace("services=3822/3821", "services=3001/3000"), 0)
+        check(good.replace("services=3825/3825", "services=3000/3000"), 0)
         rejected = [(good, 124), (good, None), (good + '\nFAIL', 0),
                     (good.replace('D1=1', 'D1=0'), 0),
                     (good.replace('result=20', 'result=0'), 0),
                     (good.replace('native-driver-calls=2', 'native-driver-calls=1'), 0),
-                    (good.replace('services=3822/3821', 'services=433/432'), 0),
+                    (good.replace('services=3825/3825', 'services=433/432'), 0),
                     ('\n'.join(CALLS[::-1] + markers[2:]), 0),
                     ('\n'.join([second] + CALLS + markers[3:]), 0)]
         for marker in markers:

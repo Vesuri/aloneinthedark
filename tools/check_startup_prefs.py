@@ -21,8 +21,8 @@ def state(folder):
 
 def script(existing):
     # Minimum before effect queries; active music can add safe-point services.
-    # Selector 4 is pending; fresh-window/count minima remain derived.
-    windows,entered,completed=(249,1390,1389) if existing else (275,1398,1397)
+    # RectRgn stops outside a service; fresh-window/count minima remain derived.
+    windows,entered,completed=(249,1390,1390) if existing else (275,1398,1398)
     return (f'set $startup_catalog={42+int(existing)}\nset $startup_windows={windows}\nset $startup_entered={entered}\nset $startup_completed={completed}\n'
             f'printf "STARTUP_PREFS existing={int(existing)} windows={windows} services={entered}/{completed}\\n"\n')
 
@@ -47,8 +47,8 @@ class Checks(unittest.TestCase):
             (folder/'Alone Prefs.rsrc').write_bytes(raw[:-1])
             with self.assertRaises(ValueError):state(folder)
     def test_exact_modes(self):
-        self.assertIn('windows=275 services=1398/1397',script(False))
-        self.assertIn('windows=249 services=1390/1389',script(True))
+        self.assertIn('windows=275 services=1398/1398',script(False))
+        self.assertIn('windows=249 services=1390/1390',script(True))
 
 if __name__=='__main__':
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('--folder',type=Path);p.add_argument('--gdb',type=Path);p.add_argument('--selftest',action='store_true');a=p.parse_args()

@@ -6,6 +6,24 @@
 #include <cstdio>
 #include <initializer_list>
 int main() {
+    SoundDriver statusDriver;uint16_t songResult=0x1234;uint32_t scratch=0x12345678;
+    assert(statusDriver.songStatus(false,0,songResult,scratch));
+    assert(songResult==0x1234 && scratch==0x12345678);
+    assert(!statusDriver.initialize(6,2,2));
+    struct StatusCase {bool enabled;uint16_t control;uint32_t tracks;uint16_t result;uint32_t scratch;};
+    const StatusCase statusCases[]={
+        {false,0x1234,1,0,0x12345678},{true,1,0,0xffff,0x12345678},
+        {true,0,1,0xffff,23},{true,0,1UL<<23,0xffff,0},
+        {true,0,0,0,0xffff},{true,0,1UL<<7,0xffff,16},{true,0,0,0,0xffff}};
+    for(const auto& c:statusCases) {
+        statusDriver.songControl=c.control;SoundDriver before=statusDriver;scratch=0x12345678;
+        assert(!statusDriver.songStatus(c.enabled,c.tracks,songResult,scratch));
+        assert(songResult==c.result && scratch==c.scratch);
+        assert(SoundDriver::songStatusCCR(songResult)==(c.result ? 8 : 4));
+        assert(!std::memcmp(&before,&statusDriver,sizeof(before)));
+    }
+    assert(statusDriver.songStatus(true,0x1000000,songResult,scratch));
+
     const uint32_t flagValues[]={0,1,0x8000,0x10000,0x80000000u,0x89abcdefu,0xffffffffu};
     const uint16_t flagResults[]={4,0,0,0,8,8,8};
     for(unsigned i=0;i<7;++i)assert(SoundDriver::clockCCR(flagValues[i])==flagResults[i]);

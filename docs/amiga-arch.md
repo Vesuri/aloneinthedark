@@ -110,7 +110,7 @@ Its four-byte `$A0F8; RTS` stub enters the user-mode service bridge, with the
 original C argument/return convention. MoveHHi flushes the instruction cache
 before the original caller executes it. The native driver implements measured
 initialization/quality, raw effects and their status/stop, the song control word,
-SONG 135 start/playback and the full-width driver clock query. Other selectors and unmeasured song forms stop.
+SONG 135 start/playback, track status and the full-width driver clock query. Other selectors and unmeasured song forms stop.
 Song resources are detached, locked and retained until release; original MDRV
 and SMOD code never executes. Due music work defers the current trap through
 the existing user-mode bridge before allocating or programming Paula. The VBI

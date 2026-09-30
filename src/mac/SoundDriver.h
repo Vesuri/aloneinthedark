@@ -56,6 +56,18 @@ public:
         }
         return 0;
     }
+    const char* songStatus(bool enabled,uint32_t activeTracks,uint16_t& result,uint32_t& scratch) const {
+        if(!initialized)return "NOT INITIALIZED";
+        if(activeTracks&0xff000000UL)return "SONG STATUS TRACKS";
+        result=0;
+        if(!enabled)return 0;
+        if(songControl) {result=0xffff;return 0;}
+        for(uint16_t i=0;i<24;++i)if(activeTracks&(1UL<<i)) {
+            result=0xffff;scratch=23-i;return 0;
+        }
+        scratch=0xffff;return 0;
+    }
+    static uint16_t songStatusCCR(uint16_t result) {return result ? 8 : 4;}
     static uint16_t clockCCR(uint32_t result) {
         // Original LSL.W of selector 15 clears X; MOVE.L supplies N/Z, clears V/C.
         return !result ? 4 : (result&0x80000000UL) ? 8 : 0;

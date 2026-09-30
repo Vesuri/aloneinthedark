@@ -39,5 +39,5 @@ assert read('reference','copy-source')==read('native','copy-source')
 assert read('native','screen-before')==read('native','screen-after')
 print('PASS paired GetPixBaseAddr: original bytes, locked return ABI, unlocked reference, unchanged query state, original 56-row copy of 28672 bytes with 448 unused/padding bytes preserved; native screen unchanged')
 
-endpoint=re.search(r'PBASE_NEXT state=3 trap=A0F8 selector=4 segment=3 offset=1FC8 manager=SOUND DRIVER routine=SELECTOR windows=249 services=(\d+)/(\d+) reads=109 bytes=826832', a.native.read_text())
+endpoint=re.search(r'PBASE_NEXT state=3 trap=A8DF selector=FFFFFFFF segment=4 offset=3D46 manager=UNKNOWN MANAGER routine=UNKNOWN TRAP windows=249 services=(\d+)/(\d+) reads=109 bytes=826832', a.native.read_text())
 assert endpoint and int(endpoint[1])==int(endpoint[2])

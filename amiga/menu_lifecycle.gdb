@@ -537,7 +537,7 @@ if g_trapWord==0xa885 && g_macServiceActive==1
 end
 printf "NEXT_DRIVER calls=%u statuses=%u starts=%u stops=%u active=%u channel=%d chip=%X allocated=%u\n",g_soundDriverCalls,g_effectStatusCalls,g_effectStarts,g_effectStops,g_soundDriver.effects[0].active,g_soundDriver.effects[0].channel,g_effects[0].chip,g_effects[0].allocated
 printf "MLIST_NEXT state=%u trap=%X selector=%X segment=%u offset=%X manager=%s routine=%s windows=%u services=%u/%u reads=%u bytes=%u\n",g_stageBState,g_trapWord,g_trapSelector,g_trapSegment,g_trapOffset,g_trapManager,g_trapRoutine,g_systemWindows,g_macServiceEntered,g_macServiceCompleted,g_resourceRuntimeReads,g_resourceRuntimeBytes
-if g_stageBState!=3 || g_macServiceActive!=1 || g_macServiceEntered!=g_macServiceCompleted+1
+if g_stageBState!=3 || g_macServiceActive!=0 || g_macServiceEntered!=g_macServiceCompleted
  echo FAIL menu-list progression\n
  detach
  quit 1
@@ -552,12 +552,12 @@ while $i<g_resourceCount
  set $i=$i+1
 end
 echo PASS menu-list next-stop original-MDRV=absent\n
-if g_trapWord!=0xa0f8 || g_trapSegment!=3 || g_trapOffset!=0x1fc8 || g_trapSelector!=4 || g_macServiceActive!=1 || g_systemWindows!=$startup_windows || g_macServiceEntered<$startup_entered+g_effectStatusCalls || g_macServiceCompleted<$startup_completed+g_effectStatusCalls || g_macServiceEntered!=g_macServiceCompleted+1
+if g_trapWord!=0xa8df || g_trapSegment!=4 || g_trapOffset!=0x3d46 || g_trapSelector!=0xffffffff || g_macServiceActive!=0 || g_systemWindows!=$startup_windows || g_macServiceEntered<$startup_entered+g_effectStatusCalls || g_macServiceCompleted<$startup_completed+g_effectStatusCalls || g_macServiceEntered!=g_macServiceCompleted
  echo FAIL menu-list startup endpoint\n
  detach
  quit 1
 end
-echo startup PASS: original main, next stop SOUND DRIVER / SELECTOR 15 CODE 3\n
+echo startup PASS: original main, next stop RectRgn CODE 4\n
 printf "STARTUP_CAPTURE active=%u baseline=%u/%u frames=%u/%u\n",g_macServiceActive,g_macServiceEntered-g_effectStatusCalls,g_macServiceCompleted-g_effectStatusCalls,g_macFramesQueued,g_macFramesPresented
 set $ri=0
 set $font_bodies=0
