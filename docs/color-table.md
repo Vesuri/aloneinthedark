@@ -139,5 +139,5 @@ python3 tools/check_ctable.py tmp/m2-ctable129-original-table-regression.log --s
 `mac_ctable129.lua` captures the original request and ownership fixtures;
 `ctable129_call.gdb` is included in the combined native startup observer.
 `ctable129.gdb` is its standalone diagnostic wrapper. Both tables pass exact
-body checks and ABI/ownership checks. The next stop is NewPalette at Dark2+$201C,
-whose current constructor still rejects the larger source body (M2.3g20).
+body checks and ABI/ownership checks. The following NewPalette at Dark2+$201C also accepts this larger source; see
+[palette.md](palette.md#palette-from-colour-table-129).

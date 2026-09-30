@@ -1,7 +1,7 @@
 # Startup palette construction and binding
 
 The original NewPalette request is measured by `tools/mac_palette.lua` and
-validated by `tools/check_palette.py`. Native construction implements the measured startup form; activation and
+validated by `tools/check_palette.py`. Native construction implements both measured startup source forms; activation and
 device/video colour realization remain M2.7/M2.7a.
 Vette has GetNewPalette resource loading but no NewPalette constructor to reuse.
 
@@ -78,7 +78,8 @@ Raw captures and original data stay local.
 ## Native implementation and verification
 
 NewPalette accepts the measured 256-entry form, usage `$000A`, tolerance zero,
-and an indexed source table with flags zero. It allocates and copies the full
+and an indexed source table with flags zero, stored in either 2,056 or 2,064
+bytes. It allocates and copies the full
 record and its four-byte private block, tracking their ownership separately from
 Resource Manager handles. Unattached DisposePalette releases both allocations
 and preserves the source. Attached/realized disposal, other constructor forms,
@@ -86,7 +87,7 @@ allocation failures and exhaustion of the 32-record ownership table stop loudly.
 The ownership table is cleared when the zones are released.
 
 `amiga/palette.gdb` observes the original request/return, captures all palette and
-source bytes and reaches Misc1+$1296 SETWTITLE, with original MDRV absent.
+source bytes and reaches Dark2+$20CC SETPALETTE, with original MDRV absent.
 `PALETTEPROBE=1` builds the CPU-executed twelve-case fixture; its read-only observer
 is `amiga/palette_fixture.gdb`. Actual shutdown must return zero, close both
 resource streams, remove Line-A and release both zones. No debugger writes or
@@ -334,3 +335,36 @@ also pass. Original preferences are restored. A5 matches 75,616 bytes exactly;
 resource and system-window totals are unchanged. No-float and 78-symbol audits
 pass. The activation-checkpoint production SHA-256 is
 `ef4492241f7f0fa1f8e8c519c9708ac08e5e62c738eabbbdf2584e44a7fff81e`.
+
+
+## Palette from colour-table 129
+
+Dark2+$2010:$201E contains `42a73f3c01002f0c4878000aaa91`. This second constructor
+uses the same 256 entries, usage $000A and tolerance zero as the first, but its
+source allocation is 2,064 bytes. The original has cleared ctFlags and replaced
+all value words with indices before calling. The Mac copies the same 256 RGB
+entries into a 4,112-byte palette, leaves all 2,064 source bytes unchanged, and
+allocates an independent four-byte zero private block. Twelve reference fixtures
+confirm sizes, unlocked/nonpurgeable state, independent mutations and disposal
+while preserving the source. Native original-call captures match the full palette
+and private block, source preservation, allocation ownership and stack/register ABI.
+
+The header value at offset 4 is 3 for this second palette, rather than the first
+palette's 2. Additional Mac allocation/disposal probes produce identifier 4,
+reuse 4 after its disposal, then reuse 3 when the earlier palette is disposed
+while 4 remains alive and unchanged. The port represents this measured reuse
+with its existing first-vacant ownership slot plus 2; the earlier constant 2
+was only valid for the first constructor. No additional allocation is needed.
+
+```sh
+python3 tools/check_palette129.py tmp/m2-palette129-reference.log --status 0 --ids tmp/m2-palette-serial-holes-reference.log --ids-status 0 --native tmp/m2-palette129-native-final.log --native-status 0
+python3 tools/check_palette.py tmp/m2-palette129-first-palette-regression.log --status 0 --native
+```
+
+`mac_palette129.lua` captures the second original call and, with
+`AITD_PALETTE_FIXTURE=1`, its twelve ownership cases. `mac_palette_ids.lua`
+measures identifier reuse. The shared palette checker keeps first-constructor
+validation intact; the new wrapper pins the second caller, source and identifier.
+`palette129_call.gdb` is part of the combined native startup observer, with a
+standalone `palette129.gdb` wrapper. Original MDRV remains absent. The next
+SetPalette at Dark2+$20CC requires the new binding contract (M2.3g21).

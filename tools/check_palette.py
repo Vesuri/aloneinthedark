@@ -23,7 +23,7 @@ def original(path):
     code=next(r.body for r in rows if r.kind==b'CODE' and r.rid==7)[0x114a:0x1170]
     if hashlib.sha256(code).hexdigest()!='9c49481e014b240b50e4f2c2441e3382ae48f8955171df072cd946e7ae3b5d30':raise ValueError('original NewPalette bytes')
     return code,next(r.body for r in rows if r.kind==b'clut' and r.rid==128)
-def check(text,status,folder,code,clut,fixture=False,native=False):
+def check(text,status,folder,code,clut,fixture=False,native=False,prefix="palette",endpoint=True,palette_id=2):
     if status!=0 or any(x in text for x in ('FAIL','Error in','[LUA ERROR]','timeout','unknown command')):raise ValueError('failed observer')
     end='PASS NewPalette ownership fixture calls=C' if fixture else 'PASS original NewPalette capture'
     markers=('ARM palette dispatcher bytes=2f0a2f02246f000a',end,'Exited via the debugger')
@@ -39,19 +39,19 @@ def check(text,status,folder,code,clut,fixture=False,native=False):
     e=fields(one(text,r'PALETTE_ENTER (.*)'));r=fields(one(text,r'PALETTE_RETURN (.*)'));preserved(e,r,10)
     args=bytes.fromhex(one(text,r'PALETTE_ENTER .*args=([0-9A-F/]+) .*').replace('/',''))
     if args!=struct.pack('>HHIHI',0,10,e['source'],256,0):raise ValueError('original arguments')
-    prefix='palette-native-' if native else 'palette-reference-'
+    prefix=prefix+('-native-' if native else '-reference-')
     def load(name):return (folder/(prefix+name+'.bin')).read_bytes()
     source=load('source');palette=load('body')
     expected=bytearray(clut);expected[:4]=source[:4];expected[4:6]=b'\0\0'
     for i in range(256):struct.pack_into('>H',expected,8+8*i,i)
     if source!=expected or load('source-after')!=source:raise ValueError('source changed by construction')
-    if len(palette)!=4112 or palette[:12]!=bytes.fromhex('010000000000000200000000'):raise ValueError('palette extent/header')
+    if len(palette)!=4112 or palette[:12]!=struct.pack('>III',0x01000000,palette_id,0):raise ValueError('palette extent/header')
     private=int.from_bytes(palette[12:16],'big')
     if not all((r['handle'],r['body'],e['source'],e['body'],private)) or len({r['handle'],e['source'],private})!=3 or r['body']==e['body']:raise ValueError('independent handles')
     entries=b''.join(source[10+8*i:16+8*i]+bytes.fromhex('000a0000000000000000') for i in range(256))
     if palette[16:]!=entries:raise ValueError('palette RGB/usage/tolerance/private fields')
-    if native and not fixture:
-        one(text,r'PALETTE_NEXT state=3 trap=AA91 selector=FFFFFFFF segment=5 offset=201C manager=PALETTE MANAGER routine=NEWPALETTE windows=(?:116|142) services=(?:434/434|442/442)')
+    if native and not fixture and endpoint:
+        one(text,r'PALETTE_NEXT state=3 trap=AA95 selector=FFFFFFFF segment=5 offset=20CC manager=PALETTE MANAGER routine=SETPALETTE windows=(?:117|143) services=(?:435/435|443/443)')
     if not fixture:
         if 'PALETTE_FIX_' in text or fields(one(text,r'PALETTE_SIZE (.*)'))!={'size':4112,'mem':0}:raise ValueError('allocated size')
         return
@@ -63,6 +63,7 @@ def check(text,status,folder,code,clut,fixture=False,native=False):
     base=None
     for n,(es,(label,rs),case) in enumerate(zip(enter,returned,CASES),1):
         x,y=fields(es),fields(rs);_,trap,pop,d0,res,mem=case;preserved(x,y,pop)
+        if label in ("source-size","source-survives"):d0=len(clut)
         if base is None:base=x['sp']
         if (x['seq'],y['seq'],x['trap'],x['d0'],y['res'],y['mem'])!=(n,n,trap,0x12345678,res,mem):raise ValueError('fixture input/errors')
         if d0 is not None and y['d0']!=d0:raise ValueError('fixture result')

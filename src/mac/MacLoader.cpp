@@ -6925,7 +6925,8 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         MacHeap::Handle source=(MacHeap::Handle)read32(userStack+4);
         MacHeap* owner=handleZone(source);
         if(read16(userStack)!=0 || read16(userStack+2)!=10 || read16(userStack+8)!=256
-            || !owner || !*source || owner->handleSize(source)!=2056
+            || !owner || !*source
+            || (owner->handleSize(source)!=2056 && owner->handleSize(source)!=2064)
             || read16(*source+4)!=0 || read16(*source+6)!=255)goto unsupportedTrap;
         for(uint16_t i=0;i<256;++i)if(read16(*source+8+i*8)!=i)goto unsupportedTrap;
         uint16_t slot=0;while(slot<32 && s_createdPalettes[slot].handle)++slot;
@@ -6934,7 +6935,8 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         if(!palette)goto unsupportedTrap;
         MacHeap::Handle privateHandle=newHandle(4,true);
         if(!privateHandle) { handleZone(palette)->disposeHandle(palette);goto unsupportedTrap; }
-        write16(*palette,256);write32(*palette+4,2);
+        // The measured palette identifier reuses the first vacant slot.
+        write16(*palette,256);write32(*palette+4,slot+2);
         write32(*palette+12,(uint32_t)privateHandle);
         for(uint16_t i=0;i<256;++i) {
             uint8_t* entry=*palette+16+i*16;

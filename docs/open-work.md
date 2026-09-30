@@ -14,10 +14,10 @@ design.md §5.
   low-resolution selection/cleanup, all 75 font-metrics calls and four Apple Event
   registrations, colour-table loading/mutations, palette construction and default
   binding, hidden window-title state and the verified WIND 128 request. Startup realizes the palette and clears the game client area, then stops at
-  `NEWPALETTE` at Dark2+$201C after palette binding/activation, first-frame AGA
+  `SETPALETTE` at Dark2+$20CC after palette binding/activation, first-frame AGA
   publication, background ShowHide, game-port binding, TickCount, unchanged window geometry, point setup, empty-region allocation and eight-bit offscreen buffer initialization, pixel-address access and the first original image-row copy and hidden menu-list setup, followed by the 20-call image rectangle loop and the measured already-detached
   resource error, device-table world allocation and RGB foreground/background
-  selection, all twenty indexed picture draws and 220 original text measurements, then binds the existing background window and converts its two corner points, then queries the actual device flags and completes both background/game-window intersections and consumes activation, both window updates and an idle event, then obscures the cursor and retrieves both selected-port RGB colours and updates the window foreground/background, then fills the window rectangle and publishes the second frame, then loads and detaches colour-table 129. The original
+  selection, all twenty indexed picture draws and 220 original text measurements, then binds the existing background window and converts its two corner points, then queries the actual device flags and completes both background/game-window intersections and consumes activation, both window updates and an idle event, then obscures the cursor and retrieves both selected-port RGB colours and updates the window foreground/background, then fills the window rectangle and publishes the second frame, then loads and detaches colour-table 129, constructs its palette and loads PICT 1500. The original
   mixer is never loaded.
 - The original runs in MAME on the System 7.5.5 reference volume.
 
@@ -51,16 +51,16 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.3g20 Palette construction from colour-table 129.**
-  - GetCTable(129) now returns the measured 2,064-byte body, flags, fresh seed
-    and detached state. After its original table mutations, Dark2 reaches
-    NewPalette at +$201C ($AA91).
-  - The current constructor accepts only a 2,056-byte source. Check the original
-    caller bytes and measure this call's inputs, complete palette/private block,
-    source preservation, ownership and ABI before extending it.
+- **M2.3g21 Presentation palette binding.**
+  - The second NewPalette call now matches the Mac and the original loads
+    PICT 1500 (MacPlay (small), 16,358 bytes). Dark2 next reaches SetPalette at
+    +$20CC ($AA95) with the new palette.
+  - Check the original caller bytes and capture its target window, update flag,
+    old/new palette association, palette/private records, device colours, pixels
+    and ABI. Extend the existing binding path from those measurements.
 
-  *Done when* the returned palette and unchanged larger source match MAME,
-  startup reaches its next named stop with MDRV absent, and palette/table/drawing
+  *Done when* binding and any immediate palette/device/pixel effects match MAME,
+  startup reaches its next named stop with MDRV absent, and palette/drawing/startup
   regressions pass.
 - **M2.1c Original File Manager read acceptance (after M2.2).**
   - This retains M2.1's original acceptance; diagnostic fixture reads do not count

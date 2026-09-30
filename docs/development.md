@@ -3350,3 +3350,25 @@ The next stop is PALETTE MANAGER / NEWPALETTE, Dark2+$201C. Counts are 116 OS
 windows, 434/434 services, 65 reads / 297,034 bytes, CODE mask $3FBB. The table
 service now completes. Fresh-preference counts remain derived (142 windows,
 442/442 services). Intro frame acceptance remains pending.
+
+
+## Palette from colour-table 129
+
+M2.3g20 is complete. The second constructor accepts the measured larger source
+and uses the existing free ownership slot to assign its reusable identifier.
+`tmp/m2-palette129-reference.log`, `tmp/m2-palette-serial-holes-reference.log`,
+`tmp/m2-palette129-native-final.log` and the independent first-constructor
+regression `tmp/m2-palette129-first-palette-regression.log` all exit 0 and pass.
+Full palette/private/source bytes, ABI, sizes, ownership/disposal and identifier
+reuse are checked. Full host tests, both link audits and the 81-script Lua audit
+pass. The integrated capture also passes both table forms' reached state,
+rectangle fills, AGA publication, colour calls, cursor/events, geometry/device/
+binding, twenty preparation pictures, 220 text widths, fonts, driver/MDRV guard
+and all 75,616 A5 bytes. See [palette.md](palette.md#palette-from-colour-table-129).
+
+Next is PALETTE MANAGER / SETPALETTE, Dark2+$20CC. The original has additionally
+loaded PICT 1500, MacPlay (small). Counts are 117 windows, 435/435 services,
+66 reads / 313,392 bytes and CODE mask $3FBB. Fresh-preference counts remain
+derived (143 windows, 443/443 services). Runtime discovery snapshots now include
+resource counts to avoid inferring them when advancing the regression boundary.
+Intro frame acceptance remains pending.
