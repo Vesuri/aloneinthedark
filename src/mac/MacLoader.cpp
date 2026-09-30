@@ -769,7 +769,7 @@ static const TrapName s_trapNames[] = {
     {0xa889,"QUICKDRAW","TEXTMODE"}, {0xa88a,"QUICKDRAW","TEXTSIZE"},
     {0xa88e,"QUICKDRAW","SPACEEXTRA"}, {0xa893,"QUICKDRAW","MOVETO"},
     {0xa9b9,"QUICKDRAW","GETCURSOR"},
-    {0xaa19,"QUICKDRAW","GETFORECOLOR"}, {0xa856,"QUICKDRAW","OBSCURECURSOR"}, {0xa851,"QUICKDRAW","SETCURSOR"}, {0xa852,"QUICKDRAW","HIDECURSOR"},
+    {0xaa1a,"QUICKDRAW","GETBACKCOLOR"}, {0xaa19,"QUICKDRAW","GETFORECOLOR"}, {0xa856,"QUICKDRAW","OBSCURECURSOR"}, {0xa851,"QUICKDRAW","SETCURSOR"}, {0xa852,"QUICKDRAW","HIDECURSOR"},
     {0xa853,"QUICKDRAW","SHOWCURSOR"},
     {0xa97c,"DIALOG MANAGER","GETNEWDIALOG"}, {0xa981,"DIALOG MANAGER","DRAWDIALOG"},
     {0xa988,"DIALOG MANAGER","CAUTIONALERT"},
@@ -6568,6 +6568,17 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
             // request. This is an OSErr result, not a fabricated mode change.
             write16(userStack+10,0);regs[0]=0;return 11;
         }
+    }
+    if(trap==0xaa19 || trap==0xaa1a) { // GetForeColor / GetBackColor
+        uint8_t* port=s_qdThePort ? (uint8_t*)read32(s_qdThePort) : 0;
+        uint8_t* rgb=(uint8_t*)read32(userStack);
+        if(!rgb || !port || (!windowSlot(port) && !gWorldForPort(port))
+           || (read16(port+6)&0xc000)!=0xc000)goto unsupportedTrap;
+        uint16_t offset=trap==0xaa19 ? 36 : 42;
+        uint16_t red=read16(port+offset),green=read16(port+offset+2),blue=read16(port+offset+4);
+        write16(rgb,red);write16(rgb+2,green);write16(rgb+4,blue);
+        regs[0]=trap==0xaa19 ? 80 : 84;regs[1]=offset;regs[9]=(uint32_t)rgb;
+        return 5;
     }
     if(trap==0xaa14 || trap==0xaa15) { // RGBForeColor / RGBBackColor
         uint8_t* port=s_qdThePort ? (uint8_t*)read32(s_qdThePort) : 0;

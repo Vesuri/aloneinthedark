@@ -24,8 +24,10 @@ def check(text,status,native):
     events=[]
     for i,(a,b) in enumerate(zip(entries,returns),1):
         if int(a['n'])!=i or a['n']!=b['n'] or a['args']!=b['args'] or a['event']!=b['event']:raise ValueError('call identity')
+        # Popped arguments are dead stack storage: an interrupt may reuse them
+        # before the return-PC observer. Only the result word remains live.
         before,after=bytes.fromhex(a['stack']),bytes.fromhex(b['stack'])
-        if before[:8]!=bytes(8) or before[12:14]!=b'\xff\xff' or before[:14]!=after[:14]:raise ValueError('arguments')
+        if before[:8]!=bytes(8) or before[12:14]!=b'\xff\xff':raise ValueError('arguments')
         event=struct.unpack('>HIIhhH',bytes.fromhex(b['record']));what,message,when,v,h,mods=event
         expected=0x100 if what else 0
         if int.from_bytes(after[14:16],'big')!=expected or int(b['D0'],16)!=expected:raise ValueError('Boolean/D0')

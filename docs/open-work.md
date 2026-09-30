@@ -14,10 +14,10 @@ design.md §5.
   low-resolution selection/cleanup, all 75 font-metrics calls and four Apple Event
   registrations, colour-table loading/mutations, palette construction and default
   binding, hidden window-title state and the verified WIND 128 request. Startup realizes the palette and clears the game client area, then stops at
-  `GETFORECOLOR` at Dan1+$623C after palette binding/activation, first-frame AGA
+  `RGBFORECOLOR` at Dan1+$624A after palette binding/activation, first-frame AGA
   publication, background ShowHide, game-port binding, TickCount, unchanged window geometry, point setup, empty-region allocation and eight-bit offscreen buffer initialization, pixel-address access and the first original image-row copy and hidden menu-list setup, followed by the 20-call image rectangle loop and the measured already-detached
   resource error, device-table world allocation and RGB foreground/background
-  selection, all twenty indexed picture draws and 220 original text measurements, then binds the existing background window and converts its two corner points, then queries the actual device flags and completes both background/game-window intersections and consumes activation, both window updates and an idle event, then obscures the cursor. The original
+  selection, all twenty indexed picture draws and 220 original text measurements, then binds the existing background window and converts its two corner points, then queries the actual device flags and completes both background/game-window intersections and consumes activation, both window updates and an idle event, then obscures the cursor and retrieves both selected-port RGB colours. The original
   mixer is never loaded.
 - The original runs in MAME on the System 7.5.5 reference volume.
 
@@ -51,14 +51,15 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.3g16 Foreground-colour retrieval.**
-  - Startup now passes ObscureCursor and two further resource reads. Dan1 next
-    reaches GetForeColor at +$623C ($AA19).
-  - Check original bytes and capture the selected port, RGB result, surrounding
-    bytes and ABI. Reuse the existing real RGB port state.
+- **M2.3g17 Window RGB-colour updates.**
+  - Original GetForeColor and GetBackColor now pass. Dan1 next reaches
+    RGBForeColor at +$624A ($AA14), with the game window selected.
+  - The existing RGB setters accept offscreen worlds only. Measure the window
+    call, actual device colour matching, port/pattern changes and ABI; extend
+    the existing implementation without inventing a palette mapping.
 
-  *Done when* the original foreground-colour query matches MAME, startup reaches
-  its next named stop with MDRV absent, and colour/startup regressions pass.
+  *Done when* reached window RGB setters match MAME, startup reaches its next
+  named stop with MDRV absent, and colour/startup regressions pass.
 - **M2.1c Original File Manager read acceptance (after M2.2).**
   - This retains M2.1's original acceptance; diagnostic fixture reads do not count
     as original-game reads. M2.1b2a measured the intervening Get1NamedResource

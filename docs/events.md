@@ -42,3 +42,10 @@ polls depends on emulated tick progress, so the current checker validates every
 captured call and requires the measured initial activation/update sequence,
 followed only by null events, rather than requiring exactly four native calls.
 The accepted cursor run records nine polls before GetForeColor, Dan1+$623C.
+
+At a return-PC breakpoint, already-popped argument slots are no longer live.
+An interrupt may reuse them before the observer reads memory. M2.3g16 captured
+that case: saved A5/A6 and the return-PC exception frame occupy the old argument
+area. Acceptance checks input arguments at entry, the live Boolean at return,
+stack position, registers and guarded EventRecord; it does not require dead
+argument storage to remain unchanged.

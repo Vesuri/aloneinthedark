@@ -3264,3 +3264,26 @@ additional resource reads: 115 windows, 433/433 services and 64 reads / 294,970
 bytes. CODE mask is $3FBB; overlay counts remain 31/80,650 and preparation
 64/81,222, with 244 resources and 58 low-memory patches. Fresh-preference counts
 141/441 remain derived. No rendered cursor or intro acceptance is claimed.
+
+
+## Selected-port colour getters
+
+M2.3g16 is complete. The adjacent original GetForeColor/GetBackColor calls now
+copy the selected owned colour port's six RGB bytes with the measured ABI.
+Both native original calls preserve the full port and output guards. Four Mac
+fixtures verify nontrivial component values. The final reference captures
+InitGraf's actual pointer; the first probe's cached GWorld pointer was rejected.
+
+`tmp/m2-getcolor-reference-final.log` and `tmp/m2-getcolor-native-final.log`
+exit 0 and pass the colour checkers. The same native run passes cursor obscuring,
+events, all repeated rectangle intersections, device flags, background
+coordinates/binding, 220 text widths, twenty pictures, fonts, driver/MDRV
+exclusion, AGA publication and all 75,616 A5 bytes. Full host tests, the
+76-script Lua audit and both link audits pass. An interrupt reused one event
+call's popped argument area; the corrected checker validates live return state,
+not dead stack storage. See [gworld.md](gworld.md#selected-port-rgb-retrieval).
+
+Next is COLOR QUICKDRAW / RGBFORECOLOR at Dan1+$624A: the existing setter supports
+GWorlds, while this original call selects the game window. Counts remain 115
+windows, 433/433 services and 64 resource reads / 294,970 bytes; CODE mask $3FBB.
+Fresh-preference counts remain derived. No intro frame acceptance is claimed.

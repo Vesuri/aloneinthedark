@@ -3,11 +3,16 @@ set $tw_n=0
 set $binding_captured=0
 set $sr_n=0
 set $ev_n=0
+set $gc_n=0
 while $tw_finished==0
- tbreak dispatchMacTrap if trap==0xa856 || trap==0xa860 || trap==0xa886 || (trap==0xab1d && *(unsigned long*)(frame+2)==(unsigned long)s_segments[9].begin+0xe0a)
+ tbreak dispatchMacTrap if trap==0xaa19 || trap==0xaa1a || trap==0xa856 || trap==0xa860 || trap==0xa886 || (trap==0xab1d && *(unsigned long*)(frame+2)==(unsigned long)s_segments[9].begin+0xe0a)
  continue
  if g_stageBState==3
   loop_break
+ end
+ if trap==0xaa19 || trap==0xaa1a
+  source getcolor_call.gdb
+  loop_continue
  end
  if trap==0xa856
   source obscure_cursor_call.gdb
@@ -145,3 +150,8 @@ if $ev_n<4
  quit 1
 end
 printf "PASS native startup events calls=%u\n",$ev_n
+if $gc_n!=2
+ echo FAIL colour getter call count\n
+ detach
+ quit 1
+end

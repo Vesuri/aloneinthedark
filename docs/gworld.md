@@ -275,3 +275,38 @@ python3 tools/check_device_attribute.py tmp/m2-device-attribute-native-final.log
 
 The checker independently checks original/live bytes, the real flags, Boolean
 and padding, upper/lower register words, preserved state and positive completion.
+
+
+## Selected-port RGB retrieval
+
+M2.3g16 implements the adjacent original GetForeColor/GetBackColor calls at
+Dan1+$623C/+$6242. Their six-byte caller guards are `2f2e0008aa19` and
+`2f2e000caa1a`. No game instructions change. Both read the selected owned colour
+window or GWorld's RGB fields at offsets 36/42 and write exactly six bytes.
+The three components are read before any output write. Null output, unknown
+ports and monochrome ports retain a named stop.
+
+Original startup selects the game window, with both colours black. Four Mac
+fixtures confirm independent component retrieval for `1234/5678/9ABC`,
+`DEF0/1357/2468`, `FFFF/0000/8000` and `0000/FFFF/8001`. The port stays unchanged.
+GetForeColor returns D0=80 and D1=36; GetBackColor returns D0=84 and D1=42.
+A1 is the output pointer, D2–D7/A2–A6 are preserved, and stack cleanup consumes
+four bytes. Mac A0 is scratch state; native code preserves it additionally.
+
+The observer captures InitGraf's actual `&thePort` argument. An initial probe
+used an earlier GWorld pointer cached in the game's A5 globals, which no longer
+represented the selected port; its mismatched fields made it unsuitable for
+acceptance. The final reference explicitly follows InitGraf's pointer.
+
+Use the standard headless MAME command with `tools/mac_get_colors.lua`, then
+native `menu_lifecycle.gdb`. Validate actual terminal exit statuses with:
+
+```sh
+python3 tools/check_get_colors.py tmp/m2-getcolor-reference-final.log --status 0
+python3 tools/check_get_colors.py tmp/m2-getcolor-native-final.log --status 0 --native
+```
+
+The reference covers two original calls and four nontrivial fixtures; native
+acceptance covers both original calls, with exact RGB results, whole-port
+preservation and four guard bytes on either side of each output. The adjacent
+RGB setters use the window next; that extension is M2.3g17.
