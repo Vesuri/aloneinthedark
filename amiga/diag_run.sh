@@ -3,7 +3,7 @@
 # produces diagnostic output; only normal observer completion can return zero.
 set -euo pipefail
 cd "$(dirname "$0")"
-. "${FSUAE_COMMON:-$HOME/.local/share/amiga/fsuae_common.sh}"
+. ./fsuae.sh || exit 1
 . ./stage_original_data.sh
 . ./config.sh || exit 1
 FSUAE="${FSUAE:-fs-uae}"
@@ -40,7 +40,7 @@ esac
 rm -f "$RUN"/state/*.uss
 : > "$RUN/gdb-out.log"
 
-fsuae_claim_port
+fsuae_claim_port || exit 1
 "$FSUAE" \
   $EXTRA_ARGS "${AITD_MACHINE_ARGS[@]}" \
   --logs_dir="$PWD/$RUN/logs" --kickstart_file="$ROM" \
@@ -81,7 +81,7 @@ continue
 EOF
 
 env HOME="$GDBHOME" XDG_CACHE_HOME="$GDBHOME" \
-  "$GDB" -q -l 10 -x "$RUN/connect.gdb" -x "${GDBSCRIPT:-runtime_status.gdb}" out/Alone.elf \
+  "$GDB" --batch -q -l 10 -x "$RUN/connect.gdb" -x "${GDBSCRIPT:-runtime_status.gdb}" out/Alone.elf \
   > "$RUN/gdb-out.log" 2>&1 &
 GDB_PID=$!
 echo "gdb pid=$GDB_PID; running for ${DELAY}s..."

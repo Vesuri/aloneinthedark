@@ -5,7 +5,7 @@
 # HOME/XDG_CACHE_HOME must be set for gdb; connect to 127.0.0.1 (not localhost).
 set -uo pipefail
 cd "$(dirname "$0")"
-. "${FSUAE_COMMON:-$HOME/.local/share/amiga/fsuae_common.sh}"
+. ./fsuae.sh || exit 1
 . ./stage_original_data.sh
 . ./config.sh || exit 1
 
@@ -21,7 +21,7 @@ printf 'cd dh1:\nAlone\n' > "$DH0/s/startup-sequence"
 cp -f out/Alone.exe "$DH1/Alone"
 stage_aitd_original_data "$DH1"
 
-fsuae_claim_port
+fsuae_claim_port || exit 1
 "$FSUAE" \
   "${AITD_MACHINE_ARGS[@]}" \
   --logs_dir="$PWD/$RUN/logs" --kickstart_file="$ROM" \

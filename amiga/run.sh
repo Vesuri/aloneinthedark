@@ -12,7 +12,7 @@
 #   AITD_EXE=Alone-a.exe ./run.sh      vs      AITD_EXE=Alone-b.exe ./run.sh
 set -euo pipefail
 cd "$(dirname "$0")"
-. "${FSUAE_COMMON:-$HOME/.local/share/amiga/fsuae_common.sh}"
+. ./fsuae.sh || exit 1
 . ./stage_original_data.sh
 . ./config.sh || exit 1
 

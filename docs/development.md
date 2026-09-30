@@ -9,9 +9,16 @@ The production game is the Amiga executable; there is no host game renderer.
 - `unar` and `hfsutils` to extract the original release.
 
 `amiga/env.sh` adds the development toolchain under `~/.local` to PATH.
-FS-UAE launchers use `${FSUAE_COMMON:-$HOME/.local/share/amiga/fsuae_common.sh}`
-for shared, PID-scoped emulator/debug-port management; it is an external
-developer dependency, shared with the other ports on this host. `KICKSTART`
+FS-UAE launchers source `amiga/fsuae.sh`, which uses
+`${FSUAE_COMMON:-$HOME/.local/share/amiga/fsuae_common.sh}` for shared,
+PID-scoped process management. The default debugger port is **24377**, outside
+the shared helper's 40-port hash range; `DEBUG_PORT` can override it. Only this
+project's recorded emulator may be stopped. Any remaining listener causes a
+named busy-port failure; it is never killed merely for owning the port.
+This completes M2.3g34a: the shared default collided with Pokeri at 2377.
+Default/override/busy-port fixtures pass; a real occupied TCP listener survives
+a refused launch, and native startup connects on 24377. The helper remains an
+external dependency. `KICKSTART`
 selects your local boot ROM. `tools/ghidra` links to the shared Ghidra install.
 
 ```sh
@@ -76,7 +83,8 @@ EXTRA_ARGS="--warp_mode=1" GDBSCRIPT=runtime_status.gdb ./diag_run.sh 60
 ```
 
 The runner stops early when an event-driven observer finishes; otherwise its
-seconds argument is a safety ceiling, not proof of success. It stops only the
+seconds argument is a safety ceiling, not proof of success. Debugger command
+files run in batch mode so command errors return a failing process status. It stops only the
 emulator it owns and keeps the output in `amiga/.run/gdb-out.log`.
 `runtime_status.gdb` reports the stage, tick counters and the loud stop: the
 loader's reason and segment, or the trap word, manager, routine and caller
