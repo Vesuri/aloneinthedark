@@ -31,6 +31,15 @@ public:
         requestedRate=22;interpolation=0;initialized=1;
         return 0;
     }
+    const char* stopEffects() {
+        if(!initialized)return "NOT INITIALIZED";
+        // The measured driver marks effect voices inactive without discarding
+        // their sample state or altering song voices. Paula playback is not yet
+        // installed; an allocated physical channel needs its later stop path.
+        for(const auto& voice:effects)if(voice.channel!=-1)return "EFFECT DMA STOP";
+        for(auto& voice:effects)voice.active=0;
+        return 0;
+    }
     const char* quality(uint32_t value) {
         if(!initialized)return "NOT INITIALIZED";
         if(value!=0x10b)return "QUALITY CONFIG";

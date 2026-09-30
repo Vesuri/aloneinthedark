@@ -57,5 +57,5 @@ if __name__=='__main__':
             check_original(ROOT/'tmp/runtime-data/Alone In The Dark');check_driver_source(ROOT/'tmp/runtime-data/Alone In The Dark');check(a.log.read_text(),a.status)
             for path,body in zip(FILES,build()):
                 if path.read_bytes()!=body:raise ValueError('installed font body differs: '+path.name)
-            print('PASS both native font lookups: original bytes/results/ABI and exact installed FOND/NFNT; next SELECTOR22')
+            print('PASS both native font lookups: original bytes/results/ABI and exact installed FOND/NFNT; next SELECTOR17')
         except (ValueError,OSError,AttributeError) as error:raise SystemExit('FAIL native font: '+str(error))

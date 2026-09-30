@@ -3458,3 +3458,28 @@ Next is native SOUND DRIVER / SELECTOR 22, Core+$1A74. Counts: 128 windows,
 completed with one known $A0F8 call in progress. Fresh-preference counts remain
 derived (154 windows, 472/471 services). This stop does not claim service
 completion. Full M2 intro and rendered-window acceptance remain open.
+
+
+## Native effect-stop selector 22
+
+M2.3g25 is complete. Original call/entry/dispatch/body bytes and the full
+12,360-byte driver-state transitions establish the stop-effects contract.
+The real route is already inactive; an isolated original CPU fixture changes
+only the effect flags (and its unused following slot). Native state tests
+exercise logical active effects, preserve song/sample/configuration state and
+reject assigned physical channels loudly. M4.3 explicitly retains that DMA
+stop acceptance. See [sound-driver.md](sound-driver.md#selector-22-stop-effects).
+
+Reference `tmp/m2-driver22-reference.log` and integrated native
+`tmp/m2-driver22-native-final.log` exit zero with positive call/return controls.
+Native selector 22 is the third completed driver call. Host/sanitizer suite,
+clean-build no-float/probe audits, 86-script MAME literal audit, and integrated
+logo/CopyBits, picture/palette/AGA, table/fill/RGB, event/cursor, font/text,
+geometry/device/world and all 75,616 A5-byte checks pass. The ninth AGA frame
+still matches Infogrames. Original MDRV remains absent; the reached stop-effects
+call generates no audio event because the effects were inactive.
+
+Next is SOUND DRIVER / SELECTOR 17, Core+$17FC: 135 windows, 480/479 services
+with one known driver call in progress, 68 reads / 333,998 bytes, CODE mask
+$3FFB. Fresh-preference counts remain derived (161 windows, 488/487 services).
+The measured effects playback dependency is next; full M2 remains open.

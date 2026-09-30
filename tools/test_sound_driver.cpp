@@ -6,6 +6,7 @@
 int main() {
     SoundDriver driver;
     assert(!driver.initialized);
+    assert(!std::strcmp(driver.stopEffects(),"NOT INITIALIZED"));
     assert(!std::strcmp(driver.quality(0x10b),"NOT INITIALIZED"));
     assert(!driver.initialized && !driver.requestedRate);
     for(unsigned field=0;field<3;++field) {
@@ -27,9 +28,20 @@ int main() {
     driver.songs[0].active=1;driver.songs[0].sample=0x1234;driver.channels[0]=0;
     assert(!std::strcmp(driver.initialize(6,2,2),"REINITIALIZE"));
     assert(driver.songs[0].active==1 && driver.songs[0].sample==0x1234 && driver.channels[0]==0);
+    driver.effects[0].active=1;driver.effects[0].sample=0x5678;
+    driver.effects[1].active=1;driver.effects[1].sample=0x9abc;
+    assert(!driver.stopEffects());
+    assert(!driver.effects[0].active && !driver.effects[1].active);
+    assert(driver.effects[0].sample==0x5678 && driver.effects[1].sample==0x9abc);
+    assert(driver.songs[0].active==1 && driver.songs[0].sample==0x1234 && driver.channels[0]==0);
+    assert(driver.requestedRate==11 && driver.interpolation==1 && driver.initialized);
+    assert(!driver.stopEffects());
+    driver.effects[0].active=1;driver.effects[0].channel=2;
+    assert(!std::strcmp(driver.stopEffects(),"EFFECT DMA STOP"));
+    assert(driver.effects[0].active==1 && driver.effects[0].channel==2);
     driver.reset();assert(!driver.initialized && !driver.requestedRate && !driver.songLimit);
     for(auto voice:driver.songs)assert(!voice.active && !voice.sample && voice.channel==-1);
     for(auto channel:driver.channels)assert(channel==-1);
     assert(!driver.initialize(6,2,2));
-    std::puts("PASS native driver state: measured initialization/quality; unsupported configurations preserve state");
+    std::puts("PASS native driver state: initialization/quality, effect-stop isolation/idempotence and loud unsupported DMA rejection");
 }

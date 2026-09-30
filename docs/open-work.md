@@ -12,7 +12,7 @@ design.md §5.
   support the measured initialization path; original MDRV code is never loaded.
 - MacPlay and the Infogrames logo have exact paired client pixels/colours. Nine
   AGA publications pass memory/copper checks. Full intro acceptance remains open.
-- The next stop is native sound-driver selector 22, called from Core+$1A74.
+- The next stop is native sound-driver selector 17, called from Core+$17FC.
   Detailed completed service contracts and regression evidence are in
   [development.md](development.md). No Mac dialogs, menu bar or chrome are drawn.
 - The original runs in MAME on the System 7.5.5 reference volume.
@@ -47,18 +47,20 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.3g25 Native driver selector 22.**
-  - The original intro copy now publishes the Infogrames logo with exact pixels
-    and colours. Startup next invokes native driver selector 22 from Core+$1A74.
-  - Check original caller and MDRV entry bytes; measure arguments, results,
-    register/stack contract and observable driver-state effects in MAME.
-    Implement the corresponding native driver service, reusing Vette as D8
-    directs. Keep original MDRV code absent; no success stub or skipped call.
+- **M2.3g26 Native driver selector 17 (play effect).**
+  - Selector 22 now stops logical effect voices with the measured state/ABI.
+    The original next calls selector 17 from Core+$17FC after loading data.
+  - Check caller and MDRV bytes, the complete effect packet and sample data,
+    ownership/lifetime, rate/loop/volume/priority and return/register contract.
+    Measure original driver events. Implement the required native effect path
+    with Vette's Paula sample/channel tools under D8; no original mixer.
+  - Bring forward selector 22's physical-channel stop from M4.3 when effect
+    playback makes it reachable; do not leave a guessed successful stop.
 
-  *Done when* original/native results and required driver effects match,
-  the service completes and startup reaches its next named stop, with logo,
-  picture/palette/AGA and startup regressions passing. Any audio effect must
-  additionally satisfy design §6's driver event-log comparison.
+  *Done when* actual native effect requests/results and playback events match
+  the original trace, required channel/sample cleanup is verified, startup
+  reaches its next named stop with MDRV absent, and logo/palette/AGA/startup
+  regressions pass. Apply design §6's audio event-log comparison.
 - **M2.1c Original File Manager read acceptance (after M2.2).**
   - This retains M2.1's original acceptance; diagnostic fixture reads do not count
     as original-game reads. M2.1b2a measured the intervening Get1NamedResource
@@ -235,6 +237,9 @@ required.
   differences.
 - **M4.3 Sound effects and toggles.**
   - Effects through the driver's selectors take priority on the channels.
+  - Complete selector 22 for assigned Paula channels (currently the named
+    `EFFECT DMA STOP` stop), reusing Vette channel quiescing. Verify that effect
+    DMA/volume stop while music channels and sample ownership remain correct.
   - The S/M keys and the game's toggles work.
   - `SysBeep` becomes a short Paula click.
 

@@ -6076,10 +6076,11 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
                 uint8_t* packet=(uint8_t*)argument;
                 if(!packet || (argument&1))driverStop="VOICE PACKET";
                 else driverStop=g_soundDriver.initialize(read16(packet),read16(packet+2),read16(packet+4));
-            } else if(selector==24)driverStop=g_soundDriver.quality(argument);
+            } else if(selector==22)driverStop=g_soundDriver.stopEffects();
+            else if(selector==24)driverStop=g_soundDriver.quality(argument);
             else driverStop="SELECTOR";
             if(!driverStop) {
-                ++g_soundDriverCalls;regs[0]=0;regs[1]=selector==24 ? 1 : 0;
+                ++g_soundDriverCalls;regs[0]=0;regs[1]=selector==24 ? 1 : selector==22 ? argument : 0;
                 return 1; // C caller owns arguments; stub executes RTS.
             }
         }

@@ -1,10 +1,10 @@
 # Native SoundMusicSys driver
 
-D8 replaces the original software mixer at its driver interface. The native
-startup implementation supplies Jnth 11 and the two measured initialization
-calls. Integrated startup now passes the second Times lookup (family 20), then
-stops at UnionRect (Dan2+$01DA), with no original MDRV resident. This accepts
-the startup interface; playback and further selectors remain M4.
+D8 replaces the original software mixer at its driver interface. Native Jnth 11
+supplies measured initialization and quality selection; selector 22 additionally
+implements effect-stop state for the reached unassigned-channel configuration.
+Original MDRV code never runs on the Amiga. Playback, allocation and physical
+channel stops remain explicit unsupported work until their measured services land.
 
 ## Installation seam
 
@@ -129,3 +129,50 @@ run_status=$?
 python3 tools/check_native_driver.py tmp/m2-native-driver-calls.log \
   --status "$run_status"
 ```
+
+
+## Selector 22: stop effects
+
+Original Core+$1A6C bytes `48780016206df9544e90588f` push selector 22,
+call through A5-$6AC at +$1A74 and remove four bytes after RTS. There is no
+second argument. The entry still copies the following stack long into D1;
+it is ignored by this selector and returned unchanged. D0 is zero and
+D2–D7/A0–A6 are preserved, along with the pre-JSR SP.
+
+The original table entry at driver+$008C branches through +$01C2 to +$3606.
+It writes $FFFF to the active-state words of effect slots following the six
+music voices. Its DBRA also touches the following unused slot: indices 6, 7
+and 8 change; the configured effect count is still two. Sample pointers,
+other voice state, music slots and output configuration are unchanged.
+`mac_driver22.lua` captures the real call and executes an isolated original
+CPU fixture with sentinel states, no invented sample pointers and interrupts
+masked. Full 12,360-byte state comparison checks exactly those changes plus
+the dispatch record's selector/ignored argument/status fields.
+
+`SoundDriver::stopEffects` marks its two logical effect voices inactive,
+retaining sample state, music and configuration. Host tests cover active
+logical effects, idempotence and music isolation. No physical channel has been
+assigned on the reached route. An assigned channel produces the named
+`EFFECT DMA STOP` stop; M4.3 retains its hardware-stop acceptance. Vette's
+`quiescePaulaChannel` is the existing implementation to reuse when that path
+is brought forward. This call produces no audio event on the measured route.
+
+`driver22_call.gdb` observes the actual native call read-only, checking D0/D1,
+all thirteen preserved registers, stack, the third completed native driver call
+and unchanged inactive voice/configuration state. `check_driver22.py` guards
+original caller, driver entry/dispatch/implementation bytes and both reference
+state transitions, then requires the integrated native startup guard.
+
+
+Accepted runs: `tmp/m2-driver22-reference.log` and
+`tmp/m2-driver22-native-final.log`, both terminal exit zero. Run:
+
+```
+python3 tools/check_driver22.py tmp/m2-driver22-reference.log --status 0 --native tmp/m2-driver22-native-final.log --native-status 0
+```
+
+Selector 22 is the third completed native driver call. Startup next reaches
+selector 17, Core+$17FC, with the Infogrames frame unchanged and original MDRV
+absent. At that next stop 480 services have entered and 479 completed; the known
+selector-17 $A0F8 service is in progress. Counts are 135 windows, 68 resource
+reads / 333,998 bytes and CODE mask $3FFB. Playback acceptance remains open.

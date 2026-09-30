@@ -171,7 +171,7 @@ end
 echo PASS native Apple Event registrations calls=4\n
 continue
 printf "AE_NEXT state=%u trap=%X selector=%X segment=%u offset=%X manager=%s routine=%s windows=%u services=%u/%u\n",g_stageBState,g_trapWord,g_trapSelector,g_trapSegment,g_trapOffset,g_trapManager,g_trapRoutine,g_systemWindows,g_macServiceEntered,g_macServiceCompleted
-if g_stageBState!=3 || g_trapWord!=0xa0f8 || g_trapSelector!=22 || g_trapSegment!=3 || g_trapOffset!=0x1a74 || *(unsigned long*)(g_trapRoutine+0)!=0x53454c45 || *(unsigned long*)(g_trapRoutine+4)!=0x43544f52 || g_trapRoutine[8]!=0 || g_macServiceActive!=1 || g_systemWindows!=$startup_windows || g_macServiceEntered!=$startup_entered || g_macServiceCompleted!=$startup_completed || g_resourceRuntimeReads!=68 || g_resourceRuntimeBytes!=333998 || g_overlayRuntimeReads!=31 || g_overlayRuntimeBytes!=80650 || g_appleEventHandlers.count!=4
+if g_stageBState!=3 || g_trapWord!=0xa0f8 || g_trapSelector!=17 || g_trapSegment!=3 || g_trapOffset!=0x17fc || *(unsigned long*)(g_trapRoutine+0)!=0x53454c45 || *(unsigned long*)(g_trapRoutine+4)!=0x43544f52 || g_trapRoutine[8]!=0 || g_macServiceActive!=1 || g_systemWindows!=$startup_windows || g_macServiceEntered!=$startup_entered || g_macServiceCompleted!=$startup_completed || g_resourceRuntimeReads!=68 || g_resourceRuntimeBytes!=333998 || g_overlayRuntimeReads!=31 || g_overlayRuntimeBytes!=80650 || g_appleEventHandlers.count!=4
  echo FAIL Apple Event next stop/counters\n
  detach
  quit 1
@@ -190,6 +190,6 @@ while $i<g_resourceCount
  end
  set $i=$i+1
 end
-echo PASS native Apple Event startup next=SELECTOR22 original-MDRV=absent\n
+echo PASS native Apple Event startup next=SELECTOR17 original-MDRV=absent\n
 detach
 quit 0

@@ -21,6 +21,9 @@ while $tw_finished==0
   tbreak dispatchMacTrap if trap==0xa8ec && *(unsigned long*)(frame+2)==(unsigned long)s_segments[10].begin+0x24d2
   continue
   source copybits8_call.gdb
+  tbreak dispatchMacTrap if trap==0xa0f8 && inUserService && *(unsigned long*)(userStack+4)==22
+  continue
+  source driver22_call.gdb
   loop_continue
  end
  if trap==0xaa91
