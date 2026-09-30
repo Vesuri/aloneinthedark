@@ -36,6 +36,14 @@ while $tw_finished==0
    quit 1
   end
   source paintlater_call.gdb
+  tbreak dispatchMacTrap if trap==0xa885 && inUserService
+  continue
+  if g_stageBState==3
+   echo FAIL DrawText not reached\n
+   detach
+   quit 1
+  end
+  source drawtext_call.gdb
   continue
   loop_break
  end

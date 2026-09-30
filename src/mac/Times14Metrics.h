@@ -6,8 +6,7 @@
 // Measured Times/plain/14 advances. These are spacing metrics, not font artwork.
 // The Mac accumulates these units with scale 299/256, then truncates once.
 namespace Times14Metrics {
-inline bool width(const uint8_t* text,int16_t first,int16_t count,uint16_t& result) {
-    if(first<0 || count<0 || (!text && count))return false;
+inline uint8_t units(uint8_t character) {
     static const uint8_t advances[256]={
         0,4,4,4,4,4,4,4,4,3,4,4,4,0,4,4,
         4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,
@@ -26,8 +25,12 @@ inline bool width(const uint8_t* text,int16_t first,int16_t count,uint16_t& resu
         6,3,4,6,12,9,8,9,8,8,4,4,4,4,9,9,
         10,9,9,9,9,3,4,4,4,4,4,4,4,4,4,4,
     };
+    return advances[character];
+}
+inline bool width(const uint8_t* text,int16_t first,int16_t count,uint16_t& result) {
+    if(first<0 || count<0 || (!text && count))return false;
     uint32_t total=0;
-    for(uint16_t i=0;i<(uint16_t)count;++i)total+=advances[text[(uint32_t)first+i]];
+    for(uint16_t i=0;i<(uint16_t)count;++i)total+=units(text[(uint32_t)first+i]);
     total=(total*299)>>8;
     if(total>32767)return false; // Unmeasured signed-result overflow.
     result=(uint16_t)total;return true;

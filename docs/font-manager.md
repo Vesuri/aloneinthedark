@@ -70,9 +70,9 @@ stage. This is a placeholder, not Times artwork or an Apple font. Full lowercase
 style/size coverage and rendered placement remain M2.9.
 
 `tools/placeholder_font.py` encodes family 20 as a 60-byte FOND with one plain
-14-point association to NFNT 128. The 1,254-byte NFNT contains printable ASCII
-plus a missing-character box: a 480×14 monochrome bitmap, 97 location words and
-97 offset/width words. The fixed advance is six pixels, ascent twelve and descent
+14-point association to NFNT 128. The 1,818-byte NFNT contains printable ASCII and the reached MacRoman ©/•
+symbols, with missing boxes in unused slots: a 704×14 monochrome bitmap,
+140 location words and 140 offset/width words. The fixed advance is six pixels, ascent twelve and descent
 two. Font type $3000 and FOND flags $C000 describe this restricted layout.
 The width-table offset is measured in words from the NFNT field at byte 16.
 
@@ -92,14 +92,14 @@ repository’s 68020 flags and compatibility prelude without unresolved helpers;
 this is a compiler check, not native runtime acceptance.
 
 The overlay now publishes the Times definition, 25 startup faces in three
-additional families, and the native Jnth driver stub (81,612 bytes total).
+additional families, and the native Jnth driver stub (82,026 bytes total).
 Its metadata-only preparation uses 33 reads / 572 bytes; the first lookup reads the two bodies in two bounded
-windows / 1,314 bytes. Startup retains 243 resource entries before preferences, including the fonts and stub.
+windows / 1,878 bytes. Startup retains 243 resource entries before preferences, including the fonts and stub.
 GetFNum traverses the resource chain, validates the matching FOND and linked NFNT,
 and returns the installed family ID. It preserves D0 and the measured error
 behavior; unsupported collation, formats and missing linked definitions stop
-explicitly. Inherited font-independent DrawChar/DrawString/DrawText now remain
-named trap stops pending M2.9 instead of silently drawing the Vette fixed font.
+explicitly. DrawChar/DrawString remain named trap stops. DrawText now consumes the selected
+owned font for the measured intro path described below.
 
 ## Integrated native lookup acceptance
 
@@ -108,7 +108,7 @@ Both original Dan1 calls now return family 20 through the installed FOND/NFNT.
 original call bytes and Pascal names are checked, each result pops eight argument
 bytes, and D0 and startup ResErr/MemErr match the reference. The second call
 preserves the observed nonzero D0 ($00312FF2 in the accepted run). Installed
-60-byte FOND and 1,254-byte NFNT dumps match the generator exactly.
+60-byte FOND and 1,818-byte NFNT dumps match the generator exactly.
 
 `tools/check_native_font.py LOG --status STATUS` requires both calls in order,
 second-call register/error evidence, both native driver calls, the exact UnionRect
@@ -192,8 +192,8 @@ acceptance remain M2.9, and no drawing trap is enabled by this work.
 `BitmapFont` validates bounded association tables, unique ordered size/style
 keys, flags, bitmap extents, glyph locations and proportional offset/width
 entries. Point size is distinct from ascent+descent. It rejects unsupported
-associations, optional tables and invalid bounds. The original Times definition
-remains byte-identical. Sanitizer fixtures cover every required face, every
+associations, optional tables and invalid bounds. The original Times association remains unchanged; its owned bitmap now also
+contains the two intro symbols. Sanitizer fixtures cover every required face, every
 truncation, malformed fields, missing selections, glyph bounds and empty space.
 Format details follow Apple's [NFNT record](https://dev.os9.ca/techpubs/mac/Text/Text-250.html),
 [font flags](https://dev.os9.ca/techpubs/mac/Text/Text-251.html) and
@@ -259,3 +259,37 @@ python3 tools/check_textwidth_startup.py tmp/m2-textwidth-original-reference.log
 ```
 
 Pass actual terminal statuses to the checkers; a timeout never passes.
+
+
+## Intro DrawText
+
+The original Dan1+$0346 call (bytes +$0342 `548f3e80a885`) draws 41 MacRoman
+bytes: “©1992 I•Motion/Infogrames, 1994 Interplay”. The selected locked eight-bit
+GWorld is 648×401 with stride 652, Times/plain/14, text mode 1, foreground index
+26 and zero extra spacing. Its baseline is 196 and initial horizontal pen 37.
+The fractional pen at port+14 begins at $8000. The 212 measured advance units
+add $00F79C00: the final pen is 285, fraction $1C00. Repeating without MoveTo
+ends at 532/$B800; MoveTo resets the fraction to $8000. Empty text preserves
+pixels and the whole port. DrawText pops eight bytes, returns D0=0 and preserves
+D1–D7/A1–A6. The original fixtures establish these contracts independently of
+placeholder artwork.
+
+`Text8.h` draws the installed owned bitmap using these fractional character
+positions, the selected foreground and map/port/visible/clip intersections.
+It fits each ink shape within its measured cell with one separating column.
+The placeholder deliberately uses capitals for lowercase, block shapes instead
+of Times serifs, and its own ascent of twelve; © and • are newly authored
+5×7 shapes stretched to twelve rows. These D6 differences preserve the baseline,
+spacing and resulting pen. No Apple artwork is included. Uninstalled characters,
+other fonts/styles/sizes/modes, complex regions and signed pen overflow stop
+before changing the buffer. The obsolete packed four-bit text renderer is removed.
+
+`mac_drawtext.lua` captures the original call and repeat/MoveTo/empty fixtures.
+`check_drawtext.py REFERENCE --status 0 --native NATIVE --native-status 0`
+checks original bytes, paired text state, ABI and pen, and every native output
+byte against an independent owned-glyph stencil. Initial visible pixel columns
+match; the four unused bytes per row contain different allocator history on each
+machine and must remain unchanged on their own side. `check_text8.py` adds
+sanitizer coverage of clipping, padding, range/overflow rejection and offset input.
+The local logical-buffer crops show placement and coarse placeholder lettering;
+they are not rendered FS-UAE screenshots and do not close M1.7b2.

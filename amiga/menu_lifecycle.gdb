@@ -538,12 +538,12 @@ while $i<g_resourceCount
  set $i=$i+1
 end
 echo PASS menu-list next-stop original-MDRV=absent\n
-if g_trapWord!=0xa885 || g_trapSegment!=12 || g_trapOffset!=0x346 || g_systemWindows!=$startup_windows || g_macServiceEntered!=$startup_entered+g_effectStatusCalls || g_macServiceCompleted!=$startup_completed+g_effectStatusCalls
+if g_trapWord!=0xa8ec || g_trapSegment!=4 || g_trapOffset!=0x1dbc || g_systemWindows!=$startup_windows || g_macServiceEntered!=$startup_entered+g_effectStatusCalls || g_macServiceCompleted!=$startup_completed+g_effectStatusCalls
  echo FAIL menu-list startup endpoint\n
  detach
  quit 1
 end
-echo startup PASS: original main, next stop QUICKDRAW / DRAWTEXT CODE 12\n
+echo startup PASS: original main, next stop QUICKDRAW / COPYBITS CODE 4\n
 set $ri=0
 set $font_bodies=0
 while $ri<g_resourceCount
@@ -564,7 +564,7 @@ while $ri<g_resourceCount
    set $font_bodies=$font_bodies+1
   end
   if s_resourceForks.m_items[$ri].item.type==0x4e464e54
-   dump binary memory ../tmp/font-native-nfnt.bin $body $body+1254
+   dump binary memory ../tmp/font-native-nfnt.bin $body $body+1818
    set $font_bodies=$font_bodies+1
   end
  end

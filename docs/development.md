@@ -3587,9 +3587,41 @@ PCM and real completion, font metrics, events, geometry/device state and all
 75,616 A5 bytes. Existing fill-helper host cases, the 91-script MAME literal
 audit, no-float/82-symbol probe audits and updated endpoint self-tests also pass.
 
-Current boundary: QUICKDRAW / DRAWTEXT, Dan1+$0346, 139 windows,
+The fill checkpoint ended at QUICKDRAW / DRAWTEXT, Dan1+$0346, 139 windows,
 690/690 services (baseline 490 plus 200 status queries), none active,
 68 resource reads / 333,998 bytes, CODE mask $3FFB, original MDRV absent.
 Fresh-pref counts remain derived: 165 windows and baseline 498 plus queries.
 The selected text state has font 20, size 14, plain face and text mode 1.
 Full intro, rendered-window acceptance and M2 remain open.
+
+
+## Intro copyright text
+
+M2.3g30 is complete. The reached DrawText uses the installed owned font,
+measured fractional advances and rectangular clipping. ©/• now have owned
+artwork. The obsolete packed four-bit text renderer is removed. No Mac dialog
+or menu is drawn. [Font Manager](font-manager.md#intro-drawtext) records the
+original string, pen/ABI, pixel bounds and intentional D6 glyph differences.
+
+Original `tmp/m2-drawtext-fixtures-reference.log` exits zero and establishes
+natural/repeated text, MoveTo fraction reset and empty-text behavior. Final
+native `tmp/m2-drawtext-native-accept.log` exits zero, passes the strict endpoint
+and proves the actual DrawText ABI, pen and selected state. Full output bytes
+match the independent owned-glyph stencil; visible input columns and CLUT match
+the Mac. Allocator row padding differs initially but is preserved independently.
+Logical-buffer crops were inspected for coarse placeholder lettering and placement;
+this does not replace owner-deferred rendered-window acceptance.
+
+The first discovery run completed normally and passed text, but its audio
+observer counted 199 of 201 status queries. It is rejected for full regression
+acceptance. Added counter checkpoints show no queries lost across the fill/line
+captures in the final run, which observes all 201 queries (200 active, one done)
+and natural sample/DMA cleanup after 233 ticks. No acceptance check was relaxed.
+
+The final host suite, 28 integrated regression checks plus DrawText, 92-script
+MAME literal audit and no-float/82-symbol probe audits pass. Current boundary:
+QUICKDRAW / COPYBITS, Dark+$1DBC, 139 windows, 692/692 services (baseline 491
+plus 201 effect-status queries), none active; 68 application resource reads /
+333,998 bytes, overlay 31 / 81,214, preparation 64 / 81,786, CODE mask $3FFB,
+original MDRV absent. Fresh-pref counts remain derived: 165 windows and baseline
+499 plus queries. The owned overlay is 82,026 bytes. Full intro and M2 remain open.

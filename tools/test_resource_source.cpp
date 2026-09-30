@@ -165,7 +165,7 @@ int main(int argc,char** argv) {
     FontOverlay empty;empty.bytes.assign(std::istreambuf_iterator<char>(file),{});empty.indexPrefixes();
     appCalls=app.calls;
     assert(forks.openWithOverlay(app.source(),empty.source()));
-    assert(empty.bytes.size()==81462 && empty.calls==33 && empty.total==572);
+    assert(empty.bytes.size()==82026 && empty.calls==33 && empty.total==572);
     assert(forks.forkCount()==2 && forks.resourceCount()==33 && app.calls==appCalls+4);
     assert(forks.item(0,item) && item.fork==ResourceForks::kOverlayFork && !item.data);
     assert(forks.item(31,item) && item.fork==0 && !item.data);
@@ -174,14 +174,14 @@ int main(int argc,char** argv) {
     assert(forks.find(ResourceForks::kOverlayFork,0x464f4e44,20,item,&index) && item.size==60 && item.nameLength==5);
     empty.payload=true;assert(!forks.read(index,out.data(),out.size()));
     assert(std::equal(out.begin(),out.begin()+60,empty.bytes.begin()+260));
-    assert(forks.find(ResourceForks::kOverlayFork,0x4e464e54,128,item,&index) && item.size==1254);
+    assert(forks.find(ResourceForks::kOverlayFork,0x4e464e54,128,item,&index) && item.size==1818);
     assert(!forks.read(index,out.data(),out.size()));
-    assert(std::equal(out.begin(),out.begin()+1254,empty.bytes.begin()+648));
-    assert(empty.calls==35 && empty.total==1886);
+    assert(std::equal(out.begin(),out.begin()+1818,empty.bytes.begin()+648));
+    assert(empty.calls==35 && empty.total==2450);
     assert(forks.find(ResourceForks::kOverlayFork,0x4a6e7468,11,item,&index) && item.size==4);
     assert(!forks.read(index,out.data(),out.size()));
     assert(out[0]==0xa0 && out[1]==0xf8 && out[2]==0x4e && out[3]==0x75);
-    assert(empty.calls==36 && empty.total==1890);
+    assert(empty.calls==36 && empty.total==2454);
     forks.close();assert(!forks.directory() && !forks.forkCount());
     puts("PASS overlay-source: application/overlay/dynamic order, read-only map, lazy exact bodies, failed-open rollback, generated font/driver fork");
     puts("PASS resource-source: metadata-only open, 64KiB reads, exact bytes, errors/short reads, dynamic 16-fork identity/remap, zero resource, cleanup");

@@ -1,3 +1,4 @@
+printf "DRIVER20_COVERAGE start statuses=%u\n",g_effectStatusCalls
 set $line_seen=0
 set $d20_n=0
 set $d20_active=0
@@ -11,13 +12,17 @@ while $d20_finished==0
   quit 1
  end
  if trap==0xa891
+  printf "DRIVER20_COVERAGE line-before statuses=%u observed=%u\n",g_effectStatusCalls,$d20_n
   source aga_startup_call.gdb
   source lineto_call.gdb
+  printf "DRIVER20_COVERAGE line-after statuses=%u observed=%u\n",g_effectStatusCalls,$d20_n
   set $line_seen=1
   loop_continue
  end
  if trap==0xa8a2
+  printf "DRIVER20_COVERAGE paint-before statuses=%u observed=%u\n",g_effectStatusCalls,$d20_n
   source paintworld_call.gdb
+  printf "DRIVER20_COVERAGE paint-after statuses=%u observed=%u\n",g_effectStatusCalls,$d20_n
   loop_continue
  end
  set $d20_n=$d20_n+1

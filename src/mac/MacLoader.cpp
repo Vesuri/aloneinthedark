@@ -7,6 +7,7 @@
 #include "MacHeap.h"
 #include "BitmapFont.h"
 #include "Times14Metrics.h"
+#include "Text8.h"
 #include "Palette8.h"
 #include "WindowGeometry.h"
 #include "RectBounds.h"
@@ -3590,52 +3591,6 @@ static bool currentPortIsScreen()
         && pixels == s_colorScreen;
 }
 
-static bool drawQuickDrawText(const uint8_t* text, uint16_t length,
-                              int16_t& top, int16_t& left,
-                              int16_t& bottom, int16_t& right)
-{
-    uint8_t* port = (uint8_t*)read32(s_qdThePort);
-    uint8_t* pixels;
-    uint16_t rowBytes;
-    int16_t mapTop, mapLeft, mapBottom, mapRight;
-    if (!port || (!text && length)
-        || !currentPortPixels(pixels, rowBytes, mapTop, mapLeft, mapBottom, mapRight)) return false;
-    uint16_t mode = read16(port + 72);
-    if (mode != 0 && mode != 1) return false; // srcCopy and srcOr are sufficient here
-
-    int16_t penV = (int16_t)read16(port + 48);
-    int16_t penH = (int16_t)read16(port + 50);
-    top = (int16_t)(penV - 7);
-    left = penH;
-    bottom = penV;
-    right = (int16_t)(penH + length * 6);
-
-    uint8_t** clipHandle = (uint8_t**)read32(port + 28);
-    uint8_t* clip = clipHandle ? *clipHandle : 0;
-    int16_t clipTop = mapTop, clipLeft = mapLeft, clipBottom = mapBottom, clipRight = mapRight;
-    if (clip && read16(clip) >= 10) {
-        clipTop = (int16_t)read16(clip + 2);
-        clipLeft = (int16_t)read16(clip + 4);
-        clipBottom = (int16_t)read16(clip + 6);
-        clipRight = (int16_t)read16(clip + 8);
-    }
-    for (uint16_t i = 0; i < length; ++i) {
-        for (uint16_t row = 0; row < 7; ++row) {
-            uint8_t bits = pictureGlyphRow(text[i], row);
-            for (uint16_t column = 0; column < 5; ++column) {
-                if (!(bits & (16u >> column))) continue;
-                int16_t x = (int16_t)(penH + i * 6 + column);
-                int16_t y = (int16_t)(penV - 7 + row);
-                if (y < mapTop || y >= mapBottom || x < mapLeft || x >= mapRight
-                    || y < clipTop || y >= clipBottom || x < clipLeft || x >= clipRight) continue;
-                setPackedPixel(pixels, rowBytes, mapTop, mapLeft, x, y, 15);
-            }
-        }
-    }
-    write16(port + 50, (uint16_t)right);      // QuickDraw advances the pen location
-    return true;
-}
-
 static __attribute__((noinline)) void shiftPackedCopyRowsC(
     const uint8_t* source, uint8_t* destination,
     uint16_t bytesPerRow, uint16_t height,
@@ -4626,6 +4581,24 @@ static uint8_t* newGWorld(const uint8_t* bounds,uint16_t depth,MacHeap::Handle c
     slot->used=true;slot->locked=false;slot->purgeable=false;slot->palette=0;
     s_gworldAllocationBytes[slot-s_gworlds]=layout.pixelBytes;
     memoryResult(0);return slot->port;
+}
+
+// Draw only the measured owned-world Times/plain/14 srcOr path. Resource
+// selection runs through the user-mode bridge, like TextWidth.
+static bool drawGWorldText(GWorldSlot& w,const uint8_t* text,int16_t first,int16_t count)
+{
+    if(!w.locked || !w.pixels || read16(w.pixMap+32)!=8
+       || read16(w.port+68)!=20 || read16(w.port+74)!=14 || w.port[70]
+       || read16(w.port+72)!=1 || read32(w.port+76) || read32(w.port+80)>255
+       || read16(w.port+66))return false;
+    const uint8_t* vis=*w.handles[3];const uint8_t* clip=*w.handles[4];
+    if(read16(vis)!=10 || read16(clip)!=10)return false;
+    BitmapFont font;if(!fontForCurrentPort(font))return false;
+    int16_t pen=int16_t(read16(w.port+50));uint16_t fraction=read16(w.port+14);
+    if(!Text8::draw(w.pixels,w.owner->handleSize(w.handles[1]),read16(w.pixMap+4)&0x3fff,
+        w.pixMap+6,w.port+16,vis+2,clip+2,font,text,first,count,
+        int16_t(read16(w.port+48)),pen,fraction,uint8_t(read32(w.port+80))))return false;
+    write16(w.port+50,uint16_t(pen));write16(w.port+14,fraction);return true;
 }
 
 // The reached fill uses a solid foreground pen in an owned 8-bit world.
@@ -5942,7 +5915,7 @@ static bool isUserService(uint16_t trap)
 #ifdef AITD_SERVICE_PROBE
     if((trap&0xfeff)==0xa0fc || trap==0xabfb)return true;
 #endif
-    return trap==0xa886 || trap==0xa91a || trap==0xaa18 || trap==0xa88b || trap==0xa88d || trap==0xa0f8 || trap==0xa900 || trap==0xa9f4 || trap==0xa997 || trap==0xa9c4 || trap==0xa81a || trap==0xa9b1 || trap==0xa81b || trap==0xa999 || trap==0xa99a || trap==0xa9ab || trap==0xa9aa || trap==0xa9b0 || trap==0xa9ad
+    return trap==0xa885 || trap==0xa886 || trap==0xa91a || trap==0xaa18 || trap==0xa88b || trap==0xa88d || trap==0xa0f8 || trap==0xa900 || trap==0xa9f4 || trap==0xa997 || trap==0xa9c4 || trap==0xa81a || trap==0xa9b1 || trap==0xa81b || trap==0xa999 || trap==0xa99a || trap==0xa9ab || trap==0xa9aa || trap==0xa9b0 || trap==0xa9ad
         || trap==0xa80e || trap==0xa9a2 || trap==0xa81f || trap==0xa820 || trap==0xa9a0 || trap==0xa9a1 || trap==0xa930 || trap==0xa9bf
         || trap==0xaa46 || trap==0xaa92 || trap==0xa9b9 || trap==0xa9bc || trap==0xa97c
         || trap==0xa40c || trap==0xa608 || trap==0xa60a || trap==0xa60c || trap==0xa60d || trap==0xa614 || trap==0xa615
@@ -6479,9 +6452,9 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         }
         write16(userStack+2,font.charWidth(read16(userStack)));return 3;
     }
-    // Inherited Vette text drawing ignores the selected font/size. Until M2.9
-    // consumes validated fonts, original text calls must stop instead of using it.
-    if(trap==0xa883 || trap==0xa884 || trap==0xa885)goto unsupportedTrap;
+    // DrawChar/DrawString remain unmeasured. DrawText below consumes the
+    // validated owned bitmap only for the measured eight-bit intro selection.
+    if(trap==0xa883 || trap==0xa884)goto unsupportedTrap;
     if (trap == 0xa912) {                    // InitWindows()
         if (!s_qdThePort || !s_fontManager.initialized) return 0;
         initWindowManagerPort();
@@ -7452,38 +7425,16 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         if (port) {
             write16(port + 48, read16(userStack));
             write16(port + 50, read16(userStack + 2));
+            if(read16(port+6)&0xc000)write16(port+14,0x8000);
         }
         if (g_stageCDepth < 97) g_stageCDepth = 97;
         return 5;
     }
-    if (trap == 0xa884) {                    // DrawString(Pascal string)
-        const uint8_t* string = (const uint8_t*)read32(userStack);
-        int16_t top, left, bottom, right;
-        if (string && drawQuickDrawText(string + 1, string[0], top, left, bottom, right)) {
-            if (currentPortIsScreen()) markDirtyBounds(top, left, bottom, right);
-            if (g_stageCDepth < 97) g_stageCDepth = 97;
-            return 5;
-        }
-    }
-    if (trap == 0xa883) {                    // DrawChar(character)
-        uint8_t character = userStack[1];
-        int16_t top, left, bottom, right;
-        if (drawQuickDrawText(&character, 1, top, left, bottom, right)) {
-            if (currentPortIsScreen()) markDirtyBounds(top, left, bottom, right);
-            if (g_stageCDepth < 97) g_stageCDepth = 97;
-            return 3;
-        }
-    }
     if (trap == 0xa885) {                    // DrawText(text, firstByte, byteCount)
-        const uint8_t* text = (const uint8_t*)read32(userStack + 4);
-        uint16_t firstByte = read16(userStack + 2);
-        uint16_t byteCount = read16(userStack);
-        int16_t top, left, bottom, right;
-        if (text && drawQuickDrawText(text + firstByte, byteCount,
-                                      top, left, bottom, right)) {
-            if (currentPortIsScreen()) markDirtyBounds(top, left, bottom, right);
-            if (g_stageCDepth < 97) g_stageCDepth = 97;
-            return 9;
+        GWorldSlot* world=gWorldForPort((uint8_t*)read32(s_qdThePort));
+        if(world && drawGWorldText(*world,(const uint8_t*)read32(userStack+4),
+                                  int16_t(read16(userStack+2)),int16_t(read16(userStack)))) {
+            regs[0]=0;return 9;
         }
     }
     if (trap == 0xa89b) {                    // PenSize(horizontal, vertical)

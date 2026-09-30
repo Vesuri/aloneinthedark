@@ -221,8 +221,8 @@ The original startup path is implemented (M1.1–M1.3):
 **Verified:** the host check `tools/a5world_check.py` passes: it runs
 CODE 1's expansion algorithm on the resource bytes and compares, byte for byte,
 with the A5 world the Amiga dumps (via gdb) when it enters `main`. The current
-loud stop is `QUICKDRAW / DRAWTEXT` at Dan1+$0346, after intro line drawing,
-mode-0 fills and the first effect's completed-status query. Startup passes the native
+loud stop is `QUICKDRAW / COPYBITS` at Dark+$1DBC, after intro line drawing,
+mode-0 fills, the copyright text and the first effect's completed-status query. Startup passes the native
 driver calls, both Times lookups, hidden window/menu setup and eight-bit
 offscreen initialization, original image-row copying and the 20-call rectangle
 union loop and already-detached resource error. Driver and installed

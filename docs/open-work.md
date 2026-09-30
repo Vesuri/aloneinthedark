@@ -12,7 +12,8 @@ design.md §5.
   support the measured initialization path; original MDRV code is never loaded.
 - MacPlay and the Infogrames logo have exact paired client pixels/colours. Nine
   AGA publications pass memory/copper checks. Full intro acceptance remains open.
-- The next stop is QuickDraw DrawText, Dan1+$0346 ($A885).
+- The next stop is QuickDraw CopyBits, Dark+$1DBC ($A8EC).
+  The copyright line uses owned placeholder glyphs with measured text spacing.
   Intro LineTo and mode-0 fills match the Mac; the first raw effect plays on Paula and its
   real polling loop observes completion with sample/DMA cleanup verified.
   Detailed completed service contracts and regression evidence are in
@@ -49,20 +50,18 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.3g30 Intro DrawText.**
-  - The mode-0 fill is complete. The next call is $A885 at Dan1+$0346,
-    in an owned eight-bit GWorld: font 20, size 14, plain face, text mode 1.
-  - The inherited disabled-text guard returned zero and silently spun in the
-    Line-A handler. It now reports the named DrawText stop. Keep unsupported
-    fonts/modes explicit; never resume through Vette's guessed font renderer.
-  - Measure the original string/range, selected font, pen advance, colour,
-    clipping, raster and ABI. Reuse validated port-owned fonts under D6;
-    this is intro game text, not Mac dialog or menu presentation.
+- **M2.3g31 Intro presentation CopyBits.**
+  - The copyright DrawText now completes. The next call is $A8EC at
+    Dark+$1DBC; original +$1DA8 bytes are
+    `486c0002486b0002486efff8486efff8426742a7a8ec`.
+  - Capture the actual source/destination, selected port, rectangles, mode,
+    colour tables and clipping on both machines before extending CopyBits.
+    Reuse the eight-bit copy and colour-mapping helpers where their measured
+    contracts apply; preserve the documented D6 placeholder text differences.
 
-  *Done when* the reached text renders legibly in the right place, measured
-  metrics/pen/ABI and full surrounding-buffer preservation pass, placeholder
-  glyph differences are explained, and startup reaches its next named stop
-  with MDRV absent and fill/line/effect/logo/palette/AGA regressions passing.
+  *Done when* the reached copy matches the original mapping/clipping/ABI,
+  surrounding pixels and metadata remain intact, and startup reaches its next
+  named stop with text/fill/line/effect/logo/palette/AGA regressions passing.
 - **M2.1c Original File Manager read acceptance (after M2.2).**
   - This retains M2.1's original acceptance; diagnostic fixture reads do not count
     as original-game reads. M2.1b2a measured the intervening Get1NamedResource
