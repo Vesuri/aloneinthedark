@@ -127,7 +127,7 @@ commands
  continue
 end
 continue
-if g_stageBState!=3 || g_trapWord!=0xa8ec || g_trapSegment!=13 || g_trapOffset!=0x7fa || *(unsigned long*)(g_trapRoutine+0)!=0x434f5059 || *(unsigned long*)(g_trapRoutine+4)!=0x42495453 || g_trapRoutine[8]!=0 || $menu_seq!=32 || $menu_inflight!=0 || g_soundDriverCalls!=g_effectStatusCalls+34 || g_macServiceActive!=0 || g_systemWindows!=$startup_windows || g_macServiceEntered!=$startup_entered+g_effectStatusCalls || g_macServiceCompleted!=$startup_completed+g_effectStatusCalls || g_resourceRuntimeReads!=68 || g_resourceRuntimeBytes!=333998 || g_overlayRuntimeReads!=31 || g_overlayRuntimeBytes!=82238
+if g_stageBState!=3 || g_trapWord!=0xa976 || g_trapSegment!=12 || g_trapOffset!=0x583a || *(unsigned long*)(g_trapRoutine+0)!=0x434f5059 || *(unsigned long*)(g_trapRoutine+4)!=0x42495453 || g_trapRoutine[8]!=0 || $menu_seq!=32 || $menu_inflight!=0 || g_soundDriverCalls!=g_effectStatusCalls+34 || g_macServiceActive!=0 || g_systemWindows!=$startup_windows || g_macServiceEntered!=$startup_entered+g_effectStatusCalls || g_macServiceCompleted!=$startup_completed+g_effectStatusCalls || g_resourceRuntimeReads!=68 || g_resourceRuntimeBytes!=333998 || g_overlayRuntimeReads!=31 || g_overlayRuntimeBytes!=82238
  printf "FAIL native menu: next %s/%s calls=%u\n",g_trapManager,g_trapRoutine,$menu_seq
  detach
  quit 1

@@ -15,8 +15,9 @@ design.md §5.
 - The title-screen copy now matches the Mac with documented placeholder text
   differences. The credits now use the measured 16-pixel line spacing and owned dot-above
   artwork, including â in the original “Yaâl” credit. Game-window lines and
-  their AGA publication pass. The intro returns successfully after 5,606 frames;
-  the next stop is CopyBits, Dan2+$07FA ($A8EC).
+  their AGA publication pass. The intro returns successfully;
+  the post-intro offscreen copy also matches. The next stop is GetKeys,
+  Dan1+$583A ($A976).
   Intro LineTo and mode-0 fills match the Mac; the first raw effect plays on Paula and its
   real polling loop observes completion with sample/DMA cleanup verified.
   Detailed completed service contracts and regression evidence are in
@@ -53,19 +54,17 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.3g35 Post-intro CopyBits.**
-  - After the original intro returns at Dark+$5220 with D0 zero, native
-    execution reaches CopyBits $A8EC at Dan2+$07FA. The original caller bytes
-    +$07E8–$07FB are `486800022f0c2f2e0008486efff8426742a7a8ec`;
-    mode is srcCopy (0) and the mask is nil.
-  - Measure this call's source/destination records, rectangles and complete
-    buffers against MAME. Extend the existing eight-bit copy path only for the
-    reached contract; other unsupported states remain named stops.
+- **M2.3g36 Original GetKeys polling.**
+  - The post-intro offscreen CopyBits now passes. Execution reaches GetKeys
+    $A976 at Dan1+$583A. Original bytes +$5836–$583B are
+    `486efff0a976`: the destination is a 16-byte local KeyMap.
+  - Measure the original return ABI and key-map representation. Reuse the
+    existing native key-map translation and Vette's service contract; preserve
+    actual held/released keys rather than returning a permanently empty map.
 
-  *Done when* the original caller's arguments, ABI, pixels, clipping and any
-  screen publication match the reference, and the integrated run passes this
-  stop with the intro/credits/title/window-line/effect regressions and MDRV
-  absence verified.
+  *Done when* the original polling call matches MAME's bytes/ABI and map extent,
+  held/released key fixtures verify the representation, and the integrated run
+  passes this stop with prior intro/copy/audio checks and original MDRV absent.
 - **M2.1c Original File Manager read acceptance (after M2.2).**
   - This retains M2.1's original acceptance; diagnostic fixture reads do not count
     as original-game reads. M2.1b2a measured the intervening Get1NamedResource

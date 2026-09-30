@@ -3680,7 +3680,7 @@ static __attribute__((noinline)) void packedLogicRowsC(
     }
 }
 
-static bool copyWindowBits8(const uint8_t* sourceBitmap,const uint8_t* destinationBitmap,
+static bool copyPortBits8(const uint8_t* sourceBitmap,const uint8_t* destinationBitmap,
                             const uint8_t* from,const uint8_t* to,uint16_t mode,const uint8_t* mask)
 {
     if(mode!=0 || mask)return false;
@@ -3688,32 +3688,46 @@ static bool copyWindowBits8(const uint8_t* sourceBitmap,const uint8_t* destinati
     for(uint16_t i=0;i<sizeof(s_gworlds)/sizeof(s_gworlds[0]);++i)
         if(s_gworlds[i].used && (sourceBitmap==s_gworlds[i].pixMap || sourceBitmap==s_gworlds[i].port+2))source=&s_gworlds[i];
     uint8_t* port=s_qdThePort ? (uint8_t*)read32(s_qdThePort) : 0;
-    WindowSlot* window=windowSlot(port);
-    if(!source || !source->locked || !window || window->dialog || !port[110]
-       || destinationBitmap!=port+2 || read16(window->pixelMap+32)!=8
-       || read32(window->pixelMap)!=(uint32_t)s_colorScreen
+    GWorldSlot* destination=gWorldForPort(port);
+    WindowSlot* window=destination ? 0 : windowSlot(port);
+    if(!source || !source->locked || !port || destinationBitmap!=port+2
        || read16(source->pixMap+32)!=8 || read32(source->pixMap)!=(uint32_t)source->pixels)return false;
+    const uint8_t* map;const uint8_t* destinationColors;const uint8_t* inverse;
+    uint8_t* pixels;uint32_t pixelBytes;
+    if(destination) {
+        if(!destination->locked || read16(destination->pixMap+32)!=8
+           || read32(destination->pixMap)!=(uint32_t)destination->pixels)return false;
+        map=destination->pixMap;pixels=destination->pixels;
+        pixelBytes=destination->owner->handleSize(destination->handles[1]);
+        destinationColors=destination->colorTable;inverse=*destination->handles[26];
+    } else {
+        if(!window || window->dialog || !port[110] || read16(window->pixelMap+32)!=8
+           || read32(window->pixelMap)!=(uint32_t)s_colorScreen)return false;
+        map=window->pixelMap;pixels=s_colorScreen;pixelBytes=sizeof(s_colorScreen);
+        destinationColors=s_windowManagerColors;inverse=s_mainDeviceITable;
+    }
     uint8_t** vh=(uint8_t**)read32(port+24);uint8_t** ch=(uint8_t**)read32(port+28);
     if(!vh || !*vh || !ch || !*ch || read16(*vh)!=10 || read16(*ch)!=10)return false;
     uint8_t colors[256];const uint8_t* remap=0;
-    if(read32(source->colorTable)!=read32(s_windowManagerColors)) {
+    if(read32(source->colorTable)!=read32(destinationColors)) {
         const uint8_t* ct=source->colorTable;
         if(read16(ct+6)!=255 || (read16(ct+4)!=0 && read16(ct+4)!=0x8000))return false;
-        if((!s_mainDeviceITableValid || read32(s_mainDeviceITable)!=read32(s_windowManagerColors))
+        if(window && (!s_mainDeviceITableValid || read32(inverse)!=read32(destinationColors))
            && !makeITable(0,0,4))return false;
+        if(!inverse || read32(inverse)!=read32(destinationColors))return false;
         for(uint16_t i=0;i<256;++i) {
             const uint8_t* entry=ct+8+uint32_t(i)*8;uint16_t index;
             if((read16(ct+4)==0 && read16(entry)!=i)
-               || !GWorld8::colorIndex(s_windowManagerColors,s_mainDeviceITable,entry+2,index))return false;
+               || !GWorld8::colorIndex(destinationColors,inverse,entry+2,index))return false;
             colors[i]=uint8_t(index);
         }
         remap=colors;
     }
-    uint8_t drawn[8];const uint8_t* map=window->pixelMap;
+    uint8_t drawn[8];
     if(!CopyBits8::copy(source->pixels,source->owner->handleSize(source->handles[1]),
-        read16(source->pixMap+4)&0x3fff,source->pixMap+6,s_colorScreen,sizeof(s_colorScreen),
+        read16(source->pixMap+4)&0x3fff,source->pixMap+6,pixels,pixelBytes,
         read16(map+4)&0x3fff,map+6,from,to,port+16,*vh+2,*ch+2,drawn,remap))return false;
-    if(read16(drawn)!=read16(drawn+4) && read16(drawn+2)!=read16(drawn+6))
+    if(window && read16(drawn)!=read16(drawn+4) && read16(drawn+2)!=read16(drawn+6))
         markDirtyBounds((int16_t)read16(drawn)-(int16_t)read16(map+6),
                         (int16_t)read16(drawn+2)-(int16_t)read16(map+8),
                         (int16_t)read16(drawn+4)-(int16_t)read16(map+6),
@@ -7590,7 +7604,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     }
     if (trap == 0xa8ec) {                    // CopyBits(src, dst, srcRect, dstRect, mode, mask)
         if(read16(s_windowManagerPixMap+32)==8) {
-            if(!copyWindowBits8((const uint8_t*)read32(userStack+18),(const uint8_t*)read32(userStack+14),
+            if(!copyPortBits8((const uint8_t*)read32(userStack+18),(const uint8_t*)read32(userStack+14),
                 (const uint8_t*)read32(userStack+10),(const uint8_t*)read32(userStack+6),
                 read16(userStack+4),(const uint8_t*)read32(userStack)))goto unsupportedTrap;
             regs[0]=0;return 23;

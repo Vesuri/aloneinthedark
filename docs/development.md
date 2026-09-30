@@ -3782,3 +3782,38 @@ legacy standalone AGA observers have stale publication assumptions; M2.10a
 records that gap. The integrated frame-9 and window-line frame-117 publication
 checks pass. Full intro frame comparison and rendered-window acceptance remain
 open; this is not completion of M2.
+
+
+## Post-intro offscreen CopyBits
+
+M2.3g35 extends the existing owned eight-bit copy adapter to a locked offscreen
+destination, using its own colour table/inverse and storage bounds. The original
+20×8 call and its exact preservation/ABI contract are in [copybits.md](copybits.md).
+There is no new blitter, font substitution or game-code patch. Other unsupported
+transfer forms remain loud stops.
+
+`tmp/m2-postcopy-reference.log` and `tmp/m2-postcopy-native.log` both exit zero.
+Every defined destination pixel matches the original; full buffers obey the
+independent copy/preservation model. All drawn atlas pixels match, while
+unpainted allocation bytes and row padding are proved untouched. Native screen
+dirty state stays clear and queued/presented counters stay 5,554/5,554 across
+this offscreen call. The original startup intro returns D0=0 at Dark+$5220,
+with 5,553 frames and 47,451 ticks on the temporary fast A4000/68020 model.
+Frame totals differ from the cycle-exact A1200 run; this is state-pair service
+evidence, not the pending fixed-seed full-intro acceptance (M2.10).
+
+Execution advances to GetKeys $A976 at Dan1+$583A. The capture reports 194
+system windows and 2,721/2,721 completed services, none active, including 1,367
+effect-status queries: fixed baseline 1,354/1,354. The derived fresh baseline
+is 1,362/1,362 with 220 windows; fresh-start acceptance is still M2.4. All 16
+effects have stopped, no sample/channel allocation remains, and original MDRV
+is absent. Final publication is 5,556/5,556. The other ledgers remain 68 reads /
+333,998 application bytes, 31 / 82,238 overlay bytes, 64 / 82,810 preparation
+bytes, 58 low-memory sites, CODE mask $3FFB and 244 resource records.
+
+The full host suite, no-float/82-probe build audits and all 34 integrated
+comparisons pass. Changed checker selftests and the 94-script MAME literal
+audit pass. The earlier input-only fast capture is rejected: GDB reported
+“Cannot execute this command while the target is running,” returned zero and
+produced no dump. Only the complete integrated run supplies native acceptance.
+The existing standalone AGA observer limitations remain tracked in M2.10a.

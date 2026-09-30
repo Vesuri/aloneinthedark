@@ -115,7 +115,7 @@ while $i<g_resourceCount
  set $i=$i+1
 end
 echo PASS native GetPixBaseAddr original-MDRV=absent\n
-if g_trapWord!=0xa8ec || g_trapSegment!=13 || g_trapOffset!=0x7fa || g_macServiceEntered!=$startup_entered+g_effectStatusCalls || g_macServiceCompleted!=$startup_completed+g_effectStatusCalls || g_systemWindows!=$startup_windows
+if g_trapWord!=0xa976 || g_trapSegment!=12 || g_trapOffset!=0x583a || g_macServiceEntered!=$startup_entered+g_effectStatusCalls || g_macServiceCompleted!=$startup_completed+g_effectStatusCalls || g_systemWindows!=$startup_windows
  echo FAIL pixel-address startup endpoint\n
  detach
  quit 1
@@ -123,7 +123,7 @@ end
 echo startup PASS: original main, next stop MENU MANAGER / CLEARMENUBAR CODE 7\n
 set $screen=s_loudStopScreen
 printf "AGA_STOP state=%u trap=%X segment=%u offset=%X queued=%u presented=%u pending=%u\n",g_stageBState,g_trapWord,g_trapSegment,g_trapOffset,g_macFramesQueued,g_macFramesPresented,$screen->m_framePending
-if g_stageBState!=3 || g_trapWord!=0xa8ec || g_trapSegment!=13 || g_trapOffset!=0x7fa || g_macFramesQueued!=4 || g_macFramesPresented>4
+if g_stageBState!=3 || g_trapWord!=0xa976 || g_trapSegment!=12 || g_trapOffset!=0x583a || g_macFramesQueued!=4 || g_macFramesPresented>4
  echo FAIL AGA startup boundary\n
  detach
  quit 1

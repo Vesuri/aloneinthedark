@@ -552,12 +552,13 @@ while $i<g_resourceCount
  set $i=$i+1
 end
 echo PASS menu-list next-stop original-MDRV=absent\n
-if g_trapWord!=0xa8ec || g_trapSegment!=13 || g_trapOffset!=0x7fa || g_systemWindows!=$startup_windows || g_macServiceEntered!=$startup_entered+g_effectStatusCalls || g_macServiceCompleted!=$startup_completed+g_effectStatusCalls
+if g_trapWord!=0xa976 || g_trapSegment!=12 || g_trapOffset!=0x583a || g_systemWindows!=$startup_windows || g_macServiceEntered!=$startup_entered+g_effectStatusCalls || g_macServiceCompleted!=$startup_completed+g_effectStatusCalls
  echo FAIL menu-list startup endpoint\n
  detach
  quit 1
 end
-echo startup PASS: original main, next stop QUICKDRAW / COPYBITS CODE 13\n
+echo startup PASS: original main, next stop EVENT MANAGER / GETKEYS CODE 12\n
+printf "STARTUP_CAPTURE active=%u baseline=%u/%u frames=%u/%u\n",g_macServiceActive,g_macServiceEntered-g_effectStatusCalls,g_macServiceCompleted-g_effectStatusCalls,g_macFramesQueued,g_macFramesPresented
 set $ri=0
 set $font_bodies=0
 while $ri<g_resourceCount

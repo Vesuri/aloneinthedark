@@ -83,3 +83,37 @@ Logical client images were inspected. They do not establish rendered-window
 acceptance. The host suite, 122 clipping fixtures, rebuilt inverse table, DrawText
 pair and all 28 earlier integrated checks pass. Startup advances to the later
 “I˙Motion” DrawText, whose $FA glyph remains an explicit stop (M2.3g32).
+
+## Post-intro offscreen copy
+
+Dan2+$07FA copies a 20×8 block from (156,0)–(164,20) to
+(62,0)–(70,20), using srcCopy and no mask. Original caller bytes at
++$07E8–$07FB are `486800022f0c2f2e0008486efff8426742a7a8ec`.
+Both arguments use colour-port bitmap records. The source is 138×542,
+stride 144; the selected destination is a 648×401 GWorld, stride 652.
+The source and destination tables have different seeds. Rebuilding the
+resolution-four lookup from the destination table reproduces every byte of
+the original 261,452-byte destination, including its 140 changed pixels.
+The source, both maps/tables, selected port and clipping records are unchanged.
+The original returns D0=0, removes 22 argument bytes, and preserves
+D2–D7/A2–A6. D1/A0/A1 are scratch.
+
+The adapter now accepts a locked owned offscreen destination using that world's
+colour environment and storage bounds. It reuses the existing unscaled clipping
+helper and does not mark the visible screen dirty for an offscreen write.
+Unsupported transfers remain loud stops. `mac_postintro_copy.lua`,
+`postcopy_call.gdb` and `check_postcopy.py` provide the paired full-buffer and
+ABI checks. Both the original `tmp/m2-postcopy-reference.log` and native
+`tmp/m2-postcopy-native.log` finish normally (exit zero). All defined destination
+pixels match between systems, and both complete byte buffers satisfy the
+independent copy/preservation model. The source equals the previously verified
+20-picture atlas on each platform. Its 41,973 differing unpainted bytes are
+untouched allocator contents; every drawn atlas pixel and every copied source
+pixel matches. The destination's 1,604 padding bytes likewise remain untouched.
+No visible-screen dirty state or publication changes during this offscreen call.
+
+The 34 integrated comparisons pass, including both earlier copies, all credit
+stencils, window-line AGA publication, effect completion, resource/driver
+contracts and the full A5 world. Original MDRV remains absent. The next stop
+is GetKeys at Dan1+$583A, tracked as M2.3g36. This is not full M2 intro-frame
+acceptance or the owner-deferred rendered-window check.

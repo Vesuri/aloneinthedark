@@ -99,6 +99,24 @@ while $tw_finished==0
     tbreak dispatchMacTrap if trap==0xa885 && inUserService
     continue
     source accenttext_call.gdb
+    tbreak *((unsigned long)s_segments[4].begin+0x5220)
+    continue
+    if $pc!=(unsigned long)s_segments[4].begin+0x5220 || $d0!=0
+     echo FAIL original intro return\n
+     detach
+     quit 1
+    end
+    printf "INTRO_PROGRESS second-return d0=%u frames=%u ticks=%u\n",$d0,g_macFramesPresented,g_macTicks
+    tbreak *((unsigned long)s_segments[13].begin+0x7fa)
+    continue
+    tbreak dispatchMacTrap
+    continue
+    if trap!=0xa8ec
+     echo FAIL post-intro CopyBits dispatch\n
+     detach
+     quit 1
+    end
+    source postcopy_call.gdb
     continue
     loop_break
    end

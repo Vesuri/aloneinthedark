@@ -63,7 +63,7 @@ def check(text,status,native=False):
         code[2:6]=bytes.fromhex('fffee4ac')
         if hashlib.sha256(code).hexdigest()!='474f8a03c2ddd2d18c9367305105c552f8e79613077ee7cb114d754752f9e5fe':
             raise ValueError('live original window instructions')
-        one(text,r'CHOICE_NEXT state=3 trap=A8EC selector=FFFFFFFF segment=13 offset=7FA manager=QUICKDRAW routine=COPYBITS windows=(?:159|185) services=\d+/\d+ reads=68 bytes=333998')
+        one(text,r'CHOICE_NEXT state=3 trap=A976 selector=FFFFFFFF segment=12 offset=583A manager=UNKNOWN MANAGER routine=UNKNOWN TRAP windows=(?:194|220) services=\d+/\d+ reads=68 bytes=333998')
     return True
 
 def check_selection(reference,status,native):

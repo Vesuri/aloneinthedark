@@ -27,7 +27,7 @@ def check(reference,native,reference_status,native_status,resource,folder):
     assert reference.count('PASS NewRgn ownership queries')==1,'reference query completion'
     n=fields(one(native,r'RGN_NATIVE (.*)'))
     assert n['size']==10 and n['flags']==0 and n['owner']==n['zone'] and n['memerr']==0,'native heap owner/extent/flags'
-    print('PASS paired NewRgn: original/live bytes, stack/register contract, real owned 10-byte unlocked empty region; '+one(native,r'RGN_NEXT (state=3 trap=A8EC selector=FFFFFFFF segment=13 offset=7FA manager=QUICKDRAW routine=COPYBITS windows=(?:159|185) services=\d+/\d+)'))
+    print('PASS paired NewRgn: original/live bytes, stack/register contract, real owned 10-byte unlocked empty region; '+one(native,r'RGN_NEXT (state=3 trap=A976 selector=FFFFFFFF segment=12 offset=583A manager=UNKNOWN MANAGER routine=UNKNOWN TRAP windows=(?:194|220) services=\d+/\d+)'))
 
 
 if __name__=='__main__':
