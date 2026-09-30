@@ -148,7 +148,7 @@ if s_pixelsDirty || s_dirtyRectCount!=0 || g_macFramesQueued!=1
  quit 1
 end
 printf "WP_NEXT state=%u trap=%X segment=%u offset=%X manager=%s routine=%s windows=%u services=%u/%u\n",g_stageBState,g_trapWord,g_trapSegment,g_trapOffset,g_trapManager,g_trapRoutine,g_systemWindows,g_macServiceEntered,g_macServiceCompleted
-if g_stageBState!=3 || g_trapWord!=0xaa2c || g_trapSegment!=9 || g_trapOffset!=0xe3a || g_macServiceActive!=0
+if g_stageBState!=3 || g_trapWord!=0xa8aa || g_trapSegment!=9 || g_trapOffset!=0xe90 || g_macServiceActive!=0
  echo FAIL window palette presentation stop\n
  detach
  quit 1

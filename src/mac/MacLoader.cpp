@@ -778,7 +778,7 @@ static const TrapName s_trapNames[] = {
     {0xaa2e,"GRAPHICS DEVICE MANAGER","INITGDEVICE"},
     {0xa047,"TRAP MANAGER","SETTRAPADDRESS"}, {0xa983,"DIALOG MANAGER","DISPOSEDIALOG"},
     {0xa850,"QUICKDRAW","INITCURSOR"}, {0xa9bc,"QUICKDRAW","GETPICTURE"},
-    {0xaa2c,"QUICKDRAW","TESTDEVICEATTRIBUTE"}, {0xa870,"QUICKDRAW","LOCALTOGLOBAL"}, {0xa886,"QUICKDRAW","TEXTWIDTH"}, {0xa8f6,"QUICKDRAW","DRAWPICTURE"}, {0xa89b,"QUICKDRAW","PENSIZE"},
+    {0xa8aa,"QUICKDRAW","SECTRECT"}, {0xaa2c,"QUICKDRAW","TESTDEVICEATTRIBUTE"}, {0xa870,"QUICKDRAW","LOCALTOGLOBAL"}, {0xa886,"QUICKDRAW","TEXTWIDTH"}, {0xa8f6,"QUICKDRAW","DRAWPICTURE"}, {0xa89b,"QUICKDRAW","PENSIZE"},
     {0xa89c,"QUICKDRAW","PENMODE"}, {0xa8a1,"QUICKDRAW","FRAMERECT"},
     {0xa8a7,"QUICKDRAW","SETRECT"},
     {0xa8a2,"QUICKDRAW","PAINTRECT"},
@@ -6478,6 +6478,17 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     }
     if(trap==0xaa29) { // GetDeviceList: actual single-device chain
         if(s_windowManager.initialized) { write32(userStack,(uint32_t)&s_mainDeviceMaster);return 1; }
+    }
+    if(trap==0xaa2c) { // TestDeviceAttribute: actual main-device flag word.
+        uint16_t attribute=read16(userStack);
+        if(!s_windowManager.initialized || attribute>15
+           || (uint8_t**)read32(userStack+2)!=&s_mainDeviceMaster
+           || s_mainDeviceMaster!=s_mainDevice)goto unsupportedTrap;
+        uint16_t flags=read16(s_mainDevice+20);
+        userStack[6]=(uint8_t)((flags>>attribute)&1); // Leave Pascal padding intact.
+        regs[0]=(regs[0]&0xffff0000UL)|attribute;
+        regs[1]=(regs[1]&0xffff0000UL)|flags;
+        return 7;
     }
     if(trap==0xaa2b) { // GetNextDevice
         if((uint8_t**)read32(userStack)==&s_mainDeviceMaster) {

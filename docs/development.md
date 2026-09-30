@@ -3161,3 +3161,26 @@ audits pass. See [gworld.md](gworld.md#background-point-conversion) for reproduc
 Next is QUICKDRAW / TESTDEVICEATTRIBUTE at Misc1+$0E3A. Counts remain 113
 windows, 431 services and 62 original resource reads / 265,454 bytes. Fresh
 preferences remain derived, and rendered intro acceptance is still pending.
+
+
+## Drawing-device attributes
+
+M2.3g12 is complete. The original bit-13 query reads the actual $B921 device
+flags and returns a one-byte Boolean with unchanged padding. D0/D1 low words
+and preserved upper words match the measured contract; D2–D7/A2–A6 and the
+entire device record are unchanged. The implementation accepts bits 0–15 on
+the registered main device and stops explicitly for unsupported inputs.
+
+`tmp/m2-device-attribute-reference-final.log` and
+`tmp/m2-device-attribute-native-final.log` exit 0 and pass the reference/native
+checkers. The reference includes all sixteen flags with register/padding
+sentinels; native acceptance exercises the original query. The same final run
+passes both coordinate conversions, background binding, 220 text widths, twenty
+pictures, fonts, driver/MDRV guard, AGA publication and all 75,616 A5 bytes.
+Device inverse/layout sanitizer tests, startup checker tests, the 72-script Lua
+audit and both link audits pass. See [gworld.md](gworld.md#drawing-device-attribute-query).
+
+The next stop is QUICKDRAW / SECTRECT at Misc1+$0E90, before the device iterator
+can finish. Counts remain 113 windows, 431 services and 62 original resource
+reads / 265,454 bytes. Fresh-preference counts remain derived. Intro acceptance
+is still pending.

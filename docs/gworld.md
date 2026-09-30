@@ -246,3 +246,32 @@ python3 tools/check_localglobal.py tmp/m2-localglobal-reference.log tmp/m2-local
 The checker requires exact original/live caller bytes, both results, all
 preserved registers, stack cleanup, adjacent bytes and unchanged drawing records.
 The next stop is TestDeviceAttribute at Misc1+$0E3A.
+
+
+## Drawing-device attribute query
+
+Misc1+$0E3A calls TestDeviceAttribute with the main-device handle and attribute
+13. Original +$0E32–$0E3B bytes: `42272f0a3f3c000daa2c`. The current $B921
+flags word at GDevice+20 has this bit set. The trap writes Boolean byte 1,
+preserves its Pascal padding byte and consumes six argument bytes. It replaces
+only the low words of D0 (attribute) and D1 (flags), preserving their upper words.
+D2–D7/A2–A6 and the complete device record are unchanged. Native A0/A1 are
+preserved additionally; Mac scratch pointer values are not reproduced.
+
+The native query reads the real registered main device for attributes 0–15.
+Unknown devices and out-of-range attributes remain explicit stops. The original
+iterator next checks existing device fields and reaches SectRect at +$0E90;
+completion of that intersection and the remaining iteration is still pending.
+
+`mac_device_attribute.lua` captures the original call plus all sixteen bits,
+with D0/D1 and Boolean-padding sentinels. The original native call is captured
+by `device_attribute_call.gdb` in the combined startup observer. The additional
+sixteen-bit cases are reference fixtures, not claimed as native original calls.
+
+```
+python3 tools/check_device_attribute.py tmp/m2-device-attribute-reference-final.log --status 0
+python3 tools/check_device_attribute.py tmp/m2-device-attribute-native-final.log --status 0 --native
+```
+
+The checker independently checks original/live bytes, the real flags, Boolean
+and padding, upper/lower register words, preserved state and positive completion.

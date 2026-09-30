@@ -14,10 +14,10 @@ design.md §5.
   low-resolution selection/cleanup, all 75 font-metrics calls and four Apple Event
   registrations, colour-table loading/mutations, palette construction and default
   binding, hidden window-title state and the verified WIND 128 request. Startup realizes the palette and clears the game client area, then stops at
-  `TESTDEVICEATTRIBUTE` at Misc1+$0E3A after palette binding/activation, first-frame AGA
+  `SECTRECT` at Misc1+$0E90 after palette binding/activation, first-frame AGA
   publication, background ShowHide, game-port binding, TickCount, unchanged window geometry, point setup, empty-region allocation and eight-bit offscreen buffer initialization, pixel-address access and the first original image-row copy and hidden menu-list setup, followed by the 20-call image rectangle loop and the measured already-detached
   resource error, device-table world allocation and RGB foreground/background
-  selection, all twenty indexed picture draws and 220 original text measurements, then binds the existing background window and converts its two corner points. The original
+  selection, all twenty indexed picture draws and 220 original text measurements, then binds the existing background window and converts its two corner points, then queries the actual device flags. The original
   mixer is never loaded.
 - The original runs in MAME on the System 7.5.5 reference volume.
 
@@ -51,15 +51,15 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.3g12 Drawing-device attribute query.**
-  - Both background-window LocalToGlobal points now pass. Misc1 next reaches
-    TestDeviceAttribute at +$0E3A ($AA2C) while selecting the drawing device.
-  - Measure the reached device attributes and original iteration, using the
-    existing main-device record rather than guessed results.
+- **M2.3g13 Drawing-device rectangle intersection.**
+  - The original device-attribute query now passes. Misc1 next reaches
+    SectRect at +$0E90 ($A8AA), intersecting the background window with the
+    candidate device before choosing the device with the largest covered area.
+  - Measure the original inputs/result, Boolean/stack contract and rectangle
+    edge cases. Reuse the existing rectangle helpers where applicable.
 
-  *Done when* original attribute queries/results and preserved state match
-  MAME, startup reaches its next named stop with MDRV absent, and device/startup
-  checks pass.
+  *Done when* the original intersection and its outputs match MAME, startup
+  reaches its next named stop with MDRV absent, and rectangle/startup checks pass.
 - **M2.1c Original File Manager read acceptance (after M2.2).**
   - This retains M2.1's original acceptance; diagnostic fixture reads do not count
     as original-game reads. M2.1b2a measured the intervening Get1NamedResource
