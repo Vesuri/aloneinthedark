@@ -57,15 +57,18 @@ cd amiga
 ./run.sh
 ```
 
-The temporary default is `a4000-020` (`AMIGA_MODEL=A4000`), approved by the
-owner on 2026-09-30 to shorten test runs. It uses AGA, 68EC020 at maximum
+The temporary default is `a4000-030` (`AMIGA_MODEL=A4000`), approved by the
+owner on 2026-09-30 to shorten test runs. It uses AGA, 68030 at maximum
 emulator speed without cycle-exact timing, 2 MB chip / 8 MB fast, and no
 FPU/MMU/JIT. `AMIGA_CONFIG=a1200-020` (or `AMIGA_MODEL=A1200`) retains the
 14 MHz cycle-exact hardware baseline. Explicit `AMIGA_CONFIG` takes precedence
-over the model selector. Fast runs establish functionality, not A1200 timing. Other CPU configurations fail
-with `CONFIG / DEFERRED CPU TARGET`; their support is deferred to M5.0.
+over the model selector. Fast runs establish functionality, not A1200 timing. The previous fast `a4000-020` remains selectable. 68040/68060 configurations
+remain deferred to M5.0. The port still compiles for 68020 without an FPU.
 The changed default passes the bounded original-code boot observer (exit 0);
-the emulator reports `CPU=68020, FPU=0, MMU=0, JIT=0`, prefetch fast 24-bit.
+`tmp/m2-cpu030-boot.log` reaches the original main entry with exit 0.
+The emulator reports `CPU=68030, FPU=0, MMU=0, JIT=0. fast`, and Exec
+reports the 68030 flag without FPU flags. This is boot evidence, not complete
+68030 gameplay acceptance.
 Eight configuration selection/rejection checks and shell syntax checks pass.
 All three launchers share these settings and write the emulator core log to
 `amiga/.run/logs/fs-uae.log.txt`.

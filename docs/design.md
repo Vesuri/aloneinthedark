@@ -25,7 +25,9 @@ services they call, AGA display, Paula audio, and Amiga input.
 
 - **68020 is the sole active Amiga target** (D2, owner update 2026-09-28).
   The game uses 68020 instructions [M: 319 on reachable paths]. Other CPU
-  configurations and performance work are deferred; first make this target work.
+  compatibility and performance work are deferred; first make this target work.
+  Owner update 2026-09-30 permits a maximum-speed 68030 emulator for faster tests;
+  the executable still targets 68020 and uses no FPU.
 - **No preloading** (D1). Data and resources are read on demand, in chunks,
   with the operating system allowed to run for the read (4.5), so fast RAM
   holds only the 3 MB application zone, the port and the display.
@@ -707,7 +709,7 @@ the owner.
 | ID | Decision |
 | --- | --- |
 | D1 | **No preloading.** Load in reasonable chunks, letting the OS run (multitasking, DOS) when needed: 4.1 system windows, 4.5 files, 4.6 resources. |
-| D2 | **68020 first.** A 68020 must boot and play. It is the sole active target; 68030/040/060 support and general performance work are deferred (owner update 2026-09-28). Owner update 2026-09-30 brings forward focused intro book-page optimization to make testing feasible (M2.3g41p). |
+| D2 | **68020 first.** A 68020 must boot and play. It is the sole active target; 68030/040/060 support and general performance work are deferred (owner update 2026-09-28). Owner update 2026-09-30 brings forward focused intro book-page optimization to make testing feasible (M2.3g41p), and explicitly selects a maximum-speed 68030 test emulator. The executable remains 68020/no-FPU; this does not establish broader CPU compatibility. |
 | D3 | **No frame cap** unless bug-free gameplay requires one. Such a bug, for example the stairs, is addressed separately. |
 | D4 | **No screen-size dialog;** only 320×200. |
 | D5 | **Replace all Mac dialogs**, including new-game and save/load, with an in-game interface inside 320×200. Preserve choices/actions through measured service contracts; no Mac dialog appearance (owner update 2026-09-29). |
@@ -728,11 +730,13 @@ the owner.
 | Release | `make release-check` and WHDLoad smoke/boot/load/quit tests |
 
 **Emulator configuration** (FS-UAE via the three launch scripts).
-`amiga/config.sh` defaults to `AMIGA_CONFIG=a4000-020` (`AMIGA_MODEL=A4000`),
-a temporary owner-approved test configuration (2026-09-30): 68EC020 at maximum
+`amiga/config.sh` defaults to `AMIGA_CONFIG=a4000-030` (`AMIGA_MODEL=A4000`),
+a temporary owner-approved test configuration (owner update 2026-09-30): 68030 at maximum
 emulator speed without cycle-exact timing, AGA, 2 MB chip and 8 MB fast RAM,
 no FPU, MMU or JIT. Explicit `a1200-020` retains the 14 MHz cycle-exact
-baseline for timing checks. Other CPU selections remain deferred (M5.0).
+baseline for timing checks; `a4000-020` retains the prior fast test machine.
+This is a test-emulator exception to D2; the executable remains 68020 code.
+68040/68060 support remains deferred (M5.0).
 `runtime_status.gdb` reports the emulator CPU tuple and Exec CPU flags.
 These settings establish a functional baseline, not a performance result.
 
