@@ -3039,3 +3039,18 @@ $8000 table flag. Its input-table allocation behavior is queued as M2.3g6.
 Locked/empty/nil variants here have reference evidence; this new native original
 capture exercises the resident unlocked table. Prior attached/dirty resource
 acceptances remain in force; this does not claim intro or audio acceptance.
+
+
+## Device-table offscreen allocation
+
+M2.3g6 is complete. The allocator accepts the measured $8000 colour-table flag
+without altering the independent copy or caller's table. The existing world
+capture/checker now supports both original sites; native record dumping is
+shared rather than duplicated. See [gworld.md](gworld.md) for contract details.
+The final reference/native captures exit 0 and agree on all defined world records,
+27 owned handles, 78,048 pixel bytes and inverse-colour data. Both ordinary and
+device-table host inverse comparisons pass, with sanitizers. Existing detachment,
+20 rectangle calls, both font lookups, native driver/MDRV guard and AGA checks
+pass in the same native launch. All 75,616 A5 bytes match; both link audits and
+the literal audit pass. Counts remain 101 windows, 163 services and 62 original
+resource reads / 265,454 bytes. Next is named RGBForeColor, Dan2+$02BE.

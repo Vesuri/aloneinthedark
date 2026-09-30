@@ -23,10 +23,11 @@ with tempfile.TemporaryDirectory(prefix='aitd-gworld8-') as directory:
             output=subprocess.check_output([str(exe),'--pixel-address']+[f'{int(v):x}' for v in args],text=True)
             assert [int(x,16) for x in output.split()]==[r[k] for k in ['result','D0','A0','A1']]
         print('PASS original locked/unlocked pixel-address helper contracts')
-    if '--reference' in sys.argv:
+    if '--reference' in sys.argv or '--device-reference' in sys.argv:
+        prefix='gworld-device-reference' if '--device-reference' in sys.argv else 'gworld-reference'
         output=Path(directory)/'inverse.bin'
-        subprocess.run([str(exe),str(ROOT/'tmp/gworld-reference-clut.bin'),str(output)],check=True,timeout=30)
-        expected=(ROOT/'tmp/gworld-reference-aux-device-inverse.bin').read_bytes()
+        subprocess.run([str(exe),str(ROOT/f'tmp/{prefix}-clut.bin'),str(output)],check=True,timeout=30)
+        expected=(ROOT/f'tmp/{prefix}-aux-device-inverse.bin').read_bytes()
         assert output.read_bytes()[:4364]==expected[:4364], 'Mac inverse table/header/collision mismatch'
         print('PASS original inverse table: 4096 entries, header and 256 collision links')
 print("PASS GWorld8: measured layout, all valid stride widths, range rejection, exact PixMap bytes, pixel-address contracts and write bounds")

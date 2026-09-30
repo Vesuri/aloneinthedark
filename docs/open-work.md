@@ -14,9 +14,9 @@ design.md §5.
   low-resolution selection/cleanup, all 75 font-metrics calls and four Apple Event
   registrations, colour-table loading/mutations, palette construction and default
   binding, hidden window-title state and the verified WIND 128 request. Startup realizes the palette and clears the game client area, then stops at
-  `NEWGWORLD` at Dan2+$0234 after palette binding/activation, first-frame AGA
+  `RGBFORECOLOR` at Dan2+$02BE after palette binding/activation, first-frame AGA
   publication, background ShowHide, game-port binding, TickCount, unchanged window geometry, point setup, empty-region allocation and eight-bit offscreen buffer initialization, pixel-address access and the first original image-row copy and hidden menu-list setup, followed by the 20-call image rectangle loop and the measured already-detached
-  resource error. The original
+  resource error and device-table world allocation. The original
   mixer is never loaded.
 - The original runs in MAME on the System 7.5.5 reference volume.
 
@@ -50,18 +50,17 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.3g6 Device colour-table offscreen world prerequisite.**
-  - Dan2's image-preparation loop and already-detached table call now pass.
-    The next NewGWorld call at +$0234 ($AB1D, selector 0) supplies the table from
-    GetCTable directly, retaining its device-table flag ($8000). The current
-    allocator accepts only tables whose flags are zero.
-  - Measure this original allocation, including copied colour values/flags,
-    bounds, ownership and result. Extend the eight-bit allocator to the measured
-    input without changing the caller's table or guessing colour conversion.
+- **M2.3g7 RGB drawing-colour selection prerequisite.**
+  - Dan2's device-table NewGWorld allocation now passes. The next call is
+    RGBForeColor at +$02BE ($AA14) in the original image-preparation path.
+  - Measure and implement foreground/background RGB selection as reached,
+    including current-port RGB and indexed-colour fields, palette mapping and
+    caller ABI. Reuse the existing colour table/inverse-table structures;
+    do not substitute guessed black/white or screen-specific colour values.
 
-  *Done when* original/native world records and colour-table contents match,
-  preparation advances to its next named stop with MDRV absent, and relevant
-  allocation/startup/display checks pass.
+  *Done when* original/native colour state and results match for the reached
+  drawing sequence, preparation advances to its next named stop with MDRV
+  absent, and relevant colour/startup/display checks pass.
 - **M2.1c Original File Manager read acceptance (after M2.2).**
   - This retains M2.1's original acceptance; diagnostic fixture reads do not count
     as original-game reads. M2.1b2a measured the intervening Get1NamedResource

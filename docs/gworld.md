@@ -148,3 +148,44 @@ in one bounded native run. Verify with `tools/check_pixbase.py` and explicit
 --pixel-reference` and the existing AGA/A5 comparators. Accepted captures are
 `tmp/m2-pixbase-reference-copy.log` and `tmp/m2-pixbase-native-final.log`.
 The next stop is MENU MANAGER / CLEARMENUBAR, Engine+$2B06.
+
+
+## Device colour-table input
+
+The original Dan2+$0234 NewGWorld call uses the GetCTable result directly, with
+ctFlags=$8000. The Mac copies all 2,056 bytes unchanged, including flags and
+entry values, into its separately owned table. It preserves the input table.
+The allocator now accepts this measured flag as well as zero; other table flags
+retain the named stop. There is no colour remapping during this allocation.
+
+Original Dan2+$0216–+$0235 has SHA-256
+`c55b6fcf3393bf4e7adbffd132760d18fd9ed1225fc5da8b19077b29a5c5baad`.
+The live guard verifies the output-pointer immediate against its original value
+plus A5. Bounds are (0,0)–(138,542), rowBytes=144 (including the existing extra
+slop word), and pixel storage is 78,048 bytes. All 27 owned handles, fixed port,
+PixMaps, regions, patterns, private device and defined inverse-table bytes match
+the reference after pointer/seed normalization. Input table, main device and
+screen remain unchanged. Native heap metadata proves independent ownership and
+unlocked/nonpurgeable states. Return registers and 22-byte argument cleanup match.
+
+The existing reference probe supports this site with
+`AITD_GWORLD_DEVICE_TABLE=1`; use it with the standard headless MAME invocation.
+It writes `tmp/gworld-device-reference-*`. `amiga/gworld_device_call.gdb` is part
+of the combined startup observer and reuses `gworld_records.gdb` for the complete
+native record/heap capture. Verify normal process statuses with:
+
+```sh
+python3 tools/check_newgworld.py tmp/m2-gworld-device-reference.log \
+  tmp/m2-gworld-device-native-final.log --reference-status 0 --native-status 0 \
+  --device-table
+python3 tools/check_gworld8.py --device-reference
+```
+
+Both accepted captures exit 0. The helper's ordinary `--reference` comparison
+also passes, protecting the existing table path. The first checker expectation
+omitted the established four-byte slop word; both actual captures agreed on
+144-byte rows, and the checker was corrected to that evidence. No runtime
+layout change was needed. Shared startup, detachment, rectangle, font/driver,
+A5 and AGA checks pass. The next named stop is RGBForeColor at Dan2+$02BE;
+M2.3g7 retains colour selection acceptance. Earlier sections record their
+historical boundaries; current shared observers stop at RGBForeColor.

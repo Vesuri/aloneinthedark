@@ -1,6 +1,12 @@
 -- Original eight-bit NewGWorld request and complete drawing records.
 local mac=dofile('tools/mame_mac_input.lua')
 local meta=dofile('tmp/mac-trap-map.lua')
+local deviceTable=os.getenv('AITD_GWORLD_DEVICE_TABLE')=='1'
+local segment=deviceTable and 13 or 10
+local first=deviceTable and 0x216 or 0x50
+local trapOffset=deviceTable and 0x234 or 0x74
+local output=deviceTable and 'gworld-device-reference' or 'gworld-reference'
+local inputHandle
 local cpu=manager.machine.devices[':maincpu'];local mem=cpu.spaces.program
 local dbg=assert(manager.machine.debugger,'NEWGWORLD / DEBUGGER REQUIRED')
 local function base(seg)
@@ -15,20 +21,20 @@ local armed=false
 emu.register_frame_done(function()
  if armed or mem:read_u32(0x28)~=0xdd60 then return end
  assert(mem:read_u32(0xdd60)==0x2f0a2f02 and mem:read_u32(0xdd64)==0x246f000a,'NEWGWORLD / DISPATCHER BYTES')
- local entered='temp0=sp+8;temp6='..base(10)..';temp9=d@(temp0+0x12)&0xffffff;temp8=d@(temp0+0xc)&0xffffff;temp7=d@(temp0+8)&0xffffff;'
+ local entered='temp0=sp+8;temp6='..base(segment)..';temp9=d@(temp0+0x12)&0xffffff;temp8=d@(temp0+0xc)&0xffffff;temp7=d@(temp0+8)&0xffffff;'
  entered=entered..'logerror "GW_ENTER sp=%X flags=%X device=%X ctable=%X bounds=%X depth=%X output=%X result=%X zone=%X'..regs..'\\n",temp0,d@temp0,d@(temp0+4),temp7,temp8,w@(temp0+0x10),temp9,w@(temp0+0x16),d@0x118'..values..';'
- entered=entered..'save tmp/gworld-reference-bounds.bin,temp8,8;temp7=d@temp7&0xffffff;save tmp/gworld-reference-input-clut.bin,temp7,8+(w@(temp7+6)+1)*8;'
- entered=entered..'save tmp/gworld-reference-before-device.bin,d@(d@0x8a4&ffffff)&ffffff,0x3e;'
+ entered=entered..'save tmp/'..output..'-bounds.bin,temp8,8;temp7=d@temp7&0xffffff;save tmp/'..output..'-input-clut.bin,temp7,8+(w@(temp7+6)+1)*8;'
+ entered=entered..'save tmp/'..output..'-before-device.bin,d@(d@0x8a4&ffffff)&ffffff,0x3e;'
  local fmt,args='',''
- for x=0x50,0x74,2 do fmt=fmt..'%04X';args=args..string.format(',w@(temp6+0x%x)',x) end
+ for x=first,trapOffset,2 do fmt=fmt..'%04X';args=args..string.format(',w@(temp6+0x%x)',x) end
  entered=entered..'logerror "GW_BYTES data='..fmt..'\\n"'..args..';'
  local returned='temp1=d@temp9&0xffffff;temp2=d@(temp1+2)&0xffffff;temp3=d@temp2&0xffffff;temp4=d@(temp3+0x2a)&0xffffff;temp5=d@temp4&0xffffff;'
  returned=returned..'logerror "GW_RETURN sp=%X result=%X world=%X pmHandle=%X pm=%X clutHandle=%X clut=%X base=%X baseLong=%X zone=%X currentDevice=%X'..regs..'\\n",sp,w@sp,temp1,temp2,temp3,temp4,temp5,d@temp3,d@(d@temp3&ffffff),d@0x118,d@0xcc8'..values..';'
- returned=returned..'save tmp/gworld-reference-port.bin,temp1,0x6c;save tmp/gworld-reference-pm.bin,temp3,0x32;save tmp/gworld-reference-clut.bin,temp5,8+(w@(temp5+6)+1)*8;save tmp/gworld-reference-base.bin,d@temp3&ffffff,0x20;'
- for _,reg in ipairs({{'visibility',0x18},{'clip',0x1c}}) do returned=returned..string.format('temp8=d@(d@(temp1+0x%x)&ffffff)&ffffff;save tmp/gworld-reference-%s.bin,temp8,w@temp8;',reg[2],reg[1]) end
- returned=returned..'save tmp/gworld-reference-after-device.bin,d@(d@0x8a4&ffffff)&ffffff,0x3e;'
- entered=entered..'bpset temp6+0x76,1,{'..returned..'}'
- cpu.debug:bpset(0xdd60,cond..' && w@(d@(sp+2))==0xab1d && (d@(sp+2)&0xffffff)=='..base(10)..'+0x74',entered)
+ returned=returned..'save tmp/'..output..'-port.bin,temp1,0x6c;save tmp/'..output..'-pm.bin,temp3,0x32;save tmp/'..output..'-clut.bin,temp5,8+(w@(temp5+6)+1)*8;save tmp/'..output..'-base.bin,d@temp3&ffffff,0x20;'
+ for _,reg in ipairs({{'visibility',0x18},{'clip',0x1c}}) do returned=returned..string.format('temp8=d@(d@(temp1+0x%x)&ffffff)&ffffff;save tmp/'..output..'-%s.bin,temp8,w@temp8;',reg[2],reg[1]) end
+ returned=returned..'save tmp/'..output..'-after-device.bin,d@(d@0x8a4&ffffff)&ffffff,0x3e;'
+ entered=entered..string.format('bpset temp6+0x%x,1,{',trapOffset+2)..returned..'}'
+ cpu.debug:bpset(0xdd60,cond..' && w@(d@(sp+2))==0xab1d && (d@(sp+2)&0xffffff)=='..base(segment)..string.format('+0x%x',trapOffset),entered)
  armed=true
 end)
 local stage=0
@@ -62,14 +68,19 @@ emu.register_periodic(function()
   if index>#queries then stage=-1;print('PASS original NewGWorld ownership');dbg:command('quit');return end
   local label,h=table.unpack(queries[index]);assert(h~=0,'NEWGWORLD / MISSING AUX HANDLE')
   dbg:command('bpclear')
-  dbg:command(string.format('bpset 0x%x,1,{logerror "GW_AUX label=%s handle=%%X body=%%X size=%%X memerr=%%X\\n",0x%x,d@0x%x&ffffff,d0,w@0x220;save tmp/gworld-reference-aux-%s.bin,d@0x%x&ffffff,d0;g}',scratch+2,label,h,h,label,h))
+  dbg:command(string.format('bpset 0x%x,1,{logerror "GW_AUX label=%s handle=%%X body=%%X size=%%X memerr=%%X\\n",0x%x,d@0x%x&ffffff,d0,w@0x220;save tmp/'..output..'-aux-%s.bin,d@0x%x&ffffff,d0;g}',scratch+2,label,h,h,label,h))
   dbg:command(string.format('bpset 0x%x,1,{logerror "GW_FLAGS label=%s flags=%%X memerr=%%X\\n",d0&ff,w@0x220;g}',scratch+4,label))
   dbg:command(string.format('bpset 0x%x,1,{logerror "GW_OWNER label=%s owner=%%X zone=%%X memerr=%%X\\n",a0,d@0x118,w@0x220}',scratch+6,label))
   dbg:command(string.format('a0=0x%x;pc=0x%x;sp=0x%x;g',h,scratch,scratch-0x100))
   return
  end
  local phase=stage==0 and 'before' or 'after'
- local f=assert(io.open('tmp/gworld-reference-'..phase..'-pixels.bin','wb'))
+ if stage==0 then inputHandle=mem:read_u32(cpu.state.SP.value+16)&0xffffff else
+  local body=mem:read_u32(inputHandle)&0xffffff
+  local input=assert(io.open('tmp/'..output..'-input-clut-after.bin','wb'))
+  for i=0,2055 do input:write(string.char(mem:read_u8(body+i))) end;input:close()
+ end
+ local f=assert(io.open('tmp/'..output..'-'..phase..'-pixels.bin','wb'))
  for y=0,479 do
   local row={};for x=0,639 do row[#row+1]=string.char(mem:read_u8(0xf9000a00+y*640+x)) end
   f:write(table.concat(row))

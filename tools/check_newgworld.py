@@ -20,17 +20,23 @@ def u32(data,at=0):
     return struct.unpack_from('>I',data,at)[0]
 
 
-def check(reference,native,reference_status,native_status,resource,folder):
-    code=next(r.body for r in read_resource_fork(resource) if r.kind==b'CODE' and r.rid==10)[0x50:0x76]
-    assert hashlib.sha256(code).hexdigest()=='4a24b196d92950126c330581d9d5c728c555769313b05bcbfd61cd0c9699d5a5','original constructor bytes'
+def check(reference,native,reference_status,native_status,resource,folder,device_table=False):
+    segment,start,end,digest=(13,0x216,0x236,"c55b6fcf3393bf4e7adbffd132760d18fd9ed1225fc5da8b19077b29a5c5baad") if device_table else (10,0x50,0x76,'4a24b196d92950126c330581d9d5c728c555769313b05bcbfd61cd0c9699d5a5')
+    code=next(r.body for r in read_resource_fork(resource) if r.kind==b'CODE' and r.rid==segment)[start:end]
+    assert hashlib.sha256(code).hexdigest()==digest,'original constructor bytes'
+    def capture(side,name):
+        prefix='gworld-device-reference' if device_table and side=='reference' else f'gworld-{side}'
+        return (folder/f'{prefix}-{name}.bin').read_bytes()
     captures={};records={}
     for side,text,status in [('reference',reference,reference_status),('native',native,native_status)]:
         assert status==0 and not any(x in text for x in ('FAIL','Error in','LUA ERROR','TIMEOUT','Program received signal')),side+' bounded run'
-        marker='PASS original NewGWorld ownership' if side=='reference' else 'PASS native NewGWorld next-stop original-MDRV=absent'
+        marker='PASS original NewGWorld ownership' if side=='reference' else ('PASS native device-table NewGWorld allocation' if device_table else 'PASS native NewGWorld next-stop original-MDRV=absent')
         ending='Exited via the debugger' if side=='reference' else '[Inferior 1 (Remote target) detached]'
         assert text.count(marker)==text.count(ending)==1,side+' positive normal completion'
         e=fields(one(text,r'GW_ENTER (.*)'));r=fields(one(text,r'GW_RETURN (.*)'))
-        assert bytes.fromhex(one(text,r'GW_BYTES data=([0-9A-F]+)'))==code,side+' live bytes'
+        live=bytearray(code)
+        if device_table:live[4:8]=((u32(code,4)+e['a5'])&0xffffffff).to_bytes(4,'big')
+        assert bytes.fromhex(one(text,r'GW_BYTES data=([0-9A-F]+)'))==live,side+' live bytes'
         assert (e['flags'],e['device'],e['depth'])==(8,0,8) and e['ctable'] and e['output'],side+' original arguments'
         assert r['sp']==e['sp']+22 and r['result']==0 and r['world'] and r['d0']==r['d1']==r['d2']==0 and r['a0']==e['output'],side+' return contract'
         assert all(e[k]==r[k] for k in PRESERVED),side+' preserved registers'
@@ -38,17 +44,18 @@ def check(reference,native,reference_status,native_status,resource,folder):
         assert len(set(v['handle'] for v in records[side].values()))==27,side+' independent owned handles'
         assert r['clutHandle']!=e['ctable'],side+' distinct copied colour handle'
         assert r['a1']==records[side]['visibility']['body'],side+' returned visibility scratch pointer'
-        captures[side]={name:(folder/f'gworld-{side}-aux-{name}.bin').read_bytes() for name in NAMES}
-        captures[side]['port']=(folder/f'gworld-{side}-port.bin').read_bytes()
+        captures[side]={name:capture(side,'aux-'+name) for name in NAMES}
+        captures[side]['port']=capture(side,'port')
         for name,record in records[side].items():
             assert len(captures[side][name])==record['size'],side+'/'+name+' complete body'
-        bounds=(folder/f'gworld-{side}-bounds.bin').read_bytes()
-        assert bounds==bytes.fromhex('0000000001910288'),side+' bounds'
-        assert captures[side]['ctable']==(folder/f'gworld-{side}-input-clut.bin').read_bytes(),side+' independent exact colour copy'
+        bounds=capture(side,'bounds')
+        assert bounds==bytes.fromhex('00000000021e008a' if device_table else '0000000001910288'),side+' bounds'
+        assert captures[side]['ctable']==capture(side,'input-clut'),side+' independent exact colour copy'
+        if device_table:assert capture(side,'input-clut-after')==capture(side,'input-clut'),side+' input table preservation'
         assert captures[side]['device-inverse'][:4]==captures[side]['ctable'][:4],side+' inverse seed matches copied colours'
-        assert records[side]['pixels']['size']==652*401,side+' pixel extent'
+        assert records[side]['pixels']['size']==(144*542 if device_table else 652*401),side+' pixel extent'
         for name in ('device','pixels'):
-            assert (folder/f'gworld-{side}-before-{name}.bin').read_bytes()==(folder/f'gworld-{side}-after-{name}.bin').read_bytes(),side+' unchanged screen '+name
+            assert capture(side,'before-'+name)==capture(side,'after-'+name),side+' unchanged screen '+name
         for name,data in captures[side].items():
             for at,target in POINTERS.get(name,{}).items():
                 assert u32(data,at)==records[side][target]['handle'],side+'/'+name+' owned '+target
@@ -80,7 +87,12 @@ def check(reference,native,reference_status,native_status,resource,folder):
             if name=='device-inverse':data=data[:4364] # Exclude undefined tail scratch bytes.
             normalized.append(data)
         assert normalized[0]==normalized[1],'paired '+name+' defined bytes'
-    print('PASS paired NewGWorld: 27 owned handles, port/PixMaps/patterns/device, 4096 inverse entries and collision links, exact colour copy, 261452 pixel bytes; '+one(native,r'GW_NEXT (state=3 trap=AB1D selector=0 segment=13 offset=234 manager=QUICKDRAW routine=NEWGWORLD windows=(?:101|127) services=(?:163/163|171/171))'))
+    if device_table:
+        from check_native_driver import check as startup_check
+        startup_check(native,native_status)
+        print('PASS paired device-table NewGWorld: 27 owned handles, exact unchanged colour table, 78048 pixel bytes, all defined records and inverse entries')
+    else:
+        print('PASS paired NewGWorld: 27 owned handles, port/PixMaps/patterns/device, 4096 inverse entries and collision links, exact colour copy, 261452 pixel bytes; '+one(native,r'GW_NEXT (state=3 trap=AA14 selector=FFFFFFFF segment=13 offset=2BE manager=COLOR QUICKDRAW routine=RGBFORECOLOR windows=(?:101|127) services=(?:163/163|171/171))'))
 
 
 if __name__=='__main__':
@@ -89,4 +101,5 @@ if __name__=='__main__':
     p.add_argument('--reference-status',type=int,required=True);p.add_argument('--native-status',type=int,required=True)
     p.add_argument('--resource',type=Path,default=Path('tmp/runtime-data/Alone In The Dark'))
     p.add_argument('--folder',type=Path,default=Path('tmp'))
-    a=p.parse_args();check(a.reference.read_text(),a.native.read_text(),a.reference_status,a.native_status,a.resource,a.folder)
+    p.add_argument('--device-table',action='store_true')
+    a=p.parse_args();check(a.reference.read_text(),a.native.read_text(),a.reference_status,a.native_status,a.resource,a.folder,a.device_table)
