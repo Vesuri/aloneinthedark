@@ -3670,3 +3670,39 @@ additional scoped queries in this accepted run. A second effect is active
 (starts 2, stops 1, channel 0, 10,202 allocated sample bytes). Resource counts
 remain 68 application reads / 333,998 bytes, overlay 31 / 81,214, preparation
 64 / 81,786, CODE mask $3FFB, original MDRV absent. M2 remains open.
+
+
+## Credits spacing and owned dot-above
+
+M2.3g32 is complete. Times/plain/14 GetFontInfo now supplies the measured
+12/4/15/0 layout metrics, independently of placeholder bitmap geometry.
+The original's line spacing is therefore 16 instead of 14, correcting a
+12-pixel baseline error on “I˙Motion”. The owned NFNT includes its dot-above
+character; unsupported artwork remains a loud stop. Original instructions
+are unchanged. [Font Manager](font-manager.md#credits-line-spacing-and-dot-above)
+records bytes, state, fractional pen, ABI and D6 differences.
+
+`tmp/m2-dottext-reference-final.log` (maintained Mac probe with
+`AITD_DOT_TEXT=1`) and `tmp/m2-dottext-native-final.log` both exit zero with
+positive completion. All 31 integrated checks pass, including both text calls,
+title copy, first-effect cleanup, fills/line/logo/palettes, nine AGA publications
+and initial A5 bytes. The full host suite, changed-checker selftests, 93-script
+MAME literal audit and clean 68020 no-float/82-symbol link audits pass.
+Logical credits crops were inspected; rendered-window acceptance is still
+owner-deferred. The discovery native run returned the correct text but failed
+its obsolete endpoint assertion; it is not an accepted regression run.
+
+After the dot-above DrawText, the accepted observer records nine non-query
+services (three each TextWidth, GetResource and DrawText) plus 16 sound-status
+queries. No system windows are added. The fixed endpoint baseline is now
+566 entered/completed, plus all status queries; fresh-pref 574/574 and 185
+windows are derived, not fresh-start acceptance.
+
+Current boundary: LineTo Dan2+$0B5A, 159 windows, 828/828 services, none active,
+262 total status queries. The first effect has 201 observed queries and no
+additional scoped queries; cleanup completes after 232 ticks. The second effect
+is active (starts 2, stops 1, channel 0, 10,202 allocated sample bytes).
+The game-window pen (v0,h260) requests (v200,h260), size 1×1, mode 8, fore 16.
+Application resources remain 68 reads / 333,998 bytes; overlay 31 / 82,238,
+preparation 64 / 82,810, CODE mask $3FFB, original MDRV absent. The owned
+font grows by 1,024 bytes; the overlay is 83,050 bytes. M2 remains open.

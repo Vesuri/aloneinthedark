@@ -10,7 +10,7 @@ static std::vector<uint8_t> read(const char* path) {
 int main(int argc,char** argv) {
     assert(argc==3);auto fond=read(argv[1]),nfnt=read(argv[2]);BitmapFont::Family family={};
     assert(BitmapFont::family(fond.data(),fond.size(),20,family));
-    assert(family.first==32 && family.last==169 && family.size==14 && family.bitmap==128);
+    assert(family.first==32 && family.last==250 && family.size==14 && family.bitmap==128);
     BitmapFont font;assert(font.open(nfnt.data(),nfnt.size(),family));assert(font.height()==14 && font.advance()==6);
     // Independent inherited A bitmap, scaled from seven rows to twelve.
     const uint8_t a[7]={14,17,17,31,17,17,17};
@@ -18,6 +18,7 @@ int main(int argc,char** argv) {
         bool expected=y<12 && x<5 && (a[y*7/12]&(16>>x));
         assert(font.pixel('A',x,y)==expected && font.pixel('a',x,y)==expected);
         assert(!font.pixel(' ',x,y));
+        assert(font.pixel(0xfa,x,y)==bool(y<2 && x==2));
     }
     assert(font.pixel(0,0,0) && font.pixel(255,4,11));assert(!font.pixel(255,5,11));assert(!font.pixel('A',0,14));
     const uint8_t copyright[7]={14,17,23,21,23,17,14},bullet[7]={0,0,4,14,4,0,0};

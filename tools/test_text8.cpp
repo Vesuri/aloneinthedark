@@ -43,5 +43,15 @@ int main(int argc,char** argv) {
     pen=37;fraction=0x8000;pixels=untouched;
     assert(draw(text+1,0,4,map) && pixels==offset && pen==end && fraction==frac);
     assert(!Text8::draw(pixels.data(),10,652,map,map,map,map,font,text,0,41,196,pen,fraction,26));
+    const uint8_t dotText[]={'I',0xfa,'M','o','t','i','o','n'};
+    pixels=untouched;pen=129;fraction=0x8000;
+    assert(Text8::draw(pixels.data(),pixels.size(),652,map,map,map,map,font,
+                      dotText,0,8,98,pen,fraction,26));
+    assert(pen==179 && fraction==0xb900);
+    for(unsigned y=0;y<401;++y)for(unsigned x=0;x<652;++x)
+        if(pixels[y*652+x]!=83)assert(x>=129 && x<179 && y>=86 && y<98);
+    assert(Text8::draw(pixels.data(),pixels.size(),652,map,map,map,map,font,
+                      dotText,0,8,98,pen,fraction,26));
+    assert(pen==229 && fraction==0xf200);
     puts("PASS Text8: measured fractional endpoints, repeat, empty, clipping, padding, range and atomic rejection");
 }

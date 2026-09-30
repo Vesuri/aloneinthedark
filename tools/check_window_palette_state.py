@@ -183,8 +183,8 @@ def check(reference, native, reference_status, native_status, folder, resource):
             u32(captured['native','show','after']['clut']) == active_before['seed'], 'native active palette / seed allocation')
     one(native, r'WP_NEXT state=3 trap=A885 segment=12 offset=346 manager=QUICKDRAW routine=DRAWTEXT windows=(?:159|185) services=\d+/\d+')
     one(native, r'WP_DIRTY (?:pending=1 count=1 queued=0|pending=0 count=0 queued=1) rect=160/150/480/350')
-    one(native, r'WP_COUNTS app=39/177820 overlay=31/81214 prep=64/81786 resources=244')
-    print(f'PASS paired window palette state: 256 colours, exact client clear, {differences} explained Mac cursor pixels; next=DRAWTEXT')
+    one(native, r'WP_COUNTS app=39/177820 overlay=31/82238 prep=64/82810 resources=244')
+    print(f'PASS paired window palette state: 256 colours, exact client clear, {differences} explained Mac cursor pixels; next=LINETO')
 
 
 if __name__ == '__main__':

@@ -62,7 +62,48 @@ while $tw_finished==0
   tbreak dispatchMacTrap
   continue
   source copylate_call.gdb
+  tbreak *((unsigned long)s_segments[12].begin+0x13c)
   continue
+  if *(unsigned long*)($pc-4)!=0x486efff8 || *(unsigned short*)$pc!=0xa88b
+   echo FAIL Times FontInfo original bytes\n
+   detach
+   quit 1
+  end
+  set $dot_info=*(unsigned long*)$sp
+  set $dot_info_sp=$sp
+  set $dot_info_tail=*(unsigned long*)($dot_info+8)
+  tbreak *((unsigned long)s_segments[12].begin+0x13e)
+  continue
+  if $sp!=$dot_info_sp+4 || *(unsigned long*)$dot_info!=0x000c0004 || *(unsigned long*)($dot_info+4)!=0x000f0000 || *(unsigned long*)($dot_info+8)!=$dot_info_tail
+   echo FAIL Times FontInfo layout metrics or extent\n
+   detach
+   quit 1
+  end
+  echo PASS native Times FontInfo ascent=12 descent=4 maximum=15 leading=0\n
+  tbreak *((unsigned long)s_segments[12].begin+0x346) if *(unsigned short*)$sp==8 && *(unsigned short*)($sp+2)==0 && *(unsigned short*)*(unsigned long*)($sp+4)==0x49fa
+  continue
+  tbreak dispatchMacTrap if trap==0xa885 && inUserService
+  continue
+  source dottext_call.gdb
+  set $postdot_n=0
+  while g_stageBState!=3
+   tbreak dispatchMacTrap if inUserService || trap==0xa891
+   continue
+   if g_stageBState==3
+    loop_break
+   end
+   if trap==0xa891
+    set $next_port=*(unsigned long*)s_qdThePort
+    set $next_pm=*(unsigned long*)*(unsigned long*)($next_port+2)
+    printf "NEXT_LINE pc=%X bytes=%04X%04X%04X pen=%04X%04X end=%04X%04X size=%04X%04X mode=%u fore=%u port=%X pm=%X\n",*(unsigned long*)(frame+2),*(unsigned short*)(*(unsigned long*)(frame+2)-4),*(unsigned short*)(*(unsigned long*)(frame+2)-2),*(unsigned short*)*(unsigned long*)(frame+2),*(unsigned short*)($next_port+48),*(unsigned short*)($next_port+50),*(unsigned short*)userStack,*(unsigned short*)(userStack+2),*(unsigned short*)($next_port+52),*(unsigned short*)($next_port+54),*(unsigned short*)($next_port+56),*(unsigned long*)($next_port+80),$next_port,$next_pm
+    dump binary memory ../tmp/line-next-native-port.bin $next_port $next_port+108
+    dump binary memory ../tmp/line-next-native-pm.bin $next_pm $next_pm+50
+    continue
+    loop_break
+   end
+   set $postdot_n=$postdot_n+1
+   printf "POSTDOT_SERVICE n=%u trap=%X entered=%u completed=%u queries=%u\n",$postdot_n,trap,g_macServiceEntered,g_macServiceCompleted,g_effectStatusCalls
+  end
   loop_break
  end
  if trap==0xaa91

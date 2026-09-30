@@ -70,9 +70,9 @@ stage. This is a placeholder, not Times artwork or an Apple font. Full lowercase
 style/size coverage and rendered placement remain M2.9.
 
 `tools/placeholder_font.py` encodes family 20 as a 60-byte FOND with one plain
-14-point association to NFNT 128. The 1,818-byte NFNT contains printable ASCII and the reached MacRoman ©/•
-symbols, with missing boxes in unused slots: a 704×14 monochrome bitmap,
-140 location words and 140 offset/width words. The fixed advance is six pixels, ascent twelve and descent
+14-point association to NFNT 128. The 2,842-byte NFNT contains printable ASCII and the reached MacRoman ©/•/˙
+symbols, with missing boxes in unused slots: a 1104×14 monochrome bitmap,
+221 location words and 221 offset/width words. The fixed advance is six pixels, ascent twelve and descent
 two. Font type $3000 and FOND flags $C000 describe this restricted layout.
 The width-table offset is measured in words from the NFNT field at byte 16.
 
@@ -92,7 +92,7 @@ repository’s 68020 flags and compatibility prelude without unresolved helpers;
 this is a compiler check, not native runtime acceptance.
 
 The overlay now publishes the Times definition, 25 startup faces in three
-additional families, and the native Jnth driver stub (82,026 bytes total).
+additional families, and the native Jnth driver stub (83,050 bytes total).
 Its metadata-only preparation uses 33 reads / 572 bytes; the first lookup reads the two bodies in two bounded
 windows / 1,878 bytes. Startup retains 243 resource entries before preferences, including the fonts and stub.
 GetFNum traverses the resource chain, validates the matching FOND and linked NFNT,
@@ -108,7 +108,7 @@ Both original Dan1 calls now return family 20 through the installed FOND/NFNT.
 original call bytes and Pascal names are checked, each result pops eight argument
 bytes, and D0 and startup ResErr/MemErr match the reference. The second call
 preserves the observed nonzero D0 ($00312FF2 in the accepted run). Installed
-60-byte FOND and 1,818-byte NFNT dumps match the generator exactly.
+60-byte FOND and 2,842-byte NFNT dumps match the generator exactly.
 
 `tools/check_native_font.py LOG --status STATUS` requires both calls in order,
 second-call register/error evidence, both native driver calls, the exact UnionRect
@@ -293,3 +293,32 @@ machine and must remain unchanged on their own side. `check_text8.py` adds
 sanitizer coverage of clipping, padding, range/overflow rejection and offset input.
 The local logical-buffer crops show placement and coarse placeholder lettering;
 they are not rendered FS-UAE screenshots and do not close M1.7b2.
+
+
+## Credits line spacing and dot-above
+
+Dan1+$013C calls GetFontInfo with Times/plain/14 before laying out the credits.
+The checked bytes +$0138–$013D are `486efff8a88b`. The Mac returns ascent 12,
+descent 4, maximum width 15 and leading 0, preserving the adjacent four bytes.
+The original adds ascent, descent and leading to obtain 16-pixel line spacing.
+Returning the owned bitmap's intrinsic 12/2/6/0 changed that spacing to 14;
+the sixth credits line consequently began twelve pixels too high. The service
+now reports the measured layout metrics while the owned ink retains its own
+12-pixel ascent and 14-pixel bitmap.
+
+The reached “I˙Motion” DrawText uses bytes `49fa4d6f74696f6e`, pen (98,129),
+fraction $8000 and the same Times/plain/14 mode-1 world as the copyright line.
+It returns h179/$B900; a repeat ends at h229/$F200. MoveTo resets h129/$8000,
+and empty text preserves it. The new ˙ is an authored top dot; its block shape
+and placement within the character cell are D6 placeholder differences. No
+original glyph artwork is included. The installed range now extends through
+MacRoman $FA, but unowned characters still stop instead of drawing missing boxes.
+
+Use `AITD_DOT_TEXT=1` with `mac_drawtext.lua` and `--dot` with
+`check_drawtext.py` for this reference and paired native check. It checks the
+original FontInfo bytes/result/extent, drawing ABI, whole-port preservation,
+exact fractional pen, colours and the complete native output buffer against
+the owned stencil. Before this draw, the preceding “Published by” line differs
+only inside its measured placeholder ink bounds; all other visible input pixels
+match. Logical 320×200 crops show both credits lines legibly at their measured
+baselines. These are logical-buffer images, not rendered-window acceptance.

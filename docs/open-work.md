@@ -13,8 +13,8 @@ design.md §5.
 - MacPlay and the Infogrames logo have exact paired client pixels/colours. Nine
   AGA publications pass memory/copper checks. Full intro acceptance remains open.
 - The title-screen copy now matches the Mac with documented placeholder text
-  differences. The next stop is DrawText, Dan1+$0346 ($A885), for the
-  MacRoman dot-above character in “I˙Motion”.
+  differences. The credits now use the measured 16-pixel line spacing and owned dot-above
+  artwork. The next stop is LineTo, Dan2+$0B5A ($A891), on the game window.
   Intro LineTo and mode-0 fills match the Mac; the first raw effect plays on Paula and its
   real polling loop observes completion with sample/DMA cleanup verified.
   Detailed completed service contracts and regression evidence are in
@@ -51,22 +51,21 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.3g32 Intro dot-above glyph.**
-  - The title copy completes and five further text calls run. The next
-    Dan1+$0346 DrawText contains `49fa4d6f74696f6e` (“I˙Motion”): byte $FA
-    has no owned artwork and correctly stops before drawing.
-  - The selected owned eight-bit GWorld still uses Times/plain/14, mode 1,
-    zero extra spacing; pen (v86,h129), count 8, first 0. Reuse the measured
-    Times advances and renderer. Supply owned artwork under D6, after measuring
-    the original glyph placement and surrounding text state.
-  - A second raw effect is playing at this stop. Preserve it and account for
-    all status queries, including VBL callbacks; the first effect's cleanup is
-    checked at its own completion, not at this later state.
+- **M2.3g33 Intro line on the game window.**
+  - Dan2+$0B5A calls LineTo after the credits; original +$0B56–$0B5B bytes
+    are `3f2e000ea891`. The selected game port is 320×200 over the screen's
+    640-byte rows, PixMap bounds (-150,-160,330,480), depth 8.
+  - The reached pen runs from (v0,h260) to (v200,h260), size 1×1, mode 8,
+    foreground index 16. Existing Line8 covers owned GWorlds; this window
+    destination correctly stops. Measure its original clipping/pixels/ABI and
+    reuse the verified line helper, with native dirty publication.
+  - The second raw effect is still active. Keep total status-query accounting
+    separate from the first effect's verified completion.
 
-  *Done when* the reached text is legible with explained placeholder differences,
-  original spacing/pen/ABI and full-buffer preservation pass, and startup reaches
-  its next named stop with title-copy/text/fill/line/effect/logo/palette/AGA
-  regressions passing and original MDRV absent.
+  *Done when* the full screen buffer and preserved port fields match the Mac,
+  pen/stack/register results and dirty/AGA publication pass, and startup reaches
+  its next named stop with credits/title/fill/line/effect/logo/palette regressions
+  passing and original MDRV absent.
 - **M2.1c Original File Manager read acceptance (after M2.2).**
   - This retains M2.1's original acceptance; diagnostic fixture reads do not count
     as original-game reads. M2.1b2a measured the intervening Get1NamedResource

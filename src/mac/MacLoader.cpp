@@ -6460,8 +6460,15 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         if(!fontForCurrentPort(font))goto unsupportedTrap;
         if(trap==0xa88b) {
             uint8_t* out=(uint8_t*)read32(userStack);if(!out)goto unsupportedTrap;
-            write16(out,font.ascent());write16(out+2,font.descent());
-            write16(out+4,font.advance());write16(out+6,font.leading());return 5;
+            const uint8_t* port=(const uint8_t*)read32(s_qdThePort);
+            if(read16(port+68)==20 && read16(port+74)==14 && !port[70]) {
+                // Measured Times/plain/14 layout; placeholder ink is independent.
+                write16(out,12);write16(out+2,4);write16(out+4,15);write16(out+6,0);
+            } else {
+                write16(out,font.ascent());write16(out+2,font.descent());
+                write16(out+4,font.advance());write16(out+6,font.leading());
+            }
+            return 5;
         }
         write16(userStack+2,font.charWidth(read16(userStack)));return 3;
     }

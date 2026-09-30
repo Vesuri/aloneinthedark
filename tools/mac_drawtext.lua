@@ -1,4 +1,6 @@
 -- Original intro text plus isolated repeat, MoveTo and empty-text fixtures.
+local dot=os.getenv('AITD_DOT_TEXT')=='1'
+local prefix=dot and 'dottext' or 'drawtext'
 local mac=dofile('tools/mame_mac_input.lua')
 local meta=dofile('tmp/mac-trap-map.lua')
 local cpu=manager.machine.devices[':maincpu'];local mem=cpu.spaces.program
@@ -16,12 +18,14 @@ local function bytes(a,n)
 end
 local fixture=0;local scratch;local stack;local sampleText;local sampleCount;local startPoint
 local function save(name,a,n)
- local f=assert(io.open('tmp/drawtext-reference-'..(fixture==0 and '' or 'fixture'..fixture..'-')..name..'.bin','wb'));for i=0,n-1 do f:write(string.char(mem:read_u8(a+i))) end;f:close()
+ local f=assert(io.open('tmp/'..prefix..'-reference-'..(fixture==0 and '' or 'fixture'..fixture..'-')..name..'.bin','wb'));for i=0,n-1 do f:write(string.char(mem:read_u8(a+i))) end;f:close()
 end
 local armed=false;local done=false;local phase='entry';local thePort;local args;local ret;local port;local pm;local pixels;local size
+local metricOut;local metricRet
 local function arm()
+ if dot then cpu.debug:bpset(0xdd60,cond..' && w@(d@(sp+2))==0xa88b && (d@(sp+2)&0xffffff)=='..base(12)..'+0x13c','')end
  if not thePort then cpu.debug:bpset(0xdd60,cond..' && w@(d@(sp+2))==0xa86e','')end
- cpu.debug:bpset(0xdd60,cond..' && w@(d@(sp+2))==0xa885 && (d@(sp+2)&0xffffff)=='..base(12)..'+0x346','');dbg.execution_state='run'
+ cpu.debug:bpset(0xdd60,cond..' && w@(d@(sp+2))==0xa885 && (d@(sp+2)&0xffffff)=='..base(12)..'+0x346'..(dot and ' && w@(sp+0x8)==0x8 && w@(sp+0xa)==0x0 && w@(d@(sp+0xc))==0x49fa' or ''),'');dbg.execution_state='run'
 end
 local function log(label)
  local tail='';for _,r in ipairs(regs)do tail=tail..string.format(' %s=%08X',r:lower(),cpu.state[r].value)end
@@ -36,11 +40,17 @@ end)
 emu.register_periodic(function()
  if done or not armed or dbg.execution_state~='stop' then return end
  local ok,err=pcall(function()
- if phase=='fixture' then
+ if phase=='metric-return' then
+  assert(cpu.state.PC.value==metricRet);print('DOT_METRIC_RETURN data='..bytes(metricOut,12));dbg:command('bpclear');phase='entry';arm()
+ elseif phase=='fixture' then
   log('ENTER');phase='return';cpu.debug:bpset(ret,'1','');dbg.execution_state='run'
  elseif phase=='entry' then
   if mem:read_u16(ptr(cpu.state.A7.value+2))==0xa86e then
    thePort=ptr(cpu.state.A7.value+8);print(string.format('TEXT_INIT thePort=%X',thePort));dbg:command('bpclear');arm();return
+  end
+  if mem:read_u16(ptr(cpu.state.A7.value+2))==0xa88b then
+   metricOut=ptr(cpu.state.A7.value+8);metricRet=ptr(cpu.state.A7.value+2)+2;local p=ptr(thePort)
+   print('DOT_METRIC_ENTER state='..bytes(p+68,12)..' data='..bytes(metricOut,12)..' bytes='..bytes(metricRet-6,6));phase='metric-return';cpu.debug:bpset(metricRet,'1','');dbg.execution_state='run';return
   end
   args=cpu.state.A7.value+8;ret=ptr(cpu.state.A7.value+2)+2;local count=mem:read_u16(args);local first=mem:read_u16(args+2);local text=ptr(args+4);assert(count<4096 and first<32768,'DRAWTEXT / RANGE');print(string.format('TEXT_ARGUMENTS count=%u first=%u text=%X hex=%s',count,first,text,bytes(text+first,count)));save('arguments',args,8);save('string',text+first,count);sampleText=text+first;sampleCount=count;port=ptr(assert(thePort));pm=ptr(ptr(port+2));pixels=mem:read_u32(pm)
   print(string.format('TEXT_LAYOUT port=%X pm=%X raw=%s',port,pm,bytes(pm,50)))
@@ -50,7 +60,7 @@ emu.register_periodic(function()
   startPoint=mem:read_u32(port+48);print('TEXT_BYTES '..bytes(ret-6,6));log('ENTER');phase='return';cpu.debug:bpset(ret,'1','');dbg.execution_state='run'
  else
   assert(cpu.state.PC.value==ret);log('RETURN');dbg:command('bpclear')
-  if fixture==3 then done=true;print('PASS original intro DrawText fixtures=3');dbg:command('quit');return end
+  if fixture==3 then done=true;print('PASS original '..(dot and 'dot-above' or 'intro')..' DrawText fixtures=3');dbg:command('quit');return end
   fixture=fixture+1
   if not scratch then scratch=(cpu.state.A7.value-16384)&0xfffffc;stack=scratch+8192;cpu.state.SR.value=cpu.state.SR.value|0x700 end
   mem:write_u16(scratch,0x4e71);mem:write_u16(scratch+2,fixture==2 and 0xa893 or 0xa885);mem:write_u16(scratch+4,0x4e71)
