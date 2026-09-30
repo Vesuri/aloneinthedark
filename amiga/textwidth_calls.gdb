@@ -127,6 +127,11 @@ while $tw_finished==0
      quit 1
     end
     source getkeys_call.gdb
+    tbreak *((unsigned long)s_segments[3].begin+0x137e)
+    continue
+    tbreak dispatchMacTrap if inUserService && trap==0xa0f8
+    continue
+    source driver13_call.gdb
     continue
     loop_break
    end

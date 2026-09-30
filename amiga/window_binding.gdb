@@ -62,7 +62,7 @@ dump binary memory ../tmp/windowpalette-native-after-pending.bin (char*)s_loudSt
 echo PASS native window SetPalette capture\n
 continue
 printf "WSET_NEXT state=%u trap=%X segment=%u offset=%X manager=%s routine=%s windows=%u services=%u/%u\n",g_stageBState,g_trapWord,g_trapSegment,g_trapOffset,g_trapManager,g_trapRoutine,g_systemWindows,g_macServiceEntered,g_macServiceCompleted
-if g_stageBState!=3 || g_trapWord!=0xa0f8 || g_trapSegment!=3 || g_trapOffset!=0x137e || g_trapSelector!=13 || g_macServiceActive!=1 || g_macServiceActive!=1
+if g_stageBState!=3 || g_trapWord!=0xa0f8 || g_trapSegment!=3 || g_trapOffset!=0x138c || g_trapSelector!=0 || g_macServiceActive!=1 || g_macServiceActive!=1
  echo FAIL next window binding boundary\n
  detach
  quit 1

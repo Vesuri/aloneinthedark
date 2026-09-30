@@ -11,7 +11,7 @@ set $catalog_folder=0
 break AitdScreen::showLoudStop
 commands
  silent
- if $catalog_fcb != 1 || $catalog_wd != 4 || $catalog_setvol != 4 || $catalog_getvol != 1 || $catalog_folder != 1 || g_stageBState != 3 || g_trapWord!=0xa0f8 || g_trapSegment!=3 || g_trapOffset!=0x137e || *(unsigned long*)(g_trapRoutine+0)!=0x53454c45 || *(unsigned long*)(g_trapRoutine+4)!=0x43544f52 || g_trapRoutine[8]!=0 || g_trapSelector!=13 || g_macServiceEntered != $startup_entered+g_effectStatusCalls || g_macServiceCompleted != $startup_completed+g_effectStatusCalls || g_systemWindows != $startup_windows || g_resourceRuntimeReads != 70 || g_resourceRuntimeBytes != 349400
+ if $catalog_fcb != 1 || $catalog_wd != 4 || $catalog_setvol != 4 || $catalog_getvol != 1 || $catalog_folder != 1 || g_stageBState != 3 || g_trapWord!=0xa0f8 || g_trapSegment!=3 || g_trapOffset!=0x138c || *(unsigned long*)(g_trapRoutine+0)!=0x53454c45 || *(unsigned long*)(g_trapRoutine+4)!=0x43544f52 || g_trapRoutine[8]!=0 || g_trapSelector!=0 || g_macServiceEntered != $startup_entered+g_effectStatusCalls || g_macServiceCompleted != $startup_completed+g_effectStatusCalls || g_systemWindows != $startup_windows || g_resourceRuntimeReads != 70 || g_resourceRuntimeBytes != 349400
   printf "FAIL file-catalog: FCB=%u WD=%u next=%s/%s\n",$catalog_fcb,$catalog_wd,g_trapManager,g_trapRoutine
   detach
   quit 1

@@ -267,3 +267,39 @@ basis for acceptance. Poll counts need not match across machines; state,
 result and event ordering must. At this boundary, startup service expectations
 add the observed query count to baseline 489 for existing prefs; baseline 497
 and 165 windows for fresh prefs remain derived expectations.
+
+## Selector 13: song-control word
+
+Core+$1374 pushes the argument and selector 13, calls through A5-$6AC at
++$137E and removes eight bytes at +$1380. The original bytes are
+`2f004878000d206df9544e90508f`. The reached argument is zero.
+Driver dispatch +$0068 branches to +$0348, which copies the argument's low
+word into state+$0038. D0 returns zero, D1 retains the full argument, and
+D2–D7/A0–A6 and the pre-JSR stack are preserved. This call starts no voice.
+
+`mac_driver13.lua` observes the real call and a separate original-CPU fixture
+with argument $12345678. `check_driver13.py` verifies the complete 12,360-byte
+state: only the dispatch fields and the control word may change. The fixture
+proves low-word truncation to $5678, rather than a Boolean conversion. Both
+calls pass in `tmp/m2-driver13-reference.log` with terminal status zero.
+
+The native model retains this value as `songControl`, with host tests for
+truncation, reset, initialization and preservation of all other voice/configuration
+state. The word is tested by the original song status and end-of-sequence paths;
+its use by a native music sequencer remains pending. Unimplemented playback
+selectors still stop by name. Native original-call acceptance passes in `tmp/m2-driver13-native-full.log`
+(terminal status zero), together with all 36 integrated comparisons. This is the
+full saved debugger output; `tmp/m2-driver13-native.log` contains the runner's
+truncated display. Original MDRV remains absent and all sixteen effects have
+completed with no remaining DMA allocation. The next named stop is selector 0,
+argument $87, at Core+$138C (M2.3g38).
+
+Reference validation:
+
+```sh
+python3 tools/check_driver13.py tmp/m2-driver13-reference.log --status 0
+```
+
+For the accepted native capture, add
+`--native tmp/m2-driver13-native-full.log --native-status 0`. Supply the actual
+terminal statuses; neither a deadline nor a debugger error counts as success.

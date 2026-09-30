@@ -52,7 +52,7 @@ end
 dump binary memory ../tmp/resource-general.bin $general $general+612
 break AitdScreen::showLoudStop
 continue
-if g_stageBState != 3 || g_trapWord!=0xa0f8 || g_trapSegment!=3 || g_trapOffset!=0x137e || *(unsigned long*)(g_trapRoutine+0)!=0x53454c45 || *(unsigned long*)(g_trapRoutine+4)!=0x43544f52 || g_trapRoutine[8]!=0 || g_trapSelector!=13 || g_resourceRuntimeReads != 70 || g_resourceRuntimeBytes != 349400 || g_systemWindows != $startup_windows || g_resourceSourceMax > 65536 || g_macServiceEntered != $startup_entered+g_effectStatusCalls || g_macServiceCompleted != $startup_completed+g_effectStatusCalls || g_macServiceActive != 1
+if g_stageBState != 3 || g_trapWord!=0xa0f8 || g_trapSegment!=3 || g_trapOffset!=0x138c || *(unsigned long*)(g_trapRoutine+0)!=0x53454c45 || *(unsigned long*)(g_trapRoutine+4)!=0x43544f52 || g_trapRoutine[8]!=0 || g_trapSelector!=0 || g_resourceRuntimeReads != 70 || g_resourceRuntimeBytes != 349400 || g_systemWindows != $startup_windows || g_resourceSourceMax > 65536 || g_macServiceEntered != $startup_entered+g_effectStatusCalls || g_macServiceCompleted != $startup_completed+g_effectStatusCalls || g_macServiceActive != 1
  printf "DIAGNOSTIC resource boundary: stage=%u trap=%x segment=%u app=%u/%u overlay=%u/%u windows=%u services=%u/%u active=%u code=%x lowmem=%u\n",g_stageBState,g_trapWord,g_trapSegment,g_resourceRuntimeReads,g_resourceRuntimeBytes,g_overlayRuntimeReads,g_overlayRuntimeBytes,g_systemWindows,g_macServiceEntered,g_macServiceCompleted,g_macServiceActive,g_loadedCodeMask,g_lowMemoryAppliedSites
  echo FAIL resource-read: runtime stop, service balance or bounded reads\n
  detach

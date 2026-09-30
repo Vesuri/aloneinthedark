@@ -34,6 +34,7 @@ int main() {
     SoundDriver driver;uint16_t status=0x1234;
     assert(driver.effectStatus(0x8000,status) && status==0x1234);
     assert(!driver.initialized);
+    assert(!std::strcmp(driver.setSongControl(1),"NOT INITIALIZED") && !driver.songControl);
     assert(!std::strcmp(driver.stopEffects(),"NOT INITIALIZED"));
     assert(!std::strcmp(driver.quality(0x10b),"NOT INITIALIZED"));
     assert(!driver.initialized && !driver.requestedRate);
@@ -77,7 +78,15 @@ int main() {
     driver.effects[0].active=1;driver.effects[0].channel=2;
     assert(!std::strcmp(driver.stopEffects(),"EFFECT DMA STOP"));
     assert(driver.effects[0].active==1 && driver.effects[0].channel==2);
-    driver.reset();assert(!driver.initialized && !driver.requestedRate && !driver.songLimit);
+    SoundDriver expected=driver;
+    for(uint32_t value:{0x12345678u,0xffff0000u,0xffffffffu,0u}) {
+        assert(!driver.setSongControl(value));
+        expected.songControl=(uint16_t)value;
+        assert(!std::memcmp(&driver,&expected,sizeof(driver)));
+    }
+    assert(!driver.setSongControl(1));
+    driver.reset();assert(!driver.songControl);
+    assert(!driver.initialized && !driver.requestedRate && !driver.songLimit);
     for(auto voice:driver.songs)assert(!voice.active && !voice.sample && voice.channel==-1);
     for(auto channel:driver.channels)assert(channel==-1);
     assert(!driver.initialize(6,2,2));

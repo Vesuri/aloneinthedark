@@ -3851,3 +3851,30 @@ preparation 64 / 82,810, with 244 resource records, CODE mask $3FFB and 58
 low-memory patches. These are resource reads, not M2.1c PAK payload acceptance.
 The pending selector is M2.3g37. Full intro-frame and rendered-window acceptance
 remain open; the standalone AGA observer limitations remain M2.10a.
+
+
+## Original sound-driver control word
+
+M2.3g37 adds selector 13’s measured low-word setter. The actual zero argument
+and the independent original-CPU $12345678 fixture pass exact full-state and
+ABI checks in `tmp/m2-driver13-reference.log` (exit zero). The native model
+retains the word without starting a voice; unsupported music calls remain stops.
+See [sound-driver.md](sound-driver.md).
+
+The clean 68020 production build passes no-float and 82-symbol audits. All host
+tests, 96-script MAME literal audit, checker rejection fixtures and all 36
+integrated comparisons pass. `tmp/m2-driver13-native-full.log` preserves the
+complete raw debugger output of the exit-zero run; the runner’s displayed
+`tmp/m2-driver13-native.log` was limited to its final 3,000 lines. Future full
+intro observations should retain the complete output for early-startup checks.
+
+Original intro return is D0=0 at 5,572 frames / 47,493 ticks; the final publication
+is 5,575/5,575. The native driver returns from selector 13 and reaches selector 0,
+argument $87, at Core+$138C. Counts are 210 system windows and 2,754/2,753 services,
+including 1,366 completed effect-status queries and the explicit pending service.
+The fixed existing-prefs baseline is 1,388/1,387; fresh 1,396/1,395 and 236 windows
+remain derived expectations awaiting M2.4. Driver calls are queries plus 36.
+All sixteen effects are stopped with no allocated sample/channel. Resource reads
+remain 70/349,400 application bytes, 31/82,238 overlay bytes and 64/82,810
+preparation bytes. The 244 records, 58 low-memory patches and CODE mask $3FFB
+remain unchanged. MDRV is absent. Rendered acceptance and M2.10a remain pending.

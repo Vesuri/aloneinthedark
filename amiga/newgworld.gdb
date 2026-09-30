@@ -26,7 +26,7 @@ source gworld_records.gdb
 echo PASS native NewGWorld allocation\n
 continue
 printf "GW_NEXT state=%u trap=%X selector=%X segment=%u offset=%X manager=%s routine=%s windows=%u services=%u/%u\n",g_stageBState,g_trapWord,g_trapSelector,g_trapSegment,g_trapOffset,g_trapManager,g_trapRoutine,g_systemWindows,g_macServiceEntered,g_macServiceCompleted
-if g_stageBState!=3 || g_trapWord!=0xa0f8 || g_trapSelector!=13 || g_trapSegment!=3 || g_trapOffset!=0x137e || g_macServiceActive!=1
+if g_stageBState!=3 || g_trapWord!=0xa0f8 || g_trapSelector!=0 || g_trapSegment!=3 || g_trapOffset!=0x138c || g_macServiceActive!=1
  echo FAIL NewGWorld progression\n
  detach
  quit 1

@@ -47,7 +47,7 @@ def check(text,status,resource,folder,fixture=False,native=False):
     for i in range(256):struct.pack_into('>H',expected,8+i*8,i)
     if after!=expected:raise ValueError('original index/flags mutations')
     if native and not fixture:
-        one(text,r'CTABLE_NEXT state=3 trap=A0F8 selector=D segment=3 offset=137E manager=SOUND DRIVER routine=SELECTOR windows=(?:210|236) services=\d+/\d+ reads=70 bytes=349400')
+        one(text,r'CTABLE_NEXT state=3 trap=A0F8 selector=0 segment=3 offset=138C manager=SOUND DRIVER routine=SELECTOR windows=(?:210|236) services=\d+/\d+ reads=70 bytes=349400')
     if not fixture:
         if 'CTABLE_FIX_' in text:raise ValueError('unexpected fixture')
         return

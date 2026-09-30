@@ -6245,10 +6245,11 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
                 if(g_soundDriver.initialized)for(uint16_t i=0;i<2;++i)stopNativeEffect(i);
                 driverStop=g_soundDriver.stopEffects();
             }
+            else if(selector==13)driverStop=g_soundDriver.setSongControl(argument);
             else if(selector==24)driverStop=g_soundDriver.quality(argument);
             else driverStop="SELECTOR";
             if(!driverStop) {
-                ++g_soundDriverCalls;regs[0]=driverResult;regs[1]=selector==24 ? 1 : (selector==22 || selector==17 || selector==20) ? scratch : 0;
+                ++g_soundDriverCalls;regs[0]=driverResult;regs[1]=selector==24 ? 1 : (selector==22 || selector==17 || selector==20 || selector==13) ? scratch : 0;
                 return 1; // C caller owns arguments; stub executes RTS.
             }
         }

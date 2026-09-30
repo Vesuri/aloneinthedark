@@ -552,12 +552,12 @@ while $i<g_resourceCount
  set $i=$i+1
 end
 echo PASS menu-list next-stop original-MDRV=absent\n
-if g_trapWord!=0xa0f8 || g_trapSegment!=3 || g_trapOffset!=0x137e || g_trapSelector!=13 || g_macServiceActive!=1 || g_systemWindows!=$startup_windows || g_macServiceEntered!=$startup_entered+g_effectStatusCalls || g_macServiceCompleted!=$startup_completed+g_effectStatusCalls
+if g_trapWord!=0xa0f8 || g_trapSegment!=3 || g_trapOffset!=0x138c || g_trapSelector!=0 || g_macServiceActive!=1 || g_systemWindows!=$startup_windows || g_macServiceEntered!=$startup_entered+g_effectStatusCalls || g_macServiceCompleted!=$startup_completed+g_effectStatusCalls
  echo FAIL menu-list startup endpoint\n
  detach
  quit 1
 end
-echo startup PASS: original main, next stop SOUND DRIVER / SELECTOR 13 CODE 3\n
+echo startup PASS: original main, next stop SOUND DRIVER / SELECTOR 0 CODE 3\n
 printf "STARTUP_CAPTURE active=%u baseline=%u/%u frames=%u/%u\n",g_macServiceActive,g_macServiceEntered-g_effectStatusCalls,g_macServiceCompleted-g_effectStatusCalls,g_macFramesQueued,g_macFramesPresented
 set $ri=0
 set $font_bodies=0
