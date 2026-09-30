@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Run the Amiga Alone in the Dark build in FS-UAE as the target A1200 configuration.
+# Run the Amiga Alone in the Dark build in FS-UAE with the shared test configuration.
 #   ./run.sh [path-to-kickstart-rom]
 # Use KS 3.1 (auto-boots directory HDs). CTRL + left mouse button quits.
 # ⚠ CTRL-qualified on purpose: whatever this port binds the bare mouse button to (the Mac

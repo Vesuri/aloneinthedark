@@ -57,9 +57,16 @@ cd amiga
 ./run.sh
 ```
 
-The default and sole active configuration is `a1200-020`: A1200, 68EC020,
-AGA, 2 MB chip / 8 MB fast, no FPU/MMU/JIT. Other CPU configurations fail
+The temporary default is `a4000-020` (`AMIGA_MODEL=A4000`), approved by the
+owner on 2026-09-30 to shorten test runs. It uses AGA, 68EC020 at maximum
+emulator speed without cycle-exact timing, 2 MB chip / 8 MB fast, and no
+FPU/MMU/JIT. `AMIGA_CONFIG=a1200-020` (or `AMIGA_MODEL=A1200`) retains the
+14 MHz cycle-exact hardware baseline. Explicit `AMIGA_CONFIG` takes precedence
+over the model selector. Fast runs establish functionality, not A1200 timing. Other CPU configurations fail
 with `CONFIG / DEFERRED CPU TARGET`; their support is deferred to M5.0.
+The changed default passes the bounded original-code boot observer (exit 0);
+the emulator reports `CPU=68020, FPU=0, MMU=0, JIT=0`, prefetch fast 24-bit.
+Eight configuration selection/rejection checks and shell syntax checks pass.
 All three launchers share these settings and write the emulator core log to
 `amiga/.run/logs/fs-uae.log.txt`.
 

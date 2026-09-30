@@ -37,7 +37,9 @@ are in [docs/development.md](docs/development.md),
 [docs/picture-drawing.md](docs/picture-drawing.md),
 [docs/palette.md](docs/palette.md) and [docs/copybits.md](docs/copybits.md).
 
-The sole active target is 68020 without an FPU. No Mac dialog, menu bar or
+The sole active target is 68020 without an FPU. Tests temporarily default to
+an A4000 model running that CPU at maximum emulator speed; the explicit A1200
+configuration retains the 14 MHz cycle-exact baseline. No Mac dialog, menu bar or
 window chrome is drawn; hidden compatibility records support the original
 startup. Other processors and performance work remain deferred.
 

@@ -726,9 +726,11 @@ the owner.
 | Release | `make release-check` and WHDLoad smoke/boot/load/quit tests |
 
 **Emulator configuration** (FS-UAE via the three launch scripts).
-`amiga/config.sh` pins `AMIGA_CONFIG=a1200-020`, the default and sole active
-configuration: A1200, 68EC020 at 14 MHz, AGA, 2 MB chip and 8 MB fast RAM,
-no FPU, MMU or JIT. Other CPU selections fail explicitly as deferred (M5.0).
+`amiga/config.sh` defaults to `AMIGA_CONFIG=a4000-020` (`AMIGA_MODEL=A4000`),
+a temporary owner-approved test configuration (2026-09-30): 68EC020 at maximum
+emulator speed without cycle-exact timing, AGA, 2 MB chip and 8 MB fast RAM,
+no FPU, MMU or JIT. Explicit `a1200-020` retains the 14 MHz cycle-exact
+baseline for timing checks. Other CPU selections remain deferred (M5.0).
 `runtime_status.gdb` reports the emulator CPU tuple and Exec CPU flags.
 These settings establish a functional baseline, not a performance result.
 
