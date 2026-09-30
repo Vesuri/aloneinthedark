@@ -398,3 +398,53 @@ failed to complete and is rejected. The corrected live capture records all
 entries, and is unsuitable as a clock oracle. The direct entry counter resolves
 that discrepancy. Runtime safe-point scheduling, resource lifetime and Paula
 playback remain M2.3g38; the helper is not yet connected to production.
+
+### Sample selection and Paula conversion (M2.3g38c)
+
+`SongVoice.h` implements the plain INST range selection at original driver
++$315E–$3218 and the pitch/loop setup at +$336A–$3502. The adjusted note is the
+input note minus a nonzero INST base pitch plus 60. Range lower bounds use an
+unsigned byte comparison, upper bounds a signed byte comparison; zero/127 are
+open endpoints. A zero alternate sample selects the base sample. A plain
+instrument with no matching range drops the note. Unknown pitch indices stop.
+
+The original fixed-point pitch table is represented by twelve measured ratios
+and octave shifts, reproducing all 128 entries and the tiny-fraction clearing
+at +$3436. It is integer-only. The reached mixer advances at the measured
+$56EE8BA3 fixed-point output rate divided by two (185 samples interpolated to
+370); the native Paula period uses that actual clock rather than treating the
+sample header's nominal 11025 Hz as the mixer output rate. The sample header
+must still describe the measured rate. Loops require a nonzero start and a
+word-sized length of at least 100 bytes, as at +$34C8.
+
+`mac_song_live.lua` records all six original voice slots after each of 3,736
+live note calls. Its completed exit-zero capture is
+`tmp/m2-song-live-reference.log`. The portable plan matches all 1,860 allocated
+note-ons by sample, initial pointer, pitch step, final PCM byte, loop bounds and
+amplitude state. The remaining eight note-ons encounter six occupied voices
+and are dropped by the original; all 1,868 note-offs release matching voices.
+All 128 pitch ratios match. Add the following to the input/clock checker:
+
+```sh
+  --voices tmp/m2-song-live-reference.log --voices-status 0
+```
+
+D8 conversion uses unsigned-to-signed PCM and word-aligned attack/reload blocks.
+The reached song requests nominal Paula periods 84–451: 219 of its 1,868
+note-ons would exceed the standard DMA rate. Those samples are decimated by two
+and played at the corresponding recalculated period (at least 124). This is a
+Paula waveform adaptation under D8; note identity and pitch remain unchanged
+apart from hardware period rounding. Loop phase is retained across attack,
+padding and repeated reloads, including odd loop lengths. The converter keeps
+no original executable code and performs no mixing. A bounded power-of-two
+stride handles the rate; unsupported periods or extents stop by name.
+
+Paired acceptance is `tmp/m2-song-voices-paired.log`; conversion of every
+note's original PCM passes an independent byte-stream oracle. The sanitized
+host suite also checks 27 guarded odd/even loop and decimation cases. Five
+negative checks reject incomplete, errored, wrong-pitch and wrong-loop evidence
+in `tmp/m2-song-voices-rejections.log`. A standalone 68020 cross-compilation
+passes; its only unresolved arithmetic helper is integer `__udivdi3`.
+These helpers do not yet own resources or program Paula. Native song-start,
+release scheduling, four-channel allocation and integrated acceptance remain
+M2.3g38; selector zero still fails explicitly in production.

@@ -13,12 +13,59 @@ def check_clock(text,status,decoded):
         raise ValueError('complete timed note stream')
     print('PASS song clock: 3736 exact live notes at original sequencer steps through pulse 8785')
 
+def check_voices(text,status,decoded):
+    if status!=0 or any(x in text for x in ('FAIL','LUA ERROR','timeout','Error in')) or text.count('PASS original song live events=3736')!=1 or text.count('Exited via the debugger')!=1:
+        raise ValueError('original voice completion')
+    import struct
+    state=(ROOT/'tmp/song-live-initial-state.bin').read_bytes()
+    if len(state)!=0x3048 or int.from_bytes(state[0x60:0x62],'big')!=185 or state[0x68:0x6a]!=b'\0\0': raise ValueError('original mixer rate')
+    if state[0x11ee:0x11fa].hex()!='000100080000000156ee8ba3': raise ValueError('original output sample clock')
+    samples={struct.unpack_from('>H',state,0xd7c+2*i)[0]:struct.unpack_from('>I',state,0x57c+4*i)[0]+36 for i in range(28)}
+    voices={}
+    for line in re.findall(r'^SONG_VOICE .*$',text,re.M):
+        fields=dict(re.findall(r'(\w+)=([0-9A-F]+)',line));n=int(fields.pop('n'))
+        row={k:int(v,16) for k,v in fields.items()}
+        loop=re.search(r' loop=(\w+)/(\w+)',line)
+        row['loopStart'],row['loopEnd']=(int(x,16) for x in loop.groups())
+        voices.setdefault(n,[]).append(row)
+    if set(voices)!=set(range(1,3737)) or any([v['slot'] for v in rows]!=list(range(6)) for rows in voices.values()): raise ValueError('complete six-voice snapshots')
+    events=re.findall(r'^SONG_LIVE_EVENT (n=\d+ on=\w+ offset=\w+ instrument=\w+ note=\w+ velocity=\w+ channel=\w+) ',text,re.M)
+    original=re.findall(r'^SONG_EVENT (.*)$',decoded,re.M)
+    if events!=original or len(events)!=3736: raise ValueError('complete live event identity')
+    plans={}
+    for n,sample,step,size,start,end,period in re.findall(r'^SONG_PLAN n=(\d+) sample=(\d+) step=(\w+) bytes=(\d+) loop=(\d+)/(\d+) period=(\d+)$',decoded,re.M):
+        plans[int(n)]=(int(sample),int(step,16),int(size),int(start),int(end),int(period))
+    pitches=[(int(i),int(v,16)) for i,v in re.findall(r'^SONG_PITCH index=(\d+) step=(\w+)$',decoded,re.M)]
+    table=struct.unpack_from('>128I',state,0x29bc)
+    expected=[(i,v&0xffff0000 if (v&65535)<4 else v) for i,v in enumerate(table)]
+    if pitches!=expected: raise ValueError('complete original pitch ratios')
+    played=0;dropped=[]
+    for n,line in enumerate(events,1):
+        fields={k:int(v,16) for k,v in re.findall(r'(\w+)=(\w+)',line) if k!='n'}
+        if not fields['on']:
+            if any(v['note']==fields['note'] and v['channel']==fields['channel'] and 0<v['active']<0x8000 for v in voices[n]): raise ValueError('note-off release')
+            continue
+        sample,step,size,start,end,period=plans[n];base=samples[sample]
+        matching=[v for v in voices[n] if v['sample']==base and v['instrument']==fields['instrument'] and v['note']==fields['note'] and v['channel']==fields['channel'] and v['active']==0x2710]
+        if not matching:
+            if not all(0<v['active']<0x8000 for v in voices[n]): raise ValueError('unexplained unallocated note')
+            dropped.append(n);continue
+        played+=1
+        for v in matching:
+            if (v['step'],v['start'],v['loopStart'],v['loopEnd'],v['volume'])!=(step,base+size-1,base+start if end else 0,base+end if end else 0,0): raise ValueError('sample pitch/extent/loop/amplitude')
+        denominator=step*0x56ee8ba3
+        if period!=((3546895<<33)+denominator//2)//denominator: raise ValueError('Paula integer period')
+    if len(plans)!=1868 or played!=1860 or dropped!=[1813,1817,1821,1825,3683,3687,3691,3695]: raise ValueError('complete original note allocation')
+    print('PASS song voices: 1860 original sample/pitch/loop plans, 8 measured full-voice drops, 1868 note-off releases')
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--reference',type=Path);p.add_argument('--status',type=int)
     p.add_argument('--driver',type=Path);p.add_argument('--driver-status',type=int)
     p.add_argument('--clock',type=Path);p.add_argument('--clock-status',type=int)
+    p.add_argument('--voices',type=Path);p.add_argument('--voices-status',type=int)
     a=p.parse_args()
+    if a.voices and not a.reference: raise ValueError('voices require original inputs')
     if a.clock and not a.reference: raise ValueError('clock requires original inputs')
     with tempfile.TemporaryDirectory(prefix='aitd-song-') as directory:
         work=Path(directory);exe=work/'check'
@@ -43,6 +90,7 @@ def main():
         reference=re.findall(r'^SONG_EVENT .*$',text,re.M);decoded=re.findall(r'^SONG_EVENT .*$',result,re.M)
         if len(reference)!=3736 or reference!=decoded: raise ValueError('complete note/instrument event stream')
         if a.clock: check_clock(a.clock.read_text(),a.clock_status,result)
+        if a.voices: check_voices(a.voices.read_text(),a.voices_status,result)
         ids=list(map(int,re.findall(r'^SONG_INSTRUMENT id=(\d+)',result,re.M)))
         state=(ROOT/'tmp/song-events-state.bin').read_bytes()
         if len(state)!=0x3048 or bytes(0 if i in ids else 255 for i in range(128))!=state[0x72:0xf2]: raise ValueError('instrument-use map')

@@ -1,5 +1,6 @@
 #include "../src/mac/SongInputs.h"
 #include "../src/mac/SongTimeline.h"
+#include "../src/mac/SongVoice.h"
 #include <cassert>
 #include <cstdio>
 #include <cstring>
@@ -85,9 +86,47 @@ int main(int argc,char** argv) {
     auto padded=std::vector<uint8_t>(sound,sound+sizeof(sound));padded.resize(76,0xa5);
     assert(!sample.parse(padded.data(),padded.size()) && sample.size==4 && sample.trailingBytes==36);
     std::puts("PASS INST/SND fixtures: exact sizes, range trailer, encoding, sample bounds and loop bounds");
+    // Sample selection reproduces the original byte comparisons, including
+    // open range ends and the signed upper-bound branch.
+    uint8_t ranged[30]={0,1,0,72,255,0,0,0,0,0,0,0,0,1,20,80,0,2,0,0,0,0,0,0,128,0,0,0,0,0};
+    assert(!instrument.parse(ranged,sizeof(ranged)));
+    uint16_t selected=0;int16_t adjusted=0;bool found=false;
+    assert(!SongVoice::select(instrument,52,selected,adjusted,found) && found && selected==2 && adjusted==40);
+    assert(!SongVoice::select(instrument,20,selected,adjusted,found) && !found);
+    assert(!SongVoice::select(instrument,0,selected,adjusted,found) && found && adjusted==-12);
+    assert(SongVoice::select(instrument,128,selected,adjusted,found));
+    uint32_t step=0;assert(!SongVoice::pitch(40,48,step) && step==0x1427e);
+    assert(SongVoice::pitch(-61,60,step));assert(SongVoice::pitch(128,60,step));
+    // Independent streaming oracle: advance one source byte at a time through
+    // each wrap, and compare several hardware reloads plus guarded allocation.
+    for(unsigned size: {101u,200u,301u})for(unsigned start: {0u,1u,100u})for(unsigned pitchIndex: {48u,72u,84u}) {
+        if(start>=size)continue;
+        std::vector<uint8_t> pcm(size);for(unsigned i=0;i<size;++i)pcm[i]=(i*47+13)&255;
+        Sample spec;spec.pcm=pcm.data();spec.size=size;spec.rate=11025u<<16;spec.baseNote=60;
+        spec.loopStart=start;spec.loopEnd=start ? size : 0;
+        SongVoice::Plan plan;assert(!SongVoice::describe(spec,pitchIndex,3546895,plan));
+        SongVoice::Dma dma;assert(!SongVoice::dma(spec,plan,3546895,dma));
+        assert(dma.period>=124 && dma.stride>=1);
+        std::vector<uint8_t> bytes(dma.layout.allocated+2,0x5a);SongVoice::convert(dma,bytes.data()+1);
+        assert(bytes.front()==0x5a && bytes.back()==0x5a);
+        unsigned cursor=0;
+        for(unsigned i=0;i<dma.layout.attackBytes+3*dma.layout.reloadBytes;++i) {
+            unsigned offset=i<dma.layout.attackBytes ? i : dma.layout.reloadOffset+(i-dma.layout.attackBytes)%dma.layout.reloadBytes;
+            uint8_t expected=cursor<size ? pcm[cursor]^0x80 : 0;
+            assert(bytes[offset+1]==expected);
+            for(unsigned k=0;k<dma.stride;++k) {
+                ++cursor;if(plan.loopEnd && cursor==plan.loopEnd)cursor=plan.loopStart;
+            }
+        }
+    }
+    std::puts("PASS song voice plan: range selection, quantized pitch, bounded periods and 27 guarded looping/decimation streams");
     if(argc==3 || argc==4) {
         auto rawSong=load(argv[1]),rawMidi=load(argv[2]);
         assert(!song.parse(rawSong.data(),rawSong.size()));assert(!decoder.begin(rawMidi.data(),rawMidi.size(),song));
+        for(unsigned index=0;index<128;++index) {
+            uint32_t pitchStep=0;assert(!SongVoice::pitch(index,60,pitchStep));
+            std::printf("SONG_PITCH index=%u step=%X\n",index,pitchStep);
+        }
         unsigned count=0;bool used[128]={};
         while(!decoder.ended) {
             const char* error=decoder.next(event);if(error) {std::fprintf(stderr,"FAIL %s\n",error);return 1;}
@@ -126,6 +165,33 @@ int main(int argc,char** argv) {
                 }
             }
             std::printf("PASS song resource graph instruments=%u samples=%u\n",instruments,pcmCount);
+            assert(!decoder.begin(rawMidi.data(),rawMidi.size(),song));unsigned noteNumber=0;
+            while(!decoder.ended) {
+                assert(!decoder.next(event));
+                if(event.kind!=Event::NoteOn && event.kind!=Event::NoteOff)continue;
+                ++noteNumber;if(event.kind!=Event::NoteOn)continue;
+                char path[1024];std::snprintf(path,sizeof(path),"%s/INST_%u",argv[3],event.instrument);
+                auto body=load(path);Instrument spec;assert(!spec.parse(body.data(),body.size()));
+                uint16_t selected=0;int16_t adjusted=0;bool found=false;
+                assert(!SongVoice::select(spec,event.note,selected,adjusted,found) && found);
+                std::snprintf(path,sizeof(path),"%s/snd_%u",argv[3],selected);auto pcm=load(path);Sample format;
+                assert(!format.parse(pcm.data(),pcm.size()));SongVoice::Plan plan;
+                assert(!SongVoice::describe(format,adjusted,3546895,plan));
+                SongVoice::Dma dma;assert(!SongVoice::dma(format,plan,3546895,dma));
+                std::vector<uint8_t> chip(dma.layout.allocated+2,0x5a);SongVoice::convert(dma,chip.data()+1);
+                assert(chip.front()==0x5a && chip.back()==0x5a);
+                uint32_t cursor=0;
+                for(uint32_t i=0;i<dma.layout.attackBytes+2*dma.layout.reloadBytes;++i) {
+                    uint32_t offset=i<dma.layout.attackBytes ? i : dma.layout.reloadOffset+(i-dma.layout.attackBytes)%dma.layout.reloadBytes;
+                    assert(chip[offset+1]==(cursor<format.size ? (format.pcm[cursor]^0x80) : 0));
+                    for(uint16_t k=0;k<dma.stride;++k) {
+                        ++cursor;if(plan.loopEnd && cursor==plan.loopEnd)cursor=plan.loopStart;
+                    }
+                }
+
+                std::printf("SONG_PLAN n=%u sample=%u step=%X bytes=%u loop=%u/%u period=%u\n",noteNumber,selected,plan.step,format.size,plan.loopStart,plan.loopEnd,plan.period);
+            }
+
         }
     }
 }

@@ -3913,3 +3913,18 @@ observer error, changed step/note and duplicate events in
 `tmp/m2-song-clock-rejections.log`. No unchanged native intro replay is required
 for this pure helper. Resource ownership, safe-point scheduling and Paula music
 remain M2.3g38, and selector zero still stops explicitly.
+
+
+## Song sample prerequisite
+
+M2.3g38c adds native sample selection, integer pitch and bounded Paula PCM
+conversion. The full live original capture matches 1,860 allocated note-ons,
+eight full-voice drops and 1,868 note-offs, including all 128 pitch ratios.
+`tmp/m2-song-voices-paired.log` passes the original ownership, preflight, exact
+clock and live-voice checks together. Every note's converted PCM passes the
+independent stream oracle; 27 synthetic guarded streams cover loop parity and
+high-note decimation. Five evidence rejection cases also pass. The host suite
+exits zero in `tmp/m2-song-voices-host-tests.log`; standalone 68020 compilation
+uses only integer arithmetic. [Sound driver](sound-driver.md) records the
+measured clock and D8 waveform conversion. Production remains unchanged and
+selector-zero integration is still M2.3g38.

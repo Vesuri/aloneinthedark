@@ -63,6 +63,8 @@ required.
     exact 3,736-event preflight match. The original request retains 41 resources
     and arms MIDI 905; its ownership/state capture passes. M2.3g38b now matches
     all 3,736 live notes at exact sequencer steps with an integer clock.
+    M2.3g38c supplies paired sample/pitch/loop plans and verified Paula PCM
+    conversion, including the reached high-note decimation.
   - Implement the reached native D8 contract, including resource lifetime,
     timed sequencing and required Paula sample/voice behavior. Bring required song/instrument handling
     forward from M4 as needed; never run MDRV or report unsupported music as
