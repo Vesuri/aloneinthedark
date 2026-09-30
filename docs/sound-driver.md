@@ -251,12 +251,19 @@ explicit stop mutation itself is covered by selector 22's separate fixture.
 flags; safe-point DMA cleanup runs before the native query. Host tests also
 query after logical stop and exercise duplicate-ID ordering.
 
-The native run `tmp/m2-driver20-prefix-native-named.log` exits zero with 23
-active results and preserved call ABI, then reaches LineTo before the completed
-query. Its later natural cleanup passes. **M2.3g27 is still open:**
-`check_driver20.py --allow-prefix` accepts only that explicitly partial evidence;
-the default full-sequence check rejects it. The original reference log is
-`tmp/m2-driver20-reference.log` (exit zero). Poll counts need not match across
-machines; state, result and event ordering must. Startup service expectations
-now add the observed query count to the completed baseline (480 existing prefs,
-488 fresh prefs), rather than assuming one fixed count of polling calls.
+M2.3g27 is complete. Native `tmp/m2-lineto-native-accept.log` exits zero and
+proves 199 active results followed by the game's actual completed query. All
+200 call returns preserve the driver ABI. The completed result coincides with
+one natural effect stop: active=0, channel=-1, chip allocation=0 and DMA=$3F0,
+after 232 native ticks. It is not an injected result or a query made by a test.
+The route then reaches PaintRect at Dan2+$0D52 with MDRV absent and 689/689
+completed services, none in progress.
+
+The default full-sequence `check_driver20.py` passes against original
+`tmp/m2-driver20-reference.log` (exit zero), together with the effect PCM,
+cleanup, drawing, palette/AGA and startup regressions (27 integrated checks).
+The earlier 23-query prefix remains partial historical evidence and is not the
+basis for acceptance. Poll counts need not match across machines; state,
+result and event ordering must. At this boundary, startup service expectations
+add the observed query count to baseline 489 for existing prefs; baseline 497
+and 165 windows for fresh prefs remain derived expectations.

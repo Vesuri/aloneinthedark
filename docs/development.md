@@ -3512,34 +3512,26 @@ Loops, fractional rates, oversized samples and occupied-voice selection retain
 named stops, tracked in M4.3a. Full M2 remains open.
 
 
-## Effect-status core and first intro buffer fill
+## Effect-status completion and first intro buffer fill
 
-Selector 20 now reports the original first-matching identifier's real playback
-state. Original polling and four isolated state/ID fixtures pass; host tests
-cover active, stopped/completed, missing and duplicate IDs. The actual native
-route proves 23 active-query returns and ABI preservation. **M2.3g27's final
-completed-query acceptance remains open** behind the newly reached LineTo.
+M2.3g27 is complete. Selector 20 returns the first matching identifier's actual
+playback state. Original active, completed, stopped-state, missing and duplicate
+ID cases pass. Native `tmp/m2-lineto-native-accept.log` (exit zero) observes
+199 active query returns followed by the original game's completed query,
+with preserved ABI and natural DMA/sample cleanup after 232 ticks. The full
+sequence checker passes against `tmp/m2-driver20-reference.log` (exit zero).
+No test forces the completed state. See [sound driver](sound-driver.md#selector-20-effect-status).
 
 M2.3g27a is complete: Dark2+$1E44 fills the top 320×140 of the owned GWorld.
 Both complete buffers match the expected fill/preservation, and all 648×401
-pixel columns match between systems, while port,
-CLUT, regions and rectangle guards are preserved. It uses the existing tested
-solid-fill helper. See [colour drawing](color-drawing.md) and
-[sound driver](sound-driver.md#selector-20-effect-status).
+pixel columns match between systems. Port, CLUT, regions and rectangle guards
+are preserved. `tmp/m2-paintworld-reference.log` (exit zero) and the same native
+run pass the fill check using the existing solid-fill helper. See
+[colour drawing](color-drawing.md).
 
-Reference logs `tmp/m2-driver20-reference.log` and
-`tmp/m2-paintworld-reference.log`, and native
-`tmp/m2-driver20-prefix-native-named.log`, all exit zero. Host suite, no-float/
-82-symbol probe audits and 26 integrated checks pass, including the explicitly
-partial status trace, offscreen fill, effect PCM/cleanup, nine AGA frames,
-logo/pictures/palettes, text/events, device/geometry and all 75,616 A5 bytes.
-The effect completes naturally at the named stop: DMA off, voice inactive,
-channel unassigned and chip buffer freed. MDRV remains absent.
-
-Current boundary: QUICKDRAW / LINETO, $A891, Dark3+$337E; 135 windows,
-503/503 completed services, no service in progress, 68 reads / 333,998 bytes,
-CODE mask $3FFB. Service totals are baseline 480 plus observed status queries;
-fresh prefs use derived baseline 488 and 161 windows. Full M2 remains open.
+These checks are included in the 27 integrated regressions at the LineTo
+checkpoint below. The former 23-query active prefix did not satisfy final
+completion acceptance; the 200-query integrated sequence now does.
 
 
 ## Intro line drawing

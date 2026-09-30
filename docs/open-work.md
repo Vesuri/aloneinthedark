@@ -49,19 +49,6 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.3g27 Native driver selector 20 — final integration acceptance.**
-  - The first-match identifier/status contract is implemented. Original active,
-    completed, stopped-state, missing-ID and duplicate-ID cases are measured;
-    host tests cover them. The native route proves active-query ABI/results.
-  - The offscreen PaintRect and LineTo prerequisites are complete. The latest
-    integrated run (`tmp/m2-lineto-native-accept.log`, exit zero) now proves
-    199 active results followed by a completed query, with natural cleanup.
-  - Confirm and record this final integration acceptance against the original
-    status sequence; the shared LineTo regression run already supplies evidence.
-
-  *Done when* original/native status sequences and results agree through an
-  actual completed query, startup reaches its next named stop with MDRV absent,
-  and the effect, logo/palette/AGA/startup regressions pass.
 - **M2.3g29 Later intro PaintRect.**
   - After LineTo and the completed effect query, the original native route
     reaches $A8A2 at Dan2+$0D52 with 139 windows and balanced services.
