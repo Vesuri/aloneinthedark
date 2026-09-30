@@ -3563,3 +3563,33 @@ its relocated AGA checkpoint saw eight publications instead of nine. Moving
 that observer to the measured first-LineTo state fixed the check without a
 runtime change. Repeated cursor observations after the completed sound query
 are no longer needed by the startup observer. Full M2 remains open.
+
+
+## Later intro fill and explicit text boundary
+
+M2.3g29 is complete. The original mode-0 fill at Dan2+$0D52 reuses the
+solid eight-bit fill helper. Paired complete buffers/CLUT, 512 covered pixels
+(430 changed), surrounding storage, port and ABI checks pass. The matching
+state is documented in [colour drawing](color-drawing.md).
+
+The first onward run, `tmp/m2-paintlater-native-discover.log`, timed out
+(status 124) and is rejected. Its interrupt snapshot found the Line-A
+zero-return loop. A bounded read-only breakpoint at that loop
+(`tmp/m2-paintlater-zero-diagnose.log`, exit zero) identified actual DrawText
+$A885 at Dan1+$0346; original bytes at +$0342 are `548f3e80a885`.
+The disabled-text guard now branches to the existing named-stop report instead
+of returning zero. No text rendering or guessed success was introduced.
+
+Original `tmp/m2-paintlater-reference-mode.log` and final native
+`tmp/m2-paintlater-native-accept.log` exit zero. Twenty-eight integrated checks
+pass: the new fill, prior fill/line/picture/palette/AGA checks, original effect
+PCM and real completion, font metrics, events, geometry/device state and all
+75,616 A5 bytes. Existing fill-helper host cases, the 91-script MAME literal
+audit, no-float/82-symbol probe audits and updated endpoint self-tests also pass.
+
+Current boundary: QUICKDRAW / DRAWTEXT, Dan1+$0346, 139 windows,
+690/690 services (baseline 490 plus 200 status queries), none active,
+68 resource reads / 333,998 bytes, CODE mask $3FFB, original MDRV absent.
+Fresh-pref counts remain derived: 165 windows and baseline 498 plus queries.
+The selected text state has font 20, size 14, plain face and text mode 1.
+Full intro, rendered-window acceptance and M2 remain open.

@@ -538,12 +538,12 @@ while $i<g_resourceCount
  set $i=$i+1
 end
 echo PASS menu-list next-stop original-MDRV=absent\n
-if g_trapWord!=0xa8a2 || g_trapSegment!=13 || g_trapOffset!=0xd52 || g_systemWindows!=$startup_windows || g_macServiceEntered!=$startup_entered+g_effectStatusCalls || g_macServiceCompleted!=$startup_completed+g_effectStatusCalls
+if g_trapWord!=0xa885 || g_trapSegment!=12 || g_trapOffset!=0x346 || g_systemWindows!=$startup_windows || g_macServiceEntered!=$startup_entered+g_effectStatusCalls || g_macServiceCompleted!=$startup_completed+g_effectStatusCalls
  echo FAIL menu-list startup endpoint\n
  detach
  quit 1
 end
-echo startup PASS: original main, next stop QUICKDRAW / PAINTRECT CODE 13\n
+echo startup PASS: original main, next stop QUICKDRAW / DRAWTEXT CODE 12\n
 set $ri=0
 set $font_bodies=0
 while $ri<g_resourceCount

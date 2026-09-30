@@ -28,9 +28,15 @@ while $tw_finished==0
   continue
   source driver17_call.gdb
   source driver20_calls.gdb
-  if g_stageBState!=3
-   continue
+  tbreak dispatchMacTrap if trap==0xa8a2 && *(unsigned long*)(frame+2)==(unsigned long)s_segments[13].begin+0xd52 && *(unsigned short*)(*(unsigned long*)s_qdThePort+56)==0 && *(unsigned long*)(*(unsigned long*)s_qdThePort+80)==18 && *(unsigned long*)*(unsigned long*)userStack==0x00c00075 && *(unsigned long*)(*(unsigned long*)userStack+4)==0x00c800b5
+  continue
+  if g_stageBState==3
+   echo FAIL later PaintRect aligned call not reached\n
+   detach
+   quit 1
   end
+  source paintlater_call.gdb
+  continue
   loop_break
  end
  if trap==0xaa91

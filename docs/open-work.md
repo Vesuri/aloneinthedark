@@ -12,8 +12,8 @@ design.md §5.
   support the measured initialization path; original MDRV code is never loaded.
 - MacPlay and the Infogrames logo have exact paired client pixels/colours. Nine
   AGA publications pass memory/copper checks. Full intro acceptance remains open.
-- The next stop is QuickDraw PaintRect, Dan2+$0D52 ($A8A2).
-  Intro LineTo matches the Mac; the first raw effect plays on Paula and its
+- The next stop is QuickDraw DrawText, Dan1+$0346 ($A885).
+  Intro LineTo and mode-0 fills match the Mac; the first raw effect plays on Paula and its
   real polling loop observes completion with sample/DMA cleanup verified.
   Detailed completed service contracts and regression evidence are in
   [development.md](development.md). No Mac dialogs, menu bar or chrome are drawn.
@@ -49,16 +49,20 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.3g29 Later intro PaintRect.**
-  - After LineTo and the completed effect query, the original native route
-    reaches $A8A2 at Dan2+$0D52 with 139 windows and balanced services.
-  - Check caller bytes and measure the selected port, rectangle, pen/colour,
-    regions and presentation role on both systems. Implement the reached fill
-    contract; preserve D5/D7 suppression of Mac dialogs and menu presentation.
+- **M2.3g30 Intro DrawText.**
+  - The mode-0 fill is complete. The next call is $A885 at Dan1+$0346,
+    in an owned eight-bit GWorld: font 20, size 14, plain face, text mode 1.
+  - The inherited disabled-text guard returned zero and silently spun in the
+    Line-A handler. It now reports the named DrawText stop. Keep unsupported
+    fonts/modes explicit; never resume through Vette's guessed font renderer.
+  - Measure the original string/range, selected font, pen advance, colour,
+    clipping, raster and ABI. Reuse validated port-owned fonts under D6;
+    this is intro game text, not Mac dialog or menu presentation.
 
-  *Done when* paired complete drawing buffers and port/ABI changes match the
-  original, startup reaches its next named stop with MDRV absent, and line,
-  effect, offscreen fill, logo/palette/AGA/startup regressions pass.
+  *Done when* the reached text renders legibly in the right place, measured
+  metrics/pen/ABI and full surrounding-buffer preservation pass, placeholder
+  glyph differences are explained, and startup reaches its next named stop
+  with MDRV absent and fill/line/effect/logo/palette/AGA regressions passing.
 - **M2.1c Original File Manager read acceptance (after M2.2).**
   - This retains M2.1's original acceptance; diagnostic fixture reads do not count
     as original-game reads. M2.1b2a measured the intervening Get1NamedResource

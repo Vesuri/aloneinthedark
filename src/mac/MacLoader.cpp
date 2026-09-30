@@ -4632,7 +4632,7 @@ static uint8_t* newGWorld(const uint8_t* bounds,uint16_t depth,MacHeap::Handle c
 static bool paintGWorldRect(GWorldSlot& w,const uint8_t* rectangle)
 {
     if(!rectangle || !w.locked || !w.pixels || read16(w.pixMap+32)!=8
-       || read16(w.port+56)!=8 || read16(w.port+66)
+       || (read16(w.port+56)!=0 && read16(w.port+56)!=8) || read16(w.port+66)
        || read16(*w.handles[7])!=0 || read32(w.port+80)>255)return false;
     for(uint16_t i=0;i<8;++i)if((*w.handles[14])[i]!=255)return false;
     const uint8_t* vis=*w.handles[3];const uint8_t* clip=*w.handles[4];
@@ -6481,7 +6481,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     }
     // Inherited Vette text drawing ignores the selected font/size. Until M2.9
     // consumes validated fonts, original text calls must stop instead of using it.
-    if(trap==0xa883 || trap==0xa884 || trap==0xa885)return 0;
+    if(trap==0xa883 || trap==0xa884 || trap==0xa885)goto unsupportedTrap;
     if (trap == 0xa912) {                    // InitWindows()
         if (!s_qdThePort || !s_fontManager.initialized) return 0;
         initWindowManagerPort();

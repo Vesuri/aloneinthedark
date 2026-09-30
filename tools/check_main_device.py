@@ -13,7 +13,7 @@ def original(path):
     if hashlib.sha256(body[0x477a:0x47c4]).hexdigest()!='1ac1a71b5441e6923cc0d7cde118e10e1ab1e490b74f9b1ece73d3ffd63df2a2':raise ValueError('original main-device/positioning bytes')
 def check(text,status,native=False):
     if status!=0 or any(x in text for x in ('FAIL','[LUA ERROR]','unknown command','Error in','timeout','Program received signal')):raise ValueError('failed observer')
-    for marker in (('PASS native GetMainDevice next=PAINTRECT','[Inferior 1 (Remote target) detached]') if native else ('PASS original GetMainDevice','Exited via the debugger')):
+    for marker in (('PASS native GetMainDevice next=DRAWTEXT','[Inferior 1 (Remote target) detached]') if native else ('PASS original GetMainDevice','Exited via the debugger')):
         if text.count(marker)!=1:raise ValueError('missing/duplicate completion')
     rows=[]
     for label in ('MAIN_ENTER','MAIN_RETURN'):

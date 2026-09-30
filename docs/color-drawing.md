@@ -101,3 +101,30 @@ The native route advances through the effect's actual completed query to
 PaintRect at Dan2+$0D52. The nine-frame startup AGA capture now runs at its
 measured first-LineTo boundary; subsequent intro frames do not overwrite it.
 This is not acceptance of the whole rendered intro.
+
+
+## Later mode-0 PaintRect (M2.3g29)
+
+The same Dan2+$0D52 caller (`486efff0a8a2` at +$0D4E) later draws into an
+owned GWorld using a solid mode-0 pen. At the matched state it fills
+(top=192,left=117,bottom=200,right=181) with index 18: 512 covered pixels,
+430 changed. The selected world is 648×401, stride 652, locked and eight-bit,
+with rectangular visible/clip regions. This is game drawing, not a Mac dialog.
+
+The original confirms mode 0 uses the existing solid-fill result. Native
+`paintGWorldRect` now accepts 0 or 8; its other pattern/region/ownership guards
+remain. Pen mode stays zero. Port, PixMap, CLUT, regions, rectangle guards and
+all surrounding bytes are unchanged. The existing PaintRect ABI also applies:
+D0=0, D1 low word=8, A1=port, D3–D7/A2–A6 preserved, four argument bytes removed.
+
+`mac_paintlater.lua` and `paintlater_call.gdb` capture the corresponding state;
+`check_paintlater.py` checks original bytes, ABI, actual contrasting writes,
+complete-buffer preservation, all paired 648×401 pixel columns and logical
+CLUT. Original `tmp/m2-paintlater-reference-mode.log` and native
+`tmp/m2-paintlater-native-accept.log` both exit zero with positive markers.
+The first four calls at this address clear a window; the measured mode-0 call
+is later. A different rectangle at the same caller is not the same state.
+
+The next call, DrawText at Dan1+$0346, exposed an inherited zero-return guard.
+It now takes the normal named-stop path. Text rendering is M2.3g30; this fill
+acceptance does not claim the full intro is complete.
