@@ -2,9 +2,9 @@
 
 D8 replaces the original software mixer at its driver interface. The native
 startup implementation supplies Jnth 11 and the two measured initialization
-calls. Production stops later before screen-size selection without loading any MDRV body.
-Integrated acceptance through the second Times lookup remains pending; neither
-this startup subset nor its reference capture proves audio acceptance.
+calls. Integrated startup now passes the second Times lookup (family 20), then
+stops at UnionRect (Dan2+$01DA), with no original MDRV resident. This accepts
+the startup interface; playback and further selectors remain M4.
 
 ## Installation seam
 
@@ -102,26 +102,28 @@ configurations and reinitialization stop by name, reporting the original caller
 and selector. M4 extends this interface and supplies playback.
 
 `SoundDriver.h` has sanitizer-backed state and rejection checks. The native
-`driver_startup.gdb` checks both original call sites, the installed stub, packet,
-D0/D1, all thirteen preserved registers, stack and real native state. It also
-requires the next exact Engine+$47C2 screen-size-selection stop with no MDRV resident.
-`check_native_driver.py LOG --status STATUS` rejects missing or duplicated
-controls, wrong ordering, observer errors and nonzero/timeout status.
+`driver_startup.gdb` uses the shared `menu_lifecycle.gdb` observer, which checks
+both original call sites, installed stub, arguments, D0/D1, all thirteen
+preserved registers, stack and native state. It then requires the second
+original Times lookup to return 20 after exactly two driver calls, the precise
+UnionRect endpoint, no MDRV resident and inactive voices/unassigned channels.
+`check_native_driver.py LOG --status STATUS` rejects missing/duplicate controls,
+wrong ordering, observer errors, incomplete services and nonzero/timeout status.
 
-The first attempt to require the second Times call stopped at CountMItems and
-was rejected. The original M0.2 trace likewise has menu initialization between
-the driver and second font call. The full second-call acceptance is retained in
-M2.1c3c2/M2.1c3 after intervening startup services. Menu-record initialization
-now passes; the current stop is screen-size selection. No render,
-audio or full startup success is claimed by this subset.
+Integrated acceptance uses `tmp/m2-menu-lifecycle-native-final.log` (exit 0)
+and the independent `tmp/m2-driver-startup-reference.log` (exit 0). The original
+loader/call bytes and reference state/ABI pass their checker. Native counts are
+81 OS handbacks, 143 completed services and 42 original resource reads totaling
+208,858 bytes. The same native run passes main/A5 and AGA memory/publication
+checks. It does not establish rendered intro or audio acceptance.
 
 Run the native observer with the normal production build, then check its log:
 
 ```sh
 . amiga/env.sh
 make -C amiga
-(cd amiga && GDBTAIL=110 EXTRA_ARGS=--warp_mode=1 \
-  GDBSCRIPT=driver_startup.gdb ./diag_run.sh 60) \
+(cd amiga && GDBTAIL=3000 EXTRA_ARGS=--warp_mode=1 \
+  GDBSCRIPT=driver_startup.gdb ./diag_run.sh 300) \
   >tmp/m2-native-driver-calls.log 2>&1
 run_status=$?
 python3 tools/check_native_driver.py tmp/m2-native-driver-calls.log \

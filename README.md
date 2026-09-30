@@ -41,7 +41,8 @@ region and real eight-bit GWorlds, binding and clipping them, locking and cleari
 their pixels, unlocking them and restoring the game drawing port. Pixel-address
 access then lets the original copy its first 512×56 image into a real buffer.
 Startup also clears and rebuilds the four game menus as hidden records; no menu
-bar is drawn. The original mixer
+bar is drawn. Native driver initialization is accepted through the second Times
+lookup, which returns family 20. The original mixer
 is never loaded. The game is not playable yet.
 Other processors and performance work remain deferred.
 
@@ -54,7 +55,7 @@ serve memory and resource handles. System identity and all eleven derived
 capability flags match the Mac reference. The user-mode service bridge passes
 its native ABI probe. OS windows and DOS/resload adapters pass the native/host
 core probes; rendered-picture acceptance is owner-deferred (M1.7b2). The next
-items are the now-reachable driver/second-Times acceptance, then rectangle
+items are the now-reachable paired font acceptance, then rectangle
 preparation and original PAK-read acceptance. Fresh and existing preferences now request WIND 128
 through the original instructions, with only the size byte changed.
 The logical device has real 640×480×8 storage; its four selection calls match

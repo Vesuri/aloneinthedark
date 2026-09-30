@@ -49,21 +49,6 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.1c3c2 Native-driver integrated startup acceptance (D8).**
-  - M2.1c3c2a supplies the port-owned Jnth 11 stub through the original loader,
-    with no original instructions changed. Selectors 21/24 initialize native
-    state and quality; other operations/configurations stop explicitly.
-  - Both original call returns match the Mac register/stack/state contract.
-    Startup now reaches beyond the second Times call; finish its integrated
-    driver acceptance using the new bounded evidence below.
-  - Keep the MDRV guard and verify through any newly reached startup services.
-    The independent Mac contract and installed seam are in
-    [sound-driver.md](sound-driver.md).
-
-  *Done when* original startup reaches the second Times lookup through the native
-  driver, no original MDRV body executes, original-byte and reference contracts
-  pass, and bounded native regressions pass. Full selector/intro acceptance
-  remains M4.1; this does not claim rendered or audio acceptance.
 - **M2.1c3 Font availability prerequisite for original PAK reads.**
   - The installed font and GetFNum now pass the first original call at
     Dan1+$0012. The second call at +$0038 is now reachable natively. Finish its paired

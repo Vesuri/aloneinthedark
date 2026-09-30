@@ -1,25 +1,51 @@
 #!/usr/bin/env python3
-"""Accept native driver initialization; the second Times call remains pending."""
+"""Accept integrated native driver initialization through the second Times lookup."""
 import argparse
+import re
 from pathlib import Path
 import unittest
 from check_driver_startup import check_call_source
 
 CALLS=['PASS native driver call: selector=21 D0=0 D1=0 preserved=13 stack=unchanged rate=22 voices=6/2/2',
        'PASS native driver call: selector=24 D0=0 D1=1 preserved=13 stack=unchanged rate=11 voices=6/2/2']
-COMPLETE='PASS native driver startup: Jnth=11 calls=2 first-Times=20 second=pending-graphics next=UNIONRECT original-MDRV=absent'
-def check(text,status):
-    if status!=0 or any(bad in text for bad in ('FAIL','Error in sourced command file','Program received signal','timeout')):
+SECOND = r'PASS font second: Dan1\+003A result=20 stack=\$[0-9a-fA-F]{8} native-driver-calls=2'
+ENDPOINT = 'MLIST_NEXT state=3 trap=A8AB selector=FFFFFFFF segment=13 offset=1DA manager=QUICKDRAW routine=UNIONRECT windows=81 services=143/143 reads=42 bytes=208858'
+GUARD = 'PASS menu-list next-stop original-MDRV=absent'
+DETACHED = '[Inferior 1 (Remote target) detached]'
+COMPLETE = 'PASS native driver startup: Jnth=11 calls=2 second-Times=20 next=UNIONRECT original-MDRV=absent'
+
+def check(text, status):
+    if status != 0 or any(bad in text for bad in ('FAIL', 'Error in sourced command file', 'Program received signal', 'timeout')):
         raise ValueError('runner/observer completion')
-    for marker in CALLS+[COMPLETE]:
-        if text.count(marker)!=1:raise ValueError('missing/duplicate positive control')
-    if not text.index(CALLS[0])<text.index(CALLS[1])<text.index(COMPLETE):raise ValueError('call order')
+    second = re.findall(SECOND, text)
+    if len(second) != 1:
+        raise ValueError('missing/duplicate second Times lookup')
+    markers = CALLS + second + [ENDPOINT, GUARD, DETACHED]
+    for marker in markers:
+        if text.count(marker) != 1:
+            raise ValueError('missing/duplicate positive control')
+    positions = [text.index(marker) for marker in markers]
+    if positions != sorted(positions):
+        raise ValueError('call/completion order')
 
 class Checks(unittest.TestCase):
     def test_required_calls(self):
-        good='\n'.join(CALLS+[COMPLETE]);check(good,0)
-        for bad,status in ((good,124),(good,None),(good.replace(CALLS[0],''),0),(good+COMPLETE,0),(good+'\nFAIL',0),(good.replace('D1=1','D1=0'),0),('\n'.join(CALLS[::-1]+[COMPLETE]),0)):
-            with self.assertRaises(ValueError):check(bad,status)
+        second = 'PASS font second: Dan1+003A result=20 stack=$005f6d9e native-driver-calls=2'
+        markers = CALLS + [second, ENDPOINT, GUARD, DETACHED]
+        good = '\n'.join(markers)
+        check(good, 0)
+        rejected = [(good, 124), (good, None), (good + '\nFAIL', 0),
+                    (good.replace('D1=1', 'D1=0'), 0),
+                    (good.replace('result=20', 'result=0'), 0),
+                    (good.replace('native-driver-calls=2', 'native-driver-calls=1'), 0),
+                    (good.replace('services=143/143', 'services=143/142'), 0),
+                    ('\n'.join(CALLS[::-1] + markers[2:]), 0),
+                    ('\n'.join([second] + CALLS + markers[3:]), 0)]
+        for marker in markers:
+            rejected.extend([(good.replace(marker, ''), 0), (good + '\n' + marker, 0)])
+        for text, status in rejected:
+            with self.subTest(text=text, status=status), self.assertRaises(ValueError):
+                check(text, status)
 if __name__=='__main__':
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('log',type=Path,nargs='?');p.add_argument('--status',type=int);p.add_argument('--selftest',action='store_true');a=p.parse_args()
     if a.selftest:raise SystemExit(not unittest.TextTestRunner().run(unittest.defaultTestLoader.loadTestsFromTestCase(Checks)).wasSuccessful())

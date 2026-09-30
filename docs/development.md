@@ -2961,3 +2961,19 @@ all 75,616 bytes. The AGA decoder verifies exact pixels, eight plane pointers,
 42 original resource reads / 208,858 bytes; overlay remains 31 / 80,650 and
 preparation 64 / 81,222. The next stop is UNIONRECT at Dan2+$01DA. This does
 not count either pending driver/font acceptance item as removed yet.
+
+
+## Integrated native driver startup acceptance
+
+M2.1c3c2 is complete using the existing combined native capture
+`tmp/m2-menu-lifecycle-native-final.log` (exit 0) and the independent original
+`tmp/m2-driver-startup-reference.log` (exit 0). Both original call sequences,
+selector arguments, return registers, preserved registers, stack and resulting
+native state pass. Second Times returns 20 after exactly two native driver calls;
+UnionRect is the next named stop and no original MDRV is resident. The shared
+observer also proves inactive voices, unassigned channels, original main/A5 and
+AGA memory/publication. The driver observer now delegates to that shared script.
+The native acceptance checker requires this integrated endpoint and rejects
+missing/reordered calls, wrong results, unfinished services and timeout/error
+completion. Sanitizer-backed driver state tests and checker rejection fixtures
+pass. No runtime code changed; no repeat emulator launch was necessary.
