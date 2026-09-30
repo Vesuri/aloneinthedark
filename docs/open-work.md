@@ -49,20 +49,6 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.1c3 Font availability prerequisite for original PAK reads.**
-  - The installed font and GetFNum now pass the first original call at
-    Dan1+$0012. The second call at +$0038 is now reachable natively. Finish its paired
-    installed-font acceptance before removing this requirement.
-  - The original/reference-fixture GetFNum contract is measured; see
-    [font-manager.md](font-manager.md). The port-owned 14-point FOND/NFNT
-    definition, native parser and installed-body lookup pass host/first-call
-    checks. GetFNum reads and validates the installed FOND/NFNT (D6). Remaining
-    unsupported text/font operations must retain named stops; full rendered-font
-    acceptance remains M2.9.
-
-  *Done when* host checks validate the generated font definition and lookup,
-  original-byte-guarded native execution passes both Times lookups with the Mac
-  result, reaches the next named stop, and relevant startup regressions pass.
 - **M2.3g4 Font-image rectangle preparation prerequisite.**
   - Hidden menu setup now passes and startup reaches UnionRect at Dan2+$01DA
     ($A8AB), after the second Times lookup and the first original PAK-reading

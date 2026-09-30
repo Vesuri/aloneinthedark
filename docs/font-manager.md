@@ -101,40 +101,30 @@ behavior; unsupported collation, formats and missing linked definitions stop
 explicitly. Inherited font-independent DrawChar/DrawString/DrawText now remain
 named trap stops pending M2.9 instead of silently drawing the Vette fixed font.
 
-The native observer checks the live original trap bytes, Pascal Times name,
-result 20, eight-byte stack cleanup, D0 and error globals at Dan1+$0014. It dumps
-both installed bodies for exact host comparison and requires the next named
-`GETCTABLE` stop at Engine+$110E, with no original MDRV body resident. The original
-second lookup has not been reached natively: graphics initialization and further
-startup services lie between these calls. The two native driver calls now pass. This is partial M2.1c3 acceptance, not a completed font/startup item.
+## Integrated native lookup acceptance
 
-`amiga/font_lookup.gdb` plus `tools/check_native_font.py LOG --status STATUS`
-provide that bounded first-call check; `--prepare` removes old diagnostic dumps.
-The checker rejects missing/duplicate completion, bad status and observer errors.
-M2.1c3 retains the second-call requirement after the newly reached services.
+Both original Dan1 calls now return family 20 through the installed FOND/NFNT.
+`amiga/font_lookup.gdb` delegates to the shared `menu_lifecycle.gdb` observer:
+original call bytes and Pascal names are checked, each result pops eight argument
+bytes, and D0 and startup ResErr/MemErr match the reference. The second call
+preserves the observed nonzero D0 ($00312FF2 in the accepted run). Installed
+60-byte FOND and 1,254-byte NFNT dumps match the generator exactly.
 
+`tools/check_native_font.py LOG --status STATUS` requires both calls in order,
+second-call register/error evidence, both native driver calls, the exact UnionRect
+stop at Dan2+$01DA, MDRV absence and normal debugger completion. `--prepare`
+removes old font dumps before capture. Missing/duplicate controls, wrong results,
+wrong error flags, incomplete service counts and timeout/error completion fail.
+The checker also fingerprints the original Jnth/MDRV loader and entry store.
 
-Startup counters distinguish two measured inputs. With the original default
-`PREF` 128 already present, the colour-table boundary uses 64 OS windows and 118/118
-service entries/completions. Without preferences, original startup creates the
-file and uses 90 windows and 126/126 services. All services complete before the
-graphics stop. Both paths read 28 original resource bodies / 123,387 bytes plus
-31 overlay bodies / 80,800 bytes. `check_startup_prefs.py` classifies
-the starting fixture before launch and supplies exact expected counters; it
-rejects partial, nonregular or unmeasured preference contents without deleting
-them. These observer restrictions do not alter production preference handling.
-
-The native checker additionally fingerprints Core's original Jnth/MDRV loader
-and entry-handle/entry-pointer sequence. It does not count the exploratory
-`.BD_PAS16` stop as acceptance: that path entered the forbidden original mixer.
-
-
-Integration verification: the complete host suite, six native regression cases
-and four startup observers pass. Both preference-start modes pass resource-byte
-checks; all 75,616 original A5 bytes match. The font observer and independent
-body checker pass with normal completion. This verifies the implementation and
-first original call, while retaining the second-call acceptance in the queue.
-
+Acceptance: `tmp/m2-font-integrated-native.log` exits 0, passes the paired font,
+driver and AGA checks, and all 75,616 original A5 bytes match. Reference originals
+and eight fixtures pass in `tmp/m2-font-final-0.log` and
+`tmp/m2-font-final-1.log` (both exit 0). Font parser sanitizer tests and checker
+rejection fixtures pass. Current existing-preference startup counts are 81 OS
+handbacks, 143 completed services and 42 original resource reads / 208,858 bytes;
+overlay is 31 reads / 80,650 bytes. This completes M2.1c3. It does not claim
+original PAK-read, rendered-font or intro acceptance; those remain in the queue.
 
 ## Original startup metrics
 

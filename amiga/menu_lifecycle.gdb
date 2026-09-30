@@ -495,25 +495,27 @@ end
 dump binary memory ../tmp/menulist-native-6-after-menu4.bin $body $end+1
 dump binary memory ../tmp/menulist-native-screen-after.bin (char*)s_colorScreen (char*)s_colorScreen+307200
 echo PASS native menu-list lifecycle\n
-tbreak getFontNumber
+set $dan=(unsigned long)s_segments[12].begin
+tbreak *($dan+0x38)
 continue
-set $args=s_userService.arguments
+set $args=$sp
+set $font_d0=$d0
 set $out=*(unsigned long*)$args
 set $name=*(unsigned long*)($args+4)
-set $dan=(unsigned long)s_segments[12].begin
-if s_userService.trap!=0xa900 || *(unsigned long*)($dan+0x38)!=0xa9003f3c || *(unsigned long*)$name!=0x0554696d || *(unsigned short*)($name+4)!=0x6573
+if $pc!=$dan+0x38 || *(unsigned long*)($dan+0x38)!=0xa9003f3c || *(unsigned long*)$name!=0x0554696d || *(unsigned short*)($name+4)!=0x6573
  echo FAIL second original Times call\n
  detach
  quit 1
 end
 tbreak *($dan+0x3a)
 continue
-if $pc!=$dan+0x3a || *(short*)$out!=20 || $sp!=(unsigned long)$args+8 || g_soundDriverCalls!=2
- echo FAIL second original Times result/stack/driver\n
+if $pc!=$dan+0x3a || *(short*)$out!=20 || $sp!=(unsigned long)$args+8 || g_soundDriverCalls!=2 || $d0!=$font_d0 || *(short*)(g_macLowMemory+140)!=0 || *(short*)(g_macLowMemory+100)!=0
+ echo FAIL second original Times result/stack/driver/register/errors\n
  detach
  quit 1
 end
 printf "PASS font second: Dan1+003A result=%d stack=$%08x native-driver-calls=%u\n",*(short*)$out,$sp,g_soundDriverCalls
+printf "PASS font second ABI: D0=$%08x preserved stack-pop=8 ResErr=0 MemErr=0\n",$d0
 continue
 printf "MLIST_NEXT state=%u trap=%X selector=%X segment=%u offset=%X manager=%s routine=%s windows=%u services=%u/%u reads=%u bytes=%u\n",g_stageBState,g_trapWord,g_trapSelector,g_trapSegment,g_trapOffset,g_trapManager,g_trapRoutine,g_systemWindows,g_macServiceEntered,g_macServiceCompleted,g_resourceRuntimeReads,g_resourceRuntimeBytes
 if g_stageBState!=3 || g_macServiceActive!=0

@@ -4,7 +4,6 @@ import argparse
 import re
 from pathlib import Path
 import unittest
-from check_driver_startup import check_call_source
 
 CALLS=['PASS native driver call: selector=21 D0=0 D1=0 preserved=13 stack=unchanged rate=22 voices=6/2/2',
        'PASS native driver call: selector=24 D0=0 D1=1 preserved=13 stack=unchanged rate=11 voices=6/2/2']
@@ -51,6 +50,7 @@ if __name__=='__main__':
     if a.selftest:raise SystemExit(not unittest.TextTestRunner().run(unittest.defaultTestLoader.loadTestsFromTestCase(Checks)).wasSuccessful())
     try:
         source=Path(__file__).resolve().parents[1]/'tmp/runtime-data/Alone In The Dark'
+        from check_driver_startup import check_call_source
         check_call_source(source);check(a.log.read_text(),a.status)
         print(COMPLETE)
     except (ValueError,OSError,AttributeError) as error:raise SystemExit('FAIL native driver: '+str(error))

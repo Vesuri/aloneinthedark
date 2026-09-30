@@ -2977,3 +2977,16 @@ The native acceptance checker requires this integrated endpoint and rejects
 missing/reordered calls, wrong results, unfinished services and timeout/error
 completion. Sanitizer-backed driver state tests and checker rejection fixtures
 pass. No runtime code changed; no repeat emulator launch was necessary.
+
+
+## Paired installed-font startup acceptance
+
+M2.1c3 is complete. The shared observer now checks the second original call at
+Dan1+$0038 directly, preserving its entry D0 for return comparison and requiring
+zero ResErr/MemErr. `tmp/m2-font-integrated-native.log` exits 0 and records both
+Times=20, eight-byte cleanup, second D0=$00312FF2 preserved and exact installed
+FOND/NFNT bodies. Original/reference fixtures, native driver acceptance, font
+parser sanitizer tests and checker rejection fixtures pass. AGA publication
+still passes and all 75,616 A5 bytes match. Counts and UnionRect endpoint are
+unchanged. No runtime code changed; the one new native run fills the missing
+second-call ABI evidence. Remaining font rendering is M2.9.

@@ -221,10 +221,11 @@ The original startup path is implemented (M1.1–M1.3):
 **Verified:** the host check `tools/a5world_check.py` passes: it runs
 CODE 1's expansion algorithm on the resource bytes and compares, byte for byte,
 with the A5 world the Amiga dumps (via gdb) when it enters `main`. The current
-loud stop is `COLOR QUICKDRAW / GETCTABLE`, after the original startup
-directories, General lookup, first Times font lookup and two native driver
-initialization calls, menu-record initialization, logical device selection, SetDepth, GetGWorld, hidden dialog construction, GetMainDevice and ten integer-only positioning calls plus hidden MoveWindow, fixed item selection, disposal and main-world restoration and all 75 installed-font metric calls, followed by four Apple Event registrations. The second Times lookup still needs intervening startup
-services. Original MDRV loading remains forbidden.
+loud stop is `QUICKDRAW / UNIONRECT` at Dan2+$01DA. Startup passes the native
+driver calls, both Times lookups, hidden window/menu setup and eight-bit
+offscreen initialization and original image-row copying. Driver and installed
+font startup acceptance pass; original MDRV loading remains forbidden.
+
 
 ### 4.3 Low memory
 
