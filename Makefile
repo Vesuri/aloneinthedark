@@ -81,6 +81,7 @@ host-tests:
 	@python3 tools/check_bitmap_font.py
 	@python3 tools/check_text_metrics.py
 	@python3 tools/check_sectrect_helper.py
+	@python3 tools/check_cursor_visibility.py
 	@python3 tools/check_startup_fonts.py
 	@python3 tools/check_native_font.py --selftest
 	@python3 tools/check_startup_prefs.py --selftest

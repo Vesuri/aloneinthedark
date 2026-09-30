@@ -16,11 +16,13 @@ def check(text,status,native=False):
     if status!=0 or any(s in text for s in ('FAIL','LUA ERROR','Error in','timeout')):raise ValueError('run completion')
     marker='PASS native original SectRect' if native else 'PASS original SectRect calls=2 fixtures=14'
     end='[Inferior 1 (Remote target) detached]' if native else 'Exited via the debugger'
-    if text.count(marker)!=(8 if native else 1) or text.count(end)!=1:raise ValueError('positive completion')
+    native_count=text.count(marker)
+    if native and (native_count<8 or native_count%2):raise ValueError('native intersection count')
+    if text.count(marker)!=(native_count if native else 1) or text.count(end)!=1:raise ValueError('positive completion')
     code=next(r.body for r in read_resource_fork(ROOT/'tmp/runtime-data/Alone In The Dark') if r.kind==b'CODE' and r.rid==9)
     expected='4227205248680022486EFFF4486EFFECA8AA'
     if code[0xe80:0xe92].hex().upper()!=expected or re.findall(r'^SR_BYTES data=(\w+)$',text,re.M)!=[expected]:raise ValueError('original/live bytes')
-    for i,(e,r) in enumerate(pairs(text,0 if native else 14,8 if native else 2)):
+    for i,(e,r) in enumerate(pairs(text,0 if native else 14,native_count if native else 2)):
         if int(e['n'])!=(i+1 if native else min(i+1,2)) or int(e['fixture'])!=(0 if native else max(0,i-1)) or any(e[k]!=r[k] for k in ('n','fixture','sp','dst','r1','r2')):raise ValueError('call identity')
         a,b=[struct.unpack('>4h',bytes.fromhex(e[k])) for k in ('data1','data2')]
         bounds=(max(a[0],b[0]),max(a[1],b[1]),min(a[2],b[2]),min(a[3],b[3]))
@@ -41,7 +43,7 @@ def check(text,status,native=False):
     if native:
         from check_native_driver import check as check_startup
         check_startup(text,status)
-        for n in range(1,9):
+        for n in range(1,native_count+1):
             output='0000000001e00280' if n%2==1 else '009600a0015e01e0'
             before=(ROOT/f'tmp/sectrect-native-{n}-enter-guard.bin').read_bytes();after=(ROOT/f'tmp/sectrect-native-{n}-return-guard.bin').read_bytes()
             if len(before)!=16 or len(after)!=16 or before[:4]!=after[:4] or before[12:]!=after[12:] or after[4:12].hex()!=output:raise ValueError('native surrounding bytes')

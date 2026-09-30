@@ -8,8 +8,10 @@ def rows(text,kind):
     return [dict(re.findall(r'(\w+)=([0-9A-Fa-f]+)(?: |$)',s)) for s in re.findall(r'^WNE_'+kind+r' (.*)$',text,re.M)]
 def check(text,status,native):
     if status!=0 or any(x in text for x in ('FAIL','Error in','LUA ERROR','timeout')):raise ValueError('terminal completion')
-    count=4 if native else 8
-    marker='PASS native startup events calls=4' if native else 'PASS WaitNextEvent original calls=8'
+    counts=re.findall(r'^PASS native startup events calls=(\d+)$',text,re.M)
+    count=int(counts[0]) if native and len(counts)==1 else 8
+    if native and (len(counts)!=1 or count<4):raise ValueError('native event count')
+    marker=f'PASS native startup events calls={count}' if native else 'PASS WaitNextEvent original calls=8'
     end='[Inferior 1 (Remote target) detached]' if native else 'Exited via the debugger'
     if text.count(marker)!=1 or text.count(end)!=1:raise ValueError('positive completion')
     code=next(r.body for r in read_resource_fork(ROOT/'tmp/runtime-data/Alone In The Dark') if r.kind==b'CODE' and r.rid==7)
@@ -39,12 +41,12 @@ def check(text,status,native):
             if mods!=(0x81 if what==8 else 0x80):raise ValueError('idle/activation modifiers')
         events.append(event)
     kinds=[e[0] for e in events]
-    if kinds!=([8,6,6,0] if native else [8,23,6,6,0,0,0,0]):raise ValueError('startup event sequence')
+    if kinds!=([8,6,6]+[0]*(count-3) if native else [8,23,6,6,0,0,0,0]):raise ValueError('startup event sequence')
     if native:
         from check_native_driver import check as startup
         startup(text,status)
         states=re.findall(r'^WNE_STATE n=(\d+) mouse=(\d+)/(\d+) front=([0-9A-F]+) behind=([0-9A-F]+)$',text,re.M)
-        if len(states)!=4:raise ValueError('native event sources')
+        if len(states)!=count:raise ValueError('native event sources')
         for i,(event,state) in enumerate(zip(events,states)):
             _,message,_,v,h,_=event
             if int(state[0])!=i+1 or (h,v)!=(int(state[1]),int(state[2])):raise ValueError('live mouse')

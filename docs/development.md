@@ -3233,3 +3233,34 @@ needed for that observer correction. See [events.md](events.md).
 Next is QUICKDRAW / OBSCURECURSOR at Engine+$0FF6. Counts remain 113 windows,
 431/431 services and 62 original resource reads / 265,454 bytes. The intro still
 has not run; no rendered intro or cursor acceptance is claimed.
+
+
+## Startup cursor obscuring
+
+M2.3g15 is complete. Cursor state now separates explicit hide level from temporary
+obscuring, with VBI mouse movement clearing only the latter. The original call
+and repeated calls match the conditional D0 result and preserve stack, other
+registers and the cursor image. The AGA pointer gate remains disabled.
+
+`tmp/m2-cursor-reference-final.log` exits 0 and covers the original call, nine
+Init/Hide/Show/Obscure fixtures, register sentinels and emulated ADB movement.
+The compiled helper matches eleven measured states under ASan/UBSan and also
+checks movement while explicitly hidden and hide-count overflow rejection.
+`tmp/m2-cursor-native-acceptance.log` exits 0 and passes six original obscure
+calls, nine event polls, twenty rectangle intersections, device flags,
+background coordinates/binding, 220 text widths, twenty pictures, fonts,
+driver/MDRV exclusion, AGA publication and all 75,616 A5 bytes. Full host tests,
+updated driver/preference checker tests, the 75-script Lua audit and clean-build
+link audits pass. See [cursor.md](cursor.md) for reproduction.
+
+The earlier `native-final` run was rejected by the old fixed four-event assertion.
+Its trace established the repeated idle route; the observer now validates every
+call without fixing its timing-dependent count. No timeout is accepted.
+Initial build attempts exposed the platform's injected integer types; the helper
+now follows the repository's host-only stdint include convention.
+
+Next is QUICKDRAW / GETFORECOLOR at Dan1+$623C. The original has performed two
+additional resource reads: 115 windows, 433/433 services and 64 reads / 294,970
+bytes. CODE mask is $3FBB; overlay counts remain 31/80,650 and preparation
+64/81,222, with 244 resources and 58 low-memory patches. Fresh-preference counts
+141/441 remain derived. No rendered cursor or intro acceptance is claimed.

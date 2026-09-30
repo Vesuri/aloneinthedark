@@ -91,3 +91,8 @@ M2.3g14 advances the combined observer through four event polls. This repeats
 the background/game device-selection pair four times, giving eight checked
 SectRect calls. Use `tmp/m2-event-native-final.log` with the current checker;
 the earlier two-call capture describes the preceding checkpoint.
+
+Beyond cursor obscuring, the game repeats device selection during idle polls.
+The current checker validates every alternating background/game pair and its
+individual guards; it requires an even count rather than pinning idle timing.
+The accepted cursor run contains twenty intersections.

@@ -31,3 +31,4 @@ material this port inherits: frame pacing, WHDLoad, installer design, Macintosh
 display model and the regression approach.
 
 - [Startup events](events.md): activation, update and idle-event contracts.
+- [Cursor obscuring](cursor.md): logical visibility, hide state and movement restoration.

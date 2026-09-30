@@ -284,10 +284,11 @@ void AitdScreen::updateMouseCoordinates(int16_t& x, int16_t& y, int16_t dx, int1
     if (y > bottom) y = bottom;
 }
 
-void AitdScreen::setMousePositionFromVBI(int16_t x, int16_t y)
+void AitdScreen::setMousePositionFromVBI(int16_t x, int16_t y, bool visible)
 {
     m_cursorX = x;
     m_cursorY = y;
+    m_cursorVisible = visible;
 }
 
 void AitdScreen::updateMouseSprite()

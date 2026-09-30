@@ -54,8 +54,8 @@ def check(text,status,fixture=False,native=False):
         for n,(eid,cb) in enumerate(zip(IDS,CALLBACKS)):
             row=fields(one(text,rf'AE_ENTRY index={n} (.*)'))
             if row!={'class':0x61657674,'id':eid,'handler':e['a5']+cb,'refcon':0}:raise ValueError('native installed registration')
-        one(text,r'AE_NEXT state=3 trap=A856 selector=FFFFFFFF segment=7 offset=FF6 manager=QUICKDRAW routine=OBSCURECURSOR windows=(?:113|139) services=(?:431/431|439/439)')
-        if text.count('PASS native Apple Event startup next=OBSCURECURSOR original-MDRV=absent')!=1:raise ValueError('native next stop')
+        one(text,r'AE_NEXT state=3 trap=AA19 selector=FFFFFFFF segment=12 offset=623C manager=QUICKDRAW routine=GETFORECOLOR windows=(?:115|141) services=(?:433/433|441/441)')
+        if text.count('PASS native Apple Event startup next=GETFORECOLOR original-MDRV=absent')!=1:raise ValueError('native next stop')
     if not fixture:
         if 'AE_FIX_' in text:raise ValueError('unexpected fixture')
         return

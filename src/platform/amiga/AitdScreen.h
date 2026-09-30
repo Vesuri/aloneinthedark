@@ -72,7 +72,7 @@ public:
 
     // VBI-only position publication. A 68000 word store is atomic, and the VBI
     // immediately consumes these coordinates when it builds the next sprite.
-    void setMousePositionFromVBI(int16_t x, int16_t y);
+    void setMousePositionFromVBI(int16_t x, int16_t y, bool visible);
 
     // Stage B's fail-loud surface.  It replaces the captured frame with a diagnostic
     // generated on the Amiga, so an unknown Mac trap cannot masquerade as a freeze.

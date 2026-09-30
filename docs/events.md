@@ -36,3 +36,9 @@ python3 tools/check_startup_events.py tmp/m2-event-reference.log --reference-sta
 Supply the actual terminal statuses. The reference captures eight calls; native
 captures four before its next explicit stop at ObscureCursor, Engine+$0FF6.
 No rendered cursor or intro acceptance is implied.
+
+M2.3g15 continues beyond the first idle event. The number of subsequent null
+polls depends on emulated tick progress, so the current checker validates every
+captured call and requires the measured initial activation/update sequence,
+followed only by null events, rather than requiring exactly four native calls.
+The accepted cursor run records nine polls before GetForeColor, Dan1+$623C.

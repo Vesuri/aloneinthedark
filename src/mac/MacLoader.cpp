@@ -10,6 +10,7 @@
 #include "Palette8.h"
 #include "WindowGeometry.h"
 #include "RectBounds.h"
+#include "CursorVisibility.h"
 #include "RegionRows.h"
 #include "GWorld8.h"
 #include "SoundDriver.h"
@@ -471,7 +472,7 @@ static DialogManagerState s_dialogManager;
 
 struct CursorState {
     bool initialized;
-    bool visible;
+    CursorVisibility visibility;
     const uint8_t* image;
 };
 static CursorState s_cursor;
@@ -768,7 +769,7 @@ static const TrapName s_trapNames[] = {
     {0xa889,"QUICKDRAW","TEXTMODE"}, {0xa88a,"QUICKDRAW","TEXTSIZE"},
     {0xa88e,"QUICKDRAW","SPACEEXTRA"}, {0xa893,"QUICKDRAW","MOVETO"},
     {0xa9b9,"QUICKDRAW","GETCURSOR"},
-    {0xa856,"QUICKDRAW","OBSCURECURSOR"}, {0xa851,"QUICKDRAW","SETCURSOR"}, {0xa852,"QUICKDRAW","HIDECURSOR"},
+    {0xaa19,"QUICKDRAW","GETFORECOLOR"}, {0xa856,"QUICKDRAW","OBSCURECURSOR"}, {0xa851,"QUICKDRAW","SETCURSOR"}, {0xa852,"QUICKDRAW","HIDECURSOR"},
     {0xa853,"QUICKDRAW","SHOWCURSOR"},
     {0xa97c,"DIALOG MANAGER","GETNEWDIALOG"}, {0xa981,"DIALOG MANAGER","DRAWDIALOG"},
     {0xa988,"DIALOG MANAGER","CAUTIONALERT"},
@@ -2294,7 +2295,7 @@ static void publishMouseCursor()
 {
     if (s_loudStopScreen)
         s_loudStopScreen->setMouseCursor(s_cursor.image, s_mouseX, s_mouseY,
-                                         s_cursor.initialized && s_cursor.visible);
+                                         s_cursor.initialized && s_cursor.visibility.visible());
 }
 
 static uint32_t multiplyDivide(uint16_t value, uint16_t multiplier, uint16_t divisor)
@@ -4826,7 +4827,7 @@ static void initDialogs(uint8_t* resumeProcedure)
 static void initCursor()
 {
     s_cursor.initialized = true;
-    s_cursor.visible = true;
+    s_cursor.visibility.init();
     s_cursor.image = s_qdThePort - 108;       // qd.arrow
     publishMouseCursor();
 }
@@ -5286,7 +5287,10 @@ extern "C" void aitdMacMouseVBI()
             *h = (uint16_t)addClampedMouseDelta((int16_t)*h, deltaX, 639);
         }
     }
-    if (deltaX || deltaY) ++g_mouseVBIMoves;
+    if (deltaX || deltaY) {
+        ++g_mouseVBIMoves;
+        s_cursor.visibility.moved();
+    }
     if (s_currentA5 && s_mouseGlobalsA5 != s_currentA5) {
         // Mouse sampling begins as soon as the Amiga screen is live, before
         // the Macintosh A5 world exists. Initialize its redirected globals on
@@ -5304,7 +5308,8 @@ extern "C" void aitdMacMouseVBI()
     s_mouseHardwareButtonDown = buttonDown;
     s_portLowMemory[kLowMBState] = buttonDown ? 0x00 : 0x80;
     if (s_loudStopScreen)
-        s_loudStopScreen->setMousePositionFromVBI(s_mouseX, s_mouseY);
+        s_loudStopScreen->setMousePositionFromVBI(s_mouseX, s_mouseY,
+            s_cursor.initialized && s_cursor.visibility.visible());
     ++g_mouseVBISamples;
 }
 
@@ -6446,14 +6451,20 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         if (g_stageCDepth < 10) g_stageCDepth = 10;
         return 1;
     }
+    if (trap == 0xa856) {                    // ObscureCursor(): restore on movement
+        if(!s_cursor.initialized)goto unsupportedTrap;
+        if(s_cursor.visibility.obscure())regs[0]=1;
+        publishMouseCursor();
+        return 1;
+    }
     if (trap == 0xa852) {                    // HideCursor()
-        s_cursor.visible = false;
+        if(!s_cursor.visibility.hide())goto unsupportedTrap;
         publishMouseCursor();
         if (g_stageCDepth < 93) g_stageCDepth = 93;
         return 1;
     }
     if (trap == 0xa853) {                    // ShowCursor()
-        s_cursor.visible = true;
+        s_cursor.visibility.show();
         publishMouseCursor();
         if (g_stageCDepth < 94) g_stageCDepth = 94;
         return 1;
@@ -7409,7 +7420,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     }
     if (trap == 0xa851) {                    // SetCursor(Cursor*)
         s_cursor.image = (const uint8_t*)read32(userStack);
-        s_cursor.visible = true;
+        s_cursor.visibility.init();
         publishMouseCursor();
         if (g_stageCDepth < 37) g_stageCDepth = 37;
         return 5;
