@@ -36,7 +36,7 @@ dump binary memory ../tmp/ctable-native-mutated.bin $body $body+2056
 echo PASS original GetCTable and mutations\n
 continue
 printf "CTABLE_NEXT state=%u trap=%X selector=%X segment=%u offset=%X manager=%s routine=%s windows=%u services=%u/%u reads=%u bytes=%u\n",g_stageBState,g_trapWord,g_trapSelector,g_trapSegment,g_trapOffset,g_trapManager,g_trapRoutine,g_systemWindows,g_macServiceEntered,g_macServiceCompleted,g_resourceRuntimeReads,g_resourceRuntimeBytes
-if g_stageBState!=3 || g_trapWord!=0xa8f6 || g_trapSegment!=13 || g_trapOffset!=0x382 || *(unsigned long*)(g_trapRoutine+0)!=0x44524157 || *(unsigned long*)(g_trapRoutine+4)!=0x50494354 || *(unsigned long*)(g_trapRoutine+8)!=0x55524500 || g_macServiceActive!=0
+if g_stageBState!=3 || g_trapWord!=0xa886 || g_trapSegment!=12 || g_trapOffset!=0x216 || *(unsigned long*)(g_trapRoutine+0)!=0x54455854 || *(unsigned long*)(g_trapRoutine+4)!=0x57494454 || *(unsigned short*)(g_trapRoutine+8)!=0x4800 || g_macServiceActive!=0
  echo FAIL GetCTable next stop\n
  detach
  quit 1
@@ -50,6 +50,6 @@ while $i<g_resourceCount
  end
  set $i=$i+1
 end
-echo PASS native GetCTable detached next=DRAWPICTURE original-MDRV=absent\n
+echo PASS native GetCTable detached next=TEXTWIDTH original-MDRV=absent\n
 detach
 quit 0

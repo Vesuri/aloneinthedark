@@ -777,7 +777,7 @@ static const TrapName s_trapNames[] = {
     {0xaa2e,"GRAPHICS DEVICE MANAGER","INITGDEVICE"},
     {0xa047,"TRAP MANAGER","SETTRAPADDRESS"}, {0xa983,"DIALOG MANAGER","DISPOSEDIALOG"},
     {0xa850,"QUICKDRAW","INITCURSOR"}, {0xa9bc,"QUICKDRAW","GETPICTURE"},
-    {0xa8f6,"QUICKDRAW","DRAWPICTURE"}, {0xa89b,"QUICKDRAW","PENSIZE"},
+    {0xa886,"QUICKDRAW","TEXTWIDTH"}, {0xa8f6,"QUICKDRAW","DRAWPICTURE"}, {0xa89b,"QUICKDRAW","PENSIZE"},
     {0xa89c,"QUICKDRAW","PENMODE"}, {0xa8a1,"QUICKDRAW","FRAMERECT"},
     {0xa8a7,"QUICKDRAW","SETRECT"},
     {0xa8a2,"QUICKDRAW","PAINTRECT"},
@@ -2318,6 +2318,8 @@ static uint32_t multiplyDivideCentered(uint16_t value, uint16_t multiplier,
     return numerator & 0xffff;
 }
 
+static GWorldSlot* gWorldForPort(uint8_t* port);
+
 static bool drawIndexedPictureBits(const uint8_t* picture, uint32_t size, uint32_t& offset,
                                    const uint8_t* pictureFrame, const uint8_t* targetRect,
                                    bool packed)
@@ -2338,6 +2340,12 @@ static bool drawIndexedPictureBits(const uint8_t* picture, uint32_t size, uint32
     uint8_t* port = (uint8_t*)read32(s_qdThePort);
     uint8_t** destinationHandle = port ? (uint8_t**)read32(port + 2) : 0;
     uint8_t* destinationMap = destinationHandle ? *destinationHandle : 0;
+    bool destination8=destinationMap && read16(destinationMap+32)==8;
+    GWorldSlot* world=destination8 ? gWorldForPort(port) : 0;
+    if(destination8 && (!world || !world->locked || pixelSize!=8 || rowBytes<(uint32_t)(sourceRight-sourceLeft)
+       || read16(destinationMap+14)!=1 || read16(pixMap+12)!=0
+       || read16(pixMap+26)!=0 || read16(pixMap+30)!=1 || read16(pixMap+32)!=8
+       || read16(*world->handles[3])!=10 || read16(*world->handles[4])!=10))return false;
     // Color QuickDraw realizes an RGB color through the current GDevice's
     // inverse table.  That device environment is distinct from the retained
     // ColorTable attached to an offscreen PixMap.  Vette relies on the
@@ -2350,6 +2358,7 @@ static bool drawIndexedPictureBits(const uint8_t* picture, uint32_t size, uint32
     const uint8_t* colorTable = picture + offset;
     uint16_t colorFlags = read16(colorTable + 4);
     uint16_t finalColor = read16(colorTable + 6);
+    if(destination8 && (finalColor!=255 || colorFlags!=0x8000))return false;
     if ((pixelSize == 4 && finalColor > 15) || (pixelSize == 8 && finalColor > 255))
         return false;
     uint32_t colorBytes = 8UL + ((uint32_t)finalColor + 1) * 8;
@@ -2359,6 +2368,13 @@ static bool drawIndexedPictureBits(const uint8_t* picture, uint32_t size, uint32
     for (uint16_t i = 0; i <= finalColor; ++i) {
         const uint8_t* sourceColor = colorTable + 8 + (uint32_t)i * 8;
         uint16_t sourceIndex = colorFlags & 0x8000 ? i : read16(sourceColor);
+        if(destination8) {
+            uint16_t mapped=0;
+            if(sourceIndex>255 || !GWorld8::colorIndex(*world->handles[2],
+                *world->handles[26],sourceColor+2,mapped))return false;
+            colorMap[sourceIndex]=(uint8_t)mapped;
+            continue;
+        }
         uint32_t bestDistance = 0xffffffffUL;
         uint8_t bestIndex = 0;
         for (uint8_t destinationIndex = 0; destinationIndex < 16; ++destinationIndex) {
@@ -2421,7 +2437,7 @@ static bool drawIndexedPictureBits(const uint8_t* picture, uint32_t size, uint32
 
     uint8_t* destinationPixels = destinationMap ? (uint8_t*)read32(destinationMap) : 0;
     uint16_t destinationRowBytes = destinationMap ? (uint16_t)(read16(destinationMap + 4) & 0x3fff) : 0;
-    if (!valid || !destinationPixels || read16(destinationMap + 32) != 4) valid = false;
+    if (!valid || !destinationPixels || (!destination8 && read16(destinationMap + 32) != 4)) valid = false;
 
     int16_t frameTop = (int16_t)read16(pictureFrame);
     int16_t frameLeft = (int16_t)read16(pictureFrame + 2);
@@ -2448,7 +2464,7 @@ static bool drawIndexedPictureBits(const uint8_t* picture, uint32_t size, uint32
         || copyBottom <= copyTop || copyRight <= copyLeft) valid = false;
 
     bool usedPackedRows = false;
-    bool unscaledPacked = valid
+    bool unscaledPacked = valid && !destination8
         && frameBottom - frameTop == targetBottom - targetTop
         && frameRight - frameLeft == targetRight - targetLeft
         && rasterBottom - rasterTop == copyBottom - copyTop
@@ -2587,6 +2603,9 @@ static bool drawIndexedPictureBits(const uint8_t* picture, uint32_t size, uint32
     if (valid && !usedPackedRows) {
         for (int16_t y = targetTop; y < targetBottom; ++y) {
             if (y < mapTop || y >= mapBottom) continue;
+            if(destination8 && (y<(int16_t)read16(port+16) || y>=(int16_t)read16(port+20)
+                || y<(int16_t)read16(*world->handles[3]+2) || y>=(int16_t)read16(*world->handles[3]+6)
+                || y<(int16_t)read16(*world->handles[4]+2) || y>=(int16_t)read16(*world->handles[4]+6)))continue;
             int16_t pictureY = (int16_t)(frameTop + multiplyDivideCentered(
                 (uint16_t)(y - targetTop), (uint16_t)(frameBottom - frameTop),
                 (uint16_t)(targetBottom - targetTop)));
@@ -2600,6 +2619,9 @@ static bool drawIndexedPictureBits(const uint8_t* picture, uint32_t size, uint32
                 + multiplyUnsigned16((uint16_t)(y - mapTop), destinationRowBytes);
             for (int16_t x = targetLeft; x < targetRight; ++x) {
                 if (x < mapLeft || x >= mapRight) continue;
+                if(destination8 && (x<(int16_t)read16(port+18) || x>=(int16_t)read16(port+22)
+                    || x<(int16_t)read16(*world->handles[3]+4) || x>=(int16_t)read16(*world->handles[3]+8)
+                    || x<(int16_t)read16(*world->handles[4]+4) || x>=(int16_t)read16(*world->handles[4]+8)))continue;
                 int16_t pictureX = (int16_t)(frameLeft + multiplyDivideCentered(
                     (uint16_t)(x - targetLeft), (uint16_t)(frameRight - frameLeft),
                     (uint16_t)(targetRight - targetLeft)));
@@ -2618,6 +2640,7 @@ static bool drawIndexedPictureBits(const uint8_t* picture, uint32_t size, uint32
                         value = pixelsMapped ? sourceValue : colorMap[sourceValue];
                     } else value = colorMap[sourceRow[sourceColumn]];
                     uint16_t destinationColumn = (uint16_t)(x - mapLeft);
+                    if(destination8) {destinationRow[destinationColumn]=value;continue;}
                     uint8_t& destinationByte = destinationRow[destinationColumn >> 1];
                     if (destinationColumn & 1)
                         destinationByte = (uint8_t)((destinationByte & 0xf0) | value);
@@ -3192,24 +3215,38 @@ static bool drawVersionOnePicture(const uint8_t* picture, uint32_t size,
 
 static bool drawPictureContents(uint8_t** pictureHandle, const uint8_t* targetRect)
 {
-    uint32_t size = resourceHandleSize(pictureHandle);
+    // DrawPicture also accepts owned pictures detached from the resource map.
+    MacHeap* owner=handleZone(pictureHandle);
+    uint32_t size=owner ? owner->handleSize(pictureHandle) : 0;
     if (!pictureHandle || !*pictureHandle || !targetRect || size < 12) return false;
     const uint8_t* picture = *pictureHandle;
     const uint8_t* frame = picture + 2;
+    bool destination8=gWorldForPort((uint8_t*)read32(s_qdThePort))!=0;
     if (picture[10] == 0x11 && picture[11] == 0x01)
         return drawVersionOnePicture(picture, size, frame, targetRect);
     uint32_t offset = 10;
     bool drewPixels = false;
     while (offset + 2 <= size) {
         uint16_t opcode = read16(picture + offset); offset += 2;
+        if(destination8 && opcode!=0 && opcode!=0x1e && opcode!=0x11 && opcode!=0xc00
+           && opcode!=1 && opcode!=0x98 && opcode!=0xff) {
+            s_unsupportedPictureOpcode=opcode;s_unsupportedPictureOffset=offset-2;return false;
+        }
         if (opcode == 0x00ff) return drewPixels;
         if (opcode == 0x0000 || opcode == 0x001e) continue;
-        if (opcode == 0x0011) { if (offset + 2 > size) return false; offset += 2; continue; }
+        if (opcode == 0x0011) {
+            if (offset + 2 > size || (destination8 && read16(picture+offset)!=0x02ff)) return false;
+            offset += 2; continue;
+        }
         if (opcode == 0x0c00) { if (offset + 24 > size) return false; offset += 24; continue; }
         if (opcode == 0x0001) {
             if (offset + 2 > size) return false;
             uint16_t bytes = read16(picture + offset);
             if (bytes < 2 || offset + bytes > size) return false;
+            if(destination8) {
+                if(bytes!=10)return false;
+                for(uint16_t i=0;i<8;++i)if(picture[offset+2+i]!=frame[i])return false;
+            }
             offset += bytes; continue;
         }
         if (opcode == 0x000a) { if (offset + 8 > size) return false; offset += 8; continue; }
@@ -5907,7 +5944,10 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         case 0xa8a3:
             if(gWorldForPort(s_qdThePort ? (uint8_t*)read32(s_qdThePort) : 0))break;
             unsupportedGraphics=true;goto unsupportedTrap;
-        case 0xa8f6: case 0xa8a1: case 0xa8a4: case 0xa8a5:
+        case 0xa8f6:
+            if(gWorldForPort(s_qdThePort ? (uint8_t*)read32(s_qdThePort) : 0))break;
+            unsupportedGraphics=true;goto unsupportedTrap;
+        case 0xa8a1: case 0xa8a4: case 0xa8a5:
         case 0xa8ec: case 0xa90d: case 0xa91f:
             unsupportedGraphics=true;goto unsupportedTrap;
         }

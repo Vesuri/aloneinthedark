@@ -38,4 +38,4 @@ assert read('reference','copy-source')==read('native','copy-source')
 assert read('native','screen-before')==read('native','screen-after')
 print('PASS paired GetPixBaseAddr: original bytes, locked return ABI, unlocked reference, unchanged query state, original 56-row copy of 28672 bytes with 448 unused/padding bytes preserved; native screen unchanged')
 
-assert 'PBASE_NEXT state=3 trap=A8F6 selector=FFFFFFFF segment=13 offset=382 manager=QUICKDRAW routine=DRAWPICTURE windows=101 services=164/164 reads=62 bytes=265454' in a.native.read_text()
+assert 'PBASE_NEXT state=3 trap=A886 selector=FFFFFFFF segment=12 offset=216 manager=QUICKDRAW routine=TEXTWIDTH windows=113 services=211/211 reads=62 bytes=265454' in a.native.read_text()

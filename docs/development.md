@@ -3070,3 +3070,28 @@ audit and both link audits pass. Counts are 101 windows, 164 completed services,
 62 original resource reads / 265,454 bytes. Next is DrawPicture at Dan2+$0382.
 The discovery run failed its obsolete endpoint and is not acceptance. Fresh
 preferences retain derived counts (127 windows / 172 services), not a new run.
+
+
+## Indexed picture preparation
+
+M2.3g8 is complete. All twenty original Dan2 pictures now draw into the owned
+138×542 world using eight-bit PackBits and its actual inverse colour table.
+Detached images use their real heap sizes. See [picture-drawing.md](picture-drawing.md)
+for the measured format, original-byte guard and reproduction commands.
+
+`tmp/m2-pict8-reference.log` and `tmp/m2-pict8-native-final.log` both exit 0;
+the independent oracle verifies 1,560,960 destination bytes on each side,
+including unchanged padding and outside pixels, preserved records and ABI.
+The final combined capture also passes device-table GWorld records, detachment,
+all twenty rectangle calls, both installed-font lookups, native driver/MDRV
+exclusion, AGA publication/pixels/palette and all 75,616 A5 bytes. The full host
+suite (`tmp/m2-pict8-host.log`), 68-script Lua audit and both link audits pass.
+The initial observer failed before drawing because its size variable used a
+register name; that run was rejected and the variable renamed. A later discovery
+capture passed pixels; final acceptance additionally checks original live bytes,
+startup and display on the final executable.
+
+The next stop is QUICKDRAW / TEXTWIDTH at Dan1+$0216. Counts are 113 OS windows,
+211 completed services and unchanged 62 resource reads / 265,454 bytes.
+Fresh-preference endpoint counts (139 / 219 services) remain derived, not newly
+accepted. No rendered intro or broader scaled-picture acceptance is claimed.

@@ -14,10 +14,10 @@ design.md §5.
   low-resolution selection/cleanup, all 75 font-metrics calls and four Apple Event
   registrations, colour-table loading/mutations, palette construction and default
   binding, hidden window-title state and the verified WIND 128 request. Startup realizes the palette and clears the game client area, then stops at
-  `DRAWPICTURE` at Dan2+$0382 after palette binding/activation, first-frame AGA
+  `TEXTWIDTH` at Dan1+$0216 after palette binding/activation, first-frame AGA
   publication, background ShowHide, game-port binding, TickCount, unchanged window geometry, point setup, empty-region allocation and eight-bit offscreen buffer initialization, pixel-address access and the first original image-row copy and hidden menu-list setup, followed by the 20-call image rectangle loop and the measured already-detached
   resource error, device-table world allocation and RGB foreground/background
-  selection. The original
+  selection and all twenty indexed picture draws. The original
   mixer is never loaded.
 - The original runs in MAME on the System 7.5.5 reference volume.
 
@@ -51,17 +51,14 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.3g8 Eight-bit picture drawing for image preparation.**
-  - The original RGB foreground/background calls now pass. Dan2 next reaches
-    DrawPicture at +$0382 ($A8F6) in its image-preparation loop. The inherited
-    picture decoder remains deliberately blocked for eight-bit destinations.
-  - Measure the reached original PICT operations and resulting pixels. Reuse
-    Vette's decoder where applicable; implement the required eight-bit drawing,
-    colour mapping, clipping and scaling without replacing the original loop.
+- **M2.3g9 Startup text measurement.**
+  - All twenty original image-preparation pictures now draw. Dan1 next reaches
+    TextWidth at +$0216 ($A886). Measure its string/range, font state and result
+    against the Mac; reuse the installed placeholder-font metrics.
+  - Implement the reached measurement contract without adding Mac presentation.
 
-  *Done when* the original preparation's picture results and destination bytes
-  match MAME, untouched pixels/padding are preserved, the next named stop is
-  reached with MDRV absent, and relevant decoder/startup/display checks pass.
+  *Done when* original text widths and preserved state match MAME, startup
+  reaches its next named stop with MDRV absent, and font/startup checks pass.
 - **M2.1c Original File Manager read acceptance (after M2.2).**
   - This retains M2.1's original acceptance; diagnostic fixture reads do not count
     as original-game reads. M2.1b2a measured the intervening Get1NamedResource
