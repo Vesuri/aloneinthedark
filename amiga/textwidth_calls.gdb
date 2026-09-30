@@ -93,11 +93,7 @@ while $tw_finished==0
     loop_break
    end
    if trap==0xa891
-    set $next_port=*(unsigned long*)s_qdThePort
-    set $next_pm=*(unsigned long*)*(unsigned long*)($next_port+2)
-    printf "NEXT_LINE pc=%X bytes=%04X%04X%04X pen=%04X%04X end=%04X%04X size=%04X%04X mode=%u fore=%u port=%X pm=%X\n",*(unsigned long*)(frame+2),*(unsigned short*)(*(unsigned long*)(frame+2)-4),*(unsigned short*)(*(unsigned long*)(frame+2)-2),*(unsigned short*)*(unsigned long*)(frame+2),*(unsigned short*)($next_port+48),*(unsigned short*)($next_port+50),*(unsigned short*)userStack,*(unsigned short*)(userStack+2),*(unsigned short*)($next_port+52),*(unsigned short*)($next_port+54),*(unsigned short*)($next_port+56),*(unsigned long*)($next_port+80),$next_port,$next_pm
-    dump binary memory ../tmp/line-next-native-port.bin $next_port $next_port+108
-    dump binary memory ../tmp/line-next-native-pm.bin $next_pm $next_pm+50
+    source windowline_call.gdb
     continue
     loop_break
    end

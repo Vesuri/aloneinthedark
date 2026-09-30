@@ -3706,3 +3706,46 @@ The game-window pen (v0,h260) requests (v200,h260), size 1×1, mode 8, fore 16.
 Application resources remain 68 reads / 333,998 bytes; overlay 31 / 82,238,
 preparation 64 / 82,810, CODE mask $3FFB, original MDRV absent. The owned
 font grows by 1,024 bytes; the overlay is 83,050 bytes. M2 remains open.
+
+
+## Intro game-window lines
+
+M2.3g33 is complete. The visible colour-window adapter reuses the verified
+Line8 raster, reports its exact clipped footprint and queues native dirty bounds
+through the window PixMap origin. It preserves the offscreen path and rejects
+unsupported window/pattern/region states. [Colour drawing](color-drawing.md#game-window-lineto-m23g33)
+records the original bytes, complete screen/port contracts and publication.
+
+`tmp/m2-windowline-reference.log`, `tmp/m2-windowline-native-progress.log`
+and `tmp/m2-windowline-native-final.log` exit zero with positive completion.
+The focused progression run records 112 window lines and 848 publications before
+the next stop. The final full run passes all 32 integrated comparisons: the new
+window line and AGA publication, both credits text captures, title copy, earlier
+line/fills, first-effect completion, logo/palettes, early AGA publications and
+all initial A5 bytes. The host suite, three added translated-window/dirty-bound
+fixtures, all 48 original slope fixtures, changed-checker selftests, 93-script
+MAME literal audit and clean 68020 no-float/82-symbol probe audits pass.
+
+The first native discovery run captured a valid line but expired later in
+Planar8 conversion at 240 seconds; it is rejected. The following instrumented
+run demonstrates advancing line/frame counters and reaches a named stop normally.
+No performance change or game timing change was made. The first line changes
+exactly 200 pixels and dirties global (150,420,350,421). Published frame 117
+matches that complete framebuffer, with identical queued/active bitplanes and
+copper and VBI line zero. Both full input screens equal the preceding title
+captures, including their documented Mac-desktop/placeholder differences.
+
+Current boundary: DrawText Dan1+$0346 on `5961896c` (“Yaâl”, MacRoman $89 is â),
+Times/plain/14, mode 1, pen (v114,h99), count 4, first 0. The original capture
+`tmp/m2-windowline-nextcredit-reference.log` also exits zero at that exact call,
+returning h125. This is the original spelling/encoding, not an owner-approved
+text correction. Its owned glyph is still missing and stops before drawing.
+
+The final native run has 159 windows and 1,040/1,039 services, with one active;
+397 status queries give the fixed baseline 643/642. Fresh-pref baseline 651/650
+and 185 windows are derived, not fresh-start acceptance. The first effect has
+201 observed queries, zero additional scoped queries and cleanup after 232 ticks.
+Four effects have started, three have stopped, and the fourth remains active
+(channel 0, 10,202 allocated sample bytes); total driver calls are status queries
+plus ten. Application/overlay counts remain 68 / 333,998 and 31 / 82,238,
+preparation 64 / 82,810, CODE mask $3FFB, original MDRV absent. M2 remains open.

@@ -8,7 +8,7 @@ import unittest
 from resource_fork import read_resource_fork
 
 REFERENCE='PASS setdepth reference calls=1 inflight=0 secondTimes=14'
-NATIVE='PASS native SetDepth calls=1 next=LINETO'
+NATIVE='PASS native SetDepth calls=1 next=DRAWTEXT'
 PRESERVED=[f'd{n}' for n in range(3,8)]+[f'a{n}' for n in range(2,7)]
 def original(path):
     core=next(r.body for r in read_resource_fork(path) if r.kind==b'CODE' and r.rid==3)

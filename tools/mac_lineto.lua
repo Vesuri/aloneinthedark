@@ -1,4 +1,6 @@
 -- Capture the original intro LineTo, without modifying game code.
+local window=os.getenv('AITD_WINDOW_LINE')=='1'
+local prefix=window and 'windowline' or 'lineto'
 local mac=dofile('tools/mame_mac_input.lua')
 local meta=dofile('tmp/mac-trap-map.lua')
 local cpu=manager.machine.devices[':maincpu'];local mem=cpu.spaces.program
@@ -23,12 +25,12 @@ for _,delta in ipairs({{13,10},{10,13},{2,1},{1,2},{4,2},{2,4},{1,1},{7,3},{3,7}
 end
 for _,c in ipairs({{0,0,63,40},{63,40,0,0},{0,50,63,13},{63,13,0,50},{-20,30,80,45},{30,-20,45,80},{-10,-10,-1,-1}})do cases[#cases+1]=c end
 local function save(name,a,n)
- local f=assert(io.open('tmp/lineto-reference-'..(fixture==0 and '' or 'fixture'..fixture..'-')..name..'.bin','wb'));if fixture>0 and name:find('pixels',1,true) then for y=0,63 do for x=0,63 do f:write(string.char(mem:read_u8(a+y*652+x)))end end else for i=0,n-1 do f:write(string.char(mem:read_u8(a+i)))end end;f:close()
+ local f=assert(io.open('tmp/'..prefix..'-reference-'..(fixture==0 and '' or 'fixture'..fixture..'-')..name..'.bin','wb'));if fixture>0 and name:find('pixels',1,true) then for y=0,63 do for x=0,63 do f:write(string.char(mem:read_u8(a+y*652+x)))end end else for i=0,n-1 do f:write(string.char(mem:read_u8(a+i)))end end;f:close()
 end
 local armed=false;local done=false;local phase='entry';local thePort;local args;local ret;local rect;local port;local pm;local pixels;local size
 local function arm()
  if not thePort then cpu.debug:bpset(0xdd60,cond..' && w@(d@(sp+2))==0xa86e','')end
- cpu.debug:bpset(0xdd60,cond..' && w@(d@(sp+2))==0xa891 && (d@(sp+2)&0xffffff)=='..base(6)..'+0x337e','');dbg.execution_state='run'
+ cpu.debug:bpset(0xdd60,cond..' && w@(d@(sp+2))==0xa891 && (d@(sp+2)&0xffffff)=='..base(window and 13 or 6)..(window and '+0xb5a' or '+0x337e'),'');dbg.execution_state='run'
 end
 local function log(label)
  local tail='';for _,r in ipairs(regs) do tail=tail..string.format(' %s=%08X',r:lower(),cpu.state[r].value)end
@@ -39,6 +41,7 @@ local function log(label)
  save(label:lower()..'-pen-map',ptr(ptr(pattern+2)),50);save(label:lower()..'-pen-data',ptr(ptr(pattern+6)),8)
 end
 local function next_fixture()
+ if window then done=true;print('PASS original window LineTo fixtures=0');dbg:command('quit');return end
  fixture=fixture+1
  if fixture>#cases then done=true;print(string.format('PASS original intro LineTo fixtures=%u',#cases));dbg:command('quit');return end
  if not scratch then scratch=(cpu.state.A7.value-16384)&0xfffffc;stack=scratch+8192;cpu.state.SR.value=cpu.state.SR.value|0x700 end

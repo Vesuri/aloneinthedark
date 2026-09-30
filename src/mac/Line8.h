@@ -19,7 +19,8 @@ struct Edge {
 inline bool solid(uint8_t* pixels,uint32_t capacity,uint16_t stride,
                   const uint8_t* map,const uint8_t* port,const uint8_t* vis,
                   const uint8_t* clip,int16_t x0,int16_t y0,int16_t x1,int16_t y1,
-                  uint8_t color) {
+                  uint8_t color,uint8_t* drawn=0) {
+    if(drawn)for(unsigned i=0;i<8;++i)drawn[i]=0;
     if(!pixels || !map || !port || !vis || !clip)return false;
     int32_t mt=int16_t(RectBounds::word(map)),ml=int16_t(RectBounds::word(map+2));
     int32_t mb=int16_t(RectBounds::word(map+4)),mr=int16_t(RectBounds::word(map+6));
@@ -32,6 +33,7 @@ inline bool solid(uint8_t* pixels,uint32_t capacity,uint16_t stride,
     if(!nonempty)return true;
     int32_t top=int16_t(RectBounds::word(bounds)),left=int16_t(RectBounds::word(bounds+2));
     int32_t bottom=int16_t(RectBounds::word(bounds+4)),right=int16_t(RectBounds::word(bounds+6));
+    int32_t inkTop=bottom,inkLeft=right,inkBottom=top,inkRight=left;
     if(y1<y0) { int16_t t=x0;x0=x1;x1=t;t=y0;y0=y1;y1=t; }
     int32_t delta=int32_t(x1)-x0;
     uint32_t dx=uint32_t(delta<0?-delta:delta),dy=uint32_t(int32_t(y1)-y0);
@@ -56,10 +58,23 @@ inline bool solid(uint8_t* pixels,uint32_t capacity,uint16_t stride,
             uint8_t* out=pixels+uint32_t(y-mt)*stride;
             for(int32_t d=begin;d<end;++d) {
                 int32_t x=int32_t(x0)+(delta<0?-d:d);
-                if(x>=left && x<right)out[x-ml]=color;
+                if(x>=left && x<right) {
+                    out[x-ml]=color;
+                    if(drawn) {
+                        if(y<inkTop)inkTop=y;if(y+1>inkBottom)inkBottom=y+1;
+                        if(x<inkLeft)inkLeft=x;if(x+1>inkRight)inkRight=x+1;
+                    }
+                }
             }
         }
         first.advance(slope);last.advance(slope);
+    }
+    if(drawn && inkTop<inkBottom && inkLeft<inkRight) {
+        int32_t bounds[4]={inkTop,inkLeft,inkBottom,inkRight};
+        for(unsigned i=0;i<4;++i) {
+            drawn[i*2]=uint8_t(uint16_t(bounds[i])>>8);
+            drawn[i*2+1]=uint8_t(bounds[i]);
+        }
     }
     return true;
 }

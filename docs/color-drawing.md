@@ -128,3 +128,42 @@ is later. A different rectangle at the same caller is not the same state.
 The next call, DrawText at Dan1+$0346, exposed an inherited zero-return guard.
 It now takes the normal named-stop path. Text rendering is M2.3g30; this fill
 acceptance does not claim the full intro is complete.
+
+## Game-window LineTo (M2.3g33)
+
+The original Dan2+$0B5A call follows the credits. Bytes +$0B52–$0B5B are
+`3eae000c3f2e000ea891`. It selects the 320×200 game window over the 640×480
+screen, with PixMap bounds (-150,-160,330,480), stride 640, a solid 1×1 patCopy
+pen and foreground index 16. From (v0,h260) to (v200,h260), QuickDraw writes
+exactly 200 pixels: global x420, y150–349. The endpoint at y200 is clipped, but
+the returned pen still reaches it. All remaining 307,000 screen bytes and
+port fields are preserved; D0 becomes zero, four argument bytes are popped,
+and D1–D7/A1–A6 are preserved. The original visible and clip regions are
+(0,0,200,320) and (-32767,-32767,32767,32767).
+
+The window adapter reuses `Line8::solid`, accepts only the existing implicit
+solid window pen, and rejects dialogs, hidden windows, other pen sizes/modes,
+complex regions and unsupported pixel storage. The helper now reports its exact
+clipped footprint. The adapter converts that footprint through the PixMap
+origin before queuing native screen work. Empty clips still advance the pen
+without publishing pixels. Host fixtures cover translated origins, boundary
+clipping and empty clips; all 48 original slope/reversal fixtures also check
+the reported footprint against an independent scan.
+
+Use `AITD_WINDOW_LINE=1` with `tools/mac_lineto.lua` to capture the original
+call without the GWorld scratch fixtures. `tools/check_windowline.py` checks
+its complete screen buffer and the native rasterizer; paired acceptance also
+checks `amiga/windowline_call.gdb`'s ABI, dirty bounds and queued/active AGA
+buffers. Both complete input screens must equal their previously verified title
+captures, retaining the documented hidden-desktop and placeholder-text
+differences. The line's changed coordinates and colour are identical.
+
+The first native discovery run captured the correct line and AGA publication,
+but reached its 240-second ceiling later in pixel conversion. It is rejected
+as a complete run. The instrumented follow-up exits normally after 112 window
+lines and 848 publications, reaching the next named text stop. The full native
+regression also exits normally; all 32 integrated comparisons pass. Its first
+line queues and publishes frame 117: the complete 64,000 planar bytes decode
+to the exact line-return framebuffer, all 256 colours match, copper pointers
+and queued/active buffers agree, and publication occurs at VBI line zero.
+Rendered-video acceptance remains owner-deferred.

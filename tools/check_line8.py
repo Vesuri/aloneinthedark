@@ -12,6 +12,14 @@ def run(reference=None,status=None,native=None,native_status=None):
         after=bytearray(before)
         for x,y in points:after[y*652+x]=26
         cases.append((bounds+rect(20,20,*end),before,after))
+    window=rect(-150,-160,330,480)+rect(0,0,200,320)+rect(0,0,200,320)
+    for clip,ends,points in [
+        (rect(-32767,-32767,32767,32767),(260,0,260,200),[(420,y) for y in range(150,350)]),
+        (rect(0,0,200,320),(-10,0,5,0),[(x,150) for x in range(160,166)]),
+        (rect(0,0,0,0),(260,0,260,200),[])]:
+        before=bytes([7])*(640*480);after=bytearray(before)
+        for x,y in points:after[y*640+x]=16
+        cases.append((window+clip+rect(*ends),before,after))
     if reference:
         log=reference.read_text()
         if status!=0 or any(s in log for s in ('FAIL','LUA ERROR','Error in')) or log.count('PASS original intro LineTo fixtures=48')!=1 or log.count('Exited via the debugger')!=1:raise ValueError('reference completion')
@@ -65,9 +73,9 @@ def run(reference=None,status=None,native=None,native_status=None):
         exe=Path(d)/'test'
         subprocess.run([os.environ.get('HOST_CXX','c++'),'-std=c++17','-Wall','-Wextra','-Werror','-fsanitize=address,undefined',str(ROOT/'tools/test_line8.cpp'),'-o',str(exe)],check=True)
         for i,(b,before,after) in enumerate(cases):
-            result=subprocess.run([str(exe)],input=b+before,stdout=subprocess.PIPE,check=True,timeout=30).stdout
+            result=subprocess.run([str(exe)]+(['window'] if len(before)==307200 else []),input=b+before,stdout=subprocess.PIPE,check=True,timeout=30).stdout
             if result!=after:raise ValueError(f'case {i}: production raster differs from original/oracle')
-    print('PASS Line8: 5 host buffer cases'+('; original full buffer and 48 clipped slope/reversal fixtures' if reference else '')+('; paired native full buffer/CLUT and ABI' if native else ''))
+    print('PASS Line8: 5 host buffer cases and 3 window-origin/dirty fixtures'+('; original full buffer and 48 clipped slope/reversal fixtures' if reference else '')+('; paired native full buffer/CLUT and ABI' if native else ''))
 if __name__=='__main__':
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('--reference',type=Path);p.add_argument('--status',type=int);p.add_argument('--native',type=Path);p.add_argument('--native-status',type=int);a=p.parse_args()
     try:run(a.reference,a.status,a.native,a.native_status)

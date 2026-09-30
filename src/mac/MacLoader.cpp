@@ -3480,6 +3480,32 @@ static bool paintRect(const uint8_t* rectangle)
     return true;
 }
 
+// Visible colour-window lines share the measured GWorld rasterizer. As with
+// PaintRect, the owned window's default solid pen is represented implicitly.
+static bool lineWindow(int16_t horizontal,int16_t vertical)
+{
+    uint8_t* port=s_qdThePort ? (uint8_t*)read32(s_qdThePort) : 0;
+    WindowSlot* window=windowSlot(port);
+    if(!window || window->dialog || !port[110] || read16(port+6)!=0xc000
+       || read16(window->pixelMap+32)!=8
+       || read32(window->pixelMap)!=(uint32_t)s_colorScreen
+       || read32(port+58) || read16(port+52)!=1 || read16(port+54)!=1
+       || read16(port+56)!=8 || read16(port+66) || read32(port+80)>255)return false;
+    uint8_t** vh=(uint8_t**)read32(port+24);uint8_t** ch=(uint8_t**)read32(port+28);
+    if(!vh || !*vh || !ch || !*ch || read16(*vh)!=10 || read16(*ch)!=10)return false;
+    const uint8_t* map=window->pixelMap;uint8_t drawn[8];
+    if(!Line8::solid(s_colorScreen,sizeof(s_colorScreen),read16(map+4)&0x3fff,
+        map+6,port+16,*vh+2,*ch+2,int16_t(read16(port+50)),int16_t(read16(port+48)),
+        horizontal,vertical,uint8_t(read32(port+80)),drawn))return false;
+    write16(port+48,uint16_t(vertical));write16(port+50,uint16_t(horizontal));
+    if(read16(drawn)!=read16(drawn+4) && read16(drawn+2)!=read16(drawn+6))
+        markDirtyBounds(int16_t(read16(drawn))-int16_t(read16(map+6)),
+                        int16_t(read16(drawn+2))-int16_t(read16(map+8)),
+                        int16_t(read16(drawn+4))-int16_t(read16(map+6)),
+                        int16_t(read16(drawn+6))-int16_t(read16(map+8)));
+    return true;
+}
+
 static bool getVolumeInfo(uint8_t* parameterBlock)
 {
     // Vette answered its one caller with the creation date of its own shipped
@@ -7435,7 +7461,8 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     }
     if (trap == 0xa891) {                    // LineTo(horizontal, vertical)
         GWorldSlot* world=gWorldForPort((uint8_t*)read32(s_qdThePort));
-        if(world && lineGWorld(*world,int16_t(read16(userStack+2)),int16_t(read16(userStack)))) {
+        if(world ? lineGWorld(*world,int16_t(read16(userStack+2)),int16_t(read16(userStack)))
+                 : lineWindow(int16_t(read16(userStack+2)),int16_t(read16(userStack)))) {
             regs[0]=0;
             return 5;
         }
