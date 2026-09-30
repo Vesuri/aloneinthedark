@@ -14,8 +14,8 @@ design.md §5.
   low-resolution selection/cleanup, all 75 font-metrics calls and four Apple Event
   registrations, colour-table loading/mutations, palette construction and default
   binding, hidden window-title state and the verified WIND 128 request. Startup realizes the palette and clears the game client area, then stops at
-  `UNIONRECT` at Dan2+$01DA after palette binding/activation, first-frame AGA
-  publication, background ShowHide, game-port binding, TickCount, unchanged window geometry, point setup, empty-region allocation and eight-bit offscreen buffer initialization, pixel-address access and the first original image-row copy and hidden menu-list setup. The original
+  `DETACHRESOURCE` at Dan2+$0210 after palette binding/activation, first-frame AGA
+  publication, background ShowHide, game-port binding, TickCount, unchanged window geometry, point setup, empty-region allocation and eight-bit offscreen buffer initialization, pixel-address access and the first original image-row copy and hidden menu-list setup, followed by the 20-call image rectangle loop. The original
   mixer is never loaded.
 - The original runs in MAME on the System 7.5.5 reference volume.
 
@@ -49,17 +49,17 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.3g4 Font-image rectangle preparation prerequisite.**
-  - Hidden menu setup now passes and startup reaches UnionRect at Dan2+$01DA
-    ($A8AB), after the second Times lookup and the first original PAK-reading
-    path. Implement the measured rectangle operation and validate its use in
-    the original image/font preparation sequence.
-  - Keep source/destination aliasing and empty-rectangle semantics faithful;
-    this does not authorize replacement rendering or guessed draw success.
+- **M2.3g5 Image-preparation resource detachment prerequisite.**
+  - The original 20-call UnionRect loop now passes. Dan2 next calls GetCTable
+    and reaches DetachResource at +$0210 ($A992). The current resource handler
+    accepts attached resources but stops on this already-owned table handle.
+  - Measure the original call and owned/detached-handle contract before extending
+    it. Preserve ownership, handle contents, error globals and caller ABI;
+    unmeasured/invalid states must not become guessed success.
 
-  *Done when* original/native rectangles and call results match, preparation
-  advances to its next named stop with MDRV absent, and relevant host/startup/
-  display checks pass.
+  *Done when* the original/native detachment result and handle state match,
+  image preparation advances to its next named stop with MDRV absent, and
+  relevant resource/startup/display regressions pass.
 - **M2.1c Original File Manager read acceptance (after M2.2).**
   - This retains M2.1's original acceptance; diagnostic fixture reads do not count
     as original-game reads. M2.1b2a measured the intervening Get1NamedResource

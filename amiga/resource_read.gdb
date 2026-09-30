@@ -52,7 +52,7 @@ end
 dump binary memory ../tmp/resource-general.bin $general $general+612
 break AitdScreen::showLoudStop
 continue
-if g_stageBState != 3 || g_trapWord!=0xa8ab || g_trapSegment!=13 || g_trapOffset!=0x1da || *(unsigned long*)(g_trapRoutine+0)!=0x554e494f || *(unsigned long*)(g_trapRoutine+4)!=0x4e524543 || g_trapRoutine[8]!=0x54 || g_trapRoutine[9]!=0 || g_trapSelector!=-1 || g_resourceRuntimeReads != 42 || g_resourceRuntimeBytes != 208858 || g_systemWindows != $startup_windows || g_resourceSourceMax > 65536 || g_macServiceEntered != $startup_entered || g_macServiceCompleted != $startup_completed || g_macServiceActive != 0
+if g_stageBState != 3 || g_trapWord!=0xa992 || g_trapSegment!=13 || g_trapOffset!=0x210 || *(unsigned long*)(g_trapRoutine+0)!=0x44455441 || *(unsigned long*)(g_trapRoutine+4)!=0x43485245 || *(unsigned long*)(g_trapRoutine+8)!=0x534f5552 || *(unsigned short*)(g_trapRoutine+12)!=0x4345 || g_trapRoutine[14]!=0 || g_trapSelector!=-1 || g_resourceRuntimeReads != 62 || g_resourceRuntimeBytes != 265454 || g_systemWindows != $startup_windows || g_resourceSourceMax > 65536 || g_macServiceEntered != $startup_entered || g_macServiceCompleted != $startup_completed || g_macServiceActive != 0
  printf "DIAGNOSTIC resource boundary: stage=%u trap=%x segment=%u app=%u/%u overlay=%u/%u windows=%u services=%u/%u active=%u code=%x lowmem=%u\n",g_stageBState,g_trapWord,g_trapSegment,g_resourceRuntimeReads,g_resourceRuntimeBytes,g_overlayRuntimeReads,g_overlayRuntimeBytes,g_systemWindows,g_macServiceEntered,g_macServiceCompleted,g_macServiceActive,g_loadedCodeMask,g_lowMemoryAppliedSites
  echo FAIL resource-read: runtime stop, service balance or bounded reads\n
  detach
@@ -88,6 +88,6 @@ if $samples != 3
  detach
  quit 1
 end
-printf "PASS resource-read: maps=243 preparation=201058 runtime=39/177820 windows=%u samples=3 next=UNIONRECT\n",g_systemWindows
+printf "PASS resource-read: maps=243 preparation=201058 runtime=62/265454 windows=%u samples=3 next=DETACHRESOURCE\n",g_systemWindows
 detach
 quit 0

@@ -48,4 +48,4 @@ for i in range(1,5):
  assert ri==ni,(i,'original application items')
 print('PASS paired menu lifecycle: clear, four ordered owned menus, draw suppression, exact application records, preserved registers/stack, unchanged game client; reference nonempty clear preserves menu records')
 
-assert 'MLIST_NEXT state=3 trap=A8AB selector=FFFFFFFF segment=13 offset=1DA manager=QUICKDRAW routine=UNIONRECT windows=81 services=143/143 reads=42 bytes=208858' in a.native.read_text()
+assert 'MLIST_NEXT state=3 trap=A992 selector=FFFFFFFF segment=13 offset=210 manager=RESOURCE MANAGER routine=DETACHRESOURCE windows=101 services=163/163 reads=62 bytes=265454' in a.native.read_text()

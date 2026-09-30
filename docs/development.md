@@ -2990,3 +2990,18 @@ parser sanitizer tests and checker rejection fixtures pass. AGA publication
 still passes and all 75,616 A5 bytes match. Counts and UnionRect endpoint are
 unchanged. No runtime code changed; the one new native run fills the missing
 second-call ABI evidence. Remaining font rendering is M2.9.
+
+
+## Original image rectangle preparation
+
+UnionRect now passes all twenty original Dan2 calls against the Mac, including
+identical input and output rectangles. The pure helper matches eleven additional
+reference edge/alias cases under sanitizers. See [rectangles.md](rectangles.md)
+for the contract and reproduction. The final combined native run exits 0 and
+also passes both Times calls, native driver checks, AGA pixels/palette/VBI and
+75,616-byte A5 comparison. Both link audits and the 65-script MAME literal audit
+pass. No original MDRV is resident. Current counts are 101 windows, 163 completed
+services and 62 resource reads / 265,454 bytes; next is DetachResource at Dan2+$0210.
+The full host suite passes (`tmp/m2-unionrect-host.log`). Observers are pinned
+to that new boundary. Fresh-preference counts are derived,
+not a newly accepted run. Original PAK payload acceptance remains pending.

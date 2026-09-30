@@ -8,6 +8,7 @@
 #include "BitmapFont.h"
 #include "Palette8.h"
 #include "WindowGeometry.h"
+#include "RectBounds.h"
 #include "RegionRows.h"
 #include "GWorld8.h"
 #include "SoundDriver.h"
@@ -6451,6 +6452,15 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
             // request. This is an OSErr result, not a fabricated mode change.
             write16(userStack+10,0);regs[0]=0;return 11;
         }
+    }
+    if(trap==0xa8ab) { // UnionRect(src1, src2, destination)
+        uint8_t* out=(uint8_t*)read32(userStack);
+        const uint8_t* b=(const uint8_t*)read32(userStack+4);
+        const uint8_t* a=(const uint8_t*)read32(userStack+8);
+        if(!RectBounds::unite(out,a,b))goto unsupportedTrap;
+        regs[0]=read32(out);regs[1]=read32(out+4);
+        regs[8]=read32(frame+2)+2;regs[9]=(uint32_t)b+8;
+        return 13;
     }
     if(trap==0xa8a8) { // OffsetRect: signed 16-bit coordinates wrap modulo 65536
         uint8_t* rect=(uint8_t*)read32(userStack+4);

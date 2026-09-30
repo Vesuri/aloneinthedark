@@ -15,7 +15,7 @@ def original():
     if hashlib.sha256(b[0x4858:0x48ac]).hexdigest()!='5a7840c7425412888a640e60c0e0409b25f0dce52805d03cd7c048839cc0e6d1':raise ValueError('original MoveWindow bytes')
 def calls(text,status,native=False):
     if status!=0 or any(x in text for x in ('FAIL','[LUA ERROR]','unknown command','Error in','timeout','Program received signal')):raise ValueError('failed observer')
-    markers=('PASS native hidden MoveWindow next=UNIONRECT','[Inferior 1 (Remote target) detached]') if native else ('PASS original hidden MoveWindow','Exited via the debugger')
+    markers=('PASS native hidden MoveWindow next=DETACHRESOURCE','[Inferior 1 (Remote target) detached]') if native else ('PASS original hidden MoveWindow','Exited via the debugger')
     if any(text.count(x)!=1 for x in markers):raise ValueError('missing/duplicate completion')
     rows=[]
     for name in ('MOVE_ENTER','MOVE_RETURN'):
