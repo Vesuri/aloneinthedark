@@ -14,8 +14,8 @@ design.md §5.
   low-resolution selection/cleanup, all 75 font-metrics calls and four Apple Event
   registrations, colour-table loading/mutations, palette construction and default
   binding, hidden window-title state and the verified WIND 128 request. Startup realizes the palette and clears the game client area, then stops at
-  `GETPIXBASEADDR` at Misc2+$02DA after palette binding/activation, first-frame AGA
-  publication, background ShowHide, game-port binding, TickCount, unchanged window geometry, point setup, empty-region allocation and complete eight-bit offscreen buffer initialization. The original
+  `CLEARMENUBAR` at Engine+$2B06 after palette binding/activation, first-frame AGA
+  publication, background ShowHide, game-port binding, TickCount, unchanged window geometry, point setup, empty-region allocation and eight-bit offscreen buffer initialization, pixel-address access and the first original image-row copy. The original
   mixer is never loaded.
 - The original runs in MAME on the System 7.5.5 reference volume.
 
@@ -49,23 +49,23 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.3g2 Offscreen pixel access prerequisite.**
-  - Offscreen allocation and the original bind/clip/lock/erase/unlock/restore
-    sequence now pass paired verification. Startup next asks GetPixBaseAddr
-    (QDOffscreen selector 15) at Misc2+$02DA.
-  - Supply the actual owned pixel address with the measured locked/unlocked
-    contract; check the original caller and ensuing direct pixel use. Retain
-    explicit stops for unsupported pixel-map forms.
+- **M2.3g3 Startup menu-list lifecycle prerequisite.**
+  - GetPixBaseAddr now returns the real owned pixel address. The original then
+    copies a complete 512×56 image into that buffer and reaches ClearMenuBar
+    at Engine+$2B06 ($A934).
+  - Implement the measured menu-list reset and following reached startup menu
+    changes as hidden data (D7). Preserve ownership and menu handles; never
+    draw a Mac menu bar. Unsupported operations remain named stops.
 
-  *Done when* original/native pointer and state contracts match, the original
-  caller proceeds to the next named stop with MDRV absent, and relevant
-  host/startup/display checks pass.
+  *Done when* original/native menu-list states and call results match through
+  this setup operation, execution reaches the next named stop with MDRV absent,
+  and relevant host/startup/display checks pass without Mac chrome.
 - **M2.1c3c2 Native-driver integrated startup acceptance (D8).**
   - M2.1c3c2a supplies the port-owned Jnth 11 stub through the original loader,
     with no original instructions changed. Selectors 21/24 initialize native
     state and quality; other operations/configurations stop explicitly.
   - Both original call returns match the Mac register/stack/state contract.
-    The offscreen-pixel-access stop prevents reaching the second Times call; this
+    The menu-list-reset stop prevents reaching the second Times call; this
     original acceptance requirement is retained, not counted as passed.
   - Keep the MDRV guard and verify through any newly reached startup services.
     The independent Mac contract and installed seam are in

@@ -33,11 +33,11 @@ printf "MAIN_RETURN sp=%X result=%X main=%X current=%X port=%X d0=%X d1=%X d2=%X
 dump binary memory ../tmp/main-device-native-after.bin $gd $gd+62
 continue
 printf "MAIN_NEXT state=%u trap=%X selector=%X segment=%u offset=%X routine=%s windows=%u services=%u/%u\n",g_stageBState,g_trapWord,g_trapSelector,g_trapSegment,g_trapOffset,g_trapRoutine,g_systemWindows,g_macServiceEntered,g_macServiceCompleted
-if g_stageBState!=3 || g_trapWord!=0xab1d || g_trapSelector!=15 || g_trapSegment!=10 || g_trapOffset!=0x2da || *(unsigned long*)(g_trapRoutine+0)!=0x47455450 || *(unsigned long*)(g_trapRoutine+4)!=0x49584241 || *(unsigned long*)(g_trapRoutine+8)!=0x53454144 || *(unsigned short*)(g_trapRoutine+12)!=0x4452 || g_trapRoutine[14]!=0 || g_macServiceActive!=0 || g_systemWindows!=$startup_windows || g_macServiceEntered!=$startup_entered || g_macServiceCompleted!=$startup_completed
+if g_stageBState!=3 || g_trapWord!=0xa934 || g_trapSelector!=-1 || g_trapSegment!=7 || g_trapOffset!=0x2b06 || *(unsigned long*)(g_trapRoutine+0)!=0x434c4541 || *(unsigned long*)(g_trapRoutine+4)!=0x524d454e || *(unsigned long*)(g_trapRoutine+8)!=0x55424152 || g_trapRoutine[12]!=0 || g_macServiceActive!=0 || g_systemWindows!=$startup_windows || g_macServiceEntered!=$startup_entered || g_macServiceCompleted!=$startup_completed
  echo FAIL GetMainDevice next stop\n
  detach
  quit 1
 end
-echo PASS native GetMainDevice next=GETPIXBASEADDR\n
+echo PASS native GetMainDevice next=CLEARMENUBAR\n
 detach
 quit 0

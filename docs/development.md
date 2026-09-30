@@ -2805,7 +2805,7 @@ with their corresponding Mac observers and paired checkers. The contracts and
 local evidence are in [window-geometry.md](window-geometry.md). Host geometry
 checks are part of `make host-tests`. ShowHide's background clear is verified
 against its full complex region and must leave the viewport, palette and frame
-queue unchanged. Current startup observers pin GetPixBaseAddr at Misc2+$02DA; a timeout or a different stop is not acceptance.
+queue unchanged. Current startup observers pin ClearMenuBar at Engine+$2B06; a timeout or a different stop is not acceptance.
 
 
 ## Startup clock query
@@ -2916,3 +2916,27 @@ newly reached work, not an allocation-side handback. An observer with the old
 endpoint counts are derived as the same prior +26 windows / +8 services;
 this change's native acceptance uses the existing-preference route.
 This does not claim the remaining M2 acceptance.
+
+
+## Owned pixel-address access
+
+The original GetPixBaseAddr call now returns the real buffer pointer and the
+following original 56-row copy matches the Mac. The pure helper also matches
+the measured unlocked reference contract. See [gworld.md](gworld.md) for the
+explicit verification scope. The native observer combines startup, paired
+copy and AGA checkpoints to avoid repeated launches of the same executable.
+
+A reference probe initially crashed MAME during boot. The macOS crash report
+identified a null string passed to the Lua debugger breakpoint binding:
+`cpu.debug:bpset` requires an explicit third action argument, even an empty
+string. The corrected reference exits normally; crashed runs are not evidence.
+The original copy-loop's relocated JSR is validated against A5, not compared
+as an unrelocated address literal.
+
+`tmp/m2-pixbase-native-final.log` exits normally and passes the paired pointer
+and row-copy check, original main/A5 checkpoint, original-MDRV exclusion and
+AGA publication on one executable. All 75,616 A5 bytes match; all eight planes
+and 256 colours match the independent display decoder. The helper sanitizer
+suite, locked/unlocked reference comparison, Lua literal audit and both link
+audits pass. Counts remain 77 OS handbacks, 131 services and 41 original
+resource reads / 206,540 bytes. No rendered intro acceptance is claimed.

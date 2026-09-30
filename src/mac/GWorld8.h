@@ -14,6 +14,22 @@ inline bool layout(const Rect& r,Layout& out) {
     if(stride>=0x4000)return false;
     out={uint16_t(stride),stride*uint32_t(height)};return true;
 }
+struct PixelAddress { uint32_t result,d0,a0,a1; };
+// System 7.5.5 uses different scratch-register results for handle/raw bases.
+// Ownership and lock state are supplied by the runtime, never inferred from an
+// arbitrary caller pointer. Preserve all 32 bits of the Amiga pixel address.
+inline bool pixelAddress(uint16_t version,uint32_t base,uint32_t pixelHandle,
+                         uint32_t pixels,uint32_t map,bool locked,uint32_t d0,
+                         PixelAddress& out) {
+    if(!pixelHandle || !pixels || !map)return false;
+    if(locked && version==1 && base==pixels) {
+        out={pixels,uint32_t((d0&0xffff0000UL)|1),pixels,map};return true;
+    }
+    if(!locked && version==2 && base==pixelHandle) {
+        out={pixels,pixels,pixelHandle,map};return true;
+    }
+    return false;
+}
 inline void word(uint8_t* p,uint16_t v) { p[0]=uint8_t(v>>8);p[1]=uint8_t(v); }
 inline void longword(uint8_t* p,uint32_t v) { word(p,uint16_t(v>>16));word(p+2,uint16_t(v)); }
 inline void rect(uint8_t* p,const Rect& r) { word(p,uint16_t(r.top));word(p+2,uint16_t(r.left));word(p+4,uint16_t(r.bottom));word(p+6,uint16_t(r.right)); }

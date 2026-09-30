@@ -793,7 +793,7 @@ static const TrapName s_trapNames[] = {
     {0xa938,"MENU MANAGER","HILITEMENU"},
     {0xa931,"MENU MANAGER","NEWMENU"},
     {0xa933,"MENU MANAGER","APPENDMENU"}, {0xa94d,"MENU MANAGER","ADDRESMENU"},
-    {0xa935,"MENU MANAGER","INSERTMENU"},
+    {0xa934,"MENU MANAGER","CLEARMENUBAR"}, {0xa935,"MENU MANAGER","INSERTMENU"},
     {0xa9bf,"MENU MANAGER","GETMENU"},
     {0xa937,"MENU MANAGER","DRAWMENUBAR"}, {0xa970,"EVENT MANAGER","GETNEXTEVENT"},
     {0xa972,"EVENT MANAGER","GETMOUSE"}, {0xa973,"EVENT MANAGER","STILLDOWN"},
@@ -5900,7 +5900,8 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         switch(trap) {
         case 0xab1d:
             if((uint16_t)regs[0]!=0 && (uint16_t)regs[0]!=1 && (uint16_t)regs[0]!=2
-               && (uint16_t)regs[0]!=5 && (uint16_t)regs[0]!=6 && (uint16_t)regs[0]!=23) { unsupportedGraphics=true;goto unsupportedTrap; }
+               && (uint16_t)regs[0]!=5 && (uint16_t)regs[0]!=6
+               && (uint16_t)regs[0]!=15 && (uint16_t)regs[0]!=23) { unsupportedGraphics=true;goto unsupportedTrap; }
             break;
         case 0xa8a3:
             if(gWorldForPort(s_qdThePort ? (uint8_t*)read32(s_qdThePort) : 0))break;
@@ -7316,6 +7317,16 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         regs[0]=regs[1]=regs[2]=0;regs[8]=(uint32_t)output;
         regs[9]=(uint32_t)*gWorldForPort(world)->handles[3];
         return 23;
+    }
+    if(trap==0xab1d && (uint16_t)regs[0]==15) { // GetPixBaseAddr
+        GWorldSlot* world=gWorldForPixMap((uint8_t**)read32(userStack));
+        GWorld8::PixelAddress address;
+        if(!world || !world->pixMap || read16(world->pixMap+32)!=8
+           || !GWorld8::pixelAddress(read16(world->pixMap+14),read32(world->pixMap),
+                (uint32_t)world->handles[1],(uint32_t)*world->handles[1],
+                (uint32_t)world->pixMap,world->locked,regs[0],address))goto unsupportedTrap;
+        write32(userStack+4,address.result);
+        regs[0]=address.d0;regs[8]=address.a0;regs[9]=address.a1;return 5;
     }
     if(trap==0xab1d && (uint16_t)regs[0]==23) { // GetGWorldPixMap
         uint8_t* port=(uint8_t*)read32(userStack);

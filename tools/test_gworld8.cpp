@@ -2,8 +2,30 @@
 #include <cstring>
 #include <vector>
 #include <fstream>
+#include <cstdlib>
+#include <cstdio>
 #include "../src/mac/GWorld8.h"
 int main(int argc,char** argv) {
+    GWorld8::PixelAddress address{};
+    const uint32_t handle=0x12345678,pixels=0x87654321,map=0x34567890;
+    assert(GWorld8::pixelAddress(1,pixels,handle,pixels,map,true,0xabcd000f,address));
+    assert(address.result==pixels && address.d0==0xabcd0001 && address.a0==pixels && address.a1==map);
+    assert(GWorld8::pixelAddress(2,handle,handle,pixels,map,false,0xabcd000f,address));
+    assert(address.result==pixels && address.d0==pixels && address.a0==handle && address.a1==map);
+    const auto saved=address;
+    assert(!GWorld8::pixelAddress(2,handle,handle,pixels,map,true,0,address));
+    assert(!GWorld8::pixelAddress(1,pixels,handle,pixels,map,false,0,address));
+    assert(!GWorld8::pixelAddress(1,pixels+1,handle,pixels,map,true,0,address));
+    assert(!GWorld8::pixelAddress(2,handle+1,handle,pixels,map,false,0,address));
+    assert(!GWorld8::pixelAddress(3,handle,handle,pixels,map,false,0,address));
+    assert(!GWorld8::pixelAddress(2,handle,handle,0,map,false,0,address));
+    assert(!memcmp(&address,&saved,sizeof address));
+    if(argc==9) {
+        uint32_t v[7];for(unsigned i=0;i<7;++i)v[i]=uint32_t(strtoul(argv[i+2],nullptr,16));
+        assert(!strcmp(argv[1],"--pixel-address"));
+        assert(GWorld8::pixelAddress(uint16_t(v[0]),v[1],v[2],v[3],v[4],v[5]!=0,v[6],address));
+        printf("%X %X %X %X\n",address.result,address.d0,address.a0,address.a1);return 0;
+    }
     GWorld8::Layout l{};
     assert(GWorld8::layout({0,0,401,648},l)&&l.rowBytes==652&&l.pixelBytes==261452);
     for(int width=1;width<=16376;++width) {

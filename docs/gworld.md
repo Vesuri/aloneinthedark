@@ -12,7 +12,8 @@ GrafVars, a private GDevice and inverse table, and three complete PixPat trees.
 Both device and port PixMaps share the pixel and colour-table handles. All new
 handles are unlocked and non-purgeable. Pixel contents are uninitialized; they
 are not accepted as a rendered frame. The subsequent original initialization now binds and clears the world, then
-restores the visible game port. Pixel-address access is the next queue item.
+restores the visible game port. Pixel-address access and the first original image-row copy also pass; the next
+queue item is the startup menu-list reset.
 
 Measured allocation details:
 
@@ -111,3 +112,38 @@ capture's shutdown-callback error and an initial native observer's malformed
 memory-dump expression are excluded from acceptance. The next named stop is
 GETPIXBASEADDR, QDOffscreen selector 15, Misc2+$02DA. This establishes offscreen
 initialization, not rendered logo or intro acceptance.
+
+## Pixel address and original row-copy use
+
+GetPixBaseAddr at Misc2+$02DA now returns the actual owned pixel body without
+changing its state. The locked form (PixMap version 1, raw baseAddr) leaves
+D0's high word intact, sets its low word to 1, and returns the pixel pointer in
+A0 and on the Pascal stack. The unlocked form (version 2, handle baseAddr)
+returns the pixel pointer in D0 and on the stack, with A0 holding the pixel
+handle. Both leave A1 at the PixMap body, pop four argument bytes, and preserve
+the remaining registers. Unsupported or inconsistent layouts stop explicitly.
+All 32 bits of native pixel addresses are retained; no 24-bit masking is used.
+
+The original locked call and a CPU-executed unlocked Mac fixture establish both
+forms. The pure helper matches both captured register contracts under host
+sanitizers; the native original route verifies the locked form. No native
+unlocked-call execution is claimed by this capture.
+
+Original instructions then copy 56 rows of 512 bytes into the 520-byte-stride
+buffer and unlock it. Paired captures compare all 28,672 source/visible bytes
+and preserve the 448 padding bytes. Queries leave the PixMap and pixels
+unchanged; the copy leaves the native screen unchanged. This is offscreen image
+data, not an accepted rendered intro frame.
+
+The original Misc2+$02AC–$02DB bytes have SHA-256
+`1a629f339fc613c783d30253999e7d72daa777d10837e76747eb0dc21c86ba2a`.
+The copy-loop guard checks its single relocated JSR operand against A5 plus the
+original relocation value before comparing the remaining instruction bytes.
+
+`tools/mac_pixbase.lua` captures the reference; `amiga/pixbase.gdb` combines
+original-byte/main/A5, pointer/copy, mixer-exclusion and AGA-publication checks
+in one bounded native run. Verify with `tools/check_pixbase.py` and explicit
+`--reference-status 0 --native-status 0`, plus `tools/check_gworld8.py
+--pixel-reference` and the existing AGA/A5 comparators. Accepted captures are
+`tmp/m2-pixbase-reference-copy.log` and `tmp/m2-pixbase-native-final.log`.
+The next stop is MENU MANAGER / CLEARMENUBAR, Engine+$2B06.

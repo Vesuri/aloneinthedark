@@ -21,7 +21,7 @@ echo PASS native TickCount\n
 continue
 printf "TICK_NEXT state=%u trap=%X selector=%X segment=%u offset=%X manager=%s routine=%s windows=%u services=%u/%u\n",g_stageBState,g_trapWord,g_trapSelector,g_trapSegment,g_trapOffset,g_trapManager,g_trapRoutine,g_systemWindows,g_macServiceEntered,g_macServiceCompleted
 printf "TICK_COUNTS app=%u/%u overlay=%u/%u prep=%u/%u resources=%u\n",g_resourceRuntimeReads,g_resourceRuntimeBytes,g_overlayRuntimeReads,g_overlayRuntimeBytes,g_overlaySourceReads,g_overlaySourceBytes,g_resourceCount
-if g_stageBState!=3 || g_macServiceActive!=0 || g_trapWord!=0xab1d || g_trapSelector!=15 || g_trapSegment!=10 || g_trapOffset!=0x2da
+if g_stageBState!=3 || g_macServiceActive!=0 || g_trapWord!=0xa934 || g_trapSelector!=-1 || g_trapSegment!=7 || g_trapOffset!=0x2b06
  echo FAIL TickCount progression\n
  detach
  quit 1
