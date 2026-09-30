@@ -3436,3 +3436,25 @@ between picture publication and restoration, retaining the initial nine calls.
 Next is QUICKDRAW / COPYBITS, Misc2+$24D2. Counts are 128 windows, 463/463
 services, 68 reads / 333,998 bytes, CODE mask $3FFB. Fresh-preference counts
 remain derived (154 windows, 471/471 services). Full intro acceptance is open.
+
+
+## First intro CopyBits and Infogrames logo
+
+M2.3g24 is complete. The byte copy preserves indices for the measured equal-seed
+colour environments, using Vette's clipping rules with owned buffers and exact
+dirty bounds. The entire destination and meaningful source pixels match the Mac;
+source row padding is unchanged on each platform. See [copybits.md](copybits.md).
+
+Reference `tmp/m2-copybits8-reference.log` and native
+`tmp/m2-copybits8-native-final.log` exit zero. The ninth AGA publication matches
+the Infogrames logo, including all planes and colours. Host suite, helper
+sanitizers, clean-build no-float/probe audits and 85-script literal audit pass.
+Integrated palette/restoration/picture/AGA, table, fill, RGB, font/text, geometry,
+device/world, event/cursor and 75,616-byte A5 checks pass; the run observed 612
+event calls. Original MDRV remains absent.
+
+Next is native SOUND DRIVER / SELECTOR 22, Core+$1A74. Counts: 128 windows,
+68 reads / 333,998 bytes, CODE mask $3FFB. Services are 464 entered / 463
+completed with one known $A0F8 call in progress. Fresh-preference counts remain
+derived (154 windows, 472/471 services). This stop does not claim service
+completion. Full M2 intro and rendered-window acceptance remain open.

@@ -92,7 +92,7 @@ def check(reference,native,reference_status,native_status,resource,folder,device
         startup_check(native,native_status)
         print('PASS paired device-table NewGWorld: 27 owned handles, exact unchanged colour table, 78048 pixel bytes, all defined records and inverse entries')
     else:
-        print('PASS paired NewGWorld: 27 owned handles, port/PixMaps/patterns/device, 4096 inverse entries and collision links, exact colour copy, 261452 pixel bytes; '+one(native,r'GW_NEXT (state=3 trap=A8EC selector=FFFFFFFF segment=10 offset=24D2 manager=QUICKDRAW routine=COPYBITS windows=(?:128|154) services=(?:463/463|471/471))'))
+        print('PASS paired NewGWorld: 27 owned handles, port/PixMaps/patterns/device, 4096 inverse entries and collision links, exact colour copy, 261452 pixel bytes; '+one(native,r'GW_NEXT (state=3 trap=A0F8 selector=16 segment=3 offset=1A74 manager=SOUND DRIVER routine=SELECTOR windows=(?:128|154) services=(?:464/463|472/471))'))
 
 
 if __name__=='__main__':

@@ -63,7 +63,7 @@ def check(reference,native,reference_status,native_status,folder,resource,backgr
         print('PASS paired background SetGWorld: original bytes, real visible nonfront window, binding/ABI and unchanged records/pixels/palette')
         return
     require(native.count('PASS native world binding next-stop original-MDRV=absent')==1,'progression and driver guard')
-    print('PASS paired SetGWorld: original bytes, nil-device selection, colour-port binding, return registers and unchanged pixels; '+one(native,r'WB_NEXT (state=3 trap=A8EC selector=FFFFFFFF segment=10 offset=24D2 manager=QUICKDRAW routine=COPYBITS windows=(?:128|154) services=(?:463/463|471/471))'))
+    print('PASS paired SetGWorld: original bytes, nil-device selection, colour-port binding, return registers and unchanged pixels; '+one(native,r'WB_NEXT (state=3 trap=A0F8 selector=16 segment=3 offset=1A74 manager=SOUND DRIVER routine=SELECTOR windows=(?:128|154) services=(?:464/463|472/471))'))
 
 
 if __name__=='__main__':

@@ -18,6 +18,9 @@ while $tw_finished==0
   tbreak dispatchMacTrap if trap==0xaa95 && *(unsigned long*)(frame+2)==(unsigned long)s_segments[5].begin+0x214c
   continue
   source restorepalette_call.gdb
+  tbreak dispatchMacTrap if trap==0xa8ec && *(unsigned long*)(frame+2)==(unsigned long)s_segments[10].begin+0x24d2
+  continue
+  source copybits8_call.gdb
   loop_continue
  end
  if trap==0xaa91

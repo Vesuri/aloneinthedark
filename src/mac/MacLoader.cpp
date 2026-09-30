@@ -11,6 +11,7 @@
 #include "WindowGeometry.h"
 #include "RectBounds.h"
 #include "FillRect8.h"
+#include "CopyBits8.h"
 #include "CursorVisibility.h"
 #include "RegionRows.h"
 #include "GWorld8.h"
@@ -3622,6 +3623,34 @@ static __attribute__((noinline)) void packedLogicRowsC(
     }
 }
 
+static bool copyWindowBits8(const uint8_t* sourceBitmap,const uint8_t* destinationBitmap,
+                            const uint8_t* from,const uint8_t* to,uint16_t mode,const uint8_t* mask)
+{
+    if(mode!=0 || mask)return false;
+    GWorldSlot* source=0;
+    for(uint16_t i=0;i<sizeof(s_gworlds)/sizeof(s_gworlds[0]);++i)
+        if(s_gworlds[i].used && (sourceBitmap==s_gworlds[i].pixMap || sourceBitmap==s_gworlds[i].port+2))source=&s_gworlds[i];
+    uint8_t* port=s_qdThePort ? (uint8_t*)read32(s_qdThePort) : 0;
+    WindowSlot* window=windowSlot(port);
+    if(!source || !source->locked || !window || window->dialog || !port[110]
+       || destinationBitmap!=port+2 || read16(window->pixelMap+32)!=8
+       || read32(window->pixelMap)!=(uint32_t)s_colorScreen
+       || read16(source->pixMap+32)!=8 || read32(source->pixMap)!=(uint32_t)source->pixels
+       || read32(source->colorTable)!=read32(s_windowManagerColors))return false;
+    uint8_t** vh=(uint8_t**)read32(port+24);uint8_t** ch=(uint8_t**)read32(port+28);
+    if(!vh || !*vh || !ch || !*ch || read16(*vh)!=10 || read16(*ch)!=10)return false;
+    uint8_t drawn[8];const uint8_t* map=window->pixelMap;
+    if(!CopyBits8::copy(source->pixels,source->owner->handleSize(source->handles[1]),
+        read16(source->pixMap+4)&0x3fff,source->pixMap+6,s_colorScreen,sizeof(s_colorScreen),
+        read16(map+4)&0x3fff,map+6,from,to,port+16,*vh+2,*ch+2,drawn))return false;
+    if(read16(drawn)!=read16(drawn+4) && read16(drawn+2)!=read16(drawn+6))
+        markDirtyBounds((int16_t)read16(drawn)-(int16_t)read16(map+6),
+                        (int16_t)read16(drawn+2)-(int16_t)read16(map+8),
+                        (int16_t)read16(drawn+4)-(int16_t)read16(map+6),
+                        (int16_t)read16(drawn+6)-(int16_t)read16(map+8));
+    return true;
+}
+
 static bool copyBits(const uint8_t* sourceBitmap, const uint8_t* destinationBitmap,
                      const uint8_t* sourceRect, const uint8_t* destinationRect,
                      uint16_t mode, const uint8_t* maskRegion)
@@ -5989,7 +6018,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
             // The renderer validates owned offscreen and window destinations.
             break;
         case 0xa8a1: case 0xa8a4: case 0xa8a5:
-        case 0xa8ec: case 0xa90d: case 0xa91f:
+        case 0xa90d: case 0xa91f:
             unsupportedGraphics=true;goto unsupportedTrap;
         }
     }
@@ -7430,6 +7459,12 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         }
     }
     if (trap == 0xa8ec) {                    // CopyBits(src, dst, srcRect, dstRect, mode, mask)
+        if(read16(s_windowManagerPixMap+32)==8) {
+            if(!copyWindowBits8((const uint8_t*)read32(userStack+18),(const uint8_t*)read32(userStack+14),
+                (const uint8_t*)read32(userStack+10),(const uint8_t*)read32(userStack+6),
+                read16(userStack+4),(const uint8_t*)read32(userStack)))goto unsupportedTrap;
+            regs[0]=0;return 23;
+        }
         const uint8_t* destinationRect = (const uint8_t*)read32(userStack + 6);
         const uint8_t* destinationBitmap = (const uint8_t*)read32(userStack + 14);
         const uint8_t* sourceBitmap = (const uint8_t*)read32(userStack + 18);

@@ -11,69 +11,24 @@ and Toolbox layer are carried over from Vette!; see
 
 ## Current state
 
-The executable builds and runs the original CODE 1 startup on the 68020. Its
-75,616-byte A5 globals match the host model exactly. The original segment loader
-relocates Core and reaches `main`; initialization passes directory setup, the General resource lookup and the
-first Times font lookup and the two native sound-driver startup calls (D8).
-Menu-record initialization and the original eight-bit device selection, SetDepth, GetGWorld, hidden dialog construction and GetMainDevice also pass.
-All ten original positioning calls also pass using integer-only SANE arithmetic
-(no FPU), followed by hidden positioning, automatic low-resolution selection and cleanup. All 75 startup font-metrics
-calls now match the Mac using installed placeholder definitions. All four Apple Event
-handler registrations retain their measured callback/refCon state. The original colour
-table now loads with measured detachment, seed and mutation behavior. Native palette
-construction copies all 256 entries and owns its measured private allocation. Default
-palette binding now matches the Mac without changing device or display colours.
-Hidden window-title state now matches the Mac through owned title handles and
-measured system-font advances. Startup realizes all 256 device colours and clears the 320×200 game client
-area. The eight-plane display publishes that clear and its complete 256-colour
-palette during vertical blank. Window palette binding now matches the Mac;
-the already-realized ActivatePalette call also passes without changing colours.
-Colour-window constructors and movement now use the measured local coordinates,
-per-window pixel maps and independent regions. The first client frame still
-matches the reference and publishes through all eight AGA planes; no Mac chrome is drawn.
-ShowHide now reveals the background with exact clipping and leaves the game
-viewport unchanged. SetGWorld binds the game drawing port and startup loads
-Dark. TickCount reads the existing 60 Hz integer clock with the measured Mac
-calling convention. The following size/origin requests preserve the already-correct
-320×200 window. SetPt initializes the drawing point; startup then stops explicitly
-at `COPYBITS` (Misc2+$24D2), after allocating the original empty
-region and real eight-bit GWorlds, binding and clipping them, locking and clearing
-their pixels, unlocking them and restoring the game drawing port. Pixel-address
-access then lets the original copy its first 512×56 image into a real buffer.
-The following 20-call image rectangle loop now matches the Mac exactly.
-The already-detached table call returns the measured resource error without
-changing the table. Its subsequent 138×542 world allocation also matches the
-Mac, preserving the supplied device colour table. RGB foreground/background
-selection now updates the offscreen port using its real inverse colour table.
-All twenty preparation pictures now draw into the 138×542 world, with exact
-reference colour mapping and preserved pixels outside each destination.
-All 220 startup text measurements now match the Mac, including fractional
-advance accumulation performed entirely with integers. The subsequent binding
-of the existing background window now preserves all records, pixels and palette.
-Both original conversions of its corner points to global coordinates also match,
-followed by the query of the actual device flags and both background/game-window
-rectangle intersections. Startup event polling now delivers the actual pending
-window activation and both window updates, then an idle event. The following
-cursor-obscuring call now preserves explicit hiding and restores on movement.
-The following foreground/background getters return the selected window’s real RGB fields.
-Window RGB setters now use the same verified eight-bit colour matching as offscreen worlds.
-The following window rectangle fill now matches the reference, preserves surrounding
-pixels and publishes the second eight-plane frame; no Mac chrome is drawn.
-The following colour-table 129 request preserves its larger stored body and flags,
-assigns a new seed and returns the measured detached ownership state.
-Palette construction from that larger table now matches the Mac, including
-its reusable identifier and independent private allocation. Binding it to the game
-window now realizes its colours without drawing Mac chrome. The original then
-clears the client white, then draws the centred MacPlay picture with exact
-reference pixels and colours. Its fifth AGA publication and subsequent sixth
-clear are verified. Palette restoration now matches the original, including
-outgoing deactivation and unchanged client pixels. Startup advances through
-eight AGA publications to the intro’s first unsupported eight-bit CopyBits.
-Startup also clears and rebuilds the four game menus as hidden records; no menu
-bar is drawn. Native driver initialization is accepted through the second Times
-lookup, which returns family 20. The original mixer
-is never loaded. The game is not playable yet.
-Other processors and performance work remain deferred.
+Original 68020 game code now reaches the **Infogrames logo**. The MacPlay
+picture, its palette transitions and the logo match the Mac reference pixels
+and colours; nine AGA frames are verified through bitplane/copper captures and
+vertical-blank publication. These memory captures do not replace the
+owner-deferred rendered-window check. The full intro and gameplay are not ready.
+
+The next named stop is native **SOUND DRIVER / SELECTOR 22**, called from
+Core+$1A74. Original MDRV code remains unloaded. Startup initialization, resource
+loading, twenty offscreen pictures, 220 text measurements, window geometry,
+clipping, colours, events and cursor state pass their paired checks. The
+75,616-byte A5 globals match exactly. Detailed contracts and current evidence
+are in [docs/development.md](docs/development.md),
+[docs/picture-drawing.md](docs/picture-drawing.md),
+[docs/palette.md](docs/palette.md) and [docs/copybits.md](docs/copybits.md).
+
+The sole active target is 68020 without an FPU. No Mac dialog, menu bar or
+window chrome is drawn; hidden compatibility records support the original
+startup. Other processors and performance work remain deferred.
 
 The M0 tools checkpoint includes the trap census, original Mac runtime/frame
 evidence and a regression harness. Host checks, native Line-A/stack/trap-patch
@@ -84,7 +39,7 @@ serve memory and resource handles. System identity and all eleven derived
 capability flags match the Mac reference. The user-mode service bridge passes
 its native ABI probe. OS windows and DOS/resload adapters pass the native/host
 core probes; rendered-picture acceptance is owner-deferred (M1.7b2). The next
-items are binding the new presentation palette and original PAK-read acceptance. Both original
+items are native driver selector 22 and original PAK-read acceptance. Both original
 Times lookups now pass register, stack, error-state and installed-font checks. Fresh and existing preferences now request WIND 128
 through the original instructions, with only the size byte changed.
 The logical device has real 640×480×8 storage; its four selection calls match
@@ -96,7 +51,7 @@ read acceptance still needs the intervening drawing services and payload checks.
 Resource bodies now stream from disk into zone handles; startup retains the
 4,998-byte map instead of the 1,424,934-byte application fork. The `resource-read`
 regression verifies original bytes and bounded runtime resource reads; the
-current stop is binding the new presentation palette (SetPalette); original MDRV loading stays forbidden. Named/ID/indexed lookup, resource counts and metadata, purge/reload and release now
+current stop is native driver selector 22; original MDRV loading stays forbidden. Named/ID/indexed lookup, resource counts and metadata, purge/reload and release now
 pass paired Mac/native checks. Native resource staging now passes exact publication,
 abort, rollback and stale-file checks. Resource-file open/create/update/close,
 AddResource, multi-fork search, noncurrent close and invalid update pass a

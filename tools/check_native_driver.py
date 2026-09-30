@@ -8,10 +8,10 @@ import unittest
 CALLS=['PASS native driver call: selector=21 D0=0 D1=0 preserved=13 stack=unchanged rate=22 voices=6/2/2',
        'PASS native driver call: selector=24 D0=0 D1=1 preserved=13 stack=unchanged rate=11 voices=6/2/2']
 SECOND = r'PASS font second: Dan1\+003A result=20 stack=\$[0-9a-fA-F]{8} native-driver-calls=2'
-ENDPOINT = 'MLIST_NEXT state=3 trap=A8EC selector=FFFFFFFF segment=10 offset=24D2 manager=QUICKDRAW routine=COPYBITS windows=128 services=463/463 reads=68 bytes=333998'
+ENDPOINT = 'MLIST_NEXT state=3 trap=A0F8 selector=16 segment=3 offset=1A74 manager=SOUND DRIVER routine=SELECTOR windows=128 services=464/463 reads=68 bytes=333998'
 GUARD = 'PASS menu-list next-stop original-MDRV=absent'
 DETACHED = '[Inferior 1 (Remote target) detached]'
-COMPLETE = 'PASS native driver startup: Jnth=11 calls=2 second-Times=20 next=COPYBITS original-MDRV=absent'
+COMPLETE = 'PASS native driver startup: Jnth=11 calls=2 second-Times=20 next=SELECTOR22 original-MDRV=absent'
 
 def check(text, status):
     if status != 0 or any(bad in text for bad in ('FAIL', 'Error in sourced command file', 'Program received signal', 'timeout')):
@@ -37,7 +37,7 @@ class Checks(unittest.TestCase):
                     (good.replace('D1=1', 'D1=0'), 0),
                     (good.replace('result=20', 'result=0'), 0),
                     (good.replace('native-driver-calls=2', 'native-driver-calls=1'), 0),
-                    (good.replace('services=463/463', 'services=433/432'), 0),
+                    (good.replace('services=464/463', 'services=433/432'), 0),
                     ('\n'.join(CALLS[::-1] + markers[2:]), 0),
                     ('\n'.join([second] + CALLS + markers[3:]), 0)]
         for marker in markers:

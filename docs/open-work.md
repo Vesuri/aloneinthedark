@@ -7,18 +7,14 @@ because the Git log records finished work. The design and its rationale are in
 design.md §5.
 
 **Current state:**
-- The executable builds and loads the original resource fork.
-- Original CODE 1 expands the A5 world, relocates Core and enters `main`, then
-  passes directory initialization, the first Times lookup and both native
-  driver startup calls, menu-record initialization, device selection, SetDepth, GetGWorld, hidden dialog construction/positioning and fixed
-  low-resolution selection/cleanup, all 75 font-metrics calls and four Apple Event
-  registrations, colour-table loading/mutations, palette construction and default
-  binding, hidden window-title state and the verified WIND 128 request. Startup realizes the palette and clears the game client area, then stops at
-  `COPYBITS` at Misc2+$24D2 after palette binding/activation, first-frame AGA
-  publication, background ShowHide, game-port binding, TickCount, unchanged window geometry, point setup, empty-region allocation and eight-bit offscreen buffer initialization, pixel-address access and the first original image-row copy and hidden menu-list setup, followed by the 20-call image rectangle loop and the measured already-detached
-  resource error, device-table world allocation and RGB foreground/background
-  selection, all twenty indexed picture draws and 220 original text measurements, then binds the existing background window and converts its two corner points, then queries the actual device flags and completes both background/game-window intersections and consumes activation, both window updates and an idle event, then obscures the cursor and retrieves both selected-port RGB colours and updates the window foreground/background, then fills the window rectangle and publishes the second frame, then loads and detaches colour-table 129, constructs its palette and loads PICT 1500, binds that palette and clears the client white, then draws the centred MacPlay picture with exact reference pixels/colours and clears it; then restores the default palette and advances into intro initialization; eight AGA publications are verified. The original
-  mixer is never loaded.
+- Original CODE 1 loads, expands the exact A5 world, relocates Core and enters
+  startup on the 68020 without an FPU. Resources and hidden compatibility state
+  support the measured initialization path; original MDRV code is never loaded.
+- MacPlay and the Infogrames logo have exact paired client pixels/colours. Nine
+  AGA publications pass memory/copper checks. Full intro acceptance remains open.
+- The next stop is native sound-driver selector 22, called from Core+$1A74.
+  Detailed completed service contracts and regression evidence are in
+  [development.md](development.md). No Mac dialogs, menu bar or chrome are drawn.
 - The original runs in MAME on the System 7.5.5 reference volume.
 
 Each item gives the **goal**, then the scope, then *done when*: the evidence
@@ -51,17 +47,18 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.3g24 Intro eight-bit CopyBits.**
-  - Palette restoration now matches the Mac. Startup loads another CODE segment
-    and two resources, then stops at CopyBits ($A8EC), Misc2+$24D2.
-  - Check original caller bytes, source/destination pixel maps, bounds, colour
-    tables, mode/mask, clipping and ABI. Reuse Vette's copy machinery for the
-    measured eight-bit route without changing original game instructions.
+- **M2.3g25 Native driver selector 22.**
+  - The original intro copy now publishes the Infogrames logo with exact pixels
+    and colours. Startup next invokes native driver selector 22 from Core+$1A74.
+  - Check original caller and MDRV entry bytes; measure arguments, results,
+    register/stack contract and observable driver-state effects in MAME.
+    Implement the corresponding native driver service, reusing Vette as D8
+    directs. Keep original MDRV code absent; no success stub or skipped call.
 
-  *Done when* the complete destination pixels/CLUT match the paired Mac state,
-  surrounding pixels, source and calling convention are preserved, AGA publishes
-  any screen result, startup reaches its next named stop with MDRV absent, and
-  picture/palette/startup regressions pass.
+  *Done when* original/native results and required driver effects match,
+  the service completes and startup reaches its next named stop, with logo,
+  picture/palette/AGA and startup regressions passing. Any audio effect must
+  additionally satisfy design §6's driver event-log comparison.
 - **M2.1c Original File Manager read acceptance (after M2.2).**
   - This retains M2.1's original acceptance; diagnostic fixture reads do not count
     as original-game reads. M2.1b2a measured the intervening Get1NamedResource
