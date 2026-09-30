@@ -40,7 +40,7 @@ def check(reference,native,reference_status,native_status,resource):
     elapsed_fields=(b['fields']-a['fields'])&65535;elapsed_ticks=(b['ticks']-a['ticks'])&0xffffffff
     require(elapsed_fields*6//5<=elapsed_ticks<=elapsed_fields*6//5+1,'PAL fields to 60 Hz clock')
     require(native.count('PASS native TickCount next-stop original-MDRV=absent')==1,'progression and MDRV guard')
-    print('PASS paired TickCount: original bytes/ABI, full-width result, native clock source and field accounting; '+one(native,r'TICK_NEXT (state=3 trap=A8A2 selector=FFFFFFFF segment=13 offset=D52 manager=QUICKDRAW routine=PAINTRECT windows=(?:115|141) services=(?:433/433|441/441))'))
+    print('PASS paired TickCount: original bytes/ABI, full-width result, native clock source and field accounting; '+one(native,r'TICK_NEXT (state=3 trap=AA18 selector=81 segment=5 offset=1FDC manager=COLOR QUICKDRAW routine=GETCTABLE windows=(?:116|142) services=(?:434/433|442/441))'))
 
 
 if __name__=='__main__':

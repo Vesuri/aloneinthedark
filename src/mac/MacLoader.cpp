@@ -10,6 +10,7 @@
 #include "Palette8.h"
 #include "WindowGeometry.h"
 #include "RectBounds.h"
+#include "FillRect8.h"
 #include "CursorVisibility.h"
 #include "RegionRows.h"
 #include "GWorld8.h"
@@ -3345,35 +3346,28 @@ static bool eraseRect(const uint8_t* rectangle)
 
 static bool paintRect(const uint8_t* rectangle)
 {
-    uint8_t* port = (uint8_t*)read32(s_qdThePort);
-    uint8_t* pixels;
-    uint16_t rowBytes;
-    int16_t mapTop, mapLeft, mapBottom, mapRight;
-    if (!port || !rectangle
-        || !currentPortPixels(pixels, rowBytes, mapTop, mapLeft, mapBottom, mapRight)) return false;
-    int16_t top = (int16_t)read16(rectangle);
-    int16_t left = (int16_t)read16(rectangle + 2);
-    int16_t bottom = (int16_t)read16(rectangle + 4);
-    int16_t right = (int16_t)read16(rectangle + 6);
-    if (top >= bottom || left >= right) return false;
-    uint8_t** clipHandle = (uint8_t**)read32(port + 28);
-    uint8_t* clip = clipHandle ? *clipHandle : 0;
-    if (top < mapTop) top = mapTop;
-    if (left < mapLeft) left = mapLeft;
-    if (bottom > mapBottom) bottom = mapBottom;
-    if (right > mapRight) right = mapRight;
-    if (clip && read16(clip) >= 10) {
-        if (top < (int16_t)read16(clip + 2)) top = (int16_t)read16(clip + 2);
-        if (left < (int16_t)read16(clip + 4)) left = (int16_t)read16(clip + 4);
-        if (bottom > (int16_t)read16(clip + 6)) bottom = (int16_t)read16(clip + 6);
-        if (right > (int16_t)read16(clip + 8)) right = (int16_t)read16(clip + 8);
+    uint8_t* port=s_qdThePort ? (uint8_t*)read32(s_qdThePort) : 0;
+    WindowSlot* window=windowSlot(port);
+    // Owned window ports represent their default solid pen implicitly. Other
+    // patterns, transfer modes and region encodings remain explicit stops.
+    if(!window || window->dialog || !port[110] || read16(port+6)!=0xc000
+       || read16(window->pixelMap+32)!=8
+       || read32(window->pixelMap)!=(uint32_t)s_colorScreen
+       || read32(port+58) || read16(port+56)!=8 || read16(port+66)
+       || read32(port+80)>255)return false;
+    uint8_t** vh=(uint8_t**)read32(port+24);
+    uint8_t** ch=(uint8_t**)read32(port+28);
+    if(!vh || !*vh || !ch || !*ch || read16(*vh)!=10 || read16(*ch)!=10)return false;
+    uint8_t drawn[8];
+    const uint8_t* map=window->pixelMap;
+    if(!FillRect8::solid(s_colorScreen,sizeof(s_colorScreen),read16(map+4)&0x3fff,
+        map+6,port+16,*vh+2,*ch+2,rectangle,(uint8_t)read32(port+80),drawn))return false;
+    if(read16(drawn)!=read16(drawn+4) && read16(drawn+2)!=read16(drawn+6)) {
+        int16_t top=(int16_t)read16(map+6),left=(int16_t)read16(map+8);
+        markDirtyBounds((int16_t)read16(drawn)-top,(int16_t)read16(drawn+2)-left,
+                        (int16_t)read16(drawn+4)-top,(int16_t)read16(drawn+6)-left);
     }
-    // VETTE passes its adjacent PICT-ID table (6398, 5383, ...) to PaintRect
-    // once after drawing the course description.  The resulting rectangle is
-    // wholly outside the port; QuickDraw clips it to an empty operation before
-    // the pen transfer mode matters.  Keep that behavior without silently
-    // accepting an unimplemented on-screen mode.
-    return top >= bottom || left >= right;
+    return true;
 }
 
 static bool getVolumeInfo(uint8_t* parameterBlock)
@@ -7303,7 +7297,8 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     if (trap == 0xa8a2) {                    // PaintRect(rectangle)
         const uint8_t* rectangle = (const uint8_t*)read32(userStack);
         if (paintRect(rectangle)) {
-            if (currentPortIsScreen()) markDirty(rectangle);
+            regs[0]=0;regs[1]=(regs[1]&0xffff0000UL)|8;
+            regs[9]=read32(s_qdThePort);
             return 5;
         }
     }

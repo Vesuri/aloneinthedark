@@ -4,14 +4,20 @@ set $binding_captured=0
 set $sr_n=0
 set $ev_n=0
 set $gc_n=0
+set $wrgb_captured=0
 while $tw_finished==0
- tbreak dispatchMacTrap if (trap==0xaa14 && *(unsigned long*)(frame+2)==(unsigned long)s_segments[12].begin+0x624a) || trap==0xaa19 || trap==0xaa1a || trap==0xa856 || trap==0xa860 || trap==0xa886 || (trap==0xab1d && *(unsigned long*)(frame+2)==(unsigned long)s_segments[9].begin+0xe0a)
+ tbreak dispatchMacTrap if trap==0xa8a2 || ($wrgb_captured==0 && trap==0xaa14 && *(unsigned long*)(frame+2)==(unsigned long)s_segments[12].begin+0x624a) || ($gc_n<2 && (trap==0xaa19 || trap==0xaa1a)) || trap==0xa856 || trap==0xa860 || trap==0xa886 || (trap==0xab1d && *(unsigned long*)(frame+2)==(unsigned long)s_segments[9].begin+0xe0a)
  continue
  if g_stageBState==3
   loop_break
  end
+ if trap==0xa8a2
+  source paintrect_call.gdb
+  loop_continue
+ end
  if trap==0xaa14
   source window_rgb_calls.gdb
+  set $wrgb_captured=1
   loop_continue
  end
  if trap==0xaa19 || trap==0xaa1a

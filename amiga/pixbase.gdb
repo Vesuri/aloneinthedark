@@ -100,7 +100,7 @@ dump binary memory ../tmp/pixbase-native-screen-after.bin (char*)s_colorScreen (
 echo PASS native pixel-address row copy\n
 continue
 printf "PBASE_NEXT state=%u trap=%X selector=%X segment=%u offset=%X manager=%s routine=%s windows=%u services=%u/%u reads=%u bytes=%u\n",g_stageBState,g_trapWord,g_trapSelector,g_trapSegment,g_trapOffset,g_trapManager,g_trapRoutine,g_systemWindows,g_macServiceEntered,g_macServiceCompleted,g_resourceRuntimeReads,g_resourceRuntimeBytes
-if g_stageBState!=3 || g_macServiceActive!=0
+if g_stageBState!=3 || g_macServiceActive!=1
  echo FAIL pixel-address progression\n
  detach
  quit 1
@@ -115,7 +115,7 @@ while $i<g_resourceCount
  set $i=$i+1
 end
 echo PASS native GetPixBaseAddr original-MDRV=absent\n
-if g_trapWord!=0xa8a2 || g_trapSegment!=13 || g_trapOffset!=0xd52 || g_macServiceEntered!=$startup_entered || g_macServiceCompleted!=$startup_completed || g_systemWindows!=$startup_windows
+if g_trapWord!=0xaa18 || g_trapSegment!=5 || g_trapOffset!=0x1fdc || g_macServiceEntered!=$startup_entered || g_macServiceCompleted!=$startup_completed || g_systemWindows!=$startup_windows
  echo FAIL pixel-address startup endpoint\n
  detach
  quit 1
@@ -123,7 +123,7 @@ end
 echo startup PASS: original main, next stop MENU MANAGER / CLEARMENUBAR CODE 7\n
 set $screen=s_loudStopScreen
 printf "AGA_STOP state=%u trap=%X segment=%u offset=%X queued=%u presented=%u pending=%u\n",g_stageBState,g_trapWord,g_trapSegment,g_trapOffset,g_macFramesQueued,g_macFramesPresented,$screen->m_framePending
-if g_stageBState!=3 || g_trapWord!=0xa8a2 || g_trapSegment!=13 || g_trapOffset!=0xd52 || g_macFramesQueued!=1 || g_macFramesPresented>1
+if g_stageBState!=3 || g_trapWord!=0xaa18 || g_trapSegment!=5 || g_trapOffset!=0x1fdc || g_macFramesQueued!=2 || g_macFramesPresented>2
  echo FAIL AGA startup boundary\n
  detach
  quit 1
@@ -135,18 +135,18 @@ dump binary memory ../tmp/aga-startup-queued-planes.bin (char*)$target (char*)$t
 dump binary memory ../tmp/aga-startup-queued-copper.bin (char*)$copper (char*)$copper+2248
 dump binary memory ../tmp/aga-startup-logical.bin (char*)s_colorScreen (char*)s_colorScreen+307200
 dump binary memory ../tmp/aga-startup-clut.bin (char*)s_windowManagerColors (char*)s_windowManagerColors+2056
-if g_macFramesPresented==0
- tbreak aitdMacMouseVBI if g_macFramesPresented==1
+if g_macFramesPresented<2
+ tbreak aitdMacMouseVBI if g_macFramesPresented==2
  continue
 end
 printf "AGA_ACTIVE front=%X back=%X copper=%X crop=%u/%u queued=%u presented=%u pending=%u line=%u late=%u\n",$screen->m_chip,$screen->m_back,$screen->m_copper,$screen->m_cropLeft,$screen->m_cropTop,g_macFramesQueued,g_macFramesPresented,$screen->m_framePending,g_beamPresentLine,g_beamPresentsLate
-if $screen->m_framePending || g_macFramesPresented!=1 || $screen->m_chip!=$target || $screen->m_copper!=$copper || $screen->m_cropLeft!=160 || $screen->m_cropTop!=150 || $screen->m_mouseAllowed
+if $screen->m_framePending || g_macFramesPresented!=2 || $screen->m_chip!=$target || $screen->m_copper!=$copper || $screen->m_cropLeft!=160 || $screen->m_cropTop!=150 || $screen->m_mouseAllowed
  echo FAIL AGA VBI publication\n
  detach
  quit 1
 end
 dump binary memory ../tmp/aga-startup-active-planes.bin (char*)$screen->m_chip (char*)$screen->m_chip+64000
 dump binary memory ../tmp/aga-startup-active-copper.bin (char*)$screen->m_copper (char*)$screen->m_copper+2248
-echo PASS AGA startup queued and VBI-published next=PAINTRECT\n
+echo PASS AGA startup queued and VBI-published next=GETCTABLE\n
 detach
 quit 0

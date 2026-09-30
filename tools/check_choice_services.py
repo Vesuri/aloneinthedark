@@ -15,7 +15,7 @@ def one(text,pattern):
     return matches[0]
 def check(text,status,native=False):
     if status!=0 or any(x in text for x in ('FAIL','[LUA ERROR]','unknown command','Error in','timeout','Program received signal')):raise ValueError('failed observer')
-    marker='PASS native fixed-choice services next=PAINTRECT' if native else 'PASS original fixed-choice services'
+    marker='PASS native fixed-choice services next=GETCTABLE' if native else 'PASS original fixed-choice services'
     if text.count(marker)!=1 or text.count('[Inferior 1 (Remote target) detached]' if native else 'Exited via the debugger')!=1:raise ValueError('completion')
     entries=re.findall(r'^SERVICE_ENTER label=(\w+) (.*)$',text,re.M)
     returns=re.findall(r'^SERVICE_RETURN label=(\w+) (.*)$',text,re.M)
@@ -63,7 +63,7 @@ def check(text,status,native=False):
         code[2:6]=bytes.fromhex('fffee4ac')
         if hashlib.sha256(code).hexdigest()!='474f8a03c2ddd2d18c9367305105c552f8e79613077ee7cb114d754752f9e5fe':
             raise ValueError('live original window instructions')
-        one(text,r'CHOICE_NEXT state=3 trap=A8A2 selector=FFFFFFFF segment=13 offset=D52 manager=QUICKDRAW routine=PAINTRECT windows=(?:115|141) services=(?:433/433|441/441) reads=64 bytes=294970')
+        one(text,r'CHOICE_NEXT state=3 trap=AA18 selector=81 segment=5 offset=1FDC manager=COLOR QUICKDRAW routine=GETCTABLE windows=(?:116|142) services=(?:434/433|442/441) reads=65 bytes=297034')
     return True
 
 def check_selection(reference,status,native):

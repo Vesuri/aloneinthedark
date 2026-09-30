@@ -351,3 +351,37 @@ builder/lookup tests under ASan/UBSan. The paired check covers original callers,
 whole-port mutations, all unchanged palette bytes, defined inverse-table bytes
 (normalizing independently verified seeds), preserved patterns and ABI. Existing
 offscreen colour checks remain separate regression coverage.
+
+
+## Window rectangle filling
+
+M2.3g18 implements the original Dan2+$0D52 PaintRect (caller bytes
+`486efff0a8a2`). The selected window uses a 640×480×8 PixMap with local bounds
+(-150,-160)–(330,480), a 320×200 visible region, a rectangular clip, solid pen
+pixel data and patCopy mode. Its implicit native default pen fills with the
+selected foreground index. Nondefault patterns, transfer modes and complex
+regions remain named stops. The helper clips signed coordinates against map,
+port, visible and clip bounds, then converts the actual write area back to
+screen coordinates for dirty publication.
+
+The original full-client black fill preserves every existing pixel. Contrasting
+Mac fixtures establish actual drawing: an interior rectangle changes 72 pixels;
+an oversized rectangle changes exactly 64,000 client pixels, with the surrounding
+screen unchanged. The production helper matches all three complete reference
+screens and six independent clipping/empty/inverted cases under ASan/UBSan.
+Native captures additionally match client pixels and the logical CLUT, preserving
+port, PixMap, regions, rectangle guards and surrounding pixels. D0 is zero,
+D1's low word is 8, A1 is the selected port, D3–D7/A2–A6 are preserved, and the
+argument stack advances four bytes. Mac D2/A0 are scratch; native preserves them.
+
+```sh
+python3 tools/check_fillrect8.py --reference tmp/m2-paintrect-reference-colors.log --status 0 --native tmp/m2-paintrect-native-final.log --native-status 0
+```
+
+`mac_paintrect.lua` captures the original call before running isolated contrasting
+fixtures. `paintrect_call.gdb` observes the original native call without guest
+writes; it is included in the combined startup observer. That observer retains
+only the first measured colour-getter/setter pair when later original callers
+repeat them. Native acceptance requires positive completion and MDRV exclusion.
+The AGA observer verifies both queued/published frames. These are memory and
+register comparisons, not owner-deferred live-window video acceptance.

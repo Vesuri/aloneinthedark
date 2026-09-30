@@ -3311,3 +3311,23 @@ and both link audits pass. Reproduction is in
 Next is QUICKDRAW / PAINTRECT at Dan2+$0D52. Counts remain 115 windows,
 433/433 services and 64 resource reads / 294,970 bytes, with CODE mask $3FBB.
 Fresh-preference counts remain derived. Intro frame acceptance is still open.
+
+
+## Window rectangle fill
+
+M2.3g18 is complete. `tmp/m2-paintrect-reference-colors.log` and
+`tmp/m2-paintrect-native-final.log` both exit 0. The production helper passes ten
+complete-screen comparisons (three Mac, one native and six independent edge
+cases); the original native call passes byte, ABI, guarded-record, palette and
+surrounding-pixel checks. The combined run passes the existing colour, cursor,
+event, geometry/binding, device, twenty-picture, 220-text-width, font and driver
+checks. Both AGA frames publish with the correct eight planes and 256 colours;
+all 75,616 A5 bytes match. Full host tests and both link audits pass, as do the
+78-script Lua audit and updated endpoint-validator self-tests. Reproduction is
+in [gworld.md](gworld.md#window-rectangle-filling).
+
+The next named stop is COLOR QUICKDRAW / GETCTABLE, selector 129, Dark2+$1FDC.
+Counts are 116 windows, 434 entered / 433 completed services (the stopped table
+service is active), 65 resource reads / 297,034 bytes; CODE mask remains $3FBB.
+Fresh-preference counts of 142 windows and 442/441 services remain derived.
+The original MDRV is absent. Intro frame acceptance remains pending.
