@@ -17,12 +17,16 @@ enum AitdProfileCategory {
     kProfileC2P,
     kProfilePalette,
     kProfileCopyBits,
+    kProfilePaintRect,
+    kProfileColorLookup,
+    kProfileCopyMap,
     kProfileCategoryCount
 };
 
 #ifdef AITD_PROBE
 uint32_t aitdProfileBeamEpoch();
 void aitdProfileStart();
+void aitdProfileStop();
 void aitdProfileOnVBI();
 AitdProfileCategory aitdProfileTrapCategory(uint16_t trap);
 

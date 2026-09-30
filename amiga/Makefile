@@ -113,6 +113,12 @@ endif
 # `make PROBES=1` — the sub-frame timing accumulators, read via the gdb stub (amiga/diag_run.sh).
 # OFF by default: the probes read chip registers several times per iteration, which is exactly
 # what a framerate build must not do.  ⚠ NEVER quote a framerate from a PROBES build.
+ifeq ($(BOOKPROFILE),1)
+PROBES=1
+PROBEFIELDS=65535
+EXTRA_DEFINES += -DAITD_BOOK_PROFILE
+endif
+
 ifdef PROBES
 EXTRA_DEFINES += -DAITD_PROBE
 endif
@@ -253,7 +259,7 @@ VASMFLAGS = -m68020 -Felf -quiet -x -no-opt -nowarn=62 $(EXTRA_VASMDEFS)
 # ⚠⚠ Every global a committed .gdb script reads MUST be listed here.  -Wl,--gc-sections drops
 # an unreferenced counter and gdb then resolves the name into .text and prints INSTRUCTION
 # BYTES as a value — a fake measurement, not an obvious zero.  `probe-audit` enforces it.
-PROBE_SYMS = g_catalogEntries g_catalogDataFiles g_catalogDataBytes g_applicationFileRef g_vbiCount g_planeChecksum g_screenReady \
+PROBE_SYMS = g_macBookFrameActive g_macBookFramesBegun g_macBookFramesCompleted g_catalogEntries g_catalogDataFiles g_catalogDataBytes g_applicationFileRef g_vbiCount g_planeChecksum g_screenReady \
              g_stageBState g_trapWord g_trapSelector g_trapSegment g_trapOffset \
              g_trapPC g_trapRegisters g_trapUserStack g_resourceCount g_jumpEntryCount \
              g_blockMoveCount g_trapManager g_trapRoutine
@@ -283,7 +289,7 @@ PROBE_SYMS += g_mappedCopyAsmTicks g_mappedCopyCTicks g_mappedCopyVerifyCalls \
 endif
 endif
 ifdef PROBES
-PROBE_SYMS += g_probeSkipC2P g_probeC2PFrames g_probeC2PRects g_probeC2PPixels \
+PROBE_SYMS += g_pageProfile g_bookProfileStage g_probeSkipC2P g_probeC2PFrames g_probeC2PRects g_probeC2PPixels \
               g_probeCopyMapIdentity g_probeCopyMapHits g_probeCopyMapMisses \
               g_probeCopyBitsTicks g_probeCopyBitsCalls \
               g_probeDelayCalls g_probeDelayRequested \

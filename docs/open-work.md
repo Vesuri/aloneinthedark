@@ -58,22 +58,6 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.3g41p2 Profile the remaining intro book-page drawing cost.**
-  - The owner-requested Kalms replacement (M2.3g41p1) is implemented; the
-    scalar converter is host-test-only. Continue the focused 68020 work needed
-    to make book-page testing feasible, without skipping animation or delays.
-  - Measure PaintRect, CopyBits colour translation and presentation/synchronization
-    at a repeatable original book-page state. The earlier 120-field profile
-    begins during title/credit drawing and is not a book-page measurement.
-  - Inspect actual book source/destination colours before changing CopyBits
-    translation: different CLUT seeds alone do not establish different colours.
-    Reuse Vette's solutions where applicable and preserve logical pixels,
-    dirty bounds, palette mapping and VBI publication.
-
-  *Done when* a bounded native book-page profile identifies remaining dominant
-  costs, any resulting optimization has a before/after measurement and exact
-  state-paired output, and prior startup contracts still pass. Record whether
-  the book palettes actually differ; do not infer it from their seeds.
 - **M2.3g42 EmptyRgn at the post-intro transition.**
   - RectRgn now returns with matching region bytes, ownership and ABI.
     The next call is EmptyRgn (`$A8E2`) at Dark+$4182.

@@ -338,6 +338,7 @@ int16_t AitdScreen::presentMacFrame(const uint8_t* chunky,const uint8_t* colorTa
     }
     // Vette's explicit synchronization: bring the previous frame's changed
     // spans to the inactive bitmap before converting this frame's spans.
+    { AitdProfileScope profile(kProfileSync);
     for(uint16_t i=0;i<m_syncRectCount;++i) {
         const DirtyRect& r=m_syncRects[i];
         for(int16_t y=r.top;y<r.bottom;++y)for(uint16_t plane=0;plane<kPlanes;++plane) {
@@ -345,6 +346,8 @@ int16_t AitdScreen::presentMacFrame(const uint8_t* chunky,const uint8_t* colorTa
             for(int16_t x=r.left/8;x<r.right/8;++x)m_back[base+x]=m_chip[base+x];
         }
     }
+    }
+    { AitdProfileScope profile(kProfileC2P);
     for(uint16_t i=0;i<count;++i) {
         const Planar8::Rect& r=normalized[i];
         aitdKalmsC2PRect(chunky+uint32_t(r.top+cropTop)*640+cropLeft+r.left,
@@ -352,12 +355,15 @@ int16_t AitdScreen::presentMacFrame(const uint8_t* chunky,const uint8_t* colorTa
             uint32_t(r.right-r.left),uint32_t(r.bottom-r.top));
         m_syncRects[i]={r.top,r.left,r.bottom,r.right};
     }
+    }
     m_syncRectCount=count;
+    { AitdProfileScope profile(kProfilePalette);
     for(uint16_t i=0;i<256;++i) {
         const uint8_t* c=colorTable+10+i*8;
         m_nextPalette[i]=VideoColor::rgb(uint16_t(c[0])<<8|c[1],uint16_t(c[2])<<8|c[3],uint16_t(c[4])<<8|c[5]);
     }
     queueFrame(cropLeft,cropTop,false);
+    }
     return 1;
 }
 

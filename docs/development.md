@@ -4098,8 +4098,8 @@ clock bounds and configuration preservation across the original call.
 
 The earlier 120-field drawing profile starts during title/credit drawing,
 not a proven book-page state. Its different CLUT seeds do not establish that
-the book palettes differ. Book-specific profiling and palette evidence remain
-M2.3g41p2. Full intro frame acceptance remains M2.6/M2.10; rendered-window
+the book palettes differ. The later book-specific profile and actual palette
+comparison are recorded below. Full intro frame acceptance remains M2.6/M2.10; rendered-window
 verification remains owner-deferred. No original game instructions, palette
 mapping, animation calls or game delays change in this optimization.
 
@@ -4121,3 +4121,68 @@ real-hardware timing or a frame-rate claim. The earlier clean repeat returned
 at 18,231 ticks, before the observer boundary correction. Explicit dirty bounds,
 logical outputs and VBI publication remain unchanged; faster execution can
 coalesce a different number of pending presentations.
+
+
+## Book-frame batching and profile (M2.3g41p2)
+
+`make -C amiga BOOKPROFILE=1` (after clean) and the bounded
+`GDBSCRIPT=book_profile.gdb` observer sample the original decreasing book fold
+from column 160 to 150. This is six PaintRects and one CopyBits at a repeatable
+game state, not a presentation-count trigger. `tools/mac_book_frame.lua`
+captures those same two original Mac positions; no random-dependent state
+is selected by this book step. `tools/check_book_profile.py` checks original
+call bytes, complete native before/after logical buffers and CLUTs, the Mac
+client pair and independent AGA bitplane/copper decoding.
+
+The Kalms-only baseline (`tmp/m2-book-profile-baseline-full.log`, exit 0)
+takes 721,217 beam-epoch units and four presentations. Batching repeats
+(`tmp/m2-book-batch-profile-full.log` and `tmp/m2-book-batch-aga-full.log`,
+both exit 0) take 569,859 and 569,998 units, each with one presentation:
+about 21.0% less elapsed emulated time. All six baseline/optimized captures
+(begin/end full screens and CLUTs, source/destination CLUTs) are byte-identical.
+The second repeat independently passes all 64,000 AGA pixels, eight plane
+pointers, 256 colours, crop and VBI publication. These are observations on the
+owner-approved A4000/68EC020 test configuration with instrumentation, not
+real-hardware timings or shipping frame-rate claims.
+
+The repeated profile attributes 151,749 units to back-buffer synchronization,
+113,383 to CopyBits (including 38,371 for colour-map construction), 68,018 to
+Kalms conversion and 32,247 to six PaintRects. Presentation totals 232,418.
+These categories are inclusive/nested and must not be added as independent
+costs. Synchronization remains the largest individual measured phase; broad
+performance work remains deferred. This change only batches completed steps.
+
+Actual source/destination RGB16 differences in this sample are indices
+1, 15 and 191, despite unchanged seeds throughout the interval. The source
+values are black, white and black respectively; destination values are
+(63479,63479,63479), (25443,25443,25443), and (2056,6168,8481).
+Colour translation is retained. This measurement does not assert equality or
+differences for every intro palette.
+
+The Mac reference (`tmp/m2-book-reference.log`, exit 0) matches both logical
+palettes excluding their process-local seed. Every client pixel matches except
+653 beginning / 594 ending copyright pixels: each lies in D6's established
+placeholder region and corresponds to a differing title-source glyph pixel.
+Native batching introduces no additional differences. Rendered host-window
+acceptance remains owner-deferred; full intro frame acceptance remains M2.6/M2.10.
+
+Production acceptance: `tmp/m2-book-production-full.log` exits zero at the
+expected EmptyRgn (Dark+$4182). All 840 started book batches complete, with none
+active at the endpoint; all 16 effects stop and release their allocation.
+All 10,901 deferred services complete, with 249 OS windows and unchanged
+resource totals. Original MDRV remains absent. The intro returns D0=0 at
+14,938 emulated ticks / 956 publications, versus 18,262 / 3,823 with Kalms
+alone: 18.2% fewer ticks on the same test configuration. Final publication is
+959/959. Host tests and the production no-float/86-symbol audits pass.
+Five corrupt/timeout evidence cases are rejected by the book verifier.
+
+The first 40-check pass exposed one stale observer expectation: window LineTo's
+published frame was required to contain only that line. The line's original
+ABI, 200-pixel update and full-buffer preservation still pass unchanged.
+Publication now correctly contains the entire first book step. A separate
+original capture (`AITD_BOOK_COLUMN=260`, `tmp/m2-book-first-reference.log`,
+exit 0) establishes its matching completed 260→250 state. The updated checker
+requires successful reference status and matches all client pixels/palette,
+with only the established D6 copyright exception, before independently decoding
+AGA output. All 40 comparisons pass in `tmp/m2-book-production-regressions.log`.
+No runtime code was changed to resolve this observer expectation.

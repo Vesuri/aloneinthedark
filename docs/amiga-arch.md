@@ -45,6 +45,27 @@ CLUT. The current mode is PAL, with one-times fetch; NTSC and visible-pointer
 palette ownership remain M2.5 requirements. The pointer stays hidden for this
 startup path. See [aga-display.md](aga-display.md) for evidence and limitations.
 
+### Book-step presentation
+
+The original Dan1 decreasing/increasing book loops build one page-fold position
+through several immediate-mode QuickDraw calls. `bookFrameEdge` identifies their
+existing Toolbox boundaries, checks the live original instructions and caller
+frames, and holds presentation while dirty rectangles accumulate. No original
+instructions are patched. This follows Vette's completed-frame presentation gate.
+
+For decreasing folds, Dan2+$B46 (RGBForeColor), called from Dan1+$3FB4,
+starts the batch; Dark+$1DBC (CopyBits), called from Dan1+$402C or +$405A,
+finishes it. Increasing folds start with the leading copy at Dan1+$410A,
+or the line helper at +$4162 when there is no leading copy. Their final strip
+is Dan2+$D52 (PaintRect), reached through Dan2+$C8A from Dan1+$4182.
+The final standalone copy after that loop retains normal presentation.
+Each completed step passes its accumulated dirty rectangles to Kalms once;
+VBI retains ownership of publishing the bitmap and copper list. Mouse, event,
+audio and original VBL callbacks continue at their existing safe points.
+Unexpected nesting, stack/caller bytes or a publication inside a batch stop
+loudly. This boundary is specific to the proven book loops, not a generic
+QuickDraw end-of-frame signal.
+
 ### Point setup
 
 `SetPt` writes the two signed 16-bit coordinates in Macintosh vertical/horizontal

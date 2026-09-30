@@ -600,6 +600,12 @@ if $font_bodies!=2
  detach
  quit 1
 end
+printf "BOOK_LIFECYCLE active=%u begun=%u completed=%u\n",g_macBookFrameActive,g_macBookFramesBegun,g_macBookFramesCompleted
+if g_macBookFrameActive || !g_macBookFramesBegun || g_macBookFramesBegun!=g_macBookFramesCompleted
+ echo FAIL incomplete book batch at intro endpoint\n
+ detach
+ quit 1
+end
 printf "DRIVER_COUNTS prep=%u/%u app=%u/%u overlay=%u/%u windows=%u services=%u/%u lowmem=%u mask=%x resources=%u\n",g_overlaySourceReads,g_overlaySourceBytes,g_resourceRuntimeReads,g_resourceRuntimeBytes,g_overlayRuntimeReads,g_overlayRuntimeBytes,g_systemWindows,g_macServiceEntered,g_macServiceCompleted,g_lowMemoryAppliedSites,g_loadedCodeMask,g_resourceCount
 detach
 quit 0

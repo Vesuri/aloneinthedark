@@ -50,6 +50,7 @@ void aitd_user_exit_trampoline();
 void aitd_os_patch_return();
 void aitd_user_vbl_trampoline();
 extern volatile uint16_t g_macFramesPresented;
+extern volatile uint16_t g_macFramesQueued;
 extern volatile uint16_t g_vbiCount;
 #ifdef AITD_MAPPED_COPY_ASM
 void aitdMappedCopyRowsAsm(const uint8_t* source, uint8_t* destination,
@@ -101,9 +102,13 @@ volatile uint16_t g_jumpEntryCount = 0;
 volatile uint16_t g_blockMoveCount = 0;
 volatile uint16_t g_stageCDepth = 1;       // _BlockMove is row 1
 volatile uint32_t g_macTicks = 0;
+volatile uint16_t g_macBookFrameActive=0;
+volatile uint32_t g_macBookFramesBegun=0,g_macBookFramesCompleted=0;
 volatile uint32_t g_mouseVBISamples = 0;
 volatile uint32_t g_mouseVBIMoves = 0;
 #ifdef AITD_PROBE
+volatile uint32_t g_pageProfile[12] = {0};
+volatile uint16_t g_bookProfileStage=0;
 volatile uint32_t g_probeCopyMapIdentity = 0;
 volatile uint32_t g_probeCopyMapHits = 0;
 volatile uint32_t g_probeCopyMapMisses = 0;
@@ -343,6 +348,8 @@ static uint8_t** s_activePalette;
 struct CreatedPalette { uint8_t** handle;uint8_t** privateHandle; };
 static CreatedPalette s_createdPalettes[32];
 static bool s_screenDirty = true;
+static uint32_t s_bookFrameOwner=0;
+static uint16_t s_bookFrameColumn=0,s_bookFrameQueued=0;
 static bool s_pixelsDirty = false;
 static int16_t s_dirtyTop, s_dirtyLeft, s_dirtyBottom, s_dirtyRight;
 static AitdScreen::DirtyRect s_dirtyRects[AitdScreen::kMaxDirtyRects];
@@ -3738,6 +3745,7 @@ static bool eraseRect(const uint8_t* rectangle)
 
 static bool paintRect(const uint8_t* rectangle)
 {
+    AitdProfileScope profile(kProfilePaintRect);
     uint8_t* port=s_qdThePort ? (uint8_t*)read32(s_qdThePort) : 0;
     WindowSlot* window=windowSlot(port);
     // Owned window ports represent their default solid pen implicitly. Other
@@ -3965,6 +3973,7 @@ static __attribute__((noinline)) void packedLogicRowsC(
 static bool copyPortBits8(const uint8_t* sourceBitmap,const uint8_t* destinationBitmap,
                             const uint8_t* from,const uint8_t* to,uint16_t mode,const uint8_t* mask)
 {
+    AitdProfileScope profileCopy(kProfileCopyBits);
     if(mode!=0 || mask)return false;
     GWorldSlot* source=0;
     for(uint16_t i=0;i<sizeof(s_gworlds)/sizeof(s_gworlds[0]);++i)
@@ -3990,8 +3999,20 @@ static bool copyPortBits8(const uint8_t* sourceBitmap,const uint8_t* destination
     }
     uint8_t** vh=(uint8_t**)read32(port+24);uint8_t** ch=(uint8_t**)read32(port+28);
     if(!vh || !*vh || !ch || !*ch || read16(*vh)!=10 || read16(*ch)!=10)return false;
+#ifdef AITD_PROBE
+    extern volatile uint16_t g_profileState;
+    if(g_profileState==1) {
+        if(!g_pageProfile[3]) {
+            g_pageProfile[4]=(uint32_t)source->colorTable;
+            g_pageProfile[5]=(uint32_t)destinationColors;
+            g_pageProfile[6]=read32(source->colorTable);g_pageProfile[7]=read32(destinationColors);
+        } else if(g_pageProfile[10]!=read32(source->colorTable) || g_pageProfile[11]!=read32(destinationColors))++g_pageProfile[9];
+        ++g_pageProfile[3];g_pageProfile[10]=read32(source->colorTable);g_pageProfile[11]=read32(destinationColors);
+    }
+#endif
     uint8_t colors[256];const uint8_t* remap=0;
     if(read32(source->colorTable)!=read32(destinationColors)) {
+        AitdProfileScope profile(kProfileCopyMap);
         const uint8_t* ct=source->colorTable;
         if(read16(ct+6)!=255 || (read16(ct+4)!=0 && read16(ct+4)!=0x8000))return false;
         if(window && (!s_mainDeviceITableValid || read32(inverse)!=read32(destinationColors))
@@ -4939,6 +4960,7 @@ static bool drawGWorldText(GWorldSlot& w,const uint8_t* text,int16_t first,int16
 // The reached fill uses a solid foreground pen in an owned 8-bit world.
 static bool paintGWorldRect(GWorldSlot& w,const uint8_t* rectangle)
 {
+    AitdProfileScope profile(kProfilePaintRect);
     if(!rectangle || !w.locked || !w.pixels || read16(w.pixMap+32)!=8
        || (read16(w.port+56)!=0 && read16(w.port+56)!=8) || read16(w.port+66)
        || read16(*w.handles[7])!=0 || read32(w.port+80)>255)return false;
@@ -5535,6 +5557,14 @@ extern "C" void aitdVBLCallbackComplete()
 
 static void presentMacRuntime()
 {
+    AitdProfileScope profile(kProfilePresent);
+    if(g_macBookFrameActive) {
+#ifdef AITD_BOOK_PROFILE
+        extern volatile uint16_t g_profileState;
+        if(g_profileState==1)++g_pageProfile[8];
+#endif
+        return;
+    }
     if (!s_loudStopScreen) return;
     if(!s_screenDirty && !s_pixelsDirty)return;
     if(read16(s_windowManagerPixMap+32)!=8) {
@@ -5560,6 +5590,101 @@ static void presentMacRuntime()
         s_dirtyRects,s_dirtyRectCount,left,top,false);
     if(result<0) {loaderStop("DISPLAY INPUT",0);showLoaderStop();}
     if(result>0) {s_screenDirty=false;s_pixelsDirty=false;s_dirtyRectCount=0;}
+}
+
+// The original book loops construct one position using several immediate-mode
+// QuickDraw calls. Existing Toolbox edges delimit that construction; no game
+// instruction is patched. As in Vette's driving loop, only complete positions
+// are eligible for presentation. The event/audio safe points still run.
+static void bookFrameStop(const char* reason)
+{
+    loaderStop(reason,12);showLoaderStop();
+}
+
+static bool bookFrameRecord(uint32_t address,uint32_t& parent,uint32_t& caller)
+{
+    const uint32_t base=(uint32_t)g_macStackBase;
+    if(!base || (address&1) || address<base || address>base+65536-8) {
+        bookFrameStop("BOOK FRAME STACK");return false;
+    }
+    parent=read32((uint8_t*)address);caller=read32((uint8_t*)address+4);
+    return true;
+}
+
+static bool bookCallerBytes(uint32_t caller,uint32_t a5,uint32_t jump)
+{
+    if(read16((uint8_t*)caller-6)!=0x4eb9 || read32((uint8_t*)caller-4)!=a5+jump) {
+        bookFrameStop("BOOK FRAME CALLER BYTES");return false;
+    }
+    return true;
+}
+
+// 1/2 begin decreasing/increasing folds; 3/4 complete those folds.
+static uint16_t bookFrameEdge(uint16_t trap,uint32_t pc,const uint32_t* regs,uint32_t& owner)
+{
+    if(trap!=0xaa14 && trap!=0xa8ec && trap!=0xa8a2)return 0;
+    if(!s_segments[12].begin || !s_segments[13].begin || !s_segments[4].begin)return 0;
+    const uint32_t dan1=(uint32_t)s_segments[12].begin,dan2=(uint32_t)s_segments[13].begin;
+    const uint32_t dark=(uint32_t)s_segments[4].begin;
+    bool line=trap==0xaa14 && pc==dan2+0xb46;
+    bool copy=trap==0xa8ec && pc==dark+0x1dbc;
+    bool paint=trap==0xa8a2 && pc==dan2+0xd52;
+    if(!line && !copy && !paint)return 0;
+    uint32_t caller=0;
+    if(!bookFrameRecord(regs[14],owner,caller))return 0;
+    if(line && (caller==dan1+0x3fba || caller==dan1+0x4168)) {
+        if(read32((uint8_t*)pc-4)!=0x486effea || read16((uint8_t*)pc)!=0xaa14) {
+            bookFrameStop("BOOK FRAME LINE BYTES");return 0;
+        }
+        if(!bookCallerBytes(caller,regs[13],0x46a))return 0;
+        return caller==dan1+0x3fba ? 1 : 2;
+    }
+    if(copy && (caller==dan1+0x4032 || caller==dan1+0x4060 || caller==dan1+0x4110)) {
+        if(read32((uint8_t*)pc-4)!=0x426742a7 || read16((uint8_t*)pc)!=0xa8ec) {
+            bookFrameStop("BOOK FRAME COPY BYTES");return 0;
+        }
+        if(!bookCallerBytes(caller,regs[13],0x5ba))return 0;
+        return caller==dan1+0x4110 ? 2 : 3;
+    }
+    if(paint && caller==dan2+0xc8e) {
+        uint32_t outer=0;
+        if(!bookFrameRecord(owner,owner,outer))return 0;
+        if(outer!=dan1+0x4188)return 0;
+        if(read32((uint8_t*)pc-4)!=0x486efff0 || read16((uint8_t*)pc)!=0xa8a2
+           || read32(s_segments[13].begin+0xc8a)!=0x4eba000e
+           || read16((uint8_t*)regs[14]+0x10)!=24) {
+            bookFrameStop("BOOK FRAME LAST STRIP BYTES");return 0;
+        }
+        if(!bookCallerBytes(outer,regs[13],0x44a))return 0;
+        return 4;
+    }
+    return 0;
+}
+
+static void beginBookFrame(uint16_t mode,uint32_t owner,uint16_t column)
+{
+    if(g_macBookFrameActive) {
+        // A deferred trap can revisit the boundary. Increasing folds may
+        // enter at their leading copy and then reach the first line helper.
+        if(g_macBookFrameActive!=mode || s_bookFrameOwner!=owner || s_bookFrameColumn!=column)
+            bookFrameStop("BOOK FRAME NESTING");
+        return;
+    }
+    presentMacRuntime();
+    s_bookFrameOwner=owner;s_bookFrameColumn=column;s_bookFrameQueued=g_macFramesQueued;
+    g_macBookFrameActive=mode;++g_macBookFramesBegun;
+}
+
+static void finishBookFrame(uint16_t mode,uint32_t owner)
+{
+    if(g_macBookFrameActive!=mode || s_bookFrameOwner!=owner) {
+        bookFrameStop("BOOK FRAME END WITHOUT BEGIN");return;
+    }
+    if(g_macFramesQueued!=s_bookFrameQueued) {
+        bookFrameStop("BOOK FRAME PARTIAL PUBLICATION");return;
+    }
+    g_macBookFrameActive=0;s_bookFrameOwner=0;++g_macBookFramesCompleted;
+    presentMacRuntime();
 }
 
 static void serviceMacRuntime()
@@ -6417,6 +6542,10 @@ static uint32_t deferUserService(uint16_t trap,bool builtin,uint8_t* frame,uint8
 // AmigaDOS runs the application in user mode: parameters are on USP, while Line-A creates
 // an eight-byte format-0 frame on the 68020 supervisor stack. The Mac II runs
 // its application in supervisor mode; our Macintosh arguments remain on USP.
+#ifdef AITD_BOOK_PROFILE
+extern "C" __attribute__((noinline)) void aitdBookProfileCheckpoint() { __asm__ volatile("nop" ::: "memory"); }
+#endif
+
 static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
                                uint8_t* frame, uint8_t* userStack, bool inUserService=false)
 {
@@ -6426,11 +6555,38 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     bool sizeSelection=false;
     uint16_t fileTrap=0;
 #ifdef AITD_PROBE
+#ifdef AITD_BOOK_PROFILE
+    extern volatile uint16_t g_profileState;
+    // Measured original line helper, called by the decreasing page-fold loop.
+    // Bound the sample by game state, not a speed-dependent presentation count.
+    if(trap==0xaa14 && s_segments[12].begin && s_segments[13].begin
+       && pc==(uint32_t)s_segments[13].begin+0xb46 && regs[14]
+       && read32((uint8_t*)regs[14]+4)==(uint32_t)s_segments[12].begin+0x3fba) {
+        const uint16_t column=uint16_t(regs[7]);
+        if(read32((uint8_t*)pc-4)!=0x486effea || read16((uint8_t*)pc)!=0xaa14
+           || read16(s_segments[12].begin+0x3fb4)!=0x4eb9
+           || read32(s_segments[12].begin+0x3fb6)!=regs[13]+0x46a) {
+            g_bookProfileStage=99;aitdBookProfileCheckpoint();
+        }
+        if(!g_bookProfileStage && column==160) {
+            g_bookProfileStage=1;aitdBookProfileCheckpoint();aitdProfileStart();
+        } else if(g_bookProfileStage==1 && column==150) {
+            aitdProfileStop();g_bookProfileStage=2;aitdBookProfileCheckpoint();
+        }
+    }
+    if(g_profileState==1) {
+        if(trap==0xa8a2) {if(!g_pageProfile[1])g_pageProfile[0]=pc;++g_pageProfile[1];}
+        if(trap==0xa8ec && !g_pageProfile[2])g_pageProfile[2]=pc;
+    }
+#endif
     // Empty same-rate bracket: its total bounds the profiler's per-dispatch
     // observer cost and catches a timer whose apparent resolution is fiction.
     { AitdProfileScope profileControl(kProfileControl); }
     AitdProfileScope profileTrap(aitdProfileTrapCategory(trap));
 #endif
+    uint32_t bookOwner=0;
+    const uint16_t bookEdge=bookFrameEdge(trap,pc,regs,bookOwner);
+    if(bookEdge==1 || bookEdge==2)beginBookFrame(bookEdge,bookOwner,uint16_t(regs[7]));
     // Mouse position and button live in redirected low-memory shadows that
     // original code may read directly, so refresh them at every safe Line-A
     // boundary while keyboard polling remains independent.
@@ -7096,6 +7252,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         return 5;
     }
     if(trap==0xaa14 || trap==0xaa15) { // RGBForeColor / RGBBackColor
+        AitdProfileScope profile(kProfileColorLookup);
         uint8_t* port=s_qdThePort ? (uint8_t*)read32(s_qdThePort) : 0;
         GWorldSlot* world=gWorldForPort(port);
         const uint8_t* rgb=(const uint8_t*)read32(userStack);
@@ -7882,6 +8039,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         const uint8_t* rectangle = (const uint8_t*)read32(userStack);
         GWorldSlot* world=gWorldForPort((uint8_t*)read32(s_qdThePort));
         if (world ? paintGWorldRect(*world,rectangle) : paintRect(rectangle)) {
+            if(bookEdge==4)finishBookFrame(2,bookOwner);
             regs[0]=0;regs[1]=(regs[1]&0xffff0000UL)|8;
             regs[9]=read32(s_qdThePort);
             return 5;
@@ -7947,6 +8105,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
             if(!copyPortBits8((const uint8_t*)read32(userStack+18),(const uint8_t*)read32(userStack+14),
                 (const uint8_t*)read32(userStack+10),(const uint8_t*)read32(userStack+6),
                 read16(userStack+4),(const uint8_t*)read32(userStack)))goto unsupportedTrap;
+            if(bookEdge==3)finishBookFrame(1,bookOwner);
             regs[0]=0;return 23;
         }
         const uint8_t* destinationRect = (const uint8_t*)read32(userStack + 6);
@@ -8285,6 +8444,8 @@ bool MacLoader::prepareResourceForks(const ResourceForks::Source& application,co
     clearResidentSegments();
     g_resourceCount = 0;
     g_soundDriver.reset();g_soundDriverHandle=0;g_soundDriverCalls=0;
+    g_macBookFrameActive=0;g_macBookFramesBegun=g_macBookFramesCompleted=0;
+    s_bookFrameOwner=0;s_bookFrameColumn=s_bookFrameQueued=0;
     g_appleEventHandlers.reset();
     for(uint16_t i=0;i<ResourceForks::kMaximumResources;++i) { s_resourceHandles[i]=0;s_resourceChanges[i]=0; }
     for(auto& touched:s_resourceMapTouched)touched=false;

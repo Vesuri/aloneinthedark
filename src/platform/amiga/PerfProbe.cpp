@@ -63,15 +63,21 @@ void aitdProfileStart()
 #endif
 }
 
+void aitdProfileStop()
+{
+    if(g_profileState!=1)return;
+    g_profileStopEpoch=aitdProfileBeamEpoch();
+    g_profileStopField=g_vbiCount;
+    g_profileStopFrames=g_macFramesPresented;
+    g_profileState=2;
+}
+
 void aitdProfileOnVBI()
 {
 #ifdef AITD_PROBE_FIELDS
     if (g_profileState != 1
         || (uint16_t)(g_vbiCount - g_profileStartField) < AITD_PROBE_FIELDS) return;
-    g_profileStopEpoch = aitdProfileBeamEpoch();
-    g_profileStopField = g_vbiCount;
-    g_profileStopFrames = g_macFramesPresented;
-    g_profileState = 2;
+    aitdProfileStop();
 #endif
 }
 

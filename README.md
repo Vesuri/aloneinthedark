@@ -12,7 +12,9 @@ and Toolbox layer are carried over from Vette!; see
 ## Current state
 
 Production display conversion now uses Kalms eight-plane assembly on the 68020;
-the scalar converter remains only in host tests.
+the scalar converter remains only in host tests. Book-page drawing now batches
+each completed animation step before conversion; the measured whole intro uses
+18.2% fewer emulated ticks than Kalms alone on the temporary test configuration.
 
 Original 68020 game code now returns successfully from the **startup intro**. The MacPlay
 picture, its palette transitions and the logo match the Mac reference pixels
@@ -66,7 +68,7 @@ serve memory and resource handles. System identity and all eleven derived
 capability flags match the Mac reference. The user-mode service bridge passes
 its native ABI probe. OS windows and DOS/resload adapters pass the native/host
 core probes; rendered-picture acceptance is owner-deferred (M1.7b2). The next
-items are the owner-requested page-turn speedup, EmptyRgn and original PAK-read acceptance. Both original
+items are EmptyRgn and original PAK-read acceptance. Both original
 Times lookups now pass register, stack, error-state and installed-font checks. Fresh and existing preferences now request WIND 128
 through the original instructions, with only the size byte changed.
 The logical device has real 640×480×8 storage; its four selection calls match

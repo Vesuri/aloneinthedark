@@ -5,7 +5,7 @@ from pathlib import Path
 from check_aga_capture import check_frame
 ROOT=Path(__file__).resolve().parents[1]
 def read(side,phase,kind):return (ROOT/'tmp'/f'windowline-{side}-{phase}-{kind}.bin').read_bytes()
-def check(reference,status,native=None,native_status=None):
+def check(reference,status,native=None,native_status=None,book_reference_status=None):
     if status!=0 or reference.count('PASS original window LineTo fixtures=0')!=1 or reference.count('Exited via the debugger')!=1 or re.search(r'FAIL|LUA ERROR|Error in',reference):raise ValueError('reference completion')
     code=(ROOT/'tmp/segments/CODE_13_Dan2').read_bytes()
     if code[0xb52:0xb5c].hex()!='3eae000c3f2e000ea891' or 'LINE_BYTES 3EAE000C3F2E000EA891' not in reference:raise ValueError('original caller bytes')
@@ -52,7 +52,26 @@ def check(reference,status,native=None,native_status=None):
         m=re.search(r'WINDOWLINE_AGA front=([0-9A-F]+) copper=([0-9A-F]+) queued=(\d+) presented=(\d+) crop=160/150 pending=0 line=(\d+) late=0',log)
         if not m or m[3]!=m[4] or int(m[5])>=72 or log.count('PASS native window LineTo AGA publication')!=1:raise ValueError('VBI publication')
         folder=ROOT/'tmp';source=(folder/'aga-windowline-logical.bin').read_bytes();clut=(folder/'aga-windowline-clut.bin').read_bytes();transfer=(folder/'video-transfer-lut16.bin').read_bytes()
-        if source!=n1:raise ValueError('published logical buffer differs from completed line')
+        if source!=n1:
+            # A book batch publishes the complete 260->250 step, after the
+            # line, six shaded strips and final copy. Keep the independent
+            # line ABI/raster checks above; compare publication with that
+            # complete original Mac state instead of demanding a partial frame.
+            book_log=(folder/'m2-book-first-reference.log').read_text()
+            if (book_reference_status!=0 or 'FAIL' in book_log or book_log.count('PASS original book frame positions=260/250')!=1
+                or book_log.count('Exited via the debugger')!=1):raise ValueError('first book reference completion')
+            paired=(folder/'book-first-reference-end-screen.bin').read_bytes()
+            paired_clut=(folder/'book-first-reference-end-clut.bin').read_bytes()
+            if len(source)!=307200 or len(paired)!=307200 or clut[4:]!=paired_clut[4:]:raise ValueError('first book frame/palette extent')
+            original_title=(folder/'copylate-reference-enter-src-pixels.bin').read_bytes()
+            native_title=(folder/'copylate-native-enter-src-pixels.bin').read_bytes()
+            for y in range(200):
+                for x in range(320):
+                    at=(y+150)*640+x+160
+                    if source[at]!=paired[at] and not (37<=x<285 and 184<=y<200
+                            and original_title[y*652+x]!=native_title[y*652+x]):
+                        raise ValueError('unexplained completed book-step pixel difference')
+            print('PASS first book-step publication: original Mac pixels/palette, established D6 copyright exception')
         if hashlib.sha256(transfer).hexdigest()!='bf0a6433c155a61989e5dc0571bae1357066ab476a24d0afaf2e2aa7094fe2aa':raise ValueError('reference colour transfer')
         check_frame(folder,'aga-windowline-active',source,clut,160,150,int(m[1],16),transfer)
         for suffix in ('planes','copper'):
@@ -60,6 +79,6 @@ def check(reference,status,native=None,native_status=None):
         print('PASS native window LineTo: paired 200 pixels, complete buffer/records, ABI, exact dirty rectangle and AGA publication')
     print('PASS original window LineTo: bytes/ABI, pen, 200 clipped pixels and complete 307200-byte framebuffer')
 if __name__=='__main__':
-    p=argparse.ArgumentParser(description=__doc__);p.add_argument('reference',type=Path);p.add_argument('--status',required=True,type=int);p.add_argument('--native',type=Path);p.add_argument('--native-status',type=int);a=p.parse_args()
-    try:check(a.reference.read_text(),a.status,a.native,a.native_status)
+    p=argparse.ArgumentParser(description=__doc__);p.add_argument('reference',type=Path);p.add_argument('--status',required=True,type=int);p.add_argument('--native',type=Path);p.add_argument('--native-status',type=int);p.add_argument('--book-reference-status',type=int);a=p.parse_args()
+    try:check(a.reference.read_text(),a.status,a.native,a.native_status,a.book_reference_status)
     except (ValueError,OSError,KeyError,TypeError) as e:raise SystemExit('FAIL window LineTo: '+str(e))
