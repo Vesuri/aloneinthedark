@@ -14,10 +14,10 @@ design.md §5.
   low-resolution selection/cleanup, all 75 font-metrics calls and four Apple Event
   registrations, colour-table loading/mutations, palette construction and default
   binding, hidden window-title state and the verified WIND 128 request. Startup realizes the palette and clears the game client area, then stops at
-  `SETGWORLD` at Misc1+$0E0A after palette binding/activation, first-frame AGA
+  `LOCALTOGLOBAL` at Misc1+$0E20 after palette binding/activation, first-frame AGA
   publication, background ShowHide, game-port binding, TickCount, unchanged window geometry, point setup, empty-region allocation and eight-bit offscreen buffer initialization, pixel-address access and the first original image-row copy and hidden menu-list setup, followed by the 20-call image rectangle loop and the measured already-detached
   resource error, device-table world allocation and RGB foreground/background
-  selection, all twenty indexed picture draws and 220 original text measurements. The original
+  selection, all twenty indexed picture draws and 220 original text measurements, then binds the existing background window. The original
   mixer is never loaded.
 - The original runs in MAME on the System 7.5.5 reference volume.
 
@@ -51,14 +51,14 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.3g10 Subsequent drawing-port restoration.**
-  - All 220 original startup TextWidth calls now pass. Misc1 next reaches
-    SetGWorld at +$0E0A ($AB1D, selector 6), beyond the earlier accepted sites.
-  - Measure the original port/device arguments and ownership, and implement
-    the missing binding state without guessing or replacing the original call.
+- **M2.3g11 Background-window coordinate conversion.**
+  - The original background SetGWorld call now passes. Misc1 next reaches
+    LocalToGlobal at +$0E20 ($A870), followed by a second point at +$0E26.
+  - Measure both original points, selected port coordinates and return state;
+    implement the reached coordinate conversion without changing window geometry.
 
-  *Done when* this original binding and its preserved state match MAME, startup
-  reaches its next named stop with MDRV absent, and world/startup checks pass.
+  *Done when* both original conversions match MAME, startup reaches its next
+  named stop with MDRV absent, and coordinate/startup checks pass.
 - **M2.1c Original File Manager read acceptance (after M2.2).**
   - This retains M2.1's original acceptance; diagnostic fixture reads do not count
     as original-game reads. M2.1b2a measured the intervening Get1NamedResource

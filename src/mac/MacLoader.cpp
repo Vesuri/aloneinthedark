@@ -778,7 +778,7 @@ static const TrapName s_trapNames[] = {
     {0xaa2e,"GRAPHICS DEVICE MANAGER","INITGDEVICE"},
     {0xa047,"TRAP MANAGER","SETTRAPADDRESS"}, {0xa983,"DIALOG MANAGER","DISPOSEDIALOG"},
     {0xa850,"QUICKDRAW","INITCURSOR"}, {0xa9bc,"QUICKDRAW","GETPICTURE"},
-    {0xa886,"QUICKDRAW","TEXTWIDTH"}, {0xa8f6,"QUICKDRAW","DRAWPICTURE"}, {0xa89b,"QUICKDRAW","PENSIZE"},
+    {0xa870,"QUICKDRAW","LOCALTOGLOBAL"}, {0xa886,"QUICKDRAW","TEXTWIDTH"}, {0xa8f6,"QUICKDRAW","DRAWPICTURE"}, {0xa89b,"QUICKDRAW","PENSIZE"},
     {0xa89c,"QUICKDRAW","PENMODE"}, {0xa8a1,"QUICKDRAW","FRAMERECT"},
     {0xa8a7,"QUICKDRAW","SETRECT"},
     {0xa8a2,"QUICKDRAW","PAINTRECT"},
@@ -6566,7 +6566,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         WindowSlot* slot=windowSlot(port);
         WindowGeometry::Rect bounds;
         if(s_windowManager.initialized && s_qdThePort && s_mainDeviceMaster==s_mainDevice
-           && (!device || device==(uint8_t*)&s_mainDeviceMaster) && slot && port==s_windowList && port[110]
+           && (!device || device==(uint8_t*)&s_mainDeviceMaster) && slot && port[110]
            && colorWindowFrame(*slot,bounds) && read16(port+6)==0xc000
            && read32(slot->pixelMap)==(uint32_t)s_colorScreen && read16(slot->pixelMap+32)==8) {
             write32(s_qdThePort,(uint32_t)port);

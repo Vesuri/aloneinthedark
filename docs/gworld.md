@@ -189,3 +189,34 @@ layout change was needed. Shared startup, detachment, rectangle, font/driver,
 A5 and AGA checks pass. The next named stop is RGBForeColor at Dan2+$02BE;
 M2.3g7 retains colour selection acceptance. Earlier sections record their
 historical boundaries; current shared observers stop at RGBForeColor.
+
+
+## Visible background-window binding
+
+The original Misc1+$0E0A SetGWorld call selects the existing background window
+with a nil device. Its +$0DFE–$0E0B bytes are
+`2f2c000842a7203c00080006ab1d`. The window is visible and owned but is not
+frontmost. Binding therefore accepts validated visible screen-backed colour
+windows regardless of their position in the window list. It does not reorder
+windows, draw anything or change the viewport.
+
+The reference selects the main device, changes only the current-port pointer,
+returns D0=$0008C000, A0=port and A1=main-device handle, preserves D1–D7/A2–A6,
+and consumes eight bytes. Complete 156-byte window, 50-byte PixMap, 62-byte
+device and 307,200 screen bytes are unchanged. The background's local port
+rectangle is (0,0)–(16000,16000), with PixMap bounds (8000,8000)–(8480,8640).
+Native palette bytes, dirty/publication state and colour seed are also preserved.
+The Mac capture includes a 56-pixel clock-shaped cursor at (252,267)–(261,274);
+the checker validates its exact footprint. The native viewport remains clear.
+
+`mac_world_restore.lua` captures the original binding. The native
+`world_restore_call.gdb` is included within the shared startup observer's text
+loop, so all previous picture/text checks run in the same acceptance launch.
+The existing checker supports both the front and background cases:
+
+```
+python3 tools/check_world_binding.py tmp/m2-world-restore-reference-final.log tmp/m2-world-restore-native-final.log --reference-status 0 --native-status 0 --background
+```
+
+Use actual exit statuses; terminal markers and the next named stop/MDRV guard
+are required. The next original operation is LocalToGlobal at Misc1+$0E20.

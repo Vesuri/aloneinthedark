@@ -3119,3 +3119,25 @@ Current stop: QUICKDRAW / SETGWORLD at Misc1+$0E0A, selector 6. Counts are
 113 windows, 431 completed services and unchanged 62 resource reads / 265,454
 bytes. Fresh-preference counts (139 windows / 439 services) are derived, not
 newly accepted. Intro and rendered-window acceptance remain pending.
+
+
+## Background drawing-port binding
+
+M2.3g10 is complete. SetGWorld now accepts a validated owned visible colour
+window even when it is behind the front window. Original bytes and paired
+Mac/native capture prove the background-window binding and ABI; every window,
+PixMap, device and screen byte is unchanged. Native palette and publication
+state are unchanged. See [gworld.md](gworld.md#visible-background-window-binding).
+
+`tmp/m2-world-restore-reference-final.log` and
+`tmp/m2-world-restore-native-final.log` both exit 0 and pass the paired checker.
+The same final run passes all twenty pictures, 220 text measurements, installed
+fonts, driver/MDRV guard, AGA pixels/palette/publication and 75,616 A5 bytes.
+Offscreen inverse/layout sanitizer checks, startup checker tests, 70-script Lua
+audit and both link audits pass. Early reference attempts used the wrong segment
+base and are rejected. The final reference's later clock-shaped cursor is checked
+explicitly instead of reusing the earlier arrow's pixel count.
+
+Next is QUICKDRAW / LOCALTOGLOBAL at Misc1+$0E20. Counts remain 113 windows,
+431 services and 62 resource reads / 265,454 bytes. Fresh-preference counts
+remain derived. No rendered intro acceptance is claimed.

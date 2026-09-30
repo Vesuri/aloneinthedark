@@ -1,10 +1,14 @@
 set $tw_finished=0
 set $tw_n=0
 while $tw_finished==0
- tbreak dispatchMacTrap if trap==0xa886
+ tbreak dispatchMacTrap if trap==0xa886 || (trap==0xab1d && *(unsigned long*)(frame+2)==(unsigned long)s_segments[9].begin+0xe0a)
  continue
  if g_stageBState==3
   loop_break
+ end
+ if trap==0xab1d
+  source world_restore_call.gdb
+  loop_continue
  end
  set $tw_n=$tw_n+1
  set $tw_args=(unsigned long)userStack
