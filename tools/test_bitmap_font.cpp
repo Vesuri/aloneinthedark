@@ -21,8 +21,9 @@ int main(int argc,char** argv) {
         assert(font.pixel(0xfa,x,y)==bool(y<2 && x==2));
     }
     assert(font.pixel(0,0,0) && font.pixel(255,4,11));assert(!font.pixel(255,5,11));assert(!font.pixel('A',0,14));
-    const uint8_t copyright[7]={14,17,23,21,23,17,14},bullet[7]={0,0,4,14,4,0,0};
+    const uint8_t copyright[7]={14,17,23,21,23,17,14},bullet[7]={0,0,4,14,4,0,0},accent[7]={4,10,14,17,31,17,17};
     for(unsigned y=0;y<14;++y)for(unsigned x=0;x<5;++x) {
+        assert(font.pixel(0x89,x,y)==bool(y<12 && (accent[y*7/12]&(16>>x))));
         assert(font.pixel(0xa9,x,y)==bool(y<12 && (copyright[y*7/12]&(16>>x))));
         assert(font.pixel(0xa5,x,y)==bool(y<12 && (bullet[y*7/12]&(16>>x))));
     }

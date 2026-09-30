@@ -14,8 +14,9 @@ design.md §5.
   AGA publications pass memory/copper checks. Full intro acceptance remains open.
 - The title-screen copy now matches the Mac with documented placeholder text
   differences. The credits now use the measured 16-pixel line spacing and owned dot-above
-  artwork. Game-window lines and their AGA publication now pass. The next stop
-  is DrawText, Dan1+$0346 ($A885), for MacRoman $89 (â) in “Yaâl”.
+  artwork, including â in the original “Yaâl” credit. Game-window lines and
+  their AGA publication pass. The intro returns successfully after 5,606 frames;
+  the next stop is CopyBits, Dan2+$07FA ($A8EC).
   Intro LineTo and mode-0 fills match the Mac; the first raw effect plays on Paula and its
   real polling loop observes completion with sample/DMA cleanup verified.
   Detailed completed service contracts and regression evidence are in
@@ -52,21 +53,19 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.3g34 Intro accented-a glyph.**
-  - The native run passes the game-window transition and stops at Dan1+$0346
-    DrawText on bytes `5961896c` (“Yaâl” in MacRoman). The original Mac has the
-    same bytes; do not silently change the credit's spelling/encoding.
-  - Times/plain/14, mode 1, foreground 26, zero extra spacing, pen (v114,h99),
-    count 4, first 0. MacRoman $89 has no owned artwork and stops before drawing.
-    Reuse the measured advances, line metrics and owned renderer under D6.
-  - The original capture `tmp/m2-windowline-nextcredit-reference.log` reaches
-    this exact text/position and returns h125 with preserved metadata. Finish
-    paired glyph/pen/ABI acceptance using the existing text probe/checker.
+- **M2.3g35 Post-intro CopyBits.**
+  - After the original intro returns at Dark+$5220 with D0 zero, native
+    execution reaches CopyBits $A8EC at Dan2+$07FA. The original caller bytes
+    +$07E8–$07FB are `486800022f0c2f2e0008486efff8426742a7a8ec`;
+    mode is srcCopy (0) and the mask is nil.
+  - Measure this call's source/destination records, rectangles and complete
+    buffers against MAME. Extend the existing eight-bit copy path only for the
+    reached contract; other unsupported states remain named stops.
 
-  *Done when* the reached text is legible with explained placeholder differences,
-  original spacing/pen/ABI and full-buffer preservation pass, and startup reaches
-  its next named stop with window-line/AGA/credits/title/fill/effect/logo/palette
-  regressions passing and original MDRV absent.
+  *Done when* the original caller's arguments, ABI, pixels, clipping and any
+  screen publication match the reference, and the integrated run passes this
+  stop with the intro/credits/title/window-line/effect regressions and MDRV
+  absence verified.
 - **M2.1c Original File Manager read acceptance (after M2.2).**
   - This retains M2.1's original acceptance; diagnostic fixture reads do not count
     as original-game reads. M2.1b2a measured the intervening Get1NamedResource
@@ -166,6 +165,16 @@ required.
 
   *Done when* every Mac-font text reached so far renders legibly and in the right
   place (compared with MAME frames), and no font loud stop remains.
+- **M2.10a Retire stale standalone AGA endpoint assumptions.**
+  - `pixbase.gdb` still embeds an obsolete frame-4 AGA capture; standalone
+    `aga_startup.gdb` expects frame 9 at the latest loud stop. They must target
+    the measured publication itself, independent of later intro progress.
+  - The integrated `aga_startup_call.gdb` frame-9 and `windowline_call.gdb`
+    frame-117 captures already pass; retain their exact pixel/palette/VBI checks.
+
+  *Done when* standalone observers use positive publication checkpoints,
+  cannot overwrite startup evidence with a later frame, and pass their paired
+  checkers without depending on the current final loud stop.
 - **M2.10 Frame compare.**
   - Write `tools/compare_frames.py`.
   - Add the fixed-seed hook on both sides and the state keys for the intro.

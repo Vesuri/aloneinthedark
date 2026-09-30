@@ -3743,17 +3743,35 @@ matches that complete framebuffer, with identical queued/active bitplanes and
 copper and VBI line zero. Both full input screens equal the preceding title
 captures, including their documented Mac-desktop/placeholder differences.
 
-Current boundary: DrawText Dan1+$0346 on `5961896c` (“Yaâl”, MacRoman $89 is â),
-Times/plain/14, mode 1, pen (v114,h99), count 4, first 0. The original capture
-`tmp/m2-windowline-nextcredit-reference.log` also exits zero at that exact call,
-returning h125. This is the original spelling/encoding, not an owner-approved
-text correction. Its owned glyph is still missing and stops before drawing.
+## Accented intro credit and original intro return
 
-The final native run has 159 windows and 1,040/1,039 services, with one active;
-397 status queries give the fixed baseline 643/642. Fresh-pref baseline 651/650
-and 185 windows are derived, not fresh-start acceptance. The first effect has
-201 observed queries, zero additional scoped queries and cleanup after 232 ticks.
-Four effects have started, three have stopped, and the fourth remains active
-(channel 0, 10,202 allocated sample bytes); total driver calls are status queries
-plus ten. Application/overlay counts remain 68 / 333,998 and 31 / 82,238,
-preparation 64 / 82,810, CODE mask $3FFB, original MDRV absent. M2 remains open.
+M2.3g34 is complete. MacRoman $89 now has owned circumflex-A artwork; the
+original `5961896c` (“Yaâl”) bytes and all spacing remain unchanged. The paired
+contract and explained placeholder pixels are in [Font Manager](font-manager.md#accented-a-credit-glyph-m23g34).
+
+`tmp/m2-accenttext-reference.log` and `tmp/m2-accenttext-isolated-native.log`
+exit zero with positive completion. The native run returns from the original
+intro at Dark+$5220 with D0 zero after 5,606 frames. Its next named stop is
+CopyBits $A8EC at Dan2+$07FA (M2.3g35). All 33 integrated checks pass in
+`tmp/m2-accenttext-regressions.log`: the accented/copyright/dot-above text,
+window-line/AGA publication, title colour mapping, fills/lines, first-effect
+completion, logo/palettes, earlier publications and all 75,616 A5 bytes. The
+full host suite and clean no-float/82-probe build passed for the glyph change;
+changed-checker selftests, Python syntax and the 93-script MAME audit pass.
+
+The final capture records 159 system windows, 2,558/2,558 services, none active,
+and 1,310 status queries: fixed service baseline 1,248/1,248. The derived fresh
+baseline is 1,256/1,256 with 185 windows; this is not fresh-start acceptance.
+All sixteen effects have started and stopped, with channel -1 and zero sample
+allocation. Driver calls are status queries plus 34. The final publication is
+5,607/5,607. Application/overlay counts remain 68 / 333,998 and 31 / 82,238,
+preparation 64 / 82,810, CODE mask $3FFB, 58 low-memory sites, 244 resource
+records and original MDRV absent.
+
+A 1,200-second timeout, a stale text-only endpoint dump and two interrupted
+connections are rejected. M2.3g34a fixes the shared debugger-port collision;
+only the isolated normal-completion capture supplies final acceptance. The
+legacy standalone AGA observers have stale publication assumptions; M2.10a
+records that gap. The integrated frame-9 and window-line frame-117 publication
+checks pass. Full intro frame comparison and rendered-window acceptance remain
+open; this is not completion of M2.

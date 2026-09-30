@@ -70,7 +70,7 @@ stage. This is a placeholder, not Times artwork or an Apple font. Full lowercase
 style/size coverage and rendered placement remain M2.9.
 
 `tools/placeholder_font.py` encodes family 20 as a 60-byte FOND with one plain
-14-point association to NFNT 128. The 2,842-byte NFNT contains printable ASCII and the reached MacRoman ©/•/˙
+14-point association to NFNT 128. The 2,842-byte NFNT contains printable ASCII and the reached MacRoman ©/•/˙/â
 symbols, with missing boxes in unused slots: a 1104×14 monochrome bitmap,
 221 location words and 221 offset/width words. The fixed advance is six pixels, ascent twelve and descent
 two. Font type $3000 and FOND flags $C000 describe this restricted layout.
@@ -322,3 +322,36 @@ the owned stencil. Before this draw, the preceding “Published by” line diffe
 only inside its measured placeholder ink bounds; all other visible input pixels
 match. Logical 320×200 crops show both credits lines legibly at their measured
 baselines. These are logical-buffer images, not rendered-window acceptance.
+
+
+## Accented-a credit glyph (M2.3g34)
+
+The reached Dan1+$0346 call draws the original bytes `5961896c`, decoded as
+“Yaâl” in MacRoman. Keep the original bytes; correcting the name would change
+the game's text. The selected Times/plain/14 world, mode 1, foreground 26 and
+zero extra spacing are unchanged. From pen (v114,h99), fraction $8000, the Mac
+returns h125/$3200. A repeat ends at h150/$E400; MoveTo resets h99/$8000 and
+an empty draw preserves it. The original caller bytes remain `548f3e80a885`.
+
+The owned 5×7 Â shape compresses the capital A below a two-row circumflex,
+using the same lowercase-to-capitals placeholder convention. The renderer now
+admits MacRoman $89, while other unowned characters still stop. The existing
+NFNT range already covers this slot, so the font and overlay lengths do not
+change. `AITD_ACCENT_TEXT=1` selects this reference fixture in `mac_drawtext.lua`;
+`--accent` selects it in `check_drawtext.py`.
+
+The original reference fixtures, owned-font/Text8 checks, full host suite and
+clean 68020 build pass. `tmp/m2-accenttext-reference.log` and
+`tmp/m2-accenttext-isolated-native.log` finish normally; all 33 integrated
+comparisons pass in `tmp/m2-accenttext-regressions.log`. Native output matches
+the complete owned stencil, pen and register/stack contract, preserving every
+other byte of the port, pixel buffer and associated records. Logical crops were
+inspected. All 1,439 preceding-text differences stay inside the three explained
+placeholder credit boxes; no other visible input pixel differs.
+
+The original intro returns at Dark+$5220 with D0 zero after 5,606 frames, then
+stops at CopyBits Dan2+$07FA. Sixteen effects complete with no sample allocation
+remaining; all 2,558 services complete, and original MDRV remains absent. Earlier
+timeout, observer-error and debugger-port-collision runs are rejected. The
+accepted run uses the isolated debugger launcher (M2.3g34a). This completes the
+glyph prerequisite; full intro frame and rendered-video acceptance remain open.

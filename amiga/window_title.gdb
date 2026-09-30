@@ -67,7 +67,7 @@ dump binary memory ../tmp/title-native-input-after.bin (char*)$string (char*)$st
 echo PASS native title capture\n
 continue
 printf "TITLE_NEXT state=%u trap=%X selector=%X segment=%u offset=%X manager=%s routine=%s windows=%u services=%u/%u\n",g_stageBState,g_trapWord,g_trapSelector,g_trapSegment,g_trapOffset,g_trapManager,g_trapRoutine,g_systemWindows,g_macServiceEntered,g_macServiceCompleted
-if g_stageBState!=3 || g_trapWord!=0xa885 || g_trapSegment!=12 || g_trapOffset!=0x346 || *(unsigned long*)(g_trapRoutine+0)!=0x44524157 || *(unsigned long*)(g_trapRoutine+4)!=0x54455854 || g_trapRoutine[8]!=0 || g_macServiceActive!=1
+if g_stageBState!=3 || g_trapWord!=0xa8ec || g_trapSegment!=13 || g_trapOffset!=0x7fa || *(unsigned long*)(g_trapRoutine+0)!=0x434f5059 || *(unsigned long*)(g_trapRoutine+4)!=0x42495453 || g_trapRoutine[8]!=0 || g_macServiceActive!=0
  echo FAIL title next stop\n
  detach
  quit 1
@@ -82,6 +82,6 @@ while $i<g_resourceCount
  set $i=$i+1
 end
 printf "TITLE_COUNTS app=%u/%u overlay=%u/%u prep=%u/%u resources=%u\n",g_resourceRuntimeReads,g_resourceRuntimeBytes,g_overlayRuntimeReads,g_overlayRuntimeBytes,g_overlaySourceReads,g_overlaySourceBytes,g_resourceCount
-echo PASS native title next=DRAWTEXT original-MDRV=absent\n
+echo PASS native title next=COPYBITS original-MDRV=absent\n
 detach
 quit 0

@@ -21,7 +21,7 @@ inline bool draw(uint8_t* pixels,uint32_t capacity,uint16_t stride,
     for(uint16_t i=0;i<uint16_t(count);++i) {
         uint8_t c=text[uint32_t(first)+i];
         // Only characters with owned artwork are enabled, never the missing box.
-        if(!((c>=32 && c<=126) || c==0xa5 || c==0xa9 || c==0xfa))return false;
+        if(!((c>=32 && c<=126) || c==0x89 || c==0xa5 || c==0xa9 || c==0xfa))return false;
         uint32_t step=uint32_t(Times14Metrics::units(c))*299*256;
         if(advance>0x7fffffffUL-step)return false;
         advance+=step;

@@ -8,10 +8,10 @@ import unittest
 CALLS=['PASS native driver call: selector=21 D0=0 D1=0 preserved=13 stack=unchanged rate=22 voices=6/2/2',
        'PASS native driver call: selector=24 D0=0 D1=1 preserved=13 stack=unchanged rate=11 voices=6/2/2']
 SECOND = r'PASS font second: Dan1\+003A result=20 stack=\$[0-9a-fA-F]{8} native-driver-calls=2'
-ENDPOINT = 'MLIST_NEXT state=3 trap=A885 selector=FFFFFFFF segment=12 offset=346 manager=QUICKDRAW routine=DRAWTEXT windows=159 services=1039/1038 reads=68 bytes=333998'
+ENDPOINT = 'MLIST_NEXT state=3 trap=A8EC selector=FFFFFFFF segment=13 offset=7FA manager=QUICKDRAW routine=COPYBITS windows=159 services=2558/2558 reads=68 bytes=333998'
 GUARD = 'PASS menu-list next-stop original-MDRV=absent'
 DETACHED = '[Inferior 1 (Remote target) detached]'
-COMPLETE = 'PASS native driver startup: Jnth=11 calls=2 second-Times=20 next=DRAWTEXT original-MDRV=absent'
+COMPLETE = 'PASS native driver startup: Jnth=11 calls=2 second-Times=20 next=COPYBITS original-MDRV=absent'
 
 def check(text, status):
     if status != 0 or any(bad in text for bad in ('FAIL', 'Error in sourced command file', 'Program received signal', 'timeout')):
@@ -19,10 +19,10 @@ def check(text, status):
     second = re.findall(SECOND, text)
     if len(second) != 1:
         raise ValueError('missing/duplicate second Times lookup')
-    endpoints=re.findall(r'^MLIST_NEXT state=3 trap=A885 selector=FFFFFFFF segment=12 offset=346 manager=QUICKDRAW routine=DRAWTEXT windows=159 services=(\d+)/(\d+) reads=68 bytes=333998$',text,re.M)
-    if len(endpoints)!=1 or int(endpoints[0][0])!=int(endpoints[0][1])+1 or int(endpoints[0][1])<=642:
+    endpoints=re.findall(r'^MLIST_NEXT state=3 trap=A8EC selector=FFFFFFFF segment=13 offset=7FA manager=QUICKDRAW routine=COPYBITS windows=159 services=(\d+)/(\d+) reads=68 bytes=333998$',text,re.M)
+    if len(endpoints)!=1 or int(endpoints[0][0])!=int(endpoints[0][1]) or int(endpoints[0][1])<1248:
         raise ValueError('next stop / completed service ledger')
-    endpoint=ENDPOINT.replace('1039/1038','/'.join(endpoints[0]))
+    endpoint=ENDPOINT.replace('2558/2558','/'.join(endpoints[0]))
     markers = CALLS + second + [endpoint, GUARD, DETACHED]
     for marker in markers:
         if text.count(marker) != 1:
@@ -41,7 +41,7 @@ class Checks(unittest.TestCase):
                     (good.replace('D1=1', 'D1=0'), 0),
                     (good.replace('result=20', 'result=0'), 0),
                     (good.replace('native-driver-calls=2', 'native-driver-calls=1'), 0),
-                    (good.replace('services=1039/1038', 'services=433/432'), 0),
+                    (good.replace('services=2558/2558', 'services=433/432'), 0),
                     ('\n'.join(CALLS[::-1] + markers[2:]), 0),
                     ('\n'.join([second] + CALLS + markers[3:]), 0)]
         for marker in markers:

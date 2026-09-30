@@ -1,6 +1,8 @@
 -- Original intro text plus isolated repeat, MoveTo and empty-text fixtures.
 local dot=os.getenv('AITD_DOT_TEXT')=='1'
-local prefix=dot and 'dottext' or 'drawtext'
+local accent=os.getenv('AITD_ACCENT_TEXT')=='1'
+assert(not (dot and accent),'DRAWTEXT / CONFLICTING CAPTURE MODES')
+local prefix=accent and 'accenttext' or (dot and 'dottext' or 'drawtext')
 local mac=dofile('tools/mame_mac_input.lua')
 local meta=dofile('tmp/mac-trap-map.lua')
 local cpu=manager.machine.devices[':maincpu'];local mem=cpu.spaces.program
@@ -25,7 +27,7 @@ local metricOut;local metricRet
 local function arm()
  if dot then cpu.debug:bpset(0xdd60,cond..' && w@(d@(sp+2))==0xa88b && (d@(sp+2)&0xffffff)=='..base(12)..'+0x13c','')end
  if not thePort then cpu.debug:bpset(0xdd60,cond..' && w@(d@(sp+2))==0xa86e','')end
- cpu.debug:bpset(0xdd60,cond..' && w@(d@(sp+2))==0xa885 && (d@(sp+2)&0xffffff)=='..base(12)..'+0x346'..(dot and ' && w@(sp+0x8)==0x8 && w@(sp+0xa)==0x0 && w@(d@(sp+0xc))==0x49fa' or ''),'');dbg.execution_state='run'
+ cpu.debug:bpset(0xdd60,cond..' && w@(d@(sp+2))==0xa885 && (d@(sp+2)&0xffffff)=='..base(12)..'+0x346'..(accent and ' && w@(sp+0x8)==0x4 && w@(sp+0xa)==0x0 && d@(d@(sp+0xc))==0x5961896c' or '')..(dot and ' && w@(sp+0x8)==0x8 && w@(sp+0xa)==0x0 && w@(d@(sp+0xc))==0x49fa' or ''),'');dbg.execution_state='run'
 end
 local function log(label)
  local tail='';for _,r in ipairs(regs)do tail=tail..string.format(' %s=%08X',r:lower(),cpu.state[r].value)end
@@ -60,7 +62,7 @@ emu.register_periodic(function()
   startPoint=mem:read_u32(port+48);print('TEXT_BYTES '..bytes(ret-6,6));log('ENTER');phase='return';cpu.debug:bpset(ret,'1','');dbg.execution_state='run'
  else
   assert(cpu.state.PC.value==ret);log('RETURN');dbg:command('bpclear')
-  if fixture==3 then done=true;print('PASS original '..(dot and 'dot-above' or 'intro')..' DrawText fixtures=3');dbg:command('quit');return end
+  if fixture==3 then done=true;print('PASS original '..(accent and 'accented-a' or (dot and 'dot-above' or 'intro'))..' DrawText fixtures=3');dbg:command('quit');return end
   fixture=fixture+1
   if not scratch then scratch=(cpu.state.A7.value-16384)&0xfffffc;stack=scratch+8192;cpu.state.SR.value=cpu.state.SR.value|0x700 end
   mem:write_u16(scratch,0x4e71);mem:write_u16(scratch+2,fixture==2 and 0xa893 or 0xa885);mem:write_u16(scratch+4,0x4e71)

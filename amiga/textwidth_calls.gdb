@@ -94,6 +94,11 @@ while $tw_finished==0
    end
    if trap==0xa891
     source windowline_call.gdb
+    tbreak *((unsigned long)s_segments[12].begin+0x346) if *(unsigned short*)$sp==4 && *(unsigned short*)($sp+2)==0 && *(unsigned long*)*(unsigned long*)($sp+4)==0x5961896c
+    continue
+    tbreak dispatchMacTrap if trap==0xa885 && inUserService
+    continue
+    source accenttext_call.gdb
     continue
     loop_break
    end

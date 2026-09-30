@@ -21,7 +21,7 @@ def state(folder):
 
 def script(existing):
     # Completed service baseline before the variable number of effect queries.
-    windows,entered,completed=(159,643,642) if existing else (185,651,650)
+    windows,entered,completed=(159,1248,1248) if existing else (185,1256,1256)
     return (f'set $startup_catalog={42+int(existing)}\nset $startup_windows={windows}\nset $startup_entered={entered}\nset $startup_completed={completed}\n'
             f'printf "STARTUP_PREFS existing={int(existing)} windows={windows} services={entered}/{completed}\\n"\n')
 
@@ -46,8 +46,8 @@ class Checks(unittest.TestCase):
             (folder/'Alone Prefs.rsrc').write_bytes(raw[:-1])
             with self.assertRaises(ValueError):state(folder)
     def test_exact_modes(self):
-        self.assertIn('windows=185 services=651/650',script(False))
-        self.assertIn('windows=159 services=643/642',script(True))
+        self.assertIn('windows=185 services=1256/1256',script(False))
+        self.assertIn('windows=159 services=1248/1248',script(True))
 
 if __name__=='__main__':
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('--folder',type=Path);p.add_argument('--gdb',type=Path);p.add_argument('--selftest',action='store_true');a=p.parse_args()
