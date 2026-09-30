@@ -101,11 +101,13 @@ while $tw_finished==0
     source accenttext_call.gdb
     tbreak *((unsigned long)s_segments[4].begin+0x5220)
     continue
-    if $pc!=(unsigned long)s_segments[4].begin+0x5220 || $d0!=0
-     echo FAIL original intro return\n
+    if $pc!=(unsigned long)s_segments[4].begin+0x5220
+     echo FAIL original intro return address\n
      detach
      quit 1
     end
+    # Enter may end the intro early in service checks. Record its result;
+    # only D0=0 uninterrupted runs qualify as full-intro acceptance.
     printf "INTRO_PROGRESS second-return d0=%u frames=%u ticks=%u\n",$d0,g_macFramesPresented,g_macTicks
     tbreak *((unsigned long)s_segments[13].begin+0x7fa)
     continue
@@ -144,6 +146,9 @@ while $tw_finished==0
     tbreak dispatchMacTrap if trap==0xa8df
     continue
     source rectrgn_call.gdb
+    tbreak dispatchMacTrap if trap==0xa8e2
+    continue
+    source emptyrgn_call.gdb
     continue
     loop_break
    end

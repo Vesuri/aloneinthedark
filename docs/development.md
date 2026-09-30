@@ -4186,3 +4186,54 @@ requires successful reference status and matches all client pixels/palette,
 with only the established D6 copyright exception, before independently decoding
 AGA output. All 40 comparisons pass in `tmp/m2-book-production-regressions.log`.
 No runtime code was changed to resolve this observer expectation.
+
+
+## EmptyRgn (M2.3g42)
+
+The original call at Dark+$4182 has bytes
+`42272f39ffff4038a8e24a1f6608`: a byte Boolean in a word-aligned result slot,
+the region handle at A5−$BFC8, then a test of the returned byte. The Mac capture
+`tmp/m2-emptyrgn-reference-abi.log` exits zero with the canonical empty
+`000a0000000000000000` region unchanged. It writes result byte 1 while
+preserving padding `$12`, pops four argument bytes, returns D1=0,
+A0=region body+8 and A1=caller PC+2, and preserves D0/D2–D7/A2–A6 and MemErr.
+`tools/mac_emptyrgn.lua` and `tools/check_emptyrgn.py` retain that paired
+contract. Seven negative evidence cases reject timeout, missing return,
+incorrect Boolean/padding/registers and corrupted caller/region bytes.
+
+The implementation accepts the measured owned ten-byte canonical empty
+region, changes only the result byte and measured registers, and leaves its
+handle/body and memory error untouched. Other region forms remain named
+EmptyRgn stops, with nonempty/complex acceptance explicit in M2.8.
+The native observer captures the original caller, complete region and ABI
+before allowing the full startup regression to reach its next actual stop.
+
+The first native attempt ended when FS-UAE quit before the post-intro checkpoint;
+it is not acceptance. The repeat reached the original intro return address with
+a nonzero D0 and was rejected by the observer's uninterrupted-intro assumption.
+The owner authorizes Enter to advance service-check runs. The observer now records
+D0 at that return and proceeds to the actual service contract; an interrupted
+intro cannot count as full-intro/frame/timing acceptance. A PID-targeted host-key
+permission check denied event posting, so no key was sent by the agent.
+
+The service run (`tmp/m2-emptyrgn-service-full.log`) captures a matching native
+EmptyRgn result: true with native padding `$DE` preserved, identical region,
+D1=0, A0=body+8 and A1=caller+2. It proceeds to srcCopy at Dark+$1E4A with
+271 OS windows and all 12,004 services completed. Its final observer rejects
+the obsolete 249-window endpoint, so that run's exit 1 is not final acceptance.
+The corrected observer pins the measured CopyBits site and the additional 22
+windows for the final acceptance run. The intro itself returned
+D0=0 at 14,936 ticks. At the new stop, effect 17 is active after the earlier 16
+completed; this is further original execution, not an intro cleanup claim.
+
+Final acceptance: `tmp/m2-emptyrgn-final-full.log` exits zero at the measured
+CopyBits stop, Dark+$1E4A. All 41 comparisons pass in
+`tmp/m2-emptyrgn-regressions.log`, including the original/native EmptyRgn pair
+and all prior startup contracts. There are 271 OS windows, 12,007/12,007
+completed services and 960/960 publications; all 840 book batches complete.
+Resource totals remain 109/826,832 application, 31/82,238 overlay,
+64/82,810 preparation, 244 records and 58 low-memory sites. Original MDRV
+remains absent. Effect 17 is legitimately active at this later stop after the
+first 16 have completed. The 68020 no-float/86-symbol build audits and the
+updated shared startup-checker rejection test pass. Original call bytes and
+all unsupported region forms retain their explicit checks/stops.

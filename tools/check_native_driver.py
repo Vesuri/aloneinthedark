@@ -8,10 +8,10 @@ import unittest
 CALLS=['PASS native driver call: selector=21 D0=0 D1=0 preserved=13 stack=unchanged rate=22 voices=6/2/2',
        'PASS native driver call: selector=24 D0=0 D1=1 preserved=13 stack=unchanged rate=11 voices=6/2/2']
 SECOND = r'PASS font second: Dan1\+003A result=20 stack=\$[0-9a-fA-F]{8} native-driver-calls=2'
-ENDPOINT = 'MLIST_NEXT state=3 trap=A8E2 selector=FFFFFFFF segment=4 offset=4182 manager=UNKNOWN MANAGER routine=UNKNOWN TRAP windows=249 services=3825/3825 reads=109 bytes=826832'
+ENDPOINT = 'MLIST_NEXT state=3 trap=A8EC selector=FFFFFFFF segment=4 offset=1E4A manager=QUICKDRAW routine=COPYBITS windows=271 services=3825/3825 reads=109 bytes=826832'
 GUARD = 'PASS menu-list next-stop original-MDRV=absent'
 DETACHED = '[Inferior 1 (Remote target) detached]'
-COMPLETE = 'PASS native driver startup: Jnth=11 calls=2 second-Times=20 next=EMPTYRGN original-MDRV=absent'
+COMPLETE = 'PASS native driver startup: Jnth=11 calls=2 second-Times=20 next=COPYBITS original-MDRV=absent'
 
 def check(text, status):
     if status != 0 or any(bad in text for bad in ('FAIL', 'Error in sourced command file', 'Program received signal', 'timeout')):
@@ -19,7 +19,7 @@ def check(text, status):
     second = re.findall(SECOND, text)
     if len(second) != 1:
         raise ValueError('missing/duplicate second Times lookup')
-    endpoints=re.findall(r'^MLIST_NEXT state=3 trap=A8E2 selector=FFFFFFFF segment=4 offset=4182 manager=UNKNOWN MANAGER routine=UNKNOWN TRAP windows=249 services=(\d+)/(\d+) reads=109 bytes=826832$',text,re.M)
+    endpoints=re.findall(r'^MLIST_NEXT state=3 trap=A8EC selector=FFFFFFFF segment=4 offset=1E4A manager=QUICKDRAW routine=COPYBITS windows=271 services=(\d+)/(\d+) reads=109 bytes=826832$',text,re.M)
     if len(endpoints)!=1 or int(endpoints[0][0])!=int(endpoints[0][1]) or int(endpoints[0][1])<1390:
         raise ValueError('next stop / completed service ledger')
     endpoint=re.sub(r'services=\d+/\d+', 'services='+'/'.join(endpoints[0]), ENDPOINT)

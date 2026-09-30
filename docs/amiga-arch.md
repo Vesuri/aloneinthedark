@@ -92,6 +92,11 @@ HGetState and HandleZone. `newrgn.gdb` verifies the native master slot, owning
 block, logical length and flags; `check_newrgn.py` pairs the contracts. Original
 Misc2+$1D9C–$1DA9 has SHA-256
 `fb490c8d89ec18e2450bab69eff1861a43f579444050b9850a75e26b8c3390b7`.
+`EmptyRgn` at Dark+$4182 queries an owned canonical empty ten-byte region.
+It preserves its bytes and Boolean padding, writes true, and reproduces the
+measured D1/A0/A1 results. Unsupported nonempty/complex forms remain named
+stops. `mac_emptyrgn.lua`, `emptyrgn_call.gdb` and `check_emptyrgn.py` retain the
+original/native calling contract.
 Broader region operations and clipped drawing remain M2.8 work.
 
 See [offscreen worlds](gworld.md) for the real eight-bit allocation, private

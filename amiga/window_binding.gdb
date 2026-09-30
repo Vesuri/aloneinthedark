@@ -24,7 +24,7 @@ printf "WSET_ENTER sp=%X args=%04X/%08X/%08X d0=%X d1=%X d2=%X d3=%X d4=%X d5=%X
 printf "WSET_BYTES data=%04X%04X%04X%04X%04X%04X%04X%04X%04X%04X\n",*(unsigned short*)($misc+0x10e8),*(unsigned short*)($misc+0x10ea),*(unsigned short*)($misc+0x10ec),*(unsigned short*)($misc+0x10ee),*(unsigned short*)($misc+0x10f0),*(unsigned short*)($misc+0x10f2),*(unsigned short*)($misc+0x10f4),*(unsigned short*)($misc+0x10f6),*(unsigned short*)($misc+0x10f8),*(unsigned short*)($misc+0x10fa)
 # Capture the service itself after presentMacRuntime consumes the prior clear.
 # This source boundary is immediately before window binding validation.
-tbreak MacLoader.cpp:7761
+tbreak MacLoader.cpp:7773
 continue
 if s_windows[$slot].palette!=0 || g_macFramesQueued!=1 || s_pixelsDirty || s_dirtyRectCount!=0
  echo FAIL window binding service boundary\n

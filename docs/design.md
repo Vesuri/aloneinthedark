@@ -221,7 +221,7 @@ The original startup path is implemented (M1.1–M1.3):
 **Verified:** the host check `tools/a5world_check.py` passes: it runs
 CODE 1's expansion algorithm on the resource bytes and compares, byte for byte,
 with the A5 world the Amiga dumps (via gdb) when it enters `main`. The current
-loud stop is EmptyRgn at Dark+$4182 after the original intro returns successfully.
+loud stop is CopyBits at Dark+$1E4A after the original intro returns successfully.
 Native song start retains its measured resources, and clock/status queries pass. Post-intro offscreen copying and GetKeys pass their paired checks. Title presentation, offscreen/window lines and fills,
 owned credits and sixteen completed effects precede this stop. Startup passes the native
 driver calls, both Times lookups, hidden window/menu setup and eight-bit

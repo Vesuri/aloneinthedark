@@ -21,7 +21,8 @@ design.md §5.
   selector 0 now retains and arms song $87 with verified native playback.
   The clock query now passes its original ABI and 32-bit condition-code checks.
   Song-status selector 4 now passes its original ABI and flags; the next stop
-  is EmptyRgn at Dark+$4182. RectRgn now passes exact region/ABI checks.
+  is CopyBits at Dark+$1E4A. RectRgn and the reached canonical-empty
+  EmptyRgn now pass exact region/ABI checks.
   Intro LineTo and mode-0 fills match the Mac; the first raw effect plays on Paula and its
   real polling loop observes completion with sample/DMA cleanup verified.
   Detailed completed service contracts and regression evidence are in
@@ -58,14 +59,17 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.3g42 EmptyRgn at the post-intro transition.**
-  - RectRgn now returns with matching region bytes, ownership and ABI.
-    The next call is EmptyRgn (`$A8E2`) at Dark+$4182.
-  - Original +$417A–$4187 bytes are `42272f39ffff4038a8e24a1f6608`:
-    a Boolean result slot and the region handle at A5−$BFC8.
+- **M2.3g43 Post-intro CopyBits at Dark+$1E4A.**
+  - After EmptyRgn, the original reaches another srcCopy call with no mask.
+    The original +$1E3E–$1E4B bytes are
+    `486efff8486efff8426742a7a8ec`; both rectangle arguments use A6−8.
+  - Measure the actual source/destination PixMaps, clipping and colour tables
+    before extending the supported copy path. A new effect has started by this
+    point; do not mistake it for a leaked intro effect.
 
-  *Done when* the reached original call returns with matching Boolean, stack,
-  registers and unchanged region, and prior startup contracts still pass.
+  *Done when* the reached original copy returns with matching defined pixels,
+  unchanged bytes outside its destination, palette mapping and stack/register
+  contract, appropriate dirty publication, and prior startup checks pass.
 - **M2.1c Original File Manager read acceptance (after M2.2).**
   - This retains M2.1's original acceptance; diagnostic fixture reads do not count
     as original-game reads. M2.1b2a measured the intervening Get1NamedResource
@@ -157,6 +161,8 @@ required.
 - **M2.8 Regions and polygons.** Implement real QuickDraw regions and polygons,
   with host fixtures. Include RectRgn resizing, empty/inverted rectangles and
   ownership variants beyond the measured ten-byte, nonempty startup case.
+  Extend EmptyRgn beyond the measured canonical empty region with paired
+  nonempty/complex-region results and register/Boolean-padding checks.
 
   *Done when* the host tests pass and region-clipped draws in the screens reached
   so far match MAME.
@@ -275,6 +281,19 @@ required.
   *Done when* each reached variant has paired original/native playback events,
   exact loop/sample ownership checks and verified stop/replacement cleanup;
   unsupported variants retain named stops.
+
+- **M4.3b Investigate reported grainy music playback.**
+  - The owner hears persistent grain/buffering-like breakup during diagnostic
+    playback. Current runs use warp and debugger pauses; the emulator log
+    confirms warp/no full synchronization but reports no audio underrun.
+  - Compare an uninterrupted, non-warp run with the diagnostic run. Inspect
+    emulator audio timing and native Paula sample/loop/note timing before
+    attributing the symptom to host speed or normal 8-bit quantization.
+
+  *Done when* a repeatable listening/capture test establishes the cause,
+  any playback defect is fixed with regression evidence, and remaining
+  sample-fidelity limitations are explained. Do not infer audio quality from
+  successful note-event tests alone.
 
 ## M5 Performance
 
