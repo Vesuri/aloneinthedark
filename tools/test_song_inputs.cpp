@@ -17,6 +17,17 @@ static std::vector<uint8_t> load(const char* name) {
     return std::vector<uint8_t>(std::istreambuf_iterator<char>(file),{});
 }
 int main(int argc,char** argv) {
+    unsigned long long random=0x83e473991035ef83ULL;
+    for(unsigned i=0;i<2000;++i) {
+        random=random*6364136223846793005ULL+1;auto numerator=random;
+        random=random*6364136223846793005ULL+1;auto denominator=(i&1) ? random : random>>32;
+        uint32_t result=0;bool okay=SongVoice::divide(numerator,denominator,result);
+        assert(okay==(denominator && numerator/denominator<=0xffffffffULL));
+        if(okay)assert(result==numerator/denominator);
+    }
+    uint32_t quotient=0;assert(!SongVoice::divide(1,0,quotient));
+    assert(SongVoice::divide(0xffffffffffffffffULL,0xffffffffffffffffULL,quotient) && quotient==1);
+    assert(!SongVoice::divide(0x100000000ULL,1,quotient));
     uint8_t config[]={0,1,0,4,0,0,0,0,1,6,0,3,0x22,5,0,0,0,0};
     Song song;assert(!song.parse(config,sizeof(config)));
     Midi decoder;Event event;

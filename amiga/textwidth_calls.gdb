@@ -132,6 +132,9 @@ while $tw_finished==0
     tbreak dispatchMacTrap if inUserService && trap==0xa0f8
     continue
     source driver13_call.gdb
+    tbreak *(g_code3Base+0x138c)
+    continue
+    source song_start_call.gdb
     continue
     loop_break
    end

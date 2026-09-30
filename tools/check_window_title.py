@@ -130,7 +130,7 @@ def check_native(text, status, folder, code, initial_title):
     ports = fields(one(text, r'TITLE_PORT phase=before (.*)'))
     if not ports['current'] or ports['current'] != ports['wmgr'] or fields(one(text, r'TITLE_PORT phase=after (.*)')) != ports:
         raise ValueError('native title port preservation')
-    one(text, r'TITLE_NEXT state=3 trap=A0F8 selector=0 segment=3 offset=138C manager=SOUND DRIVER routine=SELECTOR windows=\d+ services=(\d+/\d+)')
+    one(text, r'TITLE_NEXT state=3 trap=A0F8 selector=F segment=3 offset=FC8 manager=SOUND DRIVER routine=SELECTOR windows=\d+ services=(\d+/\d+)')
 
 
 class Checks(unittest.TestCase):

@@ -221,8 +221,8 @@ The original startup path is implemented (M1.1–M1.3):
 **Verified:** the host check `tools/a5world_check.py` passes: it runs
 CODE 1's expansion algorithm on the resource bytes and compares, byte for byte,
 with the A5 world the Amiga dumps (via gdb) when it enters `main`. The current
-loud stop is native sound-driver selector 0 at Core+$138C after the original intro
-returns successfully. Post-intro offscreen copying and GetKeys pass their paired checks. Title presentation, offscreen/window lines and fills,
+loud stop is native sound-driver selector 15 at Core+$0FC8 after the original intro
+returns successfully and native song start retains its measured resources. Post-intro offscreen copying and GetKeys pass their paired checks. Title presentation, offscreen/window lines and fills,
 owned credits and sixteen completed effects precede this stop. Startup passes the native
 driver calls, both Times lookups, hidden window/menu setup and eight-bit
 offscreen initialization, original image-row copying and the 20-call rectangle

@@ -1,0 +1,82 @@
+set pagination off
+set confirm off
+set width 0
+break AitdScreen::showLoudStop
+tbreak aitdSongProbeArmed
+continue
+if g_song.ownedCount!=41 || g_song.sampleCount!=28 || g_song.id!=135 || g_song.midiId!=905 || g_song.events!=0 || g_song.timeline.pulses!=0 || g_songProbeEffects!=0
+ echo FAIL song probe armed state\n
+ detach
+ quit 1
+end
+printf "SONG_PROBE_ARMED song=%u midi=%u owned=%u samples=%u tick=%u\n",g_song.id,g_song.midiId,g_song.ownedCount,g_song.sampleCount,g_macTicks
+tbreak aitdSongVoiceStarted if g_song.voices[g_songLastVoice].stride==1
+continue
+set $slot=g_songLastVoice
+set $voice=&g_song.voices[$slot]
+set $channel=g_soundDriver.songs[$slot].channel
+if $voice->stride!=1 || $channel<0 || g_soundDriver.channels[$channel]!=$slot || !g_soundDriver.songs[$slot].active || (*(unsigned short*)0xdff002 & (1<<$channel))==0
+ echo FAIL song probe DMA ownership\n
+ detach
+ quit 1
+end
+printf "SONG_PROBE_PCM stride=%u period=%u sample=%u note=%u instrument=%u midiChannel=%u channel=%u allocated=%u chip=%X dma=%X\n",$voice->stride,$voice->period,$voice->sample,$voice->note,$voice->instrument,$voice->channel,$channel,$voice->allocated,$voice->chip,*(unsigned short*)0xdff002
+dump binary memory ../tmp/song-probe-pcm-1.bin $voice->chip $voice->chip+$voice->allocated
+tbreak aitdSongVoiceStarted if g_song.voices[g_songLastVoice].stride==2
+continue
+set $slot=g_songLastVoice
+set $voice=&g_song.voices[$slot]
+set $channel=g_soundDriver.songs[$slot].channel
+if $voice->stride!=2 || $channel<0 || g_soundDriver.channels[$channel]!=$slot || !g_soundDriver.songs[$slot].active || (*(unsigned short*)0xdff002 & (1<<$channel))==0
+ echo FAIL song probe DMA ownership\n
+ detach
+ quit 1
+end
+printf "SONG_PROBE_PCM stride=%u period=%u sample=%u note=%u instrument=%u midiChannel=%u channel=%u allocated=%u chip=%X dma=%X\n",$voice->stride,$voice->period,$voice->sample,$voice->note,$voice->instrument,$voice->channel,$channel,$voice->allocated,$voice->chip,*(unsigned short*)0xdff002
+dump binary memory ../tmp/song-probe-pcm-2.bin $voice->chip $voice->chip+$voice->allocated
+tbreak aitdSongProbePlaybackComplete
+continue
+if g_songTraceCount!=3736 || g_song.events!=3736 || g_songProbeEffects!=2 || g_song.timeline.active
+ echo FAIL song probe complete sequence\n
+ detach
+ quit 1
+end
+printf "SONG_PROBE_PLAYBACK events=%u pulses=%u starts=%u steals=%u dropped=%u effects=%u/%u tick=%u\n",g_song.events,g_song.timeline.pulses,g_song.starts,g_song.steals,g_song.dropped,g_effectStarts,g_effectStops,g_macTicks
+dump binary memory ../tmp/song-probe-events.bin (char*)g_songTrace (char*)g_songTrace+g_songTraceCount*40
+tbreak aitdSongProbeComplete
+continue
+if g_song.ownedCount!=0 || g_song.sampleCount!=0 || g_song.playing || !g_songProbeHeapOK
+ echo FAIL song probe cleanup state\n
+ detach
+ quit 1
+end
+set $i=0
+while $i<6
+ if g_song.voices[$i].chip!=0 || g_song.voices[$i].allocated!=0 || g_soundDriver.songs[$i].channel!=-1 || g_soundDriver.songs[$i].active || g_soundDriver.songs[$i].sample
+  echo FAIL song probe voice cleanup\n
+  detach
+  quit 1
+ end
+ set $i=$i+1
+end
+set $i=0
+while $i<4
+ if g_soundDriver.channels[$i]!=-1
+  echo FAIL song probe channel cleanup\n
+  detach
+  quit 1
+ end
+ set $i=$i+1
+end
+set $i=0
+while $i<g_resourceCount
+ if s_resourceForks.m_items[$i].item.type==0x4d445256 && s_resourceHandles[$i]!=0
+  echo FAIL song probe original MDRV resident\n
+  detach
+  quit 1
+ end
+ set $i=$i+1
+end
+echo PASS native full song: playback, effect priority, PCM variants, cleanup and original MDRV absent\n
+detach
+quit 0

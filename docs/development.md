@@ -3928,3 +3928,41 @@ exits zero in `tmp/m2-song-voices-host-tests.log`; standalone 68020 compilation
 uses only integer arithmetic. [Sound driver](sound-driver.md) records the
 measured clock and D8 waveform conversion. Production remains unchanged and
 selector-zero integration is still M2.3g38.
+
+
+## Native SONG 135 playback
+
+M2.3g38 is complete. The original selector-zero caller returns successfully
+with its measured ABI and 41 detached, locked resources. The full native capture
+is `tmp/m2-song-runtime-discover-full.log` (exit zero). All 36 prior integrated
+checks pass in `tmp/m2-song-runtime-regressions.log`. The intro returns D0=0
+at 5,584 frames / 47,708 ticks; final publication is 5,587/5,587. The next named
+stop is selector 15, argument zero, Core+$0FC8 (M2.3g39).
+
+The dedicated `SONGPROBE=1` build avoids replaying the intro for full music
+validation. `tmp/m2-song-probe-native-full.log` exits zero and matches all
+3,736 original timed events, two complete Paula PCM/DMA variants, effect
+priority/natural completion and resource/channel cleanup. It runs native code
+and original resource data; no MDRV or SMOD code executes. Details and
+reproducible checks are in [sound-driver.md](sound-driver.md).
+
+The host suite exits zero in `tmp/m2-song-runtime-final-host-tests.log`, and
+eight rejection checks pass in `tmp/m2-song-runtime-rejections.log`. Production
+and fixture builds pass no-float audits with 83/88 retained probe symbols.
+The initial integration exposed unavailable integer `__udivdi3` at link time;
+bounded integer division replaces it, with 2,000 independent host comparisons.
+No timeout or failed link is counted as acceptance. The integrated run used a
+123-probe build; the focused fixture and final production use their normal
+88/83-symbol configurations. The final release-error guard does not change
+successful disposal behavior.
+
+At the new stop: 249 system windows, 2,752/2,751 services with one explicit
+pending request and 1,363 completed effect queries. The fixed baseline is
+1,389/1,388; fresh-pref 1,397/1,396 and 275 windows remain derived, awaiting M2.4.
+Driver calls are queries plus 37. All sixteen intro effects are stopped with
+no remaining effect allocation. Application resources are 109 reads / 826,832
+bytes; overlay 31 / 82,238 and preparation 64 / 82,810. The 244 metadata records,
+58 low-memory patches and CODE mask $3FFB remain unchanged. Song ownership is
+real, but normal startup reaches the next selector before its first note; the
+complete playback evidence comes from the dedicated fixture. M2 and rendered
+acceptance remain open.

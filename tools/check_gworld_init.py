@@ -69,5 +69,5 @@ print('PASS paired initialization: original bytes, eight call returns, records, 
 
 text=a.native.read_text()
 assert re.findall(r'^GWLOCK state=([0-9A-F]+)$',text,re.M)==['1','1','1','81','81','81','1','1']
-assert 'GWINIT_NEXT trap=A0F8 selector=0 segment=3 offset=138C manager=SOUND DRIVER routine=SELECTOR' in text
+assert 'GWINIT_NEXT trap=A0F8 selector=F segment=3 offset=FC8 manager=SOUND DRIVER routine=SELECTOR' in text
 print('PASS native real heap lock states and named startup progression')

@@ -18,7 +18,8 @@ design.md §5.
   their AGA publication pass. The intro returns successfully;
   the post-intro offscreen copy also matches. GetKeys now passes its original-call and native
   held/released-key checks. Selector 13 now passes its control-word/ABI checks;
-  the next stop is selector 0, song $87, at Core+$138C.
+  selector 0 now retains and arms song $87 with verified native playback.
+  The next stop is selector 15 at Core+$0FC8.
   Intro LineTo and mode-0 fills match the Mac; the first raw effect plays on Paula and its
   real polling loop observes completion with sample/DMA cleanup verified.
   Detailed completed service contracts and regression evidence are in
@@ -55,24 +56,19 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.3g38 Native sound-driver selector 0.**
-  - Selector 13 now stores the measured control word and returns successfully.
-    Execution reaches selector 0, argument $87, at Core+$138C. Original bytes
-    +$1382–$138F are `2f2e000842a7206df9544e90508f`.
-  - M2.3g38a now supplies bounded SONG/MIDI/INST/sample descriptions and an
-    exact 3,736-event preflight match. The original request retains 41 resources
-    and arms MIDI 905; its ownership/state capture passes. M2.3g38b now matches
-    all 3,736 live notes at exact sequencer steps with an integer clock.
-    M2.3g38c supplies paired sample/pitch/loop plans and verified Paula PCM
-    conversion, including the reached high-note decimation.
-  - Implement the reached native D8 contract, including resource lifetime,
-    timed sequencing and required Paula sample/voice behavior. Bring required song/instrument handling
-    forward from M4 as needed; never run MDRV or report unsupported music as
-    successful. Other unimplemented calls remain named stops.
+- **M2.3g39 Native sound-driver selector 15.**
+  - Selector 0 now returns successfully, retaining the measured 41-resource
+    graph and arming SONG 135/MIDI 905. A complete native playback fixture
+    matches all 3,736 timed events and verifies Paula PCM and cleanup.
+  - The original caller next requests selector 15, argument zero, at
+    Core+$0FC8. Original bytes +$0FBE–$0FCB are
+    `42a74878000f206df9544e90508f`.
+  - Measure and implement this request through the existing native D8 seam.
+    Other unsupported selectors remain named stops; do not run original MDRV.
 
-  *Done when* the original request, return ABI, resource ownership and resulting
-  driver state/events match MAME, the native run passes this stop with prior
-  intro/key/copy/effect checks, and original MDRV remains absent.
+  *Done when* its original arguments, return ABI and state match MAME, a bounded
+  native observation passes the reached call, and prior song/intro contracts
+  remain valid with original MDRV absent.
 - **M2.1c Original File Manager read acceptance (after M2.2).**
   - This retains M2.1's original acceptance; diagnostic fixture reads do not count
     as original-game reads. M2.1b2a measured the intervening Get1NamedResource

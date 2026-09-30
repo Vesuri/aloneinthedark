@@ -108,10 +108,16 @@ uses `snd ` resources and a MIDI synth driver (`MDRV`, `SONG`, `INST`), plus
 The original driver loader now selects port-owned Jnth 11 from the overlay.
 Its four-byte `$A0F8; RTS` stub enters the user-mode service bridge, with the
 original C argument/return convention. MoveHHi flushes the instruction cache
-before the original caller executes it. The native state implements only the
-measured initialization and quality selectors; all others stop explicitly.
-MDRV loading remains forbidden. See [sound-driver.md](sound-driver.md) for the
-byte-verified seam and paired startup contracts; playback remains M4.
+before the original caller executes it. The native driver implements measured
+initialization/quality, raw effects and their status/stop, the song control word,
+and SONG 135 start/playback. Other selectors and unmeasured song forms stop.
+Song resources are detached, locked and retained until release; original MDRV
+and SMOD code never executes. Due music work defers the current trap through
+the existing user-mode bridge before allocating or programming Paula. The VBI
+supplies ticks; no original callbacks run in an interrupt. Four physical voices
+use free channels then the oldest music voice, with effects taking priority.
+See [sound-driver.md](sound-driver.md) for the measured seam, state/event checks
+and waveform adaptations; broader songs and toggles remain M4.
 
 ## Lifecycle
 

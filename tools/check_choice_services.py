@@ -63,7 +63,7 @@ def check(text,status,native=False):
         code[2:6]=bytes.fromhex('fffee4ac')
         if hashlib.sha256(code).hexdigest()!='474f8a03c2ddd2d18c9367305105c552f8e79613077ee7cb114d754752f9e5fe':
             raise ValueError('live original window instructions')
-        one(text,r'CHOICE_NEXT state=3 trap=A0F8 selector=0 segment=3 offset=138C manager=SOUND DRIVER routine=SELECTOR windows=(?:210|236) services=\d+/\d+ reads=70 bytes=349400')
+        one(text,r'CHOICE_NEXT state=3 trap=A0F8 selector=F segment=3 offset=FC8 manager=SOUND DRIVER routine=SELECTOR windows=(?:249|275) services=\d+/\d+ reads=109 bytes=826832')
     return True
 
 def check_selection(reference,status,native):

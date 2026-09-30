@@ -6,6 +6,22 @@
 // Measured note-to-sample contract for plain INST resources (flags zero).
 // No original driver instructions or modifier callbacks execute here.
 namespace SongVoice {
+// Freestanding 68020 builds have no 64-bit division runtime. Return a bounded
+// 32-bit quotient using shifts/subtractions; never silently truncate overflow.
+inline bool divide(unsigned long long numerator,unsigned long long denominator,uint32_t& result) {
+    if(!denominator)return false;
+    unsigned long long remainder=0;result=0;
+    for(int16_t bit=63;bit>=0;--bit) {
+        bool carry=(remainder>>63)!=0;
+        remainder=(remainder<<1)|(numerator>>63);numerator<<=1;
+        if(carry || remainder>=denominator) {
+            remainder-=denominator;
+            if(bit>=32)return false;
+            result|=1UL<<bit;
+        }
+    }
+    return true;
+}
 inline const char* select(const SongInputs::Instrument& instrument,uint16_t note,
                            uint16_t& sample,int16_t& adjusted,bool& found) {
     found=false;
@@ -56,7 +72,8 @@ inline const char* describe(const SongInputs::Sample& sample,int16_t adjusted,
     // guessed 11025 Hz output clock. All arithmetic is integer.
     unsigned long long denominator=static_cast<unsigned long long>(plan.step)*0x56ee8ba3UL;
     if(!denominator || (paulaClock!=3546895 && paulaClock!=3579545))return "SONG PAULA CLOCK";
-    unsigned long long period=((static_cast<unsigned long long>(paulaClock)<<33)+(denominator>>1))/denominator;
+    uint32_t period=0;
+    if(!divide((static_cast<unsigned long long>(paulaClock)<<33)+(denominator>>1),denominator,period))return "SONG PAULA PERIOD";
     if(!period || period>65535)return "SONG PAULA PERIOD";
     plan.period=uint16_t(period);plan.loopStart=plan.loopEnd=0;
     // Original +$34C8 requires a nonzero start and at least 100 bytes
@@ -78,10 +95,11 @@ inline const char* dma(const SongInputs::Sample& sample,const Plan& plan,
     out={};
     unsigned long long denominator=static_cast<unsigned long long>(plan.step)*0x56ee8ba3UL;
     unsigned long long numerator=static_cast<unsigned long long>(paulaClock)<<33;
-    unsigned long long period=(numerator+(denominator>>1))/denominator;
+    uint32_t period=0;
+    if(!divide(numerator+(denominator>>1),denominator,period))return "SONG DMA PERIOD";
     while(period<124 && out.stride<16) {
         out.stride<<=1;numerator<<=1;
-        period=(numerator+(denominator>>1))/denominator;
+        if(!divide(numerator+(denominator>>1),denominator,period))return "SONG DMA PERIOD";
     }
     if(period<124 || period>65535)return "SONG DMA PERIOD";
     out.period=uint16_t(period);

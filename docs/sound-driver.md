@@ -305,7 +305,7 @@ For the accepted native capture, add
 terminal statuses; neither a deadline nor a debugger error counts as success.
 
 
-## Selector 0: measured prerequisite, native work pending
+## Selector 0: native song start and playback (M2.3g38)
 
 Core+$138C requests SONG 135 ($87). `mac_driver0.lua` and `check_driver0.py`
 verify the actual call, 285 nested service pairs, register/stack preservation,
@@ -319,10 +319,70 @@ Mac code; the native path must implement required behavior without running it.
 SONG configuration changes the logical limits to six music voices, three
 normalized voices and one effect voice, with flags $2205. The MIDI track is
 armed at offset 22 in state $46; the original call has not yet consumed its
-first note event at return. Resource ownership and playback must both be real
-before the native selector can report success. Portable format helpers and
-preflight event comparison are complete (M2.3g38a); M2.3g38 runtime integration
-remains pending.
+first note event at return. The native call now matches that state and its C
+calling convention. The 41 detached, locked, nonpurgeable bodies equal the
+original resource payloads. Original MDRV remains absent; retained SMOD bodies
+are never executed. Resource-release errors are explicit loud stops.
+
+`tmp/m2-song-runtime-discover-full.log` preserves the complete exit-zero
+integrated run. Its original caller returns D0=0/D1=$0C with all required
+registers and stack preserved; execution advances to selector 15 at Core+$0FC8.
+The old stop is passed, not suppressed. All 36 earlier integrated regressions
+pass in `tmp/m2-song-runtime-regressions.log`, including intro return, effects,
+GetKeys, offscreen/window drawing, AGA publication and the full initial A5 world.
+
+The native sequencer runs at user-mode safe points driven by the VBI's 60 Hz
+clock. A late safe point delivers due events in order without altering pitch;
+an unhandled gap over 600 ticks stops explicitly. Native code owns converted
+chip buffers and applies the verified sample/loop/pitch helpers. A free Paula
+channel is preferred; otherwise the oldest music voice is replaced. Effects
+have priority over music. Note-off selects silent reload and quiesces the
+channel within five ticks; this Paula release waveform intentionally differs
+from the original software mixer's sample tail. Natural one-shots finish using
+the actual programmed period. Shutdown quiesces DMA before freeing chip memory
+and disposes all retained song handles.
+
+`SONGPROBE=1` is a compiled diagnostic fixture. Immediately after the original
+quality initialization it starts the native song in user mode, records every
+note, injects one short effect when all channels hold music, then checks complete
+playback and releases resources. It cannot resume normal gameplay with this
+altered startup state. `tmp/m2-song-probe-native-full.log` exits zero:
+
+- All 3,736 note events match the original instrument, note, velocity, channel,
+  MIDI position, sequencer pulse and tempo step exactly. MIDI ends at pulse
+  8,854; the final note event is at pulse 8,785.
+- Both a normal-rate sample and a decimated high note have exact complete native
+  chip-buffer bytes, legal programmed periods (253 and 190), loop phase and
+  enabled DMA. Period rounding and high-note decimation are D8 adaptations.
+- All 1,868 note-ons are issued. Four-channel allocation replaces an older
+  music voice 1,099 times; the injected effect takes a music channel once more.
+  These documented voice-stealing differences replace the original six-voice
+  allocation, which drops eight notes. No software mixing is introduced.
+- The effect starts and completes once, music finishes, every chip allocation
+  and channel is released, all 41 owned handles are disposed, and both Mac heaps
+  pass structural checks. Original MDRV is absent throughout.
+
+Reproduce the two complementary checks (use actual terminal exit statuses):
+
+```sh
+python3 tools/check_song_start.py tmp/m2-driver0-reference.log \
+  tmp/m2-song-runtime-discover-full.log --reference-status 0 --status 0
+python3 tools/check_song_playback.py tmp/m2-song-clock-reference.log \
+  tmp/m2-song-probe-native-full.log --reference-status 0 --status 0
+```
+
+Build the focused fixture with a clean `make -C amiga SONGPROBE=1`, source
+`amiga/env.sh` first, then run `GDBSCRIPT=song_probe.gdb ./diag_run.sh 600` from
+`amiga/`. Clean-rebuild without the flag for production. The production build
+passes no-float and 83-symbol audits; the fixture passes the 88-symbol audit.
+The full host suite and eight evidence-rejection cases pass. Freestanding
+64-bit quotient calculation uses bounded integer shifts/subtractions, tested
+against 2,000 independent host divisions; no floating-point or unavailable
+integer runtime helper is linked.
+
+Only the reached SONG 135 form is enabled. Compressed inputs, replacement,
+other song IDs and unimplemented selectors remain named stops. Native playback
+acceptance does not claim the M4 all-song/toggle/manual-listening milestone.
 
 
 ## Song input descriptions and preflight (M2.3g38a)
@@ -396,8 +456,8 @@ $007299AA even though the installed entry retains its high handle flag
 failed to complete and is rejected. The corrected live capture records all
 3,736 notes and voice snapshots. State+$118C counts mixer work, not sequencer
 entries, and is unsuitable as a clock oracle. The direct entry counter resolves
-that discrepancy. Runtime safe-point scheduling, resource lifetime and Paula
-playback remain M2.3g38; the helper is not yet connected to production.
+that discrepancy. The runtime integration and its complementary native checks are documented
+in the selector-zero section above.
 
 ### Sample selection and Paula conversion (M2.3g38c)
 
@@ -445,6 +505,5 @@ host suite also checks 27 guarded odd/even loop and decimation cases. Five
 negative checks reject incomplete, errored, wrong-pitch and wrong-loop evidence
 in `tmp/m2-song-voices-rejections.log`. A standalone 68020 cross-compilation
 passes; its only unresolved arithmetic helper is integer `__udivdi3`.
-These helpers do not yet own resources or program Paula. Native song-start,
-release scheduling, four-channel allocation and integrated acceptance remain
-M2.3g38; selector zero still fails explicitly in production.
+These helpers supply the runtime implementation documented above; resource
+ownership, scheduling and hardware access remain in MacLoader.
