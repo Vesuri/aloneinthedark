@@ -36,6 +36,6 @@ for side,path in [('reference',a.reference),('native',a.native)]:
   assert after[y*520+512:(y+1)*520]==before[y*520+512:(y+1)*520],(side,y,'padding')
 assert read('reference','copy-source')==read('native','copy-source')
 assert read('native','screen-before')==read('native','screen-after')
-print('PASS paired GetPixBaseAddr: original bytes, locked return ABI, unlocked reference, unchanged query state, original 56-row copy of 28672 bytes with 448 padding bytes preserved; native screen unchanged')
+print('PASS paired GetPixBaseAddr: original bytes, locked return ABI, unlocked reference, unchanged query state, original 56-row copy of 28672 bytes with 448 unused/padding bytes preserved; native screen unchanged')
 
-assert 'PBASE_NEXT state=3 trap=A934 selector=FFFFFFFF segment=7 offset=2B06 manager=MENU MANAGER routine=CLEARMENUBAR windows=77 services=131/131 reads=41 bytes=206540' in a.native.read_text()
+assert 'PBASE_NEXT state=3 trap=A8AB selector=FFFFFFFF segment=13 offset=1DA manager=QUICKDRAW routine=UNIONRECT windows=81 services=143/143 reads=42 bytes=208858' in a.native.read_text()

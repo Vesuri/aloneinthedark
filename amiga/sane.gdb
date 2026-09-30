@@ -137,7 +137,7 @@ if *(unsigned short*)$pc!=0xa91b || *(unsigned char*)$sp!=0 || *(short*)($sp+2)!
 end
 continue
 printf "SANE_NEXT state=%u trap=%X selector=%X segment=%u offset=%X routine=%s windows=%u services=%u/%u calls=%u\n",g_stageBState,g_trapWord,g_trapSelector,g_trapSegment,g_trapOffset,g_trapRoutine,g_systemWindows,g_macServiceEntered,g_macServiceCompleted,$sane_seq
-if g_stageBState!=3 || g_trapWord!=0xa934 || g_trapSegment!=7 || g_trapOffset!=0x2b06 || *(unsigned long*)(g_trapRoutine+0)!=0x434c4541 || *(unsigned long*)(g_trapRoutine+4)!=0x524d454e || *(unsigned long*)(g_trapRoutine+8)!=0x55424152 || g_trapRoutine[12]!=0 || $sane_seq!=10 || $sane_inflight!=0 || g_macServiceActive!=0 || g_trapSelector!=-1 || g_systemWindows!=$startup_windows || g_macServiceEntered!=$startup_entered || g_macServiceCompleted!=$startup_completed || g_resourceRuntimeReads!=41 || g_resourceRuntimeBytes!=206540
+if g_stageBState!=3 || g_trapWord!=0xa8ab || g_trapSegment!=13 || g_trapOffset!=0x1da || *(unsigned long*)(g_trapRoutine+0)!=0x554e494f || *(unsigned long*)(g_trapRoutine+4)!=0x4e524543 || g_trapRoutine[8]!=0x54 || g_trapRoutine[9]!=0 || $sane_seq!=10 || $sane_inflight!=0 || g_macServiceActive!=0 || g_trapSelector!=-1 || g_systemWindows!=$startup_windows || g_macServiceEntered!=$startup_entered || g_macServiceCompleted!=$startup_completed || g_resourceRuntimeReads!=42 || g_resourceRuntimeBytes!=208858
  echo FAIL original SANE progression\n
  detach
  quit 1

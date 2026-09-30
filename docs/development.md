@@ -2805,7 +2805,7 @@ with their corresponding Mac observers and paired checkers. The contracts and
 local evidence are in [window-geometry.md](window-geometry.md). Host geometry
 checks are part of `make host-tests`. ShowHide's background clear is verified
 against its full complex region and must leave the viewport, palette and frame
-queue unchanged. Current startup observers pin ClearMenuBar at Engine+$2B06; a timeout or a different stop is not acceptance.
+queue unchanged. Current startup observers pin UnionRect at Dan2+$01DA; a timeout or a different stop is not acceptance.
 
 
 ## Startup clock query
@@ -2940,3 +2940,24 @@ and 256 colours match the independent display decoder. The helper sanitizer
 suite, locked/unlocked reference comparison, Lua literal audit and both link
 audits pass. Counts remain 77 OS handbacks, 131 services and 41 original
 resource reads / 206,540 bytes. No rendered intro acceptance is claimed.
+
+
+## Hidden startup menu-list setup
+
+ClearMenuBar, four InsertMenu calls and the suppressed DrawMenuBar now complete
+with measured menu order and unchanged application records. The native screen
+is unchanged. Reference capture includes a nonempty clear proving that menu
+handles/records survive list removal. The final native observer also reaches
+both original Times lookups and checks the original native-driver calls in the
+same launch; their retained queue acceptances are the next items.
+See [menu-manager.md](menu-manager.md) for exact scope and reproduction.
+
+The final reference and native menu-lifecycle captures exit normally. Paired
+menu records/order, six call results, unchanged screen, menu-record host suite,
+Lua literal audit and both link audits pass. Both original Times lookups return
+20; native driver selectors 21/24 retain their measured state/ABI. A5 matches
+all 75,616 bytes. The AGA decoder verifies exact pixels, eight plane pointers,
+256 colours and VBI publication. Counts are now 81 handbacks, 143 services,
+42 original resource reads / 208,858 bytes; overlay remains 31 / 80,650 and
+preparation 64 / 81,222. The next stop is UNIONRECT at Dan2+$01DA. This does
+not count either pending driver/font acceptance item as removed yet.

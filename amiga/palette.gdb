@@ -33,7 +33,7 @@ dump binary memory ../tmp/palette-native-source-after.bin $sourcebody $sourcebod
 echo PASS native NewPalette capture\n
 continue
 printf "PALETTE_NEXT state=%u trap=%X selector=%X segment=%u offset=%X manager=%s routine=%s windows=%u services=%u/%u\n",g_stageBState,g_trapWord,g_trapSelector,g_trapSegment,g_trapOffset,g_trapManager,g_trapRoutine,g_systemWindows,g_macServiceEntered,g_macServiceCompleted
-if g_stageBState!=3 || g_trapWord!=0xa934 || g_trapSegment!=7 || g_trapOffset!=0x2b06 || *(unsigned long*)(g_trapRoutine+0)!=0x434c4541 || *(unsigned long*)(g_trapRoutine+4)!=0x524d454e || *(unsigned long*)(g_trapRoutine+8)!=0x55424152 || g_trapRoutine[12]!=0 || g_macServiceActive!=0
+if g_stageBState!=3 || g_trapWord!=0xa8ab || g_trapSegment!=13 || g_trapOffset!=0x1da || *(unsigned long*)(g_trapRoutine+0)!=0x554e494f || *(unsigned long*)(g_trapRoutine+4)!=0x4e524543 || g_trapRoutine[8]!=0x54 || g_trapRoutine[9]!=0 || g_macServiceActive!=0
  echo FAIL palette next stop\n
  detach
  quit 1

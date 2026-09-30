@@ -131,7 +131,8 @@ unlocked-call execution is claimed by this capture.
 
 Original instructions then copy 56 rows of 512 bytes into the 520-byte-stride
 buffer and unlock it. Paired captures compare all 28,672 source/visible bytes
-and preserve the 448 padding bytes. Queries leave the PixMap and pixels
+and preserve the remaining eight bytes of each row (four unused pixels plus
+four stride-padding bytes, 448 bytes total). Queries leave the PixMap and pixels
 unchanged; the copy leaves the native screen unchanged. This is offscreen image
 data, not an accepted rendered intro frame.
 

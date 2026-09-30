@@ -14,8 +14,8 @@ design.md §5.
   low-resolution selection/cleanup, all 75 font-metrics calls and four Apple Event
   registrations, colour-table loading/mutations, palette construction and default
   binding, hidden window-title state and the verified WIND 128 request. Startup realizes the palette and clears the game client area, then stops at
-  `CLEARMENUBAR` at Engine+$2B06 after palette binding/activation, first-frame AGA
-  publication, background ShowHide, game-port binding, TickCount, unchanged window geometry, point setup, empty-region allocation and eight-bit offscreen buffer initialization, pixel-address access and the first original image-row copy. The original
+  `UNIONRECT` at Dan2+$01DA after palette binding/activation, first-frame AGA
+  publication, background ShowHide, game-port binding, TickCount, unchanged window geometry, point setup, empty-region allocation and eight-bit offscreen buffer initialization, pixel-address access and the first original image-row copy and hidden menu-list setup. The original
   mixer is never loaded.
 - The original runs in MAME on the System 7.5.5 reference volume.
 
@@ -49,24 +49,13 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.3g3 Startup menu-list lifecycle prerequisite.**
-  - GetPixBaseAddr now returns the real owned pixel address. The original then
-    copies a complete 512×56 image into that buffer and reaches ClearMenuBar
-    at Engine+$2B06 ($A934).
-  - Implement the measured menu-list reset and following reached startup menu
-    changes as hidden data (D7). Preserve ownership and menu handles; never
-    draw a Mac menu bar. Unsupported operations remain named stops.
-
-  *Done when* original/native menu-list states and call results match through
-  this setup operation, execution reaches the next named stop with MDRV absent,
-  and relevant host/startup/display checks pass without Mac chrome.
 - **M2.1c3c2 Native-driver integrated startup acceptance (D8).**
   - M2.1c3c2a supplies the port-owned Jnth 11 stub through the original loader,
     with no original instructions changed. Selectors 21/24 initialize native
     state and quality; other operations/configurations stop explicitly.
   - Both original call returns match the Mac register/stack/state contract.
-    The menu-list-reset stop prevents reaching the second Times call; this
-    original acceptance requirement is retained, not counted as passed.
+    Startup now reaches beyond the second Times call; finish its integrated
+    driver acceptance using the new bounded evidence below.
   - Keep the MDRV guard and verify through any newly reached startup services.
     The independent Mac contract and installed seam are in
     [sound-driver.md](sound-driver.md).
@@ -77,8 +66,8 @@ required.
   remains M4.1; this does not claim rendered or audio acceptance.
 - **M2.1c3 Font availability prerequisite for original PAK reads.**
   - The installed font and GetFNum now pass the first original call at
-    Dan1+$0012. The second call at +$0038 remains unverified natively behind the
-    intervening startup services above. Keep this original acceptance requirement.
+    Dan1+$0012. The second call at +$0038 is now reachable natively. Finish its paired
+    installed-font acceptance before removing this requirement.
   - The original/reference-fixture GetFNum contract is measured; see
     [font-manager.md](font-manager.md). The port-owned 14-point FOND/NFNT
     definition, native parser and installed-body lookup pass host/first-call
@@ -89,6 +78,17 @@ required.
   *Done when* host checks validate the generated font definition and lookup,
   original-byte-guarded native execution passes both Times lookups with the Mac
   result, reaches the next named stop, and relevant startup regressions pass.
+- **M2.3g4 Font-image rectangle preparation prerequisite.**
+  - Hidden menu setup now passes and startup reaches UnionRect at Dan2+$01DA
+    ($A8AB), after the second Times lookup and the first original PAK-reading
+    path. Implement the measured rectangle operation and validate its use in
+    the original image/font preparation sequence.
+  - Keep source/destination aliasing and empty-rectangle semantics faithful;
+    this does not authorize replacement rendering or guessed draw success.
+
+  *Done when* original/native rectangles and call results match, preparation
+  advances to its next named stop with MDRV absent, and relevant host/startup/
+  display checks pass.
 - **M2.1c Original File Manager read acceptance (after M2.2).**
   - This retains M2.1's original acceptance; diagnostic fixture reads do not count
     as original-game reads. M2.1b2a measured the intervening Get1NamedResource

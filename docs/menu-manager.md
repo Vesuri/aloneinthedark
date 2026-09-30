@@ -106,3 +106,36 @@ all 33 calls retain exactly the same menu bodies (at most 97 bytes) and text
 (at most 30 bytes). The corrected full dumps pass the original checker and
 pair with the accepted native records. See the impact inventory in
 [mac-reference-loop.md](mac-reference-loop.md).
+
+
+## Hidden startup menu-list lifecycle
+
+The original Engine+$2B06 ClearMenuBar, four +$2B32 InsertMenu calls and
++$2B44 DrawMenuBar now complete. Reset removes membership without disposing
+MENU handles or changing their records. Insertions retain the original order
+128, 129, 130, 131 and return zero with the measured stack cleanup. DrawMenuBar
+returns successfully without drawing any pixels under D7. Callee-preserved
+registers match; system-internal volatile pointers are not portable outputs.
+
+The Mac automatically appends System menus −16490 and −16489 after the first
+insertion. They are absent from the port's menu registry and have no native
+presentation. The comparison identifies these exact two IDs separately; it
+still checks every game menu, title, flag and packed item. Apple menu 128's
+reference-only Control Panels item is the existing documented System addition.
+Menu dimensions and MDEF pointers remain platform-specific as above.
+
+`tools/mac_menu_lifecycle.lua` captures each list transition and a CPU-executed
+nonempty reset of the same four live menus. That fixture confirms their records
+survive unchanged. `amiga/menu_lifecycle.gdb` captures the original native setup,
+with both font lookups, driver initialization, main/A5 and AGA checks in the
+same bounded run. `tools/check_menu_lifecycle.py` requires original/live bytes,
+six call results, ordered identities, unchanged application items and no native
+screen changes. The original Mac game client also stays unchanged across its
+DrawMenuBar call. These memory checks do not claim rendered-video acceptance.
+
+Original Engine+$2B04–$2B45 SHA-256:
+`d302ea1079ba3557d446a85bc8faafa1f23e92b2152cf06fab8daa8bb2a29e51`.
+Reference: `tmp/m2-menu-lifecycle-reference-final.log`; native:
+`tmp/m2-menu-lifecycle-native-final.log`. Supply each actual exit status with
+`--reference-status` and `--native-status` to the paired checker.
+Startup now stops at QUICKDRAW / UNIONRECT, Dan2+$01DA.

@@ -793,7 +793,7 @@ static const TrapName s_trapNames[] = {
     {0xa938,"MENU MANAGER","HILITEMENU"},
     {0xa931,"MENU MANAGER","NEWMENU"},
     {0xa933,"MENU MANAGER","APPENDMENU"}, {0xa94d,"MENU MANAGER","ADDRESMENU"},
-    {0xa934,"MENU MANAGER","CLEARMENUBAR"}, {0xa935,"MENU MANAGER","INSERTMENU"},
+    {0xa8ab,"QUICKDRAW","UNIONRECT"}, {0xa934,"MENU MANAGER","CLEARMENUBAR"}, {0xa935,"MENU MANAGER","INSERTMENU"},
     {0xa9bf,"MENU MANAGER","GETMENU"},
     {0xa937,"MENU MANAGER","DRAWMENUBAR"}, {0xa970,"EVENT MANAGER","GETNEXTEVENT"},
     {0xa972,"EVENT MANAGER","GETMOUSE"}, {0xa973,"EVENT MANAGER","STILLDOWN"},
@@ -6304,8 +6304,17 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
             return 9;
         }
     }
+    if(trap==0xa934) { // ClearMenuBar: remove membership, retain owned MENU records.
+        if(!s_menuManager.initialized)goto unsupportedTrap;
+        for(uint16_t i=0;i<sizeof(s_menuManager.entries)/sizeof(s_menuManager.entries[0]);++i) {
+            s_menuManager.entries[i].handle=0;s_menuManager.entries[i].inMenuBar=false;
+        }
+        s_menuManager.count=0;s_menuManager.highlightedID=0;
+        regs[0]=0;regs[8]=0;return 1;
+    }
     if (trap == 0xa935) {                    // InsertMenu(menu, beforeID)
         if (insertMenu((uint8_t**)read32(userStack + 2), (int16_t)read16(userStack))) {
+            regs[0]=0;regs[8]=pc+2;
             if (g_stageCDepth < 75) g_stageCDepth = 75;
             return 7;
         }
@@ -6322,6 +6331,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         // Keep the installed MENU records and MenuKey dispatcher, but do not
         // reproduce the Macintosh desktop chrome on the Amiga display.
         if (s_menuManager.initialized) {
+            regs[0]=0;
             if (g_stageCDepth < 77) g_stageCDepth = 77;
             return 1;
         }
