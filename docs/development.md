@@ -3372,3 +3372,23 @@ loaded PICT 1500, MacPlay (small). Counts are 117 windows, 435/435 services,
 derived (143 windows, 443/443 services). Runtime discovery snapshots now include
 resource counts to avoid inferring them when advancing the regression boundary.
 Intro frame acceptance remains pending.
+
+
+## Presentation palette binding
+
+M2.3g21 is complete. The new front-window binding reuses Palette8 realization,
+changes the association, retains the default palette and publishes new colours.
+No Mac title bar is drawn. The original then clears the client white and reaches
+QUICKDRAW / DRAWPICTURE at Dark2+$20F2. See
+[palette.md](palette.md#presentation-palette-binding) for measured bytes and ABI.
+
+Reference `tmp/m2-binding129-reference-final.log` and native
+`tmp/m2-binding129-native-final.log` both terminate with exit zero and positive
+acceptance markers. Full palette/private/CLUT and client comparisons pass,
+including the following white fill and four complete AGA publications. Host
+suite, sanitizer helper comparison, link audits and the 82-script MAME literal
+audit pass. Integrated regressions pass both colour-table forms, constructor,
+rectangle fills, RGB getters/setters, events/cursor, geometry/device/world
+binding, twenty preparation pictures, 220 text widths, fonts, original-MDRV
+exclusion and all 75,616 A5 bytes. Counts remain 117 windows, 435/435 services,
+66 reads / 313,392 bytes and CODE mask $3FBB. Intro acceptance remains pending.

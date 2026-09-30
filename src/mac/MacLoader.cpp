@@ -7047,6 +7047,26 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
                 MacHeap* owner=handleZone(palette);
                 MacHeap::Handle privateHandle=s_createdPalettes[slot].privateHandle;
                 MacHeap* privateOwner=handleZone(privateHandle);
+                // Replacing the front window's default palette realizes the
+                // new colours immediately. Mac title-bar redraw is deliberately
+                // absent; the measured client pixels remain unchanged.
+                if(window && !window->dialog && window->window==s_windowList
+                    && window->window[110] && window->paletteUpdates && g_defaultPalette
+                    && window->palette==g_defaultPalette
+                    && g_defaultPalette==s_activePalette && palette!=g_defaultPalette) {
+                    if(!owner || !*palette || owner->handleSize(palette)!=4112
+                        || read32(*palette+4)!=uint32_t(slot+2) || read32(*palette+8)!=0
+                        || read32(*palette+12)!=(uint32_t)privateHandle
+                        || !privateOwner || !*privateHandle || privateOwner->handleSize(privateHandle)!=4
+                        || read32(*privateHandle)!=0)goto unsupportedTrap;
+                    if(!Palette8::realize(*palette,4112,s_windowManagerColors,sizeof(s_windowManagerColors),
+                        *privateHandle,4,s_colorSeed))goto unsupportedTrap;
+                    ++s_colorSeed;
+                    write32(*palette+4,0xc000UL|uint32_t(slot+2));write32(*palette+8,1);
+                    window->palette=palette;window->paletteUpdates=true;
+                    s_activePalette=palette;s_screenDirty=true;
+                    return 11;
+                }
                 if(!window || window->dialog || window->window!=s_windowList
                     || !window->window[110] || window->palette
                     || palette!=g_defaultPalette || palette!=s_activePalette

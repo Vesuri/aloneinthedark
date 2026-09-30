@@ -49,6 +49,20 @@ static void synthetic() {
 int main(int argc,char** argv) {
     synthetic();
     if(argc==1) { puts("PASS Palette8 synthetic endpoint retention, malformed-state rejection and mutation atomicity");return 0; }
+    if(argc==3 && std::string(argv[1])=="--replacement") {
+        std::string root=argv[2];
+        auto palette=read(root+"/binding129-reference-enter-palette.bin");
+        auto expected=read(root+"/binding129-reference-return-palette.bin");
+        auto table=read(root+"/binding129-reference-enter-clut.bin");
+        auto after=read(root+"/binding129-reference-return-clut.bin");
+        auto priv=read(root+"/binding129-reference-enter-private.bin");
+        auto privateAfter=read(root+"/binding129-reference-return-private.bin");
+        uint32_t seed=uint32_t(Palette8::word(after.data()))<<16|Palette8::word(after.data()+2);
+        assert(Palette8::realize(palette.data(),palette.size(),table.data(),table.size(),priv.data(),priv.size(),seed));
+        Palette8::longword(palette.data()+4,0xc003);Palette8::longword(palette.data()+8,1);
+        assert(palette==expected && table==after && priv==privateAfter);
+        puts("PASS Palette8 replacement: complete palette, device table and private seed match Mac");return 0;
+    }
     assert(argc==2);
     if(std::string(argv[1])=="--system-table") {
         std::vector<uint8_t> table(2056);Palette8::systemTable(table.data(),0);

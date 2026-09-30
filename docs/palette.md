@@ -87,7 +87,7 @@ allocation failures and exhaustion of the 32-record ownership table stop loudly.
 The ownership table is cleared when the zones are released.
 
 `amiga/palette.gdb` observes the original request/return, captures all palette and
-source bytes and reaches Dark2+$20CC SETPALETTE, with original MDRV absent.
+source bytes and reaches Dark2+$20F2 DRAWPICTURE, with original MDRV absent.
 `PALETTEPROBE=1` builds the CPU-executed twelve-case fixture; its read-only observer
 is `amiga/palette_fixture.gdb`. Actual shutdown must return zero, close both
 resource streams, remove Line-A and release both zones. No debugger writes or
@@ -367,4 +367,35 @@ measures identifier reuse. The shared palette checker keeps first-constructor
 validation intact; the new wrapper pins the second caller, source and identifier.
 `palette129_call.gdb` is part of the combined native startup observer, with a
 standalone `palette129.gdb` wrapper. Original MDRV remains absent. The next
-SetPalette at Dark2+$20CC requires the new binding contract (M2.3g21).
+SetPalette at Dark2+$20CC is covered by the presentation binding contract below.
+
+
+## Presentation palette binding
+
+Dark2+$20CC binds the second palette to the front game window with updates
+true. Original bytes at +$20C0 are `2f002f39ffff4d601f3c0001aa95`; the long
+operand relocates to A5-$B2A0. The call pops ten argument bytes and preserves
+D3–D7/A2–A6. The unused Boolean padding byte is not part of the argument.
+
+Actual GetPalette queries before/after establish the changed association.
+The default palette and its private state remain unchanged. The new header
+becomes $C003/state 1, entries become $800A, and its private word records the
+new device-table seed. The existing Palette8 realization helper reproduces
+all palette, CLUT and private bytes (normalizing owned pointers and seeds).
+The Mac redraws 5,056 title-bar pixels outside the client; D5 intentionally
+omits that chrome. The entire client is unchanged by binding. Native binding
+requests palette publication without dirtying pixels. The following original
+rectangle fill clears all 64,000 client pixels to white before DrawPicture.
+
+`mac_binding129.lua` captures both transitions and verifies that the isolated
+GetPalette queries do not mutate records or pixels. `binding129_call.gdb`
+observes the native call read-only inside the combined startup observer.
+
+```
+python3 tools/check_binding129.py tmp/m2-binding129-reference-final.log --status 0 --helper --native tmp/m2-binding129-native-final.log --native-status 0
+python3 tools/check_aga_capture.py startup tmp/m2-binding129-native-final.log --status 0
+```
+
+Both bounded runs exit zero. Complete client/CLUT comparison and all 256 AGA
+colours, eight planes and four VBI publications pass. The next stop is
+DRAWPICTURE at Dark2+$20F2; original MDRV remains absent.
