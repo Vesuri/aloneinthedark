@@ -2805,7 +2805,7 @@ with their corresponding Mac observers and paired checkers. The contracts and
 local evidence are in [window-geometry.md](window-geometry.md). Host geometry
 checks are part of `make host-tests`. ShowHide's background clear is verified
 against its full complex region and must leave the viewport, palette and frame
-queue unchanged. Current startup observers pin offscreen SetGWorld at Misc2+$008E; a timeout or a different stop is not acceptance.
+queue unchanged. Current startup observers pin GetPixBaseAddr at Misc2+$02DA; a timeout or a different stop is not acceptance.
 
 
 ## Startup clock query
@@ -2894,3 +2894,25 @@ earlier startup observer was corrected; that rejected run is not acceptance.
 The next stop is offscreen SetGWorld, Misc2+$008E. The subsequent original
 bind/clip/lock/erase/unlock/restore sequence is one coherent queue item; this
 allocation does not claim initialized offscreen pixels or logo/intro acceptance.
+
+
+## Offscreen buffer initialization
+
+The complete original bind/clip/lookup/lock/erase/unlock/restore sequence now
+passes paired record, stack, lock and pixel checks. Its 259,848 visible bytes
+clear exactly, all 1,604 padding bytes remain intact, and the native screen
+remains unchanged. See [gworld.md](gworld.md) for scope and reproduction.
+The production executable now reaches GETPIXBASEADDR at Misc2+$02DA.
+Final paired evidence: `tmp/m2-gworld-init-reference-final.log` and
+`tmp/m2-gworld-init-native-final.log`, both normal exit 0.
+The host suite passes (`tmp/m2-gworld-init-host-final.log`). Startup and AGA
+publication pass on the same final executable in
+`tmp/m2-gworld-init-startup-final.log` and `tmp/m2-gworld-init-aga.log`.
+All 75,616 A5 bytes match, and both link audits pass. Startup now performs
+41 original resource reads / 206,540 bytes, with 77 OS handbacks and 131
+completed services; original MDRV remains absent. The extra two reads are
+newly reached work, not an allocation-side handback. An observer with the old
+75/129 counts was rejected, instrumented and corrected. Fresh-preference
+endpoint counts are derived as the same prior +26 windows / +8 services;
+this change's native acceptance uses the existing-preference route.
+This does not claim the remaining M2 acceptance.

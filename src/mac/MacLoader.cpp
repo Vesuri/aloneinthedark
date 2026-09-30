@@ -1052,9 +1052,12 @@ static void refreshGWorldViews()
         w.pixMap=w.handles[0] ? *w.handles[0] : 0;
         w.pixels=w.handles[1] ? *w.handles[1] : 0;
         w.colorTable=w.handles[2] ? *w.handles[2] : 0;
-        if(w.pixMap)write32(w.pixMap,w.locked ? (uint32_t)w.pixels : (uint32_t)w.handles[1]);
+        if(w.pixMap) {
+            write32(w.pixMap,w.locked ? (uint32_t)w.pixels : (uint32_t)w.handles[1]);
+            write16(w.pixMap+14,w.locked ? 1 : 2);
+        }
         if(w.handles[25] && *w.handles[25])
-            write32(*w.handles[25],w.locked ? (uint32_t)w.pixels : (uint32_t)w.handles[1]);
+            write32(*w.handles[25],(uint32_t)w.handles[1]);
     }
 }
 
@@ -4472,6 +4475,33 @@ static uint8_t* newGWorld(const uint8_t* bounds,uint16_t depth,MacHeap::Handle c
     memoryResult(0);return slot->port;
 }
 
+// The reached offscreen path uses rectangular regions and a solid background.
+// Reject other pattern/region forms until their drawing semantics are implemented.
+static bool eraseGWorldRect(GWorldSlot& w,const uint8_t* rectangle)
+{
+    if(!rectangle || !w.locked || !w.pixels || read16(w.pixMap+32)!=8
+       || read16(*w.handles[6])!=0 || read32(w.port+84)>255)return false;
+    for(uint16_t i=0;i<8;++i)if((*w.handles[10])[i])return false;
+    const uint8_t* vis=*w.handles[3];const uint8_t* clip=*w.handles[4];
+    if(read16(vis)!=10 || read16(clip)!=10)return false;
+    int16_t top=(int16_t)read16(rectangle),left=(int16_t)read16(rectangle+2);
+    int16_t bottom=(int16_t)read16(rectangle+4),right=(int16_t)read16(rectangle+6);
+    const uint8_t* limits[4]={w.pixMap+6,w.port+16,vis+2,clip+2};
+    for(uint16_t i=0;i<4;++i) {
+        const uint8_t* r=limits[i];
+        if(top<(int16_t)read16(r))top=(int16_t)read16(r);
+        if(left<(int16_t)read16(r+2))left=(int16_t)read16(r+2);
+        if(bottom>(int16_t)read16(r+4))bottom=(int16_t)read16(r+4);
+        if(right>(int16_t)read16(r+6))right=(int16_t)read16(r+6);
+    }
+    if(top>=bottom || left>=right)return true;
+    uint16_t stride=read16(w.pixMap+4)&0x3fff;
+    int16_t mapTop=(int16_t)read16(w.pixMap+6),mapLeft=(int16_t)read16(w.pixMap+8);
+    for(int32_t y=top;y<bottom;++y)
+        blockFill(w.pixels+uint32_t(y-mapTop)*stride+uint16_t(left-mapLeft),uint16_t(right-left),(uint8_t)read32(w.port+84));
+    return true;
+}
+
 static GWorldSlot* gWorldForPixMap(uint8_t** pixMap)
 {
     for (uint16_t i = 0; i < sizeof(s_gworlds) / sizeof(s_gworlds[0]); ++i)
@@ -5869,9 +5899,13 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     if(read16(s_windowManagerPixMap+32)==8) {
         switch(trap) {
         case 0xab1d:
-            if((uint16_t)regs[0]!=0 && (uint16_t)regs[0]!=5 && (uint16_t)regs[0]!=6) { unsupportedGraphics=true;goto unsupportedTrap; }
+            if((uint16_t)regs[0]!=0 && (uint16_t)regs[0]!=1 && (uint16_t)regs[0]!=2
+               && (uint16_t)regs[0]!=5 && (uint16_t)regs[0]!=6 && (uint16_t)regs[0]!=23) { unsupportedGraphics=true;goto unsupportedTrap; }
             break;
-        case 0xa8f6: case 0xa8a1: case 0xa8a3: case 0xa8a4: case 0xa8a5:
+        case 0xa8a3:
+            if(gWorldForPort(s_qdThePort ? (uint8_t*)read32(s_qdThePort) : 0))break;
+            unsupportedGraphics=true;goto unsupportedTrap;
+        case 0xa8f6: case 0xa8a1: case 0xa8a4: case 0xa8a5:
         case 0xa8ec: case 0xa90d: case 0xa91f:
             unsupportedGraphics=true;goto unsupportedTrap;
         }
@@ -6422,7 +6456,8 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         if(s_windowManager.initialized && s_qdThePort && read32(s_qdThePort)
            && deviceOut && portOut) {
             write32(portOut,read32(s_qdThePort));
-            write32(deviceOut,(uint32_t)&s_mainDeviceMaster);
+            GWorldSlot* world=gWorldForPort((uint8_t*)read32(s_qdThePort));
+            write32(deviceOut,world ? (uint32_t)world->handles[21] : (uint32_t)&s_mainDeviceMaster);
             return 9;
         }
     }
@@ -6439,12 +6474,19 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         WindowSlot* slot=windowSlot(port);
         WindowGeometry::Rect bounds;
         if(s_windowManager.initialized && s_qdThePort && s_mainDeviceMaster==s_mainDevice
-           && !device && slot && port==s_windowList && port[110]
+           && (!device || device==(uint8_t*)&s_mainDeviceMaster) && slot && port==s_windowList && port[110]
            && colorWindowFrame(*slot,bounds) && read16(port+6)==0xc000
            && read32(slot->pixelMap)==(uint32_t)s_colorScreen && read16(slot->pixelMap+32)==8) {
             write32(s_qdThePort,(uint32_t)port);
             regs[0]=(regs[0]&0xffff0000UL)|read16(port+6);
             regs[8]=(uint32_t)port;regs[9]=(uint32_t)&s_mainDeviceMaster;
+            return 9;
+        }
+        GWorldSlot* world=gWorldForPort(port);
+        if(world && s_qdThePort && (!device || device==(uint8_t*)world->handles[21])) {
+            write32(s_qdThePort,(uint32_t)port);
+            regs[0]=(regs[0]&0xffff0000UL)|read16(port+6);
+            regs[8]=(uint32_t)*world->handles[5];regs[9]=(uint32_t)world->handles[21];
             return 9;
         }
         unsupportedGraphics=true;goto unsupportedTrap;
@@ -7061,6 +7103,9 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     }
     if (trap == 0xa87b) {                    // ClipRect(Rect*)
         if (clipRect((const uint8_t*)read32(userStack))) {
+            uint8_t* port=(uint8_t*)read32(s_qdThePort);
+            GWorldSlot* world=gWorldForPort(port);
+            if(world) { regs[0]=0;regs[8]=(uint32_t)world->handles[4];regs[9]=(uint32_t)*world->handles[4]; }
             if (g_stageCDepth < 63) g_stageCDepth = 63;
             return 5;
         }
@@ -7090,6 +7135,12 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     }
     if (trap == 0xa8a3) {                    // EraseRect(rectangle)
         const uint8_t* rectangle = (const uint8_t*)read32(userStack);
+        GWorldSlot* world=gWorldForPort((uint8_t*)read32(s_qdThePort));
+        if(world) {
+            if(!eraseGWorldRect(*world,rectangle))goto unsupportedTrap;
+            regs[0]=0;regs[1]=8;regs[9]=(uint32_t)world->port;
+            return 5;
+        }
         if (eraseRect(rectangle)) {
             if (currentPortIsScreen()) markDirty(rectangle);
             if (g_stageCDepth < 62) g_stageCDepth = 62;
@@ -7266,11 +7317,22 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         regs[9]=(uint32_t)*gWorldForPort(world)->handles[3];
         return 23;
     }
-    if (trap == 0xab1d && (uint16_t)regs[0] == 1) {    // QDExtensions: LockPixels
-        GWorldSlot* world = gWorldForPixMap((uint8_t**)read32(userStack));
-        if (world) world->locked = true;
-        userStack[4] = world ? 1 : 0;
-        if (g_stageCDepth < 40) g_stageCDepth = 40;
+    if(trap==0xab1d && (uint16_t)regs[0]==23) { // GetGWorldPixMap
+        uint8_t* port=(uint8_t*)read32(userStack);
+        GWorldSlot* world=gWorldForPort(port);
+        if(!world)goto unsupportedTrap;
+        write32(userStack+4,(uint32_t)world->handles[0]);
+        regs[8]=(uint32_t)port;regs[9]=pc+2;return 5;
+    }
+    if(trap==0xab1d && ((uint16_t)regs[0]==1 || (uint16_t)regs[0]==2)) {
+        GWorldSlot* world=gWorldForPixMap((uint8_t**)read32(userStack));
+        if(!world || !*world->handles[1])goto unsupportedTrap;
+        bool lock=(uint16_t)regs[0]==1;
+        uint8_t state=world->owner->state(world->handles[1]);
+        if(world->owner->setState(world->handles[1],lock ? state|0x80 : state&~0x80))goto unsupportedTrap;
+        world->locked=lock;refreshGWorldViews();
+        if(lock)userStack[4]=1;
+        regs[0]=0;regs[8]=(uint32_t)world->handles[1];regs[9]=(uint32_t)world->pixMap;
         return 5;
     }
     if (trap == 0xab1d && (uint16_t)regs[0] == 12) {   // QDExtensions: NoPurgePixels
@@ -7324,6 +7386,7 @@ unsupportedTrap:
     if(unsupportedGraphics)routine=trap==0xaa95 ? "SETPALETTE"
         : trap==0xaa94 ? "ACTIVATEPALETTE" : "8-BIT DRAWING / PALETTE";
     if(trap==0xab1d && (uint16_t)regs[0]==0)routine="NEWGWORLD";
+    if(trap==0xab1d && (uint16_t)regs[0]==15)routine="GETPIXBASEADDR";
     if(trap==0xab1d && (uint16_t)regs[0]==5)routine="GETGWORLD";
     if(trap==0xab1d && (uint16_t)regs[0]==6)routine="SETGWORLD";
     if(trap==0xa0f8) { manager="SOUND DRIVER";routine=driverStop ? driverStop : "SELECTOR";g_trapSelector=read32(userStack+4); }

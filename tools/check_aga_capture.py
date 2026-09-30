@@ -67,7 +67,7 @@ def main():
     transfer = read(args.folder, 'video-transfer-lut16.bin', 65536)
     require(hashlib.sha256(transfer).hexdigest() == 'bf0a6433c155a61989e5dc0571bae1357066ab476a24d0afaf2e2aa7094fe2aa', 'reference transfer identity')
     if args.mode == 'startup':
-        require(log.count('PASS AGA startup queued and VBI-published next=SETGWORLD') == 1, 'startup positive control')
+        require(log.count('PASS AGA startup queued and VBI-published next=GETPIXBASEADDR') == 1, 'startup positive control')
         m = re.search(r'AGA_ACTIVE front=([0-9A-F]+) back=([0-9A-F]+) copper=([0-9A-F]+) crop=160/150 queued=1 presented=1 pending=0 line=(\d+) late=0', log)
         require(m and int(m[4]) < 72, 'startup publication')
         source = read(args.folder, 'aga-startup-logical.bin', 307200)

@@ -11,8 +11,8 @@ handles: two PixMaps, pixels, a copied colour table, visibility and clip regions
 GrafVars, a private GDevice and inverse table, and three complete PixPat trees.
 Both device and port PixMaps share the pixel and colour-table handles. All new
 handles are unlocked and non-purgeable. Pixel contents are uninitialized; they
-are not accepted as a rendered frame. The subsequent original initialization
-binds and clears the world and remains the next queue item.
+are not accepted as a rendered frame. The subsequent original initialization now binds and clears the world, then
+restores the visible game port. Pixel-address access is the next queue item.
 
 Measured allocation details:
 
@@ -69,3 +69,45 @@ row width, exact PixMap bytes and both supported inverse resolutions.
 The local reference is `tmp/m2-newgworld-ownership-all.log`; its dumps and the
 MakeITable disassembly remain under ignored `tmp/`. No original resources,
 System software bytes or captures are committed.
+
+## Offscreen initialization
+
+Misc2+$008E–$0114 binds the new world, sets its rectangular clip, gets the
+PixMap, locks its pixels, erases the clipped rectangle, unlocks the pixels and
+restores the game window with the explicit main device. Both SetGWorld forms
+retain their measured return values. GetGWorld derives the device from the
+bound world.
+
+LockPixels changes the real pixel handle state to locked and changes only the
+port PixMap from version 2 / handle baseAddr to version 1 / raw pixel baseAddr.
+UnlockPixels reverses that transition. The private device PixMap stays in its
+original handle form throughout. Refreshing movable-body views preserves this
+distinction. The Boolean lock result and both PixMap lookup results match.
+
+EraseRect uses the owned eight-bit pixels, clips against the map, port,
+visibility and clip rectangles, and fills the solid background index. The
+measured 648×401 world has 259,848 visible bytes; all become zero, while all
+1,604 row-padding bytes remain unchanged. Unsupported patterns, complex regions
+and unlocked storage stop explicitly. No screen publication is requested.
+
+The original 160-byte sequence starting at Misc2+$0076 has SHA-256
+`6c1c59823b41b3d2087b587439adc5b81dc63377ef8dab2eaed88b5813ed8b70`.
+`tools/mac_gworld_init.lua`, `amiga/gworld_init.gdb` and
+`tools/check_gworld_init.py` compare the live bytes, eight call stack effects,
+callee-preserved registers, owned records, real heap lock states and pixel
+results. System-internal scratch addresses left in EraseRect's A0/D2 are not
+portable return values; the original initialization sequence does not consume these scratch outputs
+as results. The comparison does not require their numerical identity.
+
+Run the checker with explicit normal-exit statuses:
+
+```sh
+python3 tools/check_gworld_init.py tmp/m2-gworld-init-reference-final.log \
+  tmp/m2-gworld-init-native-final.log --reference-status 0 --native-status 0
+```
+
+The accepted reference capture exits normally without Lua errors. An earlier
+capture's shutdown-callback error and an initial native observer's malformed
+memory-dump expression are excluded from acceptance. The next named stop is
+GETPIXBASEADDR, QDOffscreen selector 15, Misc2+$02DA. This establishes offscreen
+initialization, not rendered logo or intro acceptance.

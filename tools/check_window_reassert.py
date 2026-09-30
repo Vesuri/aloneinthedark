@@ -58,7 +58,7 @@ def check(reference, native, reference_status, native_status, resource, folder):
         # checked against the existing measured cursor image by the AGA checker.
         for y in range(150, 350):
             require(captures['native']['physical'][y*640+160:y*640+480] == bytes([255])*320, label+' unchanged black native client')
-    print('PASS paired window reassert: original/live bytes, arguments, ABI, complete regions/pixels/palette preserved; '+one(native, r'RESIZE_NEXT (state=3 trap=AB1D selector=6 segment=10 offset=8E manager=QUICKDRAW routine=SETGWORLD windows=(?:75|101) services=(?:129/129|137/137))'))
+    print('PASS paired window reassert: original/live bytes, arguments, ABI, complete regions/pixels/palette preserved; '+one(native, r'RESIZE_NEXT (state=3 trap=AB1D selector=F segment=10 offset=2DA manager=QUICKDRAW routine=GETPIXBASEADDR windows=(?:77|103) services=(?:131/131|139/139))'))
 
 
 if __name__ == '__main__':
