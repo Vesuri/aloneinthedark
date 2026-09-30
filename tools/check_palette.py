@@ -51,7 +51,7 @@ def check(text,status,folder,code,clut,fixture=False,native=False):
     entries=b''.join(source[10+8*i:16+8*i]+bytes.fromhex('000a0000000000000000') for i in range(256))
     if palette[16:]!=entries:raise ValueError('palette RGB/usage/tolerance/private fields')
     if native and not fixture:
-        one(text,r'PALETTE_NEXT state=3 trap=A8AA selector=FFFFFFFF segment=9 offset=E90 manager=QUICKDRAW routine=SECTRECT windows=(?:113|139) services=(?:431/431|439/439)')
+        one(text,r'PALETTE_NEXT state=3 trap=A860 selector=FFFFFFFF segment=7 offset=44F0 manager=EVENT MANAGER routine=WAITNEXTEVENT windows=(?:113|139) services=(?:431/431|439/439)')
     if not fixture:
         if 'PALETTE_FIX_' in text or fields(one(text,r'PALETTE_SIZE (.*)'))!={'size':4112,'mem':0}:raise ValueError('allocated size')
         return

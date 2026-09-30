@@ -3184,3 +3184,26 @@ The next stop is QUICKDRAW / SECTRECT at Misc1+$0E90, before the device iterator
 can finish. Counts remain 113 windows, 431 services and 62 original resource
 reads / 265,454 bytes. Fresh-preference counts remain derived. Intro acceptance
 is still pending.
+
+
+## Drawing-device rectangle intersections
+
+M2.3g13 is complete. Both original SectRect calls match the Mac: background and
+game-window intersections, Boolean/padding, stack/register contract and guarded
+destination bytes. Original instructions are unchanged. Fourteen additional Mac
+fixtures cover empty/touching/inverted rectangles, signed extremes and aliasing.
+All sixteen measured pairs pass the compiled helper under ASan/UBSan.
+
+`tmp/m2-sectrect-reference-final.log` and `tmp/m2-sectrect-native-final.log`
+exit 0 with required markers. The final combined native run passes device flags,
+both background coordinate conversions, background binding, 220 text widths,
+twenty pictures, installed fonts, driver/MDRV exclusion, AGA pixels/palette/VBI
+publication and all 75,616 A5 bytes. The full host suite, 73-script MAME literal
+audit and both clean-build link audits pass. The discovery observer overwrote
+first-window captures on the second device-selection sequence; the final observer
+preserves those captures and checks both intersections. Discovery is not acceptance.
+See [rectangles.md](rectangles.md#sectrect) for the contract and reproduction.
+
+Next is EVENT MANAGER / WAITNEXTEVENT at Engine+$44F0. Counts remain 113
+windows, 431/431 services and 62 original resource reads / 265,454 bytes.
+Fresh-preference counts remain derived. No rendered intro acceptance is claimed.

@@ -14,10 +14,10 @@ design.md §5.
   low-resolution selection/cleanup, all 75 font-metrics calls and four Apple Event
   registrations, colour-table loading/mutations, palette construction and default
   binding, hidden window-title state and the verified WIND 128 request. Startup realizes the palette and clears the game client area, then stops at
-  `SECTRECT` at Misc1+$0E90 after palette binding/activation, first-frame AGA
+  `WAITNEXTEVENT` at Engine+$44F0 after palette binding/activation, first-frame AGA
   publication, background ShowHide, game-port binding, TickCount, unchanged window geometry, point setup, empty-region allocation and eight-bit offscreen buffer initialization, pixel-address access and the first original image-row copy and hidden menu-list setup, followed by the 20-call image rectangle loop and the measured already-detached
   resource error, device-table world allocation and RGB foreground/background
-  selection, all twenty indexed picture draws and 220 original text measurements, then binds the existing background window and converts its two corner points, then queries the actual device flags. The original
+  selection, all twenty indexed picture draws and 220 original text measurements, then binds the existing background window and converts its two corner points, then queries the actual device flags and completes both background/game-window intersections. The original
   mixer is never loaded.
 - The original runs in MAME on the System 7.5.5 reference volume.
 
@@ -51,15 +51,16 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.3g13 Drawing-device rectangle intersection.**
-  - The original device-attribute query now passes. Misc1 next reaches
-    SectRect at +$0E90 ($A8AA), intersecting the background window with the
-    candidate device before choosing the device with the largest covered area.
-  - Measure the original inputs/result, Boolean/stack contract and rectangle
-    edge cases. Reuse the existing rectangle helpers where applicable.
+- **M2.3g14 Startup event polling.**
+  - Both drawing-device intersections now pass. Engine next reaches
+    WaitNextEvent at +$44F0 ($A860).
+  - Check original caller bytes and measure its event mask, EventRecord,
+    sleep/mouse-region arguments, queue behavior and return contract. Implement
+    the reached startup route using actual event state, never a fabricated
+    empty-event success. Full gameplay input remains M3.1.
 
-  *Done when* the original intersection and its outputs match MAME, startup
-  reaches its next named stop with MDRV absent, and rectangle/startup checks pass.
+  *Done when* original startup event polling matches the reference contract,
+  execution reaches its next named stop with MDRV absent, and startup checks pass.
 - **M2.1c Original File Manager read acceptance (after M2.2).**
   - This retains M2.1's original acceptance; diagnostic fixture reads do not count
     as original-game reads. M2.1b2a measured the intervening Get1NamedResource

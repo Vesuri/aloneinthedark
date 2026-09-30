@@ -19,5 +19,21 @@ inline bool unite(uint8_t* out,const uint8_t* a,const uint8_t* b) {
     }
     return true;
 }
+// SectRect writes the zero rectangle for empty/touching/inverted intersections.
+inline bool intersect(uint8_t* out,const uint8_t* a,const uint8_t* b,bool& nonempty) {
+    if(!out || !a || !b)return false;
+    int16_t result[4];
+    for(unsigned i=0;i<4;++i) {
+        int16_t x=int16_t(word(a+2*i)),y=int16_t(word(b+2*i));
+        result[i]=i<2 ? (x>y?x:y) : (x<y?x:y);
+    }
+    nonempty=result[0]<result[2] && result[1]<result[3];
+    for(unsigned i=0;i<4;++i) {
+        uint16_t value=nonempty ? uint16_t(result[i]) : 0;
+        out[2*i]=uint8_t(value>>8);out[2*i+1]=uint8_t(value);
+    }
+    return true;
+}
+
 }
 #endif

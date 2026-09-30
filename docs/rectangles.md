@@ -52,3 +52,37 @@ endpoint checks. No intro or rendered-font acceptance
 is claimed. Fresh-preference endpoint counts (127/171) retain the previously
 measured +26 windows/+8 services difference; this change's native acceptance
 uses existing preferences.
+
+## SectRect
+
+M2.3g13 implements signed rectangle intersection, including zero output and false
+for empty, touching or inverted intersections. Either input may alias the output;
+all inputs are read before the eight destination bytes are written. Null pointers
+retain the named stop. Original Misc1+$0E80–+$0E91 bytes are
+`4227205248680022486efff4486effeca8aa`; game instructions are unchanged.
+
+Two original calls at Misc1+$0E90 select the drawing device. The device rectangle
+(0,0,480,640) intersects first with the background (-8000,-8000,8000,8000), then
+with the game window (150,160,350,480), in top/left/bottom/right order. Both return
+true and the expected device/game rectangle respectively. Fourteen Mac fixtures
+cover signed extremes, empty/inverted inputs, touching edges and destination
+aliasing. All sixteen retained pairs pass the actual helper under ASan/UBSan.
+
+The Boolean occupies the first byte of the caller's result word; padding is
+preserved. Stack cleanup consumes twelve bytes. D0's low word becomes 14 while
+its upper word and D1–D7/A2–A6 are preserved. Native A0/A1 remain preserved;
+Mac scratch addresses are not reproduced. Native destination guards are unchanged.
+
+Use the documented headless MAME command with `tools/mac_sectrect.lua`, and the
+combined native `menu_lifecycle.gdb` observer. Accepted reference and native logs
+both exit 0 with positive completion markers. Reproduce the checks with:
+
+```sh
+python3 tools/check_sectrect.py tmp/m2-sectrect-reference-final.log --status 0
+python3 tools/check_sectrect.py tmp/m2-sectrect-native-final.log --status 0 --native
+python3 tools/check_sectrect_helper.py --reference tmp/m2-sectrect-reference-final.log --status 0
+```
+
+Supply actual terminal statuses. The native observer preserves the first
+background binding/coordinate captures while collecting both intersections.
+Startup now stops at WaitNextEvent, Engine+$44F0; intro acceptance remains open.

@@ -6535,6 +6535,14 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         regs[9]=(uint32_t)(*world->handles[26]+6+(1UL<<(3*read16(*world->handles[26]+4))));
         return 5;
     }
+    if(trap==0xa8aa) { // SectRect(src1, src2, destination) -> Boolean
+        bool nonempty;
+        if(!RectBounds::intersect((uint8_t*)read32(userStack),
+             (const uint8_t*)read32(userStack+8),(const uint8_t*)read32(userStack+4),nonempty))goto unsupportedTrap;
+        userStack[12]=nonempty ? 1 : 0; // Preserve the result slot's padding byte.
+        regs[0]=(regs[0]&0xffff0000UL)|14;
+        return 13;
+    }
     if(trap==0xa8ab) { // UnionRect(src1, src2, destination)
         uint8_t* out=(uint8_t*)read32(userStack);
         const uint8_t* b=(const uint8_t*)read32(userStack+4);

@@ -127,12 +127,12 @@ commands
  continue
 end
 continue
-if g_stageBState!=3 || g_trapWord!=0xa8aa || g_trapSegment!=9 || g_trapOffset!=0xe90 || *(unsigned long*)(g_trapRoutine+0)!=0x53454354 || *(unsigned long*)(g_trapRoutine+4)!=0x52454354 || *(unsigned char*)(g_trapRoutine+8)!=0 || $menu_seq!=32 || $menu_inflight!=0 || g_soundDriverCalls!=2 || g_macServiceActive!=0 || g_systemWindows!=$startup_windows || g_macServiceEntered!=$startup_entered || g_macServiceCompleted!=$startup_completed || g_resourceRuntimeReads!=62 || g_resourceRuntimeBytes!=265454 || g_overlayRuntimeReads!=31 || g_overlayRuntimeBytes!=80650
+if g_stageBState!=3 || g_trapWord!=0xa860 || g_trapSegment!=7 || g_trapOffset!=0x44f0 || *(unsigned long*)(g_trapRoutine+0)!=0x57414954 || *(unsigned long*)(g_trapRoutine+4)!=0x4e455854 || *(unsigned long*)(g_trapRoutine+8)!=0x4556454e || *(unsigned short*)(g_trapRoutine+12)!=0x5400 || $menu_seq!=32 || $menu_inflight!=0 || g_soundDriverCalls!=2 || g_macServiceActive!=0 || g_systemWindows!=$startup_windows || g_macServiceEntered!=$startup_entered || g_macServiceCompleted!=$startup_completed || g_resourceRuntimeReads!=62 || g_resourceRuntimeBytes!=265454 || g_overlayRuntimeReads!=31 || g_overlayRuntimeBytes!=80650
  printf "FAIL native menu: next %s/%s calls=%u\n",g_trapManager,g_trapRoutine,$menu_seq
  detach
  quit 1
 end
 printf "MENU_COUNTS app=%u/%u overlay=%u/%u windows=%u services=%u/%u lowmem=%u mask=%x resources=%u\n",g_resourceRuntimeReads,g_resourceRuntimeBytes,g_overlayRuntimeReads,g_overlayRuntimeBytes,g_systemWindows,g_macServiceEntered,g_macServiceCompleted,g_lowMemoryAppliedSites,g_loadedCodeMask,g_resourceCount
-printf "PASS native menu calls=20 inflight=0 next=SECTRECT\n"
+printf "PASS native menu calls=20 inflight=0 next=WAITNEXTEVENT\n"
 detach
 quit 0

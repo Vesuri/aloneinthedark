@@ -15,7 +15,7 @@ def one(text,pattern):
     return matches[0]
 def check(text,status,native=False):
     if status!=0 or any(x in text for x in ('FAIL','[LUA ERROR]','unknown command','Error in','timeout','Program received signal')):raise ValueError('failed observer')
-    marker='PASS native fixed-choice services next=SECTRECT' if native else 'PASS original fixed-choice services'
+    marker='PASS native fixed-choice services next=WAITNEXTEVENT' if native else 'PASS original fixed-choice services'
     if text.count(marker)!=1 or text.count('[Inferior 1 (Remote target) detached]' if native else 'Exited via the debugger')!=1:raise ValueError('completion')
     entries=re.findall(r'^SERVICE_ENTER label=(\w+) (.*)$',text,re.M)
     returns=re.findall(r'^SERVICE_RETURN label=(\w+) (.*)$',text,re.M)
@@ -63,7 +63,7 @@ def check(text,status,native=False):
         code[2:6]=bytes.fromhex('fffee4ac')
         if hashlib.sha256(code).hexdigest()!='474f8a03c2ddd2d18c9367305105c552f8e79613077ee7cb114d754752f9e5fe':
             raise ValueError('live original window instructions')
-        one(text,r'CHOICE_NEXT state=3 trap=A8AA selector=FFFFFFFF segment=9 offset=E90 manager=QUICKDRAW routine=SECTRECT windows=(?:113|139) services=(?:431/431|439/439) reads=62 bytes=265454')
+        one(text,r'CHOICE_NEXT state=3 trap=A860 selector=FFFFFFFF segment=7 offset=44F0 manager=EVENT MANAGER routine=WAITNEXTEVENT windows=(?:113|139) services=(?:431/431|439/439) reads=62 bytes=265454')
     return True
 
 def check_selection(reference,status,native):

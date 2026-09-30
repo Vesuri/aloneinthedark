@@ -1,5 +1,7 @@
 set $tw_finished=0
 set $tw_n=0
+set $binding_captured=0
+set $sr_n=0
 while $tw_finished==0
  tbreak dispatchMacTrap if trap==0xa886 || (trap==0xab1d && *(unsigned long*)(frame+2)==(unsigned long)s_segments[9].begin+0xe0a)
  continue
@@ -7,9 +9,13 @@ while $tw_finished==0
   loop_break
  end
  if trap==0xab1d
-  source world_restore_call.gdb
-  source localglobal_calls.gdb
-  source device_attribute_call.gdb
+  if $binding_captured==0
+   source world_restore_call.gdb
+   source localglobal_calls.gdb
+   source device_attribute_call.gdb
+   set $binding_captured=1
+  end
+  source sectrect_call.gdb
   loop_continue
  end
  set $tw_n=$tw_n+1
