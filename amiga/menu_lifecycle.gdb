@@ -522,8 +522,19 @@ source gworld_device_call.gdb
 source rgb_colors_calls.gdb
 source picture8_calls.gdb
 source textwidth_calls.gdb
+set $next_port=*(unsigned long*)s_qdThePort
+set $next_args=(unsigned long)s_userService.arguments
+set $next_count=*(short*)$next_args
+set $next_first=*(short*)($next_args+2)
+set $next_text=*(unsigned long*)($next_args+4)
+printf "NEXT_TEXT font=%u size=%u face=%u mode=%u extra=%X pen=%04X%04X count=%d first=%d port=%X args=%X active=%u\n",*(unsigned short*)($next_port+68),*(unsigned short*)($next_port+74),*(unsigned char*)($next_port+70),*(unsigned short*)($next_port+72),*(unsigned long*)($next_port+76),*(unsigned short*)($next_port+48),*(unsigned short*)($next_port+50),$next_count,$next_first,$next_port,$next_args,g_macServiceActive
+dump binary memory ../tmp/drawtext-next-native-port.bin $next_port $next_port+108
+if $next_count>0 && $next_count<4096 && $next_first>=0
+ dump binary memory ../tmp/drawtext-next-native-string.bin $next_text+$next_first $next_text+$next_first+$next_count
+end
+printf "NEXT_DRIVER calls=%u statuses=%u starts=%u stops=%u active=%u channel=%d chip=%X allocated=%u\n",g_soundDriverCalls,g_effectStatusCalls,g_effectStarts,g_effectStops,g_soundDriver.effects[0].active,g_soundDriver.effects[0].channel,g_effects[0].chip,g_effects[0].allocated
 printf "MLIST_NEXT state=%u trap=%X selector=%X segment=%u offset=%X manager=%s routine=%s windows=%u services=%u/%u reads=%u bytes=%u\n",g_stageBState,g_trapWord,g_trapSelector,g_trapSegment,g_trapOffset,g_trapManager,g_trapRoutine,g_systemWindows,g_macServiceEntered,g_macServiceCompleted,g_resourceRuntimeReads,g_resourceRuntimeBytes
-if g_stageBState!=3 || g_macServiceActive!=0 || g_macServiceEntered!=g_macServiceCompleted
+if g_stageBState!=3 || g_macServiceActive!=1 || g_macServiceEntered!=g_macServiceCompleted+1
  echo FAIL menu-list progression\n
  detach
  quit 1
@@ -538,12 +549,12 @@ while $i<g_resourceCount
  set $i=$i+1
 end
 echo PASS menu-list next-stop original-MDRV=absent\n
-if g_trapWord!=0xa8ec || g_trapSegment!=4 || g_trapOffset!=0x1dbc || g_systemWindows!=$startup_windows || g_macServiceEntered!=$startup_entered+g_effectStatusCalls || g_macServiceCompleted!=$startup_completed+g_effectStatusCalls
+if g_trapWord!=0xa885 || g_trapSegment!=12 || g_trapOffset!=0x346 || g_systemWindows!=$startup_windows || g_macServiceEntered!=$startup_entered+g_effectStatusCalls || g_macServiceCompleted!=$startup_completed+g_effectStatusCalls
  echo FAIL menu-list startup endpoint\n
  detach
  quit 1
 end
-echo startup PASS: original main, next stop QUICKDRAW / COPYBITS CODE 4\n
+echo startup PASS: original main, next stop QUICKDRAW / DRAWTEXT CODE 12\n
 set $ri=0
 set $font_bodies=0
 while $ri<g_resourceCount
@@ -579,25 +590,6 @@ set $vi=0
 while $vi<6
  if g_soundDriver.songs[$vi].active!=0 || g_soundDriver.songs[$vi].sample!=0 || g_soundDriver.songs[$vi].channel!=-1
   echo FAIL driver: song voice initialization\n
-  detach
-  quit 1
- end
- set $vi=$vi+1
-end
-if g_effectStarts!=1 || g_effectStops!=1 || g_soundDriver.effects[0].active || g_soundDriver.effects[0].channel!=-1 || g_soundDriver.channels[0]!=-1
- echo FAIL driver: effect playback\n
- detach
- quit 1
-end
-if g_soundDriver.effects[1].active || g_soundDriver.effects[1].sample || g_soundDriver.effects[1].channel!=-1
- echo FAIL driver: unused effect voice\n
- detach
- quit 1
-end
-set $vi=1
-while $vi<4
- if g_soundDriver.channels[$vi]!=-1
-  echo FAIL driver: unused channel\n
   detach
   quit 1
  end

@@ -11,14 +11,16 @@ and Toolbox layer are carried over from Vette!; see
 
 ## Current state
 
-Original 68020 game code now reaches the **Infogrames logo**. The MacPlay
+Original 68020 game code now reaches the **title screen**. The MacPlay
 picture, its palette transitions and the logo match the Mac reference pixels
 and colours; nine AGA frames are verified through bitplane/copper captures and
 vertical-blank publication. These memory captures do not replace the
 owner-deferred rendered-window check. The full intro and gameplay are not ready.
 
-The next named stop is **QUICKDRAW / COPYBITS**, Dark+$1DBC, in the
-intro. The copyright line now uses port-owned placeholder glyphs with the
+The title-screen copy now uses the Mac’s measured colour mapping. Its full
+client matches apart from the documented placeholder copyright glyphs. The next
+named stop is **QUICKDRAW / DRAWTEXT**, Dan1+$0346, for the missing dot-above
+glyph in “I˙Motion”. The copyright line uses owned glyphs with the
 Mac’s measured spacing and pen advance. The preceding mode-0 offscreen fill
 matches the Mac. The first intro line matches the Mac across the complete offscreen
 buffer, with 48 additional slope/clipping fixtures. The first sound effect
@@ -44,7 +46,7 @@ serve memory and resource handles. System identity and all eleven derived
 capability flags match the Mac reference. The user-mode service bridge passes
 its native ABI probe. OS windows and DOS/resload adapters pass the native/host
 core probes; rendered-picture acceptance is owner-deferred (M1.7b2). The next
-items are the intro presentation copy and original PAK-read acceptance. Both original
+items are the next intro glyph and original PAK-read acceptance. Both original
 Times lookups now pass register, stack, error-state and installed-font checks. Fresh and existing preferences now request WIND 128
 through the original instructions, with only the size byte changed.
 The logical device has real 640×480×8 storage; its four selection calls match
@@ -56,7 +58,7 @@ read acceptance still needs the intervening drawing services and payload checks.
 Resource bodies now stream from disk into zone handles; startup retains the
 4,998-byte map instead of the 1,424,934-byte application fork. The `resource-read`
 regression verifies original bytes and bounded runtime resource reads; the
-current stop is QuickDraw CopyBits; original MDRV loading stays forbidden. Named/ID/indexed lookup, resource counts and metadata, purge/reload and release now
+current stop is QuickDraw DrawText for the dot-above glyph; original MDRV loading stays forbidden. Named/ID/indexed lookup, resource counts and metadata, purge/reload and release now
 pass paired Mac/native checks. Native resource staging now passes exact publication,
 abort, rollback and stale-file checks. Resource-file open/create/update/close,
 AddResource, multi-fork search, noncurrent close and invalid update pass a

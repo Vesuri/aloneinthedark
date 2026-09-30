@@ -52,7 +52,9 @@ def check(reference,status,native=None,native_status=None):
         if p[4:20]!=packet[4:20] or p[24:]!=packet[24:]:raise ValueError('native request')
         if (ROOT/'tmp/driver17-native-sample.bin').read_bytes()!=pcm:raise ValueError('native sample')
         if (ROOT/'tmp/driver17-native-chip.bin').read_bytes()!=bytes(b^0x80 for b in pcm)+b'\0\0\0':raise ValueError('Paula PCM/pad/silent reload')
-        if 'calls=4 starts=1 stops=0 size=30783 rate=1F400000 period=443 duration=231 id=8000 active=1 channel=0' not in text:raise ValueError('native event')
+        calls=int(one(text,r'^DRIVER17_NATIVE_RETURN calls=(\d+) starts=1 stops=0 size=30783 rate=1F400000 period=443 duration=231 id=8000 active=1 channel=0 chip=\w+ allocated=\d+$'))
+        queries=int(one(text,r'^DRIVER17_REENTRANT statuses=(\d+)$'))
+        if calls!=4+queries:raise ValueError('native play/interrupt-query accounting')
     print('PASS driver17: original bytes, full play transition, natural completion, call ABI and paired raw PCM')
 
 if __name__=='__main__':

@@ -3666,14 +3666,27 @@ static bool copyWindowBits8(const uint8_t* sourceBitmap,const uint8_t* destinati
     if(!source || !source->locked || !window || window->dialog || !port[110]
        || destinationBitmap!=port+2 || read16(window->pixelMap+32)!=8
        || read32(window->pixelMap)!=(uint32_t)s_colorScreen
-       || read16(source->pixMap+32)!=8 || read32(source->pixMap)!=(uint32_t)source->pixels
-       || read32(source->colorTable)!=read32(s_windowManagerColors))return false;
+       || read16(source->pixMap+32)!=8 || read32(source->pixMap)!=(uint32_t)source->pixels)return false;
     uint8_t** vh=(uint8_t**)read32(port+24);uint8_t** ch=(uint8_t**)read32(port+28);
     if(!vh || !*vh || !ch || !*ch || read16(*vh)!=10 || read16(*ch)!=10)return false;
+    uint8_t colors[256];const uint8_t* remap=0;
+    if(read32(source->colorTable)!=read32(s_windowManagerColors)) {
+        const uint8_t* ct=source->colorTable;
+        if(read16(ct+6)!=255 || (read16(ct+4)!=0 && read16(ct+4)!=0x8000))return false;
+        if((!s_mainDeviceITableValid || read32(s_mainDeviceITable)!=read32(s_windowManagerColors))
+           && !makeITable(0,0,4))return false;
+        for(uint16_t i=0;i<256;++i) {
+            const uint8_t* entry=ct+8+uint32_t(i)*8;uint16_t index;
+            if((read16(ct+4)==0 && read16(entry)!=i)
+               || !GWorld8::colorIndex(s_windowManagerColors,s_mainDeviceITable,entry+2,index))return false;
+            colors[i]=uint8_t(index);
+        }
+        remap=colors;
+    }
     uint8_t drawn[8];const uint8_t* map=window->pixelMap;
     if(!CopyBits8::copy(source->pixels,source->owner->handleSize(source->handles[1]),
         read16(source->pixMap+4)&0x3fff,source->pixMap+6,s_colorScreen,sizeof(s_colorScreen),
-        read16(map+4)&0x3fff,map+6,from,to,port+16,*vh+2,*ch+2,drawn))return false;
+        read16(map+4)&0x3fff,map+6,from,to,port+16,*vh+2,*ch+2,drawn,remap))return false;
     if(read16(drawn)!=read16(drawn+4) && read16(drawn+2)!=read16(drawn+6))
         markDirtyBounds((int16_t)read16(drawn)-(int16_t)read16(map+6),
                         (int16_t)read16(drawn+2)-(int16_t)read16(map+8),

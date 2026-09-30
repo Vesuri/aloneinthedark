@@ -5,6 +5,16 @@ from pathlib import Path
 from check_driver22 import ROOT,one
 from resource_fork import read_resource_fork
 
+def check_native_sequence(n,allow_prefix=False):
+    pattern=(r'^DRIVER20_NATIVE_PREFIX calls=(\d+) active=(\d+) complete=0 driverCalls=(\d+) statusCalls=(\d+) starts=(\d+) stops=(\d+) next=A891/6/337E$' if allow_prefix else r'^DRIVER20_NATIVE_SEQUENCE calls=(\d+) active=(\d+) complete=1 driverCalls=(\d+) statusCalls=(\d+) starts=(\d+) stops=(\d+)$')
+    polls,playing,calls,statuses,starts,stops=map(int,one(n,pattern))
+    if not playing or polls!=playing+(0 if allow_prefix else 1) or calls!=statuses+4 or starts!=1 or stops!=(0 if allow_prefix else 1):raise ValueError('native event sequence')
+    if allow_prefix:
+        if polls!=statuses:raise ValueError('prefix query accounting')
+    else:
+        observed,scoped,total=map(int,one(n,r'^DRIVER20_ACCOUNTING observed=(\d+) scoped=(\d+) total=(\d+)$'))
+        if observed!=polls or total!=statuses or observed+scoped!=total:raise ValueError('scoped callback query accounting')
+
 def check(text,status,native=None,native_status=None,allow_prefix=False):
     if status!=0 or any(x in text for x in ('FAIL','LUA ERROR','Error in')) or text.count('Exited via the debugger')!=1:raise ValueError('reference completion')
     active,total,fixtures=map(int,one(text,r'^PASS original driver20 status active=(\d+) total=(\d+) fixtures=(\d+)$'))
@@ -34,9 +44,7 @@ def check(text,status,native=None,native_status=None,allow_prefix=False):
     if native:
         n=native.read_text()
         if native_status!=0 or any(x in n for x in ('FAIL','Error in','DIAG / GDB TIMEOUT','Program received signal')) or n.count('PASS native driver20 active-prefix ABI; completed-query acceptance pending' if allow_prefix else 'PASS native driver20 playing-to-finished sequence ABI and cleanup')!=1 or n.count('[Inferior 1 (Remote target) detached]')!=1:raise ValueError('native completion')
-        pattern=(r'^DRIVER20_NATIVE_PREFIX calls=(\d+) active=(\d+) complete=0 driverCalls=(\d+) statusCalls=(\d+) starts=(\d+) stops=(\d+) next=A891/6/337E$' if allow_prefix else r'^DRIVER20_NATIVE_SEQUENCE calls=(\d+) active=(\d+) complete=1 driverCalls=(\d+) statusCalls=(\d+) starts=(\d+) stops=(\d+)$')
-        polls,playing,calls,statuses,starts,stops=map(int,one(n,pattern))
-        if not playing or polls!=playing+(0 if allow_prefix else 1) or polls!=statuses or calls!=polls+4 or starts!=1 or stops!=(0 if allow_prefix else 1):raise ValueError('native event sequence')
+        check_native_sequence(n,allow_prefix)
         if (ROOT/'tmp/driver20-native-packet.bin').read_bytes()[24:]!=packet[24:]:raise ValueError('native identifier')
     print('PASS driver20: original bytes/states'+(('; native active prefix only; completed-query acceptance pending' if allow_prefix else '; native playback sequence') if native else '; reference only'))
 

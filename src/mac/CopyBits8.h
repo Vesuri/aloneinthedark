@@ -4,11 +4,12 @@
 namespace CopyBits8 {
 inline int32_t coord(const uint8_t* r,unsigned i) { return int16_t(RectBounds::word(r+2*i)); }
 // Vette's unscaled clipping equations, applied to byte pixels. The caller
-// establishes identical colour environments and distinct owned buffers.
+// supplies a measured colour map when the colour environments differ, and
+// establishes distinct owned buffers.
 inline bool copy(const uint8_t* src,uint32_t srcBytes,uint16_t srcStride,const uint8_t* srcMap,
                  uint8_t* dst,uint32_t dstBytes,uint16_t dstStride,const uint8_t* dstMap,
                  const uint8_t* from,const uint8_t* to,const uint8_t* port,
-                 const uint8_t* vis,const uint8_t* clip,uint8_t* drawn) {
+                 const uint8_t* vis,const uint8_t* clip,uint8_t* drawn,const uint8_t* colors=0) {
     if(!src || !dst || src==dst || !srcMap || !dstMap || !from || !to
        || !port || !vis || !clip || !drawn)return false;
     const uint8_t* maps[2]={srcMap,dstMap};uint32_t sizes[2]={srcBytes,dstBytes};
@@ -37,8 +38,10 @@ inline bool copy(const uint8_t* src,uint32_t srcBytes,uint16_t srcStride,const u
     for(int32_t y=limits[0];y<limits[2];++y) {
         const uint8_t* source=src+uint32_t(coord(from,0)+y-coord(to,0)-coord(srcMap,0))*srcStride;
         uint8_t* target=dst+uint32_t(y-coord(dstMap,0))*dstStride;
-        for(int32_t x=limits[1];x<limits[3];++x)
-            target[x-coord(dstMap,1)]=source[coord(from,1)+x-coord(to,1)-coord(srcMap,1)];
+        for(int32_t x=limits[1];x<limits[3];++x) {
+            uint8_t pixel=source[coord(from,1)+x-coord(to,1)-coord(srcMap,1)];
+            target[x-coord(dstMap,1)]=colors ? colors[pixel] : pixel;
+        }
     }
     return true;
 }

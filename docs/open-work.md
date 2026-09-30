@@ -12,8 +12,9 @@ design.md §5.
   support the measured initialization path; original MDRV code is never loaded.
 - MacPlay and the Infogrames logo have exact paired client pixels/colours. Nine
   AGA publications pass memory/copper checks. Full intro acceptance remains open.
-- The next stop is QuickDraw CopyBits, Dark+$1DBC ($A8EC).
-  The copyright line uses owned placeholder glyphs with measured text spacing.
+- The title-screen copy now matches the Mac with documented placeholder text
+  differences. The next stop is DrawText, Dan1+$0346 ($A885), for the
+  MacRoman dot-above character in “I˙Motion”.
   Intro LineTo and mode-0 fills match the Mac; the first raw effect plays on Paula and its
   real polling loop observes completion with sample/DMA cleanup verified.
   Detailed completed service contracts and regression evidence are in
@@ -50,18 +51,22 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.3g31 Intro presentation CopyBits.**
-  - The copyright DrawText now completes. The next call is $A8EC at
-    Dark+$1DBC; original +$1DA8 bytes are
-    `486c0002486b0002486efff8486efff8426742a7a8ec`.
-  - Capture the actual source/destination, selected port, rectangles, mode,
-    colour tables and clipping on both machines before extending CopyBits.
-    Reuse the eight-bit copy and colour-mapping helpers where their measured
-    contracts apply; preserve the documented D6 placeholder text differences.
+- **M2.3g32 Intro dot-above glyph.**
+  - The title copy completes and five further text calls run. The next
+    Dan1+$0346 DrawText contains `49fa4d6f74696f6e` (“I˙Motion”): byte $FA
+    has no owned artwork and correctly stops before drawing.
+  - The selected owned eight-bit GWorld still uses Times/plain/14, mode 1,
+    zero extra spacing; pen (v86,h129), count 8, first 0. Reuse the measured
+    Times advances and renderer. Supply owned artwork under D6, after measuring
+    the original glyph placement and surrounding text state.
+  - A second raw effect is playing at this stop. Preserve it and account for
+    all status queries, including VBL callbacks; the first effect's cleanup is
+    checked at its own completion, not at this later state.
 
-  *Done when* the reached copy matches the original mapping/clipping/ABI,
-  surrounding pixels and metadata remain intact, and startup reaches its next
-  named stop with text/fill/line/effect/logo/palette/AGA regressions passing.
+  *Done when* the reached text is legible with explained placeholder differences,
+  original spacing/pen/ABI and full-buffer preservation pass, and startup reaches
+  its next named stop with title-copy/text/fill/line/effect/logo/palette/AGA
+  regressions passing and original MDRV absent.
 - **M2.1c Original File Manager read acceptance (after M2.2).**
   - This retains M2.1's original acceptance; diagnostic fixture reads do not count
     as original-game reads. M2.1b2a measured the intervening Get1NamedResource

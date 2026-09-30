@@ -28,8 +28,21 @@ while $tw_finished==0
   continue
   source driver17_call.gdb
   source driver20_calls.gdb
-  tbreak dispatchMacTrap if trap==0xa8a2 && *(unsigned long*)(frame+2)==(unsigned long)s_segments[13].begin+0xd52 && *(unsigned short*)(*(unsigned long*)s_qdThePort+56)==0 && *(unsigned long*)(*(unsigned long*)s_qdThePort+80)==18 && *(unsigned long*)*(unsigned long*)userStack==0x00c00075 && *(unsigned long*)(*(unsigned long*)userStack+4)==0x00c800b5
+  tbreak *((unsigned long)s_segments[13].begin+0xd52) if *(unsigned short*)(*(unsigned long*)s_qdThePort+56)==0 && *(unsigned long*)(*(unsigned long*)s_qdThePort+80)==18 && *(unsigned long*)*(unsigned long*)$sp==0x00c00075 && *(unsigned long*)(*(unsigned long*)$sp+4)==0x00c800b5
   continue
+  if $pc!=(unsigned long)s_segments[13].begin+0xd52 || *(unsigned short*)$pc!=0xa8a2
+   echo FAIL later PaintRect original instruction boundary\n
+   detach
+   quit 1
+  end
+  printf "PL_BOUNDARY pc=%X opcode=%X sp=%X\n",$pc,*(unsigned short*)$pc,$sp
+  tbreak dispatchMacTrap
+  continue
+  if trap!=0xa8a2
+   echo FAIL later PaintRect dispatch boundary\n
+   detach
+   quit 1
+  end
   if g_stageBState==3
    echo FAIL later PaintRect aligned call not reached\n
    detach
@@ -44,6 +57,11 @@ while $tw_finished==0
    quit 1
   end
   source drawtext_call.gdb
+  tbreak *((unsigned long)s_segments[4].begin+0x1dbc)
+  continue
+  tbreak dispatchMacTrap
+  continue
+  source copylate_call.gdb
   continue
   loop_break
  end

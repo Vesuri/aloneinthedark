@@ -20,15 +20,11 @@ set $d17_reg11=regs[11]
 set $d17_reg12=regs[12]
 set $d17_reg13=regs[13]
 set $d17_reg14=regs[14]
-tbreak *((unsigned long)*g_soundDriverHandle+2)
+# User-mode VBL callbacks can query the shared driver before this call returns.
+# Match this original caller and its stack, not the shared stub's first RTS.
+tbreak *$d17_return if $sp==$d17_sp+4
 continue
-printf "DRIVER17_STUB pc=%X sp=%X d0=%X d1=%X expected=%X returnword=%X\n",$pc,$sp,$d0,$d1,$d17_return,*(unsigned short*)$d17_return
-if $pc!=(unsigned long)*g_soundDriverHandle+2
- echo FAIL driver17 stub return checkpoint\n
- detach
- quit 1
-end
-stepi
+printf "DRIVER17_REENTRANT statuses=%u\n",g_effectStatusCalls
 if $pc!=$d17_return || $sp!=$d17_sp+4 || $d0!=0 || $d1!=(($d17_ignored&0xffff0000)|0x7fff)
  echo FAIL driver17 return\n
  detach
@@ -102,7 +98,7 @@ end
 set $d17_chip=(unsigned long)g_effects[0].chip
 eval "dump binary memory ../tmp/driver17-native-chip.bin %u %u",$d17_chip,$d17_chip+g_effects[0].allocated
 printf "DRIVER17_NATIVE_RETURN calls=%u starts=%u stops=%u size=%u rate=%X period=%u duration=%u id=%X active=%u channel=%d chip=%X allocated=%u\n",g_soundDriverCalls,g_effectStarts,g_effectStops,g_effects[0].size,g_effects[0].rate,g_effects[0].period,g_effects[0].ends-g_effects[0].started-1,g_effects[0].id,g_soundDriver.effects[0].active,g_soundDriver.effects[0].channel,$d17_chip,g_effects[0].allocated
-if g_soundDriverCalls!=4 || g_effectStarts!=1 || g_effectStops!=0 || g_effects[0].size!=$d17_size || g_soundDriver.effects[0].active!=1 || g_soundDriver.effects[0].channel!=0
+if g_soundDriverCalls!=4+g_effectStatusCalls || g_effectStarts!=1 || g_effectStops!=0 || g_effects[0].size!=$d17_size || g_soundDriver.effects[0].active!=1 || g_soundDriver.effects[0].channel!=0
  echo FAIL driver17 native playback state\n
  detach
  quit 1

@@ -1,4 +1,5 @@
 printf "DRIVER20_COVERAGE start statuses=%u\n",g_effectStatusCalls
+set $d20_scoped=g_effectStatusCalls
 set $line_seen=0
 set $d20_n=0
 set $d20_active=0
@@ -13,16 +14,20 @@ while $d20_finished==0
  end
  if trap==0xa891
   printf "DRIVER20_COVERAGE line-before statuses=%u observed=%u\n",g_effectStatusCalls,$d20_n
+  set $d20_scope_start=g_effectStatusCalls
   source aga_startup_call.gdb
   source lineto_call.gdb
   printf "DRIVER20_COVERAGE line-after statuses=%u observed=%u\n",g_effectStatusCalls,$d20_n
+  set $d20_scoped=$d20_scoped+g_effectStatusCalls-$d20_scope_start
   set $line_seen=1
   loop_continue
  end
  if trap==0xa8a2
   printf "DRIVER20_COVERAGE paint-before statuses=%u observed=%u\n",g_effectStatusCalls,$d20_n
+  set $d20_scope_start=g_effectStatusCalls
   source paintworld_call.gdb
   printf "DRIVER20_COVERAGE paint-after statuses=%u observed=%u\n",g_effectStatusCalls,$d20_n
+  set $d20_scoped=$d20_scoped+g_effectStatusCalls-$d20_scope_start
   loop_continue
  end
  set $d20_n=$d20_n+1
@@ -45,15 +50,15 @@ set $d20_reg11=regs[11]
 set $d20_reg12=regs[12]
 set $d20_reg13=regs[13]
 set $d20_reg14=regs[14]
-tbreak *((unsigned long)*g_soundDriverHandle+2)
+set $d20_scope_start=g_effectStatusCalls
+tbreak *$d20_return if $sp==$d20_sp+4
 continue
-printf "DRIVER20_STUB pc=%X sp=%X d0=%X d1=%X expected=%X returnword=%X\n",$pc,$sp,$d0,$d1,$d20_return,*(unsigned short*)$d20_return
-if $pc!=(unsigned long)*g_soundDriverHandle+2
- echo FAIL driver20 stub return checkpoint\n
+if g_effectStatusCalls<$d20_scope_start+1
+ echo FAIL driver20 query counter did not advance\n
  detach
  quit 1
 end
-stepi
+set $d20_scoped=$d20_scoped+g_effectStatusCalls-$d20_scope_start-1
 if $pc!=$d20_return || $sp!=$d20_sp+4 || $d0>1 || $d1!=$d20_ignored
  echo FAIL driver20 return\n
  detach
@@ -146,7 +151,34 @@ end
   quit 1
  end
 end
+printf "DRIVER20_ACCOUNTING observed=%u scoped=%u total=%u\n",$d20_n,$d20_scoped,g_effectStatusCalls
+if $d20_n+$d20_scoped!=g_effectStatusCalls
+ echo FAIL driver20 unaccounted status query\n
+ detach
+ quit 1
+end
 printf "DRIVER20_NATIVE_SEQUENCE calls=%u active=%u complete=1 driverCalls=%u statusCalls=%u starts=%u stops=%u\n",$d20_n,$d20_active,g_soundDriverCalls,g_effectStatusCalls,g_effectStarts,g_effectStops
 echo PASS native driver20 playing-to-finished sequence ABI and cleanup\n
 printf "DRIVER17_CLEANUP starts=%u stops=%u tick=%u elapsed=%u active=%u channel=%d chip=%X allocated=%u dma=%X\n",g_effectStarts,g_effectStops,g_macTicks,g_macTicks-g_effects[0].started,g_soundDriver.effects[0].active,g_soundDriver.effects[0].channel,g_effects[0].chip,g_effects[0].allocated,*(unsigned short*)0xdff002
 echo PASS native driver17 natural completion DMA-off and sample released\n
+
+# Check the first effect here; later intro states may start another sound.
+if g_effectStarts!=1 || g_effectStops!=1 || g_soundDriver.effects[0].active || g_soundDriver.effects[0].channel!=-1 || g_soundDriver.channels[0]!=-1
+ echo FAIL driver: effect playback\n
+ detach
+ quit 1
+end
+if g_soundDriver.effects[1].active || g_soundDriver.effects[1].sample || g_soundDriver.effects[1].channel!=-1
+ echo FAIL driver: unused effect voice\n
+ detach
+ quit 1
+end
+set $vi=1
+while $vi<4
+ if g_soundDriver.channels[$vi]!=-1
+  echo FAIL driver: unused channel\n
+  detach
+  quit 1
+ end
+ set $vi=$vi+1
+end

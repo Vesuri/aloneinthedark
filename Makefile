@@ -85,6 +85,7 @@ host-tests:
 	@python3 tools/check_fillrect8.py
 	@python3 tools/check_line8.py
 	@python3 tools/check_copybits8_helper.py
+	@python3 tools/test_driver_query_accounting.py
 	@python3 tools/check_cursor_visibility.py
 	@python3 tools/check_startup_fonts.py
 	@python3 tools/check_native_font.py --selftest

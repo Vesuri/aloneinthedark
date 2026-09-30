@@ -3625,3 +3625,48 @@ plus 201 effect-status queries), none active; 68 application resource reads /
 333,998 bytes, overlay 31 / 81,214, preparation 64 / 81,786, CODE mask $3FFB,
 original MDRV absent. Fresh-pref counts remain derived: 165 windows and baseline
 499 plus queries. The owned overlay is 82,026 bytes. Full intro and M2 remain open.
+
+
+## Title-screen colour copy
+
+M2.3g31 is complete. Dark+$1DBC's srcCopy now remaps different colour seeds
+through the existing measured inverse table, preserving the identical-seed
+path and existing clipping. [CopyBits](copybits.md#copyright-presentation-colour-mapping)
+records original bytes, complete buffers, ABI and D6 pixel differences.
+
+The final native `tmp/m2-copylate-native-callback-safe.log` and original
+`tmp/m2-copylate-reference.log` exit zero. The title copy, prior DrawText and
+28 earlier integrated checks pass, including the first effect's real completion,
+line/fills, logo/palettes, nine AGA publications and all 75,616 initial A5 bytes.
+The full host suite, 122 direct/remapped clipping fixtures, 93-script MAME literal
+audit, no-float/82-symbol link audits and endpoint/query-accounting rejection
+checks pass. Logical client images were inspected; rendered-window acceptance
+remains owner-deferred.
+
+Rejected observations are retained locally: the broad conditional discovery
+observer timed out before the target; an integrated run hit a GDB “Invalid hex
+digit 79” condition error; later runs exposed obsolete endpoint and audio-observer
+assumptions. These are not accepted runs. The fill observer now stops at the
+original instruction and checks its opcode before entering the dispatcher.
+Audio observers match both the original caller return and stack position: a
+permitted user-mode VBL callback can enter the shared driver stub first.
+Queries during callback/probe intervals are explicitly counted; missing or
+inconsistent totals fail. First-effect cleanup checks now run at that completion
+point, because the intro subsequently starts a second effect.
+
+A separate bounded post-copy trace (`tmp/m2-copylate-services.log`, exit zero)
+explains the variable endpoint count: 64 non-audio services, two non-query driver
+calls and additional status queries follow the copy. Six data-file opens and
+closes are observed; original PAK payload acceptance remains M2.1c. The constant
+service baseline is 557 entered / 556 completed, plus **all** effect-status
+queries, including those after the first sound. Fresh-pref baseline 565/564 and
+185 windows remain derived, not fresh-start acceptance.
+
+Current boundary: DrawText Dan1+$0346, font 20/plain/14, mode 1, pen (v86,h129),
+8 bytes `49fa4d6f74696f6e` (“I˙Motion”). The unowned $FA glyph stops before
+rendering. Final counts: 159 windows, 802/801 services with this one active,
+245 total status queries; the first effect has 199 observed queries and zero
+additional scoped queries in this accepted run. A second effect is active
+(starts 2, stops 1, channel 0, 10,202 allocated sample bytes). Resource counts
+remain 68 application reads / 333,998 bytes, overlay 31 / 81,214, preparation
+64 / 81,786, CODE mask $3FFB, original MDRV absent. M2 remains open.
