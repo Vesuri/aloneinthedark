@@ -67,8 +67,8 @@ def main():
     transfer = read(args.folder, 'video-transfer-lut16.bin', 65536)
     require(hashlib.sha256(transfer).hexdigest() == 'bf0a6433c155a61989e5dc0571bae1357066ab476a24d0afaf2e2aa7094fe2aa', 'reference transfer identity')
     if args.mode == 'startup':
-        require(log.count('PASS AGA startup queued and VBI-published next=DRAWPICTURE') == 1, 'startup positive control')
-        m = re.search(r'AGA_ACTIVE front=([0-9A-F]+) back=([0-9A-F]+) copper=([0-9A-F]+) crop=160/150 queued=4 presented=4 pending=0 line=(\d+) late=0', log)
+        require(log.count('PASS AGA startup queued and VBI-published next=SETPALETTE') == 1, 'startup positive control')
+        m = re.search(r'AGA_ACTIVE front=([0-9A-F]+) back=([0-9A-F]+) copper=([0-9A-F]+) crop=160/150 queued=6 presented=6 pending=0 line=(\d+) late=0', log)
         require(m and int(m[4]) < 72, 'startup publication')
         source = read(args.folder, 'aga-startup-logical.bin', 307200)
         clut = read(args.folder, 'aga-startup-clut.bin', 2056)
@@ -82,7 +82,7 @@ def main():
         for y,left,right in spans(region):
             expected[y*640+left:y*640+right] = bytes([255])*(right-left)
         # The original fills the client white after binding the presentation palette.
-        reference_pixels = read(args.folder, 'binding129-reference-next-pixels.bin', 307200)
+        reference_pixels = read(args.folder, 'presentpict-reference-1-next-pixels.bin', 307200)
         for y in range(150,350):
             expected[y*640+160:y*640+480] = reference_pixels[y*640+160:y*640+480]
         require(source == expected, 'exact client/background clears, no other writes')

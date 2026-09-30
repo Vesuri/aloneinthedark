@@ -36,7 +36,7 @@ viewport unchanged. SetGWorld binds the game drawing port and startup loads
 Dark. TickCount reads the existing 60 Hz integer clock with the measured Mac
 calling convention. The following size/origin requests preserve the already-correct
 320×200 window. SetPt initializes the drawing point; startup then stops explicitly
-at `DRAWPICTURE` (Dark2+$20F2), after allocating the original empty
+at `SETPALETTE` (Dark2+$214C), after allocating the original empty
 region and real eight-bit GWorlds, binding and clipping them, locking and clearing
 their pixels, unlocking them and restoring the game drawing port. Pixel-address
 access then lets the original copy its first 512×56 image into a real buffer.
@@ -64,7 +64,9 @@ assigns a new seed and returns the measured detached ownership state.
 Palette construction from that larger table now matches the Mac, including
 its reusable identifier and independent private allocation. Binding it to the game
 window now realizes its colours without drawing Mac chrome. The original then
-clears the client white; all four AGA publications are verified.
+clears the client white, then draws the centred MacPlay picture with exact
+reference pixels and colours. Its fifth AGA publication and subsequent sixth
+clear are verified; startup next stops at palette restoration.
 Startup also clears and rebuilds the four game menus as hidden records; no menu
 bar is drawn. Native driver initialization is accepted through the second Times
 lookup, which returns family 20. The original mixer

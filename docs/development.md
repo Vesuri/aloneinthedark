@@ -3392,3 +3392,24 @@ rectangle fills, RGB getters/setters, events/cursor, geometry/device/world
 binding, twenty preparation pictures, 220 text widths, fonts, original-MDRV
 exclusion and all 75,616 A5 bytes. Counts remain 117 windows, 435/435 services,
 66 reads / 313,392 bytes and CODE mask $3FBB. Intro acceptance remains pending.
+
+
+## MacPlay window picture
+
+M2.3g22 is complete. The existing Vette-derived indexed renderer now supports
+owned eight-bit screen windows, their main-device colour matching, rectangular
+clipping and translated dirty bounds. Original Dark2+$20F2 preserves all caller
+registers and draws PICT 1500 at (4,32)–(196,288). Full-buffer and paired client/
+CLUT comparisons pass, including all untouched pixels. The fifth AGA frame
+contains the picture; the sixth contains the later original black clear.
+See [picture-drawing.md](picture-drawing.md#presentation-window-picture).
+
+Both reference and integrated native runs exit zero. The full native transcript
+is `tmp/m2-presentpicture-native-complete.log` (the wrapper tail is insufficient).
+Host tests, no-float/probe link audits and the 83-script MAME literal audit pass.
+Integrated regressions pass twenty offscreen pictures, 220 text widths, colour
+getters/setters, palette construction/binding, table loading, rectangle fills,
+geometry/device/world state, fonts, 398 event calls, cursor state, MDRV exclusion
+and all 75,616 A5 bytes. Startup stops at SetPalette, Dark2+$214C: 117 windows,
+435/435 services, 66 reads / 313,392 bytes, CODE mask $3FBB. The next item measures
+palette restoration. Full intro and owner-deferred rendered video remain open.

@@ -14,6 +14,7 @@ while $tw_finished==0
  end
  if trap==0xaa95
   source binding129_call.gdb
+  source presentpicture_calls.gdb
   loop_continue
  end
  if trap==0xaa91

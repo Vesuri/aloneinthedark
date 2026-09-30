@@ -32,3 +32,40 @@ python3 tools/check_picture8.py tmp/m2-pict8-native-final.log --status 0 --nativ
 ```
 
 These are offscreen pixel comparisons, not rendered-window or intro acceptance.
+
+
+## Presentation window picture
+
+PICT 1500, MacPlay (small), is a 16,358-byte indexed PackBits picture with
+frame (0,0)–(192,256). The original Dark2+$20EC bytes are
+`2e8b486effe4a8f6`, calling DrawPicture at +$20F2 with destination
+(4,32)–(196,288). It preserves D0–D7/A0–A6 and pops eight argument bytes.
+
+The existing renderer now accepts owned visible eight-bit window destinations.
+It uses the actual main-device colour table and existing inverse-table builder,
+with rectangular port/visibility/clip bounds. Window pixels share the logical
+screen; dirty bounds translate from port coordinates to that buffer. Offscreen
+worlds retain their own colour matching. No Mac chrome is drawn.
+
+`mac_presentpicture.lua` captures the original call and the subsequent clear
+before palette restoration at Dark2+$214C. `presentpicture_calls.gdb` captures
+the native call and fifth AGA publication before continuing startup. The
+independent decoder in `check_presentpicture.py` checks the entire 307,200-byte
+buffer, unchanged records, original bytes and caller ABI. Its native check also
+compares the 64,000-byte client and CLUT with the Mac, verifies eight bitplanes
+and all copper colours for the picture, and requires the integrated MDRV guard.
+Memory/AGA captures do not satisfy the owner-deferred rendered-window check.
+
+
+Accepted runs: `tmp/m2-presentpicture-reference-next.log` and
+`tmp/m2-presentpicture-native-complete.log`, both terminal exit zero. The latter
+preserves the full debugger transcript because the wrapper's 5,000-line tail
+omits earlier controls during the picture's event loop. The 12,144 changed
+pixels match; the fifth AGA publication contains the picture and the sixth
+contains the original black clear. These commands pass:
+
+```
+python3 tools/check_presentpicture.py tmp/m2-presentpicture-reference-next.log --status 0
+python3 tools/check_presentpicture.py tmp/m2-presentpicture-native-complete.log --status 0 --native
+python3 tools/check_aga_capture.py startup tmp/m2-presentpicture-native-complete.log --status 0
+```

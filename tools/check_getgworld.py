@@ -7,7 +7,7 @@ import re
 import unittest
 from resource_fork import read_resource_fork
 REFERENCE='PASS GetGWorld reference calls=1'
-NATIVE='PASS native GetGWorld calls=1 next=DRAWPICTURE'
+NATIVE='PASS native GetGWorld calls=1 next=SETPALETTE'
 PRESERVED=[f'd{n}' for n in range(8)]+[f'a{n}' for n in range(2,7)]
 def original(path):
     rows=read_resource_fork(path)

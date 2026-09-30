@@ -2327,10 +2327,31 @@ static bool drawIndexedPictureBits(const uint8_t* picture, uint32_t size, uint32
     uint8_t* destinationMap = destinationHandle ? *destinationHandle : 0;
     bool destination8=destinationMap && read16(destinationMap+32)==8;
     GWorldSlot* world=destination8 ? gWorldForPort(port) : 0;
-    if(destination8 && (!world || !world->locked || pixelSize!=8 || rowBytes<(uint32_t)(sourceRight-sourceLeft)
-       || read16(destinationMap+14)!=1 || read16(pixMap+12)!=0
-       || read16(pixMap+26)!=0 || read16(pixMap+30)!=1 || read16(pixMap+32)!=8
-       || read16(*world->handles[3])!=10 || read16(*world->handles[4])!=10))return false;
+    WindowSlot* window=destination8 && !world ? windowSlot(port) : 0;
+    const uint8_t* visible=0;const uint8_t* clip=0;
+    const uint8_t* colors8=0;const uint8_t* inverse8=0;
+    if(destination8) {
+        if(pixelSize!=8 || rowBytes<(uint32_t)(sourceRight-sourceLeft)
+           || read16(pixMap+12)!=0 || read16(pixMap+26)!=0
+           || read16(pixMap+30)!=1 || read16(pixMap+32)!=8)return false;
+        if(world) {
+            if(!world->locked || read16(destinationMap+14)!=1)return false;
+            visible=*world->handles[3];clip=*world->handles[4];
+            colors8=*world->handles[2];inverse8=*world->handles[26];
+        } else {
+            if(!window || window->dialog || !port[110] || read16(port+6)!=0xc000
+               || destinationMap!=window->pixelMap
+               || read32(destinationMap)!=(uint32_t)s_colorScreen
+               || read32(destinationMap+42)!=(uint32_t)&s_windowManagerColorsMaster)return false;
+            uint8_t** vh=(uint8_t**)read32(port+24);
+            uint8_t** ch=(uint8_t**)read32(port+28);
+            if(!vh || !ch)return false;
+            visible=*vh;clip=*ch;colors8=s_windowManagerColors;inverse8=s_mainDeviceITable;
+            if((!s_mainDeviceITableValid || read32(inverse8)!=read32(colors8))
+               && !makeITable(0,0,4))return false;
+        }
+        if(!visible || !clip || read16(visible)!=10 || read16(clip)!=10)return false;
+    }
     // Color QuickDraw realizes an RGB color through the current GDevice's
     // inverse table.  That device environment is distinct from the retained
     // ColorTable attached to an offscreen PixMap.  Vette relies on the
@@ -2355,8 +2376,7 @@ static bool drawIndexedPictureBits(const uint8_t* picture, uint32_t size, uint32
         uint16_t sourceIndex = colorFlags & 0x8000 ? i : read16(sourceColor);
         if(destination8) {
             uint16_t mapped=0;
-            if(sourceIndex>255 || !GWorld8::colorIndex(*world->handles[2],
-                *world->handles[26],sourceColor+2,mapped))return false;
+            if(sourceIndex>255 || !GWorld8::colorIndex(colors8,inverse8,sourceColor+2,mapped))return false;
             colorMap[sourceIndex]=(uint8_t)mapped;
             continue;
         }
@@ -2589,8 +2609,8 @@ static bool drawIndexedPictureBits(const uint8_t* picture, uint32_t size, uint32
         for (int16_t y = targetTop; y < targetBottom; ++y) {
             if (y < mapTop || y >= mapBottom) continue;
             if(destination8 && (y<(int16_t)read16(port+16) || y>=(int16_t)read16(port+20)
-                || y<(int16_t)read16(*world->handles[3]+2) || y>=(int16_t)read16(*world->handles[3]+6)
-                || y<(int16_t)read16(*world->handles[4]+2) || y>=(int16_t)read16(*world->handles[4]+6)))continue;
+                || y<(int16_t)read16(visible+2) || y>=(int16_t)read16(visible+6)
+                || y<(int16_t)read16(clip+2) || y>=(int16_t)read16(clip+6)))continue;
             int16_t pictureY = (int16_t)(frameTop + multiplyDivideCentered(
                 (uint16_t)(y - targetTop), (uint16_t)(frameBottom - frameTop),
                 (uint16_t)(targetBottom - targetTop)));
@@ -2605,8 +2625,8 @@ static bool drawIndexedPictureBits(const uint8_t* picture, uint32_t size, uint32
             for (int16_t x = targetLeft; x < targetRight; ++x) {
                 if (x < mapLeft || x >= mapRight) continue;
                 if(destination8 && (x<(int16_t)read16(port+18) || x>=(int16_t)read16(port+22)
-                    || x<(int16_t)read16(*world->handles[3]+4) || x>=(int16_t)read16(*world->handles[3]+8)
-                    || x<(int16_t)read16(*world->handles[4]+4) || x>=(int16_t)read16(*world->handles[4]+8)))continue;
+                    || x<(int16_t)read16(visible+4) || x>=(int16_t)read16(visible+8)
+                    || x<(int16_t)read16(clip+4) || x>=(int16_t)read16(clip+8)))continue;
                 int16_t pictureX = (int16_t)(frameLeft + multiplyDivideCentered(
                     (uint16_t)(x - targetLeft), (uint16_t)(frameRight - frameLeft),
                     (uint16_t)(targetRight - targetLeft)));
@@ -2633,6 +2653,17 @@ static bool drawIndexedPictureBits(const uint8_t* picture, uint32_t size, uint32
                 }
             }
         }
+    }
+    if(valid && window) {
+        int16_t dirtyTop=targetTop,dirtyLeft=targetLeft,dirtyBottom=targetBottom,dirtyRight=targetRight;
+        const uint8_t* limits[]={destinationMap+6,port+16,visible+2,clip+2};
+        for(uint16_t i=0;i<4;++i) {
+            if(dirtyTop<(int16_t)read16(limits[i]))dirtyTop=(int16_t)read16(limits[i]);
+            if(dirtyLeft<(int16_t)read16(limits[i]+2))dirtyLeft=(int16_t)read16(limits[i]+2);
+            if(dirtyBottom>(int16_t)read16(limits[i]+4))dirtyBottom=(int16_t)read16(limits[i]+4);
+            if(dirtyRight>(int16_t)read16(limits[i]+6))dirtyRight=(int16_t)read16(limits[i]+6);
+        }
+        markDirtyBounds(dirtyTop-mapTop,dirtyLeft-mapLeft,dirtyBottom-mapTop,dirtyRight-mapLeft);
     }
     if (allocatedPixels) FreeMem(pixels, pixelBytes);
     return valid;
@@ -3206,7 +3237,8 @@ static bool drawPictureContents(uint8_t** pictureHandle, const uint8_t* targetRe
     if (!pictureHandle || !*pictureHandle || !targetRect || size < 12) return false;
     const uint8_t* picture = *pictureHandle;
     const uint8_t* frame = picture + 2;
-    bool destination8=gWorldForPort((uint8_t*)read32(s_qdThePort))!=0;
+    uint8_t* port=(uint8_t*)read32(s_qdThePort);
+    bool destination8=gWorldForPort(port)!=0 || windowSlot(port)!=0;
     if (picture[10] == 0x11 && picture[11] == 0x01)
         return drawVersionOnePicture(picture, size, frame, targetRect);
     uint32_t offset = 10;
@@ -5954,8 +5986,8 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
             if(gWorldForPort(s_qdThePort ? (uint8_t*)read32(s_qdThePort) : 0))break;
             unsupportedGraphics=true;goto unsupportedTrap;
         case 0xa8f6:
-            if(gWorldForPort(s_qdThePort ? (uint8_t*)read32(s_qdThePort) : 0))break;
-            unsupportedGraphics=true;goto unsupportedTrap;
+            // The renderer validates owned offscreen and window destinations.
+            break;
         case 0xa8a1: case 0xa8a4: case 0xa8a5:
         case 0xa8ec: case 0xa90d: case 0xa91f:
             unsupportedGraphics=true;goto unsupportedTrap;
