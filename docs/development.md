@@ -3095,3 +3095,27 @@ The next stop is QUICKDRAW / TEXTWIDTH at Dan1+$0216. Counts are 113 OS windows,
 211 completed services and unchanged 62 resource reads / 265,454 bytes.
 Fresh-preference endpoint counts (139 / 219 services) remain derived, not newly
 accepted. No rendered intro or broader scaled-picture acceptance is claimed.
+
+
+## Startup text measurement
+
+M2.3g9 is complete. The original 220 Dan1 TextWidth calls pass paired string,
+range, width, port and ABI checks. The native service validates the installed
+Times/plain/14 selection and applies measured integer 8.8 accumulation without
+FPU operations. Other selections remain named stops. See
+[font-manager.md](font-manager.md#startup-textwidth) for contract and limitations.
+
+Reference captures `tmp/m2-textwidth-fractions2.log` (529 fixtures) and
+`tmp/m2-textwidth-original-reference.log` (220 original calls), and final native
+`tmp/m2-textwidth-native-final.log`, all exit 0 with positive completion.
+The compiled helper matches every fixture under sanitizers. The full host suite
+(`tmp/m2-textwidth-host.log`), 69-script literal audit and link audits pass.
+The same final native run also passes all twenty pictures, installed fonts,
+device-table GWorld records, RGB calls, driver/MDRV exclusion, AGA publication
+and all 75,616 A5 bytes. A discovery observer failed after reaching its next
+stop; its termination check was corrected and it is not final acceptance.
+
+Current stop: QUICKDRAW / SETGWORLD at Misc1+$0E0A, selector 6. Counts are
+113 windows, 431 completed services and unchanged 62 resource reads / 265,454
+bytes. Fresh-preference counts (139 windows / 439 services) are derived, not
+newly accepted. Intro and rendered-window acceptance remain pending.

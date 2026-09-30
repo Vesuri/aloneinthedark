@@ -6,6 +6,7 @@
 #include "LowMemory.h"
 #include "MacHeap.h"
 #include "BitmapFont.h"
+#include "Times14Metrics.h"
 #include "Palette8.h"
 #include "WindowGeometry.h"
 #include "RectBounds.h"
@@ -5763,7 +5764,7 @@ static bool isUserService(uint16_t trap)
 #ifdef AITD_SERVICE_PROBE
     if((trap&0xfeff)==0xa0fc || trap==0xabfb)return true;
 #endif
-    return trap==0xa91a || trap==0xaa18 || trap==0xa88b || trap==0xa88d || trap==0xa0f8 || trap==0xa900 || trap==0xa9f4 || trap==0xa997 || trap==0xa9c4 || trap==0xa81a || trap==0xa9b1 || trap==0xa81b || trap==0xa999 || trap==0xa99a || trap==0xa9ab || trap==0xa9aa || trap==0xa9b0 || trap==0xa9ad
+    return trap==0xa886 || trap==0xa91a || trap==0xaa18 || trap==0xa88b || trap==0xa88d || trap==0xa0f8 || trap==0xa900 || trap==0xa9f4 || trap==0xa997 || trap==0xa9c4 || trap==0xa81a || trap==0xa9b1 || trap==0xa81b || trap==0xa999 || trap==0xa99a || trap==0xa9ab || trap==0xa9aa || trap==0xa9b0 || trap==0xa9ad
         || trap==0xa80e || trap==0xa9a2 || trap==0xa81f || trap==0xa820 || trap==0xa9a0 || trap==0xa9a1 || trap==0xa930 || trap==0xa9bf
         || trap==0xaa46 || trap==0xaa92 || trap==0xa9b9 || trap==0xa9bc || trap==0xa97c
         || trap==0xa40c || trap==0xa608 || trap==0xa60a || trap==0xa60c || trap==0xa60d || trap==0xa614 || trap==0xa615
@@ -6255,6 +6256,15 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
             if(!error) { write32(outHandler,handler);write32(outRef,refCon); }
         } else goto unsupportedTrap;
         write16(userStack+18,(uint16_t)error);return 19;
+    }
+    if(trap==0xa886) {                      // TextWidth(text, first, count)
+        uint8_t* port=s_qdThePort ? (uint8_t*)read32(s_qdThePort) : 0;
+        BitmapFont font;uint16_t width;
+        if(!port || read16(port+68)!=20 || read16(port+74)!=14 || port[70]
+           || !fontForCurrentPort(font)
+           || !Times14Metrics::width((const uint8_t*)read32(userStack+4),
+                 (int16_t)read16(userStack+2),(int16_t)read16(userStack),width))goto unsupportedTrap;
+        write16(userStack+8,width);return 9;
     }
     if(trap==0xa88b || trap==0xa88d) {
         BitmapFont font;

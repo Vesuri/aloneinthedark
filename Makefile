@@ -79,6 +79,7 @@ lowmem-check:
 host-tests:
 	@python3 tools/build_overlay.py --check
 	@python3 tools/check_bitmap_font.py
+	@python3 tools/check_text_metrics.py
 	@python3 tools/check_startup_fonts.py
 	@python3 tools/check_native_font.py --selftest
 	@python3 tools/check_startup_prefs.py --selftest

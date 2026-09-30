@@ -220,3 +220,42 @@ and returns zero. It then stops at Engine+$110E GetCTable/$AA18, now named
 `COLOR QUICKDRAW / GETCTABLE`. The second Times lookup and WIND
 128 request remain unverified behind that next dependency. Original MDRV is
 absent. These are metric/data contracts, not rendered-font acceptance.
+
+
+## Startup TextWidth
+
+The unchanged Dan1+$0216 call measures text in Times/plain/14 with zero extra
+spacing. Its original +$0212–$0217 bytes are `548f3e80a886`. All 220 calls
+through the subsequent Misc1+$0E0A SetGWorld boundary now match the Mac:
+exact byte strings (including extended characters), ranges, widths, eight-byte
+stack cleanup and unchanged port records. D3–D7/A2–A6 are preserved by the Mac;
+the native service preserves all caller registers. Mac scratch-register values
+are not reproduced. No text or Mac dialog is drawn by this service.
+
+The measured font's integer advance units scale by 299/256. Accumulate before
+truncation: “Alone in the Dark” measures 99, while adding individually truncated
+character widths would give 92. `Times14Metrics.h` retains the 256 measured
+spacing values, not font artwork. The selected installed placeholder definition
+is validated before use. Other selections, nonzero extra spacing, negative ranges
+and signed-width overflow remain explicit TextWidth stops. Existing placeholder
+artwork and its intrinsic CharWidth behavior are unchanged; full text drawing
+and consistent glyph placement remain M2.9.
+
+`mac_textwidth.lua` defaults to the first original call plus 256 CharWidth calls,
+256 repeated-character runs and 17 title prefixes in CPU-only scratch fixtures.
+Set `AITD_TEXTWIDTH_CALLS=220` for an unmodified original-call capture instead.
+The scratch code, stack and text buffer are separated to avoid overwriting code
+inside a deeper Mac service. An earlier overlapping fixture failed and is not
+acceptance. `check_textwidth.py` validates the fixture's terminal markers, original
+bytes, ABI and accumulation model. `check_text_metrics.py` compiles the actual
+native helper under sanitizers; `--reference tmp/m2-textwidth-fractions2.log
+--status 0` compares all 529 measured results.
+
+`textwidth_calls.gdb` captures every native call read-only within the shared
+startup observer. Compare the final captures with:
+
+```
+python3 tools/check_textwidth_startup.py tmp/m2-textwidth-original-reference.log tmp/m2-textwidth-native-final.log --reference-status 0 --native-status 0
+```
+
+Pass actual terminal statuses to the checkers; a timeout never passes.
