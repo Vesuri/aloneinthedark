@@ -61,7 +61,7 @@ def check_native(text,status):
             raise ValueError('query changed driver configuration')
     elif (ROOT/'tmp/driver15-native-enter-state.bin').read_bytes()!=(ROOT/'tmp/driver15-native-return-state.bin').read_bytes():
         raise ValueError('query changed driver state')
-    if text.count('PASS menu-list next-stop original-MDRV=absent')!=1: raise ValueError('original MDRV absence')
+    if text.count('PASS menu-list checkpoint original-MDRV=absent')!=1: raise ValueError('original MDRV absence')
     print('PASS native driver15: original caller/ABI, advancing full-width clock, unchanged driver state, MDRV absent')
 
 def check_flags(reference,status,native=None,native_status=None):

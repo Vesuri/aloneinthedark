@@ -52,7 +52,7 @@ def check_native(text,status):
     before=(ROOT/'tmp/driver4-native-enter-config.bin').read_bytes()
     after=(ROOT/'tmp/driver4-native-return-config.bin').read_bytes()
     if len(before)!=18 or before!=after:raise ValueError('preserved driver configuration/epoch')
-    if text.count('PASS menu-list next-stop original-MDRV=absent')!=1:raise ValueError('original MDRV absence')
+    if text.count('PASS menu-list checkpoint original-MDRV=absent')!=1:raise ValueError('original MDRV absence')
     print('PASS native driver4: actual one-parameter caller, active-track result, D0/D1/CCR, stack/register/config preservation, MDRV absent')
 
 if __name__=='__main__':

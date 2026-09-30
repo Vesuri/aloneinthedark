@@ -117,3 +117,31 @@ stencils, window-line AGA publication, effect completion, resource/driver
 contracts and the full A5 world. Original MDRV remains absent. The next stop
 is GetKeys at Dan1+$583A, tracked as M2.3g36. This is not full M2 intro-frame
 acceptance or the owner-deferred rendered-window check.
+
+## Direct destination PixMap (M2.3g43)
+
+Dark+$1E4A passes direct source and destination PixMap pointers, srcCopy and
+no mask. Original +$1E3E–$1E4B bytes are
+`486efff8486efff8426742a7a8ec`; both rectangles are the A6−8 local,
+(65,92)–(69,100). Both owned, locked worlds have 648×401 pixels, stride 652,
+and identical colour tables including their seed. The selected destination
+port owns the passed destination map. Its visibility is the full world and
+its clip is (−1000,−1000)–(1000,1000).
+
+`tmp/m2-stepcopy-reference.log` completes normally. The original changes 17
+bytes inside the 8×4 rectangle, preserves the entire source and all other
+261,452-byte destination storage, pops 22 bytes, returns D0=0 and preserves
+D2–D7/A2–A6. D1/A0/A1 are scratch. The adapter extends only the destination
+pointer guard to accept the selected owned world's PixMap as well as port+2;
+existing lock, storage, colour and clipping checks remain in force.
+
+The final uninterrupted production capture `tmp/m2-stepcopy-production-full.log`
+exits zero at the original return, Dark+$1E4C. The paired checker verifies all
+32 copied pixels, both complete buffers, unchanged maps/tables/regions and
+inverse table, the calling contract, and unchanged visible dirty/publication
+state (960/960 queued and presented). All 42 startup comparisons pass in
+`tmp/m2-stepcopy-regressions.log`. The first capture's incorrect port+0 map
+observer and four stale terminal-marker readers were corrected; those failed
+checks are not acceptance. The maintained observers are `mac_stepcopy.lua`,
+`stepcopy_call.gdb` and `check_stepcopy.py`. This establishes the copy contract,
+not complete story/intro or rendered-window acceptance.

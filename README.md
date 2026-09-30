@@ -23,8 +23,8 @@ vertical-blank publication. These memory captures do not replace the
 owner-deferred rendered-window check. Full intro frame acceptance and gameplay remain unfinished.
 
 The title-screen copy now uses the Mac’s measured colour mapping. Its full
-client matches apart from the documented placeholder copyright glyphs. The next
-named stop is **CopyBits**, Dark+$1E4A, after the intro returns.
+client matches apart from the documented placeholder copyright glyphs. The direct-map **CopyBits** at Dark+$1E4A now returns with matching pixels.
+The reported black story pages and car/frog scene progression are under investigation.
 Song start now retains its 41 resources and returns successfully. A complete
 native playback fixture matches all 3,736 timed note events and verifies Paula
 sample conversion, effect priority and cleanup. Startup advances native song playback before the first song-status query;
@@ -69,7 +69,7 @@ serve memory and resource handles. System identity and all eleven derived
 capability flags match the Mac reference. The user-mode service bridge passes
 its native ABI probe. OS windows and DOS/resload adapters pass the native/host
 core probes; rendered-picture acceptance is owner-deferred (M1.7b2). The next
-items are the newly reached CopyBits variant and original PAK-read acceptance. Both original
+items are intro visibility/progression and original PAK-read acceptance. Both original
 Times lookups now pass register, stack, error-state and installed-font checks. Fresh and existing preferences now request WIND 128
 through the original instructions, with only the size byte changed.
 The logical device has real 640×480×8 storage; its four selection calls match
@@ -81,7 +81,7 @@ read acceptance still needs the intervening drawing services and payload checks.
 Resource bodies now stream from disk into zone handles; startup retains the
 4,998-byte map instead of the 1,424,934-byte application fork. The `resource-read`
 regression verifies original bytes and bounded runtime resource reads; the
-current stop is CopyBits at Dark+$1E4A; original MDRV loading stays forbidden. Named/ID/indexed lookup, resource counts and metadata, purge/reload and release now
+current verified endpoint is the CopyBits return at Dark+$1E4C; original MDRV loading stays forbidden. Named/ID/indexed lookup, resource counts and metadata, purge/reload and release now
 pass paired Mac/native checks. Native resource staging now passes exact publication,
 abort, rollback and stale-file checks. Resource-file open/create/update/close,
 AddResource, multi-fork search, noncurrent close and invalid update pass a

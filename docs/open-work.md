@@ -20,8 +20,8 @@ design.md §5.
   held/released-key checks. Selector 13 now passes its control-word/ABI checks;
   selector 0 now retains and arms song $87 with verified native playback.
   The clock query now passes its original ABI and 32-bit condition-code checks.
-  Song-status selector 4 now passes its original ABI and flags; the next stop
-  is CopyBits at Dark+$1E4A. RectRgn and the reached canonical-empty
+  Song-status selector 4 now passes its original ABI and flags; the direct-map
+  CopyBits at Dark+$1E4A now returns with matching pixels. RectRgn and the reached canonical-empty
   EmptyRgn now pass exact region/ABI checks.
   Intro LineTo and mode-0 fills match the Mac; the first raw effect plays on Paula and its
   real polling loop observes completion with sample/DMA cleanup verified.
@@ -59,17 +59,49 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.3g43 Post-intro CopyBits at Dark+$1E4A.**
-  - After EmptyRgn, the original reaches another srcCopy call with no mask.
-    The original +$1E3E–$1E4B bytes are
-    `486efff8486efff8426742a7a8ec`; both rectangle arguments use A6−8.
-  - Measure the actual source/destination PixMaps, clipping and colour tables
-    before extending the supported copy path. A new effect has started by this
-    point; do not mistake it for a leaked intro effect.
+- **M2.3g44 Black intro display while music plays.**
+  - Owner reports that the black screen predates the scripted-Enter build.
+    The supplied 2026-09-30 23:42:40 screenshot shows a landscape and copyright
+    text eventually appearing with music after a long wait. Investigate the
+    preceding black interval; this is not evidence of a permanently blank window.
+    The owner subsequently saw the car move, confirming visible scene progression.
+    The 23:44:59 screenshot shows the car and a mostly erased copyright line;
+    the owner then reports a repeating circular route. Owner correction and
+    the 23:56:50 screenshot establish the intended endpoint: the car approaches
+    and finishes near the camera, rather than circling repeatedly. Compare
+    position/sequence state and the copyright transition with the original.
+    The car scene must then advance to the frog scene; the owner supplied its
+    starting pond/road view at 23:57:40. Verify this transition without manual
+    Enter, along with the near-camera car endpoint.
+    At 23:55:38, manually pressing Enter revealed the illustrated two-panel
+    letter-reading scene during the reported black interval. Verify the original
+    no-input appearance and whether pending drawing/palette publication waits
+    for an event; input-triggered visibility is evidence, not yet a diagnosis.
+    Owner clarification: this interval contains substantial illustrated story
+    text. After manual Enter, the port rendered that text in its temporary font.
+    The 23:58:46 screenshot is from a DOS-version video, so use it for content
+    context, not as the Macintosh pixel/font oracle. Verify the Mac story pages,
+    text placement, visibility and progression without manual rescue input.
+    Do not attribute it to test input. FS-UAE logs repeatedly report
+    `Not a valid drawable size for glViewport`; this is a clue, not a proven cause.
+  - At the reported intro state, capture logical pixels/palette, active AGA
+    planes/copper and publication counters. Compare with the original state;
+    distinguish missing game drawing from native publication and host rendering.
+    Respect the existing restriction on host-window access.
 
-  *Done when* the reached original copy returns with matching defined pixels,
-  unchanged bytes outside its destination, palette mapping and stack/register
-  contract, appropriate dirty publication, and prior startup checks pass.
+  *Done when* the black-interval cause is demonstrated, the car reaches its
+  near-camera endpoint without repeated circling and advances to the frog scene
+  without manual input, and port fixes pass paired
+  frame/publication and original sequence-state checks. Actual rendered-window verification stays
+  explicitly pending if authorized capture is unavailable; memory checks alone
+  cannot establish that the owner-visible black screen is fixed.
+- **M2.3g45 SetEmptyRgn on the skipped-intro route.**
+  - The scripted Enter route reaches Dark2+$5768 `$A8DD`; original bytes
+    +$5762–$5769 are `2f39ffff4038a8dd`. The caller passes the region at
+    A5−$BFC8, then continues cleanup. Capture the original region and ABI.
+
+  *Done when* the reached original call empties the owned region with matching
+  handle/body ownership, bytes and ABI, and the Enter route advances past it.
 - **M2.1c Original File Manager read acceptance (after M2.2).**
   - This retains M2.1's original acceptance; diagnostic fixture reads do not count
     as original-game reads. M2.1b2a measured the intervening Get1NamedResource
@@ -177,6 +209,9 @@ required.
   - `pixbase.gdb` still embeds an obsolete frame-4 AGA capture; standalone
     `aga_startup.gdb` expects frame 9 at the latest loud stop. They must target
     the measured publication itself, independent of later intro progress.
+  - `check_menu_lifecycle.py` also retains an obsolete EmptyRgn endpoint;
+    move its terminal guard to the positively measured current checkpoint
+    while retaining its menu-record comparisons.
   - The integrated `aga_startup_call.gdb` frame-9 and `windowline_call.gdb`
     frame-117 captures already pass; retain their exact pixel/palette/VBI checks.
 

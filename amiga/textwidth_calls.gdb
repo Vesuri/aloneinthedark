@@ -149,7 +149,17 @@ while $tw_finished==0
     tbreak dispatchMacTrap if trap==0xa8e2
     continue
     source emptyrgn_call.gdb
+    tbreak *((unsigned long)s_segments[4].begin+0x1e4a)
     continue
+    if $pc!=(unsigned long)s_segments[4].begin+0x1e4a || *(unsigned short*)$pc!=0xa8ec
+     echo FAIL step CopyBits checkpoint\n
+     detach
+     quit 1
+    end
+    tbreak dispatchMacTrap
+    continue
+    source stepcopy_call.gdb
+    set $stepcopy_captured=1
     loop_break
    end
    set $postdot_n=$postdot_n+1

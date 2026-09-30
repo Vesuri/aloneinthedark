@@ -4240,3 +4240,28 @@ remains absent. Effect 17 is legitimately active at this later stop after the
 first 16 have completed. The 68020 no-float/86-symbol build audits and the
 updated shared startup-checker rejection test pass. Original call bytes and
 all unsupported region forms retain their explicit checks/stops.
+
+
+## Direct-map CopyBits (M2.3g43)
+
+The original Dark+$1E4A call passes the selected locked GWorld's direct
+PixMap. The adapter now accepts that pointer alongside its colour-port bitmap;
+all existing ownership, storage, colour and clipping checks still apply.
+Original bytes and the measured 8×4 copy contract are in [copybits.md](copybits.md).
+The original capture (`tmp/m2-stepcopy-reference.log`) and uninterrupted
+production capture (`tmp/m2-stepcopy-production-full.log`) both exit zero.
+Full source/destination preservation, all 32 copied pixels, identical palettes,
+unchanged records and the original stack/register contract pass. Eight negative
+evidence cases reject incomplete/invalid captures. The production build passes
+the no-float and 86-symbol audits on the maximum-speed 68030 test configuration.
+
+All 42 integrated comparisons pass (`tmp/m2-stepcopy-regressions.log`), ending
+positively at Dark+$1E4C instead of waiting for another unsupported call.
+There are 271 OS windows, 11,916/11,916 completed services and 960/960
+publications; all 840 book batches complete. Resource totals remain
+109/826,832 application, 31/82,238 overlay, 64/82,810 preparation, 244 records
+and 58 low-memory sites. Original MDRV remains absent. Four checkers initially
+rejected the renamed absence marker; their readers now require the positive
+checkpoint marker. No emulator rerun was needed for this evidence-reader fix.
+This is not full intro acceptance: black story pages and car/frog progression
+remain M2.3g44; rendered-window acceptance is still owner-deferred.

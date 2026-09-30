@@ -3981,7 +3981,7 @@ static bool copyPortBits8(const uint8_t* sourceBitmap,const uint8_t* destination
     uint8_t* port=s_qdThePort ? (uint8_t*)read32(s_qdThePort) : 0;
     GWorldSlot* destination=gWorldForPort(port);
     WindowSlot* window=destination ? 0 : windowSlot(port);
-    if(!source || !source->locked || !port || destinationBitmap!=port+2
+    if(!source || !source->locked || !port || (destinationBitmap!=port+2 && (!destination || destinationBitmap!=destination->pixMap))
        || read16(source->pixMap+32)!=8 || read32(source->pixMap)!=(uint32_t)source->pixels)return false;
     const uint8_t* map;const uint8_t* destinationColors;const uint8_t* inverse;
     uint8_t* pixels;uint32_t pixelBytes;

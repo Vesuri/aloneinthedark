@@ -38,7 +38,7 @@ def check(reference,status,native=None,native_status=None):
         else:
             ownership=row(text,'NATIVE')
             if ownership['size']!=10 or ownership['flags']!=0:raise ValueError('native size/flags')
-            if text.count('PASS menu-list next-stop original-MDRV=absent')!=1:raise ValueError('MDRV absence')
+            if text.count('PASS menu-list checkpoint original-MDRV=absent')!=1:raise ValueError('MDRV absence')
         if ownership['owner']!=e['zone'] or ownership['zone']!=e['zone'] or ownership['memerr']!=0:raise ValueError(side+' owning heap')
         results.append((before,after,rect))
     if len(results)==2 and results[0]!=results[1]:raise ValueError('paired exact rectangle/region')

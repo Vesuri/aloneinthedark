@@ -11,7 +11,7 @@ def check(reference,reference_status,native,status,clock=None,clock_status=None)
     if status!=0 or any(x in native for x in ('FAIL','Cannot execute this command','Error in sourced command','Remote connection closed','timeout','Program received signal')):
         raise ValueError('native completion')
     if native.count('[Inferior 1 (Remote target) detached]')!=1: raise ValueError('normal native debugger completion')
-    if native.count('PASS native song return and owned resources')!=1 or native.count('PASS menu-list next-stop original-MDRV=absent')!=1:
+    if native.count('PASS native song return and owned resources')!=1 or native.count('PASS menu-list checkpoint original-MDRV=absent')!=1:
         raise ValueError('positive native ABI/ownership/absence checks')
     if native.count('SONG_NATIVE_BYTES 2F2E000842A7206DF9544E90508F')!=1: raise ValueError('original native caller bytes')
     states=re.findall(r'^SONG_NATIVE_RETURN song=135 midi=905 playing=1 owned=41 samples=28 voices=6/3/1 events=(\d+) pulse=(\d+) step=(\w+)$',native,re.M)

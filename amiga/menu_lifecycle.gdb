@@ -531,29 +531,11 @@ source detached_resource_call.gdb
 source gworld_device_call.gdb
 source rgb_colors_calls.gdb
 source picture8_calls.gdb
+set $stepcopy_captured=0
 source textwidth_calls.gdb
-# Text arguments are valid only at an active DrawText service.
-if g_trapWord==0xa885 && g_macServiceActive==1
- set $next_port=*(unsigned long*)s_qdThePort
- set $next_args=(unsigned long)s_userService.arguments
- set $next_count=*(short*)$next_args
- set $next_first=*(short*)($next_args+2)
- set $next_text=*(unsigned long*)($next_args+4)
- printf "NEXT_TEXT font=%u size=%u face=%u mode=%u extra=%X pen=%04X%04X count=%d first=%d port=%X args=%X active=%u\n",*(unsigned short*)($next_port+68),*(unsigned short*)($next_port+74),*(unsigned char*)($next_port+70),*(unsigned short*)($next_port+72),*(unsigned long*)($next_port+76),*(unsigned short*)($next_port+48),*(unsigned short*)($next_port+50),$next_count,$next_first,$next_port,$next_args,g_macServiceActive
- dump binary memory ../tmp/drawtext-next-native-port.bin $next_port $next_port+108
- if $next_count>0 && $next_count<4096 && $next_first>=0
-  dump binary memory ../tmp/drawtext-next-native-string.bin $next_text+$next_first $next_text+$next_first+$next_count
- end
-end
-# Preserve the new reached copy arguments for its queued implementation.
-if g_trapWord==0xa8ec && g_trapSegment==4 && g_trapOffset==0x1e4a
- printf "COPY_NEXT stack=%X mode=%u mask=%X\n",g_trapUserStack,*(unsigned short*)(g_trapUserStack+4),*(unsigned long*)g_trapUserStack
- dump binary memory ../tmp/copy-next-args.bin (char*)g_trapUserStack (char*)g_trapUserStack+22
- dump binary memory ../tmp/copy-next-caller.bin (char*)g_trapPC-24 (char*)g_trapPC+2
-end
 printf "NEXT_DRIVER calls=%u statuses=%u starts=%u stops=%u active=%u channel=%d chip=%X allocated=%u\n",g_soundDriverCalls,g_effectStatusCalls,g_effectStarts,g_effectStops,g_soundDriver.effects[0].active,g_soundDriver.effects[0].channel,g_effects[0].chip,g_effects[0].allocated
-printf "MLIST_NEXT state=%u trap=%X selector=%X segment=%u offset=%X manager=%s routine=%s windows=%u services=%u/%u reads=%u bytes=%u\n",g_stageBState,g_trapWord,g_trapSelector,g_trapSegment,g_trapOffset,g_trapManager,g_trapRoutine,g_systemWindows,g_macServiceEntered,g_macServiceCompleted,g_resourceRuntimeReads,g_resourceRuntimeBytes
-if g_stageBState!=3 || g_macServiceActive!=0 || g_macServiceEntered!=g_macServiceCompleted
+printf "MLIST_NEXT phase=copy-return state=%u windows=%u services=%u/%u reads=%u bytes=%u\n",g_stageBState,g_systemWindows,g_macServiceEntered,g_macServiceCompleted,g_resourceRuntimeReads,g_resourceRuntimeBytes
+if !$stepcopy_captured || $pc!=$cp_ret || g_stageBState!=1 || g_macServiceActive!=0 || g_macServiceEntered!=g_macServiceCompleted
  echo FAIL menu-list progression\n
  detach
  quit 1
@@ -567,13 +549,13 @@ while $i<g_resourceCount
  end
  set $i=$i+1
 end
-echo PASS menu-list next-stop original-MDRV=absent\n
-if g_trapWord!=0xa8ec || g_trapSegment!=4 || g_trapOffset!=0x1e4a || g_trapSelector!=0xffffffff || g_macServiceActive!=0 || g_systemWindows!=$startup_windows+22 || g_macServiceEntered<$startup_entered+g_effectStatusCalls || g_macServiceCompleted<$startup_completed+g_effectStatusCalls || g_macServiceEntered!=g_macServiceCompleted
+echo PASS menu-list checkpoint original-MDRV=absent\n
+if !$stepcopy_captured || g_macServiceActive!=0 || g_systemWindows!=$startup_windows+22 || g_macServiceEntered<$startup_entered+g_effectStatusCalls || g_macServiceCompleted<$startup_completed+g_effectStatusCalls || g_macServiceEntered!=g_macServiceCompleted
  echo FAIL menu-list startup endpoint\n
  detach
  quit 1
 end
-echo startup PASS: original main, next stop CopyBits CODE 4+$1E4A\n
+echo startup PASS: original main and CopyBits return CODE 4+$1E4C\n
 printf "STARTUP_CAPTURE active=%u baseline=%u/%u frames=%u/%u\n",g_macServiceActive,g_macServiceEntered-g_effectStatusCalls,g_macServiceCompleted-g_effectStatusCalls,g_macFramesQueued,g_macFramesPresented
 set $ri=0
 set $font_bodies=0
