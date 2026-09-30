@@ -238,8 +238,9 @@ static uint8_t s_windowManagerPixMap[50];
 static uint8_t* s_windowManagerPixMapMaster;
 static uint8_t s_mainDevice[62];
 static uint8_t* s_mainDeviceMaster;
-static uint8_t s_mainDeviceITable[6 + 4096];
+static uint8_t s_mainDeviceITable[4096 + 524];
 static uint8_t* s_mainDeviceITableMaster;
+static bool s_mainDeviceITableValid;
 static uint8_t s_windowManagerColors[8 + 256 * 8];
 static uint8_t* s_windowManagerColorsMaster;
 static uint8_t s_windowManagerVisRgn[10];
@@ -1508,6 +1509,7 @@ static void initWindowManagerPort()
     // gdPMap is at +22 in a classic GDevice record and is itself a Handle.
     s_mainDeviceMaster = s_mainDevice;
     s_mainDeviceITableMaster = s_mainDeviceITable;
+    s_mainDeviceITableValid = false;
     write32(s_mainDeviceITable, read32(s_windowManagerColors));
     write16(s_mainDeviceITable + 4, 4);
     write16(s_mainDevice + 4, 0);           // clutType
@@ -1565,42 +1567,18 @@ static bool makeITable(uint8_t** colorTableHandle, uint8_t** inverseTableHandle,
         || !*colorTableHandle || !*inverseTableHandle || resolution != 4)
         return false;
 
-    const uint8_t* colorTable = *colorTableHandle;
-    uint8_t* inverseTable = *inverseTableHandle;
-    uint16_t finalIndex = read16(colorTable + 6);
-    if (finalIndex > 15) return false;
-    bool deviceTable = (read16(colorTable + 4) & 0x8000) != 0;
-    write32(inverseTable, read32(colorTable));
-    write16(inverseTable + 4, resolution);
-    uint8_t red[16], green[16], blue[16], value[16];
-    for (uint16_t i = 0; i <= finalIndex; ++i) {
-        const uint8_t* color = colorTable + 8 + i * 8;
-        // For a device table, the ColorSpec array position is the physical
-        // pixel value.  Color Manager owns cs.value and stores allocation
-        // flags there (for example $0800 protected and $2000 tolerant).
-        value[i] = deviceTable ? (uint8_t)i : (uint8_t)read16(color);
-        red[i] = (uint8_t)(read16(color + 2) >> 12);
-        green[i] = (uint8_t)(read16(color + 4) >> 12);
-        blue[i] = (uint8_t)(read16(color + 6) >> 12);
-    }
-    for (uint16_t key = 0; key < 4096; ++key) {
-        uint8_t r = (uint8_t)((key >> 8) & 15);
-        uint8_t g = (uint8_t)((key >> 4) & 15);
-        uint8_t b = (uint8_t)(key & 15);
-        uint16_t bestDistance = 0xffff;
-        uint8_t bestValue = 0;
-        for (uint16_t i = 0; i <= finalIndex; ++i) {
-            uint16_t distance = (uint16_t)((r > red[i] ? r - red[i] : red[i] - r)
-                              + (g > green[i] ? g - green[i] : green[i] - g)
-                              + (b > blue[i] ? b - blue[i] : blue[i] - b));
-            if (distance < bestDistance) {
-                bestDistance = distance;
-                bestValue = value[i];
-            }
-        }
-        inverseTable[6 + key] = bestValue;
-    }
-    return true;
+    if(read16(*colorTableHandle+6)!=255)return false;
+    // Reuse the measured 8-bit builder, including its collision rings. Scratch
+    // belongs to the private Mac zone; this trap does not open an OS window.
+    const uint32_t bytes=(5832UL+4096)*2;
+    uint8_t* scratch=s_applicationZone.newPtr(bytes);
+    if(!scratch)return false;
+    uint16_t* workspace=(uint16_t*)scratch;
+    s_mainDeviceITableValid=false;
+    bool built=GWorld8::inverse(*colorTableHandle,4,*inverseTableHandle,workspace,workspace+5832);
+    if(s_applicationZone.disposePtr(scratch)!=0)return false;
+    s_mainDeviceITableValid=built;
+    return built;
 }
 
 static uint16_t colorDistance4(uint16_t sr, uint16_t sg, uint16_t sb,
@@ -6585,17 +6563,31 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         GWorldSlot* world=gWorldForPort(port);
         const uint8_t* rgb=(const uint8_t*)read32(userStack);
         uint16_t index=0;
-        if(!world || !rgb || read16(*world->handles[0]+32)!=8
-           || read16(*world->handles[trap==0xaa14 ? 7 : 6])!=0
-           || !GWorld8::colorIndex(*world->handles[2],*world->handles[26],rgb,index))
-            goto unsupportedTrap;
+        uint8_t* inverse=0;const uint8_t* colors=0;
+        if(!rgb)goto unsupportedTrap;
+        if(world) {
+            if(read16(*world->handles[0]+32)!=8
+               || read16(*world->handles[trap==0xaa14 ? 7 : 6])!=0)goto unsupportedTrap;
+            colors=*world->handles[2];inverse=*world->handles[26];
+        } else {
+            WindowSlot* window=windowSlot(port);
+            if(!window || window->dialog || !port[110] || read16(port+6)!=0xc000
+               || read16(window->pixelMap+32)!=8
+               || read32(window->pixelMap)!=(uint32_t)s_colorScreen
+               || read32(window->pixelMap+42)!=(uint32_t)&s_windowManagerColorsMaster
+               || read32(port+32) || read32(port+58) || read32(port+62))goto unsupportedTrap;
+            colors=s_windowManagerColors;inverse=s_mainDeviceITable;
+            if((!s_mainDeviceITableValid || read32(inverse)!=read32(colors))
+               && !makeITable(0,0,4))goto unsupportedTrap;
+        }
+        if(!GWorld8::colorIndex(colors,inverse,rgb,index))goto unsupportedTrap;
         // Copy via the established byte primitive (m68k compiler copy defect).
         uint16_t colorOffset=trap==0xaa14 ? 36 : 42;
         for(uint16_t i=0;i<6;++i)MenuRecords::copyByte(port+colorOffset+i,rgb+i);
         uint16_t indexOffset=trap==0xaa14 ? 80 : 84;
         write32(port+indexOffset,index);
         regs[0]=regs[1]=index;regs[8]=(uint32_t)(port+indexOffset);
-        regs[9]=(uint32_t)(*world->handles[26]+6+(1UL<<(3*read16(*world->handles[26]+4))));
+        regs[9]=(uint32_t)(inverse+6+(1UL<<(3*read16(inverse+4))));
         return 5;
     }
     if(trap==0xa8aa) { // SectRect(src1, src2, destination) -> Boolean

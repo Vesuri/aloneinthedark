@@ -310,3 +310,44 @@ The reference covers two original calls and four nontrivial fixtures; native
 acceptance covers both original calls, with exact RGB results, whole-port
 preservation and four guard bytes on either side of each output. The adjacent
 RGB setters use the window next; that extension is M2.3g17.
+
+
+## Window RGB updates and the main inverse table
+
+M2.3g17 extends RGBForeColor/RGBBackColor to the selected owned visible 8-bit
+window. Original Dan1+$624A/+$6252 callers have the same A5-relative black/white
+arguments as the offscreen setters; their unrelocated bytes at +$6244–+$6253 are
+`2f3cfffff002aa142f3cfffff008aa15`. No game instructions change.
+
+The window uses the main device's actual 256-entry colour table and 4-bit inverse
+cube/collision rings. The existing GWorld8 inverse builder and RGB16 matcher
+match all 4,096 cube entries, defined collision data and 66 reference lookups for
+this palette too. The old Vette main-device builder only supported sixteen
+entries; it is replaced with that verified eight-bit implementation. Main-device
+storage now includes the collision record (4,620 bytes total). The first window
+colour match builds the table lazily; a changed palette seed rebuilds it. A
+19,856-byte temporary block in the private application zone holds builder
+scratch and is freed before return, without an OS handback. Unsupported tables
+or allocation failure retain the named stop.
+
+The original foreground black maps to index 255 and background white to index 0.
+Only the selected RGB field and pixel-index longword change. D0/D1 return the
+index, A0 points to that index field, A1 points to the inverse collision record;
+D3–D7/A2–A6 and stack cleanup match the offscreen contract. The Mac's three PixPat
+records remain unchanged. The native window's implicit default-pattern state is
+also unchanged; nondefault pattern handles remain unsupported. The native setters preserve the device palette and do not request display
+publication.
+
+Use the standard headless MAME command with `tools/mac_window_rgb.lua`; it follows
+InitGraf's real global pointer. Native acceptance uses `menu_lifecycle.gdb`.
+
+```sh
+python3 tools/check_window_rgb.py tmp/m2-window-rgb-reference.log --status 0 --helper \
+  --native tmp/m2-window-rgb-native-final.log --native-status 0
+```
+
+Supply actual terminal statuses. The helper check reuses the compiled GWorld
+builder/lookup tests under ASan/UBSan. The paired check covers original callers,
+whole-port mutations, all unchanged palette bytes, defined inverse-table bytes
+(normalizing independently verified seeds), preserved patterns and ABI. Existing
+offscreen colour checks remain separate regression coverage.

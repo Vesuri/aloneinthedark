@@ -15,21 +15,24 @@ def rows(text):
         result.append(tuple(dict(re.findall(r'(\w+)=([^ ]+)',s)) for s in lines[i:i+2]))
     return result
 
-def check(text,status,side):
+def check(text,status,side,window=False):
+    if window and side=='native':
+        text='\n'.join(line.replace('WRGB_','RGB_') for line in text.splitlines() if not line.startswith('RGB_'))
     if status!=0 or any(s in text for s in ('FAIL','LUA ERROR','Error in sourced command file','Program received signal','timeout')):raise ValueError(side+' completion')
-    marker='PASS original RGB colours and 64 fixtures' if side=='reference' else 'PASS native original RGB foreground/background'
+    marker='PASS original RGB colours and 64 fixtures' if side=='reference' else ('PASS native original window RGB foreground/background' if window else 'PASS native original RGB foreground/background')
     ending='Exited via the debugger' if side=='reference' else '[Inferior 1 (Remote target) detached]'
     if text.count(marker)!=1 or text.count(ending)!=1:raise ValueError(side+' positive terminal control')
     pairs=rows(text)
     if len(pairs)!=(66 if side=='reference' else 2):raise ValueError(side+' call count')
-    code=next(r.body for r in read_resource_fork(ROOT/'tmp/runtime-data/Alone In The Dark') if r.kind==b'CODE' and r.rid==13)
-    if code[0x2b8:0x2c8]!=bytes.fromhex('2f3cfffff002aa142f3cfffff008aa15'):raise ValueError('original colour call bytes')
+    code=next(r.body for r in read_resource_fork(ROOT/'tmp/runtime-data/Alone In The Dark') if r.kind==b'CODE' and r.rid==(12 if window else 13))
+    start=0x6244 if window else 0x2b8
+    if code[start:start+16]!=bytes.fromhex('2f3cfffff002aa142f3cfffff008aa15'):raise ValueError('original colour call bytes')
     for i,(e,r) in enumerate(pairs):
         original,fixture=(i+1,0) if i<2 else (2,i-1)
         trap=0xaa14 if i%2==0 else 0xaa15
         if any(int(d['original'])!=original or int(d['fixture'])!=fixture or int(d['trap'],16)!=trap for d in (e,r)):raise ValueError('call attribution')
         if i<2:
-            live=bytearray(code[0x2b8+8*i:0x2c0+8*i]);live[2:6]=((int.from_bytes(live[2:6],'big')+int(e['a5'],16))&0xffffffff).to_bytes(4,'big')
+            live=bytearray(code[start+8*i:start+8+8*i]);live[2:6]=((int.from_bytes(live[2:6],'big')+int(e['a5'],16))&0xffffffff).to_bytes(4,'big')
             if re.findall(rf'^RGB_BYTES original={i+1} data=([0-9A-F]+)$',text,re.M)!=[live.hex().upper()]:raise ValueError('live original/A5 bytes')
         if int(r['sp'],16)!=int(e['sp'],16)+4 or r['port']!=e['port'] or r['rgb']!=e['rgb']:raise ValueError('stack/port/input preservation')
         index=int(r['fore' if trap==0xaa14 else 'back'],16)
@@ -37,11 +40,14 @@ def check(text,status,side):
         for reg in 'd3 d4 d5 d6 d7 a2 a3 a4 a5 a6'.split():
             if e[reg]!=r[reg]:raise ValueError('preserved register '+reg)
         name=str(original) if fixture==0 else 'fixture'+str(fixture)
-        def data(phase,kind):return (ROOT/f'tmp/rgb-{side}-{name}-{phase}-{kind}.bin').read_bytes()
+        def data(phase,kind):return (ROOT/f'tmp/{"window-rgb" if window else "rgb"}-{side}-{name}-{phase}-{kind}.bin').read_bytes()
         before=data('enter','port');after=data('return','port');expected=bytearray(before)
         colorOffset=36 if trap==0xaa14 else 42;indexOffset=80 if trap==0xaa14 else 84
         expected[colorOffset:colorOffset+6]=bytes.fromhex(e['rgb']);struct.pack_into('>I',expected,indexOffset,index)
         if len(before)!=108 or after!=expected:raise ValueError('exact port colour mutation')
+        if window and side=='native':
+            if any(before[o:o+4]!=bytes(4) for o in (32,58,62)):raise ValueError('unsupported native window pattern')
+            continue
         for kind in ('pen','back','fill'):
             if data('enter',kind)!=data('return',kind):raise ValueError('unexpected pattern mutation')
     return pairs

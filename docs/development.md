@@ -3287,3 +3287,27 @@ Next is COLOR QUICKDRAW / RGBFORECOLOR at Dan1+$624A: the existing setter suppor
 GWorlds, while this original call selects the game window. Counts remain 115
 windows, 433/433 services and 64 resource reads / 294,970 bytes; CODE mask $3FBB.
 Fresh-preference counts remain derived. No intro frame acceptance is claimed.
+
+
+## Window RGB setters
+
+M2.3g17 is complete. Window RGBForeColor/RGBBackColor use the main device's real
+256-colour table, the measured inverse cube/collision builder and RGB16 matching.
+The obsolete sixteen-entry main-device builder is removed. Its replacement uses
+and releases private-zone scratch without an OS window, and caches by table seed.
+Default pattern state is retained; unsupported nondefault window patterns stop.
+
+`tmp/m2-window-rgb-reference.log` and `tmp/m2-window-rgb-native-final.log`
+exit 0 and pass paired original setters, exact port changes, unchanged palette
+and patterns, all defined inverse-table bytes and ABI checks. The existing
+compiled builder/matcher matches the main table and all 66 reference RGB results
+under ASan/UBSan. The final run also passes original offscreen setters, colour
+getters, cursor state, events, rectangle intersections, device flags, background
+coordinates/binding, 220 text widths, twenty pictures, fonts, driver/MDRV guard,
+AGA publication and all 75,616 A5 bytes. Full host tests, the 77-script Lua audit
+and both link audits pass. Reproduction is in
+[gworld.md](gworld.md#window-rgb-updates-and-the-main-inverse-table).
+
+Next is QUICKDRAW / PAINTRECT at Dan2+$0D52. Counts remain 115 windows,
+433/433 services and 64 resource reads / 294,970 bytes, with CODE mask $3FBB.
+Fresh-preference counts remain derived. Intro frame acceptance is still open.

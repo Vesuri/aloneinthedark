@@ -83,7 +83,7 @@ dump binary memory ../tmp/showhide-native-showhide-after-update.bin (char*)$regi
 echo PASS native ShowHide state capture\n
 continue
 printf "SH_NEXT state=%u trap=%X segment=%u offset=%X manager=%s routine=%s windows=%u services=%u/%u\n",g_stageBState,g_trapWord,g_trapSegment,g_trapOffset,g_trapManager,g_trapRoutine,g_systemWindows,g_macServiceEntered,g_macServiceCompleted
-if g_stageBState!=3 || g_macServiceActive!=0 || g_trapWord!=0xaa14 || g_trapSelector!=-1 || g_trapSegment!=12 || g_trapOffset!=0x624a
+if g_stageBState!=3 || g_macServiceActive!=0 || g_trapWord!=0xa8a2 || g_trapSelector!=-1 || g_trapSegment!=13 || g_trapOffset!=0xd52
  echo FAIL ShowHide progression\n
  detach
  quit 1

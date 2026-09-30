@@ -8,10 +8,10 @@ import unittest
 CALLS=['PASS native driver call: selector=21 D0=0 D1=0 preserved=13 stack=unchanged rate=22 voices=6/2/2',
        'PASS native driver call: selector=24 D0=0 D1=1 preserved=13 stack=unchanged rate=11 voices=6/2/2']
 SECOND = r'PASS font second: Dan1\+003A result=20 stack=\$[0-9a-fA-F]{8} native-driver-calls=2'
-ENDPOINT = 'MLIST_NEXT state=3 trap=AA14 selector=FFFFFFFF segment=12 offset=624A manager=COLOR QUICKDRAW routine=RGBFORECOLOR windows=115 services=433/433 reads=64 bytes=294970'
+ENDPOINT = 'MLIST_NEXT state=3 trap=A8A2 selector=FFFFFFFF segment=13 offset=D52 manager=QUICKDRAW routine=PAINTRECT windows=115 services=433/433 reads=64 bytes=294970'
 GUARD = 'PASS menu-list next-stop original-MDRV=absent'
 DETACHED = '[Inferior 1 (Remote target) detached]'
-COMPLETE = 'PASS native driver startup: Jnth=11 calls=2 second-Times=20 next=RGBFORECOLOR original-MDRV=absent'
+COMPLETE = 'PASS native driver startup: Jnth=11 calls=2 second-Times=20 next=PAINTRECT original-MDRV=absent'
 
 def check(text, status):
     if status != 0 or any(bad in text for bad in ('FAIL', 'Error in sourced command file', 'Program received signal', 'timeout')):
