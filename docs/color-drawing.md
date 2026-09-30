@@ -68,3 +68,36 @@ verifies the 44,800-pixel fill, complete buffer preservation (including row
 padding), and every paired pixel column across 648×401. Reference padding is
 not compared to native allocator contents. The native intro next reaches
 LineTo at Dark3+$337E. No full intro acceptance is claimed.
+
+
+## Intro LineTo (M2.3g28)
+
+The original Dark3+$3376 bytes `3f2effc63f2effc4a891` push the target
+and call LineTo at +$337E. The first call draws (251,84) to (238,74), index
+26, into a locked 648×401 eight-bit world with stride 652. It uses a visible,
+solid 1×1 mode-8 pen and rectangular clipping. Only the pen location changes
+in the port. D0 becomes zero; D1–D7/A1–A6 are preserved and four argument
+bytes are removed. A0 is scratch; dead argument-stack bytes are not preserved.
+
+Vette has no reusable QuickDraw line rasterizer. After two rejected raster
+models, instruction and register traces established the original signed 16.16
+slope, top-to-bottom normalization, half-open spans and diagonal branch.
+`Line8::solid` implements these rules using integer/fraction components, without
+an FPU or 64-bit arithmetic. It clips against map, port, visible and clip bounds;
+updates the requested pen position even when fully clipped; and leaves screen
+publication to CopyBits. Other ports, pen sizes/modes/patterns and complex
+regions retain the named stop.
+
+`tools/mac_lineto.lua` captures the original call and 48 isolated slope,
+reversal, zero-length and clipping fixtures. `check_line8.py` compares the
+production helper with the complete original call buffer and the fixtures'
+64×64 captures, plus independent buffer-preservation cases. The native call's
+complete 648×401 pixel columns and CLUT match the Mac; each side's row padding
+and all nondrawn bytes are preserved. Port/ABI checks pass on both systems.
+Reference `tmp/m2-lineto-registers-reference.log` and native
+`tmp/m2-lineto-native-accept.log` exit zero. The trace diagnostics stay in `tmp/`.
+
+The native route advances through the effect's actual completed query to
+PaintRect at Dan2+$0D52. The nine-frame startup AGA capture now runs at its
+measured first-LineTo boundary; subsequent intro frames do not overwrite it.
+This is not acceptance of the whole rendered intro.

@@ -7,7 +7,7 @@ break AitdScreen::showLoudStop
 commands
  silent
  printf "startup END state=%u selector=%u main=%u windows=%u services=%u/%u active=%u routineWords=%X/%X/%X/%X/%X\n",g_stageBState,g_trapSelector,$startup_main,g_systemWindows,g_macServiceEntered,g_macServiceCompleted,g_macServiceActive,*(unsigned long*)g_trapRoutine,*(unsigned long*)(g_trapRoutine+4),*(unsigned long*)(g_trapRoutine+8),*(unsigned short*)(g_trapRoutine+12),g_trapRoutine[14]
- if g_macServiceEntered != $startup_entered+g_effectStatusCalls || g_macServiceCompleted != $startup_completed+g_effectStatusCalls || g_macServiceActive != 0 || $startup_main != 1 || g_stageBState != 3 || g_trapWord!=0xa891 || g_trapSegment!=6 || g_trapOffset!=0x337e || *(unsigned long*)(g_trapRoutine+0)!=0x4c494e45 || *(unsigned short*)(g_trapRoutine+4)!=0x544f || g_trapRoutine[6]!=0 || g_trapSelector!=-1
+ if g_macServiceEntered != $startup_entered+g_effectStatusCalls || g_macServiceCompleted != $startup_completed+g_effectStatusCalls || g_macServiceActive != 0 || $startup_main != 1 || g_stageBState != 3 || g_trapWord!=0xa8a2 || g_trapSegment!=13 || g_trapOffset!=0xd52 || *(unsigned long*)(g_trapRoutine+0)!=0x5041494e || *(unsigned long*)(g_trapRoutine+4)!=0x54524543 || g_trapRoutine[8]!=0x54 || g_trapRoutine[9]!=0 || g_trapSelector!=-1
   printf "startup FAIL: %s / %s CODE %u+$%04x\n",g_trapManager,g_trapRoutine,g_trapSegment,g_trapOffset
   detach
   quit 1

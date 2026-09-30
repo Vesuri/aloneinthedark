@@ -28,10 +28,10 @@ while $tw_finished==0
   continue
   source driver17_call.gdb
   source driver20_calls.gdb
-  if g_stageBState==3
-   loop_break
+  if g_stageBState!=3
+   continue
   end
-  loop_continue
+  loop_break
  end
  if trap==0xaa91
   source palette129_call.gdb

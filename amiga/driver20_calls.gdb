@@ -1,16 +1,20 @@
+set $line_seen=0
 set $d20_n=0
 set $d20_active=0
 set $d20_finished=0
 while $d20_finished==0
- tbreak dispatchMacTrap if (trap==0xa0f8 && inUserService && *(unsigned long*)(userStack+4)==20) || (trap==0xa8a2 && *(unsigned long*)(frame+2)==(unsigned long)s_segments[5].begin+0x1e44)
+ tbreak dispatchMacTrap if (trap==0xa891 && $line_seen==0) || (trap==0xa0f8 && inUserService && *(unsigned long*)(userStack+4)==20) || (trap==0xa8a2 && *(unsigned long*)(frame+2)==(unsigned long)s_segments[5].begin+0x1e44)
  continue
  if g_stageBState==3
-  if g_trapWord!=0xa891 || g_trapSegment!=6 || g_trapOffset!=0x337e || $d20_active==0
-   echo FAIL driver20 unexpected dependency\n
-   detach
-   quit 1
-  end
-  loop_break
+  echo FAIL driver20 unexpected drawing dependency\n
+  detach
+  quit 1
+ end
+ if trap==0xa891
+  source aga_startup_call.gdb
+  source lineto_call.gdb
+  set $line_seen=1
+  loop_continue
  end
  if trap==0xa8a2
   source paintworld_call.gdb
@@ -137,10 +141,7 @@ end
   quit 1
  end
 end
-if $d20_finished
- printf "DRIVER20_NATIVE_SEQUENCE calls=%u active=%u complete=1 driverCalls=%u statusCalls=%u starts=%u stops=%u\n",$d20_n,$d20_active,g_soundDriverCalls,g_effectStatusCalls,g_effectStarts,g_effectStops
- echo PASS native driver20 playing-to-finished sequence ABI and cleanup\n
-else
- printf "DRIVER20_NATIVE_PREFIX calls=%u active=%u complete=0 driverCalls=%u statusCalls=%u starts=%u stops=%u next=A891/6/337E\n",$d20_n,$d20_active,g_soundDriverCalls,g_effectStatusCalls,g_effectStarts,g_effectStops
- echo PASS native driver20 active-prefix ABI; completed-query acceptance pending\n
-end
+printf "DRIVER20_NATIVE_SEQUENCE calls=%u active=%u complete=1 driverCalls=%u statusCalls=%u starts=%u stops=%u\n",$d20_n,$d20_active,g_soundDriverCalls,g_effectStatusCalls,g_effectStarts,g_effectStops
+echo PASS native driver20 playing-to-finished sequence ABI and cleanup\n
+printf "DRIVER17_CLEANUP starts=%u stops=%u tick=%u elapsed=%u active=%u channel=%d chip=%X allocated=%u dma=%X\n",g_effectStarts,g_effectStops,g_macTicks,g_macTicks-g_effects[0].started,g_soundDriver.effects[0].active,g_soundDriver.effects[0].channel,g_effects[0].chip,g_effects[0].allocated,*(unsigned short*)0xdff002
+echo PASS native driver17 natural completion DMA-off and sample released\n

@@ -396,7 +396,7 @@ dump binary memory ../tmp/gworld-init-native-screen-after.bin (char*)s_colorScre
 echo PASS native offscreen initialization\n
 continue
 printf "GWINIT_NEXT trap=%X selector=%X segment=%u offset=%X manager=%s routine=%s\n",g_trapWord,g_trapSelector,g_trapSegment,g_trapOffset,g_trapManager,g_trapRoutine
-if g_stageBState!=3 || g_trapWord!=0xa891 || g_trapSelector!=-1 || g_trapSegment!=6 || g_trapOffset!=0x337e || g_macServiceActive!=0
+if g_stageBState!=3 || g_trapWord!=0xa8a2 || g_trapSelector!=-1 || g_trapSegment!=13 || g_trapOffset!=0xd52 || g_macServiceActive!=0
  echo FAIL offscreen progression\n
  detach
  quit 1

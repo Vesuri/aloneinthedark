@@ -40,5 +40,5 @@ if __name__=='__main__':
             try:native(bad,status,*payload,reference)
             except ValueError:continue
             raise ValueError('native rejection fixture passed')
-        print('PASS paired native device: four original calls, stack/register observer, mode 0x83, 640x480x8 records, 307200 real bytes; next LINETO')
+        print('PASS paired native device: four original calls, stack/register observer, mode 0x83, 640x480x8 records, 307200 real bytes; next PAINTRECT')
     except (OSError,ValueError,KeyError,AttributeError) as error:raise SystemExit('FAIL native device: '+str(error))

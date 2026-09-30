@@ -3540,3 +3540,34 @@ Current boundary: QUICKDRAW / LINETO, $A891, Dark3+$337E; 135 windows,
 503/503 completed services, no service in progress, 68 reads / 333,998 bytes,
 CODE mask $3FFB. Service totals are baseline 480 plus observed status queries;
 fresh prefs use derived baseline 488 and 161 windows. Full M2 remains open.
+
+
+## Intro line drawing
+
+M2.3g28 is complete. The reached solid one-pixel LineTo at Dark3+$337E
+matches the original whole buffer, CLUT, pen-position update and preserved
+register/stack contract. Forty-eight original slope/clipping fixtures and five
+host buffer cases also pass; see [colour drawing](color-drawing.md).
+
+The instruction/register trace followed two rejected raster hypotheses and
+established the Mac's fixed-point edge rule. Reference
+`tmp/m2-lineto-registers-reference.log` and integrated native
+`tmp/m2-lineto-native-accept.log` exit zero with positive markers. The host
+suite, clean no-float/82-symbol probe audits, 90-script MAME literal audit and
+27 integrated checks pass, including the full effect-status sequence, exact
+PCM/cleanup, offscreen fill, nine startup AGA publications, logo/palette/picture,
+text/events, geometry/device state and all 75,616 A5 bytes. The native line
+has zero paired pixel mismatches across 648×401.
+
+The new boundary is QUICKDRAW / PAINTRECT, $A8A2, Dan2+$0D52: 139 windows,
+689/689 services (baseline 489 plus 200 status queries), none active,
+68 resource reads / 333,998 bytes, CODE mask $3FFB, MDRV absent. Fresh-pref
+expectations remain derived: 165 windows, baseline 497 plus status queries.
+The earlier discovery run reached 115 display publications; only the nine
+startup publications have paired AGA acceptance so far.
+
+One observer run (`tmp/m2-lineto-native-final.log`, exit 1) was rejected:
+its relocated AGA checkpoint saw eight publications instead of nine. Moving
+that observer to the measured first-LineTo state fixed the check without a
+runtime change. Repeated cursor observations after the completed sound query
+are no longer needed by the startup observer. Full M2 remains open.

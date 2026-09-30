@@ -61,7 +61,7 @@ def check(reference, native, reference_status, native_status, folder, resource):
     require(r[:12]+r[16:] == n[:12]+n[16:], 'paired complete palette excluding private pointer')
     require(captures['reference','clut'][4:] == captures['native','clut'][4:], 'paired complete logical CLUT excluding allocated seed')
     require(native.count('PASS native window binding next-stop original-MDRV=absent') == 1, 'next-stop and driver guard')
-    one(native, r'WSET_NEXT state=3 trap=A891 segment=6 offset=337E manager=QUICKDRAW routine=LINETO windows=(?:135|161) services=\d+/\d+')
+    one(native, r'WSET_NEXT state=3 trap=A8A2 segment=13 offset=D52 manager=QUICKDRAW routine=PAINTRECT windows=(?:139|165) services=\d+/\d+')
     print('PASS paired window SetPalette: original instructions, stack/registers, binding, full palette/CLUT and unchanged display state')
 
 

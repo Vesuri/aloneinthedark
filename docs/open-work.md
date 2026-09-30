@@ -12,9 +12,9 @@ design.md §5.
   support the measured initialization path; original MDRV code is never loaded.
 - MacPlay and the Infogrames logo have exact paired client pixels/colours. Nine
   AGA publications pass memory/copper checks. Full intro acceptance remains open.
-- The next stop is QuickDraw LineTo, Dark3+$337E ($A891).
-  The first raw effect plays on Paula, active-status queries work, and its
-  sample/DMA cleanup and the first intro offscreen fill are verified.
+- The next stop is QuickDraw PaintRect, Dan2+$0D52 ($A8A2).
+  Intro LineTo matches the Mac; the first raw effect plays on Paula and its
+  real polling loop observes completion with sample/DMA cleanup verified.
   Detailed completed service contracts and regression evidence are in
   [development.md](development.md). No Mac dialogs, menu bar or chrome are drawn.
 - The original runs in MAME on the System 7.5.5 reference volume.
@@ -49,31 +49,29 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.3g28 Intro LineTo prerequisite.**
-  - The real intro route now reaches $A891 at Dark3+$337E while the first
-    effect is still playing. This blocks M2.3g27's completed-query acceptance.
-  - Check original caller bytes and measure the selected port, pen location,
-    size/mode/colour, clipping, endpoints and resulting pixels. Reuse Vette's
-    line drawing where its contract matches the eight-bit Mac reference.
-  - Implement the reached line rasterization and pen-position update; leave
-    unsupported pen/region modes as named stops.
-
-  *Done when* paired complete buffers and port/ABI changes match the original,
-  startup reaches its next named stop with MDRV absent, and the effect,
-  offscreen fill, logo/palette/AGA/startup regressions pass.
 - **M2.3g27 Native driver selector 20 — final integration acceptance.**
   - The first-match identifier/status contract is implemented. Original active,
     completed, stopped-state, missing-ID and duplicate-ID cases are measured;
     host tests cover them. The native route proves active-query ABI/results.
-  - The M2.3g27a offscreen PaintRect prerequisite is complete. LineTo now stops
-    the route before the game's query observes completion. Natural DMA/sample
-    cleanup passes at the stop, but that is not a completed-query call.
-  - Resume the real polling observer after its drawing prerequisites. Do not
-    force a completed result or substitute helper tests for integrated evidence.
+  - The offscreen PaintRect and LineTo prerequisites are complete. The latest
+    integrated run (`tmp/m2-lineto-native-accept.log`, exit zero) now proves
+    199 active results followed by a completed query, with natural cleanup.
+  - Confirm and record this final integration acceptance against the original
+    status sequence; the shared LineTo regression run already supplies evidence.
 
   *Done when* original/native status sequences and results agree through an
   actual completed query, startup reaches its next named stop with MDRV absent,
   and the effect, logo/palette/AGA/startup regressions pass.
+- **M2.3g29 Later intro PaintRect.**
+  - After LineTo and the completed effect query, the original native route
+    reaches $A8A2 at Dan2+$0D52 with 139 windows and balanced services.
+  - Check caller bytes and measure the selected port, rectangle, pen/colour,
+    regions and presentation role on both systems. Implement the reached fill
+    contract; preserve D5/D7 suppression of Mac dialogs and menu presentation.
+
+  *Done when* paired complete drawing buffers and port/ABI changes match the
+  original, startup reaches its next named stop with MDRV absent, and line,
+  effect, offscreen fill, logo/palette/AGA/startup regressions pass.
 - **M2.1c Original File Manager read acceptance (after M2.2).**
   - This retains M2.1's original acceptance; diagnostic fixture reads do not count
     as original-game reads. M2.1b2a measured the intervening Get1NamedResource

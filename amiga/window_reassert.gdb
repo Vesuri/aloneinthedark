@@ -162,7 +162,7 @@ echo PASS native window reassert state capture\n
 
 continue
 printf "RESIZE_NEXT state=%u trap=%X selector=%X segment=%u offset=%X manager=%s routine=%s windows=%u services=%u/%u\n",g_stageBState,g_trapWord,g_trapSelector,g_trapSegment,g_trapOffset,g_trapManager,g_trapRoutine,g_systemWindows,g_macServiceEntered,g_macServiceCompleted
-if g_stageBState!=3 || g_trapWord!=0xa891 || g_trapSegment!=6 || g_trapOffset!=0x337e || g_macServiceActive!=0
+if g_stageBState!=3 || g_trapWord!=0xa8a2 || g_trapSegment!=13 || g_trapOffset!=0xd52 || g_macServiceActive!=0
  echo FAIL window reassert progression\n
  detach
  quit 1

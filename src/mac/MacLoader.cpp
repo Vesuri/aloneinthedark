@@ -11,6 +11,7 @@
 #include "WindowGeometry.h"
 #include "RectBounds.h"
 #include "FillRect8.h"
+#include "Line8.h"
 #include "CopyBits8.h"
 #include "CursorVisibility.h"
 #include "RegionRows.h"
@@ -4642,6 +4643,23 @@ static bool paintGWorldRect(GWorldSlot& w,const uint8_t* rectangle)
         rectangle,(uint8_t)read32(w.port+80),drawn);
 }
 
+static bool lineGWorld(GWorldSlot& w,int16_t horizontal,int16_t vertical)
+{
+    if(!w.locked || !w.pixels || read16(w.pixMap+32)!=8
+       || read16(w.port+52)!=1 || read16(w.port+54)!=1
+       || read16(w.port+56)!=8 || read16(w.port+66)
+       || read16(*w.handles[7])!=0 || read32(w.port+80)>255)return false;
+    for(uint16_t i=0;i<8;++i)if((*w.handles[14])[i]!=255)return false;
+    const uint8_t* vis=*w.handles[3];const uint8_t* clip=*w.handles[4];
+    if(read16(vis)!=10 || read16(clip)!=10)return false;
+    if(!Line8::solid(w.pixels,w.owner->handleSize(w.handles[1]),
+        read16(w.pixMap+4)&0x3fff,w.pixMap+6,w.port+16,vis+2,clip+2,
+        int16_t(read16(w.port+50)),int16_t(read16(w.port+48)),
+        horizontal,vertical,uint8_t(read32(w.port+80))))return false;
+    write16(w.port+48,uint16_t(vertical));write16(w.port+50,uint16_t(horizontal));
+    return true;
+}
+
 // The reached offscreen path uses rectangular regions and a solid background.
 // Reject other pattern/region forms until their drawing semantics are implemented.
 static bool eraseGWorldRect(GWorldSlot& w,const uint8_t* rectangle)
@@ -7421,6 +7439,13 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         if (port) write32(port + 76, read32(userStack));
         if (g_stageCDepth < 97) g_stageCDepth = 97;
         return 5;
+    }
+    if (trap == 0xa891) {                    // LineTo(horizontal, vertical)
+        GWorldSlot* world=gWorldForPort((uint8_t*)read32(s_qdThePort));
+        if(world && lineGWorld(*world,int16_t(read16(userStack+2)),int16_t(read16(userStack)))) {
+            regs[0]=0;
+            return 5;
+        }
     }
     if (trap == 0xa893) {                    // MoveTo(horizontal, vertical)
         uint8_t* port = (uint8_t*)read32(s_qdThePort);

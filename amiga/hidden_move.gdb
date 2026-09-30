@@ -59,11 +59,11 @@ set $body=**(unsigned long**)($items+50)
 dump binary memory ../tmp/move-native-after-text3.bin $body $body+51
 continue
 printf "MOVE_NEXT state=%u trap=%X selector=%X segment=%u offset=%X manager=%s routine=%s windows=%u services=%u/%u\n",g_stageBState,g_trapWord,g_trapSelector,g_trapSegment,g_trapOffset,g_trapManager,g_trapRoutine,g_systemWindows,g_macServiceEntered,g_macServiceCompleted
-if g_stageBState!=3 || g_trapWord!=0xa891 || g_trapSegment!=6 || g_trapOffset!=0x337e || *(unsigned long*)(g_trapRoutine+0)!=0x4c494e45 || *(unsigned short*)(g_trapRoutine+4)!=0x544f || g_trapRoutine[6]!=0 || g_trapSelector!=-1 || g_macServiceActive!=0 || g_systemWindows!=$startup_windows || g_macServiceEntered!=$startup_entered+g_effectStatusCalls || g_macServiceCompleted!=$startup_completed+g_effectStatusCalls || g_resourceRuntimeReads!=68 || g_resourceRuntimeBytes!=333998
+if g_stageBState!=3 || g_trapWord!=0xa8a2 || g_trapSegment!=13 || g_trapOffset!=0xd52 || *(unsigned long*)(g_trapRoutine+0)!=0x5041494e || *(unsigned long*)(g_trapRoutine+4)!=0x54524543 || g_trapRoutine[8]!=0x54 || g_trapRoutine[9]!=0 || g_trapSelector!=-1 || g_macServiceActive!=0 || g_systemWindows!=$startup_windows || g_macServiceEntered!=$startup_entered+g_effectStatusCalls || g_macServiceCompleted!=$startup_completed+g_effectStatusCalls || g_resourceRuntimeReads!=68 || g_resourceRuntimeBytes!=333998
  echo FAIL hidden MoveWindow progression\n
  detach
  quit 1
 end
-echo PASS native hidden MoveWindow next=LINETO\n
+echo PASS native hidden MoveWindow next=PAINTRECT\n
 detach
 quit 0

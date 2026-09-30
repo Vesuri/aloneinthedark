@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Compare the first original/native raw-effect request, ABI and PCM publication."""
-import argparse,struct
+import argparse,re,struct
 from pathlib import Path
 from check_driver22 import fields,one,ROOT
 from resource_fork import read_resource_fork
@@ -44,6 +44,8 @@ def check(reference,status,native=None,native_status=None):
         text=native.read_text()
         if native_status!=0 or any(x in text for x in ('FAIL','Error in','DIAG / GDB TIMEOUT','Program received signal')) or text.count('PASS native driver17 play-effect ABI and publication')!=1 or text.count('[Inferior 1 (Remote target) detached]')!=1:raise ValueError('native call completion')
         if text.count('PASS native driver17 natural completion DMA-off and sample released')!=1:raise ValueError('native completion cleanup')
+        cleanup=re.findall(r'^DRIVER17_CLEANUP starts=1 stops=1 tick=\d+ elapsed=\d+ active=0 channel=-1 chip=0 allocated=0 dma=([0-9A-F]+)$',text,re.M)
+        if len(cleanup)!=1 or int(cleanup[0],16)&15:raise ValueError('native DMA/sample ownership after completion')
         from check_native_driver import check as startup
         startup(text,native_status)
         p=(ROOT/'tmp/driver17-native-packet.bin').read_bytes()
