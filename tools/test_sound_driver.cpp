@@ -31,7 +31,8 @@ int main() {
         assert(ticks>=exact && ticks-exact<=1);
     }
     std::puts("PASS raw Paula effect: full PCM, odd pad/silent reload, period/duration and unsupported configurations");
-    SoundDriver driver;
+    SoundDriver driver;uint16_t status=0x1234;
+    assert(driver.effectStatus(0x8000,status) && status==0x1234);
     assert(!driver.initialized);
     assert(!std::strcmp(driver.stopEffects(),"NOT INITIALIZED"));
     assert(!std::strcmp(driver.quality(0x10b),"NOT INITIALIZED"));
@@ -56,9 +57,19 @@ int main() {
     assert(!std::strcmp(driver.initialize(6,2,2),"REINITIALIZE"));
     assert(driver.songs[0].active==1 && driver.songs[0].sample==0x1234 && driver.channels[0]==0);
     driver.effects[0].active=1;driver.effects[0].sample=0x5678;
+    driver.effectIds[0]=0x8000;driver.effectIds[1]=0x8000;
+    assert(!driver.effectStatus(0x8000,status) && status==0);
+    assert(!driver.effectStatus(0x1234,status) && status==1);
+    driver.effects[0].active=0;driver.effects[1].active=1;
+    assert(!driver.effectStatus(0x8000,status) && status==1);
+    driver.effectIds[0]=0x1234;
+    assert(!driver.effectStatus(0x8000,status) && status==0);
+    driver.effects[0].active=1;
     driver.effects[1].active=1;driver.effects[1].sample=0x9abc;
     assert(!driver.stopEffects());
     assert(!driver.effects[0].active && !driver.effects[1].active);
+    assert(!driver.effectStatus(0x8000,status) && status==1);
+    assert(driver.effectIds[0]==0x1234 && driver.effectIds[1]==0x8000);
     assert(driver.effects[0].sample==0x5678 && driver.effects[1].sample==0x9abc);
     assert(driver.songs[0].active==1 && driver.songs[0].sample==0x1234 && driver.channels[0]==0);
     assert(driver.requestedRate==11 && driver.interpolation==1 && driver.initialized);

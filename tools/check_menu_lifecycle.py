@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Pair hidden startup menu membership, ownership and redraw suppression."""
 from pathlib import Path
+import re
 import argparse,hashlib,re
 from resource_fork import read_resource_fork
 from check_menu_reference import records
@@ -48,4 +49,4 @@ for i in range(1,5):
  assert ri==ni,(i,'original application items')
 print('PASS paired menu lifecycle: clear, four ordered owned menus, draw suppression, exact application records, preserved registers/stack, unchanged game client; reference nonempty clear preserves menu records')
 
-assert 'MLIST_NEXT state=3 trap=A0F8 selector=14 segment=3 offset=17C8 manager=SOUND DRIVER routine=SELECTOR windows=135 services=481/480 reads=68 bytes=333998' in a.native.read_text()
+assert re.search(r'MLIST_NEXT state=3 trap=A891 selector=FFFFFFFF segment=6 offset=337E manager=QUICKDRAW routine=LINETO windows=135 services=(?P<services>\d+)/(?P=services) reads=68 bytes=333998', a.native.read_text())

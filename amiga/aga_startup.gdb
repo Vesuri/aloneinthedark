@@ -5,7 +5,7 @@ break AitdScreen::showLoudStop
 continue
 set $screen=s_loudStopScreen
 printf "AGA_STOP state=%u trap=%X segment=%u offset=%X queued=%u presented=%u pending=%u\n",g_stageBState,g_trapWord,g_trapSegment,g_trapOffset,g_macFramesQueued,g_macFramesPresented,$screen->m_framePending
-if g_stageBState!=3 || g_trapWord!=0xa0f8 || g_trapSegment!=3 || g_trapOffset!=0x17c8 || g_macFramesQueued!=9 || g_macFramesPresented>9
+if g_stageBState!=3 || g_trapWord!=0xa891 || g_trapSegment!=6 || g_trapOffset!=0x337e || g_macFramesQueued!=9 || g_macFramesPresented>9
  echo FAIL AGA startup boundary\n
  detach
  quit 1
@@ -29,6 +29,6 @@ if $screen->m_framePending || g_macFramesPresented!=9 || $screen->m_chip!=$targe
 end
 dump binary memory ../tmp/aga-startup-active-planes.bin (char*)$screen->m_chip (char*)$screen->m_chip+64000
 dump binary memory ../tmp/aga-startup-active-copper.bin (char*)$screen->m_copper (char*)$screen->m_copper+2248
-echo PASS AGA startup queued and VBI-published next=SELECTOR20\n
+echo PASS AGA startup queued and VBI-published next=LINETO\n
 detach
 quit 0

@@ -232,3 +232,31 @@ The actual source and all 30,786 DMA bytes compare exactly. DMA changes
 $3F1→$3F0, the voice/channel becomes inactive/unassigned, and chip allocation
 becomes zero at tick 232. Nine AGA publications and all existing paired startup
 checks pass before the stop screen is drawn. Next: selector 20, Core+$17C8.
+
+
+## Selector 20: effect status
+
+Core+$17BC pushes the packet and selector 20; +$17C8 calls the driver and
++$17CA removes eight bytes. Driver+$36E2 reads the identifier at packet+24,
+then returns 0 if the **first matching** effect slot is active, otherwise 1.
+An inactive first match ends the search even if a later duplicate is active.
+D1 remains the packet argument; D2–D7/A0–A6 and the pre-JSR stack are preserved.
+Only dispatch fields (selector/argument/status) change in the full driver state.
+
+`mac_driver20.lua` observes 230 active results followed by completion on the
+original route, then isolated active, inactive/stopped-state, missing-ID and
+first-inactive-duplicate fixtures. These fixtures inspect status semantics;
+explicit stop mutation itself is covered by selector 22's separate fixture.
+`SoundDriver::effectStatus` uses retained effect identifiers and actual active
+flags; safe-point DMA cleanup runs before the native query. Host tests also
+query after logical stop and exercise duplicate-ID ordering.
+
+The native run `tmp/m2-driver20-prefix-native-named.log` exits zero with 23
+active results and preserved call ABI, then reaches LineTo before the completed
+query. Its later natural cleanup passes. **M2.3g27 is still open:**
+`check_driver20.py --allow-prefix` accepts only that explicitly partial evidence;
+the default full-sequence check rejects it. The original reference log is
+`tmp/m2-driver20-reference.log` (exit zero). Poll counts need not match across
+machines; state, result and event ordering must. Startup service expectations
+now add the observed query count to the completed baseline (480 existing prefs,
+488 fresh prefs), rather than assuming one fixed count of polling calls.

@@ -46,3 +46,25 @@ A5 and AGA checks pass on the same native run. It reaches DrawPicture at
 Dan2+$0382 with 101 OS handbacks, 164 completed services and 62 original resource
 reads / 265,454 bytes. No original MDRV is resident. Eight-bit picture drawing
 remains M2.3g8; this is not rendered intro acceptance.
+
+
+## Intro offscreen PaintRect (M2.3g27a)
+
+Dark2+$1E3E pushes the A5-relative rectangle ($FFFF4D58 before CREL), then
++$1E44 calls PaintRect. The reached GWorld is 648×401, stride 652, locked,
+eight-bit, with rectangular visible/clip regions. The pen is solid $FF,
+mode 8, visible, foreground index 255. The rectangle is (0,0)–(320,140).
+
+The native path reuses `FillRect8::solid`, clips against map/port/visible/clip
+bounds, and writes only foreground indexes into owned pixel storage. It does
+not mark the screen dirty until presentation. Other patterns, modes, hidden
+pens or complex regions remain unsupported. Port, PixMap, CLUT, regions and
+adjacent rectangle bytes stay unchanged. D0=0, D1's low word is 8, A1 is the
+port; D3–D7/A2–A6 and four-byte stack cleanup match the original.
+
+`tmp/m2-paintworld-reference.log` and
+`tmp/m2-driver20-prefix-native-named.log` exit zero. `check_paintworld.py`
+verifies the 44,800-pixel fill, complete buffer preservation (including row
+padding), and every paired pixel column across 648×401. Reference padding is
+not compared to native allocator contents. The native intro next reaches
+LineTo at Dark3+$337E. No full intro acceptance is claimed.

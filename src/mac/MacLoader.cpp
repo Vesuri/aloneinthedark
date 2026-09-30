@@ -69,7 +69,7 @@ struct NativeEffect {
     uint16_t period,id;
 };
 NativeEffect g_effects[2]={};
-volatile uint32_t g_effectStarts=0,g_effectStops=0;
+volatile uint32_t g_effectStarts=0,g_effectStops=0,g_effectStatusCalls=0;
 volatile uint16_t g_jumpEntryCount = 0;
 volatile uint16_t g_blockMoveCount = 0;
 volatile uint16_t g_stageCDepth = 1;       // _BlockMove is row 1
@@ -794,7 +794,7 @@ static const TrapName s_trapNames[] = {
     {0xa8aa,"QUICKDRAW","SECTRECT"}, {0xaa2c,"QUICKDRAW","TESTDEVICEATTRIBUTE"}, {0xa870,"QUICKDRAW","LOCALTOGLOBAL"}, {0xa886,"QUICKDRAW","TEXTWIDTH"}, {0xa8f6,"QUICKDRAW","DRAWPICTURE"}, {0xa89b,"QUICKDRAW","PENSIZE"},
     {0xa89c,"QUICKDRAW","PENMODE"}, {0xa8a1,"QUICKDRAW","FRAMERECT"},
     {0xa8a7,"QUICKDRAW","SETRECT"},
-    {0xa8a2,"QUICKDRAW","PAINTRECT"},
+    {0xa8a2,"QUICKDRAW","PAINTRECT"}, {0xa891,"QUICKDRAW","LINETO"},
     {0xa8a4,"QUICKDRAW","INVERTRECT"},
     {0xa8a9,"QUICKDRAW","INSETRECT"}, {0xa8b0,"QUICKDRAW","FRAMEROUNDRECT"},
     {0xa8ad,"QUICKDRAW","PTINRECT"},
@@ -1302,6 +1302,7 @@ static const char* playNativeEffect(uint8_t* packet,uint32_t& scratch)
     NativeEffect& effect=g_effects[index];
     effect.chip=chip;effect.allocated=layout.allocated;effect.size=bytes;effect.rate=rate;
     effect.period=period;effect.id=read16(packet+24);effect.serial=++g_effectStarts;
+    g_soundDriver.effectIds[index]=effect.id;
     SoundDriver::Voice& voice=g_soundDriver.effects[index];
     voice.sample=(uint32_t)sample;voice.channel=channel;voice.active=1;
     g_soundDriver.channels[channel]=6+index;
@@ -4626,6 +4627,21 @@ static uint8_t* newGWorld(const uint8_t* bounds,uint16_t depth,MacHeap::Handle c
     memoryResult(0);return slot->port;
 }
 
+// The reached fill uses a solid foreground pen in an owned 8-bit world.
+static bool paintGWorldRect(GWorldSlot& w,const uint8_t* rectangle)
+{
+    if(!rectangle || !w.locked || !w.pixels || read16(w.pixMap+32)!=8
+       || read16(w.port+56)!=8 || read16(w.port+66)
+       || read16(*w.handles[7])!=0 || read32(w.port+80)>255)return false;
+    for(uint16_t i=0;i<8;++i)if((*w.handles[14])[i]!=255)return false;
+    const uint8_t* vis=*w.handles[3];const uint8_t* clip=*w.handles[4];
+    if(read16(vis)!=10 || read16(clip)!=10)return false;
+    uint8_t drawn[8];
+    return FillRect8::solid(w.pixels,w.owner->handleSize(w.handles[1]),
+        read16(w.pixMap+4)&0x3fff,w.pixMap+6,w.port+16,vis+2,clip+2,
+        rectangle,(uint8_t)read32(w.port+80),drawn);
+}
+
 // The reached offscreen path uses rectangular regions and a solid background.
 // Reject other pattern/region forms until their drawing semantics are implemented.
 static bool eraseGWorldRect(GWorldSlot& w,const uint8_t* rectangle)
@@ -6148,12 +6164,20 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
             driverStop="ENTRY";
         } else {
             uint32_t selector=read32(userStack+4),argument=read32(userStack+8);
-            uint32_t scratch=argument;
+            uint32_t scratch=argument;uint16_t driverResult=0;
             if(selector==21) {
                 uint8_t* packet=(uint8_t*)argument;
                 if(!packet || (argument&1))driverStop="VOICE PACKET";
                 else driverStop=g_soundDriver.initialize(read16(packet),read16(packet+2),read16(packet+4));
             } else if(selector==17)driverStop=playNativeEffect((uint8_t*)argument,scratch);
+            else if(selector==20) {
+                uint8_t* packet=(uint8_t*)argument;
+                if((argument&1) || !effectRange(packet,26))driverStop="EFFECT STATUS PACKET";
+                else {
+                    driverStop=g_soundDriver.effectStatus(read16(packet+24),driverResult);
+                    if(!driverStop)++g_effectStatusCalls;
+                }
+            }
             else if(selector==22) {
                 if(g_soundDriver.initialized)for(uint16_t i=0;i<2;++i)stopNativeEffect(i);
                 driverStop=g_soundDriver.stopEffects();
@@ -6161,7 +6185,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
             else if(selector==24)driverStop=g_soundDriver.quality(argument);
             else driverStop="SELECTOR";
             if(!driverStop) {
-                ++g_soundDriverCalls;regs[0]=0;regs[1]=selector==24 ? 1 : (selector==22 || selector==17) ? scratch : 0;
+                ++g_soundDriverCalls;regs[0]=driverResult;regs[1]=selector==24 ? 1 : (selector==22 || selector==17 || selector==20) ? scratch : 0;
                 return 1; // C caller owns arguments; stub executes RTS.
             }
         }
@@ -7479,7 +7503,8 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     }
     if (trap == 0xa8a2) {                    // PaintRect(rectangle)
         const uint8_t* rectangle = (const uint8_t*)read32(userStack);
-        if (paintRect(rectangle)) {
+        GWorldSlot* world=gWorldForPort((uint8_t*)read32(s_qdThePort));
+        if (world ? paintGWorldRect(*world,rectangle) : paintRect(rectangle)) {
             regs[0]=0;regs[1]=(regs[1]&0xffff0000UL)|8;
             regs[9]=read32(s_qdThePort);
             return 5;

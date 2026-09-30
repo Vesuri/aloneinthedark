@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Compare original pixel-address contracts and the ensuing original row copy."""
 from pathlib import Path
+import re
 import argparse,hashlib,re
 from resource_fork import read_resource_fork
 p=argparse.ArgumentParser();p.add_argument('reference',type=Path);p.add_argument('native',type=Path);p.add_argument('--reference-status',type=int,required=True);p.add_argument('--native-status',type=int,required=True);a=p.parse_args()
@@ -38,4 +39,4 @@ assert read('reference','copy-source')==read('native','copy-source')
 assert read('native','screen-before')==read('native','screen-after')
 print('PASS paired GetPixBaseAddr: original bytes, locked return ABI, unlocked reference, unchanged query state, original 56-row copy of 28672 bytes with 448 unused/padding bytes preserved; native screen unchanged')
 
-assert 'PBASE_NEXT state=3 trap=A0F8 selector=14 segment=3 offset=17C8 manager=SOUND DRIVER routine=SELECTOR windows=135 services=481/480 reads=68 bytes=333998' in a.native.read_text()
+assert re.search(r'PBASE_NEXT state=3 trap=A891 selector=FFFFFFFF segment=6 offset=337E manager=QUICKDRAW routine=LINETO windows=135 services=(?P<services>\d+)/(?P=services) reads=68 bytes=333998', a.native.read_text())

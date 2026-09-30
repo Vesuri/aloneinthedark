@@ -27,6 +27,10 @@ while $tw_finished==0
   tbreak dispatchMacTrap if trap==0xa0f8 && inUserService && *(unsigned long*)(userStack+4)==17
   continue
   source driver17_call.gdb
+  source driver20_calls.gdb
+  if g_stageBState==3
+   loop_break
+  end
   loop_continue
  end
  if trap==0xaa91

@@ -12,8 +12,9 @@ design.md §5.
   support the measured initialization path; original MDRV code is never loaded.
 - MacPlay and the Infogrames logo have exact paired client pixels/colours. Nine
   AGA publications pass memory/copper checks. Full intro acceptance remains open.
-- The next stop is native sound-driver selector 20, called from Core+$17C8.
-  The first raw effect plays on Paula and its sample/DMA cleanup is verified.
+- The next stop is QuickDraw LineTo, Dark3+$337E ($A891).
+  The first raw effect plays on Paula, active-status queries work, and its
+  sample/DMA cleanup and the first intro offscreen fill are verified.
   Detailed completed service contracts and regression evidence are in
   [development.md](development.md). No Mac dialogs, menu bar or chrome are drawn.
 - The original runs in MAME on the System 7.5.5 reference volume.
@@ -48,16 +49,31 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.3g27 Native driver selector 20 (effect status).**
-  - After starting the first one-shot effect, Core+$17C8 queries selector 20.
-    Check its caller/driver bytes and packet identifier matching, including
-    active, naturally completed and explicitly stopped effects.
-  - Implement status from real native voice lifecycle state; do not return
-    guessed completion to skip the original wait. Preserve the measured ABI.
+- **M2.3g28 Intro LineTo prerequisite.**
+  - The real intro route now reaches $A891 at Dark3+$337E while the first
+    effect is still playing. This blocks M2.3g27's completed-query acceptance.
+  - Check original caller bytes and measure the selected port, pen location,
+    size/mode/colour, clipping, endpoints and resulting pixels. Reuse Vette's
+    line drawing where its contract matches the eight-bit Mac reference.
+  - Implement the reached line rasterization and pen-position update; leave
+    unsupported pen/region modes as named stops.
 
-  *Done when* original/native status sequences and results agree by playback
-  state, startup reaches its next named stop with MDRV absent, and the effect,
-  logo/palette/AGA/startup regressions pass.
+  *Done when* paired complete buffers and port/ABI changes match the original,
+  startup reaches its next named stop with MDRV absent, and the effect,
+  offscreen fill, logo/palette/AGA/startup regressions pass.
+- **M2.3g27 Native driver selector 20 — final integration acceptance.**
+  - The first-match identifier/status contract is implemented. Original active,
+    completed, stopped-state, missing-ID and duplicate-ID cases are measured;
+    host tests cover them. The native route proves active-query ABI/results.
+  - The M2.3g27a offscreen PaintRect prerequisite is complete. LineTo now stops
+    the route before the game's query observes completion. Natural DMA/sample
+    cleanup passes at the stop, but that is not a completed-query call.
+  - Resume the real polling observer after its drawing prerequisites. Do not
+    force a completed result or substitute helper tests for integrated evidence.
+
+  *Done when* original/native status sequences and results agree through an
+  actual completed query, startup reaches its next named stop with MDRV absent,
+  and the effect, logo/palette/AGA/startup regressions pass.
 - **M2.1c Original File Manager read acceptance (after M2.2).**
   - This retains M2.1's original acceptance; diagnostic fixture reads do not count
     as original-game reads. M2.1b2a measured the intervening Get1NamedResource

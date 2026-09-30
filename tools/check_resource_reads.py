@@ -12,9 +12,9 @@ if a.prepare:
     for path in files:path.unlink(missing_ok=True)
 else:
     log=(root/'amiga/.run/gdb-out.log').read_text()
-    modes=re.findall(r'^STARTUP_PREFS existing=([01]) windows=(135|161) services=(481/480|489/488)$',log,re.M)
-    if len(modes)!=1 or modes[0] not in [('1','135','481/480'),('0','161','489/488')]:raise SystemExit('FAIL resource-read: missing/invalid starting preference fixture')
-    marker=f'PASS resource-read: maps=243 preparation=201058 runtime=68/333998 windows={modes[0][1]} samples=3 next=SELECTOR20'
+    modes=re.findall(r'^STARTUP_PREFS existing=([01]) windows=(135|161) services=(480/480|488/488)$',log,re.M)
+    if len(modes)!=1 or modes[0] not in [('1','135','480/480'),('0','161','488/488')]:raise SystemExit('FAIL resource-read: missing/invalid starting preference fixture')
+    marker=f'PASS resource-read: maps=243 preparation=201058 runtime=68/333998 windows={modes[0][1]} samples=3 next=LINETO'
     if a.status or log.count(marker)!=1 or any(bad in log for bad in ['FAIL','Error in sourced command file','Program received signal']):
         raise SystemExit('FAIL resource-read: runner, observer or completion')
     resources={(r.kind,r.rid):r.body for r in read_resource_fork(root/'amiga/.run/dh1/data/Alone In The Dark')}

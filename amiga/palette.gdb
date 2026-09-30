@@ -34,7 +34,7 @@ echo PASS native NewPalette capture\n
 continue
 printf "PALETTE_COUNTS reads=%u bytes=%u\n",g_resourceRuntimeReads,g_resourceRuntimeBytes
 printf "PALETTE_NEXT state=%u trap=%X selector=%X segment=%u offset=%X manager=%s routine=%s windows=%u services=%u/%u\n",g_stageBState,g_trapWord,g_trapSelector,g_trapSegment,g_trapOffset,g_trapManager,g_trapRoutine,g_systemWindows,g_macServiceEntered,g_macServiceCompleted
-if g_stageBState!=3 || g_trapWord!=0xa0f8 || g_trapSegment!=3 || g_trapOffset!=0x17c8 || *(unsigned long*)(g_trapRoutine+0)!=0x53454c45 || *(unsigned long*)(g_trapRoutine+4)!=0x43544f52 || g_trapRoutine[8]!=0 || g_macServiceActive!=1
+if g_stageBState!=3 || g_trapWord!=0xa891 || g_trapSegment!=6 || g_trapOffset!=0x337e || *(unsigned long*)(g_trapRoutine+0)!=0x4c494e45 || *(unsigned short*)(g_trapRoutine+4)!=0x544f || g_trapRoutine[6]!=0 || g_macServiceActive!=0
  echo FAIL palette next stop\n
  detach
  quit 1
