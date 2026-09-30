@@ -31,20 +31,20 @@ inline void systemTable(uint8_t* table,uint32_t seed) {
         word(entry,0x0800);word(entry+2,r);word(entry+4,g);word(entry+6,b);
     }
 }
-inline bool supported(const uint8_t* palette,uint32_t size) {
+inline bool supported(const uint8_t* palette,uint32_t size,uint16_t entryState=0) {
     if(!palette || size!=4112 || word(palette)!=256 || word(palette+2))return false;
     if(!rgb(palette+16,0xffff) || !rgb(palette+16+255*16,0))return false;
     for(uint16_t i=0;i<256;++i) {
         const uint8_t* e=palette+16+i*16;
-        if(word(e+6)!=10 || word(e+8)!=0 || word(e+10)!=0
+        if(word(e+6)!=10 || word(e+8)!=0 || word(e+10)!=entryState
            || word(e+12)!=0 || word(e+14)!=0)return false;
     }
     return true;
 }
 inline bool realize(uint8_t* palette,uint32_t paletteBytes,uint8_t* table,
                     uint32_t tableBytes,uint8_t* privateData,uint32_t privateBytes,
-                    uint32_t seed) {
-    if(!supported(palette,paletteBytes) || !table || tableBytes!=2056
+                    uint32_t seed,uint16_t entryState=0) {
+    if((entryState!=0 && entryState!=0x800a) || !supported(palette,paletteBytes,entryState) || !table || tableBytes!=2056
        || word(table+4)!=0x8000 || word(table+6)!=255 || !privateData || privateBytes!=4
        || !rgb(table+10,0xffff) || !rgb(table+10+255*8,0))return false;
     for(uint16_t i=0;i<256;++i) {

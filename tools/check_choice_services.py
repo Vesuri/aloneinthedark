@@ -15,7 +15,7 @@ def one(text,pattern):
     return matches[0]
 def check(text,status,native=False):
     if status!=0 or any(x in text for x in ('FAIL','[LUA ERROR]','unknown command','Error in','timeout','Program received signal')):raise ValueError('failed observer')
-    marker='PASS native fixed-choice services next=SETPALETTE' if native else 'PASS original fixed-choice services'
+    marker='PASS native fixed-choice services next=COPYBITS' if native else 'PASS original fixed-choice services'
     if text.count(marker)!=1 or text.count('[Inferior 1 (Remote target) detached]' if native else 'Exited via the debugger')!=1:raise ValueError('completion')
     entries=re.findall(r'^SERVICE_ENTER label=(\w+) (.*)$',text,re.M)
     returns=re.findall(r'^SERVICE_RETURN label=(\w+) (.*)$',text,re.M)
@@ -63,7 +63,7 @@ def check(text,status,native=False):
         code[2:6]=bytes.fromhex('fffee4ac')
         if hashlib.sha256(code).hexdigest()!='474f8a03c2ddd2d18c9367305105c552f8e79613077ee7cb114d754752f9e5fe':
             raise ValueError('live original window instructions')
-        one(text,r'CHOICE_NEXT state=3 trap=AA95 selector=FFFFFFFF segment=5 offset=214C manager=PALETTE MANAGER routine=SETPALETTE windows=(?:117|143) services=(?:435/435|443/443) reads=66 bytes=313392')
+        one(text,r'CHOICE_NEXT state=3 trap=A8EC selector=FFFFFFFF segment=10 offset=24D2 manager=QUICKDRAW routine=COPYBITS windows=(?:128|154) services=(?:463/463|471/471) reads=68 bytes=333998')
     return True
 
 def check_selection(reference,status,native):

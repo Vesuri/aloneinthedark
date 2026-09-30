@@ -30,6 +30,11 @@ static void synthetic() {
     auto realized=table;auto privateRealized=priv;auto done=palette;
     assert(!Palette8::realize(palette.data(),4112,table.data(),2056,priv.data(),4,24));
     assert(table==realized && priv==privateRealized && palette==done);
+    assert(!Palette8::realize(palette.data(),4112,table.data(),2056,priv.data(),4,24,1));
+    assert(table==realized && priv==privateRealized && palette==done);
+    assert(Palette8::realize(palette.data(),4112,table.data(),2056,priv.data(),4,24,0x800a));
+    Palette8::longword(realized.data(),24);Palette8::longword(privateRealized.data(),24);
+    assert(table==realized && priv==privateRealized && palette==done);
     for(unsigned kind=0;kind<8;++kind) {
         palette=source;table=initial;priv.assign(4,0);
         unsigned pb=4112,tb=2056,xb=4;
@@ -62,6 +67,19 @@ int main(int argc,char** argv) {
         Palette8::longword(palette.data()+4,0xc003);Palette8::longword(palette.data()+8,1);
         assert(palette==expected && table==after && priv==privateAfter);
         puts("PASS Palette8 replacement: complete palette, device table and private seed match Mac");return 0;
+    }
+    if(argc==3 && std::string(argv[1])=="--restore") {
+        std::string root=argv[2];
+        auto palette=read(root+"/restorepal-reference-enter-palette.bin");
+        auto expected=read(root+"/restorepal-reference-return-palette.bin");
+        auto table=read(root+"/restorepal-reference-enter-clut.bin");
+        auto after=read(root+"/restorepal-reference-return-clut.bin");
+        auto priv=read(root+"/restorepal-reference-enter-private.bin");
+        auto privateAfter=read(root+"/restorepal-reference-return-private.bin");
+        uint32_t seed=uint32_t(Palette8::word(after.data()))<<16|Palette8::word(after.data()+2);
+        assert(Palette8::realize(palette.data(),palette.size(),table.data(),table.size(),priv.data(),priv.size(),seed,0x800a));
+        assert(palette==expected && table==after && priv==privateAfter);
+        puts("PASS Palette8 restore: complete palette, device table and private seed match Mac");return 0;
     }
     assert(argc==2);
     if(std::string(argv[1])=="--system-table") {

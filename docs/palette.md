@@ -399,3 +399,41 @@ python3 tools/check_aga_capture.py startup tmp/m2-binding129-native-final.log --
 Both bounded runs exit zero. Complete client/CLUT comparison and all 256 AGA
 colours, eight planes and four VBI publications pass. The next stop is
 DRAWPICTURE at Dark2+$20F2; original MDRV remains absent.
+
+
+## Presentation palette restoration
+
+After MacPlay's display interval and the original black clear, Dark2+$214C
+rebinds the default palette with updates true. Original bytes at +$213E are
+`2079fffee4a82f2800241f3c0001aa95`; the long address relocates to A5-$11B58.
+The call pops ten argument bytes and preserves D3–D7/A2–A6.
+
+GetPalette queries prove the outgoing presentation association changes back to
+the default. The default's complete palette record remains unchanged, including
+header $C002/state 1 and entry flags $800A; its private seed changes with the
+device table. Only the outgoing palette's state word changes from 1 to 0;
+its entries and private seed remain unchanged. Palette8 now explicitly accepts
+that already-realized entry state when restoring. Unknown states still fail
+before mutation. The same helper reproduces the complete reference CLUT.
+
+The Mac redraws 5,056 title-bar pixels outside the client. D5 omits those writes;
+the native full buffer is unchanged and only palette publication is requested.
+`mac_restorepalette.lua`, `restorepalette_call.gdb` and
+`check_restorepalette.py` capture/compare records, both queried associations,
+pixels, original/live bytes and ABI. The native observer captures the seventh
+AGA publication before allowing subsequent original drawing to continue.
+
+
+Accepted captures are `tmp/m2-restorepalette-reference-next.log` and
+`tmp/m2-restorepalette-native-final.log`, both terminal exit zero. The seventh
+publication matches the restored palette and unchanged client; the eighth
+matches the reference state at the next CopyBits boundary. Run:
+
+```
+python3 tools/check_restorepalette.py tmp/m2-restorepalette-reference-next.log --status 0 --helper --native tmp/m2-restorepalette-native-final.log --native-status 0
+python3 tools/check_aga_capture.py startup tmp/m2-restorepalette-native-final.log --status 0
+```
+
+Startup reaches COPYBITS, Misc2+$24D2, with original MDRV absent. Counts are
+128 windows, 463/463 services, 68 resource reads / 333,998 bytes, CODE mask $3FFB.
+Fresh-preference counts are derived (154 windows, 471/471 services).

@@ -8,7 +8,7 @@ import unittest
 from resource_fork import read_resource_fork
 
 COMPLETE='PASS menu reference calls=21 inflight=0 secondTimes=14'
-NATIVE_COMPLETE='PASS native menu calls=20 inflight=0 next=SETPALETTE'
+NATIVE_COMPLETE='PASS native menu calls=20 inflight=0 next=COPYBITS'
 SITES={0xa950:(0x2dee,0x3a1f7601,4),0xa946:(0x2e0c,0x486eff00,10),0xa947:(0x2ec2,0x60027cff,10)}
 PRESERVED=[f'd{n}' for n in range(3,8)]+[f'a{n}' for n in range(2,7)]
 def fields(line):return {k:int(v,16) for k,v in re.findall(r'(\w+)=([0-9A-F]+)(?= |$)',line)}

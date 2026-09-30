@@ -7079,22 +7079,33 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
                 MacHeap* owner=handleZone(palette);
                 MacHeap::Handle privateHandle=s_createdPalettes[slot].privateHandle;
                 MacHeap* privateOwner=handleZone(privateHandle);
-                // Replacing the front window's default palette realizes the
-                // new colours immediately. Mac title-bar redraw is deliberately
-                // absent; the measured client pixels remain unchanged.
+                // New and restored front-window palettes realize immediately;
+                // Mac title-bar drawing is intentionally absent.
+                bool restoring=palette==g_defaultPalette && s_activePalette!=g_defaultPalette;
                 if(window && !window->dialog && window->window==s_windowList
                     && window->window[110] && window->paletteUpdates && g_defaultPalette
-                    && window->palette==g_defaultPalette
-                    && g_defaultPalette==s_activePalette && palette!=g_defaultPalette) {
+                    && window->palette==s_activePalette
+                    && (restoring || (window->palette==g_defaultPalette && palette!=g_defaultPalette))) {
+                    MacHeap::Handle outgoing=window->palette;
+                    if(restoring) {
+                        uint16_t oldSlot=0;
+                        while(oldSlot<32 && s_createdPalettes[oldSlot].handle!=outgoing)++oldSlot;
+                        MacHeap* oldOwner=handleZone(outgoing);
+                        if(oldSlot==32 || !oldOwner || !*outgoing || oldOwner->handleSize(outgoing)!=4112
+                           || read32(*outgoing+4)!=(0xc000UL|uint32_t(oldSlot+2))
+                           || read32(*outgoing+8)!=1)goto unsupportedTrap;
+                    }
                     if(!owner || !*palette || owner->handleSize(palette)!=4112
-                        || read32(*palette+4)!=uint32_t(slot+2) || read32(*palette+8)!=0
+                        || read32(*palette+4)!=(restoring ? (0xc000UL|uint32_t(slot+2)) : uint32_t(slot+2))
+                        || read32(*palette+8)!=(restoring ? 1UL : 0UL)
                         || read32(*palette+12)!=(uint32_t)privateHandle
                         || !privateOwner || !*privateHandle || privateOwner->handleSize(privateHandle)!=4
-                        || read32(*privateHandle)!=0)goto unsupportedTrap;
+                        || (!restoring && read32(*privateHandle)!=0))goto unsupportedTrap;
                     if(!Palette8::realize(*palette,4112,s_windowManagerColors,sizeof(s_windowManagerColors),
-                        *privateHandle,4,s_colorSeed))goto unsupportedTrap;
+                        *privateHandle,4,s_colorSeed,restoring ? 0x800a : 0))goto unsupportedTrap;
                     ++s_colorSeed;
                     write32(*palette+4,0xc000UL|uint32_t(slot+2));write32(*palette+8,1);
+                    if(restoring)write32(*outgoing+8,0);
                     window->palette=palette;window->paletteUpdates=true;
                     s_activePalette=palette;s_screenDirty=true;
                     return 11;
@@ -7624,7 +7635,7 @@ unsupportedTrap:
     if(trap==0xaaa2 && (uint16_t)regs[0]==0x0a13)routine="SETDEPTH";
     if(trap==0xaaa2 && (uint16_t)regs[0]==0x0a14)routine="HASDEPTH";
     if(unsupportedGraphics)routine=trap==0xaa95 ? "SETPALETTE"
-        : trap==0xaa94 ? "ACTIVATEPALETTE" : trap==0xa8f6 ? "DRAWPICTURE" : "8-BIT DRAWING / PALETTE";
+        : trap==0xaa94 ? "ACTIVATEPALETTE" : trap==0xa8f6 ? "DRAWPICTURE" : trap==0xa8ec ? "COPYBITS" : "8-BIT DRAWING / PALETTE";
     if(trap==0xab1d && (uint16_t)regs[0]==0)routine="NEWGWORLD";
     if(trap==0xab1d && (uint16_t)regs[0]==15)routine="GETPIXBASEADDR";
     if(trap==0xab1d && (uint16_t)regs[0]==5)routine="GETGWORLD";

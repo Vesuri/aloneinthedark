@@ -3413,3 +3413,26 @@ geometry/device/world state, fonts, 398 event calls, cursor state, MDRV exclusio
 and all 75,616 A5 bytes. Startup stops at SetPalette, Dark2+$214C: 117 windows,
 435/435 services, 66 reads / 313,392 bytes, CODE mask $3FBB. The next item measures
 palette restoration. Full intro and owner-deferred rendered video remain open.
+
+
+## Restore the default palette after MacPlay
+
+M2.3g23 is complete. The measured restore uses the existing realization helper
+with explicitly validated $800A entry state, updates the incoming private seed,
+deactivates the outgoing palette and rebinds the default. Client pixels and
+both palette records except that outgoing state word remain unchanged. No Mac
+chrome is drawn. See [palette.md](palette.md#presentation-palette-restoration).
+
+Reference `tmp/m2-restorepalette-reference-next.log` and native
+`tmp/m2-restorepalette-native-final.log` terminate with exit zero. Full paired
+palette/private/CLUT/client and ABI checks pass. Seventh-frame palette-only AGA
+publication and the eighth frame at the next stop match the reference. Host
+suite, sanitizer comparisons, clean-build no-float/probe audits and the 84-script
+MAME literal audit pass. Integrated picture, palette, table, fill, RGB, event,
+cursor, geometry, device/world, font, text and A5 checks all pass; original MDRV
+remains absent. The observer skips the already-verified repeated event loop
+between picture publication and restoration, retaining the initial nine calls.
+
+Next is QUICKDRAW / COPYBITS, Misc2+$24D2. Counts are 128 windows, 463/463
+services, 68 reads / 333,998 bytes, CODE mask $3FFB. Fresh-preference counts
+remain derived (154 windows, 471/471 services). Full intro acceptance is open.
