@@ -3141,3 +3141,23 @@ explicitly instead of reusing the earlier arrow's pixel count.
 Next is QUICKDRAW / LOCALTOGLOBAL at Misc1+$0E20. Counts remain 113 windows,
 431 services and 62 resource reads / 265,454 bytes. Fresh-preference counts
 remain derived. No rendered intro acceptance is claimed.
+
+
+## Background LocalToGlobal points
+
+M2.3g11 is complete. Both original Misc1 corner-point conversions match the Mac,
+including all preserved registers, four-byte stack cleanup, point guards and
+unchanged port/PixMap records. The conversion reads the actual selected window's
+screen-backed PixMap origin. The unused inherited Vette GlobalToLocal constant
+is replaced with a named stop and tracked as M2.3b.
+
+`tmp/m2-localglobal-reference.log` and `tmp/m2-localglobal-native-final.log`
+exit 0 with required completion markers. The final combined run also passes
+background binding, twenty pictures, 220 text measurements, fonts, driver/MDRV
+exclusion, AGA pixels/palette/publication and all 75,616 A5 bytes. Geometry helper
+sanitizer tests, startup checker tests, 71-script literal audit and both link
+audits pass. See [gworld.md](gworld.md#background-point-conversion) for reproduction.
+
+Next is QUICKDRAW / TESTDEVICEATTRIBUTE at Misc1+$0E3A. Counts remain 113
+windows, 431 services and 62 original resource reads / 265,454 bytes. Fresh
+preferences remain derived, and rendered intro acceptance is still pending.

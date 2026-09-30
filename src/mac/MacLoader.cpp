@@ -778,7 +778,7 @@ static const TrapName s_trapNames[] = {
     {0xaa2e,"GRAPHICS DEVICE MANAGER","INITGDEVICE"},
     {0xa047,"TRAP MANAGER","SETTRAPADDRESS"}, {0xa983,"DIALOG MANAGER","DISPOSEDIALOG"},
     {0xa850,"QUICKDRAW","INITCURSOR"}, {0xa9bc,"QUICKDRAW","GETPICTURE"},
-    {0xa870,"QUICKDRAW","LOCALTOGLOBAL"}, {0xa886,"QUICKDRAW","TEXTWIDTH"}, {0xa8f6,"QUICKDRAW","DRAWPICTURE"}, {0xa89b,"QUICKDRAW","PENSIZE"},
+    {0xaa2c,"QUICKDRAW","TESTDEVICEATTRIBUTE"}, {0xa870,"QUICKDRAW","LOCALTOGLOBAL"}, {0xa886,"QUICKDRAW","TEXTWIDTH"}, {0xa8f6,"QUICKDRAW","DRAWPICTURE"}, {0xa89b,"QUICKDRAW","PENSIZE"},
     {0xa89c,"QUICKDRAW","PENMODE"}, {0xa8a1,"QUICKDRAW","FRAMERECT"},
     {0xa8a7,"QUICKDRAW","SETRECT"},
     {0xa8a2,"QUICKDRAW","PAINTRECT"},
@@ -6773,15 +6773,19 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         if (g_stageCDepth < 26) g_stageCDepth = 26;
         return 5;
     }
-    if (trap == 0xa871) {                    // GlobalToLocal(Point*)
-        uint8_t* point = (uint8_t*)read32(userStack);
-        if (point) {
-            write16(point, (uint16_t)((int16_t)read16(point) - 91));
-            write16(point + 2, (uint16_t)((int16_t)read16(point + 2) - 64));
-        }
-        if (g_stageCDepth < 83) g_stageCDepth = 83;
-        return 5;
+    if(trap==0xa870) {                      // LocalToGlobal(Point*)
+        uint8_t* point=(uint8_t*)read32(userStack);
+        uint8_t* port=s_qdThePort ? (uint8_t*)read32(s_qdThePort) : 0;
+        WindowSlot* window=windowSlot(port);WindowGeometry::Rect bounds;
+        if(!point || !window || !colorWindowFrame(*window,bounds)
+           || read16(window->pixelMap+32)!=8
+           || read32(window->pixelMap)!=(uint32_t)s_colorScreen)goto unsupportedTrap;
+        uint16_t v=read16(point)-read16(window->pixelMap+6);
+        uint16_t h=read16(point+2)-read16(window->pixelMap+8);
+        write16(point,v);write16(point+2,h);return 5;
     }
+    // Vette's fixed (64,91) inverse origin does not describe these windows.
+    if(trap==0xa871)goto unsupportedTrap; // GlobalToLocal: pending measurement.
     if(trap==0xa8d8) {                       // NewRgn() -> owned empty RgnHandle
         MacHeap::Handle region=newHandle(10,true);
         if(!region)goto unsupportedTrap;

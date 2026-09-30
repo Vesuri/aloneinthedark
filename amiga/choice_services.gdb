@@ -203,11 +203,11 @@ printf "WINDOW_REQUEST storage=%X behind=%X result=%X pref=%X a5=%X operand=%X\n
 printf "WINDOW_BYTES data=%04X%04X%04X%04X%04X%04X%04X%04X%04X%04X%04X%04X%04X%04X%04X%04X%04X%04X%04X%04X%04X%04X\n",*(unsigned short*)($misc+0x1070),*(unsigned short*)($misc+0x1072),*(unsigned short*)($misc+0x1074),*(unsigned short*)($misc+0x1076),*(unsigned short*)($misc+0x1078),*(unsigned short*)($misc+0x107a),*(unsigned short*)($misc+0x107c),*(unsigned short*)($misc+0x107e),*(unsigned short*)($misc+0x1080),*(unsigned short*)($misc+0x1082),*(unsigned short*)($misc+0x1084),*(unsigned short*)($misc+0x1086),*(unsigned short*)($misc+0x1088),*(unsigned short*)($misc+0x108a),*(unsigned short*)($misc+0x108c),*(unsigned short*)($misc+0x108e),*(unsigned short*)($misc+0x1090),*(unsigned short*)($misc+0x1092),*(unsigned short*)($misc+0x1094),*(unsigned short*)($misc+0x1096),*(unsigned short*)($misc+0x1098),*(unsigned short*)($misc+0x109a)
 continue
 printf "CHOICE_NEXT state=%u trap=%X selector=%X segment=%u offset=%X manager=%s routine=%s windows=%u services=%u/%u reads=%u bytes=%u\n",g_stageBState,g_trapWord,g_trapSelector,g_trapSegment,g_trapOffset,g_trapManager,g_trapRoutine,g_systemWindows,g_macServiceEntered,g_macServiceCompleted,g_resourceRuntimeReads,g_resourceRuntimeBytes
-if g_stageBState!=3 || g_trapWord!=0xa870 || g_trapSegment!=9 || g_trapOffset!=0xe20 || *(unsigned long*)(g_trapRoutine+0)!=0x4c4f4341 || *(unsigned long*)(g_trapRoutine+4)!=0x4c544f47 || *(unsigned long*)(g_trapRoutine+8)!=0x4c4f4241 || *(unsigned short*)(g_trapRoutine+12)!=0x4c00 || g_trapSelector!=-1 || g_macServiceActive!=0 || g_systemWindows!=$startup_windows || g_macServiceEntered!=$startup_entered || g_macServiceCompleted!=$startup_completed || g_resourceRuntimeReads!=62 || g_resourceRuntimeBytes!=265454
+if g_stageBState!=3 || g_trapWord!=0xaa2c || g_trapSegment!=9 || g_trapOffset!=0xe3a || *(unsigned long*)(g_trapRoutine+0)!=0x54455354 || *(unsigned long*)(g_trapRoutine+4)!=0x44455649 || *(unsigned long*)(g_trapRoutine+8)!=0x43454154 || *(unsigned long*)(g_trapRoutine+12)!=0x54524942 || *(unsigned long*)(g_trapRoutine+16)!=0x55544500 || g_trapSelector!=-1 || g_macServiceActive!=0 || g_systemWindows!=$startup_windows || g_macServiceEntered!=$startup_entered || g_macServiceCompleted!=$startup_completed || g_resourceRuntimeReads!=62 || g_resourceRuntimeBytes!=265454
  echo FAIL fixed-choice progression\n
  detach
  quit 1
 end
-echo PASS native fixed-choice services next=LOCALTOGLOBAL\n
+echo PASS native fixed-choice services next=TESTDEVICEATTRIBUTE\n
 detach
 quit 0

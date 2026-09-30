@@ -14,10 +14,10 @@ design.md §5.
   low-resolution selection/cleanup, all 75 font-metrics calls and four Apple Event
   registrations, colour-table loading/mutations, palette construction and default
   binding, hidden window-title state and the verified WIND 128 request. Startup realizes the palette and clears the game client area, then stops at
-  `LOCALTOGLOBAL` at Misc1+$0E20 after palette binding/activation, first-frame AGA
+  `TESTDEVICEATTRIBUTE` at Misc1+$0E3A after palette binding/activation, first-frame AGA
   publication, background ShowHide, game-port binding, TickCount, unchanged window geometry, point setup, empty-region allocation and eight-bit offscreen buffer initialization, pixel-address access and the first original image-row copy and hidden menu-list setup, followed by the 20-call image rectangle loop and the measured already-detached
   resource error, device-table world allocation and RGB foreground/background
-  selection, all twenty indexed picture draws and 220 original text measurements, then binds the existing background window. The original
+  selection, all twenty indexed picture draws and 220 original text measurements, then binds the existing background window and converts its two corner points. The original
   mixer is never loaded.
 - The original runs in MAME on the System 7.5.5 reference volume.
 
@@ -51,14 +51,15 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.3g11 Background-window coordinate conversion.**
-  - The original background SetGWorld call now passes. Misc1 next reaches
-    LocalToGlobal at +$0E20 ($A870), followed by a second point at +$0E26.
-  - Measure both original points, selected port coordinates and return state;
-    implement the reached coordinate conversion without changing window geometry.
+- **M2.3g12 Drawing-device attribute query.**
+  - Both background-window LocalToGlobal points now pass. Misc1 next reaches
+    TestDeviceAttribute at +$0E3A ($AA2C) while selecting the drawing device.
+  - Measure the reached device attributes and original iteration, using the
+    existing main-device record rather than guessed results.
 
-  *Done when* both original conversions match MAME, startup reaches its next
-  named stop with MDRV absent, and coordinate/startup checks pass.
+  *Done when* original attribute queries/results and preserved state match
+  MAME, startup reaches its next named stop with MDRV absent, and device/startup
+  checks pass.
 - **M2.1c Original File Manager read acceptance (after M2.2).**
   - This retains M2.1's original acceptance; diagnostic fixture reads do not count
     as original-game reads. M2.1b2a measured the intervening Get1NamedResource
@@ -90,6 +91,13 @@ required.
   *Done when* all five native QDGlobals patterns match the source/Mac bytes,
   the instruction audit is clear or every remaining occurrence is explained,
   and startup regressions pass.
+- **M2.3b Inverse coordinate conversion.**
+  - The inherited GlobalToLocal subtracted Vette's fixed (64,91) origin.
+    M2.3g11 replaces that guessed result with a named stop.
+  - Measure the reached inverse conversion and use its actual selected port.
+
+  *Done when* the reached GlobalToLocal calls match MAME, with point/adjacent-byte
+  checks and no fixed Vette screen origin remaining.
 - **M2.3 8-bit QuickDraw core.**
   - Generalise the screen, GWorld, PixMap, CTable, ITable, CopyBits and PICT code
     to 8 bpp.

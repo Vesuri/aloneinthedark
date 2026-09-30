@@ -8,6 +8,7 @@ while $tw_finished==0
  end
  if trap==0xab1d
   source world_restore_call.gdb
+  source localglobal_calls.gdb
   loop_continue
  end
  set $tw_n=$tw_n+1

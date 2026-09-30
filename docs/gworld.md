@@ -220,3 +220,29 @@ python3 tools/check_world_binding.py tmp/m2-world-restore-reference-final.log tm
 
 Use actual exit statuses; terminal markers and the next named stop/MDRV guard
 are required. The next original operation is LocalToGlobal at Misc1+$0E20.
+
+
+## Background point conversion
+
+Misc1+$0E20 and +$0E26 call LocalToGlobal on the two background-window corners.
+The original +$0E1C–$0E27 bytes are `486efff4a870486efff8a870`.
+With the selected PixMap origin (8000,8000), (0,0) becomes (-8000,-8000) and
+(16000,16000) becomes (8000,8000). Both calls preserve D0–D7/A0–A6, consume
+four bytes, and leave the port, PixMap and bytes adjacent to each point unchanged.
+The service uses the real screen-backed window's PixMap bounds; unsupported
+port layouts remain named stops. Arithmetic stays in sixteen-bit point words.
+
+The Vette GlobalToLocal implementation subtracted a fixed (64,91) origin. It is
+now a named stop, with measured inverse conversion queued separately as M2.3b.
+It was not reached by this accepted native startup route.
+
+`mac_localglobal.lua` captures the two original calls; `localglobal_calls.gdb`
+adds their native before/after states to the combined startup observer.
+
+```
+python3 tools/check_localglobal.py tmp/m2-localglobal-reference.log tmp/m2-localglobal-native-final.log --reference-status 0 --native-status 0
+```
+
+The checker requires exact original/live caller bytes, both results, all
+preserved registers, stack cleanup, adjacent bytes and unchanged drawing records.
+The next stop is TestDeviceAttribute at Misc1+$0E3A.

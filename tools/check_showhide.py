@@ -86,7 +86,7 @@ def check(reference,native,reference_status,native_status,folder,resource):
     for name in ('copper','pending'):
         require((folder/f'showhide-native-showhide-before-{name}.bin').read_bytes()==(folder/f'showhide-native-showhide-after-{name}.bin').read_bytes(),'unchanged '+name)
     require(native.count('PASS native ShowHide next-stop original-MDRV=absent')==1,'native progression and MDRV guard')
-    next_stop=one(native,r'SH_NEXT (state=3 trap=A870 segment=9 offset=E20 manager=QUICKDRAW routine=LOCALTOGLOBAL windows=(?:113|139) services=(?:431/431|439/439))')
+    next_stop=one(native,r'SH_NEXT (state=3 trap=AA2C segment=9 offset=E3A manager=QUICKDRAW routine=TESTDEVICEATTRIBUTE windows=(?:113|139) services=(?:431/431|439/439))')
     print(f'PASS paired ShowHide: original bytes/ABI, complete regions, {count} exposed black pixels, unchanged viewport/palette; '+next_stop)
 
 
