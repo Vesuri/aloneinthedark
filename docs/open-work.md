@@ -21,7 +21,7 @@ design.md §5.
   selector 0 now retains and arms song $87 with verified native playback.
   The clock query now passes its original ABI and 32-bit condition-code checks.
   Song-status selector 4 now passes its original ABI and flags; the next stop
-  is RectRgn at Dark+$3D46.
+  is EmptyRgn at Dark+$4182. RectRgn now passes exact region/ABI checks.
   Intro LineTo and mode-0 fills match the Mac; the first raw effect plays on Paula and its
   real polling loop observes completion with sample/DMA cleanup verified.
   Detailed completed service contracts and regression evidence are in
@@ -58,18 +58,29 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.3g41 RectRgn at the post-intro transition.**
-  - Song-status selector 4 now passes the original call and native ABI/flags.
-    The next reached service is `$A8DF` (`RectRgn`) at Dark+$3D46.
-  - Original Dark+$3D36–$3D47 bytes are
-    `2f39ffff40342079ffff3db248680016a8df`: a region handle from A5−$BFCC
-    and the rectangle at offset $16 of the port stored at A5−$C24E.
-  - Measure the original region/heap and register/stack contract. Implement
-    the reached operation without introducing Mac dialog or window drawing.
+- **M2.3g41p Speed up the intro book-page drawing path (owner priority).**
+  - Owner update 2026-09-30: page turns render their vertical filled strips and
+    final bitmap copy far too slowly for feasible testing. This explicitly
+    brings forward a focused 68020 optimization; other CPU support stays deferred.
+  - Measure PaintRect, CopyBits colour translation, presentation/synchronization
+    and C2P costs on the actual page-turn path. Reuse Vette's verified solutions
+    where applicable. Preserve original calls, logical pixels, palette mapping,
+    dirty bounds and VBI publication; no skipping page animation or game delays.
+  - Current static candidates: scalar eight-plane reference conversion and
+    rebuilding 256 CopyBits colour translations for each different-seed palette copy.
+    These are candidates, not measured bottleneck claims.
 
-  *Done when* the original caller returns on the Amiga with matching region
-  contents, ownership and ABI, the previous intro/song contracts still pass,
-  and a bounded observer reaches the next explicit checkpoint or loud stop.
+  *Done when* a bounded before/after native measurement shows a useful page-turn
+  speedup with exact output against the previous converter/Mac state pairs,
+  partial-update preservation and prior startup contracts still passing.
+- **M2.3g42 EmptyRgn at the post-intro transition.**
+  - RectRgn now returns with matching region bytes, ownership and ABI.
+    The next call is EmptyRgn (`$A8E2`) at Dark+$4182.
+  - Original +$417A–$4187 bytes are `42272f39ffff4038a8e24a1f6608`:
+    a Boolean result slot and the region handle at A5−$BFC8.
+
+  *Done when* the reached original call returns with matching Boolean, stack,
+  registers and unchanged region, and prior startup contracts still pass.
 - **M2.1c Original File Manager read acceptance (after M2.2).**
   - This retains M2.1's original acceptance; diagnostic fixture reads do not count
     as original-game reads. M2.1b2a measured the intervening Get1NamedResource
@@ -158,7 +169,8 @@ required.
   *Done when* host fixtures cover the measured channel mapping, and the
   Infogrames palette and a 256-level reference ramp match the MAME video palette.
 - **M2.8 Regions and polygons.** Implement real QuickDraw regions and polygons,
-  with host fixtures.
+  with host fixtures. Include RectRgn resizing, empty/inverted rectangles and
+  ownership variants beyond the measured ten-byte, nonempty startup case.
 
   *Done when* the host tests pass and region-clipped draws in the screens reached
   so far match MAME.

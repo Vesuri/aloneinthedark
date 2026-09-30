@@ -58,7 +58,7 @@ def check(text,status,native=False):
     done=fields(one(text,r'METRIC_DONE (.*)'))
     if done!={**saved,'error':0}:raise ValueError('restored text state/result')
     if native:
-        one(text,r'METRIC_NEXT state=3 trap=A8DF selector=FFFFFFFF segment=4 offset=3D46 manager=UNKNOWN MANAGER routine=UNKNOWN TRAP windows=(?:249|275) services=\d+/\d+ app=109/826832 overlay=31/82238 prep=64/82810 resources=244')
+        one(text,r'METRIC_NEXT state=3 trap=A8E2 selector=FFFFFFFF segment=4 offset=4182 manager=UNKNOWN MANAGER routine=UNKNOWN TRAP windows=(?:249|275) services=\d+/\d+ app=109/826832 overlay=31/82238 prep=64/82810 resources=244')
         from build_overlay import definitions
         rows=re.findall(r'^FONT_INSTALLED type=([0-9A-F]+) id=(\d+) size=(\d+)$',text,re.M)
         expected=[(kind,rid,body) for kind,rid,_,body in definitions() if kind in (b'FOND',b'NFNT')]

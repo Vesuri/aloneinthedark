@@ -141,6 +141,9 @@ while $tw_finished==0
     tbreak *(g_code3Base+0x1fc8)
     continue
     source driver4_call.gdb
+    tbreak dispatchMacTrap if trap==0xa8df
+    continue
+    source rectrgn_call.gdb
     continue
     loop_break
    end

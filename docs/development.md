@@ -4029,3 +4029,34 @@ The production build passes no-float and 83-probe link audits. The host suite
 passes in `tmp/m2-driver4-final-host-tests.log`. Standalone endpoint guards
 are advanced to the observed stop; their individual emulator replays are not
 claimed. Stale standalone AGA publication assumptions remain M2.10a.
+
+## RectRgn transition (M2.3g41)
+
+The next original call at Dark+$3D46 uses `$A8DF`, RectRgn. Original
++$3D36–$3D47 bytes are `2f39ffff40342079ffff3db248680016a8df`.
+`tmp/m2-rectrgn-reference.log` exits zero and captures the caller, both complete
+regions and the unchanged source rectangle. The owned empty ten-byte region
+becomes `000a0000000000c7013f`; the handle and body remain unchanged. All data
+registers and A2–A6 are preserved; A0 returns the region handle, A1 its body,
+and eight argument bytes are removed. Original CPU-executed GetHandleSize,
+HGetState and HandleZone confirm ten bytes, unlocked state and the same heap.
+Five rejected-evidence cases cover timeout, absent completion, observer error,
+wrong return register and wrong size.
+
+The native implementation covers this owned ten-byte, nonempty rectangular
+conversion. Broader resizing and empty/inverted forms remain named RectRgn
+stops and are explicitly retained under M2.8. No dialog, menu or screen pixels
+are drawn. The production build passes no-float and 83-symbol link audits.
+The host suite exits zero in `tmp/m2-rectrgn-host-tests.log`.
+`tmp/m2-rectrgn-native-full.log` exits zero and matches the complete original
+region/rectangle and register/stack/heap contract. All 36 prior integrated
+comparisons pass in `tmp/m2-rectrgn-regressions.log`; song ownership and driver
+clock/status checks also pass using that same capture. The new stop is
+EmptyRgn at Dark+$4182. Intro return is D0=0 at 5,562 frames / 47,482 ticks;
+final publication is 5,565/5,565. There are 249 windows, 5,745/5,745 completed
+services, 1,363 effect queries and 2,908 driver calls. All 16 effects have
+stopped with no remaining allocation. Music reaches 1,519 events / pulse 3466,
+761 starts, 447 steals and zero drops. Resource counts remain 109/826,832 app,
+31/82,238 overlay, 64/82,810 preparation, 244 records and 58 low-memory sites.
+MDRV remains absent. The owner-requested page-turn speedup is next in the queue;
+full M2 acceptance remains open.

@@ -790,7 +790,7 @@ static const TrapName s_trapNames[] = {
     {0xa43c,"TEXT UTILITIES","CMPSTRING"}, {0xa63c,"TEXT UTILITIES","CMPSTRING"},
     {0xa033,"VERTICAL RETRACE","VINSTALL"}, {0xa034,"VERTICAL RETRACE","VREMOVE"},
     {0xa998,"RESOURCE MANAGER","USERESFILE"}, {0xa994,"RESOURCE MANAGER","CURRESFILE"},
-    {0xaa14,"COLOR QUICKDRAW","RGBFORECOLOR"}, {0xaa15,"COLOR QUICKDRAW","RGBBACKCOLOR"}, {0xaa18,"COLOR QUICKDRAW","GETCTABLE"}, {0xa880,"QUICKDRAW","SETPT"}, {0xa8d8,"QUICKDRAW","NEWRGN"},
+    {0xaa14,"COLOR QUICKDRAW","RGBFORECOLOR"}, {0xaa15,"COLOR QUICKDRAW","RGBBACKCOLOR"}, {0xaa18,"COLOR QUICKDRAW","GETCTABLE"}, {0xa880,"QUICKDRAW","SETPT"}, {0xa8d8,"QUICKDRAW","NEWRGN"}, {0xa8df,"QUICKDRAW","RECTRGN"},
     {0xaa46,"WINDOW MANAGER","GETNEWCWINDOW"}, {0xa91b,"WINDOW MANAGER","MOVEWINDOW"},
     {0xa915,"WINDOW MANAGER","SHOWWINDOW"}, {0xa916,"WINDOW MANAGER","HIDEWINDOW"}, {0xa908,"WINDOW MANAGER","SHOWHIDE"},
     {0xa91d,"WINDOW MANAGER","SIZEWINDOW"}, {0xa924,"WINDOW MANAGER","FRONTWINDOW"}, {0xa925,"WINDOW MANAGER","DRAGWINDOW"},
@@ -7404,6 +7404,21 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         write32(userStack,(uint32_t)region);
         regs[8]=(uint32_t)*region+10;
         return 1;
+    }
+    if(trap==0xa8df) {                       // RectRgn(owned RgnHandle, Rect*)
+        const uint8_t* rectangle=(const uint8_t*)read32(userStack);
+        MacHeap::Handle region=(MacHeap::Handle)read32(userStack+4);
+        MacHeap* owner=handleZone(region);
+        // The measured caller replaces an owned ten-byte region. Broader
+        // region resizing and empty/inverted inputs await region acceptance.
+        if(!rectangle || !owner || !*region || owner->handleSize(region)!=10
+           || read16(*region)!=10)goto unsupportedTrap;
+        int16_t top=(int16_t)read16(rectangle),left=(int16_t)read16(rectangle+2);
+        int16_t bottom=(int16_t)read16(rectangle+4),right=(int16_t)read16(rectangle+6);
+        if(top>=bottom || left>=right)goto unsupportedTrap;
+        writeRect(*region+2,top,left,bottom,right);
+        regs[8]=(uint32_t)region;regs[9]=(uint32_t)*region;
+        return 9;
     }
     if(trap==0xa880) {                       // SetPt(Point*, h, v)
         uint8_t* point=(uint8_t*)read32(userStack+4);

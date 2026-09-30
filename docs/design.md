@@ -221,7 +221,7 @@ The original startup path is implemented (M1.1–M1.3):
 **Verified:** the host check `tools/a5world_check.py` passes: it runs
 CODE 1's expansion algorithm on the resource bytes and compares, byte for byte,
 with the A5 world the Amiga dumps (via gdb) when it enters `main`. The current
-loud stop is RectRgn at Dark+$3D46 after the original intro returns successfully.
+loud stop is EmptyRgn at Dark+$4182 after the original intro returns successfully.
 Native song start retains its measured resources, and clock/status queries pass. Post-intro offscreen copying and GetKeys pass their paired checks. Title presentation, offscreen/window lines and fills,
 owned credits and sixteen completed effects precede this stop. Startup passes the native
 driver calls, both Times lookups, hidden window/menu setup and eight-bit
@@ -705,7 +705,7 @@ the owner.
 | ID | Decision |
 | --- | --- |
 | D1 | **No preloading.** Load in reasonable chunks, letting the OS run (multitasking, DOS) when needed: 4.1 system windows, 4.5 files, 4.6 resources. |
-| D2 | **68020 first.** A 68020 must boot and play. It is the sole active target; 68030/040/060 support and performance work are deferred (owner update 2026-09-28). |
+| D2 | **68020 first.** A 68020 must boot and play. It is the sole active target; 68030/040/060 support and general performance work are deferred (owner update 2026-09-28). Owner update 2026-09-30 brings forward focused intro book-page optimization to make testing feasible (M2.3g41p). |
 | D3 | **No frame cap** unless bug-free gameplay requires one. Such a bug, for example the stairs, is addressed separately. |
 | D4 | **No screen-size dialog;** only 320×200. |
 | D5 | **Replace all Mac dialogs**, including new-game and save/load, with an in-game interface inside 320×200. Preserve choices/actions through measured service contracts; no Mac dialog appearance (owner update 2026-09-29). |
