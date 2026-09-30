@@ -160,7 +160,7 @@ ifndef PROBES
 $(error WINDOWPROBE=1 requires PROBES=1 for window boundary measurements)
 endif
 EXTRA_DEFINES += -DAITD_WINDOW_PROBE
-PROBE_SYMS_WINDOW = g_windowProbeIOChecks g_windowProbeAudio g_windowProbeAudioInside g_windowProbeAudioWindows g_windowEnterTicks g_windowExitTicks g_windowProbePicture g_windowProbeChunk g_windowProbeDone g_windowProbeError g_windowProbeHash g_windowProbeTicks g_windowProbeFields
+PROBE_SYMS_WINDOW = g_windowProbeKeyChecks g_windowProbeIOChecks g_windowProbeAudio g_windowProbeAudioInside g_windowProbeAudioWindows g_windowEnterTicks g_windowExitTicks g_windowProbePicture g_windowProbeChunk g_windowProbeDone g_windowProbeError g_windowProbeHash g_windowProbeTicks g_windowProbeFields
 endif
 
 ifeq ($(SERVICEPROBE),1)

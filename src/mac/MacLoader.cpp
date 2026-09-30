@@ -699,6 +699,7 @@ static const TrapName s_trapNames[] = {
     {0xa9e3,"MEMORY MANAGER","PTRTOHAND"},
     {0xa1ad,"OS","GESTALT"},
     {0xa860,"EVENT MANAGER","WAITNEXTEVENT"},
+    {0xa976,"EVENT MANAGER","GETKEYS"},
     {0xa207,"FILE MANAGER","HGETVINFO"},
     {0xa40c,"FILE MANAGER","GETFINFO ASYNC"},
     {0xa608,"FILE MANAGER","HCREATE ASYNC"},
@@ -5402,6 +5403,24 @@ static bool translateAmigaKey(uint8_t raw, KeyTranslation& key)
     }
 }
 
+// Vette rebuilds its polling map from current raw-key levels, independently
+// of queued keyDown/keyUp events. Combine aliases (for example both Shifts).
+extern "C" bool aitdMacGetKeys(uint8_t* destination)
+{
+    if(!destination)return false;
+    uint8_t keys[16]={0};
+    for(uint16_t raw=0;raw<128;++raw) {
+        KeyTranslation key;
+        if(aitdInputKeyDown((uint8_t)raw) && translateAmigaKey((uint8_t)raw,key))
+            keys[key.virtualKey>>3]|=(uint8_t)(1u<<(key.virtualKey&7));
+    }
+    write32(destination,read32(keys));
+    write32(destination+4,read32(keys+4));
+    write32(destination+8,read32(keys+8));
+    write32(destination+12,read32(keys+12));
+    return true;
+}
+
 extern "C" void aitdMacRawKeyChanged(uint8_t rawKey, bool down)
 {
     KeyTranslation key;
@@ -6397,6 +6416,11 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         regs[0]=result ? 0x0100 : 0;
         if (exitChordPressed()) requestExitAfterTrap(frame);
         return 15;
+    }
+    if(trap==0xa976) {                      // GetKeys(KeyMap*)
+        if(!aitdMacGetKeys((uint8_t*)read32(userStack)))goto unsupportedTrap;
+        regs[0]&=0xffff0000UL;              // Measured original D0.w result.
+        return 5;
     }
     if (trap == 0xa970) {                    // GetNextEvent(mask, event) -> Boolean
         uint8_t* event = (uint8_t*)read32(userStack);

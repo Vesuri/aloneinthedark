@@ -19,7 +19,9 @@ owner-deferred rendered-window check. Full intro frame acceptance and gameplay r
 
 The title-screen copy now uses the Mac’s measured colour mapping. Its full
 client matches apart from the documented placeholder copyright glyphs. The next
-named stop is **GetKeys**, Dan1+$583A, after the intro returns.
+named stop is **sound-driver selector 13**, Core+$137E, after the intro returns.
+GetKeys now reports current held/released keys and passes its paired calling
+contract, including native modifier aliases and event-queue preservation.
 The post-intro offscreen copy now matches every defined destination pixel and
 preserves both buffers outside the copied area.
 The original credit “Yaâl” now renders with owned artwork and measured spacing.
@@ -54,7 +56,7 @@ serve memory and resource handles. System identity and all eleven derived
 capability flags match the Mac reference. The user-mode service bridge passes
 its native ABI probe. OS windows and DOS/resload adapters pass the native/host
 core probes; rendered-picture acceptance is owner-deferred (M1.7b2). The next
-items are GetKeys polling and original PAK-read acceptance. Both original
+items are sound-driver selector 13 and original PAK-read acceptance. Both original
 Times lookups now pass register, stack, error-state and installed-font checks. Fresh and existing preferences now request WIND 128
 through the original instructions, with only the size byte changed.
 The logical device has real 640×480×8 storage; its four selection calls match
@@ -66,7 +68,7 @@ read acceptance still needs the intervening drawing services and payload checks.
 Resource bodies now stream from disk into zone handles; startup retains the
 4,998-byte map instead of the 1,424,934-byte application fork. The `resource-read`
 regression verifies original bytes and bounded runtime resource reads; the
-current stop is post-intro GetKeys at Dan1+$583A; original MDRV loading stays forbidden. Named/ID/indexed lookup, resource counts and metadata, purge/reload and release now
+current stop is sound-driver selector 13 at Core+$137E; original MDRV loading stays forbidden. Named/ID/indexed lookup, resource counts and metadata, purge/reload and release now
 pass paired Mac/native checks. Native resource staging now passes exact publication,
 abort, rollback and stale-file checks. Resource-file open/create/update/close,
 AddResource, multi-fork search, noncurrent close and invalid update pass a

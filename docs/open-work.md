@@ -16,8 +16,9 @@ design.md §5.
   differences. The credits now use the measured 16-pixel line spacing and owned dot-above
   artwork, including â in the original “Yaâl” credit. Game-window lines and
   their AGA publication pass. The intro returns successfully;
-  the post-intro offscreen copy also matches. The next stop is GetKeys,
-  Dan1+$583A ($A976).
+  the post-intro offscreen copy also matches. GetKeys now passes its original-call and native
+  held/released-key checks. The next stop is sound-driver selector 13 at
+  Core+$137E.
   Intro LineTo and mode-0 fills match the Mac; the first raw effect plays on Paula and its
   real polling loop observes completion with sample/DMA cleanup verified.
   Detailed completed service contracts and regression evidence are in
@@ -54,17 +55,17 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.3g36 Original GetKeys polling.**
-  - The post-intro offscreen CopyBits now passes. Execution reaches GetKeys
-    $A976 at Dan1+$583A. Original bytes +$5836–$583B are
-    `486efff0a976`: the destination is a 16-byte local KeyMap.
-  - Measure the original return ABI and key-map representation. Reuse the
-    existing native key-map translation and Vette's service contract; preserve
-    actual held/released keys rather than returning a permanently empty map.
+- **M2.3g37 Native sound-driver selector 13.**
+  - GetKeys now returns the measured key map. Execution reaches native driver
+    selector 13 with argument zero at Core+$137E, before selector zero at +$138C.
+    Original bytes +$1374–$1381 are `2f004878000d206df9544e90508f`.
+  - Measure the original driver's return ABI and state changes. Implement the
+    reached D8 native contract; do not run MDRV or guess success for missing
+    music behavior. Other selectors/forms remain named stops.
 
-  *Done when* the original polling call matches MAME's bytes/ABI and map extent,
-  held/released key fixtures verify the representation, and the integrated run
-  passes this stop with prior intro/copy/audio checks and original MDRV absent.
+  *Done when* the original call's arguments, return ABI and state transition
+  match MAME, the native run passes this stop with prior intro/key/copy/effect
+  checks, and original MDRV remains absent.
 - **M2.1c Original File Manager read acceptance (after M2.2).**
   - This retains M2.1's original acceptance; diagnostic fixture reads do not count
     as original-game reads. M2.1b2a measured the intervening Get1NamedResource

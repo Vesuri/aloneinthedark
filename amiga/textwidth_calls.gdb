@@ -117,6 +117,16 @@ while $tw_finished==0
      quit 1
     end
     source postcopy_call.gdb
+    tbreak *((unsigned long)s_segments[12].begin+0x583a)
+    continue
+    tbreak dispatchMacTrap
+    continue
+    if trap!=0xa976
+     echo FAIL GetKeys dispatch\n
+     detach
+     quit 1
+    end
+    source getkeys_call.gdb
     continue
     loop_break
    end

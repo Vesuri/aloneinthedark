@@ -9,13 +9,14 @@
 #include <hardware/dmabits.h>
 #include "FileAccess.h"
 #include "MacInput.h"
+#include "mac/MacLoader.h"
 extern "C" int aitdResloadBridgeProbe();
 extern "C" {
 extern volatile uint32_t g_macTicks,g_windowFields,g_systemWindows;
 extern volatile uint32_t* g_macTicksAddress;
 volatile uint32_t g_windowProbeAudio=0,g_windowProbeAudioInside=0,g_windowProbeAudioWindows=0;
 extern volatile uint16_t g_vbiCount,g_systemWindowActive;
-volatile uint32_t g_windowProbeIOChecks=0;
+volatile uint32_t g_windowProbeIOChecks=0,g_windowProbeKeyChecks=0;
 volatile uint32_t g_windowProbeChunk=0,g_windowProbeDone=0,g_windowProbeError=0;
 volatile uint32_t g_windowProbeHash=2166136261UL,g_windowProbeTicks=0,g_windowProbeFields=0;
 uint8_t* g_windowProbePicture=0;
@@ -67,9 +68,40 @@ struct AudioProbe {
         FreeMem(sample,1024);
     }
 };
+static bool probeKeyMap()
+{
+    struct Step { uint8_t raw,down,byte,value; };
+    const Step steps[]={
+        {0x20,1,0,1}, {0x40,1,6,2}, {0x20,0,0,0}, {0x40,0,6,0},
+        {0x60,1,7,1}, {0x61,1,7,1}, {0x60,0,7,1}, {0x61,0,7,0},
+        {0x4f,1,15,8}, {0x4f,0,15,0}
+    };
+    uint8_t expected[16]={0},guarded[24];
+    if(aitdMacGetKeys(0))return false;
+    for(uint16_t n=0;n<=sizeof(steps)/sizeof(steps[0]);++n) {
+        if(n) {
+            const Step& step=steps[n-1];
+            aitdInputInjectProbeKey(step.raw,step.down!=0);
+            expected[step.byte]=step.value;
+        }
+        for(uint16_t i=0;i<24;++i)guarded[i]=0xcc;
+        if(!aitdMacGetKeys(guarded+4))return false;
+        for(uint16_t i=0;i<24;++i)
+            if(guarded[i]!=(i>=4 && i<20 ? expected[i-4] : 0xcc))return false;
+        ++g_windowProbeKeyChecks;
+    }
+    // Polling must leave the event queue available to GetNextEvent.
+    uint8_t raw;bool down;uint16_t modifiers;
+    for(uint16_t i=0;i<sizeof(steps)/sizeof(steps[0]);++i)
+        if(!aitdInputPopKey(raw,down,modifiers) || raw!=steps[i].raw
+           || down!=(steps[i].down!=0))return false;
+    if(aitdInputPopKey(raw,down,modifiers))return false;
+    return true;
+}
 extern "C" bool aitdWindowProbe()
 {
     if(!aitdResloadBridgeProbe()) { g_windowProbeError=8;return false; }
+    if(!probeKeyMap()) { g_windowProbeError=16;return false; }
     AudioProbe audio;
     if(!audio.sample) { g_windowProbeError=5;return false; }
     aitdWindowProbeBefore();

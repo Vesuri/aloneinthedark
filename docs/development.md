@@ -3817,3 +3817,37 @@ audit pass. The earlier input-only fast capture is rejected: GDB reported
 “Cannot execute this command while the target is running,” returned zero and
 produced no dump. Only the complete integrated run supplies native acceptance.
 The existing standalone AGA observer limitations remain tracked in M2.10a.
+
+
+## Original GetKeys polling
+
+M2.3g36 implements the original Dan1+$583A call using the current native raw-key
+levels and the existing Mac virtual-key translation. This follows Vette's
+polling-map approach, independent of queued key events. Aliases such as both
+Shift keys are combined. [events.md](events.md) records the measured ABI and
+map layout; original game instructions are unchanged.
+
+The original MAME capture `tmp/m2-getkeys-reference.log` exits zero with released,
+held A and released A maps. The native `tmp/m2-getkeys-window-core-final.log`
+exits zero with eleven guarded key snapshots, ten preserved queued transitions,
+and the existing window/file/clock/Paula checks. The production build passes
+no-float and 82-probe audits; the host suite, 95-script MAME literal audit and
+checker rejection cases pass.
+
+`tmp/m2-getkeys-native.log` exits zero and all 35 integrated comparisons pass,
+including the original GetKeys caller, stack, D0.w, preserved registers and
+exact guarded output. The startup intro returns D0=0 with 5,563 frames and
+47,371 ticks on the temporary A4000/68020 model. Publication ends at 5,566/5,566.
+The next stop is native sound-driver selector 13, Core+$137E, argument zero.
+That user-mode service is explicitly pending: 2,750 entered / 2,749 completed,
+active=1, including 1,363 completed effect-status queries. The fixed baseline
+is 1,387/1,386 with 210 system windows. The derived fresh baseline is
+1,395/1,394 with 236 windows, still awaiting M2.4 acceptance.
+
+All sixteen effects have stopped and no sample/channel allocation remains.
+Driver calls are queries plus 35. Original MDRV remains absent. Application
+resource reads advance to 70 / 349,400 bytes; overlay remains 31 / 82,238 and
+preparation 64 / 82,810, with 244 resource records, CODE mask $3FFB and 58
+low-memory patches. These are resource reads, not M2.1c PAK payload acceptance.
+The pending selector is M2.3g37. Full intro-frame and rendered-window acceptance
+remain open; the standalone AGA observer limitations remain M2.10a.

@@ -100,7 +100,7 @@ dump binary memory ../tmp/pixbase-native-screen-after.bin (char*)s_colorScreen (
 echo PASS native pixel-address row copy\n
 continue
 printf "PBASE_NEXT state=%u trap=%X selector=%X segment=%u offset=%X manager=%s routine=%s windows=%u services=%u/%u reads=%u bytes=%u\n",g_stageBState,g_trapWord,g_trapSelector,g_trapSegment,g_trapOffset,g_trapManager,g_trapRoutine,g_systemWindows,g_macServiceEntered,g_macServiceCompleted,g_resourceRuntimeReads,g_resourceRuntimeBytes
-if g_stageBState!=3 || g_macServiceActive!=0
+if g_stageBState!=3 || g_macServiceActive!=1
  echo FAIL pixel-address progression\n
  detach
  quit 1
@@ -115,7 +115,7 @@ while $i<g_resourceCount
  set $i=$i+1
 end
 echo PASS native GetPixBaseAddr original-MDRV=absent\n
-if g_trapWord!=0xa976 || g_trapSegment!=12 || g_trapOffset!=0x583a || g_macServiceEntered!=$startup_entered+g_effectStatusCalls || g_macServiceCompleted!=$startup_completed+g_effectStatusCalls || g_systemWindows!=$startup_windows
+if g_trapWord!=0xa0f8 || g_trapSegment!=3 || g_trapOffset!=0x137e || g_trapSelector!=13 || g_macServiceActive!=1 || g_macServiceEntered!=$startup_entered+g_effectStatusCalls || g_macServiceCompleted!=$startup_completed+g_effectStatusCalls || g_systemWindows!=$startup_windows
  echo FAIL pixel-address startup endpoint\n
  detach
  quit 1
@@ -123,7 +123,7 @@ end
 echo startup PASS: original main, next stop MENU MANAGER / CLEARMENUBAR CODE 7\n
 set $screen=s_loudStopScreen
 printf "AGA_STOP state=%u trap=%X segment=%u offset=%X queued=%u presented=%u pending=%u\n",g_stageBState,g_trapWord,g_trapSegment,g_trapOffset,g_macFramesQueued,g_macFramesPresented,$screen->m_framePending
-if g_stageBState!=3 || g_trapWord!=0xa976 || g_trapSegment!=12 || g_trapOffset!=0x583a || g_macFramesQueued!=4 || g_macFramesPresented>4
+if g_stageBState!=3 || g_trapWord!=0xa0f8 || g_trapSegment!=3 || g_trapOffset!=0x137e || g_trapSelector!=13 || g_macServiceActive!=1 || g_macFramesQueued!=4 || g_macFramesPresented>4
  echo FAIL AGA startup boundary\n
  detach
  quit 1

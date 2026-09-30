@@ -49,3 +49,36 @@ that case: saved A5/A6 and the return-PC exception frame occupy the old argument
 area. Acceptance checks input arguments at entry, the live Boolean at return,
 stack position, registers and guarded EventRecord; it does not require dead
 argument storage to remain unchanged.
+
+## GetKeys
+
+The first original polling call is Dan1+$583A. Bytes +$5836–$583B are
+`486efff0a976`, passing a 16-byte local KeyMap. The reference observer
+`mac_getkeys.lua` uses actual ADB input and captures released, held A, and
+released A states. A is virtual key zero: byte zero changes from 0 to 1 and
+back to 0. All other map bytes remain zero. The call writes exactly 16 bytes,
+preserves four guard bytes on each side, pops four argument bytes, clears D0.w
+while retaining its upper word, and preserves D2–D7/A2–A6. D1/A0/A1 are scratch.
+`tmp/m2-getkeys-reference.log` completes normally with all three states.
+
+The new native adapter follows Vette's current-level snapshot approach. It
+uses the existing raw-to-Mac translation and `aitdInputKeyDown`, combines
+aliases such as left/right Shift, and leaves queued events untouched. It does
+not consume events to derive held state and does not change game instructions.
+A nil destination remains a named unsupported GetKeys call.
+
+The native window fixture now verifies eleven guarded snapshots: no keys,
+A, A+Space, releases, both Shift aliases with separate releases, and the left
+arrow. It then reads back all ten original press/release events in order.
+`tmp/m2-getkeys-window-core-final.log` exits zero with the new checks and the
+existing 1 MiB read, clock, Paula, DOS, save/readback and bitplane checks.
+The production build passes no-float and 82-symbol audits; the host suite and
+95-script MAME literal audit also pass.
+
+`tmp/m2-getkeys-native.log` completes normally. Its original GetKeys call matches
+the reference's exact output extent, guarded map, D0.w result, preserved
+registers and four-byte argument cleanup. All 35 integrated comparisons pass.
+Execution advances to native sound-driver selector 13 at Core+$137E, with that
+service explicitly pending (2,750 entered / 2,749 completed, active=1). This is
+not music-playback acceptance; M2.3g37 covers the next contract. Original MDRV
+remains absent.

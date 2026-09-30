@@ -24,6 +24,8 @@ public:
 // keyboard interrupt.  The Amiga CIA edge path calls this bridge so original
 // code that waits without making a Toolbox call still sees transitions.
 extern "C" void aitdMacRawKeyChanged(uint8_t rawKey, bool down);
+// Snapshot current native key levels into the 16-byte Macintosh polling map.
+extern "C" bool aitdMacGetKeys(uint8_t* destination);
 
 // The Macintosh mouse globals were maintained by a vertical-retrace task, not
 // by GetNextEvent.  The Amiga VBI calls this after the time-critical bitplane
