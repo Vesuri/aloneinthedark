@@ -92,7 +92,7 @@ def check_native(text, status, folder, code, initial_title):
     if status != 0 or any(x in text for x in ('FAIL', 'Error in', 'timeout')):
         raise ValueError('failed native title observer')
     for marker in ('ARM native title original bytes', 'PASS native title capture',
-                   'PASS native title next=RGBFORECOLOR original-MDRV=absent'):
+                   'PASS native title next=DRAWPICTURE original-MDRV=absent'):
         if text.count(marker) != 1:
             raise ValueError('native title completion')
     enter = fields(one(text, r'TITLE_ENTER (.*)'))
@@ -130,7 +130,7 @@ def check_native(text, status, folder, code, initial_title):
     ports = fields(one(text, r'TITLE_PORT phase=before (.*)'))
     if not ports['current'] or ports['current'] != ports['wmgr'] or fields(one(text, r'TITLE_PORT phase=after (.*)')) != ports:
         raise ValueError('native title port preservation')
-    one(text, r'TITLE_NEXT state=3 trap=AA14 selector=FFFFFFFF segment=13 offset=2BE manager=COLOR QUICKDRAW routine=RGBFORECOLOR windows=\d+ services=(\d+/\d+)')
+    one(text, r'TITLE_NEXT state=3 trap=A8F6 selector=FFFFFFFF segment=13 offset=382 manager=QUICKDRAW routine=DRAWPICTURE windows=\d+ services=(\d+/\d+)')
 
 
 class Checks(unittest.TestCase):

@@ -748,7 +748,7 @@ static const TrapName s_trapNames[] = {
     {0xa43c,"TEXT UTILITIES","CMPSTRING"}, {0xa63c,"TEXT UTILITIES","CMPSTRING"},
     {0xa033,"VERTICAL RETRACE","VINSTALL"}, {0xa034,"VERTICAL RETRACE","VREMOVE"},
     {0xa998,"RESOURCE MANAGER","USERESFILE"}, {0xa994,"RESOURCE MANAGER","CURRESFILE"},
-    {0xaa14,"COLOR QUICKDRAW","RGBFORECOLOR"}, {0xaa18,"COLOR QUICKDRAW","GETCTABLE"}, {0xa880,"QUICKDRAW","SETPT"}, {0xa8d8,"QUICKDRAW","NEWRGN"},
+    {0xaa14,"COLOR QUICKDRAW","RGBFORECOLOR"}, {0xaa15,"COLOR QUICKDRAW","RGBBACKCOLOR"}, {0xaa18,"COLOR QUICKDRAW","GETCTABLE"}, {0xa880,"QUICKDRAW","SETPT"}, {0xa8d8,"QUICKDRAW","NEWRGN"},
     {0xaa46,"WINDOW MANAGER","GETNEWCWINDOW"}, {0xa91b,"WINDOW MANAGER","MOVEWINDOW"},
     {0xa915,"WINDOW MANAGER","SHOWWINDOW"}, {0xa916,"WINDOW MANAGER","HIDEWINDOW"}, {0xa908,"WINDOW MANAGER","SHOWHIDE"},
     {0xa91d,"WINDOW MANAGER","SIZEWINDOW"}, {0xa924,"WINDOW MANAGER","FRONTWINDOW"}, {0xa925,"WINDOW MANAGER","DRAGWINDOW"},
@@ -6456,6 +6456,24 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
             write16(userStack+10,0);regs[0]=0;return 11;
         }
     }
+    if(trap==0xaa14 || trap==0xaa15) { // RGBForeColor / RGBBackColor
+        uint8_t* port=s_qdThePort ? (uint8_t*)read32(s_qdThePort) : 0;
+        GWorldSlot* world=gWorldForPort(port);
+        const uint8_t* rgb=(const uint8_t*)read32(userStack);
+        uint16_t index=0;
+        if(!world || !rgb || read16(*world->handles[0]+32)!=8
+           || read16(*world->handles[trap==0xaa14 ? 7 : 6])!=0
+           || !GWorld8::colorIndex(*world->handles[2],*world->handles[26],rgb,index))
+            goto unsupportedTrap;
+        // Copy via the established byte primitive (m68k compiler copy defect).
+        uint16_t colorOffset=trap==0xaa14 ? 36 : 42;
+        for(uint16_t i=0;i<6;++i)MenuRecords::copyByte(port+colorOffset+i,rgb+i);
+        uint16_t indexOffset=trap==0xaa14 ? 80 : 84;
+        write32(port+indexOffset,index);
+        regs[0]=regs[1]=index;regs[8]=(uint32_t)(port+indexOffset);
+        regs[9]=(uint32_t)(*world->handles[26]+6+(1UL<<(3*read16(*world->handles[26]+4))));
+        return 5;
+    }
     if(trap==0xa8ab) { // UnionRect(src1, src2, destination)
         uint8_t* out=(uint8_t*)read32(userStack);
         const uint8_t* b=(const uint8_t*)read32(userStack+4);
@@ -7418,7 +7436,7 @@ unsupportedTrap:
     if(trap==0xaaa2 && (uint16_t)regs[0]==0x0a13)routine="SETDEPTH";
     if(trap==0xaaa2 && (uint16_t)regs[0]==0x0a14)routine="HASDEPTH";
     if(unsupportedGraphics)routine=trap==0xaa95 ? "SETPALETTE"
-        : trap==0xaa94 ? "ACTIVATEPALETTE" : "8-BIT DRAWING / PALETTE";
+        : trap==0xaa94 ? "ACTIVATEPALETTE" : trap==0xa8f6 ? "DRAWPICTURE" : "8-BIT DRAWING / PALETTE";
     if(trap==0xab1d && (uint16_t)regs[0]==0)routine="NEWGWORLD";
     if(trap==0xab1d && (uint16_t)regs[0]==15)routine="GETPIXBASEADDR";
     if(trap==0xab1d && (uint16_t)regs[0]==5)routine="GETGWORLD";

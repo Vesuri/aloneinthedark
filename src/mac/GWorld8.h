@@ -48,6 +48,37 @@ inline void port(uint8_t* p,uint32_t pm,uint32_t vars,uint32_t vis,uint32_t clip
     word(p+72,1);longword(p+80,255);
 }
 inline uint16_t readword(const uint8_t* p) { return uint16_t(uint16_t(p[0])<<8|p[1]); }
+// The inverse cube picks a collision ring. System 7.5.5 refines that
+// ring by RGB16 Manhattan distance; equal distances retain the first entry.
+inline bool colorIndex(const uint8_t* colors,const uint8_t* inverseTable,
+                       const uint8_t* rgb,uint16_t& result) {
+    if(!colors || !inverseTable || !rgb || readword(colors+6)!=255
+       || (readword(colors+4)!=0 && readword(colors+4)!=0x8000))return false;
+    for(unsigned i=0;i<4;++i)if(colors[i]!=inverseTable[i])return false;
+    uint16_t resolution=readword(inverseTable+4);
+    if(resolution!=4 && resolution!=5)return false;
+    uint16_t wanted[3]={readword(rgb),readword(rgb+2),readword(rgb+4)};
+    uint32_t cell=0;
+    for(unsigned i=0;i<3;++i)cell=(cell<<resolution)|(wanted[i]>>(16-resolution));
+    uint32_t cube=1UL<<(3*resolution);
+    const uint8_t* links=inverseTable+12+cube;
+    uint16_t first=inverseTable[6+cell],current=first,best=first;
+    uint32_t distance=0xffffffffUL;
+    for(unsigned visited=0;visited<256;++visited) {
+        const uint8_t* entry=colors+8+8*current;
+        if(readword(entry)&0x4000)return false;
+        if(readword(colors+4)==0 && (readword(entry)&255)!=current)return false;
+        uint32_t d=0;
+        for(unsigned i=0;i<3;++i) {
+            int32_t delta=int32_t(wanted[i])-readword(entry+2+2*i);
+            d+=uint32_t(delta<0?-delta:delta);
+        }
+        if(d<distance) {distance=d;best=current;}
+        current=links[current];
+        if(current==first) {result=best;return true;}
+    }
+    return false; // Malformed collision cycle; never publish a guessed colour.
+}
 // Measured MakeITable: seed quantized cells, preserve collision rings, then
 // breadth-first fill with alternating neighbour order. Tail scratch is cleared;
 // only the header, lookup cube and 262-byte collision record are defined.

@@ -3054,3 +3054,19 @@ device-table host inverse comparisons pass, with sanitizers. Existing detachment
 pass in the same native launch. All 75,616 A5 bytes match; both link audits and
 the literal audit pass. Counts remain 101 windows, 163 services and 62 original
 resource reads / 265,454 bytes. Next is named RGBForeColor, Dan2+$02BE.
+
+
+## Offscreen RGB drawing colours
+
+M2.3g7 is complete. RGBForeColor/RGBBackColor use the owned world’s table and
+inverse collision rings, update real port fields and preserve simple patterns.
+See [color-drawing.md](color-drawing.md) for contract and verification scope.
+The native original two-call sequence and reference 64-call colour fixture pass;
+the native helper matches all 66 measured lookup results under sanitizers.
+The final combined run exits 0 and passes world records/ownership, detachment,
+20 rectangle calls, both Times lookups, driver/MDRV guard, AGA and all 75,616 A5
+bytes. Offscreen helper regressions, startup checker tests, 67-script literal
+audit and both link audits pass. Counts are 101 windows, 164 completed services,
+62 original resource reads / 265,454 bytes. Next is DrawPicture at Dan2+$0382.
+The discovery run failed its obsolete endpoint and is not acceptance. Fresh
+preferences retain derived counts (127 windows / 172 services), not a new run.
