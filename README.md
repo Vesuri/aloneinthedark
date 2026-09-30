@@ -11,6 +11,9 @@ and Toolbox layer are carried over from Vette!; see
 
 ## Current state
 
+Production display conversion now uses Kalms eight-plane assembly on the 68020;
+the scalar converter remains only in host tests.
+
 Original 68020 game code now returns successfully from the **startup intro**. The MacPlay
 picture, its palette transitions and the logo match the Mac reference pixels
 and colours; nine AGA frames are verified through bitplane/copper captures and
@@ -22,8 +25,8 @@ client matches apart from the documented placeholder copyright glyphs. The next
 named stop is **EmptyRgn**, Dark+$4182, after the intro returns.
 Song start now retains its 41 resources and returns successfully. A complete
 native playback fixture matches all 3,736 timed note events and verifies Paula
-sample conversion, effect priority and cleanup. The latest startup run advances 820 song events before the first song-status query; broader
-music support remains M4. The driver clock query now returns the measured
+sample conversion, effect priority and cleanup. Startup advances native song playback before the first song-status query;
+broader music support remains M4. The driver clock query now returns the measured
 32-bit result and condition codes. The song-status query also matches the
 original track-status result, registers and condition codes. RectRgn now
 returns with exact region bytes and ownership.

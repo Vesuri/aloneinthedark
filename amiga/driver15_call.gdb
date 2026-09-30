@@ -26,6 +26,19 @@ set $d15_a3=$a3
 set $d15_a4=$a4
 set $d15_a5=$a5
 set $d15_a6=$a6
+# The return trampoline may run queued original VBL callbacks. Bracket the
+# query dispatcher itself so song progression cannot masquerade as a mutation.
+tbreak dispatchMacTrap if trap==0xa0f8 && inUserService && *(unsigned long*)(userStack+4)==15
+continue
+if trap!=0xa0f8 || !inUserService || *(unsigned long*)(userStack+4)!=15
+ echo FAIL driver15 query boundary\n
+ detach
+ quit 1
+end
+dump binary memory ../tmp/driver15-native-query-enter-state.bin (char*)&g_soundDriver (char*)&g_soundDriver+sizeof(g_soundDriver)
+finish
+dump binary memory ../tmp/driver15-native-query-return-state.bin (char*)&g_soundDriver (char*)&g_soundDriver+sizeof(g_soundDriver)
+echo DRIVER15_QUERY_BOUNDARY dispatcher-return-before-callbacks\n
 tbreak *(g_code3Base+0xfca) if $sp==$d15_sp
 continue
 if $pc!=(unsigned long)(g_code3Base+0xfca) || $sp!=$d15_sp || $d1!=0

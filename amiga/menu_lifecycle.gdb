@@ -163,6 +163,16 @@ if g_soundDriver.initialized!=1 || g_soundDriver.songLimit!=6 || g_soundDriver.n
  quit 1
 end
 printf "PASS native driver call: selector=24 D0=0 D1=1 preserved=13 stack=unchanged rate=11 voices=6/2/2\n"
+# Verify initialization here, before the intro starts song playback.
+set $vi=0
+while $vi<6
+ if g_soundDriver.songs[$vi].active!=0 || g_soundDriver.songs[$vi].sample!=0 || g_soundDriver.songs[$vi].channel!=-1
+  echo FAIL driver: song voice initialization\n
+  detach
+  quit 1
+ end
+ set $vi=$vi+1
+end
 tbreak dispatchMacTrap if *(unsigned long*)(frame+2)==(unsigned long)s_segments[7].begin+0x2b06
 continue
 set $code=(unsigned long)s_segments[7].begin
@@ -589,15 +599,6 @@ if $font_bodies!=2
  echo FAIL font lookup: font body count\n
  detach
  quit 1
-end
-set $vi=0
-while $vi<6
- if g_soundDriver.songs[$vi].active!=0 || g_soundDriver.songs[$vi].sample!=0 || g_soundDriver.songs[$vi].channel!=-1
-  echo FAIL driver: song voice initialization\n
-  detach
-  quit 1
- end
- set $vi=$vi+1
 end
 printf "DRIVER_COUNTS prep=%u/%u app=%u/%u overlay=%u/%u windows=%u services=%u/%u lowmem=%u mask=%x resources=%u\n",g_overlaySourceReads,g_overlaySourceBytes,g_resourceRuntimeReads,g_resourceRuntimeBytes,g_overlayRuntimeReads,g_overlayRuntimeBytes,g_systemWindows,g_macServiceEntered,g_macServiceCompleted,g_lowMemoryAppliedSites,g_loadedCodeMask,g_resourceCount
 detach

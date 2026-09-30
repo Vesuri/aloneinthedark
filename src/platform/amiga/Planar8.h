@@ -34,6 +34,8 @@ inline bool normalize(const Rect& viewport,const Rect& dirty,Rect& local) {
     return true;
 }
 
+#ifndef AITD_PLATFORM_AMIGA
+// Host oracle only. The game always calls Kalms assembly.
 inline bool convert(const uint8_t* chunky,uint8_t* planar,const Rect& viewport,
                     const Rect& dirty,Rect& converted) {
     Rect local;
@@ -53,5 +55,6 @@ inline bool convert(const uint8_t* chunky,uint8_t* planar,const Rect& viewport,
     converted=local;
     return true;
 }
+#endif
 }
 #endif

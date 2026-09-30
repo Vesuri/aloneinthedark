@@ -72,7 +72,8 @@ FRAMEWORK_ASM_SRCS := \
     $(AMIGA_SRC)/framework/UtilAssembler.s \
     $(AMIGA_SRC)/framework/AmigaHardwareAssembler.s \
     $(AMIGA_SRC)/framework/BitmapAssembler.s \
-    $(AMIGA_SRC)/framework/CopperListAssembler.s
+    $(AMIGA_SRC)/framework/CopperListAssembler.s \
+    $(AMIGA_SRC)/framework/KalmsC2P.s
 
 # ---------------------------------------------------------------------------
 # Build flags / feature toggles
@@ -100,10 +101,9 @@ EXTRA_DEFINES += -DAITD_MAPPED_COPY_VERIFY
 endif
 endif
 
-# Eight-plane reference conversion is active. The measured assembly kernel and
-# optimization belongs to M5; inherited four-plane assembly must never be selected.
-ifeq ($(C2P_C),0)
-$(error eight-plane assembly optimization is deferred to M5)
+# Production always uses the 68020-compatible Kalms eight-plane routine.
+ifeq ($(C2P_C),1)
+$(error the slow reference converter is test-only; production uses Kalms C2P)
 endif
 ifeq ($(C2P_SPLIT),1)
 $(error C2P split profiling is deferred to M5)
@@ -248,7 +248,7 @@ CPPFLAGS  = $(CCFLAGS) -fno-rtti -fno-exceptions -fno-use-cxa-atexit -std=gnu++1
             -I"$(CURDIR)"
 # GNU as has no scheduling/tuning flag; hand-written code targets the 68020 ISA.
 ASFLAGS   = -mcpu=68020 -mno-float -g --register-prefix-optional -I"$(SDKDIR)" -I"$(CURDIR)"
-VASMFLAGS = -m68010 -Felf -quiet -x -no-opt -nowarn=62 $(EXTRA_VASMDEFS)
+VASMFLAGS = -m68020 -Felf -quiet -x -no-opt -nowarn=62 $(EXTRA_VASMDEFS)
 
 # ⚠⚠ Every global a committed .gdb script reads MUST be listed here.  -Wl,--gc-sections drops
 # an unreferenced counter and gdb then resolves the name into .text and prints INSTRUCTION
@@ -389,3 +389,5 @@ clean:
 	@$(RM) -r obj/ out/
 
 -include $(wildcard obj/*.d)
+
+obj/KalmsC2P.o: $(AMIGA_SRC)/kalms/c2p1x1_8_c5_gen.s

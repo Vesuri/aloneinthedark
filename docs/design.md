@@ -465,10 +465,12 @@ Native trap probes, host fragmentation tests and paired heap captures verify it:
   - Convert the Mac screen's dirty rectangles inside the viewport: 8-bit chunky to
     8 planes, x aligned to 32 destination pixels. Verify full and partial updates
     with an independent decoder and compare intro pixels with the reference.
-  - Use the integer C implementation for functional bring-up on 68020. Assembly
-    optimization, including evaluation of Kalms' public-domain `c2p1x1_8_c5_030`
-    ([external](https://github.com/Kalmalyzer/kalms-c2p)), and timing measurements
-    are deferred to M5 under D2. Retain the C oracle for any future assembly path.
+  - Owner update 2026-09-30 replaces the scalar runtime loop with Kalms'
+    public-domain `normal/c2p1x1_8_c5_gen.s`
+    ([upstream](https://github.com/Kalmalyzer/kalms-c2p)). The 68020 integer
+    wrapper converts dirty rows into the existing interleaved eight-plane layout.
+    The C converter remains a host-only oracle. General tuning and other CPU
+    targets remain deferred; intro frame acceptance is still M2.6.
 - **Dirty rectangles.** Keep the explicit list. They come from every QuickDraw
   write to the screen port, plus the presentation `CopyBits` dest rectangle. The
   back buffer inherits the previous update's rectangles.

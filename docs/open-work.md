@@ -58,21 +58,22 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.3g41p Speed up the intro book-page drawing path (owner priority).**
-  - Owner update 2026-09-30: page turns render their vertical filled strips and
-    final bitmap copy far too slowly for feasible testing. This explicitly
-    brings forward a focused 68020 optimization; other CPU support stays deferred.
-  - Measure PaintRect, CopyBits colour translation, presentation/synchronization
-    and C2P costs on the actual page-turn path. Reuse Vette's verified solutions
-    where applicable. Preserve original calls, logical pixels, palette mapping,
-    dirty bounds and VBI publication; no skipping page animation or game delays.
-  - Current static candidates: scalar eight-plane reference conversion and
-    rebuilding 256 CopyBits colour translations for each different-seed palette copy.
-    These are candidates, not measured bottleneck claims.
+- **M2.3g41p2 Profile the remaining intro book-page drawing cost.**
+  - The owner-requested Kalms replacement (M2.3g41p1) is implemented; the
+    scalar converter is host-test-only. Continue the focused 68020 work needed
+    to make book-page testing feasible, without skipping animation or delays.
+  - Measure PaintRect, CopyBits colour translation and presentation/synchronization
+    at a repeatable original book-page state. The earlier 120-field profile
+    begins during title/credit drawing and is not a book-page measurement.
+  - Inspect actual book source/destination colours before changing CopyBits
+    translation: different CLUT seeds alone do not establish different colours.
+    Reuse Vette's solutions where applicable and preserve logical pixels,
+    dirty bounds, palette mapping and VBI publication.
 
-  *Done when* a bounded before/after native measurement shows a useful page-turn
-  speedup with exact output against the previous converter/Mac state pairs,
-  partial-update preservation and prior startup contracts still passing.
+  *Done when* a bounded native book-page profile identifies remaining dominant
+  costs, any resulting optimization has a before/after measurement and exact
+  state-paired output, and prior startup contracts still pass. Record whether
+  the book palettes actually differ; do not infer it from their seeds.
 - **M2.3g42 EmptyRgn at the post-intro transition.**
   - RectRgn now returns with matching region bytes, ownership and ABI.
     The next call is EmptyRgn (`$A8E2`) at Dark+$4182.
@@ -149,8 +150,9 @@ required.
   preserves game colours, and effect period/duration use the selected video
   clock. Other processors remain deferred (D2).
 - **M2.6 8-bit C2P with dirty rectangles.**
-  - Verify the eight-bit converter against an independent C oracle. Assembly
-    optimization and timing work remain deferred to M5 (D2).
+  - The owner-requested Kalms assembly converter passes the five-frame native
+    fixture against the independent decoder (M2.3g41p1). Retain the host C oracle
+    and finish the full intro comparison below; general tuning remains M5.
   - Rectangles aligned to 32 pixels.
 
   *Done when* the verifier reports zero mismatches over the intro on
@@ -312,8 +314,8 @@ required.
   - One measured optimisation per commit, with before and after numbers. Record
     rejected attempts in their commit message.
   - Candidates:
-    - dirty-box C2P tuning and a verified assembly kernel (evaluate Kalms'
-      `c2p1x1_8_c5_030` against the retained C oracle);
+    - further dirty-box C2P tuning, using the integrated Kalms
+      `c2p1x1_8_c5_gen` and retained host oracle as the baseline;
     - FMODE;
     - a fast srcCopy;
     - a fast path for the SetGWorld/GetGWorld traps (138 sites);

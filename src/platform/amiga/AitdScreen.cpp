@@ -19,24 +19,7 @@
 #include "mac/MacLoader.h"
 
 extern "C" {
-#ifdef AITD_C2P_ASM
-void aitdC2PRectAsm(const uint8_t* source, uint8_t* destination,
-                     const uint32_t* table, uint16_t groups, uint16_t rows);
-#endif
-#ifdef AITD_C2P_VERIFY
-volatile uint32_t g_c2pAsmTicks = 0;
-volatile uint32_t g_c2pCTicks = 0;
-volatile uint32_t g_c2pVerifyCalls = 0;
-volatile uint32_t g_c2pVerifyBytes = 0;
-volatile uint32_t g_c2pVerifyFailures = 0;
-#endif
-#ifdef AITD_C2P_SPLIT
-volatile uint32_t g_c2pSplitChipTicks = 0;
-volatile uint32_t g_c2pSplitFastTicks = 0;
-volatile uint32_t g_c2pSplitFrames = 0;
-volatile uint32_t g_c2pSplitRects = 0;
-volatile uint32_t g_c2pSplitPixels = 0;
-#endif
+void aitdKalmsC2PRect(const uint8_t* source,uint8_t* destination,uint32_t width,uint32_t rows);
 volatile uint16_t g_macFramesQueued = 0;
 volatile uint16_t g_macFramesPresented = 0;
 volatile uint16_t g_beamPresentLine = 0;
@@ -363,10 +346,10 @@ int16_t AitdScreen::presentMacFrame(const uint8_t* chunky,const uint8_t* colorTa
         }
     }
     for(uint16_t i=0;i<count;++i) {
-        const Planar8::Rect& r=normalized[i];Planar8::Rect converted;
-        Planar8::Rect global{int16_t(r.top+cropTop),int16_t(r.left+cropLeft),
-                            int16_t(r.bottom+cropTop),int16_t(r.right+cropLeft)};
-        if(!Planar8::convert(chunky,m_back,viewport,global,converted))return -1;
+        const Planar8::Rect& r=normalized[i];
+        aitdKalmsC2PRect(chunky+uint32_t(r.top+cropTop)*640+cropLeft+r.left,
+            m_back+uint32_t(r.top)*kRowStride+r.left/8,
+            uint32_t(r.right-r.left),uint32_t(r.bottom-r.top));
         m_syncRects[i]={r.top,r.left,r.bottom,r.right};
     }
     m_syncRectCount=count;

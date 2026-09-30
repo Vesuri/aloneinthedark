@@ -49,7 +49,18 @@ def check_native(text,status):
     low=(result['before']-result['origin'])&0xffffffff
     span=(result['after']-result['before'])&0xffffffff
     if not low or ((result['result']-low)&0xffffffff)>span: raise ValueError('native advancing clock')
-    if (ROOT/'tmp/driver15-native-enter-state.bin').read_bytes()!=(ROOT/'tmp/driver15-native-return-state.bin').read_bytes(): raise ValueError('query changed driver state')
+    if 'DRIVER15_QUERY_BOUNDARY dispatcher-return-before-callbacks' in text:
+        if text.count('DRIVER15_QUERY_BOUNDARY dispatcher-return-before-callbacks')!=1: raise ValueError('query boundary count')
+        before=(ROOT/'tmp/driver15-native-query-enter-state.bin').read_bytes()
+        after=(ROOT/'tmp/driver15-native-query-return-state.bin').read_bytes()
+        if len(before)!=94 or before!=after: raise ValueError('query changed driver state')
+        # The original return trampoline can service music after this boundary.
+        entry=(ROOT/'tmp/driver15-native-enter-state.bin').read_bytes()
+        returned=(ROOT/'tmp/driver15-native-return-state.bin').read_bytes()
+        if len(entry)!=94 or len(returned)!=94 or entry[:18]!=returned[:18]:
+            raise ValueError('query changed driver configuration')
+    elif (ROOT/'tmp/driver15-native-enter-state.bin').read_bytes()!=(ROOT/'tmp/driver15-native-return-state.bin').read_bytes():
+        raise ValueError('query changed driver state')
     if text.count('PASS menu-list next-stop original-MDRV=absent')!=1: raise ValueError('original MDRV absence')
     print('PASS native driver15: original caller/ABI, advancing full-width clock, unchanged driver state, MDRV absent')
 

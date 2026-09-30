@@ -2773,8 +2773,9 @@ M2.5a converts the live WIND 128 client rectangle into eight AGA planes and
 publishes complete bitmap/palette state during VBI. The first clear matches the
 Mac logical CLUT and measured video colours, then startup reaches window
 SetPalette at Misc1+$10FA. No original game instruction changes. The integer
-reference converter uses explicit dirty rectangles and Vette's previous-update
-synchronization; optimization remains deferred.
+reference converter initially used explicit dirty rectangles and Vette's
+previous-update synchronization. M2.3g41p1 replaces that runtime loop with Kalms
+assembly while preserving the same layout and synchronization.
 
 The independent five-frame native fixture verifies full and partial updates,
 palette-only preservation, viewport movement, alternating buffers and restored
@@ -4060,3 +4061,63 @@ stopped with no remaining allocation. Music reaches 1,519 events / pulse 3466,
 31/82,238 overlay, 64/82,810 preparation, 244 records and 58 low-memory sites.
 MDRV remains absent. The owner-requested page-turn speedup is next in the queue;
 full M2 acceptance remains open.
+
+
+## Kalms runtime conversion (M2.3g41p1)
+
+The owner's focused 68020 optimization replaces the scalar runtime C2P loop
+with Mikael Kalms' public-domain `normal/c2p1x1_8_c5_gen.s`, unchanged from
+upstream commit `d8ecf79a3325615305dd800ae7704b518e0d9dda`. A small C ABI wrapper
+converts normalized dirty rows with 640-byte source stride, 320-byte output
+stride and 40-byte plane separation. It preserves callee-saved registers and
+uses no FPU, blitter, self-modifying code or interrupt callback. The scalar
+converter is compiled only for host tests; production has no C fallback.
+
+The five-frame native AGA fixture exits zero in `tmp/m2-kalms-aga-full.log`.
+Its independent decoder verifies every pixel, partial-update preservation,
+palette-only updates, all eight plane pointers, all 256 colours, alternating
+buffers, an unaligned (161,151) source origin, VBI publication and cleanup.
+Host tests pass in `tmp/m2-kalms-host-tests.log`. Production passes the no-float
+and 83-symbol link audits; its symbol table contains the Kalms entry points
+and no `Planar8::convert` implementation.
+
+The first integrated run reached the expected EmptyRgn stop, but its observer
+incorrectly checked song *initialization* after playback had started. That run
+(`tmp/m2-kalms-intro-full.log`, exit 1) is not acceptance. The unchanged check
+now runs immediately after driver initialization, before playback. Removing
+exploratory profiling leaves the production executable byte-identical to the
+first tested Kalms executable. The clean repeat (`tmp/m2-kalms-final-full.log`)
+exits zero, but its saved-state checker exposes another overly broad observer
+boundary: the original return trampoline services queued VBL callbacks, so
+music voices can progress between original JSR entry and return. Configuration
+is unchanged; the changing bytes belong to song voices and channel assignments.
+The clock observer now additionally captures the complete 94-byte driver state
+at query-dispatch entry and return, before those callbacks. The checker requires
+exact equality at that boundary and still checks original caller/return ABI,
+clock bounds and configuration preservation across the original call.
+
+The earlier 120-field drawing profile starts during title/credit drawing,
+not a proven book-page state. Its different CLUT seeds do not establish that
+the book palettes differ. Book-specific profiling and palette evidence remain
+M2.3g41p2. Full intro frame acceptance remains M2.6/M2.10; rendered-window
+verification remains owner-deferred. No original game instructions, palette
+mapping, animation calls or game delays change in this optimization.
+
+Final acceptance: `tmp/m2-kalms-boundary-full.log` exits zero at EmptyRgn,
+Dark+$4182. All 40 integrated comparisons pass in
+`tmp/m2-kalms-boundary-regressions.log`. The entire query-dispatch state is
+unchanged; five corrupted/failed evidence cases are rejected in
+`tmp/m2-kalms-query-rejections.log`. All 16 effects stop without residual
+allocation, MDRV stays absent, and all 10,901 deferred services complete.
+Resource totals remain 109/826,832 app, 31/82,238 overlay, 64/82,810 preparation,
+244 records, 58 low-memory sites and 249 OS windows.
+
+The original intro returns D0=0 at 18,262 emulated ticks / 3,823 publications,
+compared with 47,482 ticks / 5,562 publications in the accepted scalar run
+`tmp/m2-rectrgn-native-full.log`: about 2.60× sooner (61.5% fewer ticks).
+Final publication is 3,826/3,826. This is a whole-intro observation on the same
+owner-approved A4000/68EC020 test configuration, not isolated book-page cost,
+real-hardware timing or a frame-rate claim. The earlier clean repeat returned
+at 18,231 ticks, before the observer boundary correction. Explicit dirty bounds,
+logical outputs and VBI publication remain unchanged; faster execution can
+coalesce a different number of pending presentations.

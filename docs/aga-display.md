@@ -13,8 +13,10 @@ rows (64,000 bytes total), sampled from the live viewport of the 640×480 Mac
 screen. It clips and aligns dirty rectangles to 32 destination pixels. Host
 sanitizer checks decode every plane independently, cover every palette index,
 check partial-write preservation, edge clipping, an unaligned source origin,
-and invalid-input atomicity. This integer converter is also the future assembly
-verification reference; it is not an optimization or M2.6 completion.
+and invalid-input atomicity. The integer converter is now a host-only oracle. Production calls Kalms
+`c2p1x1_8_c5_gen` through a 68020 C ABI wrapper, one dirty row at a time.
+The unchanged upstream source and pinned revision are recorded in
+`src/platform/amiga/kalms/README.md`. This does not complete M2.6 intro acceptance.
 
 `AgaPalette.h` emits all 256 RGB24 colours through eight banks, writing high
 and low nibbles separately and restoring bank zero/LOCT-clear state. Its input
