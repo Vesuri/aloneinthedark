@@ -21,6 +21,7 @@ The title-screen copy now uses the Mac’s measured colour mapping. Its full
 client matches apart from the documented placeholder copyright glyphs. The next
 named stop is **sound-driver selector 0**, Core+$138C, after the intro returns.
 The native driver now stores selector 13’s measured control word; the next request is song $87.
+Song input helpers match its 3,736 original note events and resource graph; native music playback remains unfinished.
 GetKeys now reports current held/released keys and passes its paired calling
 contract, including native modifier aliases and event-queue preservation.
 The post-intro offscreen copy now matches every defined destination pixel and

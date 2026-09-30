@@ -59,8 +59,11 @@ required.
   - Selector 13 now stores the measured control word and returns successfully.
     Execution reaches selector 0, argument $87, at Core+$138C. Original bytes
     +$1382–$138F are `2f2e000842a7206df9544e90508f`.
-  - Measure its original resource/ownership and state transitions and implement
-    the reached native D8 contract. Bring required song/instrument handling
+  - M2.3g38a now supplies bounded SONG/MIDI/INST/sample descriptions and an
+    exact 3,736-event preflight match. The original request retains 41 resources
+    and arms MIDI 905; its ownership/state capture passes.
+  - Implement the reached native D8 contract, including resource lifetime,
+    timed sequencing and required Paula sample/voice behavior. Bring required song/instrument handling
     forward from M4 as needed; never run MDRV or report unsupported music as
     successful. Other unimplemented calls remain named stops.
 

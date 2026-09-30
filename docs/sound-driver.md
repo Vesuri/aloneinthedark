@@ -303,3 +303,66 @@ python3 tools/check_driver13.py tmp/m2-driver13-reference.log --status 0
 For the accepted native capture, add
 `--native tmp/m2-driver13-native-full.log --native-status 0`. Supply the actual
 terminal statuses; neither a deadline nor a debugger error counts as success.
+
+
+## Selector 0: measured prerequisite, native work pending
+
+Core+$138C requests SONG 135 ($87). `mac_driver0.lua` and `check_driver0.py`
+verify the actual call, 285 nested service pairs, register/stack preservation,
+resource ownership and armed MIDI state in `tmp/m2-driver0-reference.log`
+(terminal exit zero). D0 is zero; D1 is scratch ($0C on this call). The original
+loads MIDI 905, scans its instrument use, and retains seven INST resources
+(0, 1, 11, 22, 26, 28, 31), 28 unique samples and four SMOD resources. The total
+is 41 detached, nonpurgeable, locked handles. SMOD resources contain executable
+Mac code; the native path must implement required behavior without running it.
+
+SONG configuration changes the logical limits to six music voices, three
+normalized voices and one effect voice, with flags $2205. The MIDI track is
+armed at offset 22 in state $46; the original call has not yet consumed its
+first note event at return. Resource ownership and playback must both be real
+before the native selector can report success. Portable format helpers and
+preflight event comparison are complete (M2.3g38a); M2.3g38 runtime integration
+remains pending.
+
+
+## Song input descriptions and preflight (M2.3g38a)
+
+`SongInputs.h` supplies bounded descriptions for the reached SONG, single-track
+format-0 MIDI, INST range tables and standard unsigned 8-bit `snd ` samples.
+It owns no resources and starts no audio. Unknown flags, formats, commands and
+encodings produce named errors; malformed lengths and loops never read beyond
+the supplied buffer. Sample data ends at its declared length: twelve of the
+28 reached sample resources contain 36 additional bytes, which are preserved
+as trailing data rather than played. The instrument trailer is the measured
+`0000800000000000`; alternative modifier forms remain unsupported.
+
+The original MIDI preflight was observed at driver+$312E/$30DC, using the raw
+execution pointer for breakpoints and its masked 24-bit address for byte reads.
+The first observer failed its byte assertion because it read flagged addresses;
+that rejected log is `tmp/m2-song-events-reference-unmapped.log`. The corrected
+`tmp/m2-song-events-reference.log` completes normally with 3,736 note events.
+The captured 82-byte SONG and 15,320-byte MIDI bodies equal the source resources.
+
+All 3,736 decoded note events match the original byte position, instrument,
+pitch, velocity, channel and order. The preflight selects INST 0/1/11/22/26/28/31
+and 28 unique samples in the same order as the original resource calls.
+A first comparison exposed program-change handling: the original tests bit 2
+of the **high byte** at state+$11BA. Thus flags $2205 ignore program messages
+and retain the SONG channel mapping; the corrected helper and fixture enforce
+this behavior. Channel volume still scales note-on velocity by integer division
+by 127. Playback scheduling, pitch and voice allocation remain runtime work.
+
+`make host-tests` includes `check_song_inputs.py` with address/undefined-behavior
+sanitizers and synthetic volume, running-status, ignored-program, note-order,
+tempo/end, truncation, malformed-variable, range, encoding and loop checks.
+The original-input comparison is:
+
+```sh
+python3 tools/check_song_inputs.py \
+  --reference tmp/m2-song-events-reference.log --status 0 \
+  --driver tmp/m2-driver0-reference.log --driver-status 0
+```
+
+The checker compiles the actual C++ helper, compares its event stream and
+resource graph, and checks the original driver's complete ownership capture.
+These are parser/preflight checks; they do not establish native music playback.

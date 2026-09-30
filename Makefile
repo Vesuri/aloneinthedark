@@ -111,6 +111,7 @@ host-tests:
 	@python3 tools/check_font_lookup.py --selftest
 	@python3 tools/check_driver_startup.py --selftest
 	@python3 tools/check_sound_driver.py
+	@python3 tools/check_song_inputs.py
 	@python3 tools/check_menu_records.py
 	@python3 tools/check_dialog_items.py
 	@python3 tools/check_hidden_dialog.py --selftest

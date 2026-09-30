@@ -3878,3 +3878,23 @@ All sixteen effects are stopped with no allocated sample/channel. Resource reads
 remain 70/349,400 application bytes, 31/82,238 overlay bytes and 64/82,810
 preparation bytes. The 244 records, 58 low-memory patches and CODE mask $3FFB
 remain unchanged. MDRV is absent. Rendered acceptance and M2.10a remain pending.
+
+
+## Song input prerequisite
+
+M2.3g38a provides portable SONG/MIDI/INST/sample descriptions, without changing
+the production driver. `tmp/m2-driver0-reference.log` completes at the original
+selector-zero return after 285 observed service pairs, with 41 detached, locked,
+nonpurgeable resources and MIDI 905 armed. `tmp/m2-song-events-reference.log`
+completes its original preflight at 3,736 note events. The C++ helper matches
+all events and the seven-instrument/28-sample graph exactly in
+`tmp/m2-song-inputs-paired.log`. The captured song/MIDI bytes also match the
+original archive. See [sound-driver.md](sound-driver.md) for the format details,
+rejected observer and reproducible checker. Runtime sequencing, Paula playback
+and selector-zero acceptance remain M2.3g38; this is no claim of working music.
+
+The full host suite exits zero in `tmp/m2-song-inputs-host-tests.log`, including
+the 98-script MAME literal audit. Timeout, altered-note and observer-error
+rejection checks pass in `tmp/m2-song-inputs-rejections.log`. Production code
+does not include the new helper yet, so native acceptance remains the preceding
+selector-13 capture rather than an unnecessary replay of unchanged code.
