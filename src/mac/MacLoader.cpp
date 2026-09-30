@@ -6997,11 +6997,18 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         if(handle) {
             MacHeap* zone=handleZone(handle);
             int32_t index=resourceHandleIndex(handle);
-            // Only the reached 256-entry application table layout is supported.
-            if(!zone || !*handle || index<0 || dirtyResourceHandle(handle)
-                || zone->state(handle)!=0x20 || zone->handleSize(handle)!=2056
-                || read16(*handle+4)!=0x8000 || read16(*handle+6)!=255)
+            // Preserve both measured 256-entry resource forms, including the
+            // extra eight stored bytes of clut 129. GetCTable detaches and
+            // clears the purgeable/resource state without rewriting ctFlags.
+            if(!zone || !*handle || index<0 || dirtyResourceHandle(handle))
                 goto unsupportedTrap;
+            uint8_t state=zone->state(handle);
+            uint32_t size=zone->handleSize(handle);
+            if(size<8)goto unsupportedTrap;
+            uint16_t flags=read16(*handle+4);
+            if((state!=0x20 && state!=0x60) || read16(*handle+6)!=255
+                || !((size==2056 && flags==0x8000)
+                     || (size==2064 && flags==0x4000)))goto unsupportedTrap;
             s_resourceHandles[index]=0;
             zone->setState(handle,0);
             write32(*handle,s_colorSeed++);

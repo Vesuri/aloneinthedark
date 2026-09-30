@@ -2,7 +2,7 @@
 
 The original GetCTable(128) contract is measured by
 `tools/mac_ctable.lua` and checked by `tools/check_ctable.py`.
-Native GetCTable now implements the reached application table form. Full palette realization
+Native GetCTable implements both reached application table forms. Full palette realization
 and video colour transfer remain M2.7/M2.7a.
 
 ## Original request and mutations [M]
@@ -71,7 +71,7 @@ make host-tests
 
 Logs, raw dumps and original resource data remain local-only. The checker rejects
 missing/duplicate captures, timeout/missing status, changed inputs and incorrect
-mutation counts. The syntax/literal audits cover all 45 maintained Mac scripts.
+mutation counts. The syntax/literal audits cover the maintained Mac scripts.
 The native production observer is `amiga/ctable.gdb`. It checks the original
 call and mutation loop, exact returned bytes, detachment from the resource map,
 and the next named stop: Engine+$1158 `PALETTE MANAGER / NEWPALETTE`. Original
@@ -87,8 +87,9 @@ streams, removes Line-A and returns zero. A disposed master slot now returns
 cover free-slot classification, live handles, null, pointers and misalignment.
 
 Supported GetCTable inputs use application IDs (128 or higher), enabled resource
-loading, and a clean unlocked/nonpurgeable 2,056-byte table with flags `$8000`
-and 256 entries. The loaded handle is detached, receives one fresh seed and
+loading, and a clean unlocked table with 256 entries: either 2,056 bytes with
+flags `$8000`, or 2,064 bytes with flags `$4000`. Resource state `$20` or the
+purgeable resource state `$60` is accepted. The loaded handle is detached, receives one fresh seed and
 becomes caller-owned. Missing application tables return nil without consuming a
 seed or changing MemError. System-generated IDs, disabled loading, dirty handles
 and other table layouts remain named GetCTable stops with the requested ID.
@@ -112,3 +113,31 @@ The native fixture first exposed the missing disposed-alias error. That rejected
 run is retained locally; the corrected run completes all 21 cases with status
 zero. Capture checks reject missing/duplicate records, timeouts, changed inputs,
 wrong mutations, ownership, errors and seed sequences.
+
+
+## Colour-table 129 [M]
+
+Dark2+$1FD6 contains `42973f3c0081aa18`: clear the result slot, push ID 129,
+GetCTable. The original resource has ctFlags $4000, ctSize 255 and a 2,064-byte
+body: 256 entries followed by eight zero bytes. GetCTable preserves every byte
+after the seed, including the trailing bytes. It generates a fresh seed,
+detaches the loaded handle and clears its purgeable/resource state. The original
+returns D0/A0 equal to the handle, preserves D1–D7/A2–A6, and pops two bytes;
+A1 is scratch. The native path preserves A1 in addition.
+
+Six isolated Mac fixture calls establish the 2,064-byte size, detached state
+zero, GetResAttrs error -192, and a later distinct GetResource handle containing
+the exact original body with state $60 (purgeable resource). The native observer
+checks the owned allocation size and Mac-visible state without executing guest
+fixture writes. The heap's internal allocated bit is separate from that state.
+
+```sh
+python3 tools/check_ctable129.py tmp/m2-ctable129-reference.log --status 0 --native tmp/m2-ctable129-native-final.log --native-status 0
+python3 tools/check_ctable.py tmp/m2-ctable129-original-table-regression.log --status 0 --native
+```
+
+`mac_ctable129.lua` captures the original request and ownership fixtures;
+`ctable129_call.gdb` is included in the combined native startup observer.
+`ctable129.gdb` is its standalone diagnostic wrapper. Both tables pass exact
+body checks and ABI/ownership checks. The next stop is NewPalette at Dark2+$201C,
+whose current constructor still rejects the larger source body (M2.3g20).

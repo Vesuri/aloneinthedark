@@ -24,7 +24,7 @@ def check(reference,native,reference_status,native_status,resource,folder):
         assert all(r[k]==e[k] for k in ['d0','d1','d2','d3','d4','d5','d6','d7','a1','a2','a3','a4','a5','a6']),side+' preserved registers'
         before=(folder/f'point-{side}-before.bin').read_bytes();after=(folder/f'point-{side}-after.bin').read_bytes()
         assert len(before)==len(after)==12 and after==before[:4]+args[:4]+before[8:],side+' exact four-byte write and preserved neighbours'
-    print('PASS paired SetPt: original/live bytes, arguments, point write, surrounding bytes, stack/register contract; '+one(native,r'POINT_NEXT (state=3 trap=AA18 selector=81 segment=5 offset=1FDC manager=COLOR QUICKDRAW routine=GETCTABLE windows=(?:116|142) services=(?:434/433|442/441))'))
+    print('PASS paired SetPt: original/live bytes, arguments, point write, surrounding bytes, stack/register contract; '+one(native,r'POINT_NEXT (state=3 trap=AA91 selector=FFFFFFFF segment=5 offset=201C manager=PALETTE MANAGER routine=NEWPALETTE windows=(?:116|142) services=(?:434/434|442/442))'))
 
 
 if __name__=='__main__':

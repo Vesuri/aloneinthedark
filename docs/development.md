@@ -3331,3 +3331,22 @@ Counts are 116 windows, 434 entered / 433 completed services (the stopped table
 service is active), 65 resource reads / 297,034 bytes; CODE mask remains $3FBB.
 Fresh-preference counts of 142 windows and 442/441 services remain derived.
 The original MDRV is absent. Intro frame acceptance remains pending.
+
+
+## Colour-table 129
+
+M2.3g19 is complete. The Mac reference (`tmp/m2-ctable129-reference.log`) and
+combined native run (`tmp/m2-ctable129-native-final.log`) exit 0 and pass the
+original 2,064-byte table, flags, trailing bytes, generated seed, ownership,
+handle-state and ABI checks. A separate original-table regression
+(`tmp/m2-ctable129-original-table-regression.log`) exits 0 and preserves the
+clut 128 GetCTable/mutation behavior. Full host tests, both link audits and the
+79-script Lua audit pass. The combined capture passes rectangle fills, both
+AGA publications, colour calls, events/cursor, geometry/device/binding, twenty
+pictures, 220 text widths, fonts, driver/MDRV guard and all 75,616 A5 bytes.
+See [color-table.md](color-table.md#colour-table-129-m).
+
+The next stop is PALETTE MANAGER / NEWPALETTE, Dark2+$201C. Counts are 116 OS
+windows, 434/434 services, 65 reads / 297,034 bytes, CODE mask $3FBB. The table
+service now completes. Fresh-preference counts remain derived (142 windows,
+442/442 services). Intro frame acceptance remains pending.
