@@ -107,7 +107,7 @@ def check_native(text, status, folder, code):
         raise ValueError('native private block')
     if fields(one(text, r'SET_NATIVE_SIZE (.*)')) != dict(palette=4112, private=4):
         raise ValueError('native allocation sizes')
-    one(text, r'SET_NEXT state=3 trap=A0F8 selector=11 segment=3 offset=17FC manager=SOUND DRIVER routine=SELECTOR windows=(?:135|161) services=(?:480/479|488/487)')
+    one(text, r'SET_NEXT state=3 trap=A0F8 selector=14 segment=3 offset=17C8 manager=SOUND DRIVER routine=SELECTOR windows=(?:135|161) services=(?:481/480|489/488)')
     for phase in ('before', 'after'):
         reference = (folder/('setpalette-reference-'+phase+'-palette.bin')).read_bytes()
         native = load(phase, 'palette')

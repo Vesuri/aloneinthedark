@@ -1,10 +1,9 @@
 # Native SoundMusicSys driver
 
 D8 replaces the original software mixer at its driver interface. Native Jnth 11
-supplies measured initialization and quality selection; selector 22 additionally
-implements effect-stop state for the reached unassigned-channel configuration.
-Original MDRV code never runs on the Amiga. Playback, allocation and physical
-channel stops remain explicit unsupported work until their measured services land.
+supplies measured initialization, quality selection, raw one-shot effects and
+effect stopping. Original MDRV code never runs on the Amiga. Unimplemented
+selectors and playback variants remain named stops.
 
 ## Installation seam
 
@@ -152,10 +151,10 @@ the dispatch record's selector/ignored argument/status fields.
 `SoundDriver::stopEffects` marks its two logical effect voices inactive,
 retaining sample state, music and configuration. Host tests cover active
 logical effects, idempotence and music isolation. No physical channel has been
-assigned on the reached route. An assigned channel produces the named
-`EFFECT DMA STOP` stop; M4.3 retains its hardware-stop acceptance. Vette's
-`quiescePaulaChannel` is the existing implementation to reuse when that path
-is brought forward. This call produces no audio event on the measured route.
+assigned on the reached route. The runtime now quiesces/frees assigned Paula channels before changing the
+logical state, using the same path verified by selector 17 natural completion.
+The model rejects callers that bypass hardware cleanup. An actual active
+selector-22 call and music isolation remain part of M4.3 acceptance. This call produces no audio event on the measured route.
 
 `driver22_call.gdb` observes the actual native call read-only, checking D0/D1,
 all thirteen preserved registers, stack, the third completed native driver call
@@ -176,3 +175,60 @@ selector 17, Core+$17FC, with the Infogrames frame unchanged and original MDRV
 absent. At that next stop 480 services have entered and 479 completed; the known
 selector-17 $A0F8 service is in progress. Counts are 135 windows, 68 resource
 reads / 333,998 bytes and CODE mask $3FFB. Playback acceptance remains open.
+
+
+## Selector 17: raw one-shot effects
+
+Original Core+$17F0 pushes the packet and selector 17, calls through A5-$6AC
+at +$17FC and removes eight argument bytes. The 26-byte packet contains:
+
+| Offset | Field | First actual request |
+| --- | --- | --- |
+| 0 | unsigned 8-bit PCM pointer | 30,783 captured bytes |
+| 4 | sample byte count | 30,783 |
+| 8 | 16.16 sample rate | 8,000 Hz |
+| 12 / 16 | loop start / end offsets | 0 / 0 (one-shot) |
+| 20 | pointer to a signed loop counter | points to zero; unused without a loop |
+| 24 | effect identifier | $8000 |
+
+Driver+$3506 selects the first free effect slot following the six music slots.
+It stores the identifier separately from its voice-aging priority. The actual
+call selects slot 6, returns D0=0 and D1 with the argument's upper word and
+$7FFF in its lower word, preserving D2–D7/A0–A6 and the caller's stack.
+`mac_driver17.lua` captures the full state transition and natural completion:
+230 Mac ticks, cursor exactly at sample end, inactive voice, loop counter
+unchanged. The full sample remains local-only.
+
+The native path copies raw PCM into chip memory using Vette's XOR-$80
+conversion and DMA protocol. It never applies Vette's optional sample-header
+heuristic to this packet. The odd final sample is followed by signed-zero
+padding and a silent two-byte reload: 30,786 allocated bytes. PAL period 443
+approximates 8 kHz on Paula; volume is 64. D8 compares playback events and pitch,
+not the original software mixer's waveform or normalization.
+
+The timer starts after DMA latches, uses the actual Paula period (231 ticks),
+and allows one additional tick for VBI phase before reclaiming the buffer.
+Safe points, including the named-stop wait, quiesce the assigned hardware
+channel before freeing its buffer. Selector 22 and normal exit use the same
+cleanup. The logical sample identity is retained on stop, as on the Mac;
+no borrowed source pointer is used by DMA. Sample and packet reads are bounded
+within the owning Mac zone before copying.
+
+Loops, fractional rates, oversized samples and voice/channel stealing remain
+named stops. They are not replaced by one-shot playback or silently dropped.
+`check_driver17.py` compares the full original transition, request, sample,
+converted DMA bytes, native ABI, start event and natural cleanup. The existing
+host driver test also covers raw-header ambiguity, odd alignment, silent
+reload, rate limits and duration arithmetic against an independent 64-bit
+oracle. Native duration uses only 32-bit multiply/divide: this runtime does
+not link a 64-bit division helper.
+
+
+Accepted selector-17 evidence: `tmp/m2-driver17-reference-complete.log` and
+`tmp/m2-driver17-native-return-probe.log`, both terminal exit zero. The native
+observer stops at the stub's RTS and single-steps to the unchanged caller;
+a direct return-address breakpoint was missed in a rejected diagnostic run.
+The actual source and all 30,786 DMA bytes compare exactly. DMA changes
+$3F1→$3F0, the voice/channel becomes inactive/unassigned, and chip allocation
+becomes zero at tick 232. Nine AGA publications and all existing paired startup
+checks pass before the stop screen is drawn. Next: selector 20, Core+$17C8.

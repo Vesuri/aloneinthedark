@@ -12,7 +12,8 @@ design.md §5.
   support the measured initialization path; original MDRV code is never loaded.
 - MacPlay and the Infogrames logo have exact paired client pixels/colours. Nine
   AGA publications pass memory/copper checks. Full intro acceptance remains open.
-- The next stop is native sound-driver selector 17, called from Core+$17FC.
+- The next stop is native sound-driver selector 20, called from Core+$17C8.
+  The first raw effect plays on Paula and its sample/DMA cleanup is verified.
   Detailed completed service contracts and regression evidence are in
   [development.md](development.md). No Mac dialogs, menu bar or chrome are drawn.
 - The original runs in MAME on the System 7.5.5 reference volume.
@@ -47,20 +48,16 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.3g26 Native driver selector 17 (play effect).**
-  - Selector 22 now stops logical effect voices with the measured state/ABI.
-    The original next calls selector 17 from Core+$17FC after loading data.
-  - Check caller and MDRV bytes, the complete effect packet and sample data,
-    ownership/lifetime, rate/loop/volume/priority and return/register contract.
-    Measure original driver events. Implement the required native effect path
-    with Vette's Paula sample/channel tools under D8; no original mixer.
-  - Bring forward selector 22's physical-channel stop from M4.3 when effect
-    playback makes it reachable; do not leave a guessed successful stop.
+- **M2.3g27 Native driver selector 20 (effect status).**
+  - After starting the first one-shot effect, Core+$17C8 queries selector 20.
+    Check its caller/driver bytes and packet identifier matching, including
+    active, naturally completed and explicitly stopped effects.
+  - Implement status from real native voice lifecycle state; do not return
+    guessed completion to skip the original wait. Preserve the measured ABI.
 
-  *Done when* actual native effect requests/results and playback events match
-  the original trace, required channel/sample cleanup is verified, startup
-  reaches its next named stop with MDRV absent, and logo/palette/AGA/startup
-  regressions pass. Apply design §6's audio event-log comparison.
+  *Done when* original/native status sequences and results agree by playback
+  state, startup reaches its next named stop with MDRV absent, and the effect,
+  logo/palette/AGA/startup regressions pass.
 - **M2.1c Original File Manager read acceptance (after M2.2).**
   - This retains M2.1's original acceptance; diagnostic fixture reads do not count
     as original-game reads. M2.1b2a measured the intervening Get1NamedResource
@@ -121,11 +118,13 @@ required.
     prerequisite currently supplies the pinned PAL configuration.
   - A 256-colour copper palette through BPLCON3 banks, plus verified sprite
     palette ownership before enabling the pointer; preserve all game colours.
-  - Publication in the VBI.
+  - Publication in the VBI. Select the matching PAL/NTSC Paula clock for
+    effect pitch and completion timing; M2.3g26 currently uses PAL only.
 
   *Done when* a test pattern and a 256-colour ramp display correctly (by eye, plus
   a gdb register dump) on `a1200-020` in PAL and NTSC, and the visible pointer
-  preserves game colours. Other processors remain deferred (D2).
+  preserves game colours, and effect period/duration use the selected video
+  clock. Other processors remain deferred (D2).
 - **M2.6 8-bit C2P with dirty rectangles.**
   - Verify the eight-bit converter against an independent C oracle. Assembly
     optimization and timing work remain deferred to M5 (D2).
@@ -237,14 +236,25 @@ required.
   differences.
 - **M4.3 Sound effects and toggles.**
   - Effects through the driver's selectors take priority on the channels.
-  - Complete selector 22 for assigned Paula channels (currently the named
-    `EFFECT DMA STOP` stop), reusing Vette channel quiescing. Verify that effect
-    DMA/volume stop while music channels and sample ownership remain correct.
+  - Selector 22 now uses the same quiesce/free path as verified natural effect
+    completion. Exercise an actual active-effect stop through its interface,
+    including music-channel isolation and sample ownership.
   - The S/M keys and the game's toggles work.
   - `SysBeep` becomes a short Paula click.
 
   *Done when* the `audio` regression passes and effects in the first rooms match
   MAME by event.
+
+- **M4.3a Remaining effect packet/allocation variants.**
+  - M2.3g26 enables raw one-shots at integral rates. Loop boundaries/counter
+    updates, fractional rates, samples beyond one DMA segment and occupied
+    effect/Paula voice selection still have named stops.
+  - Bring any reached prerequisite forward. Measure the original driver before
+    implementing looping, aging/stealing and interaction with music.
+
+  *Done when* each reached variant has paired original/native playback events,
+  exact loop/sample ownership checks and verified stop/replacement cleanup;
+  unsupported variants retain named stops.
 
 ## M5 Performance
 

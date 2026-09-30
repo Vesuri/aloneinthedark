@@ -3483,3 +3483,30 @@ Next is SOUND DRIVER / SELECTOR 17, Core+$17FC: 135 windows, 480/479 services
 with one known driver call in progress, 68 reads / 333,998 bytes, CODE mask
 $3FFB. Fresh-preference counts remain derived (161 windows, 488/487 services).
 The measured effects playback dependency is next; full M2 remains open.
+
+
+## Native one-shot effect playback
+
+M2.3g26 is complete. Original selector 17 at Core+$17FC requests 30,783 unsigned
+PCM bytes at 8 kHz, no loop, identifier $8000. Full original state/ABI, natural
+completion and the entire native sample/converted DMA buffer match their
+contracts. The loop-counter pointer is unused on this one-shot route.
+Vette's Paula protocol plays period 443, volume 64, with odd-byte padding and
+a silent reload. The owned 30,786-byte chip buffer is released only after
+quiescing DMA; natural completion and selector 22 share that cleanup.
+See [sound-driver.md](sound-driver.md#selector-17-raw-one-shot-effects).
+
+Reference `tmp/m2-driver17-reference-complete.log` and native
+`tmp/m2-driver17-native-return-probe.log` both exit zero with positive markers.
+Native DMA changes $3F1→$3F0, active/channel become 0/-1, allocation becomes
+zero after 232 ticks (231-tick playback plus one VBI-phase allowance). The
+host suite, 87-script MAME literal audit, clean no-float/probe link audits and
+24 integrated checks pass, including exact effect PCM, nine AGA publications,
+logo/CopyBits, pictures/palettes, text/events, geometry/device state and all
+75,616 A5 bytes. MDRV remains absent. No rendered-window acceptance is claimed.
+
+Next is SOUND DRIVER / SELECTOR 20, Core+$17C8: 135 windows, 481/480 services
+with the known status query in progress, 68 resource reads / 333,998 bytes,
+CODE mask $3FFB. Fresh-preference counts remain derived (161, 489/488).
+Loops, fractional rates, oversized samples and occupied-voice selection retain
+named stops, tracked in M4.3a. Full M2 remains open.

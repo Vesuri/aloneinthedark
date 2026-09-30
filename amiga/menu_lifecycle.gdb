@@ -538,12 +538,12 @@ while $i<g_resourceCount
  set $i=$i+1
 end
 echo PASS menu-list next-stop original-MDRV=absent\n
-if g_trapWord!=0xa0f8 || g_trapSegment!=3 || g_trapOffset!=0x17fc || g_systemWindows!=$startup_windows || g_macServiceEntered!=$startup_entered || g_macServiceCompleted!=$startup_completed
+if g_trapWord!=0xa0f8 || g_trapSegment!=3 || g_trapOffset!=0x17c8 || g_systemWindows!=$startup_windows || g_macServiceEntered!=$startup_entered || g_macServiceCompleted!=$startup_completed
  echo FAIL menu-list startup endpoint\n
  detach
  quit 1
 end
-echo startup PASS: original main, next stop SOUND DRIVER / SELECTOR17 CODE 3\n
+echo startup PASS: original main, next stop SOUND DRIVER / SELECTOR20 CODE 3\n
 set $ri=0
 set $font_bodies=0
 while $ri<g_resourceCount
@@ -584,19 +584,20 @@ while $vi<6
  end
  set $vi=$vi+1
 end
-set $vi=0
-while $vi<2
- if g_soundDriver.effects[$vi].active!=0 || g_soundDriver.effects[$vi].sample!=0 || g_soundDriver.effects[$vi].channel!=-1
-  echo FAIL driver: effect voice initialization\n
-  detach
-  quit 1
- end
- set $vi=$vi+1
+if g_effectStarts!=1 || g_effectStops!=0 || g_soundDriver.effects[0].active!=1 || g_soundDriver.effects[0].channel!=0 || g_soundDriver.channels[0]!=6
+ echo FAIL driver: effect playback\n
+ detach
+ quit 1
 end
-set $vi=0
+if g_soundDriver.effects[1].active || g_soundDriver.effects[1].sample || g_soundDriver.effects[1].channel!=-1
+ echo FAIL driver: unused effect voice\n
+ detach
+ quit 1
+end
+set $vi=1
 while $vi<4
  if g_soundDriver.channels[$vi]!=-1
-  echo FAIL driver: native channel initialization\n
+  echo FAIL driver: unused channel\n
   detach
   quit 1
  end
@@ -605,7 +606,7 @@ end
 printf "DRIVER_COUNTS prep=%u/%u app=%u/%u overlay=%u/%u windows=%u services=%u/%u lowmem=%u mask=%x resources=%u\n",g_overlaySourceReads,g_overlaySourceBytes,g_resourceRuntimeReads,g_resourceRuntimeBytes,g_overlayRuntimeReads,g_overlayRuntimeBytes,g_systemWindows,g_macServiceEntered,g_macServiceCompleted,g_lowMemoryAppliedSites,g_loadedCodeMask,g_resourceCount
 set $screen=s_loudStopScreen
 printf "AGA_STOP state=%u trap=%X segment=%u offset=%X queued=%u presented=%u pending=%u\n",g_stageBState,g_trapWord,g_trapSegment,g_trapOffset,g_macFramesQueued,g_macFramesPresented,$screen->m_framePending
-if g_stageBState!=3 || g_trapWord!=0xa0f8 || g_trapSegment!=3 || g_trapOffset!=0x17fc || g_macFramesQueued!=9 || g_macFramesPresented>9
+if g_stageBState!=3 || g_trapWord!=0xa0f8 || g_trapSegment!=3 || g_trapOffset!=0x17c8 || g_macFramesQueued!=9 || g_macFramesPresented>9
  echo FAIL AGA startup boundary\n
  detach
  quit 1
@@ -629,6 +630,18 @@ if $screen->m_framePending || g_macFramesPresented!=9 || $screen->m_chip!=$targe
 end
 dump binary memory ../tmp/aga-startup-active-planes.bin (char*)$screen->m_chip (char*)$screen->m_chip+64000
 dump binary memory ../tmp/aga-startup-active-copper.bin (char*)$screen->m_copper (char*)$screen->m_copper+2248
-echo PASS AGA startup queued and VBI-published next=SELECTOR17\n
+echo PASS AGA startup queued and VBI-published next=SELECTOR20\n
+# The named stop stays visible; audio's safe-point cleanup must still finish.
+tbreak stopNativeEffect
+continue
+set $effect_stop_tick=g_macTicks
+finish
+printf "DRIVER17_CLEANUP starts=%u stops=%u tick=%u elapsed=%u active=%u channel=%d chip=%X allocated=%u dma=%X\n",g_effectStarts,g_effectStops,$effect_stop_tick,$effect_stop_tick-g_effects[0].started,g_soundDriver.effects[0].active,g_soundDriver.effects[0].channel,g_effects[0].chip,g_effects[0].allocated,*(unsigned short*)0xdff002
+if g_effectStarts!=1 || g_effectStops!=1 || g_soundDriver.effects[0].active || g_soundDriver.effects[0].channel!=-1 || g_soundDriver.channels[0]!=-1 || g_effects[0].chip || g_effects[0].allocated || (*(unsigned short*)0xdff002&15)
+ echo FAIL driver17 natural completion cleanup\n
+ detach
+ quit 1
+end
+echo PASS native driver17 natural completion DMA-off and sample released\n
 detach
 quit 0

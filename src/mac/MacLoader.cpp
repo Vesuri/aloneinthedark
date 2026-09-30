@@ -33,6 +33,7 @@
 #include "platform/amiga/PerfProbe.h"
 #include "platform/amiga/framework/AmigaHardware.h"
 #include "PaulaSample.h"
+#include "SoundEffect.h"
 
 extern "C" {
 void aitd_line_a_handler();
@@ -62,6 +63,13 @@ SoundDriver g_soundDriver;
 MacHeap::Handle g_soundDriverHandle=0;
 MacHeap::Handle g_defaultPalette=0;
 volatile uint32_t g_soundDriverCalls=0;
+struct NativeEffect {
+    uint8_t* chip;
+    uint32_t allocated,size,rate,started,ends,serial;
+    uint16_t period,id;
+};
+NativeEffect g_effects[2]={};
+volatile uint32_t g_effectStarts=0,g_effectStops=0;
 volatile uint16_t g_jumpEntryCount = 0;
 volatile uint16_t g_blockMoveCount = 0;
 volatile uint16_t g_stageCDepth = 1;       // _BlockMove is row 1
@@ -1235,6 +1243,72 @@ static void startPaulaSample(uint8_t* data, const PaulaSample::Layout& layout,
     waitPaulaDmaLines(2);
     *(volatile uint32_t*)(audio + 0) = (uint32_t)(data + layout.reloadOffset);
     *(volatile uint16_t*)(audio + 4) = (uint16_t)(layout.reloadBytes >> 1);
+}
+
+static void stopNativeEffect(uint16_t index)
+{
+    SoundDriver::Voice& voice=g_soundDriver.effects[index];
+    NativeEffect& effect=g_effects[index];
+    if(voice.channel>=0) {
+        quiescePaulaChannel((uint16_t)voice.channel);
+        g_soundDriver.channels[voice.channel]=-1;
+        voice.channel=-1;
+        ++g_effectStops;
+    }
+    voice.active=0;
+    if(effect.chip)FreeMem(effect.chip,effect.allocated);
+    effect.chip=0;effect.allocated=0;
+}
+
+static void serviceNativeEffects()
+{
+    for(uint16_t i=0;i<2;++i)
+        if(g_soundDriver.effects[i].active
+            && (int32_t)(g_macTicks-g_effects[i].ends)>=0)stopNativeEffect(i);
+}
+
+static bool effectRange(uint8_t* pointer,uint32_t bytes)
+{
+    MacHeap* zone=pointerZone(pointer);
+    return bytes && zone && bytes<=zone->capacity()
+        && (uint32_t)(pointer-zone->base())<=zone->capacity()-bytes;
+}
+
+static const char* playNativeEffect(uint8_t* packet,uint32_t& scratch)
+{
+    if(!g_soundDriver.initialized)return "NOT INITIALIZED";
+    if(((uint32_t)packet&1) || !effectRange(packet,26))return "EFFECT PACKET";
+    uint8_t* sample=(uint8_t*)read32(packet);
+    if(!sample)return 0; // Original +$3506 returns without touching voices.
+    uint32_t bytes=read32(packet+4),rate=read32(packet+8);
+    if(!effectRange(sample,bytes))return "EFFECT SAMPLE RANGE";
+    PaulaSample::Layout layout;uint16_t period;uint32_t ticks;
+    const char* error=SoundEffect::describe(sample,bytes,rate,read32(packet+12),
+                                           read32(packet+16),layout,period,ticks);
+    if(error)return error;
+    serviceNativeEffects();
+    uint16_t index=0;
+    if(g_soundDriver.effects[0].active) {
+        if(!g_soundDriver.effects[1].active)index=1;
+        else return "EFFECT VOICE STEAL"; // Original aging/priority not measured yet.
+    }
+    // Effects take free hardware voices first. Music voice stealing is M4.2.
+    int16_t channel=-1;
+    for(uint16_t i=0;i<4;++i)if(g_soundDriver.channels[i]<0) {channel=i;break;}
+    if(channel<0)return "EFFECT CHANNEL STEAL";
+    uint8_t* chip=(uint8_t*)AllocMem(layout.allocated,MEMF_CHIP);
+    if(!chip)return "EFFECT CHIP MEMORY";
+    PaulaSample::convert(layout,chip);
+    NativeEffect& effect=g_effects[index];
+    effect.chip=chip;effect.allocated=layout.allocated;effect.size=bytes;effect.rate=rate;
+    effect.period=period;effect.id=read16(packet+24);effect.serial=++g_effectStarts;
+    SoundDriver::Voice& voice=g_soundDriver.effects[index];
+    voice.sample=(uint32_t)sample;voice.channel=channel;voice.active=1;
+    g_soundDriver.channels[channel]=6+index;
+    startPaulaSample(chip,layout,channel,period,64);
+    effect.started=g_macTicks;effect.ends=effect.started+ticks+1; // Full duration after DMA latches.
+    scratch=(scratch&0xffff0000UL)|0x7fff; // Free-slot path at original +$3524.
+    return 0;
 }
 
 static uint8_t asciiUpper(uint8_t c)
@@ -5148,6 +5222,7 @@ static void presentMacRuntime()
 
 static void serviceMacRuntime()
 {
+    serviceNativeEffects();
     scheduleVBLTask();
     presentMacRuntime();
 }
@@ -6002,6 +6077,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     pollMacMouse();
     // Every handled trap return is a user-mode-safe opportunity to deliver
     // due VBL work, then to present the pixels drawn since the last boundary.
+    serviceNativeEffects();
     scheduleVBLTask();
     presentMacRuntime();
     if(read16(s_windowManagerPixMap+32)==8) {
@@ -6072,15 +6148,20 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
             driverStop="ENTRY";
         } else {
             uint32_t selector=read32(userStack+4),argument=read32(userStack+8);
+            uint32_t scratch=argument;
             if(selector==21) {
                 uint8_t* packet=(uint8_t*)argument;
                 if(!packet || (argument&1))driverStop="VOICE PACKET";
                 else driverStop=g_soundDriver.initialize(read16(packet),read16(packet+2),read16(packet+4));
-            } else if(selector==22)driverStop=g_soundDriver.stopEffects();
+            } else if(selector==17)driverStop=playNativeEffect((uint8_t*)argument,scratch);
+            else if(selector==22) {
+                if(g_soundDriver.initialized)for(uint16_t i=0;i<2;++i)stopNativeEffect(i);
+                driverStop=g_soundDriver.stopEffects();
+            }
             else if(selector==24)driverStop=g_soundDriver.quality(argument);
             else driverStop="SELECTOR";
             if(!driverStop) {
-                ++g_soundDriverCalls;regs[0]=0;regs[1]=selector==24 ? 1 : selector==22 ? argument : 0;
+                ++g_soundDriverCalls;regs[0]=0;regs[1]=selector==24 ? 1 : (selector==22 || selector==17) ? scratch : 0;
                 return 1; // C caller owns arguments; stub executes RTS.
             }
         }
@@ -7685,7 +7766,7 @@ unsupportedTrap:
     if (s_loudStopScreen)
         s_loudStopScreen->showLoudStop(manager, routine, g_trapSelector,
                                        segmentName, g_trapOffset, trap);
-    for (;;) { }                             // VBI remains enabled, so the report stays live
+    for (;;) { serviceNativeEffects(); }     // Finish audio safely while the named report stays live.
 }
 
 // Called by RTE in user mode. Shift the parked register/CCR/PC image over
@@ -7899,7 +7980,7 @@ static void showLoaderStop()
     if (s_loudStopScreen)
         s_loudStopScreen->showLoudStop(g_trapManager, g_trapRoutine, -1,
                                        segmentName[0] ? segmentName : "UNKNOWN", 0, 0);
-    for (;;) { }                             // VBI remains enabled, so the report stays live
+    for (;;) { serviceNativeEffects(); }     // Finish audio safely while the named report stays live.
 }
 
 static void installLineAVector()
@@ -8035,6 +8116,7 @@ bool MacLoader::run(AitdScreen* screen)
     restoreLineAVector();
     // Leave all four Paula DACs holding signed zero before PlatformAmiga
     // restores the operating system, whichever exit route was taken.
+    for(uint16_t i=0;i<2;++i)stopNativeEffect(i);
     for (uint16_t channel = 0; channel < 4; ++channel) quiescePaulaChannel(channel);
     g_macExitState = 4;
     return true;

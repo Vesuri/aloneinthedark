@@ -4,8 +4,8 @@
 #include <stdint.h>
 #endif
 
-// Native D8 interface state. Playback/selectors beyond measured startup stop.
-// Logical voices do not allocate Mac software-mixer buffers or Paula DMA yet.
+// Native D8 interface state. MacLoader owns the Paula DMA buffers and must
+// quiesce assigned channels before asking this model to stop logical voices.
 class SoundDriver {
 public:
     struct Voice { uint32_t sample; int16_t channel; uint16_t active; };
@@ -34,8 +34,8 @@ public:
     const char* stopEffects() {
         if(!initialized)return "NOT INITIALIZED";
         // The measured driver marks effect voices inactive without discarding
-        // their sample state or altering song voices. Paula playback is not yet
-        // installed; an allocated physical channel needs its later stop path.
+        // their sample state or altering song voices. Reject a caller that bypasses
+        // the hardware owner: assigned channels must already be quiesced.
         for(const auto& voice:effects)if(voice.channel!=-1)return "EFFECT DMA STOP";
         for(auto& voice:effects)voice.active=0;
         return 0;

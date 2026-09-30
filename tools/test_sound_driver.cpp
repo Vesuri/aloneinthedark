@@ -1,9 +1,36 @@
 #include "../src/mac/SoundDriver.h"
+#include "../src/mac/SoundEffect.h"
+#include <vector>
 #include <cassert>
 #include <cstring>
 #include <cstdio>
 #include <initializer_list>
 int main() {
+    // Raw effect data can resemble Vette's eight-byte header: do not strip it.
+    std::vector<uint8_t> pcm(30783),converted(30786);
+    for(unsigned i=0;i<pcm.size();++i)pcm[i]=(uint8_t)(i*17);
+    pcm[6]=(uint8_t)((pcm.size()-8)>>8);pcm[7]=(uint8_t)(pcm.size()-8);
+    PaulaSample::Layout layout;uint16_t period;uint32_t ticks;
+    assert(!SoundEffect::describe(pcm.data(),pcm.size(),8000u<<16,0,0,layout,period,ticks));
+    assert(layout.pcm==pcm.data() && layout.size==pcm.size() && layout.attackBytes==30784);
+    assert(layout.allocated==30786 && layout.reloadOffset==30784 && layout.reloadBytes==2);
+    assert(period==443 && ticks==231);
+    PaulaSample::convert(layout,converted.data());
+    for(unsigned i=0;i<pcm.size();++i)assert(converted[i]==(pcm[i]^0x80));
+    assert(!converted[30783] && !converted[30784] && !converted[30785]);
+    assert(SoundEffect::describe(pcm.data(),0,8000u<<16,0,0,layout,period,ticks));
+    assert(SoundEffect::describe(pcm.data(),131071,8000u<<16,0,0,layout,period,ticks));
+    assert(SoundEffect::describe(pcm.data(),4,(8000u<<16)|1,0,0,layout,period,ticks));
+    assert(SoundEffect::describe(pcm.data(),4,1u<<16,0,0,layout,period,ticks));
+    assert(SoundEffect::describe(pcm.data(),4,65535u<<16,0,0,layout,period,ticks));
+    assert(SoundEffect::describe(pcm.data(),4,8000u<<16,1,3,layout,period,ticks));
+    for(unsigned hz: {55u,8000u,11025u,22050u,28000u}) {
+        assert(!SoundEffect::describe(pcm.data(),131070,hz<<16,0,0,layout,period,ticks));
+        uint64_t clocks=uint64_t(layout.attackBytes)*period*60;
+        uint32_t exact=(clocks+3546894)/3546895;
+        assert(ticks>=exact && ticks-exact<=1);
+    }
+    std::puts("PASS raw Paula effect: full PCM, odd pad/silent reload, period/duration and unsupported configurations");
     SoundDriver driver;
     assert(!driver.initialized);
     assert(!std::strcmp(driver.stopEffects(),"NOT INITIALIZED"));
