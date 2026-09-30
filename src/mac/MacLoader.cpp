@@ -20,6 +20,9 @@
 #include "SoundDriver.h"
 #include "SongTimeline.h"
 #include "SongVoice.h"
+#ifdef AITD_DRIVER_CLOCK_PROBE
+extern "C" void aitdDriverClockProbe();
+#endif
 #include "MenuRecords.h"
 #include "AppleEventHandlers.h"
 #include "DialogItems.h"
@@ -6511,12 +6514,12 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
             driverStop="ENTRY";
         } else {
             uint32_t selector=read32(userStack+4),argument=read32(userStack+8);
-            uint32_t scratch=argument;uint16_t driverResult=0;
+            uint32_t scratch=argument,clockResult=0;uint16_t driverResult=0;
             if(selector==0)driverStop=startNativeSong(argument);
             else if(selector==21) {
                 uint8_t* packet=(uint8_t*)argument;
                 if(!packet || (argument&1))driverStop="VOICE PACKET";
-                else driverStop=g_soundDriver.initialize(read16(packet),read16(packet+2),read16(packet+4));
+                else driverStop=g_soundDriver.initialize(read16(packet),read16(packet+2),read16(packet+4),g_macTicks);
             } else if(selector==17)driverStop=playNativeEffect((uint8_t*)argument,scratch);
             else if(selector==20) {
                 uint8_t* packet=(uint8_t*)argument;
@@ -6531,6 +6534,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
                 driverStop=g_soundDriver.stopEffects();
             }
             else if(selector==13)driverStop=g_soundDriver.setSongControl(argument);
+            else if(selector==15)driverStop=g_soundDriver.clock(g_macTicks,clockResult);
             else if(selector==24) {
                 driverStop=g_soundDriver.quality(argument);
 #ifdef AITD_SONG_PROBE
@@ -6539,7 +6543,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
             }
             else driverStop="SELECTOR";
             if(!driverStop) {
-                ++g_soundDriverCalls;regs[0]=driverResult;regs[1]=selector==0 ? 12 : selector==24 ? 1 : (selector==22 || selector==17 || selector==20 || selector==13) ? scratch : 0;
+                ++g_soundDriverCalls;regs[0]=selector==15 ? clockResult : driverResult;regs[1]=selector==0 ? 12 : selector==24 ? 1 : (selector==22 || selector==17 || selector==20 || selector==13 || selector==15) ? scratch : 0;
                 return 1; // C caller owns arguments; stub executes RTS.
             }
         }
@@ -8152,6 +8156,7 @@ extern "C" uint8_t* aitdUserServiceDispatch(uint8_t* parked)
 {
     ++g_macServiceEntered;
     const uint16_t trap=s_userService.trap,selector=(uint16_t)read32(parked);
+    const bool driverClock=trap==0xa0f8 && read32(s_userService.arguments+4)==15;
     const uint16_t fileTrap=synchronousFileTrap(trap,selector);
     uint8_t* pb=(uint8_t*)read32(parked+32);
     const bool async=fileTrap!=trap;
@@ -8189,7 +8194,9 @@ extern "C" uint8_t* aitdUserServiceDispatch(uint8_t* parked)
         --g_macFileCompletionDepth;
         write32(parked,value);
     }
-    if(!(trap&0x0800)) {
+    if(driverClock) {
+        ccr=(ccr&0xffe0)|SoundDriver::clockCCR(read32(parked));
+    } else if(!(trap&0x0800)) {
         ccr&=0xfff0;
         int16_t d0=(int16_t)read16(parked+2);
         if(d0<0)ccr|=8;else if(!d0)ccr|=4;
@@ -8479,6 +8486,16 @@ bool MacLoader::run(AitdScreen* screen)
     aitd_call_mac_code((void*)aitdFileProbe,a5,g_macStackBase+65536);
     restoreLineAVector();
     return true; // Diagnostic exits through normal OS restoration and file cleanup.
+#endif
+#ifdef AITD_DRIVER_CLOCK_PROBE
+    if(g_soundDriver.initialize(6,2,2,g_macTicks)) {
+        loaderStop("DRIVER CLOCK PROBE SETUP",3);showLoaderStop();
+    }
+    CacheClearU();
+    installLineAVector();
+    aitd_call_mac_code((void*)aitdDriverClockProbe,a5,g_macStackBase+65536);
+    restoreLineAVector();
+    return true;
 #endif
     g_stageBState = 1;
     uint8_t* firstJump = a5 + s_jumpTableOffset;

@@ -507,3 +507,74 @@ in `tmp/m2-song-voices-rejections.log`. A standalone 68020 cross-compilation
 passes; its only unresolved arithmetic helper is integer `__udivdi3`.
 These helpers supply the runtime implementation documented above; resource
 ownership, scheduling and hardware access remain in MacLoader.
+
+
+## Driver callback clock (M2.3g39)
+
+The next reached query is selector 15, argument zero, at Core+$0FC8. Original
++$0FBE–$0FCB bytes are `42a74878000f206df9544e90508f`. Its dispatch entry at
+MDRV+$0070 is `6000012a`; the body at +$019C is
+`202c18806000ff0e`: return the longword at state+$1880 directly, bypassing
+the ordinary 16-bit status return. D1 receives the full argument; D2–D7/A0–A6
+and the pre-JSR stack are preserved. Apart from dispatch selector/argument and
+cleared error word, the entire 12,360-byte driver state is unchanged.
+
+`tmp/m2-driver15-reference.log` exits zero with the actual query returning
+$27EF and an isolated original-CPU fixture returning $89ABCDEF. The latter
+uses argument $12345678 and proves both the full-width result and D1 behavior.
+Nine rejection checks cover timeout, missing completion, truncated result,
+observer error, callback count, callback path and clock rate. No game instructions are patched.
+
+A separate read-only counter observation, `tmp/m2-driver-clock-reference.log`
+(exit zero), runs from quality setup to the first query. The original counter
+advances from 5 to $27DC: exactly 10,199 double-buffer callbacks at +$06FE over
+10,198 Mac ticks. Neither legacy-hardware +$0824 nor device +$3B16 is used.
+The one-count boundary difference is callback/tick phase. The clock runs during
+the intro before song start; it is not a MIDI event count or song-relative time.
+`mac_driver_clock.lua` preserves this observer.
+
+The original also returns condition codes from the full longword. A short
+isolated CPU fixture, `tmp/m2-driver15-flags-reference.log` (exit zero), measures
+seven results: 0, 1, $8000, $10000, $80000000, $89ABCDEF and $FFFFFFFF.
+Their X/N/Z/V/C values are 4, 0, 0, 0, 8, 8 and 8. The dispatch shift clears X;
+the query's MOVE.L sets N/Z and clears V/C. This differs from the normal native
+OS-service bridge, which tests D0.W. The native bridge now uses this measured 32-bit flag contract. The integrated
+observation precedes the flag correction; the separate native bridge fixture
+verifies the corrected code at every boundary.
+
+The native D8 implementation uses elapsed 60 Hz ticks from driver initialization,
+with unsigned 32-bit wrap. It is independent of active songs/effects; querying
+it does not alter driver state. Host checks cover a nonzero epoch, tick wrap,
+high-bit results, reset and quality/effect-stop preservation. No original mixer
+callback is executed. The native original-call capture and all 36 prior integrated comparisons pass
+at the new selector-4 stop.
+
+```sh
+python3 tools/check_driver15.py tmp/m2-driver15-reference.log --status 0 \
+  --clock tmp/m2-driver-clock-reference.log --clock-status 0
+```
+
+
+`tmp/m2-driver15-native-full.log` exits zero: the actual query returns $CBCE,
+equal to sampled tick $CCD8 minus initialization epoch $010A, preserving D1,
+13 registers, stack and the entire native driver state. Music has advanced to
+820 events at pulse 1959 by the observed song-start return; that event count and
+tempo match the original trace between pulses 1948 and 1983. All 41 retained
+resource bodies and their ownership still match. At the final selector-4 stop,
+music is at pulse 1961, with 410 starts, 152 steals and no dropped notes.
+Playback can advance while the original call completes; a zero-event snapshot
+is not a stable return requirement.
+
+`tmp/m2-driver15-flags-native-fixed-full.log` exits zero and matches all seven
+original boundary results, D1 and all five flags through the real Jnth trap and
+user-service bridge. `DRIVERCLOCKPROBE=1` runs this short fixture before game
+startup, briefly holding interrupts around each allocation-free query. The
+first fixture attempt stopped at `RESOURCE READ OUTSIDE USER SERVICE`; it is
+rejected. Setup now loads Jnth through the actual GetResource trap. No original
+MDRV executes. Final production and fixture links pass no-float and 83/87-symbol
+audits; the host suite and 36 integrated checks pass.
+
+Active music can defer additional ordinary traps to safe user mode, so service
+counts after song start are no longer a fixed baseline plus effect queries.
+The endpoint retains exact resource/window checks, a service-count minimum and
+one explicitly pending service. Each capture reports its actual totals.

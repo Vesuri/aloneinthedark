@@ -552,7 +552,7 @@ while $i<g_resourceCount
  set $i=$i+1
 end
 echo PASS menu-list next-stop original-MDRV=absent\n
-if g_trapWord!=0xa0f8 || g_trapSegment!=3 || g_trapOffset!=0xfc8 || g_trapSelector!=15 || g_macServiceActive!=1 || g_systemWindows!=$startup_windows || g_macServiceEntered!=$startup_entered+g_effectStatusCalls || g_macServiceCompleted!=$startup_completed+g_effectStatusCalls
+if g_trapWord!=0xa0f8 || g_trapSegment!=3 || g_trapOffset!=0x1fc8 || g_trapSelector!=4 || g_macServiceActive!=1 || g_systemWindows!=$startup_windows || g_macServiceEntered<$startup_entered+g_effectStatusCalls || g_macServiceCompleted<$startup_completed+g_effectStatusCalls || g_macServiceEntered!=g_macServiceCompleted+1
  echo FAIL menu-list startup endpoint\n
  detach
  quit 1

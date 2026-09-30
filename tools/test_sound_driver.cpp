@@ -6,6 +6,21 @@
 #include <cstdio>
 #include <initializer_list>
 int main() {
+    const uint32_t flagValues[]={0,1,0x8000,0x10000,0x80000000u,0x89abcdefu,0xffffffffu};
+    const uint16_t flagResults[]={4,0,0,0,8,8,8};
+    for(unsigned i=0;i<7;++i)assert(SoundDriver::clockCCR(flagValues[i])==flagResults[i]);
+    SoundDriver clock;uint32_t value=0x13579bdf;
+    assert(clock.clock(0,value) && value==0x13579bdf);
+    assert(!clock.initialize(6,2,2,0xfffffff0u));
+    const SoundDriver unchanged=clock;
+    for(uint32_t delta:{0u,1u,60u,0x89abcdefu,0xffffffffu}) {
+        assert(!clock.clock(0xfffffff0u+delta,value) && value==delta);
+        assert(!std::memcmp(&clock,&unchanged,sizeof(clock)));
+    }
+    assert(!clock.quality(0x10b));assert(!clock.stopEffects());
+    assert(!clock.clock(0x50,value) && value==96);
+    clock.reset();assert(!clock.clockOrigin && clock.clock(0,value));
+
     // Raw effect data can resemble Vette's eight-byte header: do not strip it.
     std::vector<uint8_t> pcm(30783),converted(30786);
     for(unsigned i=0;i<pcm.size();++i)pcm[i]=(uint8_t)(i*17);

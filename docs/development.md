@@ -3966,3 +3966,36 @@ bytes; overlay 31 / 82,238 and preparation 64 / 82,810. The 244 metadata records
 real, but normal startup reaches the next selector before its first note; the
 complete playback evidence comes from the dedicated fixture. M2 and rendered
 acceptance remain open.
+
+
+## Driver clock query
+
+M2.3g39 is complete. Selector 15 returns elapsed driver ticks as a full 32-bit
+value, with the measured original register/stack and condition-code contract.
+The original query, independent callback-clock count and seven boundary cases
+pass in `tmp/m2-driver15-reference.log`, `tmp/m2-driver-clock-reference.log`
+and `tmp/m2-driver15-flags-reference.log` (all exit zero).
+
+`tmp/m2-driver15-native-full.log` exits zero after original intro return
+(D0=0, 5,564 frames / 47,476 ticks), song ownership and the clock call. The next
+named stop is selector 4 at Core+$1FC8. All 36 prior comparisons pass in
+`tmp/m2-driver15-regressions.log`. The subsequent flag correction passes the
+short real-trap fixture in `tmp/m2-driver15-flags-native-fixed-full.log`; that
+corrected fixture, rather than the preceding integrated run, establishes CCR
+acceptance. Its initial outside-service resource read is a rejected fixture.
+See [sound-driver.md](sound-driver.md) for the exact values and test commands.
+
+Final publication is 5,567/5,567, with 249 system windows and 3,822/3,821
+services, one pending. There are 1,364 completed effect-status queries and
+1,402 driver calls. All 16 effects are stopped with no remaining effect DMA.
+Music is active at 820 events / pulse 1961, with 410 note starts, 152 steals and
+zero drops. The 41 owned resource bodies match the original; original MDRV is
+absent. Application reads remain 109/826,832 bytes; overlay 31/82,238,
+preparation 64/82,810, 244 records, 58 low-memory sites and CODE mask $3FFB.
+
+Live music adds timing-dependent safe-point services. The observed baseline is
+2,458/2,457 after subtracting effect queries; observer minima are 1,390/1,389
+(existing prefs) and derived 1,398/1,397 (fresh). Exact window/resource counts
+and the single-pending-service invariant remain required. Fresh-start, rendered
+and full-intro frame acceptance remain open. The full host suite and final
+production/fixture no-float and 83/87-probe audits pass.

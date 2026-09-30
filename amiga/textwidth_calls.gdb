@@ -135,6 +135,9 @@ while $tw_finished==0
     tbreak *(g_code3Base+0x138c)
     continue
     source song_start_call.gdb
+    tbreak *(g_code3Base+0xfc8)
+    continue
+    source driver15_call.gdb
     continue
     loop_break
    end

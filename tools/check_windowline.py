@@ -15,9 +15,10 @@ def check(reference,status,native=None,native_status=None):
     if native:
         log=native.read_text()
         if native_status!=0 or re.search(r'FAIL|Error in|TIMEOUT|Program received signal',log) or log.count('[Inferior 1 (Remote target) detached]')!=1 or log.count('PASS native original window LineTo caller stack registers and pen position')!=1:raise ValueError('native completion')
-        end=re.search(r'(?:WINDOWLINE_NEXT|MLIST_NEXT) state=3 trap=A0F8 (?:selector=F )?segment=3 offset=FC8 manager=SOUND DRIVER routine=SELECTOR windows=249 services=(\d+)/(\d+)',log)
-        q=re.search(r'NEXT_DRIVER .*statuses=(\d+)',log) or re.search(r'WINDOWLINE_NEXT .*queries=(\d+)',log)
-        if not end or not q or int(end[1])-int(q[1])!=1389 or int(end[2])-int(q[1])!=1388:raise ValueError('next named stop/service accounting')
+        # Live music adds safe-point service entries after this line. Validate
+        # the common completed-run ledger instead of a fixed later query count.
+        from check_native_driver import check as check_run
+        check_run(log,native_status)
         if 'WINDOWLINE_DIRTY top=150 left=420 bottom=350 right=421' not in log:raise ValueError('dirty rectangle')
     with tempfile.TemporaryDirectory(prefix='aitd-windowline-') as work:
         exe=Path(work)/'test'

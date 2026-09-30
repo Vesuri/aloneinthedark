@@ -77,7 +77,7 @@ set $region=**(unsigned long**)($dialog+122)
 dump binary memory ../tmp/dialog-native-update.bin $region $region+10
 continue
 printf "DIALOG_NEXT state=%u trap=%X selector=%X segment=%u offset=%X routine=%s windows=%u services=%u/%u resources=%u/%u\n",g_stageBState,g_trapWord,g_trapSelector,g_trapSegment,g_trapOffset,g_trapRoutine,g_systemWindows,g_macServiceEntered,g_macServiceCompleted,g_resourceRuntimeReads,g_resourceRuntimeBytes
-if g_stageBState!=3 || g_trapWord!=0xa0f8 || g_trapSegment!=3 || g_trapOffset!=0xfc8 || g_trapSelector!=15 || g_macServiceActive!=1 || g_macServiceActive!=1 || g_systemWindows!=$startup_windows || g_macServiceEntered!=$startup_entered+g_effectStatusCalls || g_macServiceCompleted!=$startup_completed+g_effectStatusCalls || g_resourceRuntimeReads!=109 || g_resourceRuntimeBytes!=826832 || *(unsigned long*)(g_trapRoutine+0)!=0x53454c45 || *(unsigned long*)(g_trapRoutine+4)!=0x43544f52 || g_trapRoutine[8]!=0
+if g_stageBState!=3 || g_trapWord!=0xa0f8 || g_trapSegment!=3 || g_trapOffset!=0x1fc8 || g_trapSelector!=4 || g_macServiceActive!=1 || g_macServiceActive!=1 || g_systemWindows!=$startup_windows || g_macServiceEntered<$startup_entered+g_effectStatusCalls || g_macServiceCompleted<$startup_completed+g_effectStatusCalls || g_resourceRuntimeReads!=109 || g_resourceRuntimeBytes!=826832 || *(unsigned long*)(g_trapRoutine+0)!=0x53454c45 || *(unsigned long*)(g_trapRoutine+4)!=0x43544f52 || g_trapRoutine[8]!=0 || g_macServiceEntered!=g_macServiceCompleted+1
  echo FAIL hidden dialog next stop\n
  detach
  quit 1

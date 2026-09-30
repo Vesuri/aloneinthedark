@@ -19,7 +19,8 @@ design.md §5.
   the post-intro offscreen copy also matches. GetKeys now passes its original-call and native
   held/released-key checks. Selector 13 now passes its control-word/ABI checks;
   selector 0 now retains and arms song $87 with verified native playback.
-  The next stop is selector 15 at Core+$0FC8.
+  The clock query now passes its original ABI and 32-bit condition-code checks.
+  The next stop is selector 4 at Core+$1FC8.
   Intro LineTo and mode-0 fills match the Mac; the first raw effect plays on Paula and its
   real polling loop observes completion with sample/DMA cleanup verified.
   Detailed completed service contracts and regression evidence are in
@@ -56,19 +57,19 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.3g39 Native sound-driver selector 15.**
-  - Selector 0 now returns successfully, retaining the measured 41-resource
-    graph and arming SONG 135/MIDI 905. A complete native playback fixture
-    matches all 3,736 timed events and verifies Paula PCM and cleanup.
-  - The original caller next requests selector 15, argument zero, at
-    Core+$0FC8. Original bytes +$0FBE–$0FCB are
-    `42a74878000f206df9544e90508f`.
-  - Measure and implement this request through the existing native D8 seam.
-    Other unsupported selectors remain named stops; do not run original MDRV.
+- **M2.3g40 Native sound-driver selector 4.**
+  - The clock query now passes the actual caller and seven full-width return/
+    condition-code fixtures. The original intro returns successfully; the latest
+    native run advances 820 song events before this next stop.
+  - Core+$1FC8 requests selector 4. Original +$1FC0–$1FCB bytes are
+    `48780004206df9544e90588f`: only the selector is pushed, with four-byte
+    caller cleanup. Do not interpret the following stack contents as an argument.
+  - Measure and implement the reached request through the native D8 seam.
+    Other unsupported selectors remain named stops; original MDRV stays absent.
 
-  *Done when* its original arguments, return ABI and state match MAME, a bounded
-  native observation passes the reached call, and prior song/intro contracts
-  remain valid with original MDRV absent.
+  *Done when* original return ABI/state (including condition codes) match MAME,
+  a bounded native observation passes this call, and prior intro, song ownership
+  and playback contracts remain valid.
 - **M2.1c Original File Manager read acceptance (after M2.2).**
   - This retains M2.1's original acceptance; diagnostic fixture reads do not count
     as original-game reads. M2.1b2a measured the intervening Get1NamedResource
