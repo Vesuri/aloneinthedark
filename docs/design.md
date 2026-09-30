@@ -221,10 +221,10 @@ The original startup path is implemented (M1.1–M1.3):
 **Verified:** the host check `tools/a5world_check.py` passes: it runs
 CODE 1's expansion algorithm on the resource bytes and compares, byte for byte,
 with the A5 world the Amiga dumps (via gdb) when it enters `main`. The current
-loud stop is `RESOURCE MANAGER / DETACHRESOURCE` at Dan2+$0210. Startup passes the native
+loud stop is `QUICKDRAW / NEWGWORLD` at Dan2+$0234. Startup passes the native
 driver calls, both Times lookups, hidden window/menu setup and eight-bit
 offscreen initialization, original image-row copying and the 20-call rectangle
-union loop. Driver and installed
+union loop and already-detached resource error. Driver and installed
 font startup acceptance pass; original MDRV loading remains forbidden.
 
 

@@ -44,8 +44,11 @@ all 75,616 bytes and both link audits pass. Counts are 101 OS handbacks, 163
 completed services and 62 original resource reads / 265,454 bytes. The extra
 20 reads belong to the newly executed preparation loop.
 
-The next named stop is DetachResource at Dan2+$0210. M2.3g5 retains its measured
-ownership/error behavior as pending work. No intro or rendered-font acceptance
+At rectangle acceptance the next stop was DetachResource at Dan2+$0210.
+That call now passes its measured already-detached error; the shared observer
+continues to NewGWorld at Dan2+$0234 (M2.3g6). Historical log commands above
+describe the rectangle checkpoint; use the current combined capture for current
+endpoint checks. No intro or rendered-font acceptance
 is claimed. Fresh-preference endpoint counts (127/171) retain the previously
 measured +26 windows/+8 services difference; this change's native acceptance
 uses existing preferences.

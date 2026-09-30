@@ -80,7 +80,7 @@ def check(reference,native,reference_status,native_status,resource,folder):
             if name=='device-inverse':data=data[:4364] # Exclude undefined tail scratch bytes.
             normalized.append(data)
         assert normalized[0]==normalized[1],'paired '+name+' defined bytes'
-    print('PASS paired NewGWorld: 27 owned handles, port/PixMaps/patterns/device, 4096 inverse entries and collision links, exact colour copy, 261452 pixel bytes; '+one(native,r'GW_NEXT (state=3 trap=A992 selector=FFFFFFFF segment=13 offset=210 manager=RESOURCE MANAGER routine=DETACHRESOURCE windows=(?:101|127) services=(?:163/163|171/171))'))
+    print('PASS paired NewGWorld: 27 owned handles, port/PixMaps/patterns/device, 4096 inverse entries and collision links, exact colour copy, 261452 pixel bytes; '+one(native,r'GW_NEXT (state=3 trap=AB1D selector=0 segment=13 offset=234 manager=QUICKDRAW routine=NEWGWORLD windows=(?:101|127) services=(?:163/163|171/171))'))
 
 
 if __name__=='__main__':

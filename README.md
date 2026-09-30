@@ -36,11 +36,13 @@ viewport unchanged. SetGWorld binds the game drawing port and startup loads
 Dark. TickCount reads the existing 60 Hz integer clock with the measured Mac
 calling convention. The following size/origin requests preserve the already-correct
 320×200 window. SetPt initializes the drawing point; startup then stops explicitly
-at `DETACHRESOURCE` (Dan2+$0210), after allocating the original empty
+at `NEWGWORLD` (Dan2+$0234), after allocating the original empty
 region and real eight-bit GWorlds, binding and clipping them, locking and clearing
 their pixels, unlocking them and restoring the game drawing port. Pixel-address
 access then lets the original copy its first 512×56 image into a real buffer.
 The following 20-call image rectangle loop now matches the Mac exactly.
+The already-detached table call returns the measured resource error without
+changing the table.
 Startup also clears and rebuilds the four game menus as hidden records; no menu
 bar is drawn. Native driver initialization is accepted through the second Times
 lookup, which returns family 20. The original mixer
@@ -56,7 +58,7 @@ serve memory and resource handles. System identity and all eleven derived
 capability flags match the Mac reference. The user-mode service bridge passes
 its native ABI probe. OS windows and DOS/resload adapters pass the native/host
 core probes; rendered-picture acceptance is owner-deferred (M1.7b2). The next
-items are image-preparation resource detachment and original PAK-read acceptance. Both original
+items are image-preparation world allocation and original PAK-read acceptance. Both original
 Times lookups now pass register, stack, error-state and installed-font checks. Fresh and existing preferences now request WIND 128
 through the original instructions, with only the size byte changed.
 The logical device has real 640×480×8 storage; its four selection calls match
@@ -68,7 +70,7 @@ read acceptance still needs the intervening drawing services and payload checks.
 Resource bodies now stream from disk into zone handles; startup retains the
 4,998-byte map instead of the 1,424,934-byte application fork. The `resource-read`
 regression verifies original bytes and bounded runtime resource reads; the
-current stop is image-preparation resource detachment (DetachResource); original MDRV loading stays forbidden. Named/ID/indexed lookup, resource counts and metadata, purge/reload and release now
+current stop is image-preparation world allocation (NewGWorld); original MDRV loading stays forbidden. Named/ID/indexed lookup, resource counts and metadata, purge/reload and release now
 pass paired Mac/native checks. Native resource staging now passes exact publication,
 abort, rollback and stale-file checks. Resource-file open/create/update/close,
 AddResource, multi-fork search, noncurrent close and invalid update pass a

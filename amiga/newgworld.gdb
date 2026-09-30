@@ -153,7 +153,7 @@ dump binary memory ../tmp/gworld-native-aux-device-inverse.bin (char*)$body (cha
 echo PASS native NewGWorld allocation\n
 continue
 printf "GW_NEXT state=%u trap=%X selector=%X segment=%u offset=%X manager=%s routine=%s windows=%u services=%u/%u\n",g_stageBState,g_trapWord,g_trapSelector,g_trapSegment,g_trapOffset,g_trapManager,g_trapRoutine,g_systemWindows,g_macServiceEntered,g_macServiceCompleted
-if g_stageBState!=3 || g_trapWord!=0xa992 || g_trapSelector!=-1 || g_trapSegment!=13 || g_trapOffset!=0x210 || g_macServiceActive!=0
+if g_stageBState!=3 || g_trapWord!=0xab1d || g_trapSelector!=0 || g_trapSegment!=13 || g_trapOffset!=0x234 || g_macServiceActive!=0
  echo FAIL NewGWorld progression\n
  detach
  quit 1

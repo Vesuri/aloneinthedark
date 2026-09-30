@@ -3005,3 +3005,37 @@ services and 62 resource reads / 265,454 bytes; next is DetachResource at Dan2+$
 The full host suite passes (`tmp/m2-unionrect-host.log`). Observers are pinned
 to that new boundary. Fresh-preference counts are derived,
 not a newly accepted run. Original PAK payload acceptance remains pending.
+
+
+## Already-detached resource handles
+
+M2.3g5 accepts the original Dan2+$0210 DetachResource call. GetCTable already
+returned an owned table, so the Mac returns ResErr -192 and zero-extended D0
+$FF40, clears A0, consumes four bytes and preserves MemErr, other registers and
+the handle/body. The native boundary now returns that error for valid owned
+handles absent from the resource association table; invalid handles still stop.
+Attached and dirty-resource behavior is unchanged.
+
+`mac_detached_resource.lua` measures the original call plus repeat, locked,
+empty and nil cases, using CPU-only fixtures. The independent checker guards
+original bytes and the live A5-relocated immediate, then checks results and
+2,056-byte table preservation. Native flags remain owned/unlocked and unchanged;
+no resource association appears. Cross-platform comparison excludes only the
+independently allocated four-byte colour seed, as in prior GetCTable acceptance.
+
+Accepted captures: `tmp/m2-detached-reference.log` and
+`tmp/m2-detached-native-final.log`, both exit 0. Run
+`python3 tools/check_detached_resource.py tmp/m2-detached-reference.log --status 0
+--native tmp/m2-detached-native-final.log --native-status 0` with actual statuses.
+The native capture uses the shared menu/startup observer. It also passes all
+20 rectangle calls, both font lookups, native driver/MDRV guard, 75,616 A5 bytes
+and AGA pixels/palette/VBI. Resource map/source/writer/directory/publication host
+checks, startup checker tests, 66-script literal audit and both link audits pass.
+The discovery capture's obsolete endpoint failed and is not acceptance.
+
+Counts remain 101 windows, 163 services and 62 original resource reads /
+265,454 bytes. Next is NewGWorld at Dan2+$0234, selector zero, with GetCTable's
+$8000 table flag. Its input-table allocation behavior is queued as M2.3g6.
+Locked/empty/nil variants here have reference evidence; this new native original
+capture exercises the resident unlocked table. Prior attached/dirty resource
+acceptances remain in force; this does not claim intro or audio acceptance.

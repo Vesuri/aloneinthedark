@@ -6031,6 +6031,9 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
             memoryResult(*handle ? 0 : MacHeap::nilHandleErr);
             resourceResult(0);regs[0]=0;return 5;
         }
+        // A valid caller-owned handle is already detached. The Mac reports
+        // resNotFound without changing its body, flags or MemErr, even empty.
+        if(zone) { resourceResult(-192);regs[0]=0xff40;regs[8]=0;return 5; }
     }
     if(trap==0xa9e3) {
         const uint8_t* source=(const uint8_t*)regs[8];uint32_t bytes=regs[0];

@@ -46,7 +46,7 @@ def check(reference,native,reference_status,native_status,folder,resource):
     require(fields(one(native,r'WB_NATIVE phase=before (.*)'))==fields(one(native,r'WB_NATIVE phase=after (.*)'))==dict(queued=1,dirty=0,seed=4),'unchanged native presentation/palette state')
     require((folder/'worldbind-native-before-clut.bin').read_bytes()==(folder/'worldbind-native-after-clut.bin').read_bytes(),'unchanged native CLUT')
     require(native.count('PASS native world binding next-stop original-MDRV=absent')==1,'progression and driver guard')
-    print('PASS paired SetGWorld: original bytes, nil-device selection, colour-port binding, return registers and unchanged pixels; '+one(native,r'WB_NEXT (state=3 trap=A992 selector=FFFFFFFF segment=13 offset=210 manager=RESOURCE MANAGER routine=DETACHRESOURCE windows=(?:101|127) services=(?:163/163|171/171))'))
+    print('PASS paired SetGWorld: original bytes, nil-device selection, colour-port binding, return registers and unchanged pixels; '+one(native,r'WB_NEXT (state=3 trap=AB1D selector=0 segment=13 offset=234 manager=QUICKDRAW routine=NEWGWORLD windows=(?:101|127) services=(?:163/163|171/171))'))
 
 
 if __name__=='__main__':
