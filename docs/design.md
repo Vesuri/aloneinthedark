@@ -583,8 +583,10 @@ Native trap probes, host fragmentation tests and paired heap captures verify it:
     Space (action), Return (inventory), ESC, F, J, O, Z, U, T, S, M, P, I.
   - `Button`, `StillDown`, `GetMouse`, `FlushEvents`, `SystemTask`, `SystemClick`
     (no desk accessories: return) and `ObscureCursor`.
-  - Apple Events (`Pack8`): install handlers and succeed; `AEProcessAppleEvent`
-    is never reached without high-level events. `OpenDeskAcc` and the scrap calls
+  - Apple Events (`Pack8`): install handlers and succeed. The reference receives
+    a high-level Finder launch event (`aevt/oapp`, M2.3g14).
+    The standalone Amiga launcher generates no Finder event; other reached
+    high-level event processing remains subject to its measured contract. `OpenDeskAcc` and the scrap calls
     are loud stops until reached.
 - **Keyboard mapping.** Amiga raw keys map to Mac virtual keys through the
   existing table, extended for the keys the game reads.

@@ -29,3 +29,5 @@ Start with the [project README](../README.md).
 The Vette! repository (`~/Documents/Vette/docs`) holds the complete versions of
 material this port inherits: frame pacing, WHDLoad, installer design, Macintosh
 display model and the regression approach.
+
+- [Startup events](events.md): activation, update and idle-event contracts.

@@ -286,6 +286,7 @@ struct WindowSlot {
     uint8_t** palette;
     bool paletteUpdates;
     bool updating;
+    bool activationPending; // Coalesced window activation, consumed by event polling.
     bool dialog;
     uint16_t dialogItemCount;
     bool dialogDrawn;
@@ -767,7 +768,7 @@ static const TrapName s_trapNames[] = {
     {0xa889,"QUICKDRAW","TEXTMODE"}, {0xa88a,"QUICKDRAW","TEXTSIZE"},
     {0xa88e,"QUICKDRAW","SPACEEXTRA"}, {0xa893,"QUICKDRAW","MOVETO"},
     {0xa9b9,"QUICKDRAW","GETCURSOR"},
-    {0xa851,"QUICKDRAW","SETCURSOR"}, {0xa852,"QUICKDRAW","HIDECURSOR"},
+    {0xa856,"QUICKDRAW","OBSCURECURSOR"}, {0xa851,"QUICKDRAW","SETCURSOR"}, {0xa852,"QUICKDRAW","HIDECURSOR"},
     {0xa853,"QUICKDRAW","SHOWCURSOR"},
     {0xa97c,"DIALOG MANAGER","GETNEWDIALOG"}, {0xa981,"DIALOG MANAGER","DRAWDIALOG"},
     {0xa988,"DIALOG MANAGER","CAUTIONALERT"},
@@ -1671,6 +1672,7 @@ static uint8_t* newColorWindow(int16_t id, uint8_t* storage, uint8_t* behind)
     slot->palette = 0;
     slot->paletteUpdates = false;
     slot->updating = false;
+    slot->activationPending = false;
     slot->dialogItemCount = 0;
     slot->dialogDrawn = false;
     for (uint16_t i = 0; i < sizeof(slot->record); ++i) slot->record[i] = 0;
@@ -1982,6 +1984,7 @@ static bool showColorWindow(WindowSlot& slot)
         for(int16_t x=left;x<right;++x)s_colorScreen[uint32_t(y)*kScreenWidth+x]=255;
     markDirtyBounds(top,left,bottom,right);
     slot.window[110]=1;slot.window[111]=0xff;
+    slot.activationPending=true;
     return true;
 }
 
@@ -2107,6 +2110,7 @@ static bool disposeWindow(uint8_t* window)
         s_applicationZone.disposeHandle(slot->ownedTitle);slot->ownedTitle=0;
     }
     slot->used = false;
+    slot->activationPending = false;
     slot->window = 0;
     slot->dialog = false;
     slot->dialogItemCount = 0;
@@ -5287,8 +5291,8 @@ extern "C" void aitdMacMouseVBI()
         // Mouse sampling begins as soon as the Amiga screen is live, before
         // the Macintosh A5 world exists. Initialize its redirected globals on
         // the first VBI after that world is published.
-        int16_t globalV = (int16_t)(s_mouseY + 91);
-        int16_t globalH = (int16_t)(s_mouseX + 64);
+        int16_t globalV = s_mouseY;
+        int16_t globalH = s_mouseX;
         *(volatile uint16_t*)(s_portLowMemory + kLowMTempV) = (uint16_t)globalV;
         *(volatile uint16_t*)(s_portLowMemory + kLowMTempH) = (uint16_t)globalH;
         *(volatile uint16_t*)(s_portLowMemory + kLowRawMouseV) = (uint16_t)globalV;
@@ -5340,13 +5344,40 @@ static bool nextEvent(uint16_t mask, uint8_t* event)
         message = ((uint32_t)key.virtualKey << 8) | character;
         transition = true;
     }
+    // Window activation is retained independently of the caller's mask. Updates
+    // remain pending until EndUpdate clears the real update region.
+    if (!transition) {
+        for (uint8_t* window=s_windowList; window; window=(uint8_t*)read32(window+144)) {
+            WindowSlot* slot=windowSlot(window);
+            if (!slot) { loaderStop("EVENT WINDOW CHAIN",0);showLoaderStop(); }
+            if (slot->dialog || !window[110]) continue;
+            if (slot->activationPending && (mask & 0x0100)) {
+                what=8;message=(uint32_t)window;transition=true;
+                modifiers=(modifiers & ~1u) | (window[111] ? 1 : 0);
+                slot->activationPending=false;
+                break;
+            }
+        }
+    }
+    if (!transition && (mask & 0x0040)) {
+        for (uint8_t* window=s_windowList; window; window=(uint8_t*)read32(window+144)) {
+            WindowSlot* slot=windowSlot(window);
+            if (!slot) { loaderStop("EVENT WINDOW CHAIN",0);showLoaderStop(); }
+            if (slot->dialog || !window[110] || slot->updating) continue;
+            const uint8_t* r=slot->updateRegion;
+            if (read16(r)>=10 && (int16_t)read16(r+2)<(int16_t)read16(r+6)
+                && (int16_t)read16(r+4)<(int16_t)read16(r+8)) {
+                what=6;message=(uint32_t)window;transition=true;break;
+            }
+        }
+    }
     write16(event + 0, transition ? what : 0);
     write32(event + 2, message);
     write32(event + 6, g_macTicks);
     // EventRecord.where is in Macintosh global coordinates, not coordinates
     // relative to the cropped game surface shown by the Amiga display.
-    write16(event + 10, (uint16_t)(s_mouseY + 91));
-    write16(event + 12, (uint16_t)(s_mouseX + 64));
+    write16(event + 10, (uint16_t)s_mouseY);
+    write16(event + 12, (uint16_t)s_mouseX);
     write16(event + 14, modifiers);
     return transition;
 }
@@ -6168,6 +6199,16 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         if (exitChordPressed()) requestExitAfterTrap(frame);
         if (g_stageCDepth < 80) g_stageCDepth = 80;
         return 1;
+    }
+    if (trap == 0xa860) {                    // WaitNextEvent(mask,event,sleep,mouseRgn)
+        uint8_t* event=(uint8_t*)read32(userStack+8);
+        // D3 deliberately ignores sleep. Mouse-region wakeups are unimplemented.
+        if (!event || read32(userStack)) goto unsupportedTrap;
+        bool result=nextEvent(read16(userStack+12),event);
+        writeBoolean(userStack+14,result);
+        regs[0]=result ? 0x0100 : 0;
+        if (exitChordPressed()) requestExitAfterTrap(frame);
+        return 15;
     }
     if (trap == 0xa970) {                    // GetNextEvent(mask, event) -> Boolean
         uint8_t* event = (uint8_t*)read32(userStack);
@@ -7110,8 +7151,12 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     if (trap == 0xa91f) {                    // SelectWindow(window)
         uint8_t* window = (uint8_t*)read32(userStack);
         for (uint16_t i = 0; i < sizeof(s_windows) / sizeof(s_windows[0]); ++i)
-            if (s_windows[i].used)
-                s_windows[i].window[111] = s_windows[i].window == window;
+            if (s_windows[i].used) {
+                bool active=s_windows[i].window==window;
+                if (bool(s_windows[i].window[111])!=active)
+                    s_windows[i].activationPending=true;
+                s_windows[i].window[111]=active;
+            }
         s_windowList = window;
         activatePalette(window);             // front windows activate their palette automatically
         if (g_stageCDepth < 32) g_stageCDepth = 32;

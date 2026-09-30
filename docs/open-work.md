@@ -14,10 +14,10 @@ design.md §5.
   low-resolution selection/cleanup, all 75 font-metrics calls and four Apple Event
   registrations, colour-table loading/mutations, palette construction and default
   binding, hidden window-title state and the verified WIND 128 request. Startup realizes the palette and clears the game client area, then stops at
-  `WAITNEXTEVENT` at Engine+$44F0 after palette binding/activation, first-frame AGA
+  `OBSCURECURSOR` at Engine+$0FF6 after palette binding/activation, first-frame AGA
   publication, background ShowHide, game-port binding, TickCount, unchanged window geometry, point setup, empty-region allocation and eight-bit offscreen buffer initialization, pixel-address access and the first original image-row copy and hidden menu-list setup, followed by the 20-call image rectangle loop and the measured already-detached
   resource error, device-table world allocation and RGB foreground/background
-  selection, all twenty indexed picture draws and 220 original text measurements, then binds the existing background window and converts its two corner points, then queries the actual device flags and completes both background/game-window intersections. The original
+  selection, all twenty indexed picture draws and 220 original text measurements, then binds the existing background window and converts its two corner points, then queries the actual device flags and completes both background/game-window intersections and consumes activation, both window updates and an idle event. The original
   mixer is never loaded.
 - The original runs in MAME on the System 7.5.5 reference volume.
 
@@ -51,16 +51,15 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.3g14 Startup event polling.**
-  - Both drawing-device intersections now pass. Engine next reaches
-    WaitNextEvent at +$44F0 ($A860).
-  - Check original caller bytes and measure its event mask, EventRecord,
-    sleep/mouse-region arguments, queue behavior and return contract. Implement
-    the reached startup route using actual event state, never a fabricated
-    empty-event success. Full gameplay input remains M3.1.
+- **M2.3g15 Startup cursor obscuring.**
+  - Original event polling now consumes activation and both window updates before
+    returning an idle event. Engine next reaches ObscureCursor at +$0FF6 ($A856).
+  - Check original bytes and measure obscured-cursor state and restoration on
+    mouse movement. Reuse the cursor implementation; preserve D7's restriction
+    against drawing Mac chrome and the disabled-pointer palette ownership gate.
 
-  *Done when* original startup event polling matches the reference contract,
-  execution reaches its next named stop with MDRV absent, and startup checks pass.
+  *Done when* the reached cursor transition matches the reference state contract,
+  startup reaches its next named stop with MDRV absent, and startup checks pass.
 - **M2.1c Original File Manager read acceptance (after M2.2).**
   - This retains M2.1's original acceptance; diagnostic fixture reads do not count
     as original-game reads. M2.1b2a measured the intervening Get1NamedResource

@@ -3207,3 +3207,29 @@ See [rectangles.md](rectangles.md#sectrect) for the contract and reproduction.
 Next is EVENT MANAGER / WAITNEXTEVENT at Engine+$44F0. Counts remain 113
 windows, 431/431 services and 62 original resource reads / 265,454 bytes.
 Fresh-preference counts remain derived. No rendered intro acceptance is claimed.
+
+
+## Startup event polling
+
+M2.3g14 is complete. WaitNextEvent now consumes actual pending window activation
+and update state, with the measured EventRecord and Boolean/stack/register
+contract. The current no-input route returns activation, game-window update,
+background-window update and null. The reference also receives Finder's launch
+event; the standalone Amiga launcher has no corresponding producer. The obsolete
+Vette mouse-coordinate addition is removed because AitdScreen tracks global
+coordinates. Sleep remains ignored by design; nonnil mouse-region wakeups stop.
+
+`tmp/m2-event-reference.log` (eight original calls) and
+`tmp/m2-event-native-final.log` (four original calls) both exit 0 and pass the
+guarded event/ABI checker. The combined capture also passes all eight repeated
+rectangle intersections, device flags, background coordinates/binding, 220 text
+widths, twenty pictures, fonts, driver/MDRV exclusion, AGA publication and all
+75,616 A5 bytes. The full host suite, 74-script Lua audit and both link audits
+pass. Initial checker expectations covered only the two pre-event intersections;
+the existing trace established four alternating background/game pairs, and the
+checker now validates every pair and destination guard. No emulator rerun was
+needed for that observer correction. See [events.md](events.md).
+
+Next is QUICKDRAW / OBSCURECURSOR at Engine+$0FF6. Counts remain 113 windows,
+431/431 services and 62 original resource reads / 265,454 bytes. The intro still
+has not run; no rendered intro or cursor acceptance is claimed.

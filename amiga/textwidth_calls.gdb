@@ -2,11 +2,16 @@ set $tw_finished=0
 set $tw_n=0
 set $binding_captured=0
 set $sr_n=0
+set $ev_n=0
 while $tw_finished==0
- tbreak dispatchMacTrap if trap==0xa886 || (trap==0xab1d && *(unsigned long*)(frame+2)==(unsigned long)s_segments[9].begin+0xe0a)
+ tbreak dispatchMacTrap if trap==0xa860 || trap==0xa886 || (trap==0xab1d && *(unsigned long*)(frame+2)==(unsigned long)s_segments[9].begin+0xe0a)
  continue
  if g_stageBState==3
   loop_break
+ end
+ if trap==0xa860
+  source startup_event_call.gdb
+  loop_continue
  end
  if trap==0xab1d
   if $binding_captured==0
@@ -130,3 +135,9 @@ while $tw_finished==0
  eval "dump binary memory ../tmp/textwidth-native-%u-after-port.bin %u %u",$tw_n,$tw_port,$tw_port+108
 end
 printf "PASS native TextWidth calls=%u\n",$tw_n
+if $ev_n!=4
+ echo FAIL startup event call count\n
+ detach
+ quit 1
+end
+echo PASS native startup events calls=4\n

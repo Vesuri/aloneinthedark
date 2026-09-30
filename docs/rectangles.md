@@ -86,3 +86,8 @@ python3 tools/check_sectrect_helper.py --reference tmp/m2-sectrect-reference-fin
 Supply actual terminal statuses. The native observer preserves the first
 background binding/coordinate captures while collecting both intersections.
 Startup now stops at WaitNextEvent, Engine+$44F0; intro acceptance remains open.
+
+M2.3g14 advances the combined observer through four event polls. This repeats
+the background/game device-selection pair four times, giving eight checked
+SectRect calls. Use `tmp/m2-event-native-final.log` with the current checker;
+the earlier two-call capture describes the preceding checkpoint.
