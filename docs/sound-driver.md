@@ -366,3 +366,35 @@ python3 tools/check_song_inputs.py \
 The checker compiles the actual C++ helper, compares its event stream and
 resource graph, and checks the original driver's complete ownership capture.
 These are parser/preflight checks; they do not establish native music playback.
+
+### Integer playback clock (M2.3g38b)
+
+`SongTimeline.h` reproduces the original quantized tempo and 1/64-MIDI-tick
+countdown using integer arithmetic. The first sequencer call reads the initial
+delta; later calls subtract `(division << 6) / (tempo / divisor)`, where a zero
+SONG divisor selects 16667. A nonzero delta fires on subtraction borrow, so an
+exact zero waits one further pulse. Coincident events run in the same pulse.
+Out-of-range clocks and unsupported tempo steps fail by name.
+
+`tmp/m2-song-clock-reference.log` exits zero with all 3,736 live note events
+through sequencer entry 8,785. Every note, instrument, channel, velocity, MIDI
+byte position, sequencer entry and current tempo step matches the portable
+helper. `mac_song_clock.lua` counts actual entries at driver+$186E without
+changing guest state. Synthetic fixtures also cover the first pulse, tempo
+changes, exact-zero boundary and coincident end. Run the paired check with:
+
+```sh
+python3 tools/check_song_inputs.py \
+  --reference tmp/m2-song-events-reference.log --status 0 \
+  --driver tmp/m2-driver0-reference.log --driver-status 0 \
+  --clock tmp/m2-song-clock-reference.log --clock-status 0
+```
+
+The preliminary live observer found that callbacks execute at masked PC
+$007299AA even though the installed entry retains its high handle flag
+($807292CC). Raw-address-only capture `tmp/m2-song-live-reference-no-events.log`
+failed to complete and is rejected. The corrected live capture records all
+3,736 notes and voice snapshots. State+$118C counts mixer work, not sequencer
+entries, and is unsuitable as a clock oracle. The direct entry counter resolves
+that discrepancy. Runtime safe-point scheduling, resource lifetime and Paula
+playback remain M2.3g38; the helper is not yet connected to production.

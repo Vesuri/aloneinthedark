@@ -61,7 +61,8 @@ required.
     +$1382–$138F are `2f2e000842a7206df9544e90508f`.
   - M2.3g38a now supplies bounded SONG/MIDI/INST/sample descriptions and an
     exact 3,736-event preflight match. The original request retains 41 resources
-    and arms MIDI 905; its ownership/state capture passes.
+    and arms MIDI 905; its ownership/state capture passes. M2.3g38b now matches
+    all 3,736 live notes at exact sequencer steps with an integer clock.
   - Implement the reached native D8 contract, including resource lifetime,
     timed sequencing and required Paula sample/voice behavior. Bring required song/instrument handling
     forward from M4 as needed; never run MDRV or report unsupported music as

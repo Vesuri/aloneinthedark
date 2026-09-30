@@ -1,4 +1,5 @@
 #include "../src/mac/SongInputs.h"
+#include "../src/mac/SongTimeline.h"
 #include <cassert>
 #include <cstdio>
 #include <cstring>
@@ -46,6 +47,28 @@ int main(int argc,char** argv) {
         assert(error);
     }
     std::puts("PASS SONG/MIDI fixtures: volume, running status, ignored program changes, note order, tempo, end and bounded malformed-input rejection");
+    SongTimeline clock;bool ready=false;
+    auto timed=midi({0,0x90,60,127,0x83,0x60,0x80,60,64,0,0xff,0x2f,0});
+    assert(!clock.start(timed.data(),timed.size(),song) && clock.step==1059);
+    assert(!clock.next(event,ready) && !ready);
+    for(unsigned pulse=1;pulse<=31;++pulse) {
+        assert(!clock.advance());
+        assert(!clock.next(event,ready));
+        assert(ready==(pulse==1 || pulse==31));
+        if(ready)assert(event.kind==(pulse==1?Event::NoteOn:Event::NoteOff));
+        if(pulse==31)assert(!clock.next(event,ready) && ready && event.kind==Event::End && !clock.active);
+    }
+    assert(clock.advance());
+    // A tempo whose quotient is exactly 30 makes the countdown hit zero;
+    // the original waits one further pulse for borrow before emitting the note.
+    auto exact=midi({0,0xff,0x51,3,7,0xa1,0x2a,0,0x90,60,127,0x83,0x60,0x80,60,64,0,0xff,0x2f,0});
+    assert(!clock.start(exact.data(),exact.size(),song));
+    for(unsigned pulse=1;pulse<=32;++pulse) {
+        assert(!clock.advance());assert(!clock.next(event,ready));
+        if(pulse==1) {assert(ready && event.kind==Event::Tempo && clock.step==1024);assert(!clock.next(event,ready) && ready && event.kind==Event::NoteOn);}
+        else assert(ready==(pulse==32));
+    }
+    std::puts("PASS song clock: first pulse, quantized tempo, exact-zero borrow boundary and same-pulse end");
     uint8_t inst[22]={0,1,0,60,255,0,0,0,0,0,0,0,0,0,0,0,128,0,0,0,0,0};
     Instrument instrument;assert(!instrument.parse(inst,sizeof(inst)) && instrument.baseSample==1);
     for(unsigned n=0;n<sizeof(inst);++n)assert(instrument.parse(inst,n));
@@ -74,6 +97,18 @@ int main(int argc,char** argv) {
             }
         }
         std::printf("PASS decoded song events=%u ticks=%u\n",count,event.tick);
+        SongTimeline timeline;assert(!timeline.start(rawMidi.data(),rawMidi.size(),song));
+        unsigned timedCount=0;
+        while(timeline.active) {
+            assert(timeline.pulses<100000);assert(!timeline.advance());
+            for(;;) {
+                bool available=false;const char* error=timeline.next(event,available);
+                if(error) {std::fprintf(stderr,"FAIL %s\n",error);return 1;}
+                if(!available)break;
+                if(event.kind==Event::NoteOn || event.kind==Event::NoteOff)
+                    std::printf("SONG_TIMED_EVENT n=%u offset=%X pulse=%X step=%X\n",++timedCount,event.offset,timeline.pulses,timeline.step);
+            }
+        }
         if(argc==4) {
             bool samples[32768]={};unsigned instruments=0,pcmCount=0;
             for(unsigned id=0;id<128;++id)if(used[id]) {

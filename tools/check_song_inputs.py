@@ -3,11 +3,23 @@
 import argparse,os,re,subprocess,tempfile
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
+def check_clock(text,status,decoded):
+    if status!=0 or any(x in text for x in ('FAIL','LUA ERROR','timeout','Error in')) or text.count('PASS original song clock events=3736 steps=8785')!=1 or text.count('Exited via the debugger')!=1:
+        raise ValueError('original clock completion')
+    notes=re.findall(r'^SONG_CLOCK_EVENT n=(\d+) on=(\w+) offset=(\w+) instrument=(\w+) note=(\w+) velocity=(\w+) channel=(\w+) sequence=(\w+) tick=\w+ step=(\w+) countdown=\w+$',text,re.M)
+    events=re.findall(r'^SONG_EVENT n=(\d+) on=(\w+) offset=(\w+) instrument=(\w+) note=(\w+) velocity=(\w+) channel=(\w+)$',decoded,re.M)
+    timed=re.findall(r'^SONG_TIMED_EVENT n=(\d+) offset=(\w+) pulse=(\w+) step=(\w+)$',decoded,re.M)
+    if len(notes)!=3736 or [n[:7] for n in notes]!=events or [(n[0],n[2],n[7],n[8]) for n in notes]!=timed:
+        raise ValueError('complete timed note stream')
+    print('PASS song clock: 3736 exact live notes at original sequencer steps through pulse 8785')
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--reference',type=Path);p.add_argument('--status',type=int)
     p.add_argument('--driver',type=Path);p.add_argument('--driver-status',type=int)
+    p.add_argument('--clock',type=Path);p.add_argument('--clock-status',type=int)
     a=p.parse_args()
+    if a.clock and not a.reference: raise ValueError('clock requires original inputs')
     with tempfile.TemporaryDirectory(prefix='aitd-song-') as directory:
         work=Path(directory);exe=work/'check'
         subprocess.run([os.environ.get('HOST_CXX','c++'),'-std=c++17','-Wall','-Wextra','-Werror','-fsanitize=address,undefined',str(ROOT/'tools/test_song_inputs.cpp'),'-o',str(exe)],check=True)
@@ -30,6 +42,7 @@ def main():
         result=run.stdout
         reference=re.findall(r'^SONG_EVENT .*$',text,re.M);decoded=re.findall(r'^SONG_EVENT .*$',result,re.M)
         if len(reference)!=3736 or reference!=decoded: raise ValueError('complete note/instrument event stream')
+        if a.clock: check_clock(a.clock.read_text(),a.clock_status,result)
         ids=list(map(int,re.findall(r'^SONG_INSTRUMENT id=(\d+)',result,re.M)))
         state=(ROOT/'tmp/song-events-state.bin').read_bytes()
         if len(state)!=0x3048 or bytes(0 if i in ids else 255 for i in range(128))!=state[0x72:0xf2]: raise ValueError('instrument-use map')

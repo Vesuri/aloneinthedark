@@ -3898,3 +3898,18 @@ the 98-script MAME literal audit. Timeout, altered-note and observer-error
 rejection checks pass in `tmp/m2-song-inputs-rejections.log`. Production code
 does not include the new helper yet, so native acceptance remains the preceding
 selector-13 capture rather than an unnecessary replay of unchanged code.
+
+
+## Song clock prerequisite
+
+M2.3g38b adds a portable integer sequencer clock without changing production.
+The original direct-entry observer finishes normally (exit zero) in
+`tmp/m2-song-clock-reference.log`. All 3,736 live notes match the helper's event
+fields, MIDI positions, tempo steps and exact sequencer entries through pulse
+8,785; paired acceptance is `tmp/m2-song-clock-paired.log`. The complete host
+suite exits zero in `tmp/m2-song-clock-host-tests.log`, including the 100-script
+MAME literal audit. Six negative checks reject timeout, missing completion,
+observer error, changed step/note and duplicate events in
+`tmp/m2-song-clock-rejections.log`. No unchanged native intro replay is required
+for this pure helper. Resource ownership, safe-point scheduling and Paula music
+remain M2.3g38, and selector zero still stops explicitly.
