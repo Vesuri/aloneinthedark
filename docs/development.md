@@ -5094,3 +5094,15 @@ retained as `m2-driver7-native-free-slot-assumption-full.log` and is not accepta
 evidence. The corrected observer checks actual free-slot and owner-ledger
 semantics. M2.1c retains the independent requirement to read and compare original
 Present.PAK payloads beyond these services.
+
+### M2.3b — original inverse-coordinate prerequisite
+
+Normal Return input skips the book; a normal mouse click in the main game menu
+then reaches Engine+$16E8 GlobalToLocal. `mac_globallocal.lua` limits capture to
+original game sites, excluding System 7's own internal conversions. The selected
+eight-bit window PixMap has origin (-150,-160): point (253,321) becomes (103,161).
+All adjacent bytes and D0–D7/A0–A6 remain unchanged; four argument bytes are
+removed from the stack. `check_globallocal.py` passes the maintained capture
+`m2-globallocal-reference.log` (exit zero), including original caller bytes and
+selected-port records. Native implementation and original-call acceptance remain
+open; earlier exploratory captures are not acceptance evidence.

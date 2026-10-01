@@ -95,6 +95,11 @@ and other general tuning remain M5.
   - The inherited GlobalToLocal subtracted Vette's fixed (64,91) origin.
     M2.3g11 replaces that guessed result with a named stop.
   - Measure the reached inverse conversion and use its actual selected port.
+  - Normal Macintosh menu mouse input now reaches Engine+$16E8. The maintained
+    `mac_globallocal.lua` / `check_globallocal.py` capture passes point/guard,
+    stack and register checks (`m2-globallocal-reference.log`, exit zero):
+    selected PixMap origin (-150,-160), point (253,321) becomes (103,161).
+    Native implementation and matching original-call verification remain open.
 
 
   *Done when* the reached GlobalToLocal calls match MAME, with point/adjacent-byte
