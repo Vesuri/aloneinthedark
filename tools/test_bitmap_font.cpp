@@ -12,20 +12,20 @@ int main(int argc,char** argv) {
     assert(BitmapFont::family(fond.data(),fond.size(),20,family));
     assert(family.first==32 && family.last==250 && family.size==14 && family.bitmap==128);
     BitmapFont font;assert(font.open(nfnt.data(),nfnt.size(),family));assert(font.height()==14 && font.advance()==6);
-    // Independent inherited A bitmap, scaled from seven rows to twelve.
+    // Independent inherited A bitmap, scaled to ten ink rows below two blank ascent rows.
     const uint8_t a[7]={14,17,17,31,17,17,17};
     for(unsigned y=0;y<14;++y)for(unsigned x=0;x<6;++x) {
-        bool expected=y<12 && x<5 && (a[y*7/12]&(16>>x));
+        bool expected=y>=2 && y<12 && x<5 && (a[(y-2)*7/10]&(16>>x));
         assert(font.pixel('A',x,y)==expected && font.pixel('a',x,y)==expected);
         assert(!font.pixel(' ',x,y));
-        assert(font.pixel(0xfa,x,y)==bool(y<2 && x==2));
+        assert(font.pixel(0xfa,x,y)==bool(y>=2 && y<4 && x==2));
     }
-    assert(font.pixel(0,0,0) && font.pixel(255,4,11));assert(!font.pixel(255,5,11));assert(!font.pixel('A',0,14));
+    assert(font.pixel(0,0,2) && font.pixel(255,4,11));assert(!font.pixel(255,5,11));assert(!font.pixel('A',0,14));
     const uint8_t copyright[7]={14,17,23,21,23,17,14},bullet[7]={0,0,4,14,4,0,0},accent[7]={4,10,14,17,31,17,17};
     for(unsigned y=0;y<14;++y)for(unsigned x=0;x<5;++x) {
-        assert(font.pixel(0x89,x,y)==bool(y<12 && (accent[y*7/12]&(16>>x))));
-        assert(font.pixel(0xa9,x,y)==bool(y<12 && (copyright[y*7/12]&(16>>x))));
-        assert(font.pixel(0xa5,x,y)==bool(y<12 && (bullet[y*7/12]&(16>>x))));
+        assert(font.pixel(0x89,x,y)==bool(y>=2 && y<12 && (accent[(y-2)*7/10]&(16>>x))));
+        assert(font.pixel(0xa9,x,y)==bool(y>=2 && y<12 && (copyright[(y-2)*7/10]&(16>>x))));
+        assert(font.pixel(0xa5,x,y)==bool(y>=2 && y<12 && (bullet[(y-2)*7/10]&(16>>x))));
     }
     const uint8_t name[]={'T','i','m','e','s'};
     for(const char* s:{"\005Times","\005times","\005TIMES","\005tImEs"})assert(BitmapFont::nameEquals(reinterpret_cast<const uint8_t*>(s),name,5));

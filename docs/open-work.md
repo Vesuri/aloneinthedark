@@ -60,6 +60,19 @@ required.
 ## M2 Startup to intro
 
 - **M2.3g44 Black intro display while music plays.**
+  - After the heap-query fix, the bounded full demo still failed to return:
+    later transitions repeat room 0/camera 3 and room 2/camera 3. The 1,200-second
+    observer timed out at 1,081 publications, interrupted in RegionRows::toggle.
+    Instrument later actor/script state and phase costs before another broad
+    exit wait; neither the timeout sample nor the car improvement proves cause.
+    Original exit is a natural script flag write at Dark2+$3F8E, after a
+    120-tick script wait, with zero input words (1,092 Random calls).
+  - The first pond transition now completes with zero input words: native
+    publication 159, no pending frame, room 0/camera 1/character 0 and one game
+    Random call. All CLUT RGB values match the Mac; AGA planes/copper match the
+    native logical buffer. The 64,000 client pixels differ only at (209,81)
+    and (208,82), inside native actor 289's bounds; its animation position is
+    different. Do not call this an exact actor-state/frame pair.
   - Read-only heap queries no longer rebuild unchanged metadata (M2.3g44n).
     The original and native 120-step captures now both reach track position 52;
     before the change native remained at 20 and circled. Coordinates still

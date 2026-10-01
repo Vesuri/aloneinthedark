@@ -279,7 +279,8 @@ positions, the selected foreground and map/port/visible/clip intersections.
 It fits each ink shape within its measured cell with one separating column.
 The placeholder deliberately uses capitals for lowercase, block shapes instead
 of Times serifs, and its own ascent of twelve; © and • are newly authored
-5×7 shapes stretched to twelve rows. These D6 differences preserve the baseline,
+5×7 shapes stretched to ten ink rows, starting two rows below the ascent.
+This keeps the car caption inside its original redraw band. These D6 differences preserve the baseline,
 spacing and resulting pen. No Apple artwork is included. Uninstalled characters,
 other fonts/styles/sizes/modes, complex regions and signed pen overflow stop
 before changing the buffer. The obsolete packed four-bit text renderer is removed.
@@ -355,3 +356,31 @@ remaining; all 2,558 services complete, and original MDRV remains absent. Earlie
 timeout, observer-error and debugger-port-collision runs are rejected. The
 accepted run uses the isolated debugger launcher (M2.3g34a). This completes the
 glyph prerequisite; full intro frame and rendered-video acceptance remain open.
+
+
+## Car caption removal (M2.3g44o)
+
+Original Dark+$3A14 lays out the car copyright at baseline 191 with a
+16-row redraw band [180,196). The original DrawText captures show ink in
+rows 181–193. Our twelve ink rows began at 179, leaving a dotted line after
+the original stopped redrawing the caption. The authored NFNT now uses ten
+ink rows starting two rows below its unchanged twelve-row ascent. Fractional
+advances, baseline and all FontInfo/resource metadata remain unchanged; only
+the NFNT 128 bitmap changes. No original game instructions change.
+
+The host regression reproduces the leftover row with the preceding resource
+and passes after regeneration, including the measured final pen 285/$1C00.
+The full host suite and clean 68020 link audits pass. The bounded native run
+with normal Enter skip reaches the close car and ends normally. All background
+pixels outside both captured cars' bounds now equal the Mac, including the
+cleared caption, and all 256 logical colours match. Against the preceding
+native close-car capture, exactly 99 pixels change, all on row 179. Car poses
+differ with timing; this accepts the static background/caption removal, not
+exact animation or full sequence fidelity.
+
+Local evidence: `tmp/m2-car-text-reference.log`,
+`tmp/m2-car-text-host.log`, `tmp/m2-car-text-native-full.log` and
+`tmp/m2-car-text-compare.log`. The native first-DrawText ABI check in this
+skipped run covers “Begin a new game”; it is not a rerun of the title-caption
+fixture. The independent stencil checker is updated for the ten-row artwork.
+Actual rendered-window verification remains owner-deferred.

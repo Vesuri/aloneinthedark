@@ -61,5 +61,15 @@ int main(int argc,char** argv) {
     assert(Text8::draw(pixels.data(),pixels.size(),652,map,map,map,map,font,
                       accentText,0,4,114,pen,fraction,26));
     assert(pen==150 && fraction==0xe400);
+    // Original Dark+$3A14 uses a 16-row redraw band [180,196) for the
+    // car caption at baseline 191. Owned ink must disappear with that band.
+    const uint8_t carText[]="\xa9" "1992 I\xfaMotion/Infogrames, 1994 Interplay";
+    pixels=untouched;pen=37;fraction=0x8000;
+    assert(Text8::draw(pixels.data(),pixels.size(),652,map,map,map,map,font,
+                      carText,0,41,191,pen,fraction,26));
+    assert(pen==285 && fraction==0x1c00 && pixels!=untouched);
+    for(unsigned y=180;y<196;++y)
+        for(unsigned x=0;x<320;++x)pixels[y*652+x]=83;
+    assert(pixels==untouched);
     puts("PASS Text8: measured fractional endpoints, repeat, empty, clipping, padding, range and atomic rejection");
 }

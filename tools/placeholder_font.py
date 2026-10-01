@@ -19,8 +19,10 @@ def build():
     width=5*len(shapes);row_words=(width+15)//16;height=14
     bitmap=bytearray(row_words*2*height)
     for n,shape in enumerate(shapes):
-        for y in range(12):
-            row=shape[y*7//12]
+        # Keep the capital ink within the measured Times caption band:
+        # baseline-10 through baseline-1, with unchanged ascent/descent.
+        for y in range(2,12):
+            row=shape[(y-2)*7//10]
             for x in range(5):
                 if row&(16>>x):
                     bit=n*5+x;bitmap[y*row_words*2+bit//8]|=128>>(bit%8)

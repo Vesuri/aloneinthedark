@@ -83,10 +83,10 @@ def check(reference,status,native=None,native_status=None,dot=False,accent=False
             columns=[x for x in range(5) if any(row&(16>>x) for row in shape)]
             if columns:
                 lo,hi=min(columns),max(columns)+1;width=min(hi-lo,cell-1)
-                for row in range(12):
+                for row in range(10):
                     for col in range(width):
-                        px=x+position//65536+col;py=y-12+row
-                        if shape[row*7//12]&(16>>(lo+col*(hi-lo)//width)) and all(t<=py<b and l<=px<r for t,l,b,r in limits):expected[py*652+px]=26
+                        px=x+position//65536+col;py=y-10+row
+                        if shape[row*7//10]&(16>>(lo+col*(hi-lo)//width)) and all(t<=py<b and l<=px<r for t,l,b,r in limits):expected[py*652+px]=26
             position=end
         if read('native','return','pixels')!=expected:raise ValueError('native full-buffer stencil/preservation')
         print('PASS native DrawText: original string/ABI/pen/colour, full-buffer owned glyph stencil and preservation')
