@@ -72,6 +72,9 @@ required.
     separate endpoint run timed out at tick 49,312 without Dark+$552C. Trace
     the original exit condition at matching game state; neither elapsed ticks
     nor these exploratory snapshots establish sequence acceptance.
+  - The subsequent fixed-stream first-point captures share character/room/camera
+    but have 122 versus 72 random calls and different projected packets before
+    QuickDraw. Pair actor/animation state before accepting those coordinates.
   - At the first relative Line (Dark3+$354A), native and Mac pen coordinates
     differ before the call: `(−1213,−29334)` versus `(−1150,−10625)`. Both lines
     are clipped and every defined input pixel and palette entry matches;

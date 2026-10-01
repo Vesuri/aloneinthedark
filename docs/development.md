@@ -4524,3 +4524,20 @@ pass both logs and their actual process exit statuses to
 --native <log> --native-status <status>`. The checker rejects timeouts,
 missing completion/rows, changed inputs/results and an incorrect character.
 Restore an ordinary build after diagnostic acceptance.
+
+
+A subsequent fixed-input point investigation also completes on both machines
+(`tmp/m2-fixed-point-{reference,native-full}.log`), but is **not a complete
+state pair**: at the first Dark3+$347C call both have character 0, room 0,
+camera 1 and actor 100, yet native has made 122 game Random calls versus 72 on
+the Mac. Their packets already differ before QuickDraw:
+`028dfb43016a0065` versus `028dfb2d01700063` (projected coordinates
+−1213/362 versus −1235/368). Both pass `$008D` in D3.W. The remaining
+coordinate difference therefore needs a matching actor/animation state;
+matching only character, room and camera is insufficient.
+
+Original Dark+$5224 calls the game menu; result −1 branches to +$524A and
+starts the idle demo, while result 0 branches to +$52B6 and the character-choice
+routine. Pressing Enter through the menu and leaving it idle are different
+original routes. The portraits/story should not be forced into the timeout
+route as a proposed visibility fix.
