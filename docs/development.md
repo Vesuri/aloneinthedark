@@ -4458,6 +4458,45 @@ following commands. This closes the point-local/pen explanation, not a complete
 actor/animation or framebuffer pair. The observer retains the normal Enter
 book skip; the newer Mac run restricts it to Dark3+$337E.
 
+## Read-only idle display-mode observation (M2.3g44w)
+
+Revs' measured debugger method exposes FS-UAE's stored custom registers,
+where Amiga-side reads of write-only registers would return floating bus data.
+The known startup BPLCON0=$0211 provides a positive control. A bulk
+$DFF000–$DFF200 read was rejected by the installed debugger; individual words
+and COP1LC reads succeed. The rejected dump is not acceptance evidence.
+
+The exploratory native run exits zero
+(`tmp/m2-menu-mode-words-native-full.log`). Startup, menu entry after 135 OS
+handbacks, and the original menu exit 900 ticks later all report BPLCON0/1/2/4
+=$0211/$0000/$0024/$0011. BPLCON3's owned control bits remain $0C60; its bank
+and LOCT fields can vary while the copper writes the palette. DIWSTRT/STOP
+=$4881/$10C1, DDFSTRT/STOP=$0038/$00D0, both modulos=$0118 and FMODE=0.
+Raster/copper/master DMA remains enabled. Menu entry/exit COP1LC equals the
+active port-owned copper pointer. The initial port-object pointer was not yet
+bound at MacLoader::run entry and is not used as a control.
+
+The debugger's DIWHIGH snapshot includes serialized state flags, rather than
+only the written register bits. The observed $A180/$A100 normalize to the owned
+$2100 after excluding $C080. This agrees with the documented `save_custom`
+layout in [upstream FS-UAE custom.cpp](https://github.com/FrodeSolheim/fs-uae/blob/main/custom.cpp),
+which also serializes COP1LC and the other sampled mode registers. This source
+explains the snapshot format; it is not proof of the installed build's exact
+source revision.
+
+`amiga/menu_mode.gdb` asserts the mode/geometry/DMA controls without changing any
+register, samples a fully published menu frame, checks both COP1LC values and
+positively reaches the original 900-tick exit. It uses ordinary `INTROSKIP=1`,
+without palette-readback or menu-input options. The maintained run exits zero
+(`tmp/m2-menu-mode-final-native-full.log`): menu publication 13 is complete at
+tick 1587; the original wait exits at tick 2486, 900 ticks after its first
+entry. Independent `check_aga_capture.check_frame` decoding verifies all 64,000
+pixels, eight plane pointers and 256 palette colours against the logical menu.
+Run with `GDBSCRIPT=menu_mode.gdb EXTRA_ARGS=--warp_mode=1 amiga/diag_run.sh 240`.
+This observation rejects a persistent mode-register loss at these checkpoints;
+transient handback behavior and host-rendered visibility remain separate
+acceptance requirements.
+
 ## Menu hardware palette readback (M2.3g44j)
 
 `PALREADFRAME=13 INTROSKIP=1` enables a diagnostic-only Lisa colour-RAM reader.

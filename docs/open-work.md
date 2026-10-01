@@ -60,6 +60,12 @@ required.
 ## M2 Startup to intro
 
 - **M2.3g44 Black intro display while music plays.**
+  - Read-only `menu_mode.gdb` checks (M2.3g44w) now pass startup, the fully
+    published idle menu after 135 OS handbacks, and its original 900-tick exit.
+    Mode, fetch geometry and display DMA remain correct; active COP1LC matches
+    the owned copper list. All 64,000 menu pixels, plane pointers and palette
+    colours pass independent decoding. Persistent mode loss at those checkpoints
+    is ruled out; the owner-visible black interval remains unexplained.
   - The normal-input Carnby reading route now passes all eight letter pages:
     257 text calls have identical strings, positions and settings; artwork,
     backgrounds, arrows and palettes match the Mac. Publications 17–24 pass
