@@ -4469,3 +4469,24 @@ success criterion remains unsatisfied. The exploratory Mac sample observer
 also reports explicit failure because the scene ends before its requested
 fifth sample; emulator exit zero does not override that failure. Do not repeat
 that sample-count bound or call these wall-time samples state-paired acceptance.
+
+## Idle comparison correction (M2.3g44k, incomplete)
+
+The native point/staircase A5 captures contain character choice 0 at A5−$D8F2;
+the original point/exit captures contain 1. Original Dark+$524A calls Engine's
+random wrapper; +$5250 masks bit zero and +$5254 stores this choice. The local
+FITD reference independently names this branch `CHOOSE_PERSO`. Engine+$4A22
+reads Ticks.W, masks 511, adds it to A5−$1078, calls Random at +$4A32, XORs its
+result into that accumulator and masks `$7FFF`. All original absolute
+references to this accumulator are inside that wrapper. A fixed QuickDraw seed
+alone therefore cannot establish deterministic game randomness.
+
+A fresh native capture (`tmp/m2-idle-rng-native-full.log`, exit zero) enters
+that exact character-selection call at tick 2,734 with seed 1 and mixed input
+`$00AE`; original instructions return `$4109` and choose 1. The earlier trace
+entered the demo at tick 2,733 and selected 0. A one-frame Enter delay on the Mac
+still selected 1 and was explicitly rejected; it is not a paired reference.
+The earlier native 1,200-iteration diagnostic times out at tick 57,320, 719
+published frames, while in heap-handle lookup. It reports no completed exit.
+Heap compaction is being measured separately before attributing this slowdown
+to scene logic or corrupt memory. These exploratory results do not close M2.3g44.

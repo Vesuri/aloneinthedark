@@ -59,6 +59,20 @@ required.
 
 ## M2 Startup to intro
 
+- **M2.3g44k Pair the demo's complete random inputs.**
+  - Earlier native captures selected character 0; the Mac reference selected 1
+    (A5−$D8F2). A fresh native capture selected 1 after a one-tick difference.
+    These are different game states, not interchangeable sequence references.
+  - Original Engine+$4A1E mixes `(Ticks.W & 511)` into A5−$1078, then XORs the
+    QuickDraw Random result. Fixing only QuickDraw's seed does not fix this
+    game's random stream. Preserve production behavior; use an explicit
+    diagnostic input fixture for state-paired comparisons.
+  - Attribute reference Random calls to Engine+$4A32 and their original caller;
+    application-frontmost status alone can include OS-internal Random calls.
+
+  *Done when* both sides verify the same controlled random inputs and results,
+  including the clock contribution and selected character, and subsequent
+  sequence comparisons identify matching game states rather than elapsed ticks.
 - **M2.3g44 Black intro display while music plays.**
   - Hardware palette readback now passes at the idle menu (M2.3g44j): all
     256 RGB24 colours equal the copper list and logical CLUT, with exact menu
