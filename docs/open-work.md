@@ -59,17 +59,6 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.3g44m Mode-0 window PaintRect on the idle-demo route.**
-  - The no-input fixed-stream run now advances through six scene changes and
-    reaches the named PaintRect stop at Dark+$3CB8 (tick 45,118, frame 748).
-    Original bytes select FrontWindow, set PenMode 0 and paint A5−$108A.
-    The current window fill accepts only mode 8. Capture the original call's
-    complete port, clipping, pixels and ABI before extending that contract.
-
-  *Done when* the reached call matches the Mac's defined pixels and ABI,
-  surrounding storage is preserved, and a bounded original-code run advances
-  beyond Dark+$3CB8. This prerequisite alone does not close the black-screen
-  or car/frog sequence investigation.
 - **M2.3g44 Black intro display while music plays.**
   - GetZone/SetZone no longer rebuild heap-derived views (M2.3g44l); native
     heap contracts and the bounded cost comparison pass. Recheck progression
@@ -81,8 +70,11 @@ required.
     256 RGB24 colours equal the copper list and logical CLUT, with exact menu
     planes and the original 900-tick continuation. This rules out wrong colour
     RAM at that checkpoint, not a display-mode or host-rendering failure.
-  - The latest fixed-stream native run reaches six scene changes, then the
-    PaintRect stop tracked in M2.3g44m; it does not establish full demo exit.
+  - Mode-0 window filling now passes the original native call and matched Mac
+    service-fixture pixels/ABI (M2.3g44m). The subsequent combined demo-exit
+    observation timed out; it is not sequence acceptance. Its interrupt sample
+    was inside RegionRows::row on a 268-byte region; measure that phase before
+    attributing the remaining delay to it.
     The Mac fixed-stream run positively reaches Dark+$552C after 1,092 game
     Random calls. Pair original scene state, not elapsed ticks.
     The first Dark+$5BE8 capture already shows the starting pond background;

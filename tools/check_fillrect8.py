@@ -5,7 +5,10 @@ from pathlib import Path
 from resource_fork import read_resource_fork
 ROOT=Path(__file__).resolve().parents[1]
 def rect(*v):return struct.pack('>4h',*v)
-def run(reference=None,status=None,native=None,native_status=None):
+def run(reference=None,status=None,native=None,native_status=None,mode=8):
+    if mode not in (0,8):raise ValueError("unsupported fixture mode")
+    prefix="window-mode0-reference-" if mode==0 else "paintrect-reference-"
+    if native and mode==0:raise ValueError("use the idle-call observer for native mode-0 acceptance")
     cases=[]
     if reference:
         text=reference.read_text()
@@ -13,9 +16,19 @@ def run(reference=None,status=None,native=None,native_status=None):
         code=next(r.body for r in read_resource_fork(ROOT/'tmp/runtime-data/Alone In The Dark') if r.kind==b'CODE' and r.rid==13)
         if code[0xd4e:0xd54].hex()!='486efff0a8a2' or 'PR_BYTES 486EFFF0A8A2' not in text:raise ValueError('original caller bytes')
         for f in range(3):
-            stem='paintrect-reference-'+('' if f==0 else f'fixture{f}-')
+            rows=[]
+            for phase in ('ENTER','RETURN'):
+                row=re.findall(r'^PR_'+phase+r' fixture='+str(f)+r' (.*)$',text,re.M)
+                if len(row)!=1:raise ValueError('missing/duplicate original call')
+                rows.append({k:int(v,16) for k,v in re.findall(r'\b(sp|port|[da][0-7])=([0-9A-F]+)',row[0])})
+            e,r=rows
+            if r['sp']!=e['sp']+4 or r['d0']!=0 or r['d1']!=((e['d1']&0xffff0000)|8) or r['a1']!=e['port']:raise ValueError('original return ABI')
+            for reg in [f'd{i}' for i in range(3,8)]+[f'a{i}' for i in range(2,7)]:
+                if r[reg]!=e[reg]:raise ValueError('original preserved '+reg)
+            stem=prefix+('' if f==0 else f'fixture{f}-')
             def read(phase,name):return (ROOT/'tmp'/f'{stem}{phase}-{name}.bin').read_bytes()
             port,pm=read('enter','port'),read('enter','pm')
+            if struct.unpack_from('>H',port,56)[0]!=mode:raise ValueError('pen mode')
             for name in ('port','pm','rect','vis','clip','pen','pen-data','clut'):
                 if read('enter',name)!=read('return',name):raise ValueError('modified '+name)
             if read('enter','pen-data')!=b'\xff'*8:raise ValueError('solid pattern')
@@ -63,6 +76,6 @@ def run(reference=None,status=None,native=None,native_status=None):
             if result!=after:raise ValueError('production fill differs from full-buffer oracle/reference')
     print(f'PASS FillRect8: {len(cases)} complete-screen comparisons, including surrounding pixels')
 if __name__=='__main__':
-    p=argparse.ArgumentParser(description=__doc__);p.add_argument('--reference',type=Path);p.add_argument('--status',type=int);p.add_argument('--native',type=Path);p.add_argument('--native-status',type=int);a=p.parse_args()
-    try:run(a.reference,a.status,a.native,a.native_status)
+    p=argparse.ArgumentParser(description=__doc__);p.add_argument('--reference',type=Path);p.add_argument('--status',type=int);p.add_argument('--native',type=Path);p.add_argument('--native-status',type=int);p.add_argument('--mode',type=int,choices=(0,8),default=8);a=p.parse_args()
+    try:run(a.reference,a.status,a.native,a.native_status,a.mode)
     except (ValueError,OSError) as e:raise SystemExit('FAIL FillRect8: '+str(e))

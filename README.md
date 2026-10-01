@@ -33,8 +33,10 @@ and original cleanup-continuation checks. The next reached relative-line call
 also passes matched-input Mac/native checks; its earlier pen-coordinate
 difference remains under investigation. Direct AGA colour-RAM readback at the idle
 menu now matches all 256 intended colours, and its menu planes and 900-tick
-continuation pass. The preceding black interval and full car/frog sequence
-acceptance remain open. An opt-in diagnostic now pairs the game’s complete
+continuation pass. The idle route’s mode-0 window fill now passes the original
+native call and matching Mac service-fixture pixels and registers. The preceding
+black interval and full car/frog sequence acceptance remain open. An opt-in
+diagnostic now pairs the game’s complete
 random inputs (including its clock mixing); all 64 measured calls and the
 selected character match the original.
 Routine diagnostic builds use `INTROSKIP=1` to send normal Enter and skip the

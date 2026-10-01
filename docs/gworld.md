@@ -359,8 +359,10 @@ M2.3g18 implements the original Dan2+$0D52 PaintRect (caller bytes
 `486efff0a8a2`). The selected window uses a 640×480×8 PixMap with local bounds
 (-150,-160)–(330,480), a 320×200 visible region, a rectangular clip, solid pen
 pixel data and patCopy mode. Its implicit native default pen fills with the
-selected foreground index. Nondefault patterns, transfer modes and complex
-regions remain named stops. The helper clips signed coordinates against map,
+selected foreground index. The reached Dark+$3CB8 call additionally uses
+mode 0 with the same solid pen; the window fill accepts modes 0 and 8.
+Other patterns, transfer modes and complex regions remain named stops. The
+helper clips signed coordinates against map,
 port, visible and clip bounds, then converts the actual write area back to
 screen coordinates for dirty publication.
 

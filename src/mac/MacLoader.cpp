@@ -3783,7 +3783,7 @@ static bool paintRect(const uint8_t* rectangle)
     if(!window || window->dialog || !port[110] || read16(port+6)!=0xc000
        || read16(window->pixelMap+32)!=8
        || read32(window->pixelMap)!=(uint32_t)s_colorScreen
-       || read32(port+58) || read16(port+56)!=8 || read16(port+66)
+       || read32(port+58) || (read16(port+56)!=0 && read16(port+56)!=8) || read16(port+66)
        || read32(port+80)>255)return false;
     uint8_t** vh=(uint8_t**)read32(port+24);
     uint8_t** ch=(uint8_t**)read32(port+28);

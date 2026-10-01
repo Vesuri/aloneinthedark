@@ -14,9 +14,13 @@ local function ptr(a) return mem:read_u32(a)&0xffffff end
 local function bytes(a,n)
  local out={};for i=0,n-1 do out[#out+1]=string.format('%02X',mem:read_u8(a+i)) end;return table.concat(out)
 end
+-- Optional isolated service fixture; never changes the shipped game.
+local mode=tonumber(os.getenv('AITD_PAINT_MODE') or '8')
+assert(mode==0 or mode==8,'PAINTRECT / UNSUPPORTED FIXTURE MODE')
+local prefix=mode==0 and 'window-mode0-reference-' or 'paintrect-reference-'
 local fixture=0;local scratch;local stack
 local function save(name,a,n)
- local f=assert(io.open('tmp/paintrect-reference-'..(fixture==0 and '' or 'fixture'..fixture..'-')..name..'.bin','wb'));for i=0,n-1 do f:write(string.char(mem:read_u8(a+i))) end;f:close()
+ local f=assert(io.open('tmp/'..prefix..(fixture==0 and '' or 'fixture'..fixture..'-')..name..'.bin','wb'));for i=0,n-1 do f:write(string.char(mem:read_u8(a+i))) end;f:close()
 end
 local armed=false;local done=false;local phase='entry';local thePort;local args;local ret;local rect;local port;local pm;local pixels;local size
 local function arm()
@@ -38,9 +42,9 @@ local function next_fixture()
  -- Contrast the existing black client pixels; only this isolated CPU fixture writes VRAM.
  for y=150,349 do for x=160,479 do mem:write_u8(pixels+y*640+x,0)end end
  rect=scratch+32
- local r=fixture==1 and {5,7,11,19} or {-5,-7,210,330}
+ local r=fixture==1 and {5,7,11,19} or (mode==0 and {-1000,-1000,1000,1000} or {-5,-7,210,330})
  for i=1,4 do mem:write_u16(rect+2*(i-1),r[i]&0xffff)end
- mem:write_u16(scratch,0x4e71);mem:write_u16(scratch+2,0xa8a2);mem:write_u16(scratch+4,0x4e71)
+ mem:write_u16(scratch,0x4e71);mem:write_u16(scratch+2,0xa8a2);mem:write_u16(scratch+4,0x60fe) -- safe idle if debugger quit is deferred
  mem:write_u32(stack,rect);cpu.state.A7.value=stack;cpu.state.PC.value=scratch
  args=stack;ret=scratch+4;phase='fixture';cpu.debug:bpset(scratch+2,'1','');dbg.execution_state='run'
 end
@@ -62,6 +66,8 @@ emu.register_periodic(function()
   local function signed(v)return v>=32768 and v-65536 or v end
   size=(mem:read_u16(pm+4)&0x3fff)*(signed(mem:read_u16(pm+10))-signed(mem:read_u16(pm+6)))
   assert(mem:read_u16(pm+32)==8 and size==307200,'PAINTRECT / PIXMAP')
+  assert(bytes(ret-6,6)=='486EFFF0A8A2','PAINTRECT / ORIGINAL BYTES')
+  if mode==0 then mem:write_u16(port+56,0) end
   print('PR_BYTES '..bytes(ret-6,6));log('ENTER');phase='return';cpu.debug:bpset(ret,'1','');dbg.execution_state='run'
  else
   assert(cpu.state.PC.value==ret);log('RETURN');dbg:command('bpclear');next_fixture()

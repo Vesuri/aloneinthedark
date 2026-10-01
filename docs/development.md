@@ -4590,32 +4590,60 @@ not an exact-build diagnosis or proof of the owner-visible black-screen cause.
 No host window access, capture or injected host events were attempted.
 
 
-## Idle-demo continuation under fixed entropy
+## Idle window fill (M2.3g44m)
 
-After the zone-query change, the bounded native run records six room transitions
-and reaches the named `QUICKDRAW / PAINTRECT` stop at Dark+$3CB8, tick 45,118,
-publication 748 (`tmp/m2-idle-fast-exit-native-full.log`, process exit 1).
-This is a reached unsupported service, not a timeout or successful demo exit.
-Original bytes at Dark+$3C88–$3CCC save the port, select FrontWindow, set the
-foreground colour and PenMode 0, paint A5−$108A, then restore the port.
-M2.3g44m tracks that measured dependency.
+Original Dark+$3C88–$3CCC saves the port, selects FrontWindow, sets the
+foreground colour and PenMode 0, paints A5−$108A, then restores the port.
+The window implementation now accepts modes 0 and 8 for its owned solid pen;
+other patterns, modes and region encodings retain named stops.
 
-The original fixed-entropy demo reaches Dark+$552C with 1,092 game Random calls
-and character 0 (`tmp/m2-fixed-idle-exit-reference.log`, exit 0). A separate
-capture at its first Dark+$5BE8 already contains the pond starting background
+The focused native run exits zero at Dark+$3CBA after the original PaintRect
+at +$3CB8 (`tmp/m2-idle-paint-native-focused-full.log`). Entry/return ticks are
+44,809/44,810, at publication 707. Mode 0, foreground 255 and rectangle
+(−1000,−1000,1000,1000) fill precisely the 320×200 client. The complete
+307,200-byte buffer matches the fill/preservation oracle; all 64,000 client
+pixels and their displayed black RGB match the Mac fixture. Ports, PixMaps,
+CLUTs, regions and rectangle bytes remain unchanged. D0=0, D1.W=8, A1=port,
+D3–D7/A2–A6 preservation and four-byte argument cleanup match the Mac.
+
+The original idle route did not reach this call in the bounded reference run.
+An isolated Mac service fixture therefore supplies the same mode, foreground,
+rectangle, map, port and clipping geometry. Three Mac calls and six independent
+full-buffer clipping cases pass, as does the existing mode-8 comparison.
+This establishes the service contract, not full idle-scene state pairing.
+Device CLUTs use entry positions when ctFlags has bit $8000; their ColorSpec
+value words are not pixel indices. The checker compares the used black entry
+without requiring unused colours from different scene palettes to match.
+
+Reproduce with a clean `INTROSKIP=1 FIXEDRNG=1` build and
+`GDBSCRIPT=idle_paint.gdb EXTRA_ARGS=--warp_mode=1 amiga/diag_run.sh 1500`.
+Preserve the complete native log before another run. The Mac fixture uses
+`AITD_PAINT_MODE=0` with `tools/mac_paintrect.lua` and the documented headless
+MAME command; mode 8 remains its default. Validate both actual process statuses:
+
+```sh
+python3 tools/check_idle_paint.py tmp/m2-idle-paint-native-focused-full.log --status 0 --reference tmp/m2-window-mode0-maintained-reference.log --reference-status 0
+```
+
+An earlier observer syntax failure (exit 1) and combined demo continuation
+that timed out (exit 124) are not passes. The corrected dump command passed a
+separate startup preflight before the focused acceptance run. Synthetic checker
+checks reject unfinished runs, missing completion and corrupted pixels/state.
+Build/link audits pass. Full car/frog and rendered-window acceptance remain open.
+
+## Remaining idle-sequence evidence
+
+The Mac fixed-entropy demo reaches Dark+$552C with 1,092 game Random calls and
+character 0 (`tmp/m2-fixed-idle-exit-reference.log`, exit 0). Its first
+Dark+$5BE8 capture already shows the pond starting background
 (`tmp/m2-car-end-reference.log`, exit 0); the historical `car-end-reference`
-filename is a candidate checkpoint name, not proof of the final car pose.
-Neither capture establishes the owner-visible black interval's cause.
+filename does not establish the final car pose.
 
-The subsequent original-call observer did not reach Dark+$3CB8 before its
-explicit endpoint-absent failure (`tmp/m2-idle-paint-reference.log`); process
-exit zero does not override that failure. Its isolated follow-up instead sets
-PenMode 0 on the existing Mac window-fill fixture, leaving original game code
-unchanged. All three calls retain the measured D0=0, D1.W=8, A1=port and
-preserved-register contract. The production solid-fill helper matches all nine
-full-buffer checks, including the three Mac captures and six clipping oracles;
-the contrasting fixtures change exactly 72 and 64,000 pixels. Evidence is
-`tmp/m2-window-mode0-reference.log` and `tmp/window-mode0-reference-*.bin`.
-This establishes mode-0 service semantics, not a matched idle-demo scene.
-The branch to Dark+$3C74 depends on A5−$BFB8/$BFB6; trace those values and
-their scene inputs rather than assuming the reference takes the same branch.
+The combined native observation continues past the mode-0 fill but times out
+before that exit (`tmp/m2-idle-paint-native-accept-full.log`, exit 124). Its
+interrupt sample is inside RegionRows::row, capacity 268, y=93. That single
+sample identifies a place to measure, not a proven performance cause. The
+branch to the fill depends on A5−$BFB8/$BFB6, measured as 1/0; compare the
+underlying scene/script state with the Mac rather than pairing elapsed ticks.
+Neither the passing service fixture nor the incomplete continuation establishes
+the owner-visible black interval's cause.
