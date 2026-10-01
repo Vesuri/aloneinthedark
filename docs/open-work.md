@@ -59,129 +59,29 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.3g44 Black intro display while music plays.**
-  - Read-only `menu_mode.gdb` checks (M2.3g44w) now pass startup, the fully
-    published idle menu after 135 OS handbacks, and its original 900-tick exit.
-    Mode, fetch geometry and display DMA remain correct; active COP1LC matches
-    the owned copper list. All 64,000 menu pixels, plane pointers and palette
-    colours pass independent decoding. Persistent mode loss at those checkpoints
-    is ruled out; the owner-visible black interval remains unexplained.
-  - The normal-input Carnby reading route now passes all eight letter pages:
-    257 text calls have identical strings, positions and settings; artwork,
-    backgrounds, arrows and palettes match the Mac. Publications 17–24 pass
-    independent AGA decoding. The only frame differences are the documented
-    placeholder glyphs. `STORYREAD=1` supplies Right Arrow for reading and
-    Return at the final page; the original returns with released keys.
-    See `amiga/story_pages.gdb` and `tools/check_story_pages.py`.
-  - `MENUENTER=1` skips the book and selects new game through normal Enter;
-    `STORYENTER=1` additionally selects the initial portrait. The portrait
-    state matches all 64,000 Mac client pixels and 256 colours, with verified
-    AGA publication 15. Idle-route checks keep both options off. These input
-    and memory checks do not close the owner-visible black interval.
-  - Streaming masked copies (M2.3g44p) now let the fixed-entropy native idle
-    demo reach Dark+$552C naturally, with flag 1 and zero input words. All nine
-    room/camera transitions match the Mac; actor identity, room, life and track
-    agree at each. Eight track positions agree; the final room entrance is
-    native position 105 versus Mac 109, followed by native track completion 122.
-    This closes the previously observed repeated route in that run, not exact
-    frame/animation fidelity or owner-visible black-screen acceptance.
-  - Before the masked-copy fix, the bounded full demo failed to return:
-    later transitions repeat room 0/camera 3 and room 2/camera 3. The 1,200-second
-    observer timed out at 1,081 publications, interrupted in RegionRows::toggle.
-    The subsequent state/cost probes identified masked CopyBits at 92% of the
-    sample; the streaming-copy change above completes this route.
-    Original exit is a natural script flag write at Dark2+$3F8E, after a
-    120-tick script wait, with zero input words (1,092 Random calls).
-  - The first pond transition now completes with zero input words: native
-    publication 159, no pending frame, room 0/camera 1/character 0 and one game
-    Random call. All CLUT RGB values match the Mac; AGA planes/copper match the
-    native logical buffer. The 64,000 client pixels differ only at (209,81)
-    and (208,82), inside native actor 289's bounds; its animation position is
-    different. Do not call this an exact actor-state/frame pair.
-  - Read-only heap queries no longer rebuild unchanged metadata (M2.3g44n).
-    The original and native 120-step captures now both reach track position 52;
-    before the change native remained at 20 and circled. Coordinates still
-    differ with animation timing; this is not full frame/sequence acceptance.
-    Near-camera captures now show a large foreground car; their cleared static
-    backgrounds match after the font correction (M2.3g44o). Exact car pose
-    pairing remains open. No manual input was used after the book skip.
-  - GetZone/SetZone no longer rebuild heap-derived views (M2.3g44l); native
-    heap contracts and the bounded cost comparison pass. This alone did not
-    close progression or owner-visible display acceptance.
-  - Use `FIXEDRNG=1` and the matching Mac diagnostic entropy fixture for paired
-    sequence investigations. All 64 measured inputs/results/callers now match,
-    including character 0; compare original scene/script state, not elapsed ticks.
-  - Hardware palette readback now passes at the idle menu (M2.3g44j): all
-    256 RGB24 colours equal the copper list and logical CLUT, with exact menu
-    planes and the original 900-tick continuation. This rules out wrong colour
-    RAM at that checkpoint, not a display-mode or host-rendering failure.
-  - Mode-0 window filling now passes the original native call and matched Mac
-    service-fixture pixels/ABI (M2.3g44m). The later masked-copy profile and
-    successful route above supersede its failed broad continuation run.
-    The Mac fixed-stream run positively reaches Dark+$552C after 1,092 game
-    Random calls. Pair original scene state, not elapsed ticks.
-    The first Dark+$5BE8 capture already shows the starting pond background;
-    it is not the near-camera car endpoint.
-  - The subsequent fixed-stream first-point captures share character/room/camera
-    but have 122 versus 72 random calls and different projected packets before
-    QuickDraw. Pair actor/animation state before accepting those coordinates.
-  - The extreme relative-Line Y coordinate is now explained by original
-    Dark3+$348C: a word store at A6−5 overlaps saved Y at A6−4. Both current
-    runs reach the same eight-byte point command and produce identical locals,
-    MoveTo and Line results. No game patch is needed. Their surrounding state
-    still differs (247 versus 72 Random calls and different following packets),
-    so this is a point-input pair, not whole-scene frame acceptance.
-  - Owner reports again that the idle route shows a black interval with music,
-    then a circling car, while pressing Enter avoids both symptoms. Compare
-    their shared timing/scene progression; a palette-only cause is not established.
-  - Owner screenshots `FS-UAE_Full_261001-0912_01` through `_04` and
-    `FS-UAE_Full_261001-0913_00` visibly show the logo, title, game menu,
-    portraits and attorney-letter text after manual Enter. This establishes
-    that these screens render on the host along that input route; it does not
-    identify the preceding black interval's cause. Routine tests must use Enter
-    to skip the book; reserve uninterrupted playback for sequence acceptance.
-  - Owner reports that the black screen predates the scripted-Enter build.
-    The supplied 2026-09-30 23:42:40 screenshot shows a landscape and copyright
-    text eventually appearing with music after a long wait. Investigate the
-    preceding black interval; this is not evidence of a permanently blank window.
-    The owner subsequently saw the car move, confirming visible scene progression.
-    The 23:44:59 screenshot shows the car and a mostly erased copyright line;
-    the owner then reports a repeating circular route. Owner correction and
-    the 23:56:50 screenshot establish the intended endpoint: the car approaches
-    and finishes near the camera, rather than circling repeatedly. Compare
-    position/sequence state and the copyright transition with the original.
-    The car scene must then advance to the frog scene; the owner supplied its
-    starting pond/road view at 23:57:40. Verify this transition without manual
-    Enter, along with the near-camera car endpoint.
-    At 23:55:38, manually pressing Enter revealed the illustrated two-panel
-    letter-reading scene during the reported black interval. Verify its original trigger
-    and whether pending drawing/palette publication waits
-    for an event; input-triggered visibility is evidence, not yet a diagnosis.
-    Owner clarification: this interval contains substantial illustrated story
-    text. After manual Enter, the port rendered that text in its temporary font.
-    The 23:58:46 screenshot is from a DOS-version video, so use it for content
-    context, not as the Macintosh pixel/font oracle. Verify the Mac story pages,
-    text placement, visibility and progression after their normal game inputs.
-    The measured no-input Mac route shows the in-game new-game panel for about
-    15 seconds, then the car/pond idle presentation. Enter at that panel opens
-    the portraits; a second Enter opens the attorney letter, which waits for
-    further input. The story is not automatically shown by the idle route.
-    These original captures are `tmp/m2-story-reference-sequence.log` and
-    `tmp/m2-story-newgame-reference.log` (both exit zero, 48 captures each).
-    Do not attribute it to test input. FS-UAE logs repeatedly report
-    `Not a valid drawable size for glViewport`; this is a clue, not a proven cause.
-  - At the reported intro state, capture logical pixels/palette, active AGA
-    planes/copper and publication counters. Compare with the original state;
-    distinguish missing game drawing from native publication and host rendering.
-    Respect the existing restriction on host-window access.
+Delivery update (owner, 2026-10-02): finish M2 without blocking on
+micro-optimizations. Work the actionable items below in order. Preserve the
+unresolved visual report as an explicit acceptance gap; it does not block
+independent service implementation or automated acceptance. Region expansion
+and other general tuning remain M5.
 
-  *Done when* the black-interval cause is demonstrated, the car reaches its
-  near-camera endpoint without repeated circling and advances to the frog scene
-  without manual input, and port fixes pass paired
-  frame/publication and original sequence-state checks. Actual rendered-window verification stays
-  explicitly pending if authorized capture is unavailable; memory checks alone
-  cannot establish that the owner-visible black screen is fixed.
+- [ ] **M2.3g45** — implement and verify the reached SetEmptyRgn call (active).
+- [ ] **M2.1c / M1.6b** — verify original PAK payloads and final startup success.
+- [ ] **M2.3a / M2.3b** — resolve the pattern-copy audit and inverse coordinates.
+- [ ] **M2.3 / M2.4** — consolidate existing core/screen evidence and close remaining acceptance.
+- [ ] **M2.5** — finish PAL/NTSC, pointer palette ownership and video-clock acceptance.
+- [ ] **M2.6 / M2.7 / M2.7a / M2.8 / M2.9** — finish the remaining display,
+  palette, region and font checks; reuse the existing implementations and captures.
+- [ ] **M2.10a / M2.10** — repair stale observers, add the intro regression and
+  state-pair frame comparison; include the remaining car/frog frame acceptance.
+- [ ] **M2.3g44 visual report** — demonstrate the black-interval cause and verify
+  the rendered result when authorized capture is available. M2 remains open
+  while its required acceptance is outstanding.
+
 - **M2.3g45 SetEmptyRgn on the skipped-intro route.**
+  - Original Mac capture now passes: the reached region is ten bytes and empty;
+    the call preserves its handle/body and D0–D7/A2–A6, returning A0=handle and
+    A1=body. Native implementation is in progress; this item is not accepted yet.
   - The scripted Enter route reaches Dark2+$5768 `$A8DD`; original bytes
     +$5762–$5769 are `2f39ffff4038a8dd`. The caller passes the region at
     A5−$BFC8, then continues cleanup. Capture the original region and ABI.
@@ -191,8 +91,8 @@ required.
 - **M2.1c Original File Manager read acceptance (after M2.2).**
   - This retains M2.1's original acceptance; diagnostic fixture reads do not count
     as original-game reads. M2.1b2a measured the intervening Get1NamedResource
-    dependency at Engine+$3CDC. Implement the file core first, then the queued
-    resource services, then return here for their integrated acceptance.
+    dependency at Engine+$3CDC. File/resource services and the native idle route
+    are now implemented; the remaining work is original-game payload verification.
   - The original no-input idle route now proves both PAK reads on the Mac.
     Reproduce actual native execution and compare returned payloads; synthetic
     fixture reads do not satisfy this requirement.
@@ -202,9 +102,9 @@ required.
   counts are recorded. If original bytes establish an unused file, document the
   evidence before revising that requirement; absence from one route is not proof.
 - **M1.6b Final startup requirements acceptance (after file/resource services).**
-  - M1.6a implements the measured identity records and verifies all eleven
-    Engine capability flags. Full startup is still stopped before screen-size selection, before
-    Core's initialization-result/alert branches; it is not a successful launch.
+  - M1.6a verifies the identity records and all eleven Engine capability flags.
+    Runtime now reaches the intro and menu; the old pre-screen-selection stop is
+    obsolete. Retain the explicit initialization-result/alert-branch check below.
   - After M2.1/M2.2, verify Core+$0460 is reached with initialization result zero,
     without taking its failure-alert branches ($0410/$044E).
 
@@ -226,7 +126,10 @@ required.
 
   *Done when* the reached GlobalToLocal calls match MAME, with point/adjacent-byte
   checks and no fixed Vette screen origin remaining.
-- **M2.3 8-bit QuickDraw core.**
+- **M2.3 8-bit QuickDraw core — acceptance consolidation.**
+  - Eight-bit screen/GWorld/PixMap/CopyBits and reached PICT paths already run
+    through the intro. Audit the existing host/native evidence against the scope
+    below; do not reimplement verified paths.
   - Generalise the screen, GWorld, PixMap, CTable, ITable, CopyBits and PICT code
     to 8 bpp.
   - Remove the Vette palette maps and caps.
@@ -234,7 +137,10 @@ required.
 
   *Done when* host checks of 8-bit CopyBits (srcCopy and colour mapping) pass, and
   the run proceeds past GWorld creation.
-- **M2.4 Mac screen model and 320×200 only.**
+- **M2.4 Mac screen model and 320×200 only — integrated acceptance.**
+  - Main-device storage, fresh/existing preference selection of WIND 128 and
+    live window geometry have separate passing captures. Combine the fresh-start
+    and viewport evidence; older pre-window loud-stop descriptions are historical.
   - A 640×480×8 main screen with a GDevice list, and windows over it.
   - A fixed viewport on WIND 128's live content rectangle; M0.5 measures
     (160,150)–(480,350) after positioning, not the initial resource bounds.
@@ -263,13 +169,18 @@ required.
 
   *Done when* the verifier reports zero mismatches over the intro on
   `a1200-020`, including preservation across partial updates.
-- **M2.7 Palette Manager realisation.** Implement NewPalette, SetPalette,
+- **M2.7 Palette Manager realisation — acceptance consolidation.** Existing
+  startup realization and palette transitions pass paired checks. Verify the
+  complete required endpoint rather than rebuilding those services. Implement NewPalette, SetPalette,
   ActivatePalette, GetCTable and PaletteDispatch as on the 8-bit reference.
 
   *Done when* the device CLUT equals the MAME capture (M0.5) after the game
   activates clut 128, including the three duplicate endpoint slots observed
   in M0.5 (1, 15, 191).
-- **M2.7a Reference video colour transfer.**
+- **M2.7a Reference video colour transfer — acceptance consolidation.**
+  - Integer transfer and maintained reference/ramp checks already exist; see
+    [aga-display.md](aga-display.md). Verify their coverage and current native
+    intro output before closing this item.
   - Reproduce the measured mapping from logical RGB16 to mdc48 output colours
     in the AGA palette, using a verified integer lookup/transfer (no guessed gamma).
   - Preserve the distinct logical CLUT for original QuickDraw/Palette calls.
@@ -311,6 +222,47 @@ required.
   *Done when* the Infogrames logo and three intro states match MAME
   pixel-for-pixel, or with documented and explained differences, and the `intro`
   regression case passes.
+
+### M2.3g44 — unresolved visual report and sequence acceptance
+
+The reported black interval is **not diagnosed or fixed**. Existing memory and
+register checks cannot establish what the host window displayed. Follow the
+host-window restriction under M1.7b2; do not retry denied capture or substitute
+host input injection. This verification gap must not stall independent M2 work.
+
+Already verified (details and capture names in [development.md](development.md)):
+- Streaming masked copies let the fixed-entropy idle demo exit naturally without
+  manual input through all nine Mac room/camera transitions. Actor identity,
+  room, life and track agree; the final entrance position is 105 versus 109,
+  followed by native completion at 122. Exact car/animation frame pairing remains open.
+- The first pond frame has matching palette, background and AGA publication;
+  two pixels differ inside an actor with different animation state.
+- The idle menu has all 64,000 pixels, plane pointers and 256 colours verified.
+  Read-only mode checks pass after 135 OS handbacks and at its original 900-tick
+  exit. Persistent mode loss at those checkpoints is ruled out; transient
+  handback behavior and host rendering remain unverified.
+- Normal Enter input selects new game and the portrait; all eight letter pages
+  pass strings, layout, artwork, palettes and AGA decoding, with only the owned
+  placeholder glyph artwork differing. The Mac idle route waits about 15 seconds
+  at the menu before the car/pond demo; it does not automatically show the letter.
+- Owner screenshots establish visible logo, title, menu, portraits and letter
+  after manual Enter, and eventual visible landscape/car/pond progression. They
+  do not establish the cause of the preceding black interval. The DOS video is
+  content context only, never the Macintosh pixel/font reference.
+
+Remaining: pair the near-camera car endpoint and frog transition with original
+scene/animation state under M2.10; capture the reported black state across logical
+pixels, palette, AGA publication and authorized rendered output. FS-UAE's
+`Not a valid drawable size for glViewport` remains a clue, not a diagnosis.
+Routine service tests use `INTROSKIP=1`; uninterrupted playback is reserved for
+sequence acceptance. `FIXEDRNG=1` needs the matching Mac entropy fixture;
+elapsed ticks alone do not establish paired scene state.
+
+*Done when* the black-interval cause is demonstrated, the car reaches its
+near-camera endpoint and advances to the frog without repeated circling or
+manual input, and fixes pass original sequence and paired frame/publication
+checks. Rendered verification remains explicitly pending while authorized
+capture is unavailable.
 
 ## M3 Playable
 
