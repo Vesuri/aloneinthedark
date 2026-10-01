@@ -26,7 +26,7 @@ The title-screen copy now uses the Mac’s measured colour mapping. Its full
 client matches apart from the documented placeholder copyright glyphs. The direct-map **CopyBits** at Dark+$1E4A now returns with matching pixels.
 Owner screenshots confirm visible menu, portraits and story text after Enter.
 The Enter-skipped idle route reaches the pond background. Its polygon and region recording
-now match the Mac; the next graphics stop is InsetRgn. The preceding black
+now match the Mac, including the one-pixel contour expansion; the next graphics stop is KillPoly. The preceding black
 interval and full car/frog sequence acceptance remain open.
 Routine diagnostic builds use `INTROSKIP=1` to send normal Enter and skip the
 book; `amiga/intro_skip.gdb` verifies the skip and key release.

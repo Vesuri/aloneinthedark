@@ -35,6 +35,9 @@ solutions already paid for. Read [README.md](README.md),
   Use native integer arithmetic; the 68000-only math helpers are retired.
 - `AitdScreen` owns display registers. Publish complete copper lists and
   bitplane/sprite pointers first in VBI, before input or audio work.
+- Keep large temporary buffers off the trap dispatcher's stack. The measured
+  FS-UAE system stack is only 6 KiB; inspect combined compiled frames for new
+  trap helpers and use owned temporary handles when staging large results.
 - Keep explicit dirty rectangles; no shadow framebuffer or tile-diff machinery.
 - Do not dispatch original game callbacks from an Amiga interrupt. The VBI updates
   time/input/Paula; Mac callbacks run at safe user-mode return points.

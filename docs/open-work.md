@@ -59,17 +59,16 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.3g44e InsetRgn for the pond contour (prerequisite for M2.3g44).**
-  - The verified region-recording lifecycle reaches `$A8E1`, Dark+$33F8.
-    Original +$33F2–$33F9 bytes are `2f0a4878ffffa8e1`: the caller passes
-    the recorded region and inset distances -1,-1. Measure exact region spans,
-    bounds, handle ownership and ABI before implementing this expansion.
-  - Continue using `INTROSKIP=1` and original-instruction breakpoints. Save the
-    full debugger log; the runner's abbreviated tail can omit earlier calls.
+- **M2.3g44f KillPoly after pond contour expansion (prerequisite for M2.3g44).**
+  - The verified InsetRgn returns and reaches `$A8CD`, Dark+$3410.
+    Original +$340E–$3411 bytes are `2f0ca8cd`: push the polygon handle
+    in A4 and dispose it. Capture the original ABI and heap transition;
+    preserve the expanded region and drawing buffers.
+  - Use `INTROSKIP=1`; no full book replay is needed.
 
-  *Done when* the original/native expanded region matches byte for byte,
-  ownership and calling contract are preserved, and execution advances to the
-  next explicit stop beyond InsetRgn without drawing during the region change.
+  *Done when* the original/native disposal matches the calling contract,
+  releases only the polygon allocation, preserves region/pixel data, and
+  continues to the next explicit stop beyond KillPoly.
 - **M2.3g44 Black intro display while music plays.**
   - Owner screenshots `FS-UAE_Full_261001-0912_01` through `_04` and
     `FS-UAE_Full_261001-0913_00` visibly show the logo, title, game menu,

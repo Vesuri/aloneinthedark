@@ -179,3 +179,51 @@ Three failed/incomplete reference logs and four failed/incomplete native logs
 are rejected by the verifier. Host sanitizer checks additionally cover malformed
 bounds, reserved coordinates and excessive complexity. This verifies region
 recording; InsetRgn and the complete frog sequence remain open.
+
+
+## Pond contour expansion (M2.3g44e)
+
+The unchanged game next calls InsetRgn at Dark+$33F8 with distances -1,-1.
+Original +$33F2–$33F9 bytes are `2f0a4878ffffa8e1`. The reference observer
+`tools/mac_insetrgn.lua` sends normal Enter to skip the book, follows the real
+pond polygon/region calls and captures this expansion, then checks allocation
+size, flags and owner through original Memory Manager calls.
+
+`tmp/m2-insetrgn-reference.log` exits zero. The 252-byte contour becomes a
+244-byte region with bounds `(135,-1,200,23)`. A separate pixel-set model proves
+that it is the union of all source pixels translated by -1,0,+1 in both axes.
+Port fields, source polygon and the drawing buffer remain unchanged. The same
+region handle owns the resized body, with flags zero in the application zone.
+The trap pops eight argument bytes; D0=0, D1.W=$FFFF and D2.W=200;
+D3–D7/A2–A6 are preserved. A0/A1 are QuickDraw scratch, not live caller results.
+
+`RegionExpand::one` implements the measured expansion with span unions, without
+a bitmap scratch buffer. It stages its result before publishing and rejects
+unsupported complexity, overflow and malformed/truncated streams. The runtime
+accepts only the measured -1,-1 distances; other distances stay at INSETRGN.
+The host check compares exact original region bytes, an independent pixel-set
+oracle for empty, rectangular, concave, separated, merging and holed shapes, and atomic
+rejection. It runs with address/undefined-behavior sanitizers in `make host-tests`.
+Native validation passes in `amiga/insetrgn.gdb`, including ownership,
+unchanged pixels and continuation to KillPoly at Dark+$3410.
+
+
+The first native InsetRgn attempt fails with SIGBUS before its return. The
+instrumented repeat (`tmp/m2-insetrgn-native-dispatch-full.log`, exit 1) proves
+that trap dispatch is entered with the expected arguments before the fault;
+it is not accepted evidence. Compiled frames showed 4,164 bytes reserved by
+the dispatcher plus 4,296 bytes in the expansion helper. The output buffer has
+therefore moved to a temporary owned handle, disposed on completion or failed
+encoding. The dispatcher now reserves 324 bytes. The rerun reports system-stack bounds $200AA8–$2022A8 (6,144 bytes), less
+than the two old frames alone. The corrected frames total 4,620 bytes before
+call/register overhead. `tmp/m2-insetrgn-native-heap.log` exits zero, and the complete debugger output
+is saved in `tmp/m2-insetrgn-native-heap-full.log`. The paired checker passes
+all 244 region bytes, bounds, ABI, handle identity/extent/flags/owner and
+unchanged port/pixel data. Queued publications stay 211 and book batches stay
+zero. Neither failed run is counted as a pass.
+
+The full host suite passes in `tmp/m2-insetrgn-host-tests.log`; the added
+span-merging boundary fixture also passes. Final no-float and 88-symbol audits
+pass. Four corrupt/incomplete original logs and five invalid native logs
+(including insufficient stack headroom) are rejected. Other inset distances
+remain explicit INSETRGN stops; broader support belongs to M2.8.

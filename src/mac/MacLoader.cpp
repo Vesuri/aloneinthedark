@@ -18,6 +18,7 @@
 #include "CopyBits8.h"
 #include "CursorVisibility.h"
 #include "RegionRows.h"
+#include "RegionExpand.h"
 #include "GWorld8.h"
 #include "SoundDriver.h"
 #include "SongTimeline.h"
@@ -7662,6 +7663,22 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         write32(userStack,(uint32_t)region);
         regs[0]=0;regs[8]=(uint32_t)*region+10;
         return 1;
+    }
+    if(trap==0xa8e1) {                       // InsetRgn: measured pond expansion
+        MacHeap::Handle region=(MacHeap::Handle)read32(userStack+4);
+        MacHeap* owner=handleZone(region);uint16_t size=0;
+        if(read32(userStack)!=0xffffffffUL || !owner || !*region)goto unsupportedTrap;
+        // Keep large output storage off the shared supervisor trap stack.
+        MacHeap::Handle expanded=newHandle(RegionExpand::capacity,false);
+        MacHeap* temporaryOwner=handleZone(expanded);
+        if(!temporaryOwner || !*expanded)goto unsupportedTrap;
+        bool valid=RegionExpand::one(*region,owner->handleSize(region),*expanded,RegionExpand::capacity,size);
+        if(valid)valid=owner->setHandleSize(region,size)==MacHeap::noErr;
+        if(valid)for(uint16_t i=0;i<size;++i) {volatile uint8_t value=(*expanded)[i];(*region)[i]=value;}
+        if(temporaryOwner->disposeHandle(expanded)!=MacHeap::noErr || !valid)goto unsupportedTrap;
+        regs[0]=0;regs[1]=(regs[1]&0xffff0000UL)|0xffff;
+        regs[2]=(regs[2]&0xffff0000UL)|read16(*region+6);
+        return 9;
     }
     if(trap==0xa8df) {                       // RectRgn(owned RgnHandle, Rect*)
         const uint8_t* rectangle=(const uint8_t*)read32(userStack);

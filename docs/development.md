@@ -4345,6 +4345,6 @@ and ClosePoly, including all polygon bytes, changed/preserved port fields,
 calling contract, heap ownership and unchanged drawing buffers. Both accepted
 reference and native observers exit zero; native book batches remain zero.
 Region recording is now also verified (M2.3g44d); the next named stop is
-InsetRgn at Dark+$33F8 (M2.3g44e). Contracts, host checks,
+KillPoly at Dark+$3410 (M2.3g44f), after verified one-pixel region expansion. Contracts, host checks,
 rejected evidence and the exact acceptance commands are recorded in
 [picture-drawing.md](picture-drawing.md#pond-scene-polygon-recording-m23g44c).
