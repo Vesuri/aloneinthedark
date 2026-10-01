@@ -37,7 +37,9 @@ continuation pass. The idle route’s mode-0 window fill now passes the original
 native call and matching Mac service-fixture pixels and registers. The preceding
 black interval and full car/frog sequence acceptance remain open. Removing
 redundant heap work now lets the car pass the waypoint where a paired diagnostic
-previously reproduced circling; the full transition is still unverified. An opt-in
+previously reproduced circling. Streaming masked bitmap copies now let a bounded
+idle-demo run complete naturally through all nine Mac room/camera transitions.
+Exact animation/frame pairing and the owner-visible black interval remain open. An opt-in
 diagnostic now pairs the game’s complete
 random inputs (including its clock mixing); all 64 measured calls and the
 selected character match the original.

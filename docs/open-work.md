@@ -60,11 +60,18 @@ required.
 ## M2 Startup to intro
 
 - **M2.3g44 Black intro display while music plays.**
-  - After the heap-query fix, the bounded full demo still failed to return:
+  - Streaming masked copies (M2.3g44p) now let the fixed-entropy native idle
+    demo reach Dark+$552C naturally, with flag 1 and zero input words. All nine
+    room/camera transitions match the Mac; actor identity, room, life and track
+    agree at each. Eight track positions agree; the final room entrance is
+    native position 105 versus Mac 109, followed by native track completion 122.
+    This closes the previously observed repeated route in that run, not exact
+    frame/animation fidelity or owner-visible black-screen acceptance.
+  - Before the masked-copy fix, the bounded full demo failed to return:
     later transitions repeat room 0/camera 3 and room 2/camera 3. The 1,200-second
     observer timed out at 1,081 publications, interrupted in RegionRows::toggle.
-    Instrument later actor/script state and phase costs before another broad
-    exit wait; neither the timeout sample nor the car improvement proves cause.
+    The subsequent state/cost probes identified masked CopyBits at 92% of the
+    sample; the streaming-copy change above completes this route.
     Original exit is a natural script flag write at Dark2+$3F8E, after a
     120-tick script wait, with zero input words (1,092 Random calls).
   - The first pond transition now completes with zero input words: native
@@ -77,11 +84,12 @@ required.
     The original and native 120-step captures now both reach track position 52;
     before the change native remained at 20 and circled. Coordinates still
     differ with animation timing; this is not full frame/sequence acceptance.
-    Continue from this demonstrated waypoint improvement to the near-camera
-    endpoint and frog transition. No manual input was used after the book skip.
+    Near-camera captures now show a large foreground car; their cleared static
+    backgrounds match after the font correction (M2.3g44o). Exact car pose
+    pairing remains open. No manual input was used after the book skip.
   - GetZone/SetZone no longer rebuild heap-derived views (M2.3g44l); native
-    heap contracts and the bounded cost comparison pass. Recheck progression
-    with this reduced overhead; it is not yet a car/frog or visibility fix.
+    heap contracts and the bounded cost comparison pass. This alone did not
+    close progression or owner-visible display acceptance.
   - Use `FIXEDRNG=1` and the matching Mac diagnostic entropy fixture for paired
     sequence investigations. All 64 measured inputs/results/callers now match,
     including character 0; compare original scene/script state, not elapsed ticks.
@@ -90,10 +98,8 @@ required.
     planes and the original 900-tick continuation. This rules out wrong colour
     RAM at that checkpoint, not a display-mode or host-rendering failure.
   - Mode-0 window filling now passes the original native call and matched Mac
-    service-fixture pixels/ABI (M2.3g44m). The subsequent combined demo-exit
-    observation timed out; it is not sequence acceptance. Its interrupt sample
-    was inside RegionRows::row on a 268-byte region; measure that phase before
-    attributing the remaining delay to it.
+    service-fixture pixels/ABI (M2.3g44m). The later masked-copy profile and
+    successful route above supersede its failed broad continuation run.
     The Mac fixed-stream run positively reaches Dark+$552C after 1,092 game
     Random calls. Pair original scene state, not elapsed ticks.
     The first Dark+$5BE8 capture already shows the starting pond background;
@@ -425,6 +431,19 @@ required.
 
   *Done when* the profile shows no remaining optimisation worth its risk, and the
   frame rates on both configs are recorded in README.
+- **M5.2a Region expansion cost.**
+  - After streaming masked copies, four InsetRgn calls use 14,256,985 of
+    24,022,099 beam units in a bounded diagnostic sample. RegionExpand decodes
+    the complete region three times per output row. The unprofiled idle demo
+    now completes, so further optimization belongs here rather than blocking M2.
+  - Consider validated forward traversal of neighbouring rows, preserving exact
+    encoding and atomic malformed/capacity rejection. Inspect combined native
+    stack usage and interrupt headroom; no large new automatic arrays.
+
+  *Done when* independent host shapes and original/native InsetRgn bytes, ABI
+  and ownership pass, measured native cost decreases, interrupt headroom is
+  verified, and the unprofiled idle route still completes without manual Enter.
+
 - **M5.3 Safe-point gap audit.**
   - Measure the worst interval between trap boundaries during gameplay; the
     sequencer and VBL tasks only run at those points.

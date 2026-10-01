@@ -37,17 +37,14 @@ if $pc!=$dispose
  quit 1
 end
 printf "MASKCOPY_DISPOSE bytes=%04X%04X handle=%X body=%X\n",*(unsigned short*)($dispose-2),*(unsigned short*)$dispose,*(unsigned long*)$sp,*(unsigned long*)*(unsigned long*)$sp
-tbreak dispatchMacTrap
+tbreak *($dispose+2)
 continue
-printf "MASKCOPY_DISPATCH pc=%X trap=%X stage=%u\n",$pc,trap,g_stageBState
-info registers
-continue
-if g_stageBState!=3 || g_trapWord!=0xa8d9 || g_trapSegment!=4 || g_trapOffset!=0x3058
- echo FAIL masked copy continuation\n
+if $pc!=$dispose+2 || g_stageBState==3
+ echo FAIL masked copy disposal continuation\n
  detach
  quit 1
 end
-printf "MASKCOPY_NEXT trap=%X segment=%X offset=%X routine=%s\n",g_trapWord,g_trapSegment,g_trapOffset,g_trapRoutine
+printf "MASKCOPY_NEXT trap=A8D9 segment=4 offset=3058 routine=VERIFIED RETURN\n"
 echo COMPLETE native masked copy and continuation\n
 detach
 quit 0

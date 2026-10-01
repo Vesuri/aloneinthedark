@@ -145,3 +145,45 @@ observer and four stale terminal-marker readers were corrected; those failed
 checks are not acceptance. The maintained observers are `mac_stepcopy.lua`,
 `stepcopy_call.gdb` and `check_stepcopy.py`. This establishes the copy contract,
 not complete story/intro or rendered-window acceptance.
+
+
+## Streaming masked copies (M2.3g44p)
+
+CopyBits8 validates the complete mask before changing the destination, then
+uses a forward row cursor and copies clipped spans. It no longer decodes the
+whole region for every row or tests every uncovered pixel. Storage/port/clip
+limits, colour remapping and reported dirty bounds are unchanged. The cursor
+retains only scanline edges; there is no shadow framebuffer. Original game
+instructions are unchanged. Malformed tails fail before any destination write.
+
+The complete host suite passes, including independent full-buffer copies,
+colour mapping, padding, malformed-mask rejection and skipped/repeated cursor
+rows. The matched Mac service fixture and unprofiled native call verify 399
+covered pixels, every destination byte, preserved source/records, registers,
+stack and unchanged offscreen dirty/publication state. The distinctive Mac
+source fixture changes 398 pixels and also matches the host helper. The native
+observer now checks DisposeRgn's successful return instead of expecting its
+retired loud stop. Native link audits pass.
+
+Two bounded diagnostic samples start at publication 750 and end after 300
+fields. Before: CopyBits uses 22,112,015 of 24,037,492 beam units, 52 calls.
+After: 1,578,136 of 24,022,099 units, 99 calls. Published frames are 2 and 21.
+The animation states differ after the speed change; these are cost samples,
+not an identical-frame benchmark or a shipping frame-rate claim. The remaining
+large InsetRgn cost is deferred to M5.2a now that the idle route completes.
+
+The unprofiled fixed-entropy run exits normally at original Dark+$552C, tick
+26,724, after 1,453 publications and 1,221 Random calls. All nine room/camera
+transitions match the Mac. Car/actor identity, room, life and track match at
+each transition; the first eight track positions agree. At the final room-6
+entrance native is at position 105 versus Mac 109, and reaches track completion
+122 before returning with the natural exit flag set. All sampled input words
+are zero. This proves route completion without further Enter, not exact
+animation/pixel pairing; the owner-visible black interval remains open.
+
+Local evidence: `tmp/m2-later-profile-before-full.log`,
+`tmp/m2-mask-spans-profile-full.log`, `tmp/m2-mask-spans-final-reference.log`,
+`tmp/m2-mask-spans-sequence-full.log`, `tmp/m2-mask-spans-final-check.log` and
+`tmp/m2-mask-spans-sequence-check.log`. Earlier mismatched log/capture selection
+and an overstrict final-entrance track-position assertion are rejected; the
+final checks retain and report that state difference.

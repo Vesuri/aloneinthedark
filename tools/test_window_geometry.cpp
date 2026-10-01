@@ -71,6 +71,31 @@ int main() {
             assert(RegionRows::inside(row,x)==expected);
         }
     }
+    // Streaming traversal must preserve every pixel, including skipped/repeated
+    // rows, translated coordinates and empty rows after the final transition.
+    for(int step:{1,7,233})for(int offset:{0,8000}) {
+        const uint8_t* region=offset ? local : visible;
+        RegionRows::Cursor cursor;
+        assert(!cursor.advance(0));
+        assert(cursor.begin(region,sizeof visible));
+        for(int y=-1;y<=700;y+=step) {
+            assert(cursor.advance(int16_t(y+offset)));
+            assert(cursor.advance(int16_t(y+offset)));
+            for(int x=-1;x<=640;++x)
+                assert(RegionRows::inside(cursor.edges,int16_t(x+offset))==contains(region,x+offset,y+offset));
+        }
+        assert(!cursor.advance(-32768));
+    }
+    uint8_t rectangle[10]={0,10,0xff,0xfe,0xff,0xfd,0,2,0,4};
+    RegionRows::Cursor cursor;assert(cursor.begin(rectangle,sizeof rectangle));
+    for(int y=-3;y<=3;++y) {
+        assert(cursor.advance(y));
+        for(int x=-4;x<=4;++x)
+            assert(RegionRows::inside(cursor.edges,x)==(y>=-2 && y<2 && x>=-3 && x<4));
+    }
+    // Even a malformed suffix beyond the requested first row is rejected.
+    uint8_t broken[76];std::memcpy(broken,gray,sizeof gray);broken[75]=0;
+    assert(!cursor.begin(broken,sizeof broken));assert(!cursor.advance(20));
     unsigned char small[12];std::memset(small,0xa5,sizeof small);
     assert(!RegionRows::difference(gray,sizeof gray,structure,sizeof structure,{-8000,-8000,8000,8000},small,sizeof small));
     for(auto b:small)assert(b==0xa5);

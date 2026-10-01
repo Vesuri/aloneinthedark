@@ -43,6 +43,43 @@ inline bool row(const uint8_t* region,uint16_t capacity,int16_t y,Edges& result)
     }
     return false;
 }
+// Validate the complete stream once, then visit rows in ascending order.
+// The caller must keep the region unchanged for the cursor's lifetime.
+struct Cursor {
+    const uint8_t* region=nullptr;
+    uint16_t size=0,at=10;
+    int32_t lastY=-32769;
+    Edges edges{};
+    bool begin(const uint8_t* bytes,uint16_t capacity) {
+        Edges checked{};
+        region=nullptr;
+        if(!row(bytes,capacity,0,checked))return false;
+        region=bytes;size=uint16_t(get(bytes));at=10;lastY=-32769;edges.count=0;
+        return true;
+    }
+    bool advance(int16_t y) {
+        if(!region || y<lastY)return false;
+        lastY=y;
+        if(size==10) {
+            edges.count=0;
+            if(get(region+2)<=y && y<get(region+6) && get(region+4)<get(region+8)) {
+                edges.x[0]=get(region+4);edges.x[1]=get(region+8);edges.count=2;
+            }
+            return true;
+        }
+        while(at+2<=size) {
+            int16_t line=get(region+at);
+            if(line==32767 || line>y)break;
+            at+=2;
+            while(at+2<=size) {
+                int16_t x=get(region+at);at+=2;
+                if(x==32767)break;
+                if(!toggle(edges,x))return false;
+            }
+        }
+        return true;
+    }
+};
 // Measured 640x480 desktop: menu strip excluded, five-pixel lower corners.
 inline void desktop(uint8_t* out) {
     const int16_t words[38]={76,20,0,480,640,

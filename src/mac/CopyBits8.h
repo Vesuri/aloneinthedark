@@ -32,21 +32,32 @@ inline bool copy(const uint8_t* src,uint32_t srcBytes,uint16_t srcStride,const u
         }
         limits[i]=bound;
     }
-    RegionRows::Edges edges{};
-    if(mask && !RegionRows::row(mask,maskBytes,0,edges))return false;
+    RegionRows::Cursor rows;
+    if(mask && !rows.begin(mask,maskBytes))return false;
     bool nonempty=limits[0]<limits[2] && limits[1]<limits[3];
     for(unsigned i=0;i<4;++i) {
         uint16_t v=nonempty?uint16_t(limits[i]):0;drawn[2*i]=uint8_t(v>>8);drawn[2*i+1]=uint8_t(v);
     }
     if(!nonempty)return true;
+    const int32_t sourceX=coord(from,1)-coord(to,1)-coord(srcMap,1);
+    const int32_t destinationX=-coord(dstMap,1);
     for(int32_t y=limits[0];y<limits[2];++y) {
         const uint8_t* source=src+uint32_t(coord(from,0)+y-coord(to,0)-coord(srcMap,0))*srcStride;
         uint8_t* target=dst+uint32_t(y-coord(dstMap,0))*dstStride;
-        if(mask && !RegionRows::row(mask,maskBytes,int16_t(y),edges))return false;
-        for(int32_t x=limits[1];x<limits[3];++x) {
-            if(mask && !RegionRows::inside(edges,int16_t(x)))continue;
-            uint8_t pixel=source[coord(from,1)+x-coord(to,1)-coord(srcMap,1)];
-            target[x-coord(dstMap,1)]=colors ? colors[pixel] : pixel;
+        if(mask && !rows.advance(int16_t(y)))return false;
+        const uint16_t spans=mask ? rows.edges.count : 2;
+        for(uint16_t span=0;span<spans;span+=2) {
+            int32_t left=limits[1],right=limits[3];
+            if(mask) {
+                if(left<rows.edges.x[span])left=rows.edges.x[span];
+                if(right>rows.edges.x[span+1])right=rows.edges.x[span+1];
+            }
+            if(left>=right)continue;
+            const uint8_t* in=source+(sourceX+left);
+            uint8_t* out=target+(destinationX+left);
+            int32_t count=right-left;
+            if(colors)while(count--)*out++=colors[*in++];
+            else while(count--)*out++=*in++;
         }
     }
     return true;
