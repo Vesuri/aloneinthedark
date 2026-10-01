@@ -311,6 +311,12 @@ PROBE_SYMS += g_fillWatchFrames g_fillWatchRows g_fillBadFrames g_fillBadPixels 
               g_fillBadX g_fillBadY g_fillBadExpected g_fillBadActual
 endif
 
+# Opt-in diagnostic Enter input; normal builds have no scripted keys.
+ifeq ($(INTROSKIP),1)
+EXTRA_DEFINES += -DAITD_INTRO_SKIP
+PROBE_SYMS += g_introSkipState g_introSkipTick
+endif
+
 COMMA := ,
 LDFLAGS   = -Wl,--emit-relocs,--gc-sections,-Ttext=0,-Map=$(OUT).map \
             $(addprefix -Wl$(COMMA)--undefined=,$(PROBE_SYMS))

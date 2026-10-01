@@ -114,6 +114,23 @@ void aitdInputInjectProbeKey(uint8_t rawKey, bool down)
 }
 
 
+#ifdef AITD_INTRO_SKIP
+extern "C" { volatile uint16_t g_introSkipState = 0; volatile uint32_t g_introSkipTick = 0; }
+void aitdInputIntroSkip(uint16_t trap, uint32_t ticks)
+{
+    // Diagnostic input only, following Slicks' target-side key queue.
+    if (!g_introSkipState && trap == 0xa891) {
+        aitdInputInjectProbeKey(0x44, true);
+        g_introSkipTick = ticks;
+        g_introSkipState = 1;
+    } else if (g_introSkipState == 1 && (trap == 0xa976 || ticks - g_introSkipTick >= 120)) {
+        aitdInputInjectProbeKey(0x44, false);
+        g_introSkipState = 2;
+    }
+}
+#endif
+
+
 void aitdInputSuspend()
 {
     if(!s_ciaaBase)return;

@@ -9,6 +9,9 @@ void aitdInputFlush();
 bool aitdInputPopKey(uint8_t& rawKey, bool& down, uint16_t& modifiers);
 bool aitdInputKeyDown(uint8_t rawKey);
 uint16_t aitdInputModifiers();
+#ifdef AITD_INTRO_SKIP
+void aitdInputIntroSkip(uint16_t trap, uint32_t ticks);
+#endif
 void aitdInputInjectProbeKey(uint8_t rawKey, bool down);
 
 #endif

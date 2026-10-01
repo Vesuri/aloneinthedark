@@ -60,6 +60,12 @@ required.
 ## M2 Startup to intro
 
 - **M2.3g44 Black intro display while music plays.**
+  - Owner screenshots `FS-UAE_Full_261001-0912_01` through `_04` and
+    `FS-UAE_Full_261001-0913_00` visibly show the logo, title, game menu,
+    portraits and attorney-letter text after manual Enter. This establishes
+    that these screens render on the host along that input route; it does not
+    identify the preceding black interval's cause. Routine tests must use Enter
+    to skip the book; reserve uninterrupted playback for sequence acceptance.
   - Owner reports that the black screen predates the scripted-Enter build.
     The supplied 2026-09-30 23:42:40 screenshot shows a landscape and copyright
     text eventually appearing with music after a long wait. Investigate the

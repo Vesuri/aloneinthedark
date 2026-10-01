@@ -24,7 +24,10 @@ owner-deferred rendered-window check. Full intro frame acceptance and gameplay r
 
 The title-screen copy now uses the Mac’s measured colour mapping. Its full
 client matches apart from the documented placeholder copyright glyphs. The direct-map **CopyBits** at Dark+$1E4A now returns with matching pixels.
-The reported black story pages and car/frog scene progression are under investigation.
+Owner screenshots confirm visible menu, portraits and story text after Enter.
+The preceding black interval and car/frog progression remain under investigation.
+Routine diagnostic builds use `INTROSKIP=1` to send normal Enter and skip the
+book; `amiga/intro_skip.gdb` verifies the skip and key release.
 Song start now retains its 41 resources and returns successfully. A complete
 native playback fixture matches all 3,736 timed note events and verifies Paula
 sample conversion, effect priority and cleanup. Startup advances native song playback before the first song-status query;

@@ -6559,6 +6559,9 @@ extern "C" __attribute__((noinline)) void aitdBookProfileCheckpoint() { __asm__ 
 static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
                                uint8_t* frame, uint8_t* userStack, bool inUserService=false)
 {
+#ifdef AITD_INTRO_SKIP
+    aitdInputIntroSkip(trap, g_macTicks);
+#endif
     uint32_t pc = read32(frame + 2);
     const char* driverStop=0;
     bool unsupportedGraphics=false;

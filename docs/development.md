@@ -4282,7 +4282,7 @@ is content context, not the Mac layout oracle.
 `tmp/m2-story-native-sequence.log` exits zero after four byte-checked original
 checkpoints. At Dark+$5220, D0 is zero, all 840 book batches have completed,
 956 frames are published and no dirty data is pending. Independently decoded
-active AGA planes and copper colours equal the logical viewport at all four
+software-selected AGA planes and copper colours equal the logical viewport at all four
 checkpoints (the logo, end of logo animation, title and end of credits).
 The first exploratory observer incorrectly expected Dark2 to be resident before
 loading; its byte guard rejected the run. The corrected observer waits for the
@@ -4291,13 +4291,13 @@ first CopyBits before resolving the later segment addresses.
 The subsequent menu observer reaches Dan1+$1374 at tick 14,970 and its natural
 900-tick timeout at +$13E6, tick 15,870. Both capture the complete in-game menu
 with 958/958 publications, no dirty pixels, no pending frame and no active book
-batch. Both logical viewports and active AGA planes/copper agree. The border and
+batch. Both logical viewports and software-selected AGA planes/copper agree. The border and
 three choices are visible in these decoded buffers, with the expected D6
 placeholder-font difference. This does not establish host-window appearance or
 fix the owner-visible black interval. The idle-demo continuation ends with exit 1 at `SOUND DRIVER / EFFECT VOICE
 STEAL`, selector 17, Core+$17FC, tick 26,556. It has 990/990 publications and
 no dirty/pending frame. Its last road-scene logical pixels and palette also
-match active AGA planes/copper. Occupied effect-slot replacement is now the
+match the software-selected AGA planes/copper. Occupied effect-slot replacement is now the
 prerequisite M2.3g44a; no complete native car/frog acceptance is claimed.
 
 The occupied single-effect prerequisite M2.3g44a is complete: the final production
@@ -4305,3 +4305,34 @@ run passes the former stop with paired age/ABI/sample ownership checks. All 42
 startup comparisons and all 3,736 complete-song events pass. See
 [sound-driver.md](sound-driver.md#occupied-effect-replacement-m23g44a). The full
 car/frog sequence and reported black interval remain M2.3g44 work.
+
+Palette-verification limit: these snapshots read `m_chip` and `m_copper`. They
+verify the intended list and its pointer/colour words, not the emulator's actual
+colour registers or proof that the copper executed that list during the reported
+black interval. A palette installation/execution failure remains a candidate;
+do not label memory agreement as hardware palette acceptance.
+
+## Routine-test Enter skip (M2.3g44b)
+
+Owner priority 2026-10-01: stop repeating the book for routine service checks.
+Build with `INTROSKIP=1`; it posts normal Enter down/up through MacInput's queue
+at the first intro LineTo. Game instructions and timers remain unchanged. The
+key is released at GetKeys or after at most 120 Mac ticks. Production builds
+exclude this diagnostic input. Use this flag for routine runs; uninterrupted
+book playback is reserved for tests specifically requiring that animation.
+
+`tmp/m2-introskip-native-final.log` exits zero: the original Dark+$53DA skip
+branch returns D0=1 at tick 1738 after the key-down at 1668, with zero book
+batches. The observer sees key-up at 1788 and then verifies state 2, Enter
+released and no pending book batch. `amiga/intro_skip.gdb` guards the original
+`4a076700` bytes and requires both skip and release. Build audits pass (no
+floating-point instructions, all 88 probe symbols). The first observer waited
+at the uninterrupted return, then an early-release assertion and an optimized
+breakpoint-condition warning were corrected; only the clean final run counts.
+
+The owner supplied actual FS-UAE logo/title/menu/portrait/letter screenshots
+`FS-UAE_Full_261001-0912_01` through `_04` and `FS-UAE_Full_261001-0913_00`.
+They establish visible rendering after normal Enter along this route, with the
+known placeholder-font differences. The preceding black interval and unattended
+car/frog progression remain open. `tmp/m2-story-native-after-effect.log` was
+interrupted when switching to this input-driven workflow; it is not a pass.

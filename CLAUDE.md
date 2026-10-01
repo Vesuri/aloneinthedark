@@ -40,6 +40,8 @@ solutions already paid for. Read [README.md](README.md),
   time/input/Paula; Mac callbacks run at safe user-mode return points.
 - Every debugger-read global must be in `PROBE_SYMS`; garbage-collected symbols
   can otherwise resolve into instruction bytes.
+- Use `INTROSKIP=1` for routine service diagnostics (normal Enter input). Do not
+  replay the full book unless the check specifically needs that animation.
 - Check timing in emulated fields/ticks, not host wall time or screenshots.
   Warp is useful for bounded regression runs, not a real-time speed measurement.
 
