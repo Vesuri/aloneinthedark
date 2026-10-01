@@ -67,10 +67,9 @@ and other general tuning remain M5.
 
 - [ ] **M2.1c** — verify original PAK payloads (active).
 - [ ] **M2.3b** — verify and implement inverse coordinates.
-- [ ] **M2.3 / M2.4** — consolidate existing core/screen evidence and close remaining acceptance.
+- [ ] **M2.4** — close integrated fresh-start screen/viewport acceptance.
 - [ ] **M2.5** — finish PAL/NTSC, pointer palette ownership and video-clock acceptance.
-- [ ] **M2.6 / M2.7 / M2.7a / M2.8 / M2.9** — finish the remaining display,
-  palette, region and font checks; reuse the existing implementations and captures.
+- [ ] **M2.6 / M2.8** — finish full-intro C2P coverage and the remaining region variants.
 - [ ] **M2.10a / M2.10** — repair stale observers, add the intro regression and
   state-pair frame comparison; include the remaining car/frog frame acceptance.
 - [ ] **M2.3g44 visual report** — demonstrate the black-interval cause and verify
@@ -97,17 +96,6 @@ and other general tuning remain M5.
 
   *Done when* the reached GlobalToLocal calls match MAME, with point/adjacent-byte
   checks and no fixed Vette screen origin remaining.
-- **M2.3 8-bit QuickDraw core — acceptance consolidation.**
-  - Eight-bit screen/GWorld/PixMap/CopyBits and reached PICT paths already run
-    through the intro. Audit the existing host/native evidence against the scope
-    below; do not reimplement verified paths.
-  - Generalise the screen, GWorld, PixMap, CTable, ITable, CopyBits and PICT code
-    to 8 bpp.
-  - Remove the Vette palette maps and caps.
-  - Implement the full QDOffscreen set reached so far.
-
-  *Done when* host checks of 8-bit CopyBits (srcCopy and colour mapping) pass, and
-  the run proceeds past GWorld creation.
 - **M2.4 Mac screen model and 320×200 only — integrated acceptance.**
   - Main-device storage, fresh/existing preference selection of WIND 128 and
     live window geometry have separate passing captures. Combine the fresh-start
@@ -140,24 +128,6 @@ and other general tuning remain M5.
 
   *Done when* the verifier reports zero mismatches over the intro on
   `a1200-020`, including preservation across partial updates.
-- **M2.7 Palette Manager realisation — acceptance consolidation.** Existing
-  startup realization and palette transitions pass paired checks. Verify the
-  complete required endpoint rather than rebuilding those services. Implement NewPalette, SetPalette,
-  ActivatePalette, GetCTable and PaletteDispatch as on the 8-bit reference.
-
-  *Done when* the device CLUT equals the MAME capture (M0.5) after the game
-  activates clut 128, including the three duplicate endpoint slots observed
-  in M0.5 (1, 15, 191).
-- **M2.7a Reference video colour transfer — acceptance consolidation.**
-  - Integer transfer and maintained reference/ramp checks already exist; see
-    [aga-display.md](aga-display.md). Verify their coverage and current native
-    intro output before closing this item.
-  - Reproduce the measured mapping from logical RGB16 to mdc48 output colours
-    in the AGA palette, using a verified integer lookup/transfer (no guessed gamma).
-  - Preserve the distinct logical CLUT for original QuickDraw/Palette calls.
-
-  *Done when* host fixtures cover the measured channel mapping, and the
-  Infogrames palette and a 256-level reference ramp match the MAME video palette.
 - **M2.8 Regions and polygons.** Implement real QuickDraw regions and polygons,
   with host fixtures. Include RectRgn resizing, empty/inverted rectangles and
   ownership variants beyond the measured ten-byte, nonempty startup case.
@@ -166,13 +136,6 @@ and other general tuning remain M5.
 
   *Done when* the host tests pass and region-clipped draws in the screens reached
   so far match MAME.
-- **M2.9 Placeholder fonts.**
-  - Placeholder bitmap fonts in the overlay for the Mac-font uses found in M0.2
-    (D6).
-  - The Font Manager and text calls.
-
-  *Done when* every Mac-font text reached so far renders legibly and in the right
-  place (compared with MAME frames), and no font loud stop remains.
 - **M2.10a Retire stale standalone AGA endpoint assumptions.**
   - `pixbase.gdb` still embeds an obsolete frame-4 AGA capture; standalone
     `aga_startup.gdb` expects frame 9 at the latest loud stop. They must target

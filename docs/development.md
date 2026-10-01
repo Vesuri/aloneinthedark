@@ -5011,3 +5011,46 @@ checked. The 68020 positive run exits zero: 68 application reads / 333,998 bytes
 endpoint is not a pass. `check_resource_reads.py --status 0` verifies all three
 sample hashes and the new positive completion. The read observer no longer
 uses unrelated later-endpoint preference/window totals.
+
+
+## Consolidated M2 foundations acceptance
+
+M2.3, M2.7, M2.7a and M2.9 no longer represent missing implementations. Their
+specified acceptance is supported by the maintained helpers and the paired
+captures below; full-intro comparison and rendered-window checks remain open
+under M2.6/M2.10 and M2.3g44.
+
+- **M2.3:** the current host suite (`tmp/m2-delivery-host-tests.log`, exit zero)
+  passes 122 complete clipped direct/remapped CopyBits cases, irregular masks,
+  atomic malformed-input rejection, eight-bit GWorld layouts and bounds.
+  Current original execution reaches and returns from SetEmptyRgn well beyond
+  GWorld creation. Reached PICT/port/pixel-map adapters use eight-bit storage;
+  the Vette four-bit palette cap is not used by these paths.
+- **M2.7:** native palette construction, binding, GetCTable, window realization
+  and already-realized ActivatePalette have the paired contracts documented in
+  [palette.md](palette.md). The full reference/native ShowWindow CLUT captures
+  (`windowstate-*-show-after-clut.bin`) are both 2,056 bytes and still agree in
+  every byte after the allocated seed. This includes all 256 entries and the
+  protected duplicate slots 1, 15 and 191. Current sanitizer tests cover endpoint
+  retention and malformed-state atomicity. This is logical palette acceptance,
+  not a new rendered-window claim.
+- **M2.7a:** the current integer implementation re-passes the maintained original
+  exhaustive capture: 65,536 channel values, 257 CPU SetEntries calls, 256 mixed
+  colours and 512 startup colours (`tmp/m2-delivery-video-transfer.log`). The
+  captured startup palette and ramp use the same exact transfer as the
+  Infogrames display; native AGA palette encoding is independently covered by
+  all-256-colour host tests. This consolidates the measured transfer already
+  implemented under M2.5a, without guessing gamma or altering logical RGB16.
+- **M2.9:** all 25 owned font associations, measured metrics/widths and bounded
+  glyphs pass the current host suite. Existing title, credits (including the
+  dot-above and circumflex), caption and story captures account for the reached
+  Mac-font uses. Rechecking `m2-story-pages-final-reference.log` against
+  `m2-story-pages-final-native-full.log` passes all eight pages, 257 identical
+  text calls/settings/positions, artwork, palette and AGA publication. Only
+  documented owned glyph artwork differs. The owner-supplied screenshots also
+  establish visible placeholder text on the Enter route. M6.5 retains the
+  eventual engine-font replacement; the unrelated black interval stays open.
+
+The historical seven-frame restore-palette log was not accepted by the current
+nine-frame AGA checker; it is not new full-intro evidence. The remaining
+observer/sequence work stays in M2.10a/M2.10.

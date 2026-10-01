@@ -1,8 +1,10 @@
 # Startup palette construction and binding
 
 The original NewPalette request is measured by `tools/mac_palette.lua` and
-validated by `tools/check_palette.py`. Native construction implements both measured startup source forms; activation and
-device/video colour realization remain M2.7/M2.7a.
+validated by `tools/check_palette.py`. Native construction implements both measured startup source forms. Startup
+activation, complete device realization and measured video transfer are verified;
+see the consolidated M2 acceptance in [development.md](development.md).
+Full-intro frame comparison and rendered display acceptance remain separate.
 Vette has GetNewPalette resource loading but no NewPalette constructor to reuse.
 
 ## Original request and returned record [M]
