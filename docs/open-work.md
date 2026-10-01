@@ -119,12 +119,12 @@ required.
   - The subsequent fixed-stream first-point captures share character/room/camera
     but have 122 versus 72 random calls and different projected packets before
     QuickDraw. Pair actor/animation state before accepting those coordinates.
-  - At the first relative Line (Dark3+$354A), native and Mac pen coordinates
-    differ before the call: `(−1213,−29334)` versus `(−1150,−10625)`. Both lines
-    are clipped and every defined input pixel and palette entry matches;
-    the 804 byte differences are unused row padding. Trace the upstream point
-    inputs/sequence state and explain the coordinate difference in the paired
-    sequence acceptance; do not treat a service fixture as resolving it.
+  - The extreme relative-Line Y coordinate is now explained by original
+    Dark3+$348C: a word store at A6−5 overlaps saved Y at A6−4. Both current
+    runs reach the same eight-byte point command and produce identical locals,
+    MoveTo and Line results. No game patch is needed. Their surrounding state
+    still differs (247 versus 72 Random calls and different following packets),
+    so this is a point-input pair, not whole-scene frame acceptance.
   - Owner reports again that the idle route shows a black interval with music,
     then a circling car, while pressing Enter avoids both symptoms. Compare
     their shared timing/scene progression; a palette-only cause is not established.

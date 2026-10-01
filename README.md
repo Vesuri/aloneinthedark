@@ -33,8 +33,9 @@ now match the Mac, including contour expansion, polygon disposal and masked copy
 a verified VBI overflow into Exec state. Interrupt stress and paired native
 region checks pass. Pond region disposal now passes paired ownership, drawing-isolation
 and original cleanup-continuation checks. The next reached relative-line call
-also passes matched-input Mac/native checks; its earlier pen-coordinate
-difference remains under investigation. Direct AGA colour-RAM readback at the idle
+also passes matched-input Mac/native checks; its extreme pen coordinate is now traced to
+an overlapping local write in the original game. A current point-command pair
+matches; whole-scene animation pairing remains open. Direct AGA colour-RAM readback at the idle
 menu now matches all 256 intended colours, and its menu planes and 900-tick
 continuation pass. The idle route’s mode-0 window fill now passes the original
 native call and matching Mac service-fixture pixels and registers. The preceding

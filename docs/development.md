@@ -4427,8 +4427,36 @@ Clipping, PixMap geometry/depth, colours and every defined pixel agree. Both
 sides preserve their complete buffers, including their own unused row padding.
 Negative checks reject missing completion, timeouts, register corruption and
 incorrect fixture input identity. Host regressions and both native link audits
-pass. Upstream coordinate divergence remains explicitly part of M2.3g44
-sequence acceptance; the matched-input service fixture does not resolve it.
+pass. The original point-local overlap below now explains the extreme Y
+coordinates; whole-scene animation pairing remains separate.
+
+## Original point-local overlap (M2.3g44v)
+
+Dark3+$3484–$348F contains `3d42fffe3d41fffc3d43fffb`: three original word
+stores of D2 to A6−2, D1 to A6−4, and D3 to A6−5. The last unaligned word
+store overlaps the high byte of the saved Y coordinate. Consequently the
+MoveTo Y is `(D3.lowByte << 8) | D1.lowByte`, not the original D1 word.
+The first byte of this colour word is separately tested at +$3510, with zero
+replaced by $FF. This is original game behavior, not a port conversion defect;
+no game instruction is changed.
+
+Bounded original/native point observers both exit zero and independently verify
+the local writes, MoveTo arguments/result, and relative Line's (+1,+1) result
+(`tmp/m2-point-locals-reference.log` and
+`tmp/m2-point-locals-native-full.log`). Both now reach command bytes
+`028dfb0501750061`, X=$FB05 (−1275), Y=$0175 (373), D3=$018D. Both pass
+MoveTo pen `$8D75/$FB05` and return from Line with `$8D76/$FB06`. The unused
+local byte A6−6 differs ($00/$C0); the written/read local bytes agree. Captures
+are `tmp/point-locals-{reference,native}-{packet,stack,a5}.bin`.
+
+The historical native Y −29334 is exactly `$8D6A`, derived from its measured
+D3=$008D and Y=$016A. The historical Mac pen `$D67F` has the high byte of its
+measured D3=$00D6. Those old point inputs were not a state pair. The current
+first point command and service inputs do match, but native has made 247 game
+Random calls versus Mac 72; only the first eight packet bytes match, not the
+following commands. This closes the point-local/pen explanation, not a complete
+actor/animation or framebuffer pair. The observer retains the normal Enter
+book skip; the newer Mac run restricts it to Dark3+$337E.
 
 ## Menu hardware palette readback (M2.3g44j)
 
