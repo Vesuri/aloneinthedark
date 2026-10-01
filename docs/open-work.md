@@ -65,8 +65,7 @@ unresolved visual report as an explicit acceptance gap; it does not block
 independent service implementation or automated acceptance. Region expansion
 and other general tuning remain M5.
 
-- [ ] **M2.3g45** — implement and verify the reached SetEmptyRgn call (active).
-- [ ] **M2.1c / M1.6b** — verify original PAK payloads and final startup success.
+- [ ] **M2.1c / M1.6b** — verify original PAK payloads and final startup success (active).
 - [ ] **M2.3a / M2.3b** — resolve the pattern-copy audit and inverse coordinates.
 - [ ] **M2.3 / M2.4** — consolidate existing core/screen evidence and close remaining acceptance.
 - [ ] **M2.5** — finish PAL/NTSC, pointer palette ownership and video-clock acceptance.
@@ -78,16 +77,6 @@ and other general tuning remain M5.
   the rendered result when authorized capture is available. M2 remains open
   while its required acceptance is outstanding.
 
-- **M2.3g45 SetEmptyRgn on the skipped-intro route.**
-  - Original Mac capture now passes: the reached region is ten bytes and empty;
-    the call preserves its handle/body and D0–D7/A2–A6, returning A0=handle and
-    A1=body. Native implementation is in progress; this item is not accepted yet.
-  - The scripted Enter route reaches Dark2+$5768 `$A8DD`; original bytes
-    +$5762–$5769 are `2f39ffff4038a8dd`. The caller passes the region at
-    A5−$BFC8, then continues cleanup. Capture the original region and ABI.
-
-  *Done when* the reached original call empties the owned region with matching
-  handle/body ownership, bytes and ABI, and the Enter route advances past it.
 - **M2.1c Original File Manager read acceptance (after M2.2).**
   - This retains M2.1's original acceptance; diagnostic fixture reads do not count
     as original-game reads. M2.1b2a measured the intervening Get1NamedResource

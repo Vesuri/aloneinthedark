@@ -7805,6 +7805,16 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         regs[2]=(regs[2]&0xffff0000UL)|read16(*region+6);
         return 9;
     }
+    if(trap==0xa8dd) {                       // SetEmptyRgn(owned RgnHandle)
+        MacHeap::Handle region=(MacHeap::Handle)read32(userStack);
+        MacHeap* owner=handleZone(region);
+        if(!owner || !*region || region==s_recordedRegion
+           || owner->handleSize(region)!=10 || read16(*region)!=10
+           || resourceHandleIndex(region)>=0)goto unsupportedTrap;
+        write16(*region,10);write32(*region+2,0);write32(*region+6,0);
+        regs[8]=(uint32_t)region;regs[9]=(uint32_t)*region;
+        return 5;
+    }
     if(trap==0xa8df) {                       // RectRgn(owned RgnHandle, Rect*)
         const uint8_t* rectangle=(const uint8_t*)read32(userStack);
         MacHeap::Handle region=(MacHeap::Handle)read32(userStack+4);

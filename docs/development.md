@@ -4929,3 +4929,38 @@ it does not prove host-window visibility, resolve the reported idle black
 interval, or accept unvisited text/UI routes.
 The restored ordinary `INTROSKIP=1` build passes both link audits and contains
 none of the menu, story-entry or reading fixture symbols.
+
+
+## SetEmptyRgn cleanup (M2.3g45)
+
+The original Dark2+$5768 caller is `2f39ffff4038a8dd`; the operand relocates
+to A5−$BFC8. `tools/mac_setemptyrgn.lua` skips the book through normal Return
+and captures the later original cleanup call. The final reference run
+(`tmp/m2-setemptyrgn-reference-final.log`, exit zero) has a ten-byte canonical
+empty region, `000a0000000000000000`. The handle, body and bytes stay unchanged;
+four argument bytes are removed, adjacent stack bytes and D0–D7/A2–A6 are
+preserved, A0 becomes the region handle and A1 the body. MemErr stays zero.
+There is no Boolean result.
+
+The native implementation accepts owned ten-byte regions, writes their canonical
+empty representation and returns the measured registers. It rejects resource
+handles, active recording storage and other sizes through the existing named
+stop. Larger/complex-region resizing remains M2.8. No allocation, game-code
+patch or drawing is needed.
+
+`amiga/setemptyrgn.gdb` uses `INTROSKIP=1` and stops on the linked `recordKey`
+entry before arming the original caller. The public injection wrapper is
+inlined and its standalone body is discarded in this build; breaking on its
+unqualified debug symbol can resolve to unrelated code. The abandoned observer
+runs are not acceptance. `tools/check_setemptyrgn.py` checks original and live
+caller bytes, stack, registers and the complete region. The native run
+(`tmp/m2-setemptyrgn-native-linked-full.log`, exit zero) reaches and returns
+from the original cleanup call. The paired checker passes complete bytes,
+handle/body identity, adjacent stack, argument cleanup and every required
+register. The existing heap checks and MAME literal audit also pass, and six
+corrupted/incomplete evidence cases were rejected. Link audits are clean.
+
+```sh
+python3 tools/check_setemptyrgn.py tmp/m2-setemptyrgn-reference-final.log --status 0 \
+  --native tmp/m2-setemptyrgn-native-linked-full.log --native-status 0
+```
