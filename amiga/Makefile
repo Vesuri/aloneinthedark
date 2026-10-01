@@ -119,6 +119,12 @@ PROBEFIELDS=65535
 EXTRA_DEFINES += -DAITD_BOOK_PROFILE
 endif
 
+ifneq ($(PROFILEFRAME),)
+PROBES=1
+PROBEFIELDS?=300
+EXTRA_DEFINES += -DAITD_PROFILE_FRAME=$(PROFILEFRAME)
+endif
+
 ifdef PROBES
 EXTRA_DEFINES += -DAITD_PROBE
 endif
@@ -314,6 +320,10 @@ endif
 # Diagnostic-only wait for an interrupt inside the polygon encoder's frame.
 ifeq ($(POLYGONSTACKSTRESS),1)
 EXTRA_DEFINES += -DAITD_POLYGON_STACK_STRESS
+endif
+
+ifneq ($(PROFILEFRAME),)
+PROBE_SYMS += g_profileTrapTicks g_profileTrapCalls
 endif
 
 # Deterministic entropy for state-paired original Engine Random calls only.

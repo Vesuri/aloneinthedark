@@ -6,6 +6,10 @@ extern volatile uint16_t g_vbiCount;
 extern volatile uint16_t g_macFramesPresented;
 
 // State: 0 has not reached steady driving, 1 is measuring, 2 is frozen.
+#ifdef AITD_PROFILE_FRAME
+volatile uint32_t g_profileTrapTicks[4096] = {};
+volatile uint32_t g_profileTrapCalls[4096] = {};
+#endif
 volatile uint16_t g_profileState = 0;
 volatile uint16_t g_profileGeneration = 0;
 volatile uint32_t g_profileStartEpoch = 0;
@@ -99,6 +103,21 @@ AitdProfileScope::~AitdProfileScope()
     else return;
     if (end > m_start) g_profileTicks[m_category] += end - m_start;
 }
+
+#ifdef AITD_PROFILE_FRAME
+AitdTrapProfileScope::AitdTrapProfileScope(uint16_t trap)
+    : m_trap(trap&0xfff), m_start(0)
+{
+    if(g_profileState!=1)return;
+    m_start=aitdProfileBeamEpoch();++g_profileTrapCalls[m_trap];
+}
+AitdTrapProfileScope::~AitdTrapProfileScope()
+{
+    if(!m_start)return;
+    uint32_t end=g_profileState==1 ? aitdProfileBeamEpoch() : g_profileStopEpoch;
+    if(end>m_start)g_profileTrapTicks[m_trap]+=end-m_start;
+}
+#endif
 
 AitdProfileCategory aitdProfileTrapCategory(uint16_t trap)
 {

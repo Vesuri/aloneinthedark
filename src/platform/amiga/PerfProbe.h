@@ -20,6 +20,7 @@ enum AitdProfileCategory {
     kProfilePaintRect,
     kProfileColorLookup,
     kProfileCopyMap,
+    kProfileCodeViews,
     kProfileCategoryCount
 };
 
@@ -29,6 +30,16 @@ void aitdProfileStart();
 void aitdProfileStop();
 void aitdProfileOnVBI();
 AitdProfileCategory aitdProfileTrapCategory(uint16_t trap);
+#ifdef AITD_PROFILE_FRAME
+class AitdTrapProfileScope {
+public:
+    explicit AitdTrapProfileScope(uint16_t trap);
+    ~AitdTrapProfileScope();
+private:
+    uint16_t m_trap;
+    uint32_t m_start;
+};
+#endif
 
 class AitdProfileScope {
 public:

@@ -612,7 +612,7 @@ static int16_t resourceResult(int16_t error)
 {
     s_resourceError=error;write16(s_portLowMemory+140,(uint16_t)error);return error;
 }
-static int16_t memoryResult(int16_t error);
+static int16_t memoryResult(int16_t error,bool refresh=true);
 static void writeBoolean(uint8_t* p, bool value) { p[0] = value ? 1 : 0; p[1] = 0; }
 static void write32(uint8_t* p, uint32_t v)
 {
@@ -1132,6 +1132,7 @@ static void refreshGWorldViews()
 
 static void refreshCodeViews()
 {
+    AitdProfileScope profile(kProfileCodeViews);
     refreshGWorldViews();
     g_loadedCodeMask=s_segments[0].begin ? 1 : 0;
     for(uint16_t n=1;n<s_segmentCount;++n) {
@@ -2102,7 +2103,7 @@ static uint8_t* newColorWindow(int16_t id, uint8_t* storage, uint8_t* behind)
 }
 
 static uint32_t resourceHandleSize(uint8_t** handle);
-static int16_t memoryResult(int16_t error);
+static int16_t memoryResult(int16_t error,bool refresh);
 
 static void releaseDialogHandles(WindowSlot& slot)
 {
@@ -5417,13 +5418,16 @@ static bool exitChordPressed()
         && (aitdInputModifiers() & 0x1000) != 0;
 }
 
-static int16_t memoryResult(int16_t error)
+static int16_t memoryResult(int16_t error,bool refresh)
 {
     s_memoryError=error;g_heapError=error;
     write16(s_portLowMemory+100,(uint16_t)error);
-    g_heapFree=s_applicationZone.freeBytes();g_heapLargest=s_applicationZone.largestBlock();
-    g_heapSystemFree=s_systemZone.freeBytes();
-    refreshCodeViews();
+    // Querying/selecting the zone cannot invalidate heap-derived views.
+    if(refresh) {
+        g_heapFree=s_applicationZone.freeBytes();g_heapLargest=s_applicationZone.largestBlock();
+        g_heapSystemFree=s_systemZone.freeBytes();
+        refreshCodeViews();
+    }
     return error;
 }
 static uint8_t** newHandle(uint32_t size,bool clear)
@@ -6155,7 +6159,7 @@ static bool dispatchMemoryTrap(uint16_t trap,uint32_t* regs)
     case 0xa066: regs[8]=(uint32_t)zone->newEmptyHandle();error=zone->error();break;
     default: return false;
     }
-    memoryResult(error);
+    memoryResult(error,op!=0xa01a && op!=0xa01b);
     if(resultInD0)regs[0]=(uint32_t)(int32_t)error;
     return true;
 }
@@ -6579,6 +6583,9 @@ static uint32_t deferUserService(uint16_t trap,bool builtin,uint8_t* frame,uint8
 // AmigaDOS runs the application in user mode: parameters are on USP, while Line-A creates
 // an eight-byte format-0 frame on the 68020 supervisor stack. The Mac II runs
 // its application in supervisor mode; our Macintosh arguments remain on USP.
+#ifdef AITD_PROFILE_FRAME
+extern "C" __attribute__((noinline)) void aitdFrameProfileCheckpoint() { __asm__ volatile("" ::: "memory"); }
+#endif
 #ifdef AITD_BOOK_PROFILE
 extern "C" __attribute__((noinline)) void aitdBookProfileCheckpoint() { __asm__ volatile("nop" ::: "memory"); }
 #endif
@@ -6595,6 +6602,12 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     bool sizeSelection=false;
     uint16_t fileTrap=0;
 #ifdef AITD_PROBE
+#ifdef AITD_PROFILE_FRAME
+    extern volatile uint16_t g_profileState;
+    if(g_profileState==2)aitdFrameProfileCheckpoint();
+    if(g_macFramesPresented>=AITD_PROFILE_FRAME)aitdProfileStart();
+    AitdTrapProfileScope trapProfile(trap);
+#endif
 #ifdef AITD_BOOK_PROFILE
     extern volatile uint16_t g_profileState;
     // Measured original line helper, called by the decreasing page-fold loop.

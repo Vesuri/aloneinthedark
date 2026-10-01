@@ -60,6 +60,9 @@ required.
 ## M2 Startup to intro
 
 - **M2.3g44 Black intro display while music plays.**
+  - GetZone/SetZone no longer rebuild heap-derived views (M2.3g44l); native
+    heap contracts and the bounded cost comparison pass. Recheck progression
+    with this reduced overhead; it is not yet a car/frog or visibility fix.
   - Use `FIXEDRNG=1` and the matching Mac diagnostic entropy fixture for paired
     sequence investigations. All 64 measured inputs/results/callers now match,
     including character 0; compare original scene/script state, not elapsed ticks.

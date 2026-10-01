@@ -4541,3 +4541,47 @@ starts the idle demo, while result 0 branches to +$52B6 and the character-choice
 routine. Pressing Enter through the menu and leaving it idle are different
 original routes. The portraits/story should not be forced into the timeout
 route as a proposed visibility fix.
+
+
+## Zone-selection overhead (M2.3g44l)
+
+A bounded `PROFILEFRAME=32 PROBEFIELDS=300 INTROSKIP=1 FIXEDRNG=1` diagnostic
+attributes 83.9% of its measured beam interval to the existing OtherTrap
+category, 13.6% to nested CODE/GWorld view refreshes and 0.27% to C2P.
+The per-trap follow-up (`tmp/m2-idle-traps-native-full.log`, exit zero)
+attributes 20.7% to SetZone, 14.2% to GetZone, 21.4% to the native driver entry,
+13.2% to LineTo and 8.8% to RGBForeColor. Both samples span 300 fields and
+11 publications. These instrumented fractions identify work; they are not
+shipping frame-rate measurements or state-paired frame acceptance.
+
+GetZone/SetZone do not allocate, dispose, resize or relocate memory. Their
+successful paths now update the same result/error fields without rescanning
+heaps or rebuilding CODE/GWorld views. All allocation/state-changing operations
+retain the existing refresh. The native heap fixture passes all three stages,
+including app/system zone selection, allocation, handle movement, error state
+and final free-memory restoration (`tmp/m2-zone-fast-heap-full.log`, exit zero).
+The after-change sample also exits zero (`tmp/m2-zone-fast-profile-full.log`):
+view refreshes fall from 1,085 to 3, with their nested cost falling from
+3,279,524 to 8,867 beam units. GetZone's inclusive cost per call falls from
+8,817 to 5,118 units; SetZone falls from 6,514 to 5,910. Inclusive trap totals
+also contain shared callback/audio work, so these are not isolated microbenchmarks.
+Both intervals span 300 fields starting at publication 32, but they are not
+identical game states: the latter ends at tick 6,303 instead of 13,537, and has
+5 rather than 11 publications. Do not infer a shipping FPS or scene-fidelity
+result from those counts. Host regressions pass; the idle endpoint remains open.
+
+`PROFILEFRAME` enables a diagnostic-only start at the requested published frame;
+`PROBEFIELDS` bounds it in emulated fields. `amiga/frame_profile.gdb` captures
+16 nested phase totals and bulk per-trap tick/call arrays, then detaches at a
+positive frozen-profile checkpoint. It never treats a timeout as completion.
+
+The separate host-window lead remains unproven for the installed executable.
+The preserved emulator log `tmp/m2-idle-profile-fsuae.log` repeatedly reports
+an invalid OpenGL drawable size with no successful drawable-size message.
+The public [FS-UAE 4 display source](https://github.com/FrodeSolheim/fs-uae/blob/fs-uae-4/fsemu/src/fsemu-glvideo.c)
+emits that warning while a cached drawable dimension is zero; its setter reads
+SDL's drawable size. The [window source](https://github.com/FrodeSolheim/fs-uae/blob/fs-uae-4/fsemu/src/fsemu-sdlwindow.c)
+calls the video-size setter in the resize-event handler. The installed binary
+reports version 0.0.0 and has no matching public symbols, so this source clue is
+not an exact-build diagnosis or proof of the owner-visible black-screen cause.
+No host window access, capture or injected host events were attempted.
