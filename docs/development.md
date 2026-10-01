@@ -4763,3 +4763,46 @@ The rejected observer runs are not acceptance evidence. The checker excludes
 only the known missing optional MAME floppy-mechanism sample messages from its
 error scan. No game bytes change. Story text placement/progression and idle-route
 visibility remain M2.3g44.
+
+
+## Normal portrait Enter fixture (M2.3g44t)
+
+`STORYENTER=1` implies `MENUENTER=1` and `INTROSKIP=1`. It supplies one more
+normal Return, thirty ticks after reaching the portrait input loop, then releases
+it at a safe trap boundary at least two ticks later. No game instruction or
+selection result is patched. The trigger recognizes Engine+$1F84 Button through
+two bounds-checked A6 frames: return to Dan1+$6230, then Dan2+$1EBC. The observer
+checks the original LINK, trap and relocated JSR bytes. Menu and story polling
+do not match this call chain. Ordinary builds contain none of this fixture.
+
+`amiga/story_enter.gdb` checks the original menu branch, stable portraits,
+Dan1+$4870 story input wait (`4eba199c`), page zero, released Return, absence of a
+loud stop and complete AGA publication. Run after a clean `STORYENTER=1` build:
+
+```sh
+GDBSCRIPT=story_enter.gdb EXTRA_ARGS=--warp_mode=1 amiga/diag_run.sh 240
+```
+
+The exploratory bounded native run exits zero with press/release at ticks
+1746/1748 and story publication 17 active at tick 1839
+(`tmp/m2-story-trigger-native-full.log`). The original Mac normal-input observer
+also exits zero at Dan1+$4870, page zero, input zero
+(`tmp/m2-story-page-reference.log`). Independent AGA decoding matches all 64,000
+native client pixels, bitplane pointers and 256 transferred colours. All logical
+RGB16 values match the Mac. The 6,007 differing client pixels are inside
+(165,11)–(315,184) and each difference substitutes text ink index zero for a
+background index 146–159 or vice versa; every other pixel matches. The picture,
+background and arrow match, with the expected D6 placeholder glyph differences.
+This is not full story-text layout/progression or rendered-window acceptance.
+
+An earlier observer tried requesting input through a debugger memory write.
+Its readback guard failed before any input was sent; the rejected run is
+`tmp/m2-story-rejected-debugger-write-full.log`. The replacement uses only the
+running target's ordinary key queue and requires no debugger mutation.
+
+The maintained `story_enter.gdb` repetition also exits zero and passes its
+stronger original-byte, page, key-release and publication guards, with the same
+press/release and publication ticks (`tmp/m2-story-enter-final-native-full.log`).
+Its captured AGA frame again passes the independent decoder.
+The restored `INTROSKIP=1` build passes no-float and 88-symbol audits; its
+linked symbol table contains no menu/story input helpers or state.

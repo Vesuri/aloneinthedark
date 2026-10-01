@@ -338,6 +338,13 @@ EXTRA_DEFINES += -DAITD_PALETTE_READ_FRAME=$(PALREADFRAME)
 PROBE_SYMS += g_paletteReadHigh g_paletteReadLow g_paletteReadBanks g_paletteReadStable g_paletteReadFrame g_paletteReadDone g_paletteReadBeamMax g_paletteReadDMABefore g_paletteReadDMAAfter
 endif
 
+# Opt-in second Enter at the original portrait input wait.
+ifeq ($(STORYENTER),1)
+MENUENTER=1
+EXTRA_DEFINES += -DAITD_STORY_ENTER
+PROBE_SYMS += g_storyEnterState g_storyEnterTick g_storyEnterReleased
+endif
+
 # Opt-in normal Enter at the original game-menu wait; implies book skip.
 ifeq ($(MENUENTER),1)
 INTROSKIP=1

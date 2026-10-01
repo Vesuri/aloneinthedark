@@ -150,6 +150,25 @@ void aitdInputMenuEnter(bool atMenu,uint32_t ticks)
 }
 #endif
 
+#ifdef AITD_STORY_ENTER
+extern "C" {
+volatile uint16_t g_storyEnterState=0;
+volatile uint32_t g_storyEnterTick=0,g_storyEnterReleased=0;
+}
+void aitdInputStoryEnter(bool atPortraits,uint32_t ticks)
+{
+    if(!g_storyEnterState && atPortraits) {
+        g_storyEnterTick=ticks;g_storyEnterState=1;
+    } else if(g_storyEnterState==1 && atPortraits && ticks-g_storyEnterTick>=30) {
+        aitdInputInjectProbeKey(0x44,true);
+        g_storyEnterTick=ticks;g_storyEnterState=2;
+    } else if(g_storyEnterState==2 && ticks-g_storyEnterTick>=2) {
+        aitdInputInjectProbeKey(0x44,false);
+        g_storyEnterReleased=ticks;g_storyEnterState=3;
+    }
+}
+#endif
+
 void aitdInputSuspend()
 {
     if(!s_ciaaBase)return;

@@ -60,6 +60,11 @@ required.
 ## M2 Startup to intro
 
 - **M2.3g44 Black intro display while music plays.**
+  - `STORYENTER=1` supplies the next normal Enter at the original portrait
+    polling loop. Its bounded run reaches story page zero with released input
+    and publication 17. The picture/background/arrow and palette match the Mac;
+    6,007 differences are confined to placeholder text ink. Full story text
+    layout/progression and the black-interval cause remain open.
   - The normal-Enter portrait state now matches all 64,000 Mac client pixels
     and 256 RGB16 colours. `amiga/portraits.gdb`, `tools/mac_portraits.lua` and
     `tools/check_portraits.py` also verify native AGA publication 15. Story

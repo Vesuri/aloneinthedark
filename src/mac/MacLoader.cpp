@@ -6602,6 +6602,22 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     aitdInputMenuEnter(trap==0xa975 && s_segments[12].begin
                       && pc==(uint32_t)s_segments[12].begin+0x1376,g_macTicks);
 #endif
+#ifdef AITD_STORY_ENTER
+    // Engine Button -> Dan1 input poll -> Dan2 portrait wait. Follow only
+    // these two validated stack frames; menu and story polling must not match.
+    bool atPortraits=false;
+    if(trap==0xa974 && s_segments[7].begin && s_segments[12].begin
+       && s_segments[13].begin && pc==(uint32_t)s_segments[7].begin+0x1f84) {
+        const uint32_t stack=(uint32_t)g_macStackBase,frameAddress=regs[14];
+        if(stack && !(frameAddress&1) && frameAddress>=stack && frameAddress<=stack+65528) {
+            const uint32_t parent=read32((uint8_t*)frameAddress);
+            if(!(parent&1) && parent>frameAddress && parent<=stack+65528)
+                atPortraits=read32((uint8_t*)frameAddress+4)==(uint32_t)s_segments[12].begin+0x6230
+                    && read32((uint8_t*)parent+4)==(uint32_t)s_segments[13].begin+0x1ebc;
+        }
+    }
+    aitdInputStoryEnter(atPortraits,g_macTicks);
+#endif
     const char* driverStop=0;
     bool unsupportedGraphics=false;
     bool sizeSelection=false;
