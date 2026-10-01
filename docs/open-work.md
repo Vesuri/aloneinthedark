@@ -60,6 +60,10 @@ required.
 ## M2 Startup to intro
 
 - **M2.3g44 Black intro display while music plays.**
+  - The normal-Enter portrait state now matches all 64,000 Mac client pixels
+    and 256 RGB16 colours. `amiga/portraits.gdb`, `tools/mac_portraits.lua` and
+    `tools/check_portraits.py` also verify native AGA publication 15. Story
+    text and host-visible black-interval acceptance remain open.
   - `MENUENTER=1` now supplies one normal Enter at the original game-menu
     wait after skipping the book. `amiga/menu_enter.gdb` verifies result 0,
     the original new-game branch and released key after 36 ticks. Use it for

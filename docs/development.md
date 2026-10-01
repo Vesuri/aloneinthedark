@@ -4733,3 +4733,33 @@ after sourcing `amiga/env.sh`. Restore the ordinary test build afterward.
 The restored `INTROSKIP=1` build passes both link audits, contains none of
 `aitdInputMenuEnter`/`g_menuEnter*`, and passes the original intro skip/release
 regression (`tmp/m2-menu-enter-skip-regression-full.log`, exit zero).
+
+
+## Portrait frame acceptance (M2.3g44s)
+
+The normal Enter route now has a state-paired capture at the original portrait
+input wait, Dan2+$1EB6 (`4eb9 00000572` before relocation), with Carnby selected
+(D7=0) and the menu Enter released. All 64,000 client pixels and all 256 logical
+RGB16 colours match the Mac exactly. Native publication 15 becomes active at
+tick 1717; the independent decoder verifies every AGA pixel, bitplane pointer
+and transferred copper colour. This is memory/publication evidence; it does not
+establish host-window appearance or close the idle black interval.
+
+Build `MENUENTER=1` and run `GDBSCRIPT=portraits.gdb EXTRA_ARGS=--warp_mode=1
+amiga/diag_run.sh 240` after sourcing the toolchain. Run the documented headless
+MAME command with `-autoboot_script tools/mac_portraits.lua`. Preserve the native
+full debugger log, then run:
+
+```sh
+python3 tools/check_portraits.py tmp/m2-portraits-final-reference.log \
+  tmp/m2-portraits-final-native-full.log --reference-status 0 --native-status 0
+```
+
+Both maintained observers exit zero with positive endpoints, and the checker
+passes. The reference first Enter is keyed to Dark3+$337E, not any LineTo while
+the app is frontmost. Instrumentation showed that the earlier broad trigger
+hit a system call at $9D1B4 before Dark3 loaded, so the menu was never reached.
+The rejected observer runs are not acceptance evidence. The checker excludes
+only the known missing optional MAME floppy-mechanism sample messages from its
+error scan. No game bytes change. Story text placement/progression and idle-route
+visibility remain M2.3g44.
