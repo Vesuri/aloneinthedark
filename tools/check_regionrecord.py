@@ -19,24 +19,25 @@ def run(reference=None, status=None, native=None, native_status=None):
 #include <cstring>
 #include "src/mac/PolygonRegion.h"
 int main() {
+ PolygonRegion::Scratch scratch;
  uint8_t p[4096],out[4096],before[4096];unsigned v,n=0;
  while(scanf("%2x",&v)==1) {if(n==sizeof p)return 2;p[n++]=v;}
  memset(out,0xa5,sizeof out);memcpy(before,out,sizeof out);uint16_t size;
- if(!PolygonRegion::encode(p,n,out,sizeof out,size))return 3;
+ if(!PolygonRegion::encode(p,n,out,sizeof out,size,scratch))return 3;
  for(unsigned i=0;i<size;++i)printf("%02x",out[i]);puts("");
  // Insufficient capacity and invalid input must fail without publishing bytes.
  memset(out,0xa5,sizeof out);
- if(PolygonRegion::encode(p,n,out,size-1,size)||size||memcmp(out,before,sizeof out))return 4;
- if(PolygonRegion::encode(p,n-1,out,sizeof out,size)||size||memcmp(out,before,sizeof out))return 5;
+ if(PolygonRegion::encode(p,n,out,size-1,size,scratch)||size||memcmp(out,before,sizeof out))return 4;
+ if(PolygonRegion::encode(p,n-1,out,sizeof out,size,scratch)||size||memcmp(out,before,sizeof out))return 5;
  p[n-1]^=1;
- if(PolygonRegion::encode(p,n,out,sizeof out,size)||size||memcmp(out,before,sizeof out))return 6;
+ if(PolygonRegion::encode(p,n,out,sizeof out,size,scratch)||size||memcmp(out,before,sizeof out))return 6;
  p[n-1]^=1;p[3]^=1; // Bounding box must agree with the recorded vertices.
- if(PolygonRegion::encode(p,n,out,sizeof out,size)||size||memcmp(out,before,sizeof out))return 7;
+ if(PolygonRegion::encode(p,n,out,sizeof out,size,scratch)||size||memcmp(out,before,sizeof out))return 7;
  p[3]^=1;p[10]=0x7f;p[11]=0xff;p[n-4]=0x7f;p[n-3]=0xff;
- if(PolygonRegion::encode(p,n,out,sizeof out,size)||size||memcmp(out,before,sizeof out))return 8;
+ if(PolygonRegion::encode(p,n,out,sizeof out,size,scratch)||size||memcmp(out,before,sizeof out))return 8;
  // Over-complex input is rejected before walking any unavailable vertices.
  p[0]=1;p[1]=18; // 274 bytes: 66 points, beyond the 65-point limit.
- if(PolygonRegion::encode(p,sizeof p,out,sizeof out,size)||size||memcmp(out,before,sizeof out))return 9;
+ if(PolygonRegion::encode(p,sizeof p,out,sizeof out,size,scratch)||size||memcmp(out,before,sizeof out))return 9;
  return 0;
 }'''
     with tempfile.TemporaryDirectory(prefix='aitd-regionrecord-') as directory:
@@ -88,8 +89,18 @@ int main() {
 
         if native is None:return
         native_text=native.read_text()
-        if native_status!=0 or native_text.count('PASS native polygon region recording; next stop InsetRgn')!=1 or native_text.count('[Inferior 1 (Remote target) detached]')!=1 or re.search(r'FAIL|Error in|TIMEOUT|Timed out|Program received signal',native_text):
+        if native_status!=0 or native_text.count('PASS native polygon region recording; next stop DisposeRgn')!=1 or native_text.count('[Inferior 1 (Remote target) detached]')!=1 or re.search(r'FAIL|Error in|TIMEOUT|Timed out|Program received signal',native_text):
             raise ValueError('native completion')
+        stack=re.findall(r'^POLYGON_STACK frame=(\d+) saved=(\d+) entry=([0-9A-F]+) lower=([0-9A-F]+) upper=([0-9A-F]+) headroom=(\d+)$',native_text,re.M)
+        if len(stack)!=1:raise ValueError('native polygon stack observation')
+        frame,saved,entry,lower,upper,headroom=stack[0]
+        frame,saved,headroom=map(int,(frame,saved,headroom))
+        entry,lower,upper=(int(v,16) for v in (entry,lower,upper))
+        if not frame>0 or entry>upper or entry-lower-frame-saved!=headroom or headroom<4096:
+            raise ValueError('native polygon interrupt headroom')
+        heap=fields(one(native_text,r'^RREC_HEAP (.*)$'))
+        if heap['before_count']!=heap['after_count'] or heap['before_total']-heap['after_total']!=4096-252:
+            raise ValueError('native workspace ownership')
         for n,trap in [(14,0xa8d8),(15,0xa8da),(16,0xa8c6),(17,0xa8db)]:
             e,r=[fields(one(text,rf'^RREC_{phase} n={n} (.*)$')) for phase in ('ENTER','RETURN')]
             a,b=[fields(one(native_text,rf'^RREC_{phase} n={n} (.*)$')) for phase in ('ENTER','RETURN')]

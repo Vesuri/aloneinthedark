@@ -37,7 +37,9 @@ solutions already paid for. Read [README.md](README.md),
   bitplane/sprite pointers first in VBI, before input or audio work.
 - Keep large temporary buffers off the trap dispatcher's stack. The measured
   FS-UAE system stack is only 6 KiB; inspect combined compiled frames for new
-  trap helpers and use owned temporary handles when staging large results.
+  trap helpers and leave room for the full interrupt call chain. Polygon
+  encoding's 32-byte margin corrupted Exec during VBI despite correct output.
+  Use owned temporary handles when staging large results.
 - Keep explicit dirty rectangles; no shadow framebuffer or tile-diff machinery.
 - Do not dispatch original game callbacks from an Amiga interrupt. The VBI updates
   time/input/Paula; Mac callbacks run at safe user-mode return points.

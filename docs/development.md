@@ -4346,6 +4346,8 @@ calling contract, heap ownership and unchanged drawing buffers. Both accepted
 reference and native observers exit zero; native book batches remain zero.
 Region recording, one-pixel expansion, polygon disposal and masked copying are
 verified (M2.3g44d–g). The next named stop is DisposeRgn at Dark+$3058;
-an intermittent post-copy SIGILL remains open as M2.3g44g1. Contracts, host checks,
+M2.3g44g1 fixes the intermittent SIGILL by moving polygon scratch storage off
+the shared supervisor stack. The forced-interrupt regression and paired
+native region/heap checks pass. Contracts, host checks,
 rejected evidence and the exact acceptance commands are recorded in
 [picture-drawing.md](picture-drawing.md#pond-scene-polygon-recording-m23g44c).

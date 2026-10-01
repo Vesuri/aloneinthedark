@@ -1,9 +1,31 @@
+define region_heap_snapshot
+ set $rrec_count=0
+ set $rrec_total=0
+ set $rrec_block=(unsigned long)s_applicationZone.arena_+64
+ set $rrec_end=(unsigned long)s_applicationZone.arena_+s_applicationZone.end_
+ while $rrec_block<$rrec_end
+  set $rrec_span=*(unsigned long*)$rrec_block
+  if $rrec_span<24 || $rrec_span>$rrec_end-$rrec_block
+   echo FAIL region workspace heap structure\n
+   detach
+   quit 1
+  end
+  set $rrec_kind=*(unsigned long*)($rrec_block+12)
+  if $rrec_kind==1 || $rrec_kind==2
+   set $rrec_count=$rrec_count+1
+   set $rrec_total=$rrec_total+*(unsigned long*)($rrec_block+4)
+  end
+  set $rrec_block=$rrec_block+$rrec_span
+ end
+end
 set pagination off
 set confirm off
 set width 0
 break AitdScreen::showLoudStop
 tbreak dispatchMacTrap if trap==0xa8ec
 continue
+set $rrec_launch=*(unsigned long*)((char*)SysBase+0x230)
+watch *(unsigned long*)((char*)SysBase+0x230)
 set $call=(unsigned long)s_segments[4].begin+0x33e0
 if g_stageBState==3 || *(unsigned long*)($call-2)!=0x42a7a8d8
  echo FAIL region initial caller bytes\n
@@ -44,12 +66,36 @@ while $n<=17
   set $frames=g_macFramesQueued
   dump binary memory ../tmp/regionrecord-native-ENTER-pixels.bin $pixels $pixels+$bytes
  end
+ if $n==16
+  if s_currentZone!=&s_applicationZone
+   echo FAIL unmeasured region workspace zone\n
+   detach
+   quit 1
+  end
+  region_heap_snapshot
+  set $rrec_before_count=$rrec_count
+  set $rrec_before_total=$rrec_total
+  tbreak PolygonRegion::encode
+  continue
+  printf "RREC_ENCODER pc=%X sp=%X\n",$pc,$sp
+  source polygon_stack_call.gdb
+ end
  tbreak *$pret if $sp==$psp+$pop
  continue
  if g_stageBState==3 || $pc!=$pret || $sp!=$psp+$pop
+  printf "RREC_UNEXPECTED pc=%X expected=%X sp=%X expected_sp=%X stage=%u\n",$pc,$pret,$sp,$psp+$pop,g_stageBState
   echo FAIL region return\n
   detach
   quit 1
+ end
+ if $n==16
+  region_heap_snapshot
+  printf "RREC_HEAP before_count=%X after_count=%X before_total=%X after_total=%X\n",$rrec_before_count,$rrec_count,$rrec_before_total,$rrec_total
+  if $rrec_count!=$rrec_before_count || $rrec_before_total-$rrec_total!=4096-252
+   echo FAIL polygon workspace leak or unexpected allocation delta\n
+   detach
+   quit 1
+  end
  end
  if $n==14
   set $region=*(unsigned long*)$psp
@@ -91,11 +137,11 @@ if *(unsigned long*)($body-12)!=2 || *(unsigned long*)($body-16)!=$region-$zone 
 end
 printf "RREC_OWNER size=%u owned=1 frames=%u book=%u\n",*(unsigned long*)($body-20),$frames,g_macBookFramesCompleted
 continue
-if g_stageBState!=3 || g_trapWord!=0xa8e1 || g_trapSegment!=4 || g_trapOffset!=0x33f8
+if g_stageBState!=3 || g_trapWord!=0xa8d9 || g_trapSegment!=4 || g_trapOffset!=0x3058 || *(unsigned long*)((char*)SysBase+0x230)!=$rrec_launch
  echo FAIL region next stop\n
  detach
  quit 1
 end
-echo PASS native polygon region recording; next stop InsetRgn\n
+echo PASS native polygon region recording; next stop DisposeRgn\n
 detach
 quit 0

@@ -1,6 +1,9 @@
 #ifndef AITD_POLYGON_REGION_H
 #define AITD_POLYGON_REGION_H
 #include "RegionRows.h"
+#ifdef AITD_POLYGON_STACK_STRESS
+extern "C" volatile uint16_t g_vbiCount;
+#endif
 namespace PolygonRegion {
 enum { capacity=4096, maxEdges=64 };
 struct Edge {
@@ -13,11 +16,19 @@ struct Edge {
         fraction&=65535;
     }
 };
+// Caller owns the large staging arrays; native callers must keep them off
+// the shared supervisor stack. Output remains atomic on validation failure.
+struct Scratch { Edge edges[maxEdges]; uint8_t encoded[capacity]; };
 // Measured FramePoly inside OpenRgn. Record the contour, ignoring pixel clip
 // regions, then emit QuickDraw XOR scanline transitions. No framebuffer exists
 // in this operation. Limits and malformed/unclosed records fail atomically.
 inline bool encode(const uint8_t* polygon,uint32_t bytes,uint8_t* out,
-                   uint16_t outCapacity,uint16_t& resultSize) {
+                   uint16_t outCapacity,uint16_t& resultSize,Scratch& workspace) {
+#ifdef AITD_POLYGON_STACK_STRESS
+    // Diagnostic only: exercise interrupt headroom with this frame allocated.
+    uint16_t field=g_vbiCount;
+    while(g_vbiCount==field) { __asm__ volatile("nop"); }
+#endif
     resultSize=0;
     if(!polygon || !out || bytes<26 || outCapacity<10)return false;
     uint16_t size=uint16_t(RegionRows::get(polygon));
@@ -35,7 +46,7 @@ inline bool encode(const uint8_t* polygon,uint32_t bytes,uint8_t* out,
     }
     if(RegionRows::get(polygon+2)!=minY || RegionRows::get(polygon+4)!=minX
        || RegionRows::get(polygon+6)!=maxY || RegionRows::get(polygon+8)!=maxX)return false;
-    Edge edges[maxEdges];uint16_t count=0;
+    Edge* edges=workspace.edges;uint16_t count=0;
     for(uint16_t at=10;at+4<size;at+=4) {
         int16_t y0=RegionRows::get(polygon+at),x0=RegionRows::get(polygon+at+2);
         int16_t y1=RegionRows::get(polygon+at+4),x1=RegionRows::get(polygon+at+6);
@@ -50,7 +61,7 @@ inline bool encode(const uint8_t* polygon,uint32_t bytes,uint8_t* out,
         if(dx<0 && -dx>=dy)start-=65536;
         edges[count++]={x0,y0,y1,int16_t(dx<0?-1:1),int32_t(start>>16),start&65535,slope};
     }
-    uint8_t encoded[capacity];uint16_t used=10;
+    uint8_t* encoded=workspace.encoded;uint16_t used=10;
     RegionRows::Edges previous{};
     int16_t top=32767,left=32767,bottom=0,right=-32768;
     for(int32_t y=minY;y<=maxY;++y) {

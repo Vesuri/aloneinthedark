@@ -59,17 +59,6 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.3g44g1 Investigate intermittent post-copy SIGILL.**
-  - One native run raises SIGILL at $F80BE0 after the verified pond masked
-    copy. The instrumented repeat reaches DisposeRgn normally. Preserve both
-    outcomes; do not infer a fix from the passing repeat.
-  - Use the existing caller/dispatcher/register probes in `maskcopy.gdb`,
-    investigate the exception path and distinguish runtime corruption from
-    debugger/emulator behavior. Keep `INTROSKIP=1`.
-
-  *Done when* evidence attributes the exception, any port defect is fixed and
-  the affected route passes bounded regression; a demonstrated tooling issue
-  must have a reliable observer/workaround and documented limits.
 - **M2.3g44h DisposeRgn in pond cleanup (prerequisite for M2.3g44).**
   - Native masked copying reaches `$A8D9`, Dark+$3058; original caller bytes
     +$3056–$3059 are `2f14a8d9`. The game passes the region stored through A4.

@@ -308,7 +308,7 @@ The native observer positively reaches original `2f14a8d9` at Dark+$3058,
 then the A8D9 dispatcher and named DISPOSERGN stop. An earlier rerun raised
 SIGILL at $F80BE0 after the copy (`tmp/m2-maskcopy-native-named-failed-full.log`,
 exit one). The added caller/dispatcher/register probes did not reproduce it;
-its cause remains open as M2.3g44g1. That failed run is not counted as a pass.
+M2.3g44g1 below attributes and fixes the cause. That failed run is not counted as a pass.
 
 The full host suite passes in `tmp/m2-maskcopy-host-tests.log`. Host fixtures
 cover irregular/disjoint mask spans, mapped colours and atomic malformed-mask
@@ -318,4 +318,55 @@ book replay and unexpected publication). Acceptance command:
 
 ```sh
 python3 tools/check_maskcopy.py tmp/m2-maskcopy-rectangle-fixture-reference.log --status 0 --native tmp/m2-maskcopy-native-probed-full.log --native-status 0
+```
+
+### Polygon interrupt-stack overflow (M2.3g44g1)
+
+The apparent post-copy SIGILL originated earlier, during polygon-to-region
+encoding. GDB reported $F80BE0, but the diagnostic vector-4 entry captured an
+untouched exception frame with SR=$2000, PC=$31BDC4, format/vector=$0010.
+That address contains QuickDraw application-heap data, not a CODE segment.
+The installed debugger rewinds the reported PC/stack on its illegal-handler
+breakpoint; its memory-write packets also return empty replies without changing
+memory. The temporary probe therefore had to be installed by native code.
+The probe and transport captures remain local in `tmp/`.
+
+The system stack is $200AA8–$2022A8 (6,144 bytes). Encoder entry SP=$202078,
+its compiled frame used 5,536 bytes plus 16 bytes of saved registers, leaving
+only 32 bytes for further calls and interrupts. A diagnostic one-field wait
+makes the failure reproducible. `tmp/m2-polygon-stack-stress-full.log` (exit one)
+catches `aitdMacMouseVBI` saving D2–D4/A2–A4 at SP=$200A4C, below the stack.
+The A4 save overwrites ExecBase+$230 ($200A60) from $F814C4 to $31BDE8.
+Original ROM bytes at $F81428 load that scheduler launch pointer into A4;
+$F814C2 jumps through it. This attributes the later execution of heap data to
+a port stack overflow, rather than an emulator false alarm.
+
+`PolygonRegion::Scratch` now owns the edge array and atomic output staging.
+FramePoly allocates that workspace in an owned temporary handle, disposes it
+on success or encoding failure, and retains the named stop on allocation or
+unsupported-input failure. Original game instructions and region contents are
+unchanged. The stress build's encoder frame falls to 176 bytes plus 16 saved
+register bytes. `tmp/m2-polygon-stack-fixed-stress-full.log` exits zero with
+5,384 bytes of headroom, unchanged scheduler launch pointer, no exception, and
+continuation to the expected DisposeRgn stop. `POLYGONSTACKSTRESS=1` enables the
+one-field wait only for diagnostics; normal builds do not wait.
+
+All 11 original Mac region fixtures and atomic rejection checks pass in
+`tmp/m2-polygon-stack-reference-check.log`; the full host suite passes in
+`tmp/m2-polygon-stack-host-tests.log`. No-float and probe audits pass.
+`regionrecord.gdb` now verifies compiled stack headroom, temporary-workspace
+allocation balance and continuation through the later pond operations to
+DisposeRgn. `tmp/m2-polygon-stack-native-explicit-full.log` exits zero with
+5,392 bytes of headroom, the same 313 live application allocations before and
+after FramePoly, and the expected 3,844-byte reduction from shrinking the
+recorded region. Native region bytes, ABI, port fields and unchanged pixels
+match the original; book batches remain zero. The first observer attempt
+(`tmp/m2-polygon-stack-native-observer-failed-full.log`) stops before the expected
+return and is not acceptance; the accepted observer uses an explicit encoder
+checkpoint. Five negative logs (missing completion, timeout, inadequate
+headroom, leaked workspace and unexpected signal) are rejected in
+`tmp/m2-polygon-stack-negative-checks.log`.
+
+```sh
+python3 tools/check_regionrecord.py --reference tmp/m2-regionrecord-fixtures-reference.log --status 0 --native tmp/m2-polygon-stack-native-explicit-full.log --native-status 0
 ```

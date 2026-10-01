@@ -7650,10 +7650,16 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         uint16_t bytes=0;
         if(!owner || !*polygon || !recordingOwner || !*s_recordedRegion
            || port!=s_regionPort || s_regionHasPolygon || read16(port+66)!=0xffff
-           || read32(port+96)!=1 || read16(port+52)!=1 || read16(port+54)!=1
-           || !PolygonRegion::encode(*polygon,owner->handleSize(polygon),*s_recordedRegion,
-                                    recordingOwner->handleSize(s_recordedRegion),bytes)
-           || recordingOwner->setHandleSize(s_recordedRegion,bytes)!=MacHeap::noErr)goto unsupportedTrap;
+           || read32(port+96)!=1 || read16(port+52)!=1 || read16(port+54)!=1)goto unsupportedTrap;
+        // The system stack must also accommodate native interrupts. Keep both
+        // the contour edges and atomic output staging in an owned workspace.
+        MacHeap::Handle scratch=newHandle(sizeof(PolygonRegion::Scratch),false);
+        MacHeap* temporaryOwner=handleZone(scratch);
+        if(!temporaryOwner || !*scratch)goto unsupportedTrap;
+        bool valid=PolygonRegion::encode(*polygon,owner->handleSize(polygon),*s_recordedRegion,
+            recordingOwner->handleSize(s_recordedRegion),bytes,*(PolygonRegion::Scratch*)*scratch);
+        if(valid)valid=recordingOwner->setHandleSize(s_recordedRegion,bytes)==MacHeap::noErr;
+        if(temporaryOwner->disposeHandle(scratch)!=MacHeap::noErr || !valid)goto unsupportedTrap;
         write32(port+48,read32(*polygon+read16(*polygon)-4));
         s_regionHasPolygon=true;regs[0]=0;regs[8]=(uint32_t)s_qdThePort;
         return 5;
