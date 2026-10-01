@@ -141,6 +141,11 @@ and other general tuning remain M5.
   ownership variants beyond the measured ten-byte, nonempty startup case.
   Extend EmptyRgn beyond the measured canonical empty region with paired
   nonempty/complex-region results and register/Boolean-padding checks.
+  Original CPU fixtures now cover six empty, nonempty, inverted and complex
+  shapes (`mac_emptyrgn_variants.lua`, `check_emptyrgn_variants.py`; reference
+  log `m2-emptyrgn-variants-reference.log`, exit zero). They preserve the high
+  words of D0/D1 and return top/left in the low words; A0 depends on the vertical
+  comparison. Native generalization and paired fixture checks remain open.
 
   *Done when* the host tests pass and region-clipped draws in the screens reached
   so far match MAME.

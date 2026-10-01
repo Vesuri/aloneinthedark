@@ -5106,3 +5106,19 @@ removed from the stack. `check_globallocal.py` passes the maintained capture
 `m2-globallocal-reference.log` (exit zero), including original caller bytes and
 selected-port records. Native implementation and original-call acceptance remain
 open; earlier exploratory captures are not acceptance evidence.
+
+### M2.8 — original EmptyRgn variant prerequisite
+
+After observing the real Dark+$4182 query, `mac_emptyrgn_variants.lua` allocates
+64 bytes through the original CPU NewHandle trap and runs six isolated queries:
+canonical empty, nonempty rectangle, zero/inverted height, inverted width, and a
+36-byte complex region with two spans. These are service fixtures; the game is
+not resumed from the modified fixture context.
+
+`check_emptyrgn_variants.py` passes `m2-emptyrgn-variants-reference.log` (exit zero).
+All 64 body/guard bytes are unchanged in every case. Boolean output preserves its
+padding byte. D0.W receives top and D1.W receives left, preserving deliberately
+nonzero high words; A0 ends at body+8 when top>=bottom, otherwise body+10. A1 is
+the return PC; other registers, stack cleanup and MemError match the checks.
+The current native canonical-only adapter does not implement this full contract.
+The measured variants and native pairing therefore remain M2.8 work.
