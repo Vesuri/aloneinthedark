@@ -4529,12 +4529,15 @@ Restore an ordinary build after diagnostic acceptance.
 A subsequent fixed-input point investigation also completes on both machines
 (`tmp/m2-fixed-point-{reference,native-full}.log`), but is **not a complete
 state pair**: at the first Dark3+$347C call both have character 0, room 0,
-camera 1 and actor 100, yet native has made 122 game Random calls versus 72 on
+camera 1 and loop counter 100, yet native has made 122 game Random calls versus 72 on
 the Mac. Their packets already differ before QuickDraw:
 `028dfb43016a0065` versus `028dfb2d01700063` (projected coordinates
 −1213/362 versus −1235/368). Both pass `$008D` in D3.W. The remaining
 coordinate difference therefore needs a matching actor/animation state;
-matching only character, room and camera is insufficient.
+matching only character, room and camera is insufficient. The field at
+A5−$CC9C previously labelled “actor” is the completed loop counter: original
+Dark+$5A6C–$5ADC walks 100 records of 160 bytes starting at A5−$B292.
+The value 100 therefore does not identify the actor being drawn.
 
 Original Dark+$5224 calls the game menu; result −1 branches to +$524A and
 starts the idle demo, while result 0 branches to +$52B6 and the character-choice
@@ -4585,3 +4588,34 @@ calls the video-size setter in the resize-event handler. The installed binary
 reports version 0.0.0 and has no matching public symbols, so this source clue is
 not an exact-build diagnosis or proof of the owner-visible black-screen cause.
 No host window access, capture or injected host events were attempted.
+
+
+## Idle-demo continuation under fixed entropy
+
+After the zone-query change, the bounded native run records six room transitions
+and reaches the named `QUICKDRAW / PAINTRECT` stop at Dark+$3CB8, tick 45,118,
+publication 748 (`tmp/m2-idle-fast-exit-native-full.log`, process exit 1).
+This is a reached unsupported service, not a timeout or successful demo exit.
+Original bytes at Dark+$3C88–$3CCC save the port, select FrontWindow, set the
+foreground colour and PenMode 0, paint A5−$108A, then restore the port.
+M2.3g44m tracks that measured dependency.
+
+The original fixed-entropy demo reaches Dark+$552C with 1,092 game Random calls
+and character 0 (`tmp/m2-fixed-idle-exit-reference.log`, exit 0). A separate
+capture at its first Dark+$5BE8 already contains the pond starting background
+(`tmp/m2-car-end-reference.log`, exit 0); the historical `car-end-reference`
+filename is a candidate checkpoint name, not proof of the final car pose.
+Neither capture establishes the owner-visible black interval's cause.
+
+The subsequent original-call observer did not reach Dark+$3CB8 before its
+explicit endpoint-absent failure (`tmp/m2-idle-paint-reference.log`); process
+exit zero does not override that failure. Its isolated follow-up instead sets
+PenMode 0 on the existing Mac window-fill fixture, leaving original game code
+unchanged. All three calls retain the measured D0=0, D1.W=8, A1=port and
+preserved-register contract. The production solid-fill helper matches all nine
+full-buffer checks, including the three Mac captures and six clipping oracles;
+the contrasting fixtures change exactly 72 and 64,000 pixels. Evidence is
+`tmp/m2-window-mode0-reference.log` and `tmp/window-mode0-reference-*.bin`.
+This establishes mode-0 service semantics, not a matched idle-demo scene.
+The branch to Dark+$3C74 depends on A5−$BFB8/$BFB6; trace those values and
+their scene inputs rather than assuming the reference takes the same branch.

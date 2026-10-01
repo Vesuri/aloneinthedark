@@ -59,6 +59,17 @@ required.
 
 ## M2 Startup to intro
 
+- **M2.3g44m Mode-0 window PaintRect on the idle-demo route.**
+  - The no-input fixed-stream run now advances through six scene changes and
+    reaches the named PaintRect stop at Dark+$3CB8 (tick 45,118, frame 748).
+    Original bytes select FrontWindow, set PenMode 0 and paint A5−$108A.
+    The current window fill accepts only mode 8. Capture the original call's
+    complete port, clipping, pixels and ABI before extending that contract.
+
+  *Done when* the reached call matches the Mac's defined pixels and ABI,
+  surrounding storage is preserved, and a bounded original-code run advances
+  beyond Dark+$3CB8. This prerequisite alone does not close the black-screen
+  or car/frog sequence investigation.
 - **M2.3g44 Black intro display while music plays.**
   - GetZone/SetZone no longer rebuild heap-derived views (M2.3g44l); native
     heap contracts and the bounded cost comparison pass. Recheck progression
@@ -70,11 +81,12 @@ required.
     256 RGB24 colours equal the copper list and logical CLUT, with exact menu
     planes and the original 900-tick continuation. This rules out wrong colour
     RAM at that checkpoint, not a display-mode or host-rendering failure.
-  - The current native sequence reaches the house staircase at tick 34,366
-    (560 published frames); it does not remain indefinitely at the car. A
-    separate endpoint run timed out at tick 49,312 without Dark+$552C. Trace
-    the original exit condition at matching game state; neither elapsed ticks
-    nor these exploratory snapshots establish sequence acceptance.
+  - The latest fixed-stream native run reaches six scene changes, then the
+    PaintRect stop tracked in M2.3g44m; it does not establish full demo exit.
+    The Mac fixed-stream run positively reaches Dark+$552C after 1,092 game
+    Random calls. Pair original scene state, not elapsed ticks.
+    The first Dark+$5BE8 capture already shows the starting pond background;
+    it is not the near-camera car endpoint.
   - The subsequent fixed-stream first-point captures share character/room/camera
     but have 122 versus 72 random calls and different projected packets before
     QuickDraw. Pair actor/animation state before accepting those coordinates.
