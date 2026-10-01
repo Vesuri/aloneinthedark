@@ -1,7 +1,6 @@
 # Production on-demand resource acceptance. Read-only debugger observations.
 set pagination off
 set confirm off
-source .run/startup-state.gdb
 if g_overlayChainVerified!=1 || g_overlaySourceOpen!=1 || g_overlaySourceReads!=33 || g_overlaySourceBytes!=572 || g_overlayRuntimeReads!=0 || g_overlayRuntimeBytes!=0 || g_resourceSourceOpen != 1 || g_resourceRuntimeReads != 0 || g_resourceRuntimeBytes != 0 || g_resourceSourceReads != 228 || g_resourceSourceBytes != 201058 || g_resourceCount!=243 || g_loadedCodeMask != 3 || g_lowMemoryValidatedSites != 58
  echo FAIL resource-read: preparation, CODE validation or residency\n
  detach
@@ -51,16 +50,34 @@ if $general == 0
 end
 dump binary memory ../tmp/resource-general.bin $general $general+612
 break AitdScreen::showLoudStop
+# Stop at the first measured CopyBits return, not a retired unsupported trap.
+if !s_segments[10].begin
+ tbreak loadResource if item.fork==0 && item.type==0x434f4445 && item.id==10
+ continue
+ finish
+end
+set $resource_end=(unsigned long)s_segments[10].begin+0x24d4
+if !s_segments[10].begin || *(unsigned short*)($resource_end-2)!=0xa8ec || *(unsigned short*)$resource_end!=0xe0f9
+ echo FAIL resource-read: original positive endpoint bytes\n
+ detach
+ quit 1
+end
+tbreak *$resource_end
 continue
-if g_stageBState != 3 || g_trapWord!=0xa8e2 || g_trapSegment!=4 || g_trapOffset!=0x4182 || *(unsigned long*)(g_trapRoutine+0)!=0x554e4b4e || *(unsigned long*)(g_trapRoutine+4)!=0x4f574e20 || *(unsigned long*)(g_trapRoutine+8)!=0x54524150 || g_trapRoutine[12]!=0 || g_trapSelector!=0xffffffff || g_resourceRuntimeReads != 109 || g_resourceRuntimeBytes != 826832 || g_systemWindows != $startup_windows || g_resourceSourceMax > 65536 || g_macServiceEntered<$startup_entered+g_effectStatusCalls || g_macServiceCompleted<$startup_completed+g_effectStatusCalls || g_macServiceActive != 0 || g_macServiceEntered!=g_macServiceCompleted
- printf "DIAGNOSTIC resource boundary: stage=%u trap=%x segment=%u app=%u/%u overlay=%u/%u windows=%u services=%u/%u active=%u code=%x lowmem=%u\n",g_stageBState,g_trapWord,g_trapSegment,g_resourceRuntimeReads,g_resourceRuntimeBytes,g_overlayRuntimeReads,g_overlayRuntimeBytes,g_systemWindows,g_macServiceEntered,g_macServiceCompleted,g_macServiceActive,g_loadedCodeMask,g_lowMemoryAppliedSites
- echo FAIL resource-read: runtime stop, service balance or bounded reads\n
+printf "RESOURCE_BOUNDARY pc=%X expected=%X app=%u/%u windows=%u services=%u/%u active=%u max=%u\n",$pc,$resource_end,g_resourceRuntimeReads,g_resourceRuntimeBytes,g_systemWindows,g_macServiceEntered,g_macServiceCompleted,g_macServiceActive,g_resourceSourceMax
+if $pc!=$resource_end || g_stageBState==3 || g_resourceRuntimeReads!=68 || g_resourceRuntimeBytes!=333998 || g_resourceSourceMax>65536 || !g_systemWindows || g_macServiceActive!=0 || g_macServiceEntered!=g_macServiceCompleted
+ echo FAIL resource-read: positive boundary, service balance or bounded reads\n
  detach
  quit 1
 end
 set $ri=0
 set $samples=1
 while $ri<g_resourceCount
+ if s_resourceForks.m_items[$ri].item.type==0x4d445256 && s_resourceHandles[$ri]!=0
+  echo FAIL resource-read: original MDRV resident\n
+  detach
+  quit 1
+ end
  if s_resourceForks.m_items[$ri].item.type == 0x53545253 && s_resourceForks.m_items[$ri].item.id == 0
   if s_resourceForks.m_items[$ri].item.size != 1810 || s_resourceHandles[$ri] == 0 || *s_resourceHandles[$ri] == 0
    echo FAIL resource-read: STRS handle\n
@@ -88,6 +105,6 @@ if $samples != 3
  detach
  quit 1
 end
-printf "PASS resource-read: maps=243 preparation=201058 runtime=68/333998 windows=%u samples=3 next=COPYBITS\n",g_systemWindows
+printf "PASS resource-read: maps=243 preparation=201058 runtime=68/333998 windows=%u samples=3 endpoint=Misc2+24D4\n",g_systemWindows
 detach
 quit 0

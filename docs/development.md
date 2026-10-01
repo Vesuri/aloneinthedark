@@ -4981,3 +4981,33 @@ eighth (A/UX absence) follows it and supplies the final positive endpoint.
 Gestalt=8, Engine-flags=11, startup result=0 and alerts=0, with 27 OS windows
 and 33/33 completed services. The earlier observer requiring eight queries at
 +$0460 was rejected; it was a test-order error, not a runtime failure.
+
+
+## Exact default QuickDraw patterns (M2.3a)
+
+The native pre-fix QDGlobals dump has all forty pattern bytes shifted one byte
+toward `thePort`: 26 bytes differ from the original Mac. The linked copy is
+`move.b (a0)+,(0,a0,d2.l)`, whose destination uses the incremented register.
+This is the same measured GCC 15.1 defect as the earlier Finder-info copy.
+A volatile byte temporary separates the load and store; no original game
+instructions or pattern definitions change.
+
+`tools/mac_qd_patterns.lua` captures the actual Mac InitGraf return. The native
+identity observer now also dumps the forty pattern bytes at its positive
+startup endpoint. `tools/check_qd_patterns.py` compares all five patterns and
+audits the entire linked program for the observed same-register postincrement
+copy form. Both captures exit zero, all forty bytes match, and the linked audit
+has zero remaining occurrences (`tmp/m2-patterns-reference.log` and
+`tmp/m2-patterns-native-full.log`). Native no-float/probe audits, MAME literal
+checks and the 68020 boot regression pass.
+
+The required resource-read regression exposed a stale EmptyRgn failure
+endpoint. It now uses the byte-checked original Misc2+$24D4 CopyBits return,
+independent of later intro progress. Its three byte-exact original samples,
+metadata-only preparation, original-MDRV exclusion and bounded reads remain
+checked. The 68020 positive run exits zero: 68 application reads / 333,998 bytes,
+128 windows, 463/463 services, maximum source read 28,672 bytes. See
+`tmp/m2-patterns-resource-positive-full.log`; the earlier timeout at the obsolete
+endpoint is not a pass. `check_resource_reads.py --status 0` verifies all three
+sample hashes and the new positive completion. The read observer no longer
+uses unrelated later-endpoint preference/window totals.

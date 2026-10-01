@@ -66,7 +66,7 @@ independent service implementation or automated acceptance. Region expansion
 and other general tuning remain M5.
 
 - [ ] **M2.1c** — verify original PAK payloads (active).
-- [ ] **M2.3a / M2.3b** — resolve the pattern-copy audit and inverse coordinates.
+- [ ] **M2.3b** — verify and implement inverse coordinates.
 - [ ] **M2.3 / M2.4** — consolidate existing core/screen evidence and close remaining acceptance.
 - [ ] **M2.5** — finish PAL/NTSC, pointer palette ownership and video-clock acceptance.
 - [ ] **M2.6 / M2.7 / M2.7a / M2.8 / M2.9** — finish the remaining display,
@@ -90,15 +90,6 @@ and other general tuning remain M5.
   returned bytes match the host files by debugger checksum, and startup window
   counts are recorded. If original bytes establish an unused file, document the
   evidence before revising that requirement; absence from one route is not proof.
-- **M2.3a QuickDraw pattern-copy compiler defect.**
-  - The M2.1b2c9b audit found the same GCC 15.1 m68k post-increment/base-register
-    copy form in `initGraf`'s five default patterns. Diagnose with a native dump
-    before changing it; the metadata fixture already proves the byte-shift defect.
-  - Replace affected copies and audit the linked program for that instruction form.
-
-  *Done when* all five native QDGlobals patterns match the source/Mac bytes,
-  the instruction audit is clear or every remaining occurrence is explained,
-  and startup regressions pass.
 - **M2.3b Inverse coordinate conversion.**
   - The inherited GlobalToLocal subtracted Vette's fixed (64,91) origin.
     M2.3g11 replaces that guessed result with a named stop.

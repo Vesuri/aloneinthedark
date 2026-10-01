@@ -119,6 +119,7 @@ commands
    detach
    quit 1
   end
+  dump binary memory ../tmp/qd-patterns-native.bin (char*)s_qdThePort-40 (char*)s_qdThePort
   printf "PASS identity: SysEnvRec=16 Gestalt=8 Engine-flags=11 startup=Core+0460 result=0 alerts=0 windows=%u services=%u/%u\n",g_systemWindows,g_macServiceEntered,g_macServiceCompleted
   detach
   quit 0

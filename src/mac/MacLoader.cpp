@@ -1825,8 +1825,12 @@ static void initGraf(uint8_t* thePort)
         0x77,0xdd,0x77,0xdd,0x77,0xdd,0x77,0xdd  // dkGray  (-40)
     };
     for (uint16_t pattern = 0; pattern < 5; ++pattern)
-        for (uint16_t byte = 0; byte < 8; ++byte)
-            thePort[-8 * (int16_t)(pattern + 1) + byte] = patterns[pattern * 8 + byte];
+        for (uint16_t byte = 0; byte < 8; ++byte) {
+            // GCC 15 m68k otherwise combines the source post-increment with
+            // a destination indexed by that same register, shifting the copy.
+            volatile uint8_t value = patterns[pattern * 8 + byte];
+            thePort[-8 * (int16_t)(pattern + 1) + byte] = value;
+        }
 
     // The standard 16x16 arrow Cursor: image, mask, then hot spot (0,0).
     static const uint16_t arrowImage[16] = {
