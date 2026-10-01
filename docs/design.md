@@ -746,7 +746,9 @@ These settings establish a functional baseline, not a performance result.
   arguments, caller (segment, offset) and results, keyed by live segment
   addresses read from the jump table.
 - `tools/mac_probe_fb.lua` dumps the 8-bit framebuffer and CLUT (M0.5).
-- A fixed-seed hook writes the same `RndSeed`/`Random` seed on both sides.
+- A diagnostic entropy fixture controls both the QuickDraw `Random` seed and
+  Engine's clock-mixed accumulator on both sides. A seed alone is insufficient.
+  Compare scene/script state as well as random-call inputs and results.
 
 **Regression** (`amiga/regression.sh <case>`, `make regression`). Each case is a
 clean build with its flags, a warp-mode bounded run, a required PASS regex, and

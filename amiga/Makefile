@@ -316,6 +316,12 @@ ifeq ($(POLYGONSTACKSTRESS),1)
 EXTRA_DEFINES += -DAITD_POLYGON_STACK_STRESS
 endif
 
+# Deterministic entropy for state-paired original Engine Random calls only.
+ifeq ($(FIXEDRNG),1)
+EXTRA_DEFINES += -DAITD_FIXED_GAME_RANDOM
+PROBE_SYMS += g_fixedRandomCalls g_fixedRandomSeed g_fixedRandomMixed g_fixedRandomRows
+endif
+
 # Optional hardware colour-RAM readback of one stable published frame.
 ifneq ($(PALREADFRAME),)
 EXTRA_DEFINES += -DAITD_PALETTE_READ_FRAME=$(PALREADFRAME)

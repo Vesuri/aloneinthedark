@@ -61,6 +61,14 @@ void aitdMappedCopyRowsAsm(const uint8_t* source, uint8_t* destination,
                             uint32_t sourceModulo, uint32_t destinationModulo);
 #endif
 
+#ifdef AITD_FIXED_GAME_RANDOM
+// Diagnostic entropy is scoped to Engine's Random wrapper, excluding OS calls.
+volatile uint32_t g_fixedRandomCalls = 0, g_fixedRandomSeed = 1;
+volatile uint16_t g_fixedRandomMixed = 1;
+volatile uint32_t g_fixedRandomRows[64][6] = {};
+__attribute__((noinline)) void aitdFixedRandomCheckpoint() { __asm__ volatile("" ::: "memory"); }
+#endif
+
 volatile uint16_t g_stageBState = 0;
 volatile uint16_t g_trapWord = 0;
 volatile int32_t  g_trapSelector = -1;
@@ -6880,7 +6888,43 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
 #ifdef AITD_PROBE
         s_randomTrapPC = pc;
 #endif
-        write16(userStack, (uint16_t)quickDrawRandom());
+#ifdef AITD_FIXED_GAME_RANDOM
+        const uint8_t* engine=s_segments[7].begin;
+        uint8_t* mixed=(uint8_t*)regs[13]-0x1078;
+        if(builtin || !s_qdThePort || !engine || pc!=(uint32_t)engine+0x4a32
+           || read32(engine+0x4a30)!=0x4267a861UL
+           || read16(engine+0x4a36)!=0xb179
+           || read32(engine+0x4a38)!=(uint32_t)mixed
+           || g_fixedRandomCalls==0xffffffffUL)goto unsupportedTrap;
+        // Supply a zero clock contribution and fixed initial seeds. Subsequent
+        // state comes from the real service result, not a replacement RNG.
+        uint32_t inputSeed=g_fixedRandomSeed;
+        uint16_t inputMixed=g_fixedRandomMixed;
+        write32(s_qdThePort-126,inputSeed);
+        write16(mixed,inputMixed);
+#endif
+        uint16_t randomResult=(uint16_t)quickDrawRandom();
+        write16(userStack,randomResult);
+#ifdef AITD_FIXED_GAME_RANDOM
+        g_fixedRandomSeed=read32(s_qdThePort-126);
+        g_fixedRandomMixed=(inputMixed^randomResult)&0x7fff;
+        uint32_t row=g_fixedRandomCalls++;
+        if(row<64) {
+            uint32_t caller=read32((uint8_t*)regs[14]+4);
+            uint16_t segment=0xffff;uint32_t offset=0xffffffffUL;
+            for(uint16_t i=1;i<s_segmentCount;++i)
+                if(caller>=(uint32_t)s_segments[i].begin && caller<(uint32_t)s_segments[i].end) {
+                    segment=i;offset=caller-(uint32_t)s_segments[i].begin;break;
+                }
+            g_fixedRandomRows[row][0]=inputSeed;
+            g_fixedRandomRows[row][1]=inputMixed;
+            g_fixedRandomRows[row][2]=randomResult;
+            g_fixedRandomRows[row][3]=g_fixedRandomSeed;
+            g_fixedRandomRows[row][4]=segment;
+            g_fixedRandomRows[row][5]=offset;
+        }
+        if(g_fixedRandomCalls==64)aitdFixedRandomCheckpoint();
+#endif
         if (g_stageCDepth < 90) g_stageCDepth = 90;
         return 1;
     }
@@ -8639,6 +8683,9 @@ bool MacLoader::prepareResourceForks(const ResourceForks::Source& application,co
     clearResidentSegments();
     g_resourceCount = 0;
     g_soundDriver.reset();g_soundDriverHandle=0;g_soundDriverCalls=0;
+#ifdef AITD_FIXED_GAME_RANDOM
+    g_fixedRandomCalls=0;g_fixedRandomSeed=1;g_fixedRandomMixed=1;
+#endif
     g_macBookFrameActive=0;g_macBookFramesBegun=g_macBookFramesCompleted=0;
     s_bookFrameOwner=0;s_bookFrameColumn=s_bookFrameQueued=0;
     g_appleEventHandlers.reset();

@@ -26,7 +26,7 @@ if g_stageBState==3 || trap!=0xa8d9
 end
 # Generic safe-point work publishes the preceding masked CopyBits first.
 # Capture the disposal service only after that shared trap-entry work.
-tbreak MacLoader.cpp:7635
+tbreak MacLoader.cpp:7679
 continue
 # The compiler attributes this boundary to inline read32; select its caller.
 up

@@ -4470,7 +4470,7 @@ also reports explicit failure because the scene ends before its requested
 fifth sample; emulator exit zero does not override that failure. Do not repeat
 that sample-count bound or call these wall-time samples state-paired acceptance.
 
-## Idle comparison correction (M2.3g44k, incomplete)
+## Paired demo randomness (M2.3g44k)
 
 The native point/staircase A5 captures contain character choice 0 at A5−$D8F2;
 the original point/exit captures contain 1. Original Dark+$524A calls Engine's
@@ -4488,5 +4488,39 @@ entered the demo at tick 2,733 and selected 0. A one-frame Enter delay on the Ma
 still selected 1 and was explicitly rejected; it is not a paired reference.
 The earlier native 1,200-iteration diagnostic times out at tick 57,320, 719
 published frames, while in heap-handle lookup. It reports no completed exit.
-Heap compaction is being measured separately before attributing this slowdown
-to scene logic or corrupt memory. These exploratory results do not close M2.3g44.
+A separate native heap-compaction observer completed at frame 605: tick 36,292
+to 36,294, only two ticks. Host inspection validates all block boundaries and
+live master-pointer ownership before (336 blocks) and after (335 blocks). That
+sampled compaction does not explain the long delay; this is not a full-sequence
+heap or timing acceptance. These exploratory results do not close M2.3g44.
+
+
+The opt-in `FIXEDRNG=1` diagnostic supplies seed 1 and accumulator 1 at the
+first Engine+$4A32 call, then uses the real previous Random result to continue
+that isolated stream. It replaces the live clock addition with zero at that
+service boundary. The original wrapper XOR/mask and character-selection
+instructions still run; production builds do not contain the fixture.
+`tools/mac_fixed_random.lua` applies the same inputs only at the original
+Engine call, excluding OS-internal Random calls. `amiga/fixed_random.gdb`
+observes 64 calls and the original final accumulator/character continuation;
+`tools/check_fixed_random.py` requires successful completion, identical inputs,
+results and attributed callers, plus an independent arithmetic oracle.
+These are diagnostic random inputs, not a proposed change to game behavior.
+Both bounded runs exit zero and pass all 64 inputs/results/callers: first
+Dark+$5250, then Dark2+$3CAE, character 0 and accumulator $6E59. The original
+finishes at tick 15,156; native at tick 24,469, frame 326. Evidence is
+`tmp/m2-fixed-random-reference.log` and
+`tmp/m2-fixed-random-native-full.log`. Host regressions and build audits pass;
+negative checks reject timeout, missing completion/row, altered initial input,
+altered result and wrong character. Frames must still be paired by scene/script
+state, not by absolute ticks or RNG call count alone.
+
+Reproduce the native fixture with a clean `INTROSKIP=1 FIXEDRNG=1` build and
+`GDBSCRIPT=fixed_random.gdb EXTRA_ARGS=--warp_mode=1 amiga/diag_run.sh 1200`.
+Run `tools/mac_fixed_random.lua` with the documented headless Mac command.
+Preserve the full native `amiga/.run/gdb-out.log` before launching another run;
+pass both logs and their actual process exit statuses to
+`tools/check_fixed_random.py --reference <log> --reference-status <status>
+--native <log> --native-status <status>`. The checker rejects timeouts,
+missing completion/rows, changed inputs/results and an incorrect character.
+Restore an ordinary build after diagnostic acceptance.
