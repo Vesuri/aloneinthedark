@@ -86,6 +86,13 @@ and other general tuning remain M5.
     fixture reads do not satisfy this requirement. The intervening original
     song-stop and resource-release calls now pass native ABI/ownership checks,
     including disposal of all 41 owned song resources.
+  - The subsequent unseeded observer timed out after 25 minutes before its
+    Dark2+$5768 checkpoint (`m2-pak-native-after-release-timeout-full.log`,
+    runner exit 124). It captured initial ITD_Ress reads only; the interrupted
+    PC was in frame presentation. This is not PAK or sequence acceptance.
+    Resume with the established deterministic entropy fixture and observe the
+    original presentation/file calls directly; keep the unseeded route gap
+    explicit under M2.3g44.
 
   *Done when* the game opens and reads `ITD_RESS.PAK` and `PRESENT.PAK`, its
   returned bytes match the host files by debugger checksum, and startup window
@@ -201,6 +208,10 @@ Remaining: pair the near-camera car endpoint and frog transition with original
 scene/animation state under M2.10; capture the reported black state across logical
 pixels, palette, AGA publication and authorized rendered output. FS-UAE's
 `Not a valid drawable size for glViewport` remains a clue, not a diagnosis.
+An unseeded native PAK acceptance run also timed out before its cleanup
+checkpoint after 25 minutes, with the interrupted PC in frame presentation.
+It did not capture scene state; neither its sequence position nor the cause of
+that missed checkpoint is established by this result.
 Routine service tests use `INTROSKIP=1`; uninterrupted playback is reserved for
 sequence acceptance. `FIXEDRNG=1` needs the matching Mac entropy fixture;
 elapsed ticks alone do not establish paired scene state.
