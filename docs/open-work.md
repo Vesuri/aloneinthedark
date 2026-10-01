@@ -59,15 +59,26 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.3g44g Masked CopyBits in the pond scene (prerequisite for M2.3g44).**
-  - The verified KillPoly returns and reaches `$A8EC`, Dark+$346C.
-    Measure the original arguments, expanded mask region, source/destination
-    pixels, colour mapping and calling contract before extending CopyBits.
-  - Use `INTROSKIP=1`; no full book replay is needed.
+- **M2.3g44g1 Investigate intermittent post-copy SIGILL.**
+  - One native run raises SIGILL at $F80BE0 after the verified pond masked
+    copy. The instrumented repeat reaches DisposeRgn normally. Preserve both
+    outcomes; do not infer a fix from the passing repeat.
+  - Use the existing caller/dispatcher/register probes in `maskcopy.gdb`,
+    investigate the exception path and distinguish runtime corruption from
+    debugger/emulator behavior. Keep `INTROSKIP=1`.
 
-  *Done when* the reached masked copy matches the original destination pixels,
-  preserves pixels outside the mask and source/region ownership, and returns
-  with the original calling contract to the next explicit checkpoint.
+  *Done when* evidence attributes the exception, any port defect is fixed and
+  the affected route passes bounded regression; a demonstrated tooling issue
+  must have a reliable observer/workaround and documented limits.
+- **M2.3g44h DisposeRgn in pond cleanup (prerequisite for M2.3g44).**
+  - Native masked copying reaches `$A8D9`, Dark+$3058; original caller bytes
+    +$3056–$3059 are `2f14a8d9`. The game passes the region stored through A4.
+  - Capture original disposal ABI and heap transition, implement owned-region
+    disposal, and preserve all unrelated allocations and drawing data.
+
+  *Done when* the reached disposal matches the original calling contract,
+  releases only the region allocation, and continues past the named stop with
+  paired ownership/isolation checks and zero book replay.
 - **M2.3g44 Black intro display while music plays.**
   - Owner screenshots `FS-UAE_Full_261001-0912_01` through `_04` and
     `FS-UAE_Full_261001-0913_00` visibly show the logo, title, game menu,

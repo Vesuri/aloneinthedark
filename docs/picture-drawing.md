@@ -266,3 +266,56 @@ free count and no continuation) are rejected. Run the paired check with:
 ```sh
 python3 tools/check_killpoly.py --reference tmp/m2-killpoly-reference.log --status 0 --native tmp/m2-killpoly-native-full.log --native-status 0
 ```
+
+## Pond masked copy (M2.3g44g)
+
+CopyBits at Dark+$346C has original caller bytes
+`486efff8486efff842672f0aa8ec` (+$3460–$346D). Mode is srcCopy, with an
+expanded 244-byte pond region as mask. Source and destination are distinct
+648×401 offscreen PixMaps with 652-byte rows and matching colour tables/seeds.
+The native implementation validates owned mask storage and uses the existing
+region row decoder to restrict the copy. Malformed streams fail before pixel
+writes; unsupported complexity remains a loud stop. No original instructions
+or production animation decisions are changed.
+
+The first Mac call uses rectangle `(43,0,160,23)` and covers 380 pixels without
+changing their values. A distinctive source fixture changes 379 pixels, proving
+that doing nothing cannot pass. The helper matches both complete original
+buffers under sanitizers. These first captures are preserved in
+`tmp/maskcopy-first-reference/`; their log is
+`tmp/m2-maskcopy-fixture-reference.log` (exit zero).
+
+The accepted native run uses `(39,0,163,20)` with exactly the same mask bytes.
+A bounded original search examined 4,431 calls without finding that rectangle;
+`tmp/m2-maskcopy-matched-reference.log` reports FAIL and is not acceptance.
+The explicit `AITD_MASKCOPY_REPLAY_RECT` fixture replays the measured native
+rectangle through the original service, without replacing original instructions.
+The selected mask must match byte-for-byte. This is service-contract evidence,
+not proof of identical animation timing. The enclosing-rectangle/sequence
+comparison remains part of M2.3g44.
+
+`tmp/m2-maskcopy-rectangle-fixture-reference.log` and
+`tmp/m2-maskcopy-native-probed-full.log` both exit zero. The paired checker
+passes all 399 copied pixels, complete destination preservation outside the
+mask, source/record isolation, palettes and ABI. The distinctive fixture changes
+398 pixels; the actual helper matches its entire destination. Native queued
+and presented publications stay 151, dirty state stays empty, and book batches
+stay zero. The original pops 22 bytes, returns D0=0 and preserves D2–D7/A2–A6;
+D1/A0/A1 are scratch. Native mask storage is borrowed from the validated owner;
+this matching-palette copy performs no allocation, resize or disposal.
+
+The native observer positively reaches original `2f14a8d9` at Dark+$3058,
+then the A8D9 dispatcher and named DISPOSERGN stop. An earlier rerun raised
+SIGILL at $F80BE0 after the copy (`tmp/m2-maskcopy-native-named-failed-full.log`,
+exit one). The added caller/dispatcher/register probes did not reproduce it;
+its cause remains open as M2.3g44g1. That failed run is not counted as a pass.
+
+The full host suite passes in `tmp/m2-maskcopy-host-tests.log`. Host fixtures
+cover irregular/disjoint mask spans, mapped colours and atomic malformed-mask
+rejection. No-float and 88-symbol build audits pass. Five invalid original and
+five invalid native logs are rejected (completion, timeout, bytes/ABI,
+book replay and unexpected publication). Acceptance command:
+
+```sh
+python3 tools/check_maskcopy.py tmp/m2-maskcopy-rectangle-fixture-reference.log --status 0 --native tmp/m2-maskcopy-native-probed-full.log --native-status 0
+```

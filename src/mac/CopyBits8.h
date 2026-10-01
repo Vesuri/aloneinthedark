@@ -1,6 +1,7 @@
 #ifndef AITD_COPY_BITS8_H
 #define AITD_COPY_BITS8_H
 #include "RectBounds.h"
+#include "RegionRows.h"
 namespace CopyBits8 {
 inline int32_t coord(const uint8_t* r,unsigned i) { return int16_t(RectBounds::word(r+2*i)); }
 // Vette's unscaled clipping equations, applied to byte pixels. The caller
@@ -9,7 +10,8 @@ inline int32_t coord(const uint8_t* r,unsigned i) { return int16_t(RectBounds::w
 inline bool copy(const uint8_t* src,uint32_t srcBytes,uint16_t srcStride,const uint8_t* srcMap,
                  uint8_t* dst,uint32_t dstBytes,uint16_t dstStride,const uint8_t* dstMap,
                  const uint8_t* from,const uint8_t* to,const uint8_t* port,
-                 const uint8_t* vis,const uint8_t* clip,uint8_t* drawn,const uint8_t* colors=0) {
+                 const uint8_t* vis,const uint8_t* clip,uint8_t* drawn,const uint8_t* colors=0,
+                 const uint8_t* mask=0,uint16_t maskBytes=0) {
     if(!src || !dst || src==dst || !srcMap || !dstMap || !from || !to
        || !port || !vis || !clip || !drawn)return false;
     const uint8_t* maps[2]={srcMap,dstMap};uint32_t sizes[2]={srcBytes,dstBytes};
@@ -30,6 +32,8 @@ inline bool copy(const uint8_t* src,uint32_t srcBytes,uint16_t srcStride,const u
         }
         limits[i]=bound;
     }
+    RegionRows::Edges edges{};
+    if(mask && !RegionRows::row(mask,maskBytes,0,edges))return false;
     bool nonempty=limits[0]<limits[2] && limits[1]<limits[3];
     for(unsigned i=0;i<4;++i) {
         uint16_t v=nonempty?uint16_t(limits[i]):0;drawn[2*i]=uint8_t(v>>8);drawn[2*i+1]=uint8_t(v);
@@ -38,7 +42,9 @@ inline bool copy(const uint8_t* src,uint32_t srcBytes,uint16_t srcStride,const u
     for(int32_t y=limits[0];y<limits[2];++y) {
         const uint8_t* source=src+uint32_t(coord(from,0)+y-coord(to,0)-coord(srcMap,0))*srcStride;
         uint8_t* target=dst+uint32_t(y-coord(dstMap,0))*dstStride;
+        if(mask && !RegionRows::row(mask,maskBytes,int16_t(y),edges))return false;
         for(int32_t x=limits[1];x<limits[3];++x) {
+            if(mask && !RegionRows::inside(edges,int16_t(x)))continue;
             uint8_t pixel=source[coord(from,1)+x-coord(to,1)-coord(srcMap,1)];
             target[x-coord(dstMap,1)]=colors ? colors[pixel] : pixel;
         }

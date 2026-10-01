@@ -839,7 +839,7 @@ static const TrapName s_trapNames[] = {
     {0xa8a7,"QUICKDRAW","SETRECT"},
     {0xa8a2,"QUICKDRAW","PAINTRECT"}, {0xa891,"QUICKDRAW","LINETO"},
     {0xa8cb,"QUICKDRAW","OPENPOLY"}, {0xa8cc,"QUICKDRAW","CLOSEPOLY"},
-    {0xa8da,"QUICKDRAW","OPENRGN"}, {0xa8db,"QUICKDRAW","CLOSERGN"}, {0xa8e1,"QUICKDRAW","INSETRGN"},
+    {0xa8d9,"QUICKDRAW","DISPOSERGN"}, {0xa8da,"QUICKDRAW","OPENRGN"}, {0xa8db,"QUICKDRAW","CLOSERGN"}, {0xa8e1,"QUICKDRAW","INSETRGN"},
     {0xa8c6,"QUICKDRAW","FRAMEPOLY"}, {0xa8cd,"QUICKDRAW","KILLPOLY"},
     {0xa8a4,"QUICKDRAW","INVERTRECT"},
     {0xa8a9,"QUICKDRAW","INSETRECT"}, {0xa8b0,"QUICKDRAW","FRAMEROUNDRECT"},
@@ -3995,7 +3995,15 @@ static bool copyPortBits8(const uint8_t* sourceBitmap,const uint8_t* destination
                             const uint8_t* from,const uint8_t* to,uint16_t mode,const uint8_t* mask)
 {
     AitdProfileScope profileCopy(kProfileCopyBits);
-    if(mode!=0 || mask)return false;
+    if(mode!=0)return false;
+    const uint8_t* maskBody=0;uint16_t maskBytes=0;
+    if(mask) {
+        MacHeap::Handle handle=(MacHeap::Handle)mask;
+        MacHeap* owner=handleZone(handle);
+        if(!owner || !*handle || owner->handleSize(handle)<10
+           || owner->handleSize(handle)>32766)return false;
+        maskBody=*handle;maskBytes=uint16_t(owner->handleSize(handle));
+    }
     GWorldSlot* source=0;
     for(uint16_t i=0;i<sizeof(s_gworlds)/sizeof(s_gworlds[0]);++i)
         if(s_gworlds[i].used && (sourceBitmap==s_gworlds[i].pixMap || sourceBitmap==s_gworlds[i].port+2))source=&s_gworlds[i];
@@ -4050,7 +4058,7 @@ static bool copyPortBits8(const uint8_t* sourceBitmap,const uint8_t* destination
     uint8_t drawn[8];
     if(!CopyBits8::copy(source->pixels,source->owner->handleSize(source->handles[1]),
         read16(source->pixMap+4)&0x3fff,source->pixMap+6,pixels,pixelBytes,
-        read16(map+4)&0x3fff,map+6,from,to,port+16,*vh+2,*ch+2,drawn,remap))return false;
+        read16(map+4)&0x3fff,map+6,from,to,port+16,*vh+2,*ch+2,drawn,remap,maskBody,maskBytes))return false;
     if(window && read16(drawn)!=read16(drawn+4) && read16(drawn+2)!=read16(drawn+6))
         markDirtyBounds((int16_t)read16(drawn)-(int16_t)read16(map+6),
                         (int16_t)read16(drawn+2)-(int16_t)read16(map+8),
