@@ -5054,3 +5054,22 @@ under M2.6/M2.10 and M2.3g44.
 The historical seven-frame restore-palette log was not accepted by the current
 nine-frame AGA checker; it is not new full-intro evidence. The remaining
 observer/sequence work stays in M2.10a/M2.10.
+
+### M2.1c4 — measured song stop (selector 5)
+
+Core+$1400 invokes selector 5 after the unattended demo. Original driver +$362
+clears song control, all 24 track-status words, and six music-voice slots while
+retaining song resources and effect state. D0=0, D1=$FFFF, CCR=4, the caller-owned
+stack and D2–D7/A0–A6 match the native return. The native implementation stops
+sequencing and quiesces/frees music DMA buffers through the existing voice owner.
+It retains resource ownership for the following selector 7 at Core+$140C.
+
+`check_driver5.py` passes the complete original state transition and native
+original-call capture (`m2-driver5-reference.log`, `m2-driver5-native-full.log`,
+both exit zero). The native song event count remains 3736 across the stop;
+configuration, effect state and resource ledger are byte-exact across it. The
+original natural call has already exhausted its tracks, but four music-voice
+words still change to inactive; this capture does not claim an active-track
+playback interruption test. Four invalid status/completion/register/caller
+variants are rejected. The native link audits pass. PAK acceptance remains open
+until the following resource release and real Present.PAK payload are verified.

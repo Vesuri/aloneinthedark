@@ -66,7 +66,7 @@ independent service implementation or automated acceptance. Region expansion
 and other general tuning remain M5.
 
 - [ ] **M2.1c** — verify original PAK payloads (active).
-- [ ] **M2.1c4** — implement the reached sound-driver selector 5 prerequisite.
+- [ ] **M2.1c4** — verify native song stop and implement the following resource release.
 - [ ] **M2.3b** — verify and implement inverse coordinates.
 - [ ] **M2.4** — close integrated fresh-start screen/viewport acceptance.
 - [ ] **M2.5** — finish PAL/NTSC, pointer palette ownership and video-clock acceptance.
@@ -90,12 +90,19 @@ and other general tuning remain M5.
   returned bytes match the host files by debugger checksum, and startup window
   counts are recorded. If original bytes establish an unused file, document the
   evidence before revising that requirement; absence from one route is not proof.
-- **M2.1c4 Sound-driver selector 5 after the idle demo.**
+- **M2.1c4 Sound-driver song stop/release after the idle demo.**
   - The targeted native PAK observer reaches the original Dark2+$5768 cleanup
     at tick 27544 with 1442 system windows, then stops on selector 5 at
     Core+$1400 before the required Present.PAK payload acceptance.
   - Measure the original driver call, return ABI and state changes, then
     implement the reached contract. Keep unsupported variants explicit.
+  - Original selector 5 now has a passing exact-state/register capture:
+    `check_driver5.py` with `m2-driver5-reference.log` (exit zero). The native
+    original call also passes (`m2-driver5-native-full.log`, exit zero), including
+    music DMA cleanup and retained song resources/effects. Selector 7 follows at
+    Core+$140C; its original resource-pointer release and preserved effect state
+    pass `check_driver7.py` with `m2-driver7-reference.log` (exit zero), but native
+    release and ownership verification remain outstanding.
   - `tmp/m2-pak-native-targeted.log` and its debugger output are diagnostic
     failure evidence, not passing PAK acceptance; the observer also needs a
     named loud-stop failure guard instead of reading `trap` in that context.
