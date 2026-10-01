@@ -7613,6 +7613,16 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         s_recordingPolygon=0;s_polygonPort=0;
         return 1;
     }
+    if(trap==0xa8cd) {                       // KillPoly: dispose a finished owned record
+        MacHeap::Handle polygon=(MacHeap::Handle)read32(userStack);
+        MacHeap* owner=handleZone(polygon);
+        if(!owner || !*polygon || polygon==s_recordingPolygon
+           || owner->handleSize(polygon)<10 || read16(*polygon)!=owner->handleSize(polygon)
+           || resourceHandleIndex(polygon)>=0)goto unsupportedTrap;
+        if(owner->disposeHandle(polygon)!=MacHeap::noErr)goto unsupportedTrap;
+        memoryResult(0);regs[0]=0;regs[8]=(uint32_t)polygon;
+        return 5;
+    }
     if(trap==0xa8da) {                       // OpenRgn(): hidden contour recording
         uint8_t* port=s_qdThePort ? (uint8_t*)read32(s_qdThePort) : 0;
         if(!port || (!gWorldForPort(port) && !windowSlot(port)) || s_recordedRegion

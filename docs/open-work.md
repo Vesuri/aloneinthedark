@@ -59,16 +59,15 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.3g44f KillPoly after pond contour expansion (prerequisite for M2.3g44).**
-  - The verified InsetRgn returns and reaches `$A8CD`, Dark+$3410.
-    Original +$340E–$3411 bytes are `2f0ca8cd`: push the polygon handle
-    in A4 and dispose it. Capture the original ABI and heap transition;
-    preserve the expanded region and drawing buffers.
+- **M2.3g44g Masked CopyBits in the pond scene (prerequisite for M2.3g44).**
+  - The verified KillPoly returns and reaches `$A8EC`, Dark+$346C.
+    Measure the original arguments, expanded mask region, source/destination
+    pixels, colour mapping and calling contract before extending CopyBits.
   - Use `INTROSKIP=1`; no full book replay is needed.
 
-  *Done when* the original/native disposal matches the calling contract,
-  releases only the polygon allocation, preserves region/pixel data, and
-  continues to the next explicit stop beyond KillPoly.
+  *Done when* the reached masked copy matches the original destination pixels,
+  preserves pixels outside the mask and source/region ownership, and returns
+  with the original calling contract to the next explicit checkpoint.
 - **M2.3g44 Black intro display while music plays.**
   - Owner screenshots `FS-UAE_Full_261001-0912_01` through `_04` and
     `FS-UAE_Full_261001-0913_00` visibly show the logo, title, game menu,

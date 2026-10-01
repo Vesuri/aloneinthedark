@@ -227,3 +227,42 @@ span-merging boundary fixture also passes. Final no-float and 88-symbol audits
 pass. Four corrupt/incomplete original logs and five invalid native logs
 (including insufficient stack headroom) are rejected. Other inset distances
 remain explicit INSETRGN stops; broader support belongs to M2.8.
+
+
+## Pond polygon disposal (M2.3g44f)
+
+KillPoly at Dark+$3410 follows the verified expansion. Original caller bytes
++$340E–$3411 are `2f0ca8cd`. `tools/mac_killpoly.lua` captures the real call
+through the Enter-skipped route; `tmp/m2-killpoly-reference.log` exits zero.
+The 54-byte polygon is released: the Mac's free-memory count increases by 64
+bytes, the polygon master is linked to the former free-master head, and the
+zone header's head becomes the polygon handle. Other zone-header bytes remain
+unchanged. The expanded 244-byte region keeps its bytes, body, flags and owner;
+port fields and drawing pixels remain unchanged.
+
+The call pops four bytes, returns D0=0/A0=polygon handle and preserves
+D1–D7/A2–A6. A1 is Memory Manager scratch. The native implementation uses the
+existing owned-handle disposal path, clears MemError and rejects an active
+recording or resource-owned handle. Its allocator uses a different block
+header, so native acceptance checks the freed allocation's actual span and
+cleared master ownership rather than requiring the Mac's 64-byte physical size.
+
+`tools/check_killpoly.py` verifies original bytes, calling contract, the exact
+zone/free-master transition and region/pixel isolation; four failed/incomplete
+reference logs are rejected. The existing heap regression passes allocation,
+master blocks, lock/purge, compaction, resizing, moving-high and 2,500
+fragmentation operations. Native acceptance passes in `amiga/killpoly.gdb`;
+no-float and 88-symbol build audits pass.
+
+`tmp/m2-killpoly-native.log` exits zero; the full observer output is retained in
+`tmp/m2-killpoly-native-full.log`. The paired checker passes the original
+54-byte polygon input, disposal ABI, native 80-byte allocation release and
+cleared master/flags, unchanged 244-byte expanded region, port and drawing
+pixels. Publications remain 394 across the call and book batches remain zero.
+Execution continues to the named masked COPYBITS stop at Dark+$346C. Five
+invalid native logs (missing completion, timeout, explicit failure, corrupted
+free count and no continuation) are rejected. Run the paired check with:
+
+```sh
+python3 tools/check_killpoly.py --reference tmp/m2-killpoly-reference.log --status 0 --native tmp/m2-killpoly-native-full.log --native-status 0
+```
