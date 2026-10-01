@@ -14,6 +14,7 @@
 #include "FillRect8.h"
 #include "Line8.h"
 #include "PolygonRecord.h"
+#include "PolygonRegion.h"
 #include "CopyBits8.h"
 #include "CursorVisibility.h"
 #include "RegionRows.h"
@@ -299,6 +300,9 @@ static uint8_t* s_trapAddresses[4096];
 static uint8_t* s_qdThePort;
 static MacHeap::Handle s_recordingPolygon;
 static uint8_t* s_polygonPort;
+static MacHeap::Handle s_recordedRegion;
+static uint8_t* s_regionPort;
+static bool s_regionHasPolygon;
 #ifdef AITD_PROBE
 static volatile uint32_t s_randomTrapPC;
 #endif
@@ -834,7 +838,7 @@ static const TrapName s_trapNames[] = {
     {0xa8a7,"QUICKDRAW","SETRECT"},
     {0xa8a2,"QUICKDRAW","PAINTRECT"}, {0xa891,"QUICKDRAW","LINETO"},
     {0xa8cb,"QUICKDRAW","OPENPOLY"}, {0xa8cc,"QUICKDRAW","CLOSEPOLY"},
-    {0xa8da,"QUICKDRAW","OPENRGN"}, {0xa8db,"QUICKDRAW","CLOSERGN"},
+    {0xa8da,"QUICKDRAW","OPENRGN"}, {0xa8db,"QUICKDRAW","CLOSERGN"}, {0xa8e1,"QUICKDRAW","INSETRGN"},
     {0xa8c6,"QUICKDRAW","FRAMEPOLY"}, {0xa8cd,"QUICKDRAW","KILLPOLY"},
     {0xa8a4,"QUICKDRAW","INVERTRECT"},
     {0xa8a9,"QUICKDRAW","INSETRECT"}, {0xa8b0,"QUICKDRAW","FRAMEROUNDRECT"},
@@ -7608,12 +7612,55 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         s_recordingPolygon=0;s_polygonPort=0;
         return 1;
     }
+    if(trap==0xa8da) {                       // OpenRgn(): hidden contour recording
+        uint8_t* port=s_qdThePort ? (uint8_t*)read32(s_qdThePort) : 0;
+        if(!port || (!gWorldForPort(port) && !windowSlot(port)) || s_recordedRegion
+           || s_recordingPolygon || read16(port+66) || read32(port+92)
+           || read32(port+96) || read32(port+100))goto unsupportedTrap;
+        s_recordedRegion=newHandle(PolygonRegion::capacity,true);
+        if(!s_recordedRegion)goto unsupportedTrap;
+        s_regionPort=port;s_regionHasPolygon=false;
+        write16(port+66,0xffff);write32(port+96,1);
+        regs[0]=0xffffffffUL;regs[8]=(uint32_t)port;
+        return 1;
+    }
+    if(trap==0xa8c6) {                       // FramePoly during the measured region capture
+        uint8_t* port=s_qdThePort ? (uint8_t*)read32(s_qdThePort) : 0;
+        MacHeap::Handle polygon=(MacHeap::Handle)read32(userStack);
+        MacHeap* owner=handleZone(polygon);MacHeap* recordingOwner=handleZone(s_recordedRegion);
+        uint16_t bytes=0;
+        if(!owner || !*polygon || !recordingOwner || !*s_recordedRegion
+           || port!=s_regionPort || s_regionHasPolygon || read16(port+66)!=0xffff
+           || read32(port+96)!=1 || read16(port+52)!=1 || read16(port+54)!=1
+           || !PolygonRegion::encode(*polygon,owner->handleSize(polygon),*s_recordedRegion,
+                                    recordingOwner->handleSize(s_recordedRegion),bytes)
+           || recordingOwner->setHandleSize(s_recordedRegion,bytes)!=MacHeap::noErr)goto unsupportedTrap;
+        write32(port+48,read32(*polygon+read16(*polygon)-4));
+        s_regionHasPolygon=true;regs[0]=0;regs[8]=(uint32_t)s_qdThePort;
+        return 5;
+    }
+    if(trap==0xa8db) {                       // CloseRgn(owned destination)
+        uint8_t* port=s_qdThePort ? (uint8_t*)read32(s_qdThePort) : 0;
+        MacHeap::Handle region=(MacHeap::Handle)read32(userStack);
+        MacHeap* owner=handleZone(region);MacHeap* recordingOwner=handleZone(s_recordedRegion);
+        if(!owner || !*region || !recordingOwner || !*s_recordedRegion || region==s_recordedRegion
+           || port!=s_regionPort || !s_regionHasPolygon || read16(port+66)!=0xffff
+           || read32(port+96)!=1)goto unsupportedTrap;
+        uint16_t size=read16(*s_recordedRegion);
+        if(owner->setHandleSize(region,size)!=MacHeap::noErr)goto unsupportedTrap;
+        for(uint16_t i=0;i<size;++i)(*region)[i]=(*s_recordedRegion)[i];
+        regs[0]=0;regs[1]&=0xffff0000UL;regs[2]=(regs[2]&0xffff0000UL)|read16(*region+6);
+        if(recordingOwner->disposeHandle(s_recordedRegion)!=MacHeap::noErr)goto unsupportedTrap;
+        s_recordedRegion=0;s_regionPort=0;s_regionHasPolygon=false;
+        write16(port+66,0);write32(port+96,0);
+        return 5;
+    }
     if(trap==0xa8d8) {                       // NewRgn() -> owned empty RgnHandle
         MacHeap::Handle region=newHandle(10,true);
         if(!region)goto unsupportedTrap;
         write16(*region,10);
         write32(userStack,(uint32_t)region);
-        regs[8]=(uint32_t)*region+10;
+        regs[0]=0;regs[8]=(uint32_t)*region+10;
         return 1;
     }
     if(trap==0xa8df) {                       // RectRgn(owned RgnHandle, Rect*)

@@ -59,21 +59,17 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.3g44d Polygon-to-region recording for the pond (prerequisite for M2.3g44).**
-  - The verified polygon lifecycle now reaches OpenRgn (`$A8DA`, Dark+$33E8).
-    Original bytes then call FramePoly at +$33EC and CloseRgn at +$33F0.
-    Measure their region bytes, recording state, ownership, ABI and absence of
-    framebuffer drawing before implementing the reached conversion.
-  - Targeted sound-effect stop selector 18 now passes paired state/ABI and
-    native cleanup checks; its original caller continues to the pond.
-  - Use `INTROSKIP=1` and original-instruction breakpoints for routine native
-    checks. The prior dispatch-wide polygon condition failed in the debugger;
-    its run is not acceptance evidence.
+- **M2.3g44e InsetRgn for the pond contour (prerequisite for M2.3g44).**
+  - The verified region-recording lifecycle reaches `$A8E1`, Dark+$33F8.
+    Original +$33F2–$33F9 bytes are `2f0a4878ffffa8e1`: the caller passes
+    the recorded region and inset distances -1,-1. Measure exact region spans,
+    bounds, handle ownership and ABI before implementing this expansion.
+  - Continue using `INTROSKIP=1` and original-instruction breakpoints. Save the
+    full debugger log; the runner's abbreviated tail can omit earlier calls.
 
-  *Done when* the original/native region recording lifecycle matches exactly,
-  including the resulting region spans and bounds, calling contract and heap
-  ownership, unchanged drawing buffers and no recording state left active;
-  the scene then reaches its next explicit stop beyond CloseRgn.
+  *Done when* the original/native expanded region matches byte for byte,
+  ownership and calling contract are preserved, and execution advances to the
+  next explicit stop beyond InsetRgn without drawing during the region change.
 - **M2.3g44 Black intro display while music plays.**
   - Owner screenshots `FS-UAE_Full_261001-0912_01` through `_04` and
     `FS-UAE_Full_261001-0913_00` visibly show the logo, title, game menu,

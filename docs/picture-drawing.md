@@ -123,3 +123,59 @@ unrelated incoming state from the reference.
 python3 tools/check_polygon.py --reference tmp/m2-polygon-reference-owned.log \
   --status 0 --native tmp/m2-polygon-native-instructions.log --native-status 0
 ```
+
+## Pond polygon-to-region recording (M2.3g44d)
+
+The original calls NewRgn at Dark+$33E0, OpenRgn at +$33E8, FramePoly at
++$33EC and CloseRgn at +$33F0. The caller bytes are checked against the extracted
+CODE resource. OpenRgn hides the pen (`pnVis=-1`) and sets `rgnSave=1`; FramePoly
+records the closed contour without drawing pixels. CloseRgn publishes the
+region into the caller's owned handle and restores both port fields to zero.
+FramePoly also moves the pen to the last polygon point, even during recording.
+
+`tools/mac_regionrecord.lua` captures these original calls, checks the resulting
+handle with GetHandleSize/HGetState/HandleZone, then executes ten diagnostic
+OpenRgn/FramePoly/CloseRgn fixtures through the original Macintosh services.
+The fixtures cover rectangles, both steep and shallow slopes, positive and
+negative diagonals, concavity, negative coordinates, an empty horizontal
+contour and a self-crossing contour. Recording ignores pixel clipping.
+
+`tmp/m2-regionrecord-fixtures-reference.log` completed with exit zero.
+`tools/check_regionrecord.py --reference tmp/m2-regionrecord-fixtures-reference.log --status 0` compares the production
+integer encoder with all eleven captured regions byte for byte; it also checks
+caller bytes, port changes, unchanged pixels and atomic rejection of truncated,
+unclosed and undersized-output records. The first pond region is 252 bytes,
+with bounds `(top=136,left=0,bottom=199,right=22)`. Empty and rectangular regions
+use the canonical ten-byte form. The host checks run with address/undefined
+behavior sanitizers.
+
+The native implementation supports one explicitly closed polygon per recording,
+a one-pixel pen, at most 64 polygon edges, 16 simultaneous transition edges and
+4096 encoded bytes. Other forms remain loud stops. FramePoly/CloseRgn scratch
+D1/D2/A0/A1 values are not address-for-address Macintosh ROM reproductions;
+the following original instructions overwrite them before consumption. Live
+D3–D7/A2–A6, stack behavior, results, owned data and port changes must match.
+
+Native acceptance passes. The bounded `amiga/regionrecord.gdb`
+observer uses `INTROSKIP=1` and original instruction breakpoints, compares the
+four calls and drawing isolation, then requires the next explicit stop at
+InsetRgn (Dark+$33F8). No full book replay is needed for this check.
+
+The first native attempt (`tmp/m2-regionrecord-native.log`, exit 1) stops before
+NewRgn at sound-driver selector 18, Core+$1828. It is not region acceptance.
+M2.3g44d1 now resolves that prerequisite with paired targeted-stop evidence.
+The clean `INTROSKIP=1` build
+passes both link audits (88 probe symbols); `make host-tests` exits zero in
+`tmp/m2-regionrecord-host-tests.log`. The follow-up runner exits zero in
+`tmp/m2-regionrecord-native-after-driver18.log`. Its abbreviated output omits
+NewRgn, so acceptance uses the complete debugger output saved as
+`tmp/m2-regionrecord-native-full.log`. The paired checker passes all four calls,
+all 252 output bytes, bounds, logical allocation size/owner, restored recording
+state and unchanged drawing pixels. Publication count stays 189 and book batches
+stay zero. The next stop is `$A8E1` at Dark+$33F8, now labeled INSETRGN in the
+trap-name table. This final label-only change passes the link audits.
+
+Three failed/incomplete reference logs and four failed/incomplete native logs
+are rejected by the verifier. Host sanitizer checks additionally cover malformed
+bounds, reserved coordinates and excessive complexity. This verifies region
+recording; InsetRgn and the complete frog sequence remain open.
