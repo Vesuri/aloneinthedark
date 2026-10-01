@@ -64,6 +64,8 @@ required.
     Original bytes then call FramePoly at +$33EC and CloseRgn at +$33F0.
     Measure their region bytes, recording state, ownership, ABI and absence of
     framebuffer drawing before implementing the reached conversion.
+  - Targeted sound-effect stop selector 18 now passes paired state/ABI and
+    native cleanup checks; its original caller continues to the pond.
   - Use `INTROSKIP=1` and original-instruction breakpoints for routine native
     checks. The prior dispatch-wide polygon condition failed in the debugger;
     its run is not acceptance evidence.

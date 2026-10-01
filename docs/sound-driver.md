@@ -668,3 +668,37 @@ newly identified second-slot case explicitly. Its focused capture
 `tmp/m2-effectreplace-native-final.log` exits zero and passes the paired checker:
 232 elapsed ticks, D1.W=$7F16, one stop/start, channel 1 retained and exact PCM.
 The production no-float and 86-symbol link audits pass.
+
+## Targeted effect stop (M2.3g44d1)
+
+The Enter-skipped native pond route reached selector 18 at Core+$1828.
+Original caller bytes at +$1820–$182B are `48780012206df9544e90508f`.
+The original dispatch entry at driver+$7C branches to +$1CA, which reads the
+packet pointer and calls +$36B0. That routine reads the identifier at packet+24,
+scans exactly the configured effect slots, and marks every active matching slot
+inactive. It preserves unmatched effects, sample pointers and all music state.
+D0 returns zero, D1 returns the packet argument, and D2–D7/A0–A6 are preserved.
+
+The ordinary Mac idle observer did not reach this timing-dependent call and
+reported missing completion; `tmp/m2-driver18-reference.log` is not acceptance.
+`tools/mac_driver18.lua` instead executes a bounded original-driver fixture:
+play an effect normally, then invoke the unchanged Core stop call with that
+packet. No original instructions are changed. The fixture exits zero in
+`tmp/m2-driver18-fixture-reference.log`; `tools/check_driver18.py` checks live
+original instruction bytes, registers/stack and the entire 12,360-byte state
+transition. Identifier $8000 stops slot 6; all other state matches exactly.
+
+The native implementation uses the existing DMA-safe `stopNativeEffect` path
+for every active matching identifier. This disables the assigned Paula channel
+before releasing its chip buffer and leaves music ownership untouched. Invalid
+packets and uninitialized driver state remain named stops. The bounded `INTROSKIP=1` observer in `amiga/driver18.gdb` exits zero in
+`tmp/m2-driver18-native.log`: active effect $8000 on channel 1 is stopped,
+its buffer freed, the unrelated slot and all 48 bytes of music voice state
+preserved, and the original caller continues to pond NewRgn at Dark+$33E0.
+The paired checker passes D0/D1, stack and every preserved register. Book
+batches remain zero. The no-float/88-symbol audits and affected sound-driver,
+Paula sample, SONG/MIDI, clock and instrument host regressions pass.
+
+Four corrupt/incomplete reference logs and four corrupt/incomplete native logs
+are rejected. This verifies targeted effect cleanup, not perceived audio quality
+or the still-open complete intro sequence.

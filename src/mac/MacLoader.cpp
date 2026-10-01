@@ -6696,6 +6696,14 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
                 if(!packet || (argument&1))driverStop="VOICE PACKET";
                 else driverStop=g_soundDriver.initialize(read16(packet),read16(packet+2),read16(packet+4),g_macTicks);
             } else if(selector==17)driverStop=playNativeEffect((uint8_t*)argument,scratch);
+            else if(selector==18) {
+                uint8_t* packet=(uint8_t*)argument;
+                if(!g_soundDriver.initialized)driverStop="NOT INITIALIZED";
+                else if((argument&1) || !effectRange(packet,26))driverStop="EFFECT STOP PACKET";
+                else for(uint16_t i=0;i<g_soundDriver.effectLimit;++i)
+                    if(g_soundDriver.effects[i].active && g_soundDriver.effectIds[i]==read16(packet+24))
+                        stopNativeEffect(i);
+            }
             else if(selector==20) {
                 uint8_t* packet=(uint8_t*)argument;
                 if((argument&1) || !effectRange(packet,26))driverStop="EFFECT STATUS PACKET";
@@ -6724,7 +6732,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
             }
             else driverStop="SELECTOR";
             if(!driverStop) {
-                ++g_soundDriverCalls;regs[0]=selector==15 ? clockResult : driverResult;regs[1]=selector==0 ? 12 : selector==24 ? 1 : (selector==22 || selector==17 || selector==20 || selector==13 || selector==15 || selector==4) ? scratch : 0;
+                ++g_soundDriverCalls;regs[0]=selector==15 ? clockResult : driverResult;regs[1]=selector==0 ? 12 : selector==24 ? 1 : (selector==22 || selector==17 || selector==18 || selector==20 || selector==13 || selector==15 || selector==4) ? scratch : 0;
                 return 1; // C caller owns arguments; stub executes RTS.
             }
         }
