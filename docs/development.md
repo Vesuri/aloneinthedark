@@ -99,7 +99,9 @@ emulator it owns and keeps the output in `amiga/.run/gdb-out.log`.
 `runtime_status.gdb` reports the stage, tick counters and the loud stop: the
 loader's reason and segment, or the trap word, manager, routine and caller
 (segment, offset). `wbstartup.gdb` checks the Shell startup branch.
-`./debug.sh` gives an interactive source-level session.
+`./debug.sh` gives an interactive source-level session. Both debug launchers (`debug.sh` and
+`diag_run.sh`) use FS-UAE’s dummy audio driver, silencing host playback while
+keeping emulated Paula/DMA active. Normal `run.sh` audio is unchanged.
 
 The current display owner is `AitdScreen`; the interpreter boundary is
 `MacLoader`. Keep changes at the documented interface and verify original

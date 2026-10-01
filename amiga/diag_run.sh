@@ -41,7 +41,9 @@ rm -f "$RUN"/state/*.uss
 : > "$RUN/gdb-out.log"
 
 fsuae_claim_port || exit 1
+# Silence host playback; emulated Paula/DMA remains active (as in Slicks).
 "$FSUAE" \
+  --audio_driver=dummy \
   $EXTRA_ARGS "${AITD_MACHINE_ARGS[@]}" \
   --logs_dir="$PWD/$RUN/logs" --kickstart_file="$ROM" \
   --hard_drive_0="$DH0" --hard_drive_1="$DH1" \
