@@ -4265,3 +4265,43 @@ rejected the renamed absence marker; their readers now require the positive
 checkpoint marker. No emulator rerun was needed for this evidence-reader fix.
 This is not full intro acceptance: black story pages and car/frog progression
 remain M2.3g44; rendered-window acceptance is still owner-deferred.
+
+
+## Story/menu investigation (M2.3g44, incomplete)
+
+Two original Mac framebuffer runs finish normally with 48 captures each:
+`tmp/m2-story-reference-sequence.log` leaves input untouched after screen-mode
+selection; `tmp/m2-story-newgame-reference.log` presses Return after captures
+32 and 33. The first shows the in-game new-game menu, the car approaching the
+camera, then the pond/frog scene. The second shows the portraits after the first
+Return and the attorney letter after the second. The letter remains waiting
+through capture 48. Story pages therefore require their ordinary new-game and
+page inputs; they are not part of automatic idle playback. The DOS screenshot
+is content context, not the Mac layout oracle.
+
+`tmp/m2-story-native-sequence.log` exits zero after four byte-checked original
+checkpoints. At Dark+$5220, D0 is zero, all 840 book batches have completed,
+956 frames are published and no dirty data is pending. Independently decoded
+active AGA planes and copper colours equal the logical viewport at all four
+checkpoints (the logo, end of logo animation, title and end of credits).
+The first exploratory observer incorrectly expected Dark2 to be resident before
+loading; its byte guard rejected the run. The corrected observer waits for the
+first CopyBits before resolving the later segment addresses.
+
+The subsequent menu observer reaches Dan1+$1374 at tick 14,970 and its natural
+900-tick timeout at +$13E6, tick 15,870. Both capture the complete in-game menu
+with 958/958 publications, no dirty pixels, no pending frame and no active book
+batch. Both logical viewports and active AGA planes/copper agree. The border and
+three choices are visible in these decoded buffers, with the expected D6
+placeholder-font difference. This does not establish host-window appearance or
+fix the owner-visible black interval. The idle-demo continuation ends with exit 1 at `SOUND DRIVER / EFFECT VOICE
+STEAL`, selector 17, Core+$17FC, tick 26,556. It has 990/990 publications and
+no dirty/pending frame. Its last road-scene logical pixels and palette also
+match active AGA planes/copper. Occupied effect-slot replacement is now the
+prerequisite M2.3g44a; no complete native car/frog acceptance is claimed.
+
+The occupied single-effect prerequisite M2.3g44a is complete: the final production
+run passes the former stop with paired age/ABI/sample ownership checks. All 42
+startup comparisons and all 3,736 complete-song events pass. See
+[sound-driver.md](sound-driver.md#occupied-effect-replacement-m23g44a). The full
+car/frog sequence and reported black interval remain M2.3g44 work.

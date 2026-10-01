@@ -1324,19 +1324,29 @@ static const char* playNativeEffect(uint8_t* packet,uint32_t& scratch)
                                            read32(packet+16),layout,period,ticks);
     if(error)return error;
     serviceNativeEffects();
-    uint16_t index=0;
+    uint16_t index=0,age=0x7fff;
+    bool replacing=false;
     if(g_soundDriver.effects[0].active) {
-        if(g_soundDriver.effectLimit>1 && !g_soundDriver.effects[1].active)index=1;
-        else return "EFFECT VOICE STEAL"; // Original aging/priority not measured yet.
+        if(g_soundDriver.effectLimit>1 && !g_soundDriver.effects[1].active)return "EFFECT SECOND SLOT";
+        else if(g_soundDriver.effectLimit==1) {
+            // Original +$3528 selects its sole occupied slot and returns its
+            // age in D1.W. +$1FE8 decrements that age once per callback clock.
+            uint32_t elapsed=g_macTicks-g_effects[0].started;
+            if(elapsed>0x7ffe)return "EFFECT VOICE AGE";
+            age=uint16_t(0x7ffeUL - elapsed);replacing=true;
+        } else return "EFFECT VOICE STEAL"; // Multiple occupied slots remain unmeasured.
     }
-    // Effects take free hardware voices first, then the oldest music voice.
-    int16_t channel=-1;
-    for(uint16_t i=0;i<4;++i)if(g_soundDriver.channels[i]<0) {channel=i;break;}
+    // A replacement retains its Paula channel; music ownership is untouched.
+    int16_t channel=replacing ? g_soundDriver.effects[index].channel : -1;
+    if(replacing && (channel<0 || channel>3 || g_soundDriver.channels[channel]!=6+index))
+        return "EFFECT REPLACEMENT CHANNEL";
+    if(!replacing)for(uint16_t i=0;i<4;++i)if(g_soundDriver.channels[i]<0) {channel=i;break;}
     if(channel<0)channel=stealSongChannel();
     if(channel<0)return "EFFECT CHANNEL STEAL";
     uint8_t* chip=(uint8_t*)AllocMem(layout.allocated,MEMF_CHIP);
     if(!chip)return "EFFECT CHIP MEMORY";
     PaulaSample::convert(layout,chip);
+    if(replacing)stopNativeEffect(index); // DMA off before releasing the old sample.
     NativeEffect& effect=g_effects[index];
     effect.chip=chip;effect.allocated=layout.allocated;effect.size=bytes;effect.rate=rate;
     effect.period=period;effect.id=read16(packet+24);effect.serial=++g_effectStarts;
@@ -1346,7 +1356,7 @@ static const char* playNativeEffect(uint8_t* packet,uint32_t& scratch)
     g_soundDriver.channels[channel]=6+index;
     startPaulaSample(chip,layout,channel,period,64);
     effect.started=g_macTicks;effect.ends=effect.started+ticks+1; // Full duration after DMA latches.
-    scratch=(scratch&0xffff0000UL)|0x7fff; // Free-slot path at original +$3524.
+    scratch=(scratch&0xffff0000UL)|age; // Original +$3524 / +$3536.
     return 0;
 }
 

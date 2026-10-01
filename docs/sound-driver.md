@@ -214,8 +214,9 @@ cleanup. The logical sample identity is retained on stop, as on the Mac;
 no borrowed source pointer is used by DMA. Sample and packet reads are bounded
 within the owning Mac zone before copying.
 
-Loops, fractional rates, oversized samples and voice/channel stealing remain
-named stops. They are not replaced by one-shot playback or silently dropped.
+Loops, fractional rates, oversized samples and unmeasured multi-effect
+voice/channel allocation remain named stops; the reached single-slot
+replacement is covered below. They are not replaced by one-shot playback or silently dropped.
 `check_driver17.py` compares the full original transition, request, sample,
 converted DMA bytes, native ABI, start event and natural cleanup. The existing
 host driver test also covers raw-header ambiguity, odd alignment, silent
@@ -623,3 +624,47 @@ The first native run was interrupted before completion and is retained as
 python3 tools/check_driver4.py tmp/m2-driver4-reference.log --status 0 \
   --native tmp/m2-driver4-native-full.log --native-status 0
 ```
+
+## Occupied effect replacement (M2.3g44a)
+
+The original idle road scene reaches selector 17 while its sole effect slot is
+still active. The original Driver+$3506–$3604 scans occupied slots by the word
+at voice+$200; with one effect slot it replaces that slot. D1 retains the packet
+pointer's upper word and returns the selected slot's age in its lower word.
+The original caller is still Core+$17FC; no game instructions change.
+
+`tmp/m2-effectreplace-clock-reference.log` finishes normally. The slot starts at
+age $7FFE; Driver+$1FE8 decrements it once per callback. The measured selector-15
+clock advances from $2837 to $291D (230 callbacks), leaving age $7F18, exactly
+as returned in D1.W. An exploratory check against the unrelated state+$118C
+mixer counter failed; the accepted observation uses the verified state+$1880
+callback clock. The new request is 31,020 raw PCM bytes at 8 kHz, identifier
+$8000, without a loop. The complete driver state matches the independent
+replacement model, with unrelated music state unchanged.
+
+The Amiga path allocates/converts the new sample, quiesces the old effect's
+Paula channel before freeing its buffer, then reuses that channel. It derives
+age from the same native 60 Hz clock used by selector 15. Multiple occupied
+slots, a free second slot's return convention and ages beyond the measured
+counter range remain named stops. The previous second-slot path returned a
+guessed $7FFF despite scanning an active slot; that unverified case now stops
+as `EFFECT SECOND SLOT` and remains M4.3a work.
+
+The first complete native capture (`tmp/m2-effectreplace-native-full.log`)
+returns past the former stop, with D0=0, original stack/register preservation,
+one old effect stopped and one new effect started on channel 2. Its D1.W is
+$7F15 for 233 elapsed native ticks. All 31,022 chip bytes match unsigned-to-signed
+conversion plus silent reload; music voices are unchanged. All 42 prior startup
+comparisons pass in `tmp/m2-effectreplace-regressions.log`; eight invalid original
+captures and six invalid native captures are rejected. Complete-song regression
+`tmp/m2-effectreplace-song-native.log` exits zero and passes all 3,736 timed note
+events, both PCM/DMA variants, effect priority and final resource cleanup.
+
+Maintained observers are `tools/mac_effectreplace.lua`,
+`amiga/effectreplace.gdb` / `effectreplace_call.gdb` and
+`tools/check_effectreplace.py`. The focused observer follows the normal game
+route without input or timer patches. The final production build rejects the
+newly identified second-slot case explicitly. Its focused capture
+`tmp/m2-effectreplace-native-final.log` exits zero and passes the paired checker:
+232 elapsed ticks, D1.W=$7F16, one stop/start, channel 1 retained and exact PCM.
+The production no-float and 86-symbol link audits pass.

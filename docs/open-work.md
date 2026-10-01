@@ -74,14 +74,20 @@ required.
     starting pond/road view at 23:57:40. Verify this transition without manual
     Enter, along with the near-camera car endpoint.
     At 23:55:38, manually pressing Enter revealed the illustrated two-panel
-    letter-reading scene during the reported black interval. Verify the original
-    no-input appearance and whether pending drawing/palette publication waits
+    letter-reading scene during the reported black interval. Verify its original trigger
+    and whether pending drawing/palette publication waits
     for an event; input-triggered visibility is evidence, not yet a diagnosis.
     Owner clarification: this interval contains substantial illustrated story
     text. After manual Enter, the port rendered that text in its temporary font.
     The 23:58:46 screenshot is from a DOS-version video, so use it for content
     context, not as the Macintosh pixel/font oracle. Verify the Mac story pages,
-    text placement, visibility and progression without manual rescue input.
+    text placement, visibility and progression after their normal game inputs.
+    The measured no-input Mac route shows the in-game new-game panel for about
+    15 seconds, then the car/pond idle presentation. Enter at that panel opens
+    the portraits; a second Enter opens the attorney letter, which waits for
+    further input. The story is not automatically shown by the idle route.
+    These original captures are `tmp/m2-story-reference-sequence.log` and
+    `tmp/m2-story-newgame-reference.log` (both exit zero, 48 captures each).
     Do not attribute it to test input. FS-UAE logs repeatedly report
     `Not a valid drawable size for glViewport`; this is a clue, not a proven cause.
   - At the reported intro state, capture logical pixels/palette, active AGA
@@ -310,6 +316,8 @@ required.
   - M2.3g26 enables raw one-shots at integral rates. Loop boundaries/counter
     updates, fractional rates, samples beyond one DMA segment and occupied
     effect/Paula voice selection still have named stops.
+    A free second effect slot must also reproduce D1.W from the preceding active
+    slot; the old guessed $7FFF result is now `EFFECT SECOND SLOT`.
   - Bring any reached prerequisite forward. Measure the original driver before
     implementing looping, aging/stealing and interaction with music.
 

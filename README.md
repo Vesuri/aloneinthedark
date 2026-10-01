@@ -28,7 +28,8 @@ The reported black story pages and car/frog scene progression are under investig
 Song start now retains its 41 resources and returns successfully. A complete
 native playback fixture matches all 3,736 timed note events and verifies Paula
 sample conversion, effect priority and cleanup. Startup advances native song playback before the first song-status query;
-broader music support remains M4. The driver clock query now returns the measured
+The reached occupied effect slot now replaces its sample with verified DMA
+ownership, callback age and unchanged music voices; broader music support remains M4. The driver clock query now returns the measured
 32-bit result and condition codes. The song-status query also matches the
 original track-status result, registers and condition codes. RectRgn now
 returns with exact region bytes and ownership. The reached canonical-empty
