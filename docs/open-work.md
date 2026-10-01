@@ -66,6 +66,7 @@ independent service implementation or automated acceptance. Region expansion
 and other general tuning remain M5.
 
 - [ ] **M2.1c** — verify original PAK payloads (active).
+- [ ] **M2.1c4** — implement the reached sound-driver selector 5 prerequisite.
 - [ ] **M2.3b** — verify and implement inverse coordinates.
 - [ ] **M2.4** — close integrated fresh-start screen/viewport acceptance.
 - [ ] **M2.5** — finish PAL/NTSC, pointer palette ownership and video-clock acceptance.
@@ -89,6 +90,18 @@ and other general tuning remain M5.
   returned bytes match the host files by debugger checksum, and startup window
   counts are recorded. If original bytes establish an unused file, document the
   evidence before revising that requirement; absence from one route is not proof.
+- **M2.1c4 Sound-driver selector 5 after the idle demo.**
+  - The targeted native PAK observer reaches the original Dark2+$5768 cleanup
+    at tick 27544 with 1442 system windows, then stops on selector 5 at
+    Core+$1400 before the required Present.PAK payload acceptance.
+  - Measure the original driver call, return ABI and state changes, then
+    implement the reached contract. Keep unsupported variants explicit.
+  - `tmp/m2-pak-native-targeted.log` and its debugger output are diagnostic
+    failure evidence, not passing PAK acceptance; the observer also needs a
+    named loud-stop failure guard instead of reading `trap` in that context.
+
+  *Done when* the original/native selector-5 contract passes and the real PAK
+  route proceeds beyond this stop, with payload acceptance retained under M2.1c.
 - **M2.3b Inverse coordinate conversion.**
   - The inherited GlobalToLocal subtracted Vette's fixed (64,91) origin.
     M2.3g11 replaces that guessed result with a named stop.
