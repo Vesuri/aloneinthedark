@@ -4314,6 +4314,18 @@ colour registers or proof that the copper executed that list during the reported
 black interval. A palette installation/execution failure remains a candidate;
 do not label memory agreement as hardware palette acceptance.
 
+The post-DisposeRgn observer (`tmp/m2-story-idle-current-full.log`, exit 1)
+reaches an unimplemented relative Line, `$A892` at Dark3+$354A, at tick 21,313.
+This prerequisite now passes the relative-Line checks below; it is not sequence acceptance. Its menu checkpoints
+at ticks 1,826 and 2,726 have exactly 900 ticks between them, 13 queued/presented
+frames and no pending drawing. Both independently decoded AGA buffers match
+the logical viewport/palette. The VBI publication range is scanlines 0–1, with
+zero late publications; display DMA remains enabled. Book batches remain zero.
+The headless original endpoint observer (`tmp/m2-story-endpoint-reference.log`)
+exits normally at Dark+$552C, tick 32,015, after the measured pond cleanup.
+This validates the endpoint used by the native observer, but does not establish
+native car/frog progression or actual hardware palette contents.
+
 ## Routine-test Enter skip (M2.3g44b)
 
 Owner priority 2026-10-01: stop repeating the book for routine service checks.
@@ -4387,3 +4399,35 @@ and selecting an inline helper frame) are retained locally and are not
 acceptance evidence. The service-boundary capture separates shared publication
 of preceding drawing from the disposal itself. This proves region cleanup,
 not resolution of the owner's black interval or circling-car report.
+
+## Relative Line prerequisite (M2.3g44i)
+
+The first relative Line is `$A892` at Dark3+$354A. The original bytes
+`a8932f3c00010001a892` include the preceding MoveTo and pass `(dh,dv)=(1,1)`.
+The headless, Enter-skipped reference exits zero in
+`tmp/m2-relative-line-reference.log`. Its pen changes from `(−1150,−10625)`
+to `(−1149,−10624)`; both endpoints lie above the offscreen PixMap, so the
+complete 261,452-byte buffer remains unchanged. D0 returns zero, four argument
+bytes are popped, and D1–D7/A1–A6 are preserved. All port bytes except the pen
+position, plus PixMap, clipping and colours, are unchanged. This first call
+proves clipped-line and relative-pen behaviour; it does not prove visible
+line coverage by itself. The implementation reuses the existing tested Line8
+rasterizer. The native observer exits zero and proves stack/register/pen contracts and
+original continuation, with zero book replay. Its initial pen differs from the
+Mac capture: `(−1213,−29334)`. All defined input pixels and colours already
+match; 804 differing bytes are row padding at x=648–651, y=200–400. A separate
+original-service fixture replays the captured native pen to establish identical
+service inputs. The matched-input Mac fixture exits zero and the complete paired checker passes:
+
+```sh
+python3 tools/check_relative_line.py --reference tmp/m2-relative-line-reference.log --status 0 \
+  --native tmp/m2-relative-line-native-full.log --native-status 0 \
+  --paired-reference tmp/m2-relative-line-paired-reference.log --paired-status 0
+```
+
+Clipping, PixMap geometry/depth, colours and every defined pixel agree. Both
+sides preserve their complete buffers, including their own unused row padding.
+Negative checks reject missing completion, timeouts, register corruption and
+incorrect fixture input identity. Host regressions and both native link audits
+pass. Upstream coordinate divergence remains explicitly part of M2.3g44
+sequence acceptance; the matched-input service fixture does not resolve it.

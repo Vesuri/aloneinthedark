@@ -837,7 +837,7 @@ static const TrapName s_trapNames[] = {
     {0xa8aa,"QUICKDRAW","SECTRECT"}, {0xaa2c,"QUICKDRAW","TESTDEVICEATTRIBUTE"}, {0xa870,"QUICKDRAW","LOCALTOGLOBAL"}, {0xa886,"QUICKDRAW","TEXTWIDTH"}, {0xa8f6,"QUICKDRAW","DRAWPICTURE"}, {0xa89b,"QUICKDRAW","PENSIZE"},
     {0xa89c,"QUICKDRAW","PENMODE"}, {0xa8a1,"QUICKDRAW","FRAMERECT"},
     {0xa8a7,"QUICKDRAW","SETRECT"},
-    {0xa8a2,"QUICKDRAW","PAINTRECT"}, {0xa891,"QUICKDRAW","LINETO"},
+    {0xa8a2,"QUICKDRAW","PAINTRECT"}, {0xa891,"QUICKDRAW","LINETO"}, {0xa892,"QUICKDRAW","LINE"},
     {0xa8cb,"QUICKDRAW","OPENPOLY"}, {0xa8cc,"QUICKDRAW","CLOSEPOLY"},
     {0xa8d9,"QUICKDRAW","DISPOSERGN"}, {0xa8da,"QUICKDRAW","OPENRGN"}, {0xa8db,"QUICKDRAW","CLOSERGN"}, {0xa8e1,"QUICKDRAW","INSETRGN"},
     {0xa8c6,"QUICKDRAW","FRAMEPOLY"}, {0xa8cd,"QUICKDRAW","KILLPOLY"},
@@ -8152,6 +8152,17 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         GWorldSlot* world=gWorldForPort((uint8_t*)read32(s_qdThePort));
         if(world ? lineGWorld(*world,int16_t(read16(userStack+2)),int16_t(read16(userStack)))
                  : lineWindow(int16_t(read16(userStack+2)),int16_t(read16(userStack)))) {
+            regs[0]=0;
+            return 5;
+        }
+    }
+    if (trap == 0xa892) {                    // Line(dh, dv): signed 16-bit pen offset
+        uint8_t* port=s_qdThePort ? (uint8_t*)read32(s_qdThePort) : 0;
+        if(!port || s_recordingPolygon)goto unsupportedTrap;
+        int16_t x=int16_t(uint16_t(read16(port+50)+read16(userStack+2)));
+        int16_t y=int16_t(uint16_t(read16(port+48)+read16(userStack)));
+        GWorldSlot* world=gWorldForPort(port);
+        if(world ? lineGWorld(*world,x,y) : lineWindow(x,y)) {
             regs[0]=0;
             return 5;
         }

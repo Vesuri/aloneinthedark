@@ -60,6 +60,12 @@ required.
 ## M2 Startup to intro
 
 - **M2.3g44 Black intro display while music plays.**
+  - At the first relative Line (Dark3+$354A), native and Mac pen coordinates
+    differ before the call: `(−1213,−29334)` versus `(−1150,−10625)`. Both lines
+    are clipped and every defined input pixel and palette entry matches;
+    the 804 byte differences are unused row padding. Trace the upstream point
+    inputs/sequence state and explain the coordinate difference in the paired
+    sequence acceptance; do not treat a service fixture as resolving it.
   - Owner reports again that the idle route shows a black interval with music,
     then a circling car, while pressing Enter avoids both symptoms. Compare
     their shared timing/scene progression; a palette-only cause is not established.
