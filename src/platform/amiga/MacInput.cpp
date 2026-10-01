@@ -169,6 +169,27 @@ void aitdInputStoryEnter(bool atPortraits,uint32_t ticks)
 }
 #endif
 
+#ifdef AITD_STORY_READ
+extern "C" {
+volatile uint16_t g_storyReadState=0,g_storyReadPage=0xffff,g_storyReadCount=0;
+volatile uint32_t g_storyReadTick=0,g_storyReadReleased=0;
+}
+void aitdInputStoryRead(bool atStory,uint16_t page,bool lastPage,uint32_t ticks)
+{
+    static uint8_t key;
+    if(atStory && (!g_storyReadState || (g_storyReadState==3 && page!=g_storyReadPage))) {
+        g_storyReadPage=page;g_storyReadTick=ticks;g_storyReadState=1;
+        key=lastPage ? 0x44 : 0x4e;
+    } else if(atStory && g_storyReadState==1 && ticks-g_storyReadTick>=30) {
+        aitdInputInjectProbeKey(key,true);
+        g_storyReadTick=ticks;g_storyReadState=2;++g_storyReadCount;
+    } else if(g_storyReadState==2 && ticks-g_storyReadTick>=2) {
+        aitdInputInjectProbeKey(key,false);
+        g_storyReadReleased=ticks;g_storyReadState=3;
+    }
+}
+#endif
+
 void aitdInputSuspend()
 {
     if(!s_ciaaBase)return;

@@ -338,6 +338,13 @@ EXTRA_DEFINES += -DAITD_PALETTE_READ_FRAME=$(PALREADFRAME)
 PROBE_SYMS += g_paletteReadHigh g_paletteReadLow g_paletteReadBanks g_paletteReadStable g_paletteReadFrame g_paletteReadDone g_paletteReadBeamMax g_paletteReadDMABefore g_paletteReadDMAAfter
 endif
 
+# Opt-in reading fixture: Right Arrow through pages, Return at the final page.
+ifeq ($(STORYREAD),1)
+STORYENTER=1
+EXTRA_DEFINES += -DAITD_STORY_READ
+PROBE_SYMS += g_storyReadState g_storyReadPage g_storyReadTick g_storyReadReleased g_storyReadCount
+endif
+
 # Opt-in second Enter at the original portrait input wait.
 ifeq ($(STORYENTER),1)
 MENUENTER=1

@@ -6604,19 +6604,32 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
 #endif
 #ifdef AITD_STORY_ENTER
     // Engine Button -> Dan1 input poll -> Dan2 portrait wait. Follow only
-    // these two validated stack frames; menu and story polling must not match.
+    // these two validated stack frames to distinguish portraits from reading.
     bool atPortraits=false;
+#ifdef AITD_STORY_READ
+    bool atStory=false;
+#endif
     if(trap==0xa974 && s_segments[7].begin && s_segments[12].begin
        && s_segments[13].begin && pc==(uint32_t)s_segments[7].begin+0x1f84) {
         const uint32_t stack=(uint32_t)g_macStackBase,frameAddress=regs[14];
         if(stack && !(frameAddress&1) && frameAddress>=stack && frameAddress<=stack+65528) {
             const uint32_t parent=read32((uint8_t*)frameAddress);
-            if(!(parent&1) && parent>frameAddress && parent<=stack+65528)
-                atPortraits=read32((uint8_t*)frameAddress+4)==(uint32_t)s_segments[12].begin+0x6230
-                    && read32((uint8_t*)parent+4)==(uint32_t)s_segments[13].begin+0x1ebc;
+            if(!(parent&1) && parent>frameAddress && parent<=stack+65528
+               && read32((uint8_t*)frameAddress+4)==(uint32_t)s_segments[12].begin+0x6230) {
+                const uint32_t caller=read32((uint8_t*)parent+4);
+                atPortraits=caller==(uint32_t)s_segments[13].begin+0x1ebc;
+#ifdef AITD_STORY_READ
+                atStory=caller==(uint32_t)s_segments[12].begin+0x4874;
+#endif
+            }
         }
     }
     aitdInputStoryEnter(atPortraits,g_macTicks);
+#ifdef AITD_STORY_READ
+    // Engine+$1F84 precedes changes to D3/D5: they still hold the reading
+    // routine's page index and end-of-text flag at this specific caller.
+    aitdInputStoryRead(atStory,uint16_t(regs[3]),uint16_t(regs[5])!=0,g_macTicks);
+#endif
 #endif
     const char* driverStop=0;
     bool unsupportedGraphics=false;

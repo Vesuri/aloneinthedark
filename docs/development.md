@@ -4806,3 +4806,59 @@ press/release and publication ticks (`tmp/m2-story-enter-final-native-full.log`)
 Its captured AGA frame again passes the independent decoder.
 The restored `INTROSKIP=1` build passes no-float and 88-symbol audits; its
 linked symbol table contains no menu/story input helpers or state.
+
+
+## Letter text and page progression (M2.3g44u)
+
+The first-page text trace contains fifty DrawText calls. Their strings, integer
+positions, half-pixel starting fractions, Times/plain/14 selection, mode and
+zero extra spacing match the original exactly across eleven baselines. The
+initial native trace contains both supervisor and user-service bridge entries;
+each adjacent pair is identical and matches one Mac call. The maintained
+observer captures only the user-service entry. No placement correction is needed
+for the measured first page; its different ink is the D6 placeholder artwork.
+
+The original Dan1+$4870 reading wait uses D3 as the page number and D5 as the
+end-of-text flag. Right Arrow advances reading pages; Return exits this mode.
+The Mac normal-input observer measures eight pages, zero through seven, with
+D5 set only on the final page, and returns to Dan2+$2086. A test that pressed
+Return immediately measured only the first page and does not establish full
+reading progression.
+
+`STORYREAD=1` implies `STORYENTER=1`, `MENUENTER=1` and `INTROSKIP=1`. It
+recognizes the reading poll through the same bounded original Engine/Dan1 call
+chain as the portrait fixture, with caller Dan1+$4874. At Engine+$1F84 the
+original prologue has not changed D3/D5. After thirty ticks at each newly reached
+page, the fixture supplies normal Right Arrow, or Return for the final page,
+and releases it at a safe trap boundary at least two ticks later. Production
+builds exclude this diagnostic input.
+
+The maintained observers are `amiga/story_pages.gdb` and
+`tools/mac_story_pages.lua`; the independent comparison is
+`tools/check_story_pages.py`. The native observer uses event-driven breakpoint
+commands: its first exploratory loop stopped on the text breakpoint before
+reaching the page guard (`tmp/m2-story-pages-rejected-loop-full.log`, exit 1).
+That rejected observer is not progression evidence.
+
+Both maintained full-letter observers exit zero with positive original return
+checks (`tmp/m2-story-pages-final-reference.log` and
+`tmp/m2-story-pages-final-native-full.log`). All 257 DrawText calls match exactly,
+including their text, positions and settings. Native publications 17–24 are
+complete and independently decode to the corresponding logical pages. Every
+page has identical Mac/native artwork, background, navigation arrows and all
+256 RGB16 colours. Differences are exclusively placeholder ink against the
+text background, within (165,11)–(316,184); later original glyphs extend one
+column farther right than the first page. Difference counts are
+6,007/818/5,855/1,626/4,578/5,187/5,958/272 for pages zero through seven.
+
+```sh
+python3 tools/check_story_pages.py tmp/m2-story-pages-final-reference.log \
+  tmp/m2-story-pages-final-native-full.log --reference-status 0 --native-status 0
+```
+
+The checker passes all eight frames, 257 calls and the original input/return
+sequence. This completes the measured Carnby-letter layout/progression check;
+it does not prove host-window visibility, resolve the reported idle black
+interval, or accept unvisited text/UI routes.
+The restored ordinary `INTROSKIP=1` build passes both link audits and contains
+none of the menu, story-entry or reading fixture symbols.

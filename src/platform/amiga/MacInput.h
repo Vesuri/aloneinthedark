@@ -18,6 +18,9 @@ void aitdInputMenuEnter(bool atMenu, uint32_t ticks);
 #ifdef AITD_STORY_ENTER
 void aitdInputStoryEnter(bool atPortraits, uint32_t ticks);
 #endif
+#ifdef AITD_STORY_READ
+void aitdInputStoryRead(bool atStory, uint16_t page, bool lastPage, uint32_t ticks);
+#endif
 void aitdInputInjectProbeKey(uint8_t rawKey, bool down);
 
 #endif

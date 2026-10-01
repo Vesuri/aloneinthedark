@@ -60,19 +60,18 @@ required.
 ## M2 Startup to intro
 
 - **M2.3g44 Black intro display while music plays.**
-  - `STORYENTER=1` supplies the next normal Enter at the original portrait
-    polling loop. Its bounded run reaches story page zero with released input
-    and publication 17. The picture/background/arrow and palette match the Mac;
-    6,007 differences are confined to placeholder text ink. Full story text
-    layout/progression and the black-interval cause remain open.
-  - The normal-Enter portrait state now matches all 64,000 Mac client pixels
-    and 256 RGB16 colours. `amiga/portraits.gdb`, `tools/mac_portraits.lua` and
-    `tools/check_portraits.py` also verify native AGA publication 15. Story
-    text and host-visible black-interval acceptance remain open.
-  - `MENUENTER=1` now supplies one normal Enter at the original game-menu
-    wait after skipping the book. `amiga/menu_enter.gdb` verifies result 0,
-    the original new-game branch and released key after 36 ticks. Use it for
-    the remaining portraits/story frame checks; idle-route tests keep it off.
+  - The normal-input Carnby reading route now passes all eight letter pages:
+    257 text calls have identical strings, positions and settings; artwork,
+    backgrounds, arrows and palettes match the Mac. Publications 17–24 pass
+    independent AGA decoding. The only frame differences are the documented
+    placeholder glyphs. `STORYREAD=1` supplies Right Arrow for reading and
+    Return at the final page; the original returns with released keys.
+    See `amiga/story_pages.gdb` and `tools/check_story_pages.py`.
+  - `MENUENTER=1` skips the book and selects new game through normal Enter;
+    `STORYENTER=1` additionally selects the initial portrait. The portrait
+    state matches all 64,000 Mac client pixels and 256 colours, with verified
+    AGA publication 15. Idle-route checks keep both options off. These input
+    and memory checks do not close the owner-visible black interval.
   - Streaming masked copies (M2.3g44p) now let the fixed-entropy native idle
     demo reach Dark+$552C naturally, with flag 1 and zero input words. All nine
     room/camera transitions match the Mac; actor identity, room, life and track

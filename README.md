@@ -25,6 +25,9 @@ owner-deferred rendered-window check. Full intro frame acceptance and gameplay r
 The title-screen copy now uses the Mac’s measured colour mapping. Its full
 client matches apart from the documented placeholder copyright glyphs. The direct-map **CopyBits** at Dark+$1E4A now returns with matching pixels.
 Owner screenshots confirm visible menu, portraits and story text after Enter.
+The automated normal-input reading route now matches all eight Carnby letter
+pages: 257 text calls, artwork, backgrounds, palettes and AGA publication pass;
+placeholder glyph artwork differs as intended.
 The Enter-skipped idle route reaches the pond background. Its polygon and region recording
 now match the Mac, including contour expansion, polygon disposal and masked copying. The polygon encoder now keeps its scratch arrays off the system stack, fixing
 a verified VBI overflow into Exec state. Interrupt stress and paired native
