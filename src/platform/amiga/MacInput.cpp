@@ -131,6 +131,25 @@ void aitdInputIntroSkip(uint16_t trap, uint32_t ticks)
 #endif
 
 
+#ifdef AITD_MENU_ENTER
+extern "C" {
+volatile uint16_t g_menuEnterState=0;
+volatile uint32_t g_menuEnterTick=0,g_menuEnterReleased=0;
+}
+void aitdInputMenuEnter(bool atMenu,uint32_t ticks)
+{
+    if(!g_menuEnterState && atMenu) {
+        g_menuEnterTick=ticks;g_menuEnterState=1;
+    } else if(g_menuEnterState==1 && atMenu && ticks-g_menuEnterTick>=30) {
+        aitdInputInjectProbeKey(0x44,true);
+        g_menuEnterTick=ticks;g_menuEnterState=2;
+    } else if(g_menuEnterState==2 && ticks-g_menuEnterTick>=2) {
+        aitdInputInjectProbeKey(0x44,false);
+        g_menuEnterReleased=ticks;g_menuEnterState=3;
+    }
+}
+#endif
+
 void aitdInputSuspend()
 {
     if(!s_ciaaBase)return;

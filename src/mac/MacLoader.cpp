@@ -6597,6 +6597,11 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     aitdInputIntroSkip(trap, g_macTicks);
 #endif
     uint32_t pc = read32(frame + 2);
+#ifdef AITD_MENU_ENTER
+    // Original Dan1+$1376 TickCount inside the game menu's 900-tick wait.
+    aitdInputMenuEnter(trap==0xa975 && s_segments[12].begin
+                      && pc==(uint32_t)s_segments[12].begin+0x1376,g_macTicks);
+#endif
     const char* driverStop=0;
     bool unsupportedGraphics=false;
     bool sizeSelection=false;

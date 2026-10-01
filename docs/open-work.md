@@ -60,6 +60,10 @@ required.
 ## M2 Startup to intro
 
 - **M2.3g44 Black intro display while music plays.**
+  - `MENUENTER=1` now supplies one normal Enter at the original game-menu
+    wait after skipping the book. `amiga/menu_enter.gdb` verifies result 0,
+    the original new-game branch and released key after 36 ticks. Use it for
+    the remaining portraits/story frame checks; idle-route tests keep it off.
   - Streaming masked copies (M2.3g44p) now let the fixed-entropy native idle
     demo reach Dark+$552C naturally, with flag 1 and zero input words. All nine
     room/camera transitions match the Mac; actor identity, room, life and track

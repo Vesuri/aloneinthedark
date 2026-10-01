@@ -4705,3 +4705,31 @@ acceptance. There remains only one game Random call throughout. No input is
 injected after the initial book-skip Enter. The original movement code is
 unchanged. The near-camera endpoint, frog transition and host black-interval
 cause remain M2.3g44 work; this bounded improvement does not close them.
+
+
+## Normal menu Enter fixture (M2.3g44r)
+
+`MENUENTER=1` implies `INTROSKIP=1` and enables one diagnostic Enter press
+at the original Dan1+$1376 TickCount menu wait. After thirty ticks it supplies
+raw Return through the ordinary input queue, then releases it at a safe trap
+boundary at least two ticks later. It never repeats. Ordinary builds exclude
+the fixture; the original instructions, menu result and timers are unchanged.
+This supports the portraits/story input route, separate from idle-demo checks.
+
+The checked original wait starts `42a7a975` at Dan1+$1374; Dark+$522A starts
+`1c001006`, and the new-game branch at +$52B6 tests the relocated A5−$D84E
+word. The observer checks both opcode and relocated operand, rather than the
+unrelocated file placeholder. The first observer rejected that placeholder
+comparison; it is not a successful check.
+
+A clean `MENUENTER=1` build and bounded silent `amiga/menu_enter.gdb` run pass
+(`tmp/m2-menu-enter-native-full.log`, exit zero): menu entry tick 1587, press
+1617, original result 0 at 1623, original new-game branch reached, Enter released
+at 1623 with no held key, and zero book batches. This proves input and branch
+selection, not yet portraits/story frame fidelity or host-window appearance.
+Use `GDBSCRIPT=menu_enter.gdb EXTRA_ARGS=--warp_mode=1 amiga/diag_run.sh 180`
+after sourcing `amiga/env.sh`. Restore the ordinary test build afterward.
+
+The restored `INTROSKIP=1` build passes both link audits, contains none of
+`aitdInputMenuEnter`/`g_menuEnter*`, and passes the original intro skip/release
+regression (`tmp/m2-menu-enter-skip-regression-full.log`, exit zero).

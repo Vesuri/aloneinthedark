@@ -338,6 +338,13 @@ EXTRA_DEFINES += -DAITD_PALETTE_READ_FRAME=$(PALREADFRAME)
 PROBE_SYMS += g_paletteReadHigh g_paletteReadLow g_paletteReadBanks g_paletteReadStable g_paletteReadFrame g_paletteReadDone g_paletteReadBeamMax g_paletteReadDMABefore g_paletteReadDMAAfter
 endif
 
+# Opt-in normal Enter at the original game-menu wait; implies book skip.
+ifeq ($(MENUENTER),1)
+INTROSKIP=1
+EXTRA_DEFINES += -DAITD_MENU_ENTER
+PROBE_SYMS += g_menuEnterState g_menuEnterTick g_menuEnterReleased
+endif
+
 # Opt-in diagnostic Enter input; normal builds have no scripted keys.
 ifeq ($(INTROSKIP),1)
 EXTRA_DEFINES += -DAITD_INTRO_SKIP
