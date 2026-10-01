@@ -5,6 +5,7 @@
 #endif
 #endif
 #include "MacHeap.h"
+#include "../platform/amiga/PerfProbe.h"
 
 static void heapWrite32(uint8_t* at, uint32_t value)
 {
@@ -114,6 +115,7 @@ bool MacHeap::movable(uint32_t off) const
 }
 void MacHeap::publish()
 {
+    AitdProfileScope profile(kProfileHeapPublish);
     if(!arena_)return;
     Handle first=0;
     for(uint32_t off=headerBytes;off<end_;off+=block(off).span) {
@@ -230,7 +232,7 @@ int16_t MacHeap::disposePtr(uint8_t* ptr)
 }
 uint32_t MacHeap::ptrSize(uint8_t* ptr)
 {
-    uint32_t off=findPtr(ptr,ptrBlock);result(off ? 0 : memWZErr);
+    uint32_t off=findPtr(ptr,ptrBlock);queryResult(off ? 0 : memWZErr);
     return off ? block(off).logical : 0;
 }
 bool MacHeap::resizeInPlace(uint32_t off,uint32_t bytes)
@@ -309,14 +311,14 @@ int16_t MacHeap::reallocateHandle(Handle h,uint32_t bytes)
 }
 uint32_t MacHeap::handleSize(Handle h)
 {
-    if(!isHandle(h) || !*h) { result(nilHandleErr);return 0; }
-    uint32_t off=findPtr(*h,handleBlock);result(off ? 0 : memWZErr);
+    if(!isHandle(h) || !*h) { queryResult(nilHandleErr);return 0; }
+    uint32_t off=findPtr(*h,handleBlock);queryResult(off ? 0 : memWZErr);
     return off ? block(off).logical : 0;
 }
 uint8_t MacHeap::state(Handle h)
 {
-    if(!isHandle(h)) { result(nilHandleErr);return 0; }
-    uint8_t state=*flags(h)&0xe0;result(0);return state;
+    if(!isHandle(h)) { queryResult(nilHandleErr);return 0; }
+    uint8_t state=*flags(h)&0xe0;queryResult(0);return state;
 }
 int16_t MacHeap::setState(Handle h,uint8_t value)
 {
@@ -328,10 +330,10 @@ MacHeap::Handle MacHeap::recoverHandle(uint8_t* ptr)
     if(owns(ptr))for(uint32_t off=headerBytes;off<end_;off+=block(off).span) {
         Block b=block(off);
         if(b.kind==handleBlock && ptr>=arena_+off+blockBytes && ptr<arena_+off+b.span) {
-            result(0);return (Handle)(arena_+b.owner);
+            queryResult(0);return (Handle)(arena_+b.owner);
         }
     }
-    result(nilHandleErr);return 0;
+    queryResult(nilHandleErr);return 0;
 }
 int16_t MacHeap::moveHigh(Handle h)
 {

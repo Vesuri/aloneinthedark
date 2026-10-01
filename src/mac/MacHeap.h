@@ -59,6 +59,8 @@ private:
     void compactUp();
     bool resizeInPlace(uint32_t off, uint32_t bytes);
     void publish();
+    // Queries update MemError without rebuilding unchanged zone metadata.
+    int16_t queryResult(int16_t code) { error_=code; return code; }
     int16_t result(int16_t code) { error_=code; publish(); return code; }
 };
 #endif

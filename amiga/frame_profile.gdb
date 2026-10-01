@@ -13,7 +13,7 @@ if g_stageBState==3 || g_profileState!=2
 end
 printf "IDLE_PROFILE fields=%u frames=%u epoch=%u start=%u ticks=%u\n",g_profileStopField-g_profileStartField,g_profileStopFrames-g_profileStartFrames,g_profileStopEpoch-g_profileStartEpoch,g_profileStartFrames,g_macTicks
 set $i=0
-while $i<16
+while $i<sizeof(g_profileTicks)/sizeof(g_profileTicks[0])
  printf "IDLE_PHASE id=%u ticks=%u calls=%u\n",$i,g_profileTicks[$i],g_profileCalls[$i]
  set $i=$i+1
 end

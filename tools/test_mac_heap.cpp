@@ -48,6 +48,24 @@ int main() {
     CHECK(h.setState(a,0x80)==0);before=*a;CHECK(h.setHandleSize(a,128)==0);CHECK(*a==before);CHECK(patternIs(*a,128,0x52));
     CHECK(h.disposeHandle(a)==0);CHECK(h.disposePtr(pin)==0);
     CHECK(h.newHandle(0)!=nullptr);CHECK(h.newPtr(0)!=nullptr);CHECK(h.check());
+    // Read-only success and failure retain every arena byte, including the
+    // published zone header and free-master chain, while reporting MemError.
+    CHECK(h.init(arena,sizeof(arena),2));
+    a=h.newHandle(37);b=h.newEmptyHandle();pin=h.newPtr(19);
+    auto freed=h.newHandle(8);CHECK(h.disposeHandle(freed)==0);
+    CHECK(h.setState(a,0xa0)==0);
+    std::vector<uint8_t> queryArena(arena,arena+sizeof(arena));
+    CHECK(h.handleSize(a)==37 && h.error()==0);
+    CHECK(h.handleSize(b)==0 && h.error()==MacHeap::nilHandleErr);
+    CHECK(h.handleSize(nullptr)==0 && h.error()==MacHeap::nilHandleErr);
+    CHECK(h.ptrSize(pin)==19 && h.error()==0);
+    CHECK(h.ptrSize(*a)==0 && h.error()==MacHeap::memWZErr);
+    CHECK(h.state(a)==0xa0 && h.error()==0);
+    CHECK(h.state(freed)==0 && h.error()==MacHeap::nilHandleErr);
+    CHECK(h.recoverHandle(*a+5)==a && h.error()==0);
+    CHECK(h.recoverHandle(pin)==nullptr && h.error()==MacHeap::nilHandleErr);
+    CHECK(std::memcmp(arena,queryArena.data(),sizeof(arena))==0);
+    CHECK(h.check());
     // Deterministic fragmentation: validate every surviving payload after every operation.
     CHECK(h.init(arena,sizeof(arena)));handles.assign(48,nullptr);uint32_t rng=1;
     unsigned sizes[48]={};

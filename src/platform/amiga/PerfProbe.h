@@ -21,6 +21,7 @@ enum AitdProfileCategory {
     kProfileColorLookup,
     kProfileCopyMap,
     kProfileCodeViews,
+    kProfileHeapPublish,
     kProfileCategoryCount
 };
 

@@ -4647,3 +4647,61 @@ branch to the fill depends on A5−$BFB8/$BFB6, measured as 1/0; compare the
 underlying scene/script state with the Mac rather than pairing elapsed ticks.
 Neither the passing service fixture nor the incomplete continuation establishes
 the owner-visible black interval's cause.
+
+
+The original exit-cause observer now positively reaches Dark2+$3F8E, which
+sets A5−$D862 after a 120-tick script wait. All three input words are zero;
+Dark+$552C follows at tick 25,201 with 1,092 Random calls
+(`tmp/m2-idle-exit-cause-reference.log`, exit 0). This is a natural script
+completion, not a residual Enter exit.
+
+Two 120-step captures at Dark+$5658 now isolate the car divergence
+(`tmp/m2-idle-turn-{reference,native-full}.log`, both exit 0). The first 48
+positions agree. At step 49 the native car has committed another 300-unit
+animation movement; the Mac still has a 280-unit partial movement. At native
+step 54 the car reaches track position 20 at (8208,−204), angle 960. The Mac
+reaches that track position at step 56 at (8437,346), angle 1020, and advances
+to 24 on its next step. Native remains on 20 through step 119, with positions
+tracing a loop; the Mac reaches 52. Both have made exactly one game Random
+call throughout these captures. The difference is upstream of QuickDraw.
+Dark2+$4C6C compares waypoint distance with 400 and +$4C7A advances the track;
++$4CD2 starts a 15-tick, 64-angle-unit turn. The actor record uses position
+words +$1C/+$20, angle +$2A, track offset +$58 and turn timing +$6A–$70.
+The measured divergence motivates investigating service cost and animation
+sampling; it does not authorize altering the original movement decisions.
+
+
+## Read-only heap-query overhead (M2.3g44n)
+
+`MacHeap::ptrSize`, `handleSize`, `state` and `recoverHandle` now update the
+same error result without rebuilding the zone's free-master chain or rescanning
+free space. Every mutating operation retains its original publication.
+The new nested `kProfileHeapPublish` category measures that work; it compiles
+away outside diagnostic builds. `frame_profile.gdb` reads the actual category
+array size instead of assuming sixteen categories.
+
+The bounded `INTROSKIP=1 FIXEDRNG=1 PROFILEFRAME=32 PROBEFIELDS=300`
+before/after runs both exit zero. The former reports 931 heap publications,
+4,431,368 of 23,971,754 beam units (18.5%); the latter reports zero publications
+in its 23,986,936-unit interval. Both measure 300 fields starting at publication
+32. Published frames are 5 and 17, respectively, but the resulting scene states
+and ticks differ (6,306 versus 5,229). These instrumented intervals demonstrate
+removed work, not a controlled shipping frame-rate multiplier. Logs are
+`tmp/m2-heap-publish-{before,after}-full.log`.
+
+All host regressions pass, including success/error query checks that preserve
+every arena byte and the existing 2,500-step fragmentation checks. The native
+heap fixture exits zero with all three stages complete and final app/system
+free bytes 3,144,040/130,808 (`tmp/m2-heap-query-native-full.log`). Clean native
+builds pass no-float and probe-symbol audits.
+
+The unprofiled fixed-entropy 120-step repetition also exits zero
+(`tmp/m2-heap-query-turn-full.log`). Native now reaches track position 20 at
+step 60, (8322,374), then 24 at step 61 and 32 at step 64. At step 119 it
+reaches track position 52, matching the Mac's script progression rather than
+the previous native loop at 20. The measured point is (−1497,589), versus the
+Mac's (−1284,126); these different animation samples are not pixel-paired frame
+acceptance. There remains only one game Random call throughout. No input is
+injected after the initial book-skip Enter. The original movement code is
+unchanged. The near-camera endpoint, frog transition and host black-interval
+cause remain M2.3g44 work; this bounded improvement does not close them.

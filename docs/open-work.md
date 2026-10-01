@@ -60,6 +60,12 @@ required.
 ## M2 Startup to intro
 
 - **M2.3g44 Black intro display while music plays.**
+  - Read-only heap queries no longer rebuild unchanged metadata (M2.3g44n).
+    The original and native 120-step captures now both reach track position 52;
+    before the change native remained at 20 and circled. Coordinates still
+    differ with animation timing; this is not full frame/sequence acceptance.
+    Continue from this demonstrated waypoint improvement to the near-camera
+    endpoint and frog transition. No manual input was used after the book skip.
   - GetZone/SetZone no longer rebuild heap-derived views (M2.3g44l); native
     heap contracts and the bounded cost comparison pass. Recheck progression
     with this reduced overhead; it is not yet a car/frog or visibility fix.
