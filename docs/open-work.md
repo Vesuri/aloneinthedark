@@ -59,6 +59,19 @@ required.
 
 ## M2 Startup to intro
 
+- **M2.3g44d Polygon-to-region recording for the pond (prerequisite for M2.3g44).**
+  - The verified polygon lifecycle now reaches OpenRgn (`$A8DA`, Dark+$33E8).
+    Original bytes then call FramePoly at +$33EC and CloseRgn at +$33F0.
+    Measure their region bytes, recording state, ownership, ABI and absence of
+    framebuffer drawing before implementing the reached conversion.
+  - Use `INTROSKIP=1` and original-instruction breakpoints for routine native
+    checks. The prior dispatch-wide polygon condition failed in the debugger;
+    its run is not acceptance evidence.
+
+  *Done when* the original/native region recording lifecycle matches exactly,
+  including the resulting region spans and bounds, calling contract and heap
+  ownership, unchanged drawing buffers and no recording state left active;
+  the scene then reaches its next explicit stop beyond CloseRgn.
 - **M2.3g44 Black intro display while music plays.**
   - Owner screenshots `FS-UAE_Full_261001-0912_01` through `_04` and
     `FS-UAE_Full_261001-0913_00` visibly show the logo, title, game menu,

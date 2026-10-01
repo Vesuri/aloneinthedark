@@ -13,6 +13,7 @@
 #include "RectBounds.h"
 #include "FillRect8.h"
 #include "Line8.h"
+#include "PolygonRecord.h"
 #include "CopyBits8.h"
 #include "CursorVisibility.h"
 #include "RegionRows.h"
@@ -296,6 +297,8 @@ static uint8_t* s_textEditScrapMaster;
 static uint8_t s_trapBuiltins[4096][6] __attribute__((aligned(4)));
 static uint8_t* s_trapAddresses[4096];
 static uint8_t* s_qdThePort;
+static MacHeap::Handle s_recordingPolygon;
+static uint8_t* s_polygonPort;
 #ifdef AITD_PROBE
 static volatile uint32_t s_randomTrapPC;
 #endif
@@ -830,6 +833,9 @@ static const TrapName s_trapNames[] = {
     {0xa89c,"QUICKDRAW","PENMODE"}, {0xa8a1,"QUICKDRAW","FRAMERECT"},
     {0xa8a7,"QUICKDRAW","SETRECT"},
     {0xa8a2,"QUICKDRAW","PAINTRECT"}, {0xa891,"QUICKDRAW","LINETO"},
+    {0xa8cb,"QUICKDRAW","OPENPOLY"}, {0xa8cc,"QUICKDRAW","CLOSEPOLY"},
+    {0xa8da,"QUICKDRAW","OPENRGN"}, {0xa8db,"QUICKDRAW","CLOSERGN"},
+    {0xa8c6,"QUICKDRAW","FRAMEPOLY"}, {0xa8cd,"QUICKDRAW","KILLPOLY"},
     {0xa8a4,"QUICKDRAW","INVERTRECT"},
     {0xa8a9,"QUICKDRAW","INSETRECT"}, {0xa8b0,"QUICKDRAW","FRAMEROUNDRECT"},
     {0xa8ad,"QUICKDRAW","PTINRECT"},
@@ -7567,6 +7573,33 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     }
     // Vette's fixed (64,91) inverse origin does not describe these windows.
     if(trap==0xa871)goto unsupportedTrap; // GlobalToLocal: pending measurement.
+    if(trap==0xa8cb) {                       // OpenPoly() -> owned PolyHandle
+        uint8_t* port=s_qdThePort ? (uint8_t*)read32(s_qdThePort) : 0;
+        if(!port || (!gWorldForPort(port) && !windowSlot(port)) || s_recordingPolygon
+           || read16(port+66) || read32(port+92) || read32(port+96) || read32(port+100))
+            goto unsupportedTrap;
+        MacHeap::Handle polygon=newHandle(10,true);
+        if(!polygon)goto unsupportedTrap;
+        write16(*polygon,10);s_recordingPolygon=polygon;s_polygonPort=port;
+        write16(port+66,0xffff);write32(port+100,1);
+        write32(userStack,(uint32_t)polygon);
+        regs[0]=1;regs[8]=(uint32_t)port;regs[9]=(uint32_t)*polygon+10;
+        return 1;
+    }
+    if(trap==0xa8cc) {                       // ClosePoly: finish the recorded chain
+        uint8_t* port=s_qdThePort ? (uint8_t*)read32(s_qdThePort) : 0;
+        MacHeap* owner=handleZone(s_recordingPolygon);
+        if(!owner || !*s_recordingPolygon || port!=s_polygonPort
+           || read16(port+66)!=0xffff || read32(port+100)!=1
+           || !PolygonRecord::close(*s_recordingPolygon,owner->handleSize(s_recordingPolygon)))
+            goto unsupportedTrap;
+        regs[0]=1;regs[1]=read16(*s_recordingPolygon+2);
+        regs[2]=(regs[2]&0xffff0000UL)|read16(*s_recordingPolygon+6);
+        regs[8]=(uint32_t)port;
+        write16(port+66,0);write32(port+100,0);
+        s_recordingPolygon=0;s_polygonPort=0;
+        return 1;
+    }
     if(trap==0xa8d8) {                       // NewRgn() -> owned empty RgnHandle
         MacHeap::Handle region=newHandle(10,true);
         if(!region)goto unsupportedTrap;
@@ -7996,6 +8029,20 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         return 5;
     }
     if (trap == 0xa891) {                    // LineTo(horizontal, vertical)
+        if(s_recordingPolygon) {
+            uint8_t* port=(uint8_t*)read32(s_qdThePort);
+            MacHeap* owner=handleZone(s_recordingPolygon);
+            if(!owner || !*s_recordingPolygon || port!=s_polygonPort
+               || read16(port+66)!=0xffff || read32(port+100)!=1)goto unsupportedTrap;
+            int16_t x0=int16_t(read16(port+50)),y0=int16_t(read16(port+48));
+            int16_t x1=int16_t(read16(userStack+2)),y1=int16_t(read16(userStack));
+            uint16_t size=PolygonRecord::growth(*s_recordingPolygon,owner->handleSize(s_recordingPolygon),x0,y0);
+            if(!size || owner->setHandleSize(s_recordingPolygon,size)!=MacHeap::noErr
+               || !PolygonRecord::append(*s_recordingPolygon,size,x0,y0,x1,y1))goto unsupportedTrap;
+            write16(port+48,uint16_t(y1));write16(port+50,uint16_t(x1));
+            regs[0]=0;regs[8]=(uint32_t)s_qdThePort;regs[9]=(uint32_t)s_recordingPolygon;
+            return 5;
+        }
         GWorldSlot* world=gWorldForPort((uint8_t*)read32(s_qdThePort));
         if(world ? lineGWorld(*world,int16_t(read16(userStack+2)),int16_t(read16(userStack)))
                  : lineWindow(int16_t(read16(userStack+2)),int16_t(read16(userStack)))) {
@@ -8005,6 +8052,12 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     }
     if (trap == 0xa893) {                    // MoveTo(horizontal, vertical)
         uint8_t* port = (uint8_t*)read32(s_qdThePort);
+        if(s_recordingPolygon) {
+            MacHeap* owner=handleZone(s_recordingPolygon);
+            if(!owner || !*s_recordingPolygon || port!=s_polygonPort
+               || read16(*s_recordingPolygon)!=10)goto unsupportedTrap;
+            regs[9]=(uint32_t)port;
+        }
         if (port) {
             write16(port + 48, read16(userStack));
             write16(port + 50, read16(userStack + 2));

@@ -69,3 +69,57 @@ python3 tools/check_presentpicture.py tmp/m2-presentpicture-reference-next.log -
 python3 tools/check_presentpicture.py tmp/m2-presentpicture-native-complete.log --status 0 --native
 python3 tools/check_aga_capture.py startup tmp/m2-presentpicture-native-complete.log --status 0
 ```
+
+## Pond-scene polygon recording (M2.3g44c)
+
+The Enter-skipped idle run reaches the pond background at tick 21,202,
+279/279 publications, then stops at OpenPoly (Dark+$3396). The buffer decoded
+as `tmp/story-openpoly-stop.png` is the owner's frog-scene starting view;
+logical pixels and the software-selected bitplanes/copper agree. This is not
+complete car-endpoint/frog-animation acceptance or proof of hardware palette
+execution. The diagnostic run exits 1 (`tmp/m2-story-skip-idle.log`).
+
+Original `tmp/m2-polygon-reference-owned.log` exits zero after normal Return
+skips the book. It records OpenPoly, MoveTo, ten LineTo calls and ClosePoly at
+Dark+$3396/$33B8/$33CE/$33DC. The first point is (7,199); the last returns there.
+OpenPoly produces ten zero-initialized bytes except polySize=10, hides the pen
+(0 to -1), and puts flag 1 in CGrafPort.polySave. The actual PolyHandle is
+separate. The first line stores both endpoints, each later line appends its
+endpoint, and bounds remain zero during recording. ClosePoly restores the pen
+and clears the flag; the final 54-byte record has bounds (0,136)–(22,199).
+CPU-executed GetHandleSize/HGetState/HandleZone queries prove size 54, flags 0
+and current-zone ownership. All 261,452 drawing-buffer bytes remain unchanged.
+
+`PolygonRecord.h` models the connected, explicitly closed recording. The native
+layer owns/resizes the handle and leaves it live for the following FramePoly.
+Nested recording, picture/region recording overlap, MoveTo after recording has
+started, disconnected chains and implicit closing remain named stops.
+The reached D0/D1/D2 results and D3–D7/A2–A6 preservation are checked. MoveTo's
+original A0 and ClosePoly's A1 are implementation scratch pointers, unused
+by the following original instructions; native code does not fabricate Mac ROM
+addresses for them. Semantic port/handle/global pointers are checked separately.
+
+`tools/check_polygon.py` passes the original byte sequence, polygon/port model,
+heap query results, signed-coordinate bounds and non-mutating rejection checks.
+It rejects timeout, missing completion, wrong-point and wrong-result evidence.
+The existing Line8 host regression also passes. The native `INTROSKIP=1` build
+passes no-float and 88-symbol audits. `tmp/m2-polygon-native-instructions.log`
+exits zero: all 13 paired calls pass, the native 54-byte polygon and changed
+port fields match, the handle has normal application-zone ownership, all
+261,452 drawing bytes remain unchanged and no extra frame is queued. The
+observer confirms zero book batches and reaches the named OpenRgn stop at
+Dark+$33E8. Four invalid native evidence cases are rejected as well.
+
+The first native observer failed with an invalid debugger reply while testing
+a condition on every Mac trap; it is not accepted. The maintained observer now
+breaks at original instruction addresses before observing each service. The
+first comparison also exposed an overstrict checker: incoming pen positions
+were (18,91) on the Mac and (21,97) natively. OpenPoly preserves each incoming
+position; MoveTo then sets the same recorded first point on both. The checker
+now verifies that preservation plus exact changed fields, instead of copying
+unrelated incoming state from the reference.
+
+```sh
+python3 tools/check_polygon.py --reference tmp/m2-polygon-reference-owned.log \
+  --status 0 --native tmp/m2-polygon-native-instructions.log --native-status 0
+```

@@ -25,7 +25,9 @@ owner-deferred rendered-window check. Full intro frame acceptance and gameplay r
 The title-screen copy now uses the Mac’s measured colour mapping. Its full
 client matches apart from the documented placeholder copyright glyphs. The direct-map **CopyBits** at Dark+$1E4A now returns with matching pixels.
 Owner screenshots confirm visible menu, portraits and story text after Enter.
-The preceding black interval and car/frog progression remain under investigation.
+The Enter-skipped idle route reaches the pond background. Its polygon recording
+now matches the Mac; the next graphics stop is OpenRgn. The preceding black
+interval and full car/frog sequence acceptance remain open.
 Routine diagnostic builds use `INTROSKIP=1` to send normal Enter and skip the
 book; `amiga/intro_skip.gdb` verifies the skip and key release.
 Song start now retains its 41 resources and returns successfully. A complete
