@@ -31,8 +31,10 @@ a verified VBI overflow into Exec state. Interrupt stress and paired native
 region checks pass. Pond region disposal now passes paired ownership, drawing-isolation
 and original cleanup-continuation checks. The next reached relative-line call
 also passes matched-input Mac/native checks; its earlier pen-coordinate
-difference remains under investigation. The preceding black
-interval and full car/frog sequence acceptance remain open.
+difference remains under investigation. Direct AGA colour-RAM readback at the idle
+menu now matches all 256 intended colours, and its menu planes and 900-tick
+continuation pass. The preceding black interval and full car/frog sequence
+acceptance remain open.
 Routine diagnostic builds use `INTROSKIP=1` to send normal Enter and skip the
 book; `amiga/intro_skip.gdb` verifies the skip and key release.
 Song start now retains its 41 resources and returns successfully. A complete

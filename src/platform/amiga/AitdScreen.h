@@ -94,6 +94,9 @@ private:
     bool m_mouseCoordinatesInitialized = false;
     bool m_mouseAllowed = false, m_nextMouseAllowed = false;
     void writeModeRegisters();
+#ifdef AITD_PALETTE_READ_FRAME
+    void readPaletteProbe();
+#endif
     void queueFrame(uint16_t left,uint16_t top,bool mouseAllowed);
     void updateMouseSprite();
 

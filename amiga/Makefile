@@ -316,6 +316,12 @@ ifeq ($(POLYGONSTACKSTRESS),1)
 EXTRA_DEFINES += -DAITD_POLYGON_STACK_STRESS
 endif
 
+# Optional hardware colour-RAM readback of one stable published frame.
+ifneq ($(PALREADFRAME),)
+EXTRA_DEFINES += -DAITD_PALETTE_READ_FRAME=$(PALREADFRAME)
+PROBE_SYMS += g_paletteReadHigh g_paletteReadLow g_paletteReadBanks g_paletteReadStable g_paletteReadFrame g_paletteReadDone g_paletteReadBeamMax g_paletteReadDMABefore g_paletteReadDMAAfter
+endif
+
 # Opt-in diagnostic Enter input; normal builds have no scripted keys.
 ifeq ($(INTROSKIP),1)
 EXTRA_DEFINES += -DAITD_INTRO_SKIP

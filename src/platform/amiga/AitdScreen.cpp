@@ -27,6 +27,15 @@ volatile uint16_t g_beamPresentMin = 0xffff;
 volatile uint16_t g_beamPresentMax = 0;
 volatile uint32_t g_beamPresents = 0;
 volatile uint32_t g_beamPresentsLate = 0;
+#ifdef AITD_PALETTE_READ_FRAME
+volatile uint16_t g_paletteReadHigh[256] = {};
+volatile uint16_t g_paletteReadLow[256] = {};
+volatile uint16_t g_paletteReadBanks = 0, g_paletteReadStable = 0;
+volatile uint16_t g_paletteReadFrame = 0, g_paletteReadDone = 0;
+volatile uint16_t g_paletteReadBeamMax = 0;
+volatile uint16_t g_paletteReadDMABefore = 0, g_paletteReadDMAAfter = 0;
+__attribute__((noinline)) void aitdPaletteReadComplete() { __asm__ volatile("" ::: "memory"); }
+#endif
 #ifdef AITD_PROBE
 volatile uint16_t g_probeSkipC2P = 0;
 volatile uint32_t g_probeC2PFrames = 0;
@@ -199,9 +208,50 @@ void AitdScreen::queueFrame(uint16_t left,uint16_t top,bool mouseAllowed)
     m_framePending=true;
 }
 
+#ifdef AITD_PALETTE_READ_FRAME
+// Diagnostic only: read Lisa's colour RAM, not the intended copper-list values.
+// RDRAM/BANK/LOCT contract: FS-UAE custom.cpp, COLOR_READ(). Read one bank per
+// VBI, before restarting the copper. Pause copper DMA so it cannot change BANK
+// during the reads. This restores owned control values, not unknown OS values;
+// it is a palette-content probe, not proof of unmodified display-mode state.
+void AitdScreen::readPaletteProbe()
+{
+    if(g_paletteReadDone)return;
+    if(m_framePending || g_macFramesPresented!=AITD_PALETTE_READ_FRAME) {
+        g_paletteReadBanks=0;g_paletteReadStable=0;return;
+    }
+    // Allow the previous publication's copper to execute for a whole field.
+    if(g_paletteReadStable<2) { ++g_paletteReadStable;return; }
+    uint16_t bank=g_paletteReadBanks;
+    uint16_t dma=*dmaconrPointer;
+    g_paletteReadDMABefore=dma;
+    *dmaconPointer=DMAF_COPPER;
+    *bplcon2Pointer=VS_BPLCON2|0x0100; // RDRAM
+    *bplcon3Pointer=AgaPalette::control|(bank<<13);
+    for(uint16_t i=0;i<32;++i)g_paletteReadHigh[bank*32+i]=color00Pointer[i];
+    *bplcon3Pointer=AgaPalette::control|(bank<<13)|0x0200; // LOCT
+    for(uint16_t i=0;i<32;++i)g_paletteReadLow[bank*32+i]=color00Pointer[i];
+    *bplcon3Pointer=AgaPalette::control;
+    *bplcon2Pointer=VS_BPLCON2;
+    if(dma&DMAF_COPPER)*dmaconPointer=DMAF_SETCLR|DMAF_COPPER;
+    g_paletteReadDMAAfter=*dmaconrPointer;
+    uint16_t line=beamLine();
+    if(line>g_paletteReadBeamMax)g_paletteReadBeamMax=line;
+    g_paletteReadFrame=g_macFramesPresented;
+    g_paletteReadBanks=bank+1;
+    if(g_paletteReadBanks==8) {
+        g_paletteReadDone=1;
+        aitdPaletteReadComplete();
+    }
+}
+#endif
+
 void AitdScreen::vbiUpdate(bool install)
 {
     if(!m_copper || !m_chip)return;
+#ifdef AITD_PALETTE_READ_FRAME
+    if(install)readPaletteProbe();
+#endif
     bool present=m_framePending;
     if(present) {
         uint8_t* previous=m_chip;m_chip=m_back;m_back=previous;

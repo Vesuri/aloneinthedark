@@ -4308,11 +4308,9 @@ startup comparisons and all 3,736 complete-song events pass. See
 [sound-driver.md](sound-driver.md#occupied-effect-replacement-m23g44a). The full
 car/frog sequence and reported black interval remain M2.3g44 work.
 
-Palette-verification limit: these snapshots read `m_chip` and `m_copper`. They
-verify the intended list and its pointer/colour words, not the emulator's actual
-colour registers or proof that the copper executed that list during the reported
-black interval. A palette installation/execution failure remains a candidate;
-do not label memory agreement as hardware palette acceptance.
+The earlier snapshots read `m_chip` and `m_copper`, establishing only intended
+presentation. M2.3g44j below adds actual colour-RAM readback at the idle menu;
+other scene states and actual host-window appearance remain unverified.
 
 The post-DisposeRgn observer (`tmp/m2-story-idle-current-full.log`, exit 1)
 reaches an unimplemented relative Line, `$A892` at Dark3+$354A, at tick 21,313.
@@ -4431,3 +4429,43 @@ Negative checks reject missing completion, timeouts, register corruption and
 incorrect fixture input identity. Host regressions and both native link audits
 pass. Upstream coordinate divergence remains explicitly part of M2.3g44
 sequence acceptance; the matched-input service fixture does not resolve it.
+
+## Menu hardware palette readback (M2.3g44j)
+
+`PALREADFRAME=13 INTROSKIP=1` enables a diagnostic-only Lisa colour-RAM reader.
+It waits for two stable fields after publication, then reads one 32-colour bank
+per VBI, both high and low nibbles. It suspends copper DMA during each bank,
+uses BPLCON2 RDRAM and BPLCON3 BANK/LOCT, restores the owned control values and
+prior copper-DMA enable, then resumes ordinary VBI publication. The contract is
+also implemented in [FS-UAE's COLOR_READ](https://github.com/FrodeSolheim/fs-uae/blob/main/custom.cpp).
+Buffers are static; compiled probe stack use is 12 bytes plus return address.
+The probe is absent unless the build option is supplied.
+
+`amiga/palette_read.gdb` positively enters the original Dan1+$1374 menu wait,
+captures all eight banks, and reaches its original +$13E6 exit exactly 900 ticks
+later. `tools/check_palette_read.py` checks every hardware nibble against the
+copper, independently decodes all 64,000 plane pixels against the logical
+viewport and checks the full CLUT through the verified video-colour transfer.
+
+The bounded silent native run exits zero (`tmp/m2-palette-read-native-full.log`):
+frame 13, 13 queued/published, no pending frame, no book batches, readback at tick
+1,831 after menu entry at 1,825. The probe ends by scanline 1; DMA is `$03F1`
+before and after. All 256 RGB24 entries match, with 227 distinct colours and
+differing high/low components. Timeout, absent completion, disabled copper,
+late scanline and corrupted colour negative checks are rejected. Host tests
+and no-float/probe-symbol audits pass. The ordinary `INTROSKIP=1` build is
+restored after the diagnostic.
+
+This rejects incorrect installed palette contents at the sampled menu. It is
+not proof of the host picture, other write-only mode registers, or a fix for the
+reported black interval. The reader temporarily sets BPLCON2/3 to known values;
+it does not preserve or measure an unknown pre-probe mode setting.
+
+The separate idle-progress diagnostic reaches a house staircase image by tick
+34,366 (560 publications), beyond the car/pond scene. That reconstructed image
+used a prior CLUT only for inspection, so it is not a paired colour capture.
+The earlier endpoint run times out at tick 49,312 without Dark+$552C. Its
+success criterion remains unsatisfied. The exploratory Mac sample observer
+also reports explicit failure because the scene ends before its requested
+fifth sample; emulator exit zero does not override that failure. Do not repeat
+that sample-count bound or call these wall-time samples state-paired acceptance.

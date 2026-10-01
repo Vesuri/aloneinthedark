@@ -60,6 +60,15 @@ required.
 ## M2 Startup to intro
 
 - **M2.3g44 Black intro display while music plays.**
+  - Hardware palette readback now passes at the idle menu (M2.3g44j): all
+    256 RGB24 colours equal the copper list and logical CLUT, with exact menu
+    planes and the original 900-tick continuation. This rules out wrong colour
+    RAM at that checkpoint, not a display-mode or host-rendering failure.
+  - The current native sequence reaches the house staircase at tick 34,366
+    (560 published frames); it does not remain indefinitely at the car. A
+    separate endpoint run timed out at tick 49,312 without Dark+$552C. Trace
+    the original exit condition at matching game state; neither elapsed ticks
+    nor these exploratory snapshots establish sequence acceptance.
   - At the first relative Line (Dark3+$354A), native and Mac pen coordinates
     differ before the call: `(−1213,−29334)` versus `(−1150,−10625)`. Both lines
     are clipped and every defined input pixel and palette entry matches;
