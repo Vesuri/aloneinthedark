@@ -7631,6 +7631,16 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         memoryResult(0);regs[0]=0;regs[8]=(uint32_t)polygon;
         return 5;
     }
+    if(trap==0xa8d9) {                       // DisposeRgn: release an owned region
+        MacHeap::Handle region=(MacHeap::Handle)read32(userStack);
+        MacHeap* owner=handleZone(region);
+        if(!owner || !*region || region==s_recordedRegion
+           || owner->handleSize(region)<10 || read16(*region)!=owner->handleSize(region)
+           || resourceHandleIndex(region)>=0)goto unsupportedTrap;
+        if(owner->disposeHandle(region)!=MacHeap::noErr)goto unsupportedTrap;
+        memoryResult(0);regs[0]=0;regs[8]=(uint32_t)region;
+        return 5;
+    }
     if(trap==0xa8da) {                       // OpenRgn(): hidden contour recording
         uint8_t* port=s_qdThePort ? (uint8_t*)read32(s_qdThePort) : 0;
         if(!port || (!gWorldForPort(port) && !windowSlot(port)) || s_recordedRegion

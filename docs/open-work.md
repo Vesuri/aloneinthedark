@@ -59,16 +59,10 @@ required.
 
 ## M2 Startup to intro
 
-- **M2.3g44h DisposeRgn in pond cleanup (prerequisite for M2.3g44).**
-  - Native masked copying reaches `$A8D9`, Dark+$3058; original caller bytes
-    +$3056–$3059 are `2f14a8d9`. The game passes the region stored through A4.
-  - Capture original disposal ABI and heap transition, implement owned-region
-    disposal, and preserve all unrelated allocations and drawing data.
-
-  *Done when* the reached disposal matches the original calling contract,
-  releases only the region allocation, and continues past the named stop with
-  paired ownership/isolation checks and zero book replay.
 - **M2.3g44 Black intro display while music plays.**
+  - Owner reports again that the idle route shows a black interval with music,
+    then a circling car, while pressing Enter avoids both symptoms. Compare
+    their shared timing/scene progression; a palette-only cause is not established.
   - Owner screenshots `FS-UAE_Full_261001-0912_01` through `_04` and
     `FS-UAE_Full_261001-0913_00` visibly show the logo, title, game menu,
     portraits and attorney-letter text after manual Enter. This establishes

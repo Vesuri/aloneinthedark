@@ -4347,9 +4347,43 @@ and ClosePoly, including all polygon bytes, changed/preserved port fields,
 calling contract, heap ownership and unchanged drawing buffers. Both accepted
 reference and native observers exit zero; native book batches remain zero.
 Region recording, one-pixel expansion, polygon disposal and masked copying are
-verified (M2.3g44d–g). The next named stop is DisposeRgn at Dark+$3058;
+verified (M2.3g44d–g). DisposeRgn at Dark+$3058 now also passes paired cleanup checks;
 M2.3g44g1 fixes the intermittent SIGILL by moving polygon scratch storage off
 the shared supervisor stack. The forced-interrupt regression and paired
 native region/heap checks pass. Contracts, host checks,
 rejected evidence and the exact acceptance commands are recorded in
 [picture-drawing.md](picture-drawing.md#pond-scene-polygon-recording-m23g44c).
+
+## Pond region disposal (M2.3g44h)
+
+`tools/mac_disposergn.lua` measures DisposeRgn at Dark+$3058 after the masked
+pond copy. Original caller bytes at +$3056 are `2f14a8d9429470ff29400004`:
+pass the region through A4, dispose it, clear that owning field, then prepare
+−1 for the adjacent field. The 128-byte region releases 136 physical Mac heap
+bytes. The Mac links the freed master into its free-master chain, returns D0=0,
+A0=the disposed handle and MemErr=0, pops four argument bytes, and preserves
+D1–D7/A2–A6. A1 is scratch. Port, PixMap, pixels, CLUT and visible/clip regions
+are unchanged. The reference run ends normally with its explicit completion
+marker in `tmp/m2-disposergn-reference.log`.
+
+The native implementation uses the existing owned-handle allocator. Its
+`publish()` reconstructs the free-master chain, so a freed master is not
+required to contain zero. The observer measures the disposal after shared
+trap-entry work has published any preceding drawing. The native run exits zero, with a 152-byte physical block reclaimed, the
+expected free-master link, all retained allocation records unchanged, and no
+changes to port, PixMap, pixels, CLUT or visible/clip regions. Original cleanup
+continues at Dark+$305E with the owning field cleared; book batches remain zero.
+The paired checker passes:
+
+```sh
+python3 tools/check_disposergn.py --reference tmp/m2-disposergn-reference.log --status 0 \
+  --native tmp/m2-disposergn-native-full.log --native-status 0
+```
+
+`make host-tests` and the native no-float/probe-symbol audits pass. Negative
+checks reject timeout, missing completion, wrong continuation and missing
+allocation records. Earlier observer failures (assuming a zero free master,
+and selecting an inline helper frame) are retained locally and are not
+acceptance evidence. The service-boundary capture separates shared publication
+of preceding drawing from the disposal itself. This proves region cleanup,
+not resolution of the owner's black interval or circling-car report.

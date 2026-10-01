@@ -28,7 +28,8 @@ Owner screenshots confirm visible menu, portraits and story text after Enter.
 The Enter-skipped idle route reaches the pond background. Its polygon and region recording
 now match the Mac, including contour expansion, polygon disposal and masked copying. The polygon encoder now keeps its scratch arrays off the system stack, fixing
 a verified VBI overflow into Exec state. Interrupt stress and paired native
-region checks pass. The next graphics stop is DisposeRgn. The preceding black
+region checks pass. Pond region disposal now passes paired ownership, drawing-isolation
+and original cleanup-continuation checks. The preceding black
 interval and full car/frog sequence acceptance remain open.
 Routine diagnostic builds use `INTROSKIP=1` to send normal Enter and skip the
 book; `amiga/intro_skip.gdb` verifies the skip and key release.
