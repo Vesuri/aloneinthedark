@@ -80,7 +80,7 @@ def check_native(text, status):
         e, r = fields(es), fields(rs)
         if (int(en) != i or int(rn) != i or not e['handle'] or not e['body']
                 or not e['flag'] & 1 or r['handle'] != e['handle']
-                or r['body'] or r['flag'] or e['handle'] in seen):
+                or r['freeNext'] == e['body'] or r['flag'] or e['handle'] in seen):
             raise ValueError('owned handle disposal')
         seen.add(e['handle'])
     print(f'PASS native driver7: {len(entries)} owned handles disposed, song stopped, effects/config/registers preserved')

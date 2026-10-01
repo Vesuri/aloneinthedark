@@ -5073,3 +5073,24 @@ words still change to inactive; this capture does not claim an active-track
 playback interruption test. Four invalid status/completion/register/caller
 variants are rejected. The native link audits pass. PAK acceptance remains open
 until the following resource release and real Present.PAK payload are verified.
+
+### M2.1c4 — measured song-resource release (selector 7)
+
+The following Core+$140C call reaches original driver +$3F18. Its complete state
+capture clears the song-enabled word and song/sample resource pointers without
+altering effects. The native adapter uses `releaseNativeSong`, the established
+owner for sequencer state, music DMA buffers and detached song resources.
+
+`check_driver7.py` passes `m2-driver7-reference.log` and
+`m2-driver7-native-corrected-full.log` (both exit zero). All 41 owned handles have
+free allocation flags and cleared ledger entries, music is stopped, and effect
+state/configuration are unchanged. The original caller's stack, D2–D7/A0–A6,
+D0=0, D1=0 and CCR=4 agree. The native link audits pass.
+
+The first native observer wrongly required disposed master-pointer words to be
+zero. `MacHeap::publish` instead links free slots through those words;
+`isFreeHandleSlot` uses their allocation flags. That rejected diagnostic is
+retained as `m2-driver7-native-free-slot-assumption-full.log` and is not acceptance
+evidence. The corrected observer checks actual free-slot and owner-ledger
+semantics. M2.1c retains the independent requirement to read and compare original
+Present.PAK payloads beyond these services.

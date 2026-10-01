@@ -6801,6 +6801,10 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
                     scratch=0xffff;
                 }
             }
+            else if(selector==7) {
+                if(!g_soundDriver.initialized)driverStop="NOT INITIALIZED";
+                else releaseNativeSong(); // Original +$3F18: song ownership only.
+            }
             else if(selector==4) {
                 // The supported format-0 MIDI has one track in original slot 0.
                 // Status follows that track, not any remaining Paula release tail.
@@ -6815,7 +6819,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
             }
             else driverStop="SELECTOR";
             if(!driverStop) {
-                ++g_soundDriverCalls;regs[0]=selector==15 ? clockResult : driverResult;regs[1]=selector==0 ? 12 : selector==24 ? 1 : (selector==22 || selector==17 || selector==18 || selector==20 || selector==13 || selector==15 || selector==4 || selector==5) ? scratch : 0;
+                ++g_soundDriverCalls;regs[0]=selector==15 ? clockResult : driverResult;regs[1]=selector==0 ? 12 : selector==24 ? 1 : (selector==22 || selector==17 || selector==18 || selector==20 || selector==13 || selector==15 || selector==4 || selector==5 || selector==7) ? scratch : 0;
                 return 1; // C caller owns arguments; stub executes RTS.
             }
         }
@@ -8687,7 +8691,7 @@ extern "C" uint8_t* aitdUserServiceDispatch(uint8_t* parked)
     }
     if(driverSelector==15) {
         ccr=(ccr&0xffe0)|SoundDriver::clockCCR(read32(parked));
-    } else if(driverSelector==4 || driverSelector==5) {
+    } else if(driverSelector==4 || driverSelector==5 || driverSelector==7) {
         ccr=(ccr&0xffe0)|SoundDriver::songStatusCCR(read16(parked+2));
     } else if(!(trap&0x0800)) {
         ccr&=0xfff0;
