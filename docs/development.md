@@ -4964,3 +4964,20 @@ corrupted/incomplete evidence cases were rejected. Link audits are clean.
 python3 tools/check_setemptyrgn.py tmp/m2-setemptyrgn-reference-final.log --status 0 \
   --native tmp/m2-setemptyrgn-native-linked-full.log --native-status 0
 ```
+
+
+## Positive startup requirements acceptance (M1.6b)
+
+`amiga/identity.gdb` now stops at a positive original execution boundary instead
+of depending on the retired EmptyRgn loud stop. It guards Core's result store,
++$03F2 branch, +$0460 success instruction and both +$0410/+$044E alert sites.
+The original reaches +$0460 with the stored word zero and D0.W zero; the relocated
+result address and adjacent success flag agree with A5. Neither alert executes.
+All eleven Engine capability flags and SysEnvirons remain checked against the
+existing Mac contract. Seven Gestalt calls precede the success branch; the
+eighth (A/UX absence) follows it and supplies the final positive endpoint.
+
+`tmp/m2-startup-success-final-full.log` exits zero and passes SysEnvRec=16,
+Gestalt=8, Engine-flags=11, startup result=0 and alerts=0, with 27 OS windows
+and 33/33 completed services. The earlier observer requiring eight queries at
++$0460 was rejected; it was a test-order error, not a runtime failure.

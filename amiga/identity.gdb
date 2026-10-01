@@ -3,17 +3,13 @@ set pagination off
 set confirm off
 set $id_calls=0
 set $id_flags=0
+set $startup_success=0
 break AitdScreen::showLoudStop
 commands
  silent
- if g_stageBState != 3 || g_trapWord!=0xa8e2 || g_trapSegment!=4 || g_trapOffset!=0x4182 || *(unsigned long*)(g_trapRoutine+0)!=0x554e4b4e || *(unsigned long*)(g_trapRoutine+4)!=0x4f574e20 || *(unsigned long*)(g_trapRoutine+8)!=0x54524150 || g_trapRoutine[12]!=0 || g_trapSelector!=0xffffffff || $id_calls != 8 || $id_flags != 1
-  printf "identity FAIL: calls=%u flags=%u %s / %s\n",$id_calls,$id_flags,g_trapManager,g_trapRoutine
-  detach
-  quit 1
- end
- printf "PASS identity: SysEnvRec=16 Gestalt=8 Engine-flags=11 next=COPYBITS\n"
+ printf "FAIL identity: unexpected %s / %s CODE %u+$%X\n",g_trapManager,g_trapRoutine,g_trapSegment,g_trapOffset
  detach
- quit 0
+ quit 1
 end
 tbreak *(g_startupCode+0xaa)
 continue
@@ -21,6 +17,44 @@ if *(unsigned long *)(g_code3Base+0x3bce) != 0xa0903f40 || *(unsigned long *)(g_
  echo identity FAIL: original trap bytes\n
  detach
  quit 1
+end
+# Positive startup-success boundary, independent of later unsupported services.
+if *(unsigned short*)(g_code3Base+0x3ec)!=0x33c0
+ echo FAIL startup result store opcode\n
+ detach
+ quit 1
+end
+if *(unsigned short*)(g_code3Base+0x3f2)!=0x676c || *(unsigned long*)(g_code3Base+0x460)!=0x13fc0001 || *(unsigned short*)(g_code3Base+0x410)!=0xa98b || *(unsigned short*)(g_code3Base+0x44e)!=0xa98b
+ echo FAIL original startup success/alert bytes\n
+ detach
+ quit 1
+end
+break *(g_code3Base+0x410)
+commands
+ silent
+ echo FAIL original startup requirements alert\n
+ detach
+ quit 1
+end
+break *(g_code3Base+0x44e)
+commands
+ silent
+ echo FAIL original startup initialization alert\n
+ detach
+ quit 1
+end
+break *(g_code3Base+0x460)
+commands
+ silent
+ set $result=(unsigned long)$a5-0x11ab2
+ if $id_calls!=7 || $id_flags!=1 || ($d0&65535)!=0 || *(short*)$result!=0 || *(unsigned long*)(g_code3Base+0x3ee)!=$result || *(unsigned long*)(g_code3Base+0x464)!=$result-1
+  echo FAIL original startup result or identity coverage\n
+  detach
+  quit 1
+ end
+ set $startup_success=$startup_success+1
+ printf "STARTUP_SUCCESS pc=Core+0460 result=0 alerts=0 identity_queries=%u\n",$id_calls
+ continue
 end
 tbreak *(g_code3Base+0x3bd0)
 continue
@@ -79,6 +113,16 @@ commands
   quit 1
  end
  set $id_calls=$id_calls+1
+ if $id_calls==8
+  if $startup_success!=1 || $id_flags!=1
+   echo FAIL positive startup success absent\n
+   detach
+   quit 1
+  end
+  printf "PASS identity: SysEnvRec=16 Gestalt=8 Engine-flags=11 startup=Core+0460 result=0 alerts=0 windows=%u services=%u/%u\n",g_systemWindows,g_macServiceEntered,g_macServiceCompleted
+  detach
+  quit 0
+ end
  continue
 end
 continue

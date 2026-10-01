@@ -65,7 +65,7 @@ unresolved visual report as an explicit acceptance gap; it does not block
 independent service implementation or automated acceptance. Region expansion
 and other general tuning remain M5.
 
-- [ ] **M2.1c / M1.6b** — verify original PAK payloads and final startup success (active).
+- [ ] **M2.1c** — verify original PAK payloads (active).
 - [ ] **M2.3a / M2.3b** — resolve the pattern-copy audit and inverse coordinates.
 - [ ] **M2.3 / M2.4** — consolidate existing core/screen evidence and close remaining acceptance.
 - [ ] **M2.5** — finish PAL/NTSC, pointer palette ownership and video-clock acceptance.
@@ -90,15 +90,6 @@ and other general tuning remain M5.
   returned bytes match the host files by debugger checksum, and startup window
   counts are recorded. If original bytes establish an unused file, document the
   evidence before revising that requirement; absence from one route is not proof.
-- **M1.6b Final startup requirements acceptance (after file/resource services).**
-  - M1.6a verifies the identity records and all eleven Engine capability flags.
-    Runtime now reaches the intro and menu; the old pre-screen-selection stop is
-    obsolete. Retain the explicit initialization-result/alert-branch check below.
-  - After M2.1/M2.2, verify Core+$0460 is reached with initialization result zero,
-    without taking its failure-alert branches ($0410/$044E).
-
-  *Done when* a bounded original-code observer positively reaches that success
-  branch, no "requires" alert occurs, and identity.gdb still matches MAME.
 - **M2.3a QuickDraw pattern-copy compiler defect.**
   - The M2.1b2c9b audit found the same GCC 15.1 m68k post-increment/base-register
     copy form in `initGraf`'s five default patterns. Diagnose with a native dump

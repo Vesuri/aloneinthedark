@@ -142,7 +142,9 @@ Async completion preserves the measured Mac callback behavior at safe user-mode
 return points, including nested file-service calls. Data and resource forks now use independent streams;
 companion creation/reload/deletion and application resource preservation pass
 Mac/native/host checks.
-Final startup requirements acceptance remains pending beyond the graphics-device stop.
+Final startup requirements acceptance now passes the original Core+$0460
+success branch with result zero, neither failure alert, all eight Gestalt
+queries and all eleven Engine capability flags.
 
 ## Requirements (provisional)
 
