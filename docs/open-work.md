@@ -9,6 +9,24 @@ design.md §5.
 Each item gives the **goal**, then the scope, then *done when*: the evidence
 required.
 
+## Priority: intro performance before M3
+
+- **P1 Comparable-Mac intro performance.**
+  - Compare matched intro scenes, steady animation and complete transitions on
+    the fixed-clock 68030 Amiga and original Mac IIx at 15.6672 MHz. Record
+    remaining machine/timing-model differences and use
+    emulated time, not host wall time, for performance claims.
+  - Identify and remove dominant algorithmic or compatibility costs. Preserve
+    original instructions, game decisions, sample content and timing; do not
+    substitute a faster emulator or focus on minor optimizations.
+  - Prioritize repeated region decoding and other measured scene-preparation
+    costs, then remeasure the whole experience rather than isolated helpers.
+
+  *Done when* matched scene/transition timings demonstrate roughly comparable
+  performance to the reference Mac, long unexplained port stalls are resolved,
+  and original frame/audio/route checks plus owner-visible playback confirm
+  the result.
+
 ## Pending verification (owner-deferred)
 
 - **M1.7b2 Rendered-picture acceptance for system windows — pending.**
@@ -127,7 +145,8 @@ required.
 ## M5 Performance
 
 - **M5.0 Deferred CPU compatibility configurations.**
-  - Revisit 68030/68040/68060 only after the functional milestones on 68020.
+  - Finish broader regression acceptance of the selected fixed-clock 68030
+    configuration; keep 68040/68060 deferred until after functional milestones.
     Add explicit configurations and verify ROM compatibility, actual CPU and
     OS-visible RAM before using them for later profiling/stairs checks.
 

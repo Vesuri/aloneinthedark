@@ -18,7 +18,7 @@ class Checks(unittest.TestCase):
                               cwd=ROOT, env=env, text=True, capture_output=True)
 
     def test_video_and_machine_combinations(self):
-        for model in ('a1200-020', 'a4000-020', 'a4000-030'):
+        for model in ('a1200-020', 'a4000-020', 'a4000-030', 'a4000-030-reference'):
             for video, ntsc, clock in (('PAL', 0, 14187580), ('NTSC', 1, 14318180)):
                 with self.subTest(model=model, video=video):
                     result = self.config(AMIGA_CONFIG=model, AMIGA_VIDEO=video)
@@ -27,11 +27,16 @@ class Checks(unittest.TestCase):
                     self.assertEqual(sum(x.startswith('--ntsc_mode=') for x in args), 1)
                     self.assertIn(f'--ntsc_mode={ntsc}', args)
                     self.assertIn('--uae_ntsc='+('true' if ntsc else 'false'), args)
-                    self.assertIn(f'--uae_cpu_frequency={clock if model == "a1200-020" else 0}', args)
-                    self.assertIn('--cpu='+('68030' if model == 'a4000-030' else '68EC020'), args)
+                    frequency = 15667200 if model == 'a4000-030-reference' else clock if model == 'a1200-020' else 0
+                    self.assertIn(f'--uae_cpu_frequency={frequency}', args)
+                    self.assertIn('--cpu='+('68030' if model.startswith('a4000-030') else '68EC020'), args)
+                    self.assertIn('--uae_cpu_speed='+('real' if frequency else 'max'), args)
+                    self.assertIn('--uae_cpu_cycle_exact='+('true' if frequency else 'false'), args)
 
     def test_default_and_invalid_video(self):
         self.assertIn('--ntsc_mode=0', self.config().stdout.splitlines())
+        self.assertIn('--cpu=68030', self.config().stdout.splitlines())
+        self.assertIn('--uae_cpu_frequency=15667200', self.config().stdout.splitlines())
         self.assertNotEqual(self.config(AMIGA_VIDEO='SECAM').returncode, 0)
 
     def test_independent_video_override_rejected(self):
