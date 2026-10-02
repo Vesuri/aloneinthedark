@@ -138,7 +138,12 @@ and other general tuning remain M5.
   shapes (`mac_emptyrgn_variants.lua`, `check_emptyrgn_variants.py`; reference
   log `m2-emptyrgn-variants-reference.log`, exit zero). They preserve the high
   words of D0/D1 and return top/left in the low words; A0 depends on the vertical
-  comparison. Native generalization and paired fixture checks remain open.
+  comparison. Native generalization and a CPU-executed fixture are prepared in
+  the working tree; the paired native check remains open.
+  RectRgn now has seven passing original CPU fixtures covering resizing,
+  empty/inverted bounds and locked/purgeable ownership (`mac_rectrgn_variants.lua`,
+  `check_rectrgn_variants.py`; `m2-rectrgn-variants-reference.log`, exit zero).
+  Native RectRgn generalization and paired checks remain open.
 
   *Done when* the host tests pass and region-clipped draws in the screens reached
   so far match MAME.

@@ -5133,3 +5133,20 @@ nonzero high words; A0 ends at body+8 when top>=bottom, otherwise body+10. A1 is
 the return PC; other registers, stack cleanup and MemError match the checks.
 The current native canonical-only adapter does not implement this full contract.
 The measured variants and native pairing therefore remain M2.8 work.
+
+### M2.8 — original RectRgn variant prerequisite
+
+`mac_rectrgn_variants.lua` observes Dark+$3D46, then uses real CPU allocation,
+state, RectRgn, size and ownership traps for seven isolated cases. A ten-byte
+empty region and 64-byte complex-region allocations become ten-byte rectangles.
+Zero/inverted height or inverted width produce canonical empty regions. Locked
+and purgeable handles also shrink to ten bytes, preserving their flags and zone.
+The input rectangle and its adjacent guards are unchanged.
+
+`check_rectrgn_variants.py` passes `m2-rectrgn-variants-reference.log` (exit zero).
+D0 becomes the zero-extended top word, except a horizontal-empty result after a
+nonempty vertical comparison returns the left word. D1–D7/A2–A6 are unchanged;
+A0 is the handle and A1 is its master-pointer value. The 24-bit Mac includes
+handle flags in A1's high byte for the locked/purgeable cases; the port's existing
+heap model stores flags separately from clean 32-bit pointers (design §4.4).
+Native implementation and paired acceptance remain open.
