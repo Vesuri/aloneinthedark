@@ -126,6 +126,16 @@ reduces the car mismatch to two adjacent pixels at (79,194) and (79,195).
 That supports the pose explanation but does not yet close the strict frame
 comparison. No production instructions or movement decisions were changed.
 
+An observer at both original actor-render calls, Dark+$3ED4 and Dark+$37AA,
+shows why the first pond checkpoint is insufficient for frog pairing. The Mac
+capture at frame 811 has camera 3, but the latest frog draw was at frame 809 in
+camera 1. Its first camera-3 frog draw runs during frame 811 and is presented
+at frame 812. `tmp/m2-demo-render-pond-inputs-reference.log` completes with
+those actual model, transform and actor inputs saved alongside the images in
+`tmp/m2-demo-render-reference/`; its scene/identity checker passes. Native
+input pairing and the final pixel comparison remain pending. Earlier transform
+replays selected a different draw and do not prove this frame's fidelity.
+
 The complete paired capture set is archived in `tmp/m2-demo-pointer-complete/`.
 Reproduce with a clean `INTROSKIP=1 FIXEDRNG=1` build and
 `AMIGA_CONFIG=a1200-020 GDBSCRIPT=demo_frames.gdb EXTRA_ARGS=--warp_mode=1 amiga/diag_run.sh 1800`.

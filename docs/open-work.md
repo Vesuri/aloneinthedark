@@ -82,8 +82,8 @@ and other general tuning remain M5.
   pointer-enabled intro and all four paired intro states now pass.
 - [ ] **M2.3g44 sequence** — finish the baseline run with ordinary randomness,
   verifying natural demo exit without input, both PAK reads and palette
-  reactivation. The current run has reached five room transitions; final
-  acceptance is still pending.
+  reactivation. The baseline run timed out after five room transitions;
+  natural exit remains unverified.
 - [ ] **M2.3g44 visual report** — demonstrate the black-interval cause and verify
   the rendered result when authorized capture is available. M2 remains open
   while its required acceptance is outstanding.
@@ -151,8 +151,11 @@ and other general tuning remain M5.
     to two adjacent pixels, unchanged across six animation-frame-1 samples.
     Replaying the frog transform, including actor position and bounds, still
     leaves 128 differing pixels. Neither experiment closes acceptance.
-    Next: capture the actual native model and transform inputs at Dark+$3ED4
-    and pair those inputs with the original renderer before further hypotheses.
+    The original first pond checkpoint precedes its first frog draw in camera 3:
+    that draw occurs at frame 811 and its image is captured at frame 812.
+    A corrected Mac capture now includes those actual model/transform inputs.
+    Next: match the native capture to an actual pond draw, observing both
+    Dark+$3ED4 and the alternate redraw call at Dark+$37AA.
     See [native demo captures](development.md#native-car-and-pond-captures-m210).
 
   *Done when* the remaining car/frog states match MAME pixel-for-pixel, or with
@@ -197,12 +200,14 @@ An unseeded native PAK acceptance run also timed out before its cleanup
 checkpoint after 25 minutes, with the interrupted PC in frame presentation.
 It did not capture scene state; neither its sequence position nor the cause of
 that missed checkpoint is established by this result.
-A replacement baseline `a1200-020` run is in progress with ordinary randomness
+A replacement baseline `a1200-020` run used ordinary randomness
 and an observer installed before the first PAK read
-(`m2-pak-ordinary-early-native.log`). It has read ITD_Ress and recorded five
-room transitions, through room 2/camera 4 at frame 734. Natural exit, the
-Present read, palette reactivation and a successful terminal result remain
-required; partial progress is not acceptance.
+(`m2-pak-ordinary-early-native.log`, exit 124). It read ITD_Ress and recorded five
+room transitions, through room 2/camera 4 at frame 734, but reached the
+2,400-second limit without another transition; the final tick count was 184,708.
+Natural exit, the Present read and palette reactivation remain unverified.
+The archived timeout does not establish the cause; inspect scene/actor state
+within the last room before another long sequence attempt.
 Routine service tests use `INTROSKIP=1`; uninterrupted playback is reserved for
 sequence acceptance. `FIXEDRNG=1` needs the matching Mac entropy fixture;
 elapsed ticks alone do not establish paired scene state.
