@@ -90,6 +90,12 @@ fixture acceptance remains. Region expansion and general tuning remain M5.
 - [ ] **M2.5** — PAL/NTSC automated display and native audio-clock checks pass;
   original-game pointer is enabled with verified inversion. Rendered-picture
   acceptance remains owner-deferred.
+  Six owner PAL captures at 23:02:38–23:03:57 show the arrow moving on black
+  without a visible old-position trail, the wait cursor, a black arrow on white,
+  and the pointer over the coloured logo and portrait-selection picture
+  (`tmp/m2-owner-pointer-pal/`). PAL game-pointer visibility passes; exact
+  colour preservation is supported by the earlier native comparisons.
+  PAL/NTSC ramp fixtures and NTSC rendered pointer acceptance remain open.
 - **M2.5 AGA 8-plane display.**
   - Lores 320×200×8 in `AitdScreen`, centred for PAL and NTSC. Video selection
     now passes the five-frame native display fixture on
