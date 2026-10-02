@@ -5,6 +5,7 @@ import hashlib
 import json
 from pathlib import Path
 import re
+import struct
 from check_aga_capture import check_frame, read, require
 
 STATES = [(1, 5, 0x1c94), (2, 5, 0x1f46), (3, 13, 0x2ed4), (4, 4, 0x5220)]
@@ -92,6 +93,8 @@ def compare(reference, native, reference_status, native_status, folder, allow_pl
     require(len(publications) == 4, 'four native publications')
     cursors = re.findall(r'^INTRO_CURSOR n=(\d+) enabled=(\d+) control=([0-9A-F]+)$', native, re.M)
     require(not cursors or cursors == [(str(n),'1','010F') for n in range(1,5)], 'four pointer palette publications')
+    inversions = re.findall(r'^INTRO_INVERSION n=(\d+) active=([01]) left=(-?\d+) top=(-?\d+)$', native, re.M)
+    require(not inversions or [row[0] for row in inversions] == ['1','2','3','4'], 'four cursor inversion records')
     transfer = read(folder, 'video-transfer-lut16.bin', 65536)
     require(hashlib.sha256(transfer).hexdigest() == 'bf0a6433c155a61989e5dc0571bae1357066ab476a24d0afaf2e2aa7094fe2aa', 'reference colour transfer')
     total = 0
@@ -107,7 +110,13 @@ def compare(reference, native, reference_status, native_status, folder, allow_pl
         original_clut = read(folder, 'intro-reference-'+n+'-clut.bin', 2056)
         for pen in range(256):
             require(clut[10+pen*8:16+pen*8] == original_clut[10+pen*8:16+pen*8], f'frame {n} palette {pen}')
-        check_frame(folder, prefix, pixels, clut, 160, 150, int(front, 16), transfer, 1 if cursors else 0)
+        overlay = None
+        if inversions:
+            _, active, left, top = inversions[int(n)-1]
+            masks = struct.unpack('>16H', read(folder, prefix+'-inversion.bin', 32))
+            if active == '1':
+                overlay = (int(left), int(top), masks)
+        check_frame(folder, prefix, pixels, clut, 160, 150, int(front, 16), transfer, 1 if cursors else 0, overlay)
         differences = [(x, y) for y in range(200) for x in range(320)
                        if pixels[(y+150)*640+x+160] != original[(y+150)*640+x+160]]
         if differences and allow_placeholder:

@@ -73,6 +73,20 @@ no game text or layout was changed. Reproduce the accepted comparison with:
 python3 tools/compare_frames.py tmp/m2-intro-text-reference.log tmp/m2-intro-native-full.log --reference-status 0 --native-status 0 --allow-placeholder-text
 ```
 
+The enabled-pointer baseline repeat also passes (`tmp/m2-intro-pointer-native-full.log`,
+exit 0): 956 verified/presented frames, 944 partial updates, zero failures,
+840/840 book batches and 128,210 ticks. All four checkpoints use BPLCON4 $010F;
+the cursor inversion overlay is inactive at those states. The observer records
+its mask and position, and the comparator accounts for an active overlay while
+still requiring the underlying game pixels to match. Both logos remain exact;
+title/credits retain only the same 1,015/1,722 verified owned-glyph differences.
+The complete capture set is archived in `tmp/m2-intro-pointer-accepted/`.
+
+```sh
+python3 tools/check_intro.py tmp/m2-intro-pointer-native-full.log --status 0
+python3 tools/compare_frames.py tmp/m2-intro-text-reference.log tmp/m2-intro-pointer-native-full.log --reference-status 0 --native-status 0 --allow-placeholder-text
+```
+
 The four intro states precede the first Engine random call (the existing
 64-call entropy fixture covers subsequent menu/demo selection). Car/frog
 state-pair acceptance remains open under M2.10; rendered-window acceptance

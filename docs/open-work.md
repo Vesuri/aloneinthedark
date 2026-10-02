@@ -14,7 +14,7 @@ design.md §5.
   944 partial updates and all 840 book batches, pass C2P verification. Four
   instruction-matched intro frames pass paired pixel/palette/AGA checks; both
   logos are exact and title/credits have only verified owned-font differences.
-  This full-intro result predates pointer enablement; its rerun remains below.
+  The pointer-enabled rerun passes the same complete coverage and comparisons.
 - M2.1c now passes actual native reads of both PAKs: 1,536 bytes from
   ITD_Ress and 17,920 bytes from Present match the installed files exactly.
   The intervening palette reactivation matches the Mac; the completed
@@ -78,9 +78,8 @@ and other general tuning remain M5.
 - [ ] **M2.5** — PAL/NTSC automated display and native audio-clock checks pass;
   original-game pointer is enabled with verified inversion. Rendered-picture
   acceptance remains owner-deferred.
-- [ ] **M2.10** — repeat the intro regression with the enabled pointer, then
-  finish the remaining car/frog frame acceptance. Four paired intro states
-  passed before pointer enablement.
+- [ ] **M2.10** — finish the remaining car/frog frame acceptance. The full
+  pointer-enabled intro and all four paired intro states now pass.
 - [ ] **M2.3g44 visual report** — demonstrate the black-interval cause and verify
   the rendered result when authorized capture is available. M2 remains open
   while its required acceptance is outstanding.
@@ -129,11 +128,11 @@ and other general tuning remain M5.
     frames pass: Dark2+$1C94, Dark2+$1F46, Dan2+$2ED4 and Dark+$5220.
     Both logo states are exact; title/credits differ only by verified D6 owned
     glyphs (1,015/1,722 pixels), with all palettes and AGA publications exact.
-    `m2-intro-text-reference.log` and `m2-intro-native-full.log` both exit 0.
+    `m2-intro-text-reference.log` and `m2-intro-pointer-native-full.log` both
+    exit 0. The pointer-enabled run verifies all 956 frames (944 partial),
+    840/840 book batches and matching pointer palette mode at all four states.
     Reproduction and acceptance details are in
     [development.md](development.md#full-intro-c2p-acceptance-m26).
-    Repeat this regression after pointer enablement; the observer now verifies
-    the matching pointer palette mode at all four states.
   - The paired entropy fixture already matches 64 original Engine calls;
     these intro states precede its first call. Use that fixture for the remaining
     near-camera car endpoint and frog transition, with original scene/animation
@@ -141,7 +140,10 @@ and other general tuning remain M5.
     Fresh captures (`m2-demo-frames-reference.log`, exit 0) preserve matching
     logged actor bytes, but the candidate labelled “pond” still renders a car
     scene. Room/camera values and Dark+$5BE8 alone do not identify the frog
-    transition. Select and inspect the actual scene before paired acceptance.
+    transition. A corrected survey establishes camera 3 at the first completed
+    pond frame after that transition. Fresh car/pond captures now have matching
+    logged actor bytes (`m2-demo-paired-reference.log`, exit 0); native pairing
+    remains open.
 
   *Done when* the remaining car/frog states match MAME pixel-for-pixel, or with
   documented and explained differences, alongside the now-passing logo and
@@ -159,10 +161,11 @@ Already verified (details and capture names in [development.md](development.md))
   manual input through all nine Mac room/camera transitions. Actor identity,
   room, life and track agree; the final entrance position is 105 versus 109,
   followed by native completion at 122. Exact car/animation frame pairing remains open.
-- The previously labelled first-pond checkpoint has matching palette, background
-  and AGA publication; two pixels differ inside an actor with different animation
-  state. Its scene label needs revalidation: a fresh capture selected by the same
-  transition condition still shows the car scene. This is not frog acceptance.
+- Reinspection confirms that the older first-pond captures do show the pond,
+  with matching palette, background and AGA publication; two pixels differ
+  inside an actor with different animation state. The later mislabeled capture
+  used a different, incorrect post-transition camera condition. Exact frog
+  state-pair acceptance remains open.
 - The idle menu has all 64,000 pixels, plane pointers and 256 colours verified.
   Read-only mode checks pass after 135 OS handbacks and at its original 900-tick
   exit. Persistent mode loss at those checkpoints is ruled out; transient
