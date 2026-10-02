@@ -161,7 +161,7 @@ EXTRA_DEFINES += -DAITD_REGION_PROBE
 endif
 ifeq ($(PAKPROBE),1)
 EXTRA_DEFINES += -DAITD_PAK_READ_PROBE
-PROBE_SYMS_PAK = g_pakProbeMask g_pakProbePB g_pakProbeCall g_pakProbeFileID g_rebindProbeRegs g_rebindProbeFrame g_rebindProbeArgs
+PROBE_SYMS_PAK = g_pakProbeMask g_pakProbePB g_pakProbeCall g_pakProbeFileID g_rebindProbeRegs g_rebindProbeFrame g_rebindProbeArgs g_pakProbeFixed
 endif
 ifeq ($(APPLEEVENTPROBE),1)
 APPLEEVENTFORM ?= 0

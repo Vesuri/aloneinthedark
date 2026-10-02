@@ -87,7 +87,9 @@ and other general tuning remain M5.
   verifying natural demo exit without input, both PAK reads and palette
   reactivation through all nine reference room/camera transitions. Ordinary
   baseline runs stall in room 2; the latest copy-span trial also failed its
-  256-frame movement guard. Resolve that stall; natural exit remains unverified.
+  256-frame movement guard. Resolve that stall; baseline natural exit remains unverified.
+  The faster `a4000-030` ordinary run passes all nine transitions, natural exit,
+  both PAK payloads and palette reactivation; this does not close the baseline gap.
 - [ ] **M2.3g44 visual report** — demonstrate the black-interval cause and verify
   the rendered result when authorized capture is available. M2 remains open
   while its required acceptance is outstanding.
@@ -196,6 +198,14 @@ fixtures preserve original instructions and timers. They locate the next
 investigation earlier in the approach to the waypoint: the stalled state's
 turn calculation itself agrees with the Mac. They do not prove the cause of
 entering that state or complete sequence acceptance.
+The unmodified runtime subsequently completes the ordinary route on the faster
+`a4000-030` test machine (`m2-ordinary-fast-native-full.log`, exit 0): choice 0,
+nine transitions, zero input at the checkpoints and natural exit at tick 26,923.
+Both PAK payloads and palette reactivation pass, with 1,490 windows and 41,078
+balanced services. The maintained `pak_reads.gdb` now supports ordinary builds;
+`check_pak_native.py --ordinary-entropy` requires the full reference route and
+natural exit as well as exact payloads. This supports investigating execution
+timing; it does not prove that speed alone explains the baseline failure.
 Routine service tests use `INTROSKIP=1`; uninterrupted playback is reserved for
 sequence acceptance. `FIXEDRNG=1` needs the matching Mac entropy fixture;
 elapsed ticks alone do not establish paired scene state.

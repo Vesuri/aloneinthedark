@@ -49,6 +49,11 @@ extern "C" void aitdDriverClockProbe();
 extern "C" {
 #ifdef AITD_PAK_READ_PROBE
 volatile uint16_t g_pakProbeMask=0;
+#ifdef AITD_FIXED_GAME_RANDOM
+volatile uint16_t g_pakProbeFixed=1;
+#else
+volatile uint16_t g_pakProbeFixed=0;
+#endif
 volatile uint32_t g_pakProbePB=0,g_pakProbeCall=0,g_pakProbeFileID=0;
 __attribute__((noinline)) void aitdPakReadProbe() { __asm__ volatile("nop" ::: "memory"); }
 volatile uint32_t g_rebindProbeRegs=0,g_rebindProbeFrame=0,g_rebindProbeArgs=0;

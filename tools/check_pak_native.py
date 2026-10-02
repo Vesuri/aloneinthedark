@@ -9,14 +9,31 @@ from resource_fork import read_resource_fork
 
 ROOT = Path(__file__).resolve().parents[1]
 
-def check(text, status, folder=ROOT/'tmp'):
+def check(text, status, folder=ROOT/'tmp', ordinary_entropy=False):
     if status != 0 or re.search(r'FAIL|Error in|TIMEOUT|Program received signal', text):
         raise ValueError('observer did not finish normally')
     complete = re.findall(r'^PASS original native PAK reads calls=(\d+) itd_payloads=(\d+) present_payloads=(\d+) windows=(\d+) resources=(\d+) services=(\d+)/(\d+)$', text, re.M)
     if len(complete) != 1 or text.count('[Inferior 1 (Remote target) detached]') != 1:
         raise ValueError('missing or duplicate positive completion')
     random = re.findall(r'^PAK_RANDOM calls=(\d+) seed=([0-9A-F]+)$', text, re.M)
-    if len(random) != 1 or int(random[0][0]) == 0:
+    if ordinary_entropy:
+        if random or text.count('PAK_RANDOM mode=ordinary') != 1:
+            raise ValueError('ordinary entropy build mode')
+        exits = re.findall(r'^UNSEEDED_EXIT ticks=(\d+) rooms=(\d+) choice=([01]) flag=1 input=0/0/0$', text, re.M)
+        rooms = re.findall(r'^UNSEEDED_ROOM n=(\d+) room=(\d+) camera=(\d+) ticks=(\d+) frames=(\d+)$', text, re.M)
+        if len(exits) != 1 or not rooms or int(exits[0][1]) != len(rooms):
+            raise ValueError('ordinary entropy natural idle completion')
+        if [int(r[0]) for r in rooms] != list(range(1,len(rooms)+1)):
+            raise ValueError('ordinary entropy room ordering')
+        # Original full idle route: tmp/m2-later-rooms-reference.log. A natural
+        # exit alone must not accept a route that skipped the remaining rooms.
+        expected = [(0,1),(1,2),(0,1),(5,1),(2,4),(7,3),(1,1),(0,2),(6,0)]
+        if [(int(r[1]),int(r[2])) for r in rooms] != expected:
+            raise ValueError('ordinary entropy complete original room/camera route')
+        if any(int(r[3]) <= 0 or int(r[4]) <= 0 for r in rooms) or any(int(a[3]) > int(b[3]) or int(a[4]) > int(b[4]) for a,b in zip(rooms,rooms[1:])) or int(rooms[-1][3]) > int(exits[0][0]):
+            raise ValueError('ordinary entropy scene progression')
+        print(f'PASS ordinary entropy: natural idle exit after {len(rooms)} room transitions, zero input at each checkpoint')
+    elif len(random) != 1 or int(random[0][0]) == 0:
         raise ValueError('deterministic original random-call coverage')
     calls, itd, present, windows, resources, entered, completed = map(int, complete[0])
     if not all((itd, present, windows, resources)) or entered != completed:
@@ -66,8 +83,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('log', type=Path)
     parser.add_argument('--status', type=int, required=True)
+    parser.add_argument('--ordinary-entropy', action='store_true')
     args = parser.parse_args()
     try:
-        check(args.log.read_text(), args.status)
+        check(args.log.read_text(), args.status, ordinary_entropy=args.ordinary_entropy)
     except (OSError, ValueError, KeyError, struct.error) as error:
         raise SystemExit('FAIL original native PAK payloads: '+str(error))

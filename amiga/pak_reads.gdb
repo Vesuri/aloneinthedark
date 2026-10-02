@@ -1,12 +1,17 @@
-# INTROSKIP=1 FIXEDRNG=1 PAKPROBE=1. Observe only real original-game PBRead calls.
+# INTROSKIP=1 PAKPROBE=1. FIXEDRNG=1 checks payloads; without it require natural idle exit too.
 set pagination off
 set confirm off
 set width 0
-if g_fixedRandomCalls!=0 || g_fixedRandomSeed!=1
- echo FAIL PAK deterministic startup fixture\n
- detach
- quit 1
+if g_pakProbeFixed
+ if g_fixedRandomCalls!=0 || g_fixedRandomSeed!=1
+  echo FAIL PAK deterministic startup fixture\n
+  detach
+  quit 1
+ end
 end
+set $unseeded_rooms=0
+set $unseeded_exit=0
+set $unseeded_armed=0
 set $pak_n=0
 set $pak_itd=0
 set $pak_present=0
@@ -22,7 +27,37 @@ tbreak aitdPaletteRebindProbe
 break aitdPakReadProbe
 set $pak_read_bp=$bpnum
 continue
-while $pak_itd==0 || $pak_present==0 || $pak_rebind_verified==0
+while $pak_itd==0 || $pak_present==0 || $pak_rebind_verified==0 || (!g_pakProbeFixed && !$unseeded_exit)
+ if !g_pakProbeFixed && !$unseeded_armed
+  set $unseeded_dark=(unsigned long)s_segments[4].begin
+  if *(unsigned long*)($unseeded_dark+0x5528)!=0x4eba00ac || *(unsigned short*)($unseeded_dark+0x552c)!=0x4e71 || *(unsigned short*)($unseeded_dark+0x5be8)!=0x4eb9
+   echo FAIL unseeded original route bytes\n
+   detach
+   quit 1
+  end
+  break *($unseeded_dark+0x5be8)
+  break *($unseeded_dark+0x552c)
+  set $unseeded_armed=1
+ end
+ if $unseeded_armed && ($pc==$unseeded_dark+0x5be8 || $pc==$unseeded_dark+0x552c)
+  if g_pakProbeFixed || *(unsigned short*)($a5-0x11af4) || *(unsigned short*)($a5-0x11af8) || *(unsigned short*)($a5-0x11af0)
+   echo FAIL unseeded route entropy/input\n
+   detach
+   quit 1
+  end
+  if $pc==$unseeded_dark+0x5be8
+   set $unseeded_rooms=$unseeded_rooms+1
+   printf "UNSEEDED_ROOM n=%u room=%u camera=%u ticks=%u frames=%u\n",$unseeded_rooms,*(unsigned short*)($a5-0xcd68),*(unsigned short*)($a5-0xcd70),g_macTicks,g_macFramesPresented
+  else
+   if $unseeded_rooms!=9 || $unseeded_exit || *(unsigned short*)($a5-0xd862)!=1
+    echo FAIL unseeded natural idle completion\n
+    detach
+    quit 1
+   end
+   set $unseeded_exit=1
+   printf "UNSEEDED_EXIT ticks=%u rooms=%u choice=%u flag=%u input=0/0/0\n",g_macTicks,$unseeded_rooms,*(unsigned short*)($a5-0xd8f2),*(unsigned short*)($a5-0xd862)
+  end
+ else
  if $pc==aitdPaletteRebindProbe
   set $rebind_regs=(unsigned long*)g_rebindProbeRegs
   set $rebind_frame=(unsigned char*)g_rebindProbeFrame
@@ -106,7 +141,8 @@ while $pak_itd==0 || $pak_present==0 || $pak_rebind_verified==0
    quit 1
   end
  end
- if $pak_itd==0 || $pak_present==0 || $pak_rebind_verified==0
+ end
+ if $pak_itd==0 || $pak_present==0 || $pak_rebind_verified==0 || (!g_pakProbeFixed && !$unseeded_exit)
   enable $pak_read_bp
   continue
  end
@@ -116,7 +152,11 @@ if g_pakProbeMask!=3 || $pak_rebind_verified!=1
  detach
  quit 1
 end
-printf "PAK_RANDOM calls=%u seed=%X\n",g_fixedRandomCalls,g_fixedRandomSeed
+if g_pakProbeFixed
+ printf "PAK_RANDOM calls=%u seed=%X\n",g_fixedRandomCalls,g_fixedRandomSeed
+else
+ echo PAK_RANDOM mode=ordinary\n
+end
 printf "PASS original native PAK reads calls=%u itd_payloads=%u present_payloads=%u windows=%u resources=%u services=%u/%u\n",$pak_n,$pak_itd,$pak_present,g_systemWindows,g_resourceRuntimeReads,g_macServiceEntered,g_macServiceCompleted
 detach
 quit 0
