@@ -39,8 +39,11 @@ Both baseline native fixtures pass five clean C2P frames, every pixel and all
 256 colours, both sprite buffers, inversion, movement without a new frame,
 clipping, hiding, disabling and cleanup. Cursor work ends by line 17 in PAL
 and NTSC, with no late publications. The original-game first viewport also
-passes with pointer mode enabled. Actual rendered acceptance remains deferred
-under the owner's host-window restriction.
+passes with pointer mode enabled. Owner-provided F12+S captures on 2026-10-02
+now pass rendered acceptance: the game arrow on black, white and coloured
+artwork, plus the PAL/NTSC ramp fixtures with movement and edge clipping.
+See the M2 completion record in [development.md](development.md). Autonomous
+host-window capture remains restricted; these were saved by the owner.
 
 ## Obscuring
 

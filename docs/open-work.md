@@ -6,6 +6,11 @@ because the Git log records finished work. The design and its rationale are in
 [design.md](design.md), cited below by § number; owner decisions D1–D8 are in
 design.md §5.
 
+**M2 completed 2026-10-02.** Startup, intro, original demo, music and PAL/NTSC
+rendered display acceptance pass. Evidence is in [development.md](development.md).
+M3 is the next implementation milestone; the separately deferred M1.7b2 window
+fixture acceptance remains listed below.
+
 **Current state:**
 - Original CODE 1 loads, expands the exact A5 world, relocates Core and enters
   startup on the 68020 without an FPU. Resources and hidden compatibility state
@@ -31,10 +36,9 @@ design.md §5.
   transitions and exits naturally without demo input, with 1,500 windows,
   111 resource reads and 70,729 balanced services
   (`m2-sync-ordinary-native-full.log`, exit 0). Both payload and palette
-  checkers pass. Rendered-picture acceptance remains pending.
-  A later normal visible PAL run (2026-10-02) produced a roughly six-minute
-  black interval and an owner report of renewed car circling; repeatability
-  is reopened below. The earlier successful diagnostic run is not a fix proof.
+  checkers pass. The subsequent six-minute black interval was traced to repeated
+  sample conversion and free-memory copying. Both are fixed; the owner video
+  confirms a 7.95-second transition and completion of the visible demo.
 - The title-screen copy now matches the Mac with documented placeholder text
   differences. The credits now use the measured 16-pixel line spacing and owned dot-above
   artwork, including â in the original “Yaâl” credit. Game-window lines and
@@ -79,102 +83,6 @@ required.
   *Done when* actual rendered snapshots are stable through the 1 MB/64 KB probe,
   `window-core` and production `boot` pass, and the window entry/exit cost is
   recorded with the full acceptance result. Only then is M1.7b complete.
-
-## M2 Startup to intro
-
-Delivery update (owner, 2026-10-02): finish M2 without blocking on
-micro-optimizations. Work the actionable items below in order. The owner video
-now resolves the reported black interval and demo circling; PAL/NTSC rendered
-fixture acceptance remains. Region expansion and general tuning remain M5.
-
-- [ ] **M2.5** — PAL/NTSC automated display and native audio-clock checks pass;
-  original-game pointer is enabled with verified inversion. Rendered-picture
-  acceptance remains owner-deferred.
-  Six owner PAL captures at 23:02:38–23:03:57 show the arrow moving on black
-  without a visible old-position trail, the wait cursor, a black arrow on white,
-  and the pointer over the coloured logo and portrait-selection picture
-  (`tmp/m2-owner-pointer-pal/`). PAL game-pointer visibility passes; exact
-  colour preservation is supported by the earlier native comparisons.
-  PAL rendered ramp/pattern/pointer acceptance also passes: the three owner
-  captures at 23:10–23:11 show the full ramp, pointer movement and edge clipping
-  (`tmp/m2-owner-ramp-pal/`), paired with exact five-frame native validation
-  (`m2-visual-pal-native-full.log`, exit 0, checker `--inversion --visual`).
-  NTSC rendered ramp/pattern/pointer acceptance remains open.
-- **M2.5 AGA 8-plane display.**
-  - Lores 320×200×8 in `AitdScreen`, centred for PAL and NTSC. Video selection
-    now passes the five-frame native display fixture on
-    `a1200-020` in both standards, including all planes, colours, partial
-    updates, mode registers and OS restoration (`m2-video-pal-native-full.log`,
-    `m2-video-ntsc-native-full.log`, both exit 0). PAL advances 83 game ticks
-    over 69 fields; NTSC advances 90 ticks over 90 fields. Both mode checkers
-    pass. These are automated checks, not by-eye acceptance.
-  - A 256-colour copper palette through BPLCON3 banks, plus verified sprite
-    palette ownership before enabling the pointer; preserve all game colours.
-    The two-sprite helper now preserves all 256 game RGBs with playfield XOR 1
-    and the matching palette permutation, using sprite 0 for white and sprite 7
-    for black. Original startup reaches CURS 132's two inversion pixels; the
-    measured Mac operation XORs each indexed pixel with 255 and restores it on
-    hiding without changing the palette. Native inversion retains only its
-    applied mask, removes it from copied spans, and preserves clean C2P buffers.
-    Baseline PAL/NTSC fixtures pass exact pixels/colours, motion without a new
-    frame, clipping, hiding, disabling, cleanup and clean partial conversion
-    (`m2-cursor-motion-pal-full.log` and `m2-cursor-motion-ntsc-full.log`, exit 0).
-    No publications are late; cursor work ends by line 17 in both standards.
-    Original-game startup now passes frame 9 with the pointer enabled and all
-    pixels/colours exact (`m2-pointer-game-startup-full.log`, exit 0).
-    Rendered acceptance remains pending; see [cursor.md](cursor.md).
-  - Publication in the VBI. Select the matching PAL/NTSC Paula clock for
-    effect pitch and completion timing.
-    Mode-dependent display placement, 60 Hz game ticks and effect/song clocks
-    are implemented. Sanitizer-backed host checks pass for both standards.
-    Native original-effect captures also pass in both standards: selected
-    Paula programming period, paired PCM, exact duration, natural completion
-    and DMA/sample cleanup (`m2-video-effect-pal-native-full.log` and
-    `m2-video-effect-ntsc-native-full.log`, both exit 0). The earlier failed
-    guard read write-only AUD0PER; the maintained observer checks the actual
-    Paula programming call instead. By-eye acceptance remains open.
-
-  *Done when* a test pattern and a 256-colour ramp display correctly (by eye, plus
-  a gdb register dump) on `a1200-020` in PAL and NTSC, and the visible pointer
-  preserves game colours, and effect period/duration use the selected video
-  clock. Other processors remain deferred (D2).
-
-M2.3g44 visible acceptance now passes: the owner recording measures a 7.95-second
-menu-to-landscape black interval and shows the demo progressing to its final
-room and returning to the logo. See [development.md](development.md) for the
-recording, timing and supporting native evidence. PAL/NTSC fixture acceptance
-above remains open.
-
-Already verified (details and capture names in [development.md](development.md)):
-- After sample reuse, a full uninterrupted intro and ordinary-randomness run
-  completes all nine transitions and exits naturally at tick 54,416, choice 1,
-  without demo input (`m2-song-reuse-full-route-native-full.log`, exit 0).
-  The previous room-2 stall guard is crossed without stalling. Both original
-  PAK payloads and palette reactivation pass; 1,524 windows, 111 resource reads
-  and 56,819 balanced services. Build uses `PAKPROBE=1`, without `INTROSKIP`
-  or `FIXEDRNG`; captures are archived in `tmp/m2-song-reuse-full-route-native/`.
-- The baseline ordinary-randomness demo completes all nine original
-  room/camera transitions and exits naturally at tick 60,426 with choice 0.
-  Both original PAK payloads and palette reactivation pass. The earlier room-2
-  stall is absent in that particular run after eliminating back-buffer copies
-  of spans immediately overwritten by C2P; the later visible-run report is now resolved by the owner recording. Original movement instructions and timers are unchanged.
-  Car/frog frame fidelity passes with matched actual draw inputs.
-- The idle menu has all 64,000 pixels, plane pointers and 256 colours verified.
-  Read-only mode checks pass after 135 OS handbacks and at its original 900-tick
-  exit. Persistent mode loss at those checkpoints is ruled out; transient
-  handback behavior and host rendering remain unverified.
-- Normal Enter input selects new game and the portrait; all eight letter pages
-  pass strings, layout, artwork, palettes and AGA decoding, with only the owned
-  placeholder glyph artwork differing. The Mac idle route waits about 15 seconds
-  at the menu before the car/pond demo; it does not automatically show the letter.
-- Owner screenshots establish visible logo, title, menu, portraits and letter
-  after manual Enter, and eventual visible landscape/car/pond progression. They
-  do not establish the cause of the preceding black interval. The DOS video is
-  content context only, never the Macintosh pixel/font reference.
-
-The black-interval acceptance is complete: timing measurements identified
-repeated sample conversion and free-memory copying, and the owner video verifies
-the corrected rendered result. See [development.md](development.md) for evidence.
 
 ## M3 Playable
 

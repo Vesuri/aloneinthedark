@@ -1,5 +1,40 @@
 # Development
 
+## M2 completion — 2026-10-02
+
+M2 startup-to-intro acceptance is complete on the baseline `a1200-020`.
+The final PAL/NTSC visual fixture passes exact five-frame pixels, 256 colours,
+pointer inversion/clipping/hiding, register geometry, publication and cleanup:
+`tmp/m2-visual-pal-native-full.log` and `tmp/m2-visual-ntsc-native-full.log`,
+both exit 0 and both accepted by `check_cursor_capture.py --inversion --visual`.
+Their captures are archived under `tmp/m2-visual-{pal,ntsc}-native/`.
+
+Owner F12+S screenshots provide the separate rendered evidence:
+`tmp/m2-owner-ramp-pal/` (23:10–23:11) and `tmp/m2-owner-ramp-ntsc/`
+(23:15:22 and 23:15:28). The full ramp and pattern are intact in both standards;
+the patterned pointer is visible, moves and clips at the edge without leaving
+a visible old-position trail. The differing vertical placement matches the
+PAL/NTSC register captures. Six PAL game screenshots under
+`tmp/m2-owner-pointer-pal/` additionally show the actual arrow on black, white
+and coloured artwork, plus the wait cursor.
+
+Completion audit retains the prior independently scoped evidence:
+
+| Requirement | Accepted evidence |
+| --- | --- |
+| Full uninterrupted intro and partial conversion | `m2-sync-intro-native-full.log`: 956 frames, 944 partial, 840 book batches, zero failures |
+| State-matched Mac rendering | Four paired intro captures and `m2-line-tie-demo-native-full.log`; exact car/frog pixels and palettes, documented owned-font differences only for text |
+| Menu/new game/story | `m2-story-pages-final-native-full.log`: normal Enter and all eight letter pages |
+| Original demo and data reads | `m2-song-reuse-full-route-native-full.log`: all nine transitions, natural exit, exact PAK payloads and palette reactivation |
+| Visible loading and demo reliability | Owner video detailed below: 7.95-second blank interval and visible completion through final room to logo |
+| Music and sample ownership | `m2-song-reuse-native-full.log`: all 3,736 events, byte-exact PCM variants, effect priority and cleanup |
+| PAL/NTSC sound timing | `m2-video-effect-{pal,ntsc}-native-full.log`: correct periods, duration and natural completion |
+| Host/native regressions after loading fix | `m2-movehigh-gap-host-suite.log`, `m2-movehigh-native-regression.log`, `m2-movehigh-heap-native-full.log`: all pass |
+
+The final normal build is recorded in `tmp/m2-complete-production-build.log`.
+No fixture flag is part of the production build. M3 gameplay work and the
+owner-deferred M1.7b2 system-window rendered fixture remain separate open work.
+
 ## Build dependencies
 
 The production game is the Amiga executable; there is no host game renderer.
