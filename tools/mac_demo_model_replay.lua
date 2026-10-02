@@ -1,6 +1,6 @@
--- Original car endpoint and first pond camera; diagnostic entropy only.
--- The first post-transition Dark+$5658 has camera 3, not the prior camera 1.
--- Original Engine random/selection and scene code run unchanged.
+-- Replay recorded native model/transform inputs in the original Mac renderer.
+-- Diagnostic data fixture only: original game instructions stay unchanged.
+-- AITD_REPLAY_KIND=car or frog; first run amiga/demo_frames.gdb.
 local mac=dofile('tools/mame_mac_input.lua')
 local meta=dofile('tmp/mac-trap-map.lua')
 local cpu=manager.machine.devices[':maincpu'];local mem=cpu.spaces.program
@@ -26,8 +26,21 @@ for i=1,#app do cond=cond..string.format(' && b@0x%x==0x%x',0x910+i,app:byte(i))
 local armed,done,skip=false,false,false
 local thePort,ret,callerSegment,callerOffset
 local seed,mixed,count=1,1,0
-local point,roompc,last,renderpc,redrawpc
-local renders={}
+local point,renderpc,last
+local replayed=false
+local kind=assert(os.getenv('AITD_REPLAY_KIND'),'REPLAY / KIND REQUIRED')
+assert(kind=='car' or kind=='frog','REPLAY / KIND')
+local index=kind=='car' and 1 or 2
+local function readNative(suffix,size)
+ local f=assert(io.open('tmp/demo-native-'..index..'-render-'..suffix..'.bin','rb'))
+ local data=f:read('*a');f:close();assert(#data==size,'REPLAY / INPUT EXTENT '..suffix)
+ return data
+end
+local model=readNative('body',kind=='car' and 6452 or 2040)
+local args=readNative('args',16)
+local actorData=readNative('actor',160)
+local function word(data,offset)return string.unpack('>I2',data,offset+1)end
+assert(word(model,0)==3 and word(model,14)==10,'REPLAY / NATIVE MODEL HEADER')
 local pondLoaded=false
 local frames=0
 local function block(a,n)
@@ -38,15 +51,10 @@ local function capture(kind)
  local a5=cpu.state.A5.value
  local pm=ptr(ptr(ptr(ptr(0x8a4))+22));local clut=ptr(ptr(pm+42))
  assert(mem:read_u16(pm+32)==8 and (mem:read_u16(pm+4)&0x3fff)==640,'DEMO / DISPLAY')
- local render=assert(renders[kind=='car' and 286 or 289],'DEMO / MISSING RENDER INPUT')
- return {render=render,kind=kind,frame=frames,ticks=mem:read_u32(0x16a),random=count,room=mem:read_u16(a5-0xcd68),camera=mem:read_u16(a5-0xcd70),actor=bytes(a5-0xb292,160),
+ return {kind=kind,frame=frames,ticks=mem:read_u32(0x16a),random=count,room=mem:read_u16(a5-0xcd68),camera=mem:read_u16(a5-0xcd70),actor=bytes(a5-0xb292,160),
   screen=block(mem:read_u32(pm),307200),clut=block(clut,2056),a5=block(a5-75616,79392)}
 end
 local function save(c)
- for _,kind in ipairs({'body','args','actor','a5'})do
-  local f=assert(io.open('tmp/demo-reference-'..c.kind..'-render-'..kind..'.bin','wb'));f:write(c.render[kind]);f:close()
- end
- print(string.format('DEMO_RENDER_PAIR kind=%s renderFrame=%u captureFrame=%u renderRoom=%u renderCamera=%u',c.kind,c.render.frame,c.frame,c.render.room,c.render.camera))
  for _,kind in ipairs({'screen','clut','a5'})do
   local f=assert(io.open('tmp/demo-reference-'..c.kind..'-'..kind..'.bin','wb'));f:write(c[kind]);f:close()
  end
@@ -55,13 +63,10 @@ end
 local function arm()
  local dark=address(4)
  if dark and count>0 then
-  assert(bytes(dark+0x5658,4)=='4E56FFF8' and bytes(dark+0x5be8,2)=='4EB9','DEMO / ORIGINAL CHECKPOINT BYTES')
-  point=dark+0x5658;cpu.debug:bpset(point,'1','')
-  assert(bytes(dark+0x3ed4,2)=='4EB9','DEMO / ORIGINAL RENDER CALL')
-  assert(bytes(dark+0x37aa,2)=='4EB9','DEMO / ORIGINAL REDRAW CALL')
-  redrawpc=dark+0x37aa;cpu.debug:bpset(redrawpc,'w@(a3)==0x11e || w@(a3)==0x121','')
-  renderpc=dark+0x3ed4;cpu.debug:bpset(renderpc,'w@(a3)==0x11e || w@(a3)==0x121','')
-  if not pondLoaded then roompc=dark+0x5be8;cpu.debug:bpset(roompc,'1','')end
+  assert(bytes(dark+0x5658,4)=='4E56FFF8' and bytes(dark+0x3ed4,2)=='4EB9','REPLAY / ORIGINAL RENDER BYTES')
+  point=dark+0x5658;renderpc=dark+0x3ed4
+  if replayed then cpu.debug:bpset(point,'1','')
+  else cpu.debug:bpset(renderpc,string.format('w@(a3)==0x%x && w@(a3+2)==0x%x && w@(a3+0x4a)==0x%x && w@(a3+0x58)==0x%x && w@(a5-0xcd68)==0 && w@(a5-0xcd70)==%u',word(actorData,0),word(actorData,2),word(actorData,0x4a),word(actorData,0x58),kind=='car' and 0 or 3),'')end
  end
  local tests={'w@(d@(sp+2))==0xa861'}
  if not thePort then tests[#tests+1]='w@(d@(sp+2))==0xa86e' end
@@ -78,40 +83,31 @@ emu.register_periodic(function()
  local ok,err=pcall(function()
   dbg:command('bpclear')
   local pc=cpu.state.PC.value
-  if renderpc and (pc==renderpc or pc==redrawpc) then
-   local actor,sp,a5=cpu.state.A3.value,cpu.state.A7.value,cpu.state.A5.value
-   local id=mem:read_u16(actor)
-   local size=id==286 and 6452 or 2040
-   assert(mem:read_u16(actor+2)==(id==286 and 266 or 267),'DEMO / BODY ID')
+  if renderpc and pc==renderpc then
+   assert(not replayed,'REPLAY / DUPLICATE')
+   local sp=cpu.state.A7.value
+   local actor=cpu.state.A3.value
    local body=ptr(sp+12)
-   assert(mem:read_u16(body)==3 and mem:read_u16(body+14)==10,'DEMO / MODEL HEADER')
-   renders[id]={frame=frames,room=mem:read_u16(a5-0xcd68),camera=mem:read_u16(a5-0xcd70),body=block(body,size),args=block(sp,16),actor=block(actor,160),a5=block(a5-75616,79392)}
-   print(string.format('DEMO_RENDER offset=%X actor=%u frame=%u room=%u camera=%u animFrame=%u args=%s',pc-address(4),id,frames,mem:read_u16(a5-0xcd68),mem:read_u16(a5-0xcd70),mem:read_u16(actor+0x4a),bytes(sp,16)))
-   arm();return
+   assert(mem:read_u16(body)==3 and mem:read_u16(body+14)==10,'REPLAY / ORIGINAL MODEL HEADER')
+   print('REPLAY_MODEL_BEFORE kind='..kind..' args='..bytes(sp,16)..' actor='..bytes(actor,160))
+   local header=block(body+16,10)
+   -- Dark3+$1E0A skips this dynamic header. Keep its Mac pointers/time;
+   -- replay only measured model geometry and the actual render arguments.
+   for i=0,#model-1 do
+    if i<16 or i>=26 then mem:write_u8(body+i,model:byte(i+1))end
+   end
+   assert(block(body+16,10)==header,'REPLAY / MAC DYNAMIC HEADER PRESERVED')
+   for i=0,11 do mem:write_u8(sp+i,args:byte(i+1))end
+   -- The foreground mask also consumes the actor's bounds and transform.
+   for _,span in ipairs({{8,12},{0x1c,18},{0x5a,6}})do
+    for i=span[1],span[1]+span[2]-1 do mem:write_u8(actor+i,actorData:byte(i+1))end
+   end
+   print('REPLAY_MODEL_INPUT kind='..kind..' args='..bytes(sp,16)..' body='..bytes(body,64))
+   replayed=true;arm();return
   end
-  if roompc and pc==roompc then
-   local a5=cpu.state.A5.value
-   if mem:read_u16(a5-0xcd68)==0 and mem:read_u16(a5-0xcd70)==1 then
-    assert(last,'DEMO / NO NEAR CAR BEFORE POND');pondLoaded=true
-   end
-   arm();return
-  end
-  if point and pc==point then
-   frames=frames+1;assert(frames<2000,'DEMO / FRAME BOUND')
-   local a5=cpu.state.A5.value
-   local room,camera=mem:read_u16(a5-0xcd68),mem:read_u16(a5-0xcd70)
-   if pondLoaded and renders[289] and renders[289].room==0 and renders[289].camera==3 and renders[289].frame==frames-1 then
-    assert(room==0 and camera==3,'DEMO / FIRST POND CAMERA')
-    save(last);save(capture('pond'))
-    assert(mem:read_u16(a5-0xd8f2)==0,'DEMO / CHARACTER')
-    done=true;print('PASS original near car and first completed pond camera frame');dbg:command('quit');return
-   end
-   local l,t,r,b=mem:read_i16(a5-0xb27e),mem:read_i16(a5-0xb27c),mem:read_i16(a5-0xb27a),mem:read_i16(a5-0xb278)
-   if room==0 and camera==0 and r-l>=80 and l<320 and r>0 and t<200 and b>0 then
-    assert(mem:read_u16(a5-0xb292)==286,'DEMO / CAR IDENTITY')
-    last=capture('car')
-   end
-   arm();return
+  if point and pc==point and replayed then
+   save(capture(kind..'-model-replay'))
+   done=true;print('PASS original '..kind..' render with captured native model and transform inputs');dbg:command('quit');return
   end
   if ret then
    assert(cpu.state.PC.value==ret,'original wrapper continuation')

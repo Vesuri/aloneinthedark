@@ -39,6 +39,9 @@ inline bool solid(uint8_t* pixels,uint32_t capacity,uint16_t stride,
     uint32_t dx=uint32_t(delta<0?-delta:delta),dy=uint32_t(int32_t(y1)-y0);
     uint32_t slope=dy ? (dx*65536u)/dy : 0;
     uint32_t start=32768u+slope/2;
+    // Mirroring a half-open shallow span reverses which edge owns a tie.
+    // QuickDraw puts an exact descending boundary on the following row.
+    if(delta<0 && dx>dy && dy)--start;
     Edge last={int32_t(start>>16),start&65535};
     Edge first=last;
     if(dx>dy && dy) {

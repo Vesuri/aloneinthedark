@@ -94,60 +94,52 @@ remains owner-deferred.
 
 ## Native car and pond captures (M2.10)
 
-The baseline `INTROSKIP=1 FIXEDRNG=1` run with `amiga/demo_frames.gdb`
-completes normally (`tmp/m2-demo-pointer-native-full.log`, exit 0). It captures
-an actual near-camera car frame and the first completed pond camera after
-Dark+$5BE8, at original Dark+$5658. The latter camera is 3; requiring the prior
-camera value 1 at the next frame had selected a later road image instead.
-The original counterpart `tools/mac_demo_frames.lua` completes with the same
-scene keys (`tmp/m2-demo-paired-reference.log`, exit 0).
+M2.10 passes on the baseline `a1200-020` with `INTROSKIP=1 FIXEDRNG=1` and
+the original-game pointer enabled. `m2-line-tie-demo-native-full.log`,
+`m2-line-tie-car-reference.log` and `m2-line-tie-frog-reference.log` all exit 0.
+Both complete 64,000-pixel frames match the original Mac renderer with matched
+model/transform inputs; all 256 palette colours and AGA publications also pass.
+Together with the full intro and its four paired states above, this completes
+the frame-fidelity gate. Natural sequence and rendered-window acceptance remain
+separate requirements.
 
-A selected native frame can still await VBI publication. The observer saves
-its actor world, logical pixels and CLUT first, then waits read-only for that
-specific queued frame. It requires unchanged pixels/CLUT through publication,
-matching queued/presented counts, an empty dirty list, the original viewport,
-and pointer palette mode $010F. The scene event loop handles room transitions
-explicitly. Earlier observer failures are not acceptance results.
+`amiga/demo_frames.gdb` records the actual model, actor, A5 world and six
+transform arguments at original Dark+$3ED4 and the alternate redraw call
+Dark+$37AA. The selected draw must immediately precede the captured frame.
+The pond capture requires an actual frog draw in camera 3: the original first
+camera-3 checkpoint precedes that draw, so its saved actor state alone cannot
+pair the visible frog. `tools/mac_demo_frames.lua` uses the same observation.
+Dark+$3E6C/+3E88 identify animation resource/frame at actor offsets $3E/$4A;
+$54/$58 instead select the movement track resource and word offset, as read
+by Dark2+$49F0/+4A08.
 
-Both captured frames pass full 64,000-pixel AGA decoding and all 256 paired
-colours. Native car/pond publications are 172/208. The direct Mac comparison
-still fails, with these measured differences:
+Natural native and Mac poses differ with execution timing. The controlled
+`tools/mac_demo_model_replay.lua` fixture runs with `AITD_REPLAY_KIND=car` and
+then `AITD_REPLAY_KIND=frog`. It copies measured native model/transform inputs
+into the original Mac allocation, preserving the dynamic header skipped by
+the renderer, and executes unchanged game instructions. No actor pixels are
+masked and no comparison tolerance is used. `check_demo_model_replay.py`
+checks the actual draw/scene identity, transform equality, complete pixels,
+colours and AGA publication. It rejects the pre-fix native car's nine differing
+pixels as a negative control.
 
-| Scene | Pixels | Bounds | Different recorded inputs |
-| --- | ---: | --- | --- |
-| Car | 4,876 | (0,145)–(139,199) | Mac x/z/angle 5167/151/765, native 5325/191/704; animation resource 244, frames 0/1 |
-| Pond | 117 | (204,66)–(223,78) | Actor 289: Mac world x/y/z 8010/150/−3180, native 8328/150/−2404; animation resource 252, frames 1/0 |
+That car discrepancy exposed descending shallow LineTo boundary rounding.
+An original-Mac trace recorded 47 visible calls; three disagreed with `Line8`:
+(46,170)–(64,168), (68,221)–(61,222), and (47,189)–(68,186). The second lies
+outside the presented viewport. QuickDraw assigns exact descending boundaries
+to the following row. Biasing the mirrored half-open span by one 16.16 fraction
+unit matches every captured call and all 80 original slope/reversal fixtures,
+including 32 added boundary cases. Seven host raster cases and three
+window/dirty fixtures also pass, followed by exact native frame verification.
 
-Dark+$3E6C/+3E88 read the animation resource and frame at actor offsets
-$3E/$4A; $54/$56 must not be mistaken for those fields. The render call at
-Dark+$3ED4 receives world position plus step and three angles. A controlled
-Mac fixture using the native car transform and animation-frame selection
-reduces the car mismatch to two adjacent pixels at (79,194) and (79,195).
-That supports the pose explanation but does not yet close the strict frame
-comparison. No production instructions or movement decisions were changed.
-
-An observer at both original actor-render calls, Dark+$3ED4 and Dark+$37AA,
-shows why the first pond checkpoint is insufficient for frog pairing. The Mac
-capture at frame 811 has camera 3, but the latest frog draw was at frame 809 in
-camera 1. Its first camera-3 frog draw runs during frame 811 and is presented
-at frame 812. `tmp/m2-demo-render-pond-inputs-reference.log` completes with
-those actual model, transform and actor inputs saved alongside the images in
-`tmp/m2-demo-render-reference/`; its scene/identity checker passes. Native
-input pairing and the final pixel comparison remain pending. Earlier transform
-replays selected a different draw and do not prove this frame's fidelity.
-
-The complete paired capture set is archived in `tmp/m2-demo-pointer-complete/`.
+The accepted capture set is archived in `tmp/m2-line-tie-demo-native/`.
 Reproduce with a clean `INTROSKIP=1 FIXEDRNG=1` build and
-`AMIGA_CONFIG=a1200-020 GDBSCRIPT=demo_frames.gdb EXTRA_ARGS=--warp_mode=1 amiga/diag_run.sh 1800`.
+`AMIGA_CONFIG=a1200-020 GDBSCRIPT=demo_frames.gdb EXTRA_ARGS=--warp_mode=1 amiga/diag_run.sh 1800`,
+then the two model replays using the documented headless MAME command.
 
 ```sh
-python3 tools/check_demo_frames.py tmp/m2-demo-paired-reference.log --reference-status 0
-python3 tools/check_demo_frames.py tmp/m2-demo-paired-reference.log --reference-status 0 --native tmp/m2-demo-pointer-native-full.log --native-status 0
+python3 tools/check_demo_model_replay.py tmp/m2-line-tie-demo-native-full.log tmp/m2-line-tie-car-reference.log tmp/m2-line-tie-frog-reference.log --native-status 0 --car-status 0 --frog-status 0 --folder tmp/m2-line-tie-demo-native
 ```
-
-The first command validates the original capture identities. The second
-currently rejects the unexplained pixel differences after verifying palettes
-and native publication. Physical host-window acceptance remains owner-deferred.
 
 ## Original data
 

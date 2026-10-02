@@ -8,7 +8,7 @@ def run(reference=None,status=None,native=None,native_status=None):
     bounds=rect(0,0,401,648)*4
     before=bytes([7])*(652*401)
     cases=[]
-    for end,points in [((20,20),[(20,20)]),((23,20),[(x,20) for x in range(20,24)]),((20,23),[(20,y) for y in range(20,24)]),((23,23),[(i,i) for i in range(20,24)]),((27,23),[(20,20),(21,21),(22,21),(23,22),(24,22),(25,22),(26,23),(27,23)])]:
+    for end,points in [((20,20),[(20,20)]),((23,20),[(x,20) for x in range(20,24)]),((20,23),[(20,y) for y in range(20,24)]),((23,23),[(i,i) for i in range(20,24)]),((27,23),[(20,20),(21,21),(22,21),(23,22),(24,22),(25,22),(26,23),(27,23)]),((13,21),[(20,20),(19,20),(18,20),(17,21),(16,21),(15,21),(14,21),(13,21)]),((27,19),[(27,19),(26,19),(25,19),(24,20),(23,20),(22,20),(21,20),(20,20)])]:
         after=bytearray(before)
         for x,y in points:after[y*652+x]=26
         cases.append((bounds+rect(20,20,*end),before,after))
@@ -22,10 +22,12 @@ def run(reference=None,status=None,native=None,native_status=None):
         cases.append((window+clip+rect(*ends),before,after))
     if reference:
         log=reference.read_text()
-        if status!=0 or any(s in log for s in ('FAIL','LUA ERROR','Error in')) or log.count('PASS original intro LineTo fixtures=48')!=1 or log.count('Exited via the debugger')!=1:raise ValueError('reference completion')
+        fixture_counts=re.findall(r'^PASS original intro LineTo fixtures=(48|80)$',log,re.M)
+        if status!=0 or any(s in log for s in ('FAIL','LUA ERROR','Error in')) or len(fixture_counts)!=1 or log.count('Exited via the debugger')!=1:raise ValueError('reference completion')
+        fixture_count=int(fixture_counts[0])
         code=(ROOT/'tmp/segments/CODE_6_Dark3').read_bytes()
         if code[0x3376:0x3380].hex()!='3f2effc63f2effc4a891' or 'LINE_BYTES 3F2EFFC63F2EFFC4A891' not in log:raise ValueError('original caller bytes')
-        for n in range(49):
+        for n in range(fixture_count+1):
             stem='lineto-reference-'+(f'fixture{n}-' if n else '')
             def read(phase,kind):return (ROOT/'tmp'/f'{stem}{phase}-{kind}.bin').read_bytes()
             from check_driver22 import fields,one
@@ -75,7 +77,7 @@ def run(reference=None,status=None,native=None,native_status=None):
         for i,(b,before,after) in enumerate(cases):
             result=subprocess.run([str(exe)]+(['window'] if len(before)==307200 else []),input=b+before,stdout=subprocess.PIPE,check=True,timeout=30).stdout
             if result!=after:raise ValueError(f'case {i}: production raster differs from original/oracle')
-    print('PASS Line8: 5 host buffer cases and 3 window-origin/dirty fixtures'+('; original full buffer and 48 clipped slope/reversal fixtures' if reference else '')+('; paired native full buffer/CLUT and ABI' if native else ''))
+    print('PASS Line8: 7 host buffer cases and 3 window-origin/dirty fixtures'+(f'; original full buffer and {fixture_count} clipped slope/reversal fixtures' if reference else '')+('; paired native full buffer/CLUT and ABI' if native else ''))
 if __name__=='__main__':
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('--reference',type=Path);p.add_argument('--status',type=int);p.add_argument('--native',type=Path);p.add_argument('--native-status',type=int);a=p.parse_args()
     try:run(a.reference,a.status,a.native,a.native_status)

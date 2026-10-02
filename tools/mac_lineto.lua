@@ -18,7 +18,7 @@ local function bytes(a,n)
 end
 local fixture=0;local scratch;local stack
 local cases={{20,20,20,20},{20,20,33,20},{33,20,20,20},{20,20,20,33},{20,33,20,20}}
-for _,delta in ipairs({{13,10},{10,13},{2,1},{1,2},{4,2},{2,4},{1,1},{7,3},{3,7}})do
+for _,delta in ipairs({{13,10},{10,13},{2,1},{1,2},{4,2},{2,4},{1,1},{7,3},{3,7},{9,1},{18,2},{21,3},{7,1},{3,1},{5,1},{1,3},{3,5}})do
  for _,sx in ipairs({-1,1})do for _,sy in ipairs({-1,1})do
   cases[#cases+1]={32,32,32+sx*delta[1],32+sy*delta[2]}
  end end

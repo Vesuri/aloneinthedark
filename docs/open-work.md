@@ -15,6 +15,11 @@ design.md §5.
   instruction-matched intro frames pass paired pixel/palette/AGA checks; both
   logos are exact and title/credits have only verified owned-font differences.
   The pointer-enabled rerun passes the same complete coverage and comparisons.
+  M2.10 also passes the car/frog frame checks: matched actual model/transform
+  inputs produce exact 64,000-pixel Mac images, all 256 colours and native AGA
+  publications. The car comparison exposed and fixed descending LineTo ties;
+  all 80 original slope fixtures and 47 measured car calls pass. Natural
+  sequence completion and rendered-window acceptance remain separate gaps.
 - M2.1c now passes actual native reads of both PAKs: 1,536 bytes from
   ITD_Ress and 17,920 bytes from Present match the installed files exactly.
   The intervening palette reactivation matches the Mac; the completed
@@ -78,8 +83,6 @@ and other general tuning remain M5.
 - [ ] **M2.5** — PAL/NTSC automated display and native audio-clock checks pass;
   original-game pointer is enabled with verified inversion. Rendered-picture
   acceptance remains owner-deferred.
-- [ ] **M2.10** — finish the remaining car/frog frame acceptance. The full
-  pointer-enabled intro and all four paired intro states now pass.
 - [ ] **M2.3g44 sequence** — finish the baseline run with ordinary randomness,
   verifying natural demo exit without input, both PAK reads and palette
   reactivation. The baseline run timed out after five room transitions;
@@ -127,41 +130,6 @@ and other general tuning remain M5.
   preserves game colours, and effect period/duration use the selected video
   clock. Other processors remain deferred (D2).
 
-- **M2.10 Frame compare.**
-  - The baseline `intro` regression and four original instruction-matched
-    frames pass: Dark2+$1C94, Dark2+$1F46, Dan2+$2ED4 and Dark+$5220.
-    Both logo states are exact; title/credits differ only by verified D6 owned
-    glyphs (1,015/1,722 pixels), with all palettes and AGA publications exact.
-    `m2-intro-text-reference.log` and `m2-intro-pointer-native-full.log` both
-    exit 0. The pointer-enabled run verifies all 956 frames (944 partial),
-    840/840 book batches and matching pointer palette mode at all four states.
-    Reproduction and acceptance details are in
-    [development.md](development.md#full-intro-c2p-acceptance-m26).
-  - The paired entropy fixture already matches 64 original Engine calls;
-    these intro states precede its first call. Use that fixture for the remaining
-    near-camera car endpoint and frog transition, with original scene/animation
-    keys. Elapsed time alone is not frame pairing.
-    The corrected native capture completes on the baseline 68020 with the
-    pointer enabled (`m2-demo-pointer-native-full.log`, exit 0). The car and
-    first pond camera have exact source-to-AGA publication and paired palettes.
-    Their ordinary Mac captures differ by 4,876 car pixels and 117 pond-actor
-    pixels; the actual animation frames and transforms differ too. The strict
-    checker retains this failure rather than masking moving actors. Replaying
-    the native car transform in the original Mac renderer reduces its mismatch
-    to two adjacent pixels, unchanged across six animation-frame-1 samples.
-    Replaying the frog transform, including actor position and bounds, still
-    leaves 128 differing pixels. Neither experiment closes acceptance.
-    The original first pond checkpoint precedes its first frog draw in camera 3:
-    that draw occurs at frame 811 and its image is captured at frame 812.
-    A corrected Mac capture now includes those actual model/transform inputs.
-    Next: match the native capture to an actual pond draw, observing both
-    Dark+$3ED4 and the alternate redraw call at Dark+$37AA.
-    See [native demo captures](development.md#native-car-and-pond-captures-m210).
-
-  *Done when* the remaining car/frog states match MAME pixel-for-pixel, or with
-  documented and explained differences, alongside the now-passing logo and
-  three intro states and the `intro` regression.
-
 ### M2.3g44 — unresolved visual report and sequence acceptance
 
 The reported black interval is **not diagnosed or fixed**. Existing memory and
@@ -173,12 +141,8 @@ Already verified (details and capture names in [development.md](development.md))
 - Streaming masked copies let the fixed-entropy idle demo exit naturally without
   manual input through all nine Mac room/camera transitions. Actor identity,
   room, life and track agree; the final entrance position is 105 versus 109,
-  followed by native completion at 122. Exact car/animation frame pairing remains open.
-- Reinspection confirms that the older first-pond captures do show the pond,
-  with matching palette, background and AGA publication; two pixels differ
-  inside an actor with different animation state. The later mislabeled capture
-  used a different, incorrect post-transition camera condition. Exact frog
-  state-pair acceptance remains open.
+  followed by native completion at 122. Car/frog frame fidelity now passes
+  with matched actual draw inputs; ordinary-randomness progression is separate.
 - The idle menu has all 64,000 pixels, plane pointers and 256 colours verified.
   Read-only mode checks pass after 135 OS handbacks and at its original 900-tick
   exit. Persistent mode loss at those checkpoints is ruled out; transient
@@ -192,8 +156,8 @@ Already verified (details and capture names in [development.md](development.md))
   do not establish the cause of the preceding black interval. The DOS video is
   content context only, never the Macintosh pixel/font reference.
 
-Remaining: pair the near-camera car endpoint and frog transition with original
-scene/animation state under M2.10; capture the reported black state across logical
+Remaining: resolve the ordinary-randomness room-2 movement stall and verify
+natural sequence completion; capture the reported black state across logical
 pixels, palette, AGA publication and authorized rendered output. FS-UAE's
 `Not a valid drawable size for glViewport` remains a clue, not a diagnosis.
 An unseeded native PAK acceptance run also timed out before its cleanup
@@ -206,8 +170,13 @@ and an observer installed before the first PAK read
 room transitions, through room 2/camera 4 at frame 734, but reached the
 2,400-second limit without another transition; the final tick count was 184,708.
 Natural exit, the Present read and palette reactivation remain unverified.
-The archived timeout does not establish the cause; inspect scene/actor state
-within the last room before another long sequence attempt.
+The follow-up baseline diagnostic completes 257 observed frames in that room
+(`m2-room2-ordinary-native-full.log`, exit 0). With choice 1, actor 288/body 265
+remains on track 26 at word offset 59 while its x position varies around 2,550
+and z remains 1,085. Original Dark2+$49F0/+4A08 identify the track resource and
+word offset at actor +$54/+$58. The ordinary Mac run with the same choice
+advances to room 7 in 129 frames (`m2-room2-ordinary-reference.log`, exit 0).
+This establishes a native movement stall; its cause is still under investigation.
 Routine service tests use `INTROSKIP=1`; uninterrupted playback is reserved for
 sequence acceptance. `FIXEDRNG=1` needs the matching Mac entropy fixture;
 elapsed ticks alone do not establish paired scene state.
