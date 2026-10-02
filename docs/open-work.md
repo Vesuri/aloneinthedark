@@ -68,8 +68,8 @@ and other general tuning remain M5.
 - [ ] **M2.1c** — verify original PAK payloads; direct-read observer active.
 - [ ] **M2.5** — finish PAL/NTSC, pointer palette ownership and video-clock acceptance.
 - [ ] **M2.6** — finish full-intro C2P coverage.
-- [ ] **M2.10a / M2.10** — repair stale observers, add the intro regression and
-  state-pair frame comparison; include the remaining car/frog frame acceptance.
+- [ ] **M2.10** — add the intro regression and state-pair frame comparison;
+  include the remaining car/frog frame acceptance.
 - [ ] **M2.3g44 visual report** — demonstrate the black-interval cause and verify
   the rendered result when authorized capture is available. M2 remains open
   while its required acceptance is outstanding.
@@ -95,6 +95,9 @@ and other general tuning remain M5.
     (`m2-pak-fixed-native-failed-full.log`); it is not acceptance. The active
     retry observes original PBRead calls directly through both PAK payloads,
     retaining byte checks, real caller checks and startup window counts.
+    The direct observer reached 1,025 actual reads before its original count
+    bound (`m2-pak-direct-bound-full.log`, exit 1); the retry increases the
+    observation limit to 10,000 without changing game behavior.
 
   *Done when* the game opens and reads `ITD_RESS.PAK` and `PRESENT.PAK`, its
   returned bytes match the host files by debugger checksum, and startup window
@@ -120,19 +123,6 @@ and other general tuning remain M5.
 
   *Done when* the verifier reports zero mismatches over the intro on
   `a1200-020`, including preservation across partial updates.
-- **M2.10a Retire stale standalone AGA endpoint assumptions.**
-  - `pixbase.gdb` still embeds an obsolete frame-4 AGA capture; standalone
-    `aga_startup.gdb` expects frame 9 at the latest loud stop. They must target
-    the measured publication itself, independent of later intro progress.
-  - `check_menu_lifecycle.py` also retains an obsolete EmptyRgn endpoint;
-    move its terminal guard to the positively measured current checkpoint
-    while retaining its menu-record comparisons.
-  - The integrated `aga_startup_call.gdb` frame-9 and `windowline_call.gdb`
-    frame-117 captures already pass; retain their exact pixel/palette/VBI checks.
-
-  *Done when* standalone observers use positive publication checkpoints,
-  cannot overwrite startup evidence with a later frame, and pass their paired
-  checkers without depending on the current final loud stop.
 - **M2.10 Frame compare.**
   - Write `tools/compare_frames.py`.
   - Add the fixed-seed hook on both sides and the state keys for the intro.

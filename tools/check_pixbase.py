@@ -37,7 +37,8 @@ for side,path in [('reference',a.reference),('native',a.native)]:
   assert after[y*520+512:(y+1)*520]==before[y*520+512:(y+1)*520],(side,y,'padding')
 assert read('reference','copy-source')==read('native','copy-source')
 assert read('native','screen-before')==read('native','screen-after')
-print('PASS paired GetPixBaseAddr: original bytes, locked return ABI, unlocked reference, unchanged query state, original 56-row copy of 28672 bytes with 448 unused/padding bytes preserved; native screen unchanged')
 
-endpoint=re.search(r'PBASE_NEXT state=3 trap=A8E2 selector=FFFFFFFF segment=4 offset=4182 manager=UNKNOWN MANAGER routine=UNKNOWN TRAP windows=249 services=(\d+)/(\d+) reads=109 bytes=826832', a.native.read_text())
-assert endpoint and int(endpoint[1])==int(endpoint[2])
+endpoint=re.search(r'PBASE_NEXT endpoint=Misc2\+0342 state=1 services=(\d+)/(\d+) active=0', a.native.read_text())
+assert endpoint and int(endpoint[1])>0 and int(endpoint[1])==int(endpoint[2])
+assert a.native.read_text().count('PASS AGA startup queued and VBI-published frames=9')==1
+print('PASS paired GetPixBaseAddr: original bytes, locked return ABI, unlocked reference, unchanged query state, original 56-row copy of 28672 bytes with 448 unused/padding bytes preserved; native screen unchanged')

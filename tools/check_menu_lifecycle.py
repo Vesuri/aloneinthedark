@@ -47,7 +47,12 @@ for i in range(1,5):
  if i==1:
   assert ri[-1]==(b'\0\0Control Panels',bytes(4));ri=ri[:-1]
  assert ri==ni,(i,'original application items')
-print('PASS paired menu lifecycle: clear, four ordered owned menus, draw suppression, exact application records, preserved registers/stack, unchanged game client; reference nonempty clear preserves menu records')
 
-endpoint=re.search(r'MLIST_NEXT state=3 trap=A8E2 selector=FFFFFFFF segment=4 offset=4182 manager=UNKNOWN MANAGER routine=UNKNOWN TRAP windows=249 services=(\d+)/(\d+) reads=109 bytes=826832', a.native.read_text())
-assert endpoint and int(endpoint[1])==int(endpoint[2])
+text=a.native.read_text()
+endpoint=re.search(r'MLIST_NEXT phase=copy-return state=1 windows=(\d+) services=(\d+)/(\d+) reads=109 bytes=826832', text)
+fixture=re.search(r'STARTUP_PREFS existing=[01] windows=(\d+) services=\d+/\d+', text)
+assert endpoint and fixture and int(endpoint[1])==int(fixture[1])+22
+assert int(endpoint[2])>0 and int(endpoint[2])==int(endpoint[3])
+assert text.count('startup PASS: original main and CopyBits return CODE 4+$1E4C')==1
+assert text.count('PASS menu-list checkpoint original-MDRV=absent')==1
+print('PASS paired menu lifecycle: clear, four ordered owned menus, draw suppression, exact application records, preserved registers/stack, unchanged game client; reference nonempty clear preserves menu records')

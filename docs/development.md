@@ -5185,3 +5185,23 @@ preferences before execution and this observer rejects an existing-preference
 fixture. Recognized diagnostic preferences were temporarily isolated and
 restored after the run. This verifies the integrated startup/display contract;
 it does not replace the owner-deferred visual acceptance in M2.5/M2.3g44.
+
+### M2.10a — positive standalone startup observers
+
+`pixbase.gdb` now finishes its pixel-address/row-copy contract at the original
+Misc2+$0342 return, then uses the common `aga_startup.gdb` observer. That observer
+stops before the original Dark3+$337E LineTo and captures frame 9 through
+`aga_startup_call.gdb`. It exits immediately after verified publication, so later
+intro frames cannot overwrite startup evidence. Retired EmptyRgn error stops
+and the stale embedded frame-4 expectation are removed.
+
+`m2-pixbase-positive-native-full.log` exits zero on `a1200-020` with `INTROSKIP=1`.
+`check_pixbase.py` verifies the paired original bytes, query ABI and unchanged
+screen, 28,672 copied bytes and all 448 row-padding bytes. `check_aga_capture.py
+startup` verifies exact frame pixels, all eight pointers, all 256 colours and
+identical queued/published buffers at the intended frame. Both build audits pass.
+The menu checker now requires the already-maintained successful Dark+$1E4C
+CopyBits return, balanced services and the preference-specific window count.
+It passes the established `m2-effectreplace-native-full.log` capture paired with
+`m2-menu-lifecycle-reference-final.log`; the menu runtime observer is unchanged.
+All checker success messages now follow their terminal assertions.
