@@ -158,6 +158,17 @@ stopped at the owner's request. No Enter was requested: the letter belongs to
 the new-game route and is not expected in this idle demo. User-saved screenshot
 inspection is authorized; autonomous host capture/input remains restricted.
 
+A subsequent bounded baseline diagnostic (`tmp/m2-black-timeline-native-full.log`,
+exit 0; `INTROSKIP=1`, ordinary randomness) reproduces a 21,678-tick gap
+between frame submissions: tick 3,296 to 24,974, about 361 seconds. The first
+frame's entire viewport is index 255 with RGB (0,0,0). Song/instrument/sample
+resource requests occupy ticks 3,444–5,850; no further frame is submitted until
+24,974. This establishes a long application-side blank-frame gap as a concrete
+lead, but does not yet locate the work/wait after the last sample request or
+prove why the normal run stayed black. Next measure the original continuation
+and native service activity across that gap, then verify the correction against
+the original Mac and owner-rendered output.
+
 Already verified (details and capture names in [development.md](development.md)):
 - The baseline ordinary-randomness demo completes all nine original
   room/camera transitions and exits naturally at tick 60,426 with choice 0.
