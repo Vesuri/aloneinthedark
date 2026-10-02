@@ -159,9 +159,13 @@ and other general tuning remain M5.
   - `tools/mac_intro.lua` now captures four instruction-matched original states
     without skipping the intro: Dark2+$1C94, Dark2+$1F46, Dan2+$2ED4 and
     Dark+$5220. `m2-intro-reference.log` exits 0 with all four captures and
-    uninterrupted completion. The working-tree `tools/compare_frames.py`
+    uninterrupted completion. `tools/compare_frames.py`
     checks these state keys, every viewport pixel, palettes and AGA publication;
-    native paired capture and acceptance remain pending.
+    `--allow-placeholder-text` requires the owned glyph ink and permits only
+    bounded caption differences under D6. Rejection tests cover missing glyphs,
+    stray ink, changed backgrounds and incomplete runs. The current baseline
+    run has matching logo checkpoints and explained title glyph differences;
+    full native paired capture and acceptance remain pending.
   - Add the fixed-seed hook on both sides and the state keys for the intro.
 
   *Done when* the Infogrames logo and three intro states match MAME
