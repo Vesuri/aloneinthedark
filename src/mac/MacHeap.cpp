@@ -29,7 +29,7 @@ void MacHeap::reverseBytes(uint8_t* first, uint8_t* last)
 {
     while (first<last) { --last;if(first>=last)break;uint8_t v=*first;*first++=*last;*last=v; }
 }
-void MacHeap::reset() { arena_=0;bytes_=end_=0;error_=0; }
+void MacHeap::reset() { arena_=0;bytes_=end_=0;error_=0;mastersDirty_=true; }
 bool MacHeap::init(uint8_t* arena, uint32_t bytes, uint16_t masters)
 {
     reset();
@@ -117,17 +117,22 @@ void MacHeap::publish()
 {
     AitdProfileScope profile(kProfileHeapPublish);
     if(!arena_)return;
-    Handle first=0;
-    for(uint32_t off=headerBytes;off<end_;off+=block(off).span) {
-        const Block& b=block(off);if(b.kind!=masterBlock)continue;
-        Handle handles=(Handle)(arena_+off+blockBytes);
-        uint8_t* states=(uint8_t*)(handles+b.owner);
-        for(uint32_t i=0;i<b.owner;++i)if(!(states[i]&1)) {
-            handles[i]=(uint8_t*)first;first=handles+i;
+    // Master blocks never move. Resizing data or changing lock/purge flags
+    // cannot change this chain; rebuild it only when slot membership changes.
+    if(mastersDirty_) {
+        Handle first=0;
+        for(uint32_t off=headerBytes;off<end_;off+=block(off).span) {
+            const Block& b=block(off);if(b.kind!=masterBlock)continue;
+            Handle handles=(Handle)(arena_+off+blockBytes);
+            uint8_t* states=(uint8_t*)(handles+b.owner);
+            for(uint32_t i=0;i<b.owner;++i)if(!(states[i]&1)) {
+                handles[i]=(uint8_t*)first;first=handles+i;
+            }
         }
+        heapWrite32(arena_+8,heapAddress(first));
+        mastersDirty_=false;
     }
     heapWrite32(arena_,heapAddress(arena_+end_));
-    heapWrite32(arena_+8,heapAddress(first));
     heapWrite32(arena_+12,freeBytes());
     arena_[20]=masters_>>8;arena_[21]=masters_;
 }
@@ -214,6 +219,7 @@ int16_t MacHeap::moreMasters(uint16_t count)
     uint32_t off=allocate(bytes,ptrBlock);if(!off)return error_;
     for(uint32_t i=0;i<bytes;++i)arena_[off+blockBytes+i]=0;
     block(off).kind=masterBlock;block(off).owner=count;
+    mastersDirty_=true;
     return result(0);
 }
 uint8_t* MacHeap::newPtr(uint32_t bytes,bool clear)
@@ -260,7 +266,7 @@ MacHeap::Handle MacHeap::newEmptyHandle()
             Handle handles=(Handle)(arena_+off+blockBytes);
             uint8_t* states=(uint8_t*)(handles+b.owner);
             for(uint32_t i=0;i<b.owner;++i)if(!(states[i]&1)) {
-                states[i]=1;handles[i]=0;result(0);return handles+i;
+                states[i]=1;handles[i]=0;mastersDirty_=true;result(0);return handles+i;
             }
         }
         if(pass==0 && moreMasters()!=0)return 0;
@@ -271,7 +277,7 @@ MacHeap::Handle MacHeap::newHandle(uint32_t bytes,bool clear)
 {
     Handle h=newEmptyHandle();if(!h)return 0;
     uint32_t off=allocate(bytes,handleBlock,(uint8_t*)h-arena_);
-    if(!off) { *flags(h)=0;result(memFullErr);return 0; }
+    if(!off) { *flags(h)=0;mastersDirty_=true;result(memFullErr);return 0; }
     *h=arena_+off+blockBytes;
     if(clear)for(uint32_t i=0;i<bytes;++i)(*h)[i]=0;
     result(0);return h;
@@ -280,7 +286,7 @@ int16_t MacHeap::disposeHandle(Handle h)
 {
     if(!isHandle(h))return result(nilHandleErr);
     if(*h) { uint32_t off=findPtr(*h,handleBlock);if(!off)return result(memWZErr);release(off); }
-    *h=0;*flags(h)=0;return result(0);
+    *h=0;*flags(h)=0;mastersDirty_=true;return result(0);
 }
 int16_t MacHeap::emptyHandle(Handle h)
 {

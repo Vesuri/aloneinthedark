@@ -44,6 +44,7 @@ private:
     uint32_t bytes_ = 0, end_ = 0;
     uint16_t masters_ = 64;
     int16_t error_ = 0;
+    bool mastersDirty_ = true;
     Block& block(uint32_t off) const { return *(Block*)(arena_+off); }
     static uint32_t physical(uint32_t logical);
     static void moveBytes(uint8_t* dst, const uint8_t* src, uint32_t bytes);

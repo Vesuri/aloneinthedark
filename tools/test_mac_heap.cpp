@@ -4,9 +4,19 @@
 #include <cstdlib>
 #include <cstring>
 #include <vector>
+#include <algorithm>
 #define CHECK(x) do { if(!(x)){std::fprintf(stderr,"heap FAIL line %d: %s\n",__LINE__,#x);std::exit(1);} }while(0)
 static void pattern(uint8_t* p,unsigned n,uint8_t v) {std::memset(p,v,n);}
 static bool patternIs(uint8_t* p,unsigned n,uint8_t v) {for(unsigned i=0;i<n;++i)if(p[i]!=v)return false;return true;}
+static void freeChain(MacHeap& heap,uint8_t* arena,std::vector<MacHeap::Handle> slots) {
+    std::sort(slots.begin(),slots.end());
+    MacHeap::Handle previous=nullptr;
+    for(auto slot:slots)if(heap.isFreeHandleSlot(slot)) {
+        CHECK(*slot==(uint8_t*)previous);previous=slot;
+    }
+    uint32_t head=0;for(unsigned i=8;i<12;++i)head=(head<<8)|arena[i];
+    CHECK(head==uint32_t((unsigned long)previous));CHECK(heap.check());
+}
 int main() {
     alignas(8) uint8_t arena[65536];MacHeap h;
     CHECK(h.init(arena,sizeof(arena)));CHECK(h.check());
@@ -80,6 +90,21 @@ int main() {
     CHECK(h.recoverHandle(pin)==nullptr && h.error()==MacHeap::nilHandleErr);
     CHECK(std::memcmp(arena,queryArena.data(),sizeof(arena))==0);
     CHECK(h.check());
+    // Observe the published free-master chain across slot allocation/disposal,
+    // failed allocation, and mutations which leave slot membership unchanged.
+    CHECK(h.init(arena,sizeof(arena),2));
+    std::vector<MacHeap::Handle> slots;
+    for(unsigned i=0;i<6;++i){auto slot=h.newEmptyHandle();CHECK(slot);slots.push_back(slot);}
+    freeChain(h,arena,slots);
+    CHECK(h.disposeHandle(slots[1])==0);CHECK(h.disposeHandle(slots[4])==0);
+    freeChain(h,arena,slots);
+    CHECK(h.reallocateHandle(slots[0],100)==0);CHECK(h.setState(slots[0],0x60)==0);
+    freeChain(h,arena,slots);
+    CHECK(h.setHandleSize(slots[0],500)==0);CHECK(h.emptyHandle(slots[0])==0);
+    h.compact();freeChain(h,arena,slots);
+    CHECK(h.newHandle(0xffffffff)==nullptr);freeChain(h,arena,slots);
+    a=h.newEmptyHandle();CHECK(a==slots[1]);freeChain(h,arena,slots);
+    CHECK(h.disposeHandle(a)==0);freeChain(h,arena,slots);
     // Match resource loading: target, free gap, movable data, locked barrier.
     // Include overlapping target/gap swaps as well as a large free interval.
     for(unsigned gapBytes: {8u,2048u,16000u}) {

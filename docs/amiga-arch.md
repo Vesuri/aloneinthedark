@@ -121,6 +121,19 @@ margin of 928 bytes. Camera-5 initial setup falls from 504 to 180 ticks
 (12.55 → 4.0 seconds). Both remain slower than the Mac measurements above;
 the overall performance goal remains open.
 
+The subsequent six-second setup profile (`tmp/intro-hall-after-full.log`,
+exit 0) attributes only 209,968 of 24,034,708 beam units to 18 region resizes
+(0.87%), but 4,315,494 to 586 heap publications (17.96%). The free-master list
+was being rebuilt even when no slot had been allocated or disposed. A private
+dirty flag now limits rebuilding to those membership changes, including failed
+handle allocations and newly allocated master blocks. Master blocks are pinned,
+so moving data or changing lock/purge flags cannot invalidate their links.
+Tests verify the actual published chain and allocation order, not just payloads.
+Host and native heap checks pass. The unprofiled full demo
+(`tmp/intro-master-list-route-full.log`, exit 0) again completes all nine room
+changes; initial hallway setup is 146 ticks (2.433 seconds), and camera 5 → 3
+is 199 ticks (3.317 seconds). Matching Mac values remain 55 and 97 ticks.
+
 `AitdScreen` owns one 320×200 eight-plane display, using the live WIND 128
 content rectangle within the 640×480×8 logical Mac screen. Each chip bitmap
 contains 200 interleaved rows of eight 40-byte planes (64,000 bytes). Explicit
