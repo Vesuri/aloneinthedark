@@ -92,6 +92,53 @@ The four intro states precede the first Engine random call (the existing
 state-pair acceptance remains open under M2.10; rendered-window acceptance
 remains owner-deferred.
 
+## Native car and pond captures (M2.10)
+
+The baseline `INTROSKIP=1 FIXEDRNG=1` run with `amiga/demo_frames.gdb`
+completes normally (`tmp/m2-demo-pointer-native-full.log`, exit 0). It captures
+an actual near-camera car frame and the first completed pond camera after
+Dark+$5BE8, at original Dark+$5658. The latter camera is 3; requiring the prior
+camera value 1 at the next frame had selected a later road image instead.
+The original counterpart `tools/mac_demo_frames.lua` completes with the same
+scene keys (`tmp/m2-demo-paired-reference.log`, exit 0).
+
+A selected native frame can still await VBI publication. The observer saves
+its actor world, logical pixels and CLUT first, then waits read-only for that
+specific queued frame. It requires unchanged pixels/CLUT through publication,
+matching queued/presented counts, an empty dirty list, the original viewport,
+and pointer palette mode $010F. The scene event loop handles room transitions
+explicitly. Earlier observer failures are not acceptance results.
+
+Both captured frames pass full 64,000-pixel AGA decoding and all 256 paired
+colours. Native car/pond publications are 172/208. The direct Mac comparison
+still fails, with these measured differences:
+
+| Scene | Pixels | Bounds | Different recorded inputs |
+| --- | ---: | --- | --- |
+| Car | 4,876 | (0,145)–(139,199) | Mac x/z/angle 5167/151/765, native 5325/191/704; animation resource 244, frames 0/1 |
+| Pond | 117 | (204,66)–(223,78) | Actor 289: Mac world x/y/z 8010/150/−3180, native 8328/150/−2404; animation resource 252, frames 1/0 |
+
+Dark+$3E6C/+3E88 read the animation resource and frame at actor offsets
+$3E/$4A; $54/$56 must not be mistaken for those fields. The render call at
+Dark+$3ED4 receives world position plus step and three angles. A controlled
+Mac fixture using the native car transform and animation-frame selection
+reduces the car mismatch to two adjacent pixels at (79,194) and (79,195).
+That supports the pose explanation but does not yet close the strict frame
+comparison. No production instructions or movement decisions were changed.
+
+The complete paired capture set is archived in `tmp/m2-demo-pointer-complete/`.
+Reproduce with a clean `INTROSKIP=1 FIXEDRNG=1` build and
+`AMIGA_CONFIG=a1200-020 GDBSCRIPT=demo_frames.gdb EXTRA_ARGS=--warp_mode=1 amiga/diag_run.sh 1800`.
+
+```sh
+python3 tools/check_demo_frames.py tmp/m2-demo-paired-reference.log --reference-status 0
+python3 tools/check_demo_frames.py tmp/m2-demo-paired-reference.log --reference-status 0 --native tmp/m2-demo-pointer-native-full.log --native-status 0
+```
+
+The first command validates the original capture identities. The second
+currently rejects the unexplained pixel differences after verifying palettes
+and native publication. Physical host-window acceptance remains owner-deferred.
+
 ## Original data
 
 Put your original archive in ignored `tmp/`, then:

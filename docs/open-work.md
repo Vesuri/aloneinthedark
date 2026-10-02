@@ -137,13 +137,15 @@ and other general tuning remain M5.
     these intro states precede its first call. Use that fixture for the remaining
     near-camera car endpoint and frog transition, with original scene/animation
     keys. Elapsed time alone is not frame pairing.
-    Fresh captures (`m2-demo-frames-reference.log`, exit 0) preserve matching
-    logged actor bytes, but the candidate labelled “pond” still renders a car
-    scene. Room/camera values and Dark+$5BE8 alone do not identify the frog
-    transition. A corrected survey establishes camera 3 at the first completed
-    pond frame after that transition. Fresh car/pond captures now have matching
-    logged actor bytes (`m2-demo-paired-reference.log`, exit 0); native pairing
-    remains open.
+    The corrected native capture completes on the baseline 68020 with the
+    pointer enabled (`m2-demo-pointer-native-full.log`, exit 0). The car and
+    first pond camera have exact source-to-AGA publication and paired palettes.
+    Their ordinary Mac captures differ by 4,876 car pixels and 117 pond-actor
+    pixels; the actual animation frames and transforms differ too. The strict
+    checker retains this failure rather than masking moving actors. Replaying
+    the native car transform in the original Mac renderer reduces its mismatch
+    to two adjacent pixels; complete that attribution before acceptance.
+    See [native demo captures](development.md#native-car-and-pond-captures-m210).
 
   *Done when* the remaining car/frog states match MAME pixel-for-pixel, or with
   documented and explained differences, alongside the now-passing logo and
