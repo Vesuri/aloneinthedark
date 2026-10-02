@@ -65,7 +65,7 @@ unresolved visual report as an explicit acceptance gap; it does not block
 independent service implementation or automated acceptance. Region expansion
 and other general tuning remain M5.
 
-- [ ] **M2.1c** — verify original PAK payloads; deterministic-route observer ready.
+- [ ] **M2.1c** — verify original PAK payloads; direct-read observer active.
 - [ ] **M2.5** — finish PAL/NTSC, pointer palette ownership and video-clock acceptance.
 - [ ] **M2.6 / M2.8** — finish full-intro C2P coverage and the remaining region variants.
 - [ ] **M2.10a / M2.10** — repair stale observers, add the intro regression and
@@ -91,6 +91,10 @@ and other general tuning remain M5.
     Resume with the established deterministic entropy fixture and observe the
     original presentation/file calls directly; keep the unseeded route gap
     explicit under M2.3g44.
+  - The deterministic presentation-checkpoint attempt also failed its guard
+    (`m2-pak-fixed-native-failed-full.log`); it is not acceptance. The active
+    retry observes original PBRead calls directly through both PAK payloads,
+    retaining byte checks, real caller checks and startup window counts.
 
   *Done when* the game opens and reads `ITD_RESS.PAK` and `PRESENT.PAK`, its
   returned bytes match the host files by debugger checksum, and startup window
