@@ -186,6 +186,16 @@ The observer deliberately stops on this guard, rather than waiting for a
 timeout. This trial does not resolve the sequence failure or establish a
 speedup. Keep further general copy tuning in M5; the next acceptance work is
 to explain and correct the native movement divergence from the original Mac.
+Replaying the stalled native position into the original Mac confirms distance
+1,109 and steering 0 for the target 2,450/0
+(`m2-room2-stall-replay-reference.log`, exit 0). With matching numeric actor
+bounds and world coordinates, the original also remains at 2,460/0/1,099,
+track word 59 for 257 frames while its animation advances
+(`m2-room2-stall-recovery-reference.log`, exit 0). These diagnostic data
+fixtures preserve original instructions and timers. They locate the next
+investigation earlier in the approach to the waypoint: the stalled state's
+turn calculation itself agrees with the Mac. They do not prove the cause of
+entering that state or complete sequence acceptance.
 Routine service tests use `INTROSKIP=1`; uninterrupted playback is reserved for
 sequence acceptance. `FIXEDRNG=1` needs the matching Mac entropy fixture;
 elapsed ticks alone do not establish paired scene state.
