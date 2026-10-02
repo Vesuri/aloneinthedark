@@ -14,6 +14,7 @@
 #include "AitdScreen.h"
 #include "Planar8.h"
 #include "AgaPalette.h"
+#include "AgaCursor.h"
 #include "VideoColor.h"
 #include "VideoTiming.h"
 #include "PerfProbe.h"
@@ -113,7 +114,7 @@ bool AitdScreen::initialize(const uint8_t* picture, const uint16_t* palette16)
     m_back = (uint8_t*)AllocMem(kPictureBytes, MEMF_CHIP);
     if (!m_back) { FreeMem(m_chip, kPictureBytes); m_chip = 0; return false; }
 
-    m_mouseSprite = (uint16_t*)AllocMem(kMouseSpriteBytes, MEMF_CHIP | MEMF_CLEAR);
+    m_mouseSprite = (uint16_t*)AllocMem(2*kMouseSpriteBytes, MEMF_CHIP | MEMF_CLEAR);
     if (!m_mouseSprite) {
         FreeMem(m_back, kPictureBytes); m_back = 0;
         FreeMem(m_chip, kPictureBytes); m_chip = 0;
@@ -121,7 +122,7 @@ bool AitdScreen::initialize(const uint8_t* picture, const uint16_t* palette16)
     }
     m_emptySprite = (uint16_t*)AllocMem(kEmptySpriteBytes, MEMF_CHIP | MEMF_CLEAR);
     if (!m_emptySprite) {
-        FreeMem(m_mouseSprite, kMouseSpriteBytes); m_mouseSprite = 0;
+        FreeMem(m_mouseSprite, 2*kMouseSpriteBytes); m_mouseSprite = 0;
         FreeMem(m_back, kPictureBytes); m_back = 0;
         FreeMem(m_chip, kPictureBytes); m_chip = 0;
         return false;
@@ -131,7 +132,7 @@ bool AitdScreen::initialize(const uint8_t* picture, const uint16_t* palette16)
     m_copper = m_copperAllocation;
     if (!m_copper) {
         FreeMem(m_emptySprite, kEmptySpriteBytes); m_emptySprite = 0;
-        FreeMem(m_mouseSprite, kMouseSpriteBytes); m_mouseSprite = 0;
+        FreeMem(m_mouseSprite, 2*kMouseSpriteBytes); m_mouseSprite = 0;
         FreeMem(m_back, kPictureBytes); m_back = 0;
         FreeMem(m_chip, kPictureBytes); m_chip = 0;
         return false;
@@ -150,7 +151,8 @@ bool AitdScreen::initialize(const uint8_t* picture, const uint16_t* palette16)
         m_copper[VS_CL_PTRS + k * 2 + 1] = copperMove(bpl1ptl + k * 4, (uint32_t)(m_chip+k*kBytesPerRow)&65535);
     }
     for (uint16_t channel = 0; channel < 8; ++channel) {
-        uint32_t sprite = (uint32_t)(channel == 0 ? m_mouseSprite : m_emptySprite);
+        uint32_t sprite = (uint32_t)(channel==AgaCursor::whiteChannel ? m_mouseSprite :
+            channel==AgaCursor::blackChannel ? m_mouseSprite+kMouseSpriteBytes/2 : m_emptySprite);
         m_copper[VS_CL_SPRITES + channel * 2]
             = copperMove(spr1pth + channel * 4, (uint16_t)(sprite >> 16));
         m_copper[VS_CL_SPRITES + channel * 2 + 1]
@@ -184,7 +186,7 @@ void AitdScreen::writeModeRegisters()
     *bplcon1Pointer=0;
     *bplcon2Pointer=VS_BPLCON2;
     *bplcon3Pointer=AgaPalette::control;
-    *bplcon4Pointer=0x0011; // no bitplane XOR; hidden sprite banks explicitly owned
+    *bplcon4Pointer=m_mouseAllowed ? AgaCursor::displayControl : 0x0011;
     *diwstrtPointer=(VideoTiming::startLine(g_videoPAL!=0)<<8)|0x81;
     *diwstopPointer=((VideoTiming::stopLine(g_videoPAL!=0)&255)<<8)|0xc1;
     *diwhighPointer=VideoTiming::diwHigh(g_videoPAL!=0);
@@ -203,7 +205,7 @@ void AitdScreen::queueFrame(uint16_t left,uint16_t top,bool mouseAllowed)
         next[VS_CL_PTRS+plane*2]=copperMove(bpl1pth+plane*4,p>>16);
         next[VS_CL_PTRS+plane*2+1]=copperMove(bpl1ptl+plane*4,p&65535);
     }
-    AgaPalette::build(next+VS_CL_COLORS,m_nextPalette);
+    AgaPalette::build(next+VS_CL_COLORS,m_nextPalette,mouseAllowed ? AgaCursor::playfieldXor : 0);
     m_nextCopper=next;m_nextCropLeft=left;m_nextCropTop=top;m_nextMouseAllowed=mouseAllowed;
     ++g_macFramesQueued;
     __asm__ volatile("" ::: "memory");
@@ -262,6 +264,7 @@ void AitdScreen::vbiUpdate(bool install)
     }
     // Publish the already-complete copper list before input/audio work.
     if(install) {
+        *bplcon4Pointer=m_mouseAllowed ? AgaCursor::displayControl : 0x0011;
         uint16_t line=beamLine();g_beamPresentLine=line;
         if(line<g_beamPresentMin)g_beamPresentMin=line;
         if(line>g_beamPresentMax)g_beamPresentMax=line;
@@ -273,7 +276,9 @@ void AitdScreen::vbiUpdate(bool install)
         __asm__ volatile("" ::: "memory");
         m_framePending=false;
     }
+#ifndef AITD_AGA_CURSOR_PROBE
     aitdMacMouseVBI();
+#endif
     updateMouseSprite();
 }
 
@@ -330,6 +335,7 @@ void AitdScreen::updateMouseSprite()
 {
     uint16_t* sprite = m_mouseSprite;
     if (!sprite) return;
+    uint16_t* blackSprite=sprite+kMouseSpriteBytes/2;
 
     int16_t left = (int16_t)(m_cursorX - m_cursorHotX - m_cropLeft);
     int16_t top = (int16_t)(m_cursorY - m_cursorHotY - (int16_t)m_cropTop);
@@ -352,21 +358,18 @@ void AitdScreen::updateMouseSprite()
     control[3] = visible ? (uint8_t)(((vstart >> 8) & 1) << 2
                                    | ((vstop >> 8) & 1) << 1
                                    | (hstart & 1)) : 0;
+    blackSprite[0]=sprite[0];blackSprite[1]=sprite[1];
 
     for (uint16_t fieldRow = 0; fieldRow < rows; ++fieldRow) {
         uint16_t sourceRow = (uint16_t)(firstSourceRow + fieldRow);
         uint16_t image = m_cursorImage[sourceRow];
         uint16_t mask = m_cursorMask[sourceRow];
         if (left < 0 && left > -16) { image <<= -left; mask <<= -left; }
-        uint16_t black = (uint16_t)(image & mask);
-        uint16_t white = (uint16_t)(~image & mask);
-        uint16_t invert = (uint16_t)(image & ~mask);
-        // Sprite value 1 -> black, 2 -> neutral XOR fallback, 3 -> white.
-        sprite[2 + fieldRow * 2] = (uint16_t)(black | white);
-        sprite[3 + fieldRow * 2] = (uint16_t)(white | invert);
+        AgaCursor::row(image,mask,sprite+2+fieldRow*2,blackSprite+2+fieldRow*2);
     }
 
     sprite[2 + rows * 2] = sprite[3 + rows * 2] = 0;
+    blackSprite[2 + rows * 2] = blackSprite[3 + rows * 2] = 0;
 
 
 }
@@ -377,9 +380,14 @@ int16_t AitdScreen::presentMacFrame(const uint8_t* chunky,const uint8_t* colorTa
 {
     Planar8::Rect viewport{int16_t(cropTop),int16_t(cropLeft),int16_t(cropTop+200),int16_t(cropLeft+320)};
     if(!chunky || !colorTable || !m_back || !Planar8::viewportValid(viewport)
-       || dirtyRectCount>kMaxDirtyRects || (dirtyRectCount && !dirtyRects) || mouseAllowed
+       || dirtyRectCount>kMaxDirtyRects || (dirtyRectCount && !dirtyRects)
        || colorTable[4]!=0x80 || colorTable[5]!=0 || colorTable[6]!=0 || colorTable[7]!=255)return -1;
     if(m_framePending)return 0;
+    if(mouseAllowed && !AgaCursor::shapeSupported(m_cursorImage,m_cursorMask))return -2;
+    if(mouseAllowed) {
+        for(uint16_t c=0;c<6;++c)
+            if(colorTable[10+c]!=255 || colorTable[10+255*8+c]!=0)return -3;
+    }
     Planar8::Rect normalized[kMaxDirtyRects];uint16_t count=0;
     if(!matchesViewport(cropLeft,cropTop)) {
         normalized[count++]={0,0,200,320};
@@ -426,7 +434,7 @@ int16_t AitdScreen::presentMacFrame(const uint8_t* chunky,const uint8_t* colorTa
         const uint8_t* c=colorTable+10+i*8;
         m_nextPalette[i]=VideoColor::rgb(uint16_t(c[0])<<8|c[1],uint16_t(c[2])<<8|c[3],uint16_t(c[4])<<8|c[5]);
     }
-    queueFrame(cropLeft,cropTop,false);
+    queueFrame(cropLeft,cropTop,mouseAllowed);
     }
     return 1;
 }
@@ -439,7 +447,7 @@ void AitdScreen::shutdown()
         m_copper = 0;
     }
     if (m_emptySprite) { FreeMem(m_emptySprite, kEmptySpriteBytes); m_emptySprite = 0; }
-    if (m_mouseSprite) { FreeMem(m_mouseSprite, kMouseSpriteBytes); m_mouseSprite = 0; }
+    if (m_mouseSprite) { FreeMem(m_mouseSprite, 2*kMouseSpriteBytes); m_mouseSprite = 0; }
     if (m_back)   { FreeMem(m_back, kPictureBytes); m_back = 0; }
     if (m_chip)   { FreeMem(m_chip, kPictureBytes); m_chip = 0; }
 }
@@ -555,6 +563,19 @@ bool aitdRunAgaProbe(AitdScreen* screen)
         uint8_t* c=colors+8+i*8;c[0]=8;
         c[2]=c[3]=uint8_t(i);c[4]=c[5]=uint8_t(255-i);c[6]=c[7]=uint8_t(i*71);
     }
+#ifdef AITD_AGA_CURSOR_PROBE
+    // Exercise the same protected endpoints as the original game palettes.
+    // Keep input independent of the uninitialized Mac cursor in this fixture.
+    static uint8_t cursor[68];
+    for(uint16_t c=0;c<6;++c) {colors[10+c]=255;colors[10+255*8+c]=0;}
+    for(uint16_t row=0;row<16;++row) {
+        uint16_t mask=uint16_t(0xffffu>>(row%5));
+        uint16_t image=uint16_t((0xa55au^(row*0x1111u))&mask);
+        cursor[row*2]=image>>8;cursor[row*2+1]=image;
+        cursor[32+row*2]=mask>>8;cursor[33+row*2]=mask;
+    }
+    cursor[65]=2;cursor[67]=3;
+#endif
     uint16_t left=160,top=150;
     for(uint16_t frame=0;frame<5;++frame) {
         AitdScreen::DirtyRect dirty={150,160,350,480};uint16_t count=1;
@@ -567,7 +588,15 @@ bool aitdRunAgaProbe(AitdScreen* screen)
         if(frame==4) {left=161;top=151;count=0;}
         g_agaProbeViewport[0]=top;g_agaProbeViewport[1]=left;
         g_agaProbeViewport[2]=top+200;g_agaProbeViewport[3]=left+320;
-        if(screen->presentMacFrame(source,colors,&dirty,count,left,top,false)!=1) {
+        bool mouseAllowed=false;
+#ifdef AITD_AGA_CURSOR_PROBE
+        // Centre, clipped upper-left, clipped bottom, hidden, then disabled.
+        const int16_t x[5]={180,160,460,220,221};
+        const int16_t y[5]={180,150,349,220,221};
+        screen->setMouseCursor(cursor,x[frame],y[frame],frame!=3);
+        mouseAllowed=frame!=4;
+#endif
+        if(screen->presentMacFrame(source,colors,&dirty,count,left,top,mouseAllowed)!=1) {
             g_agaProbeError=frame+1;return false;
         }
         while(g_macFramesPresented<frame+1) {__asm__ volatile("nop");}

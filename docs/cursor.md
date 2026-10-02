@@ -20,7 +20,10 @@ transition and publishes visibility with position; it never invokes original
 callbacks or opens an OS window. Shared state is volatile.
 
 The AGA sprite remains subject to the existing `m_mouseAllowed` gate, which is
-false at startup pending M2.5 palette ownership. These checks establish logical
+false in original-game presentation pending its M2.5 enablement. The separate
+native pointer fixture now verifies both sprite buffers and preservation of all
+256 game colours in PAL and NTSC; see [development.md](development.md).
+These checks establish logical
 cursor state and publication, not rendered pointer acceptance. SetCursor retains
 its inherited visibility-reset behavior; broader cursor lifecycle remains part
 of M3's reached input/window work.

@@ -157,7 +157,17 @@ white slot 1; sprite 7/value 2 uses physical black slot 254 (odd bank 15 plus
 pair offset 12). The two masks are disjoint. `check_aga_cursor.py` reconstructs
 every copper colour and checks all pointer bits under sanitizers; the existing
 palette tests still pass with the default mapping. Native display integration
-and original-game enablement remain pending. Inverted Macintosh cursor pixels
+passes `AGAPROBE=1 CURSORPROBE=1`, `GDB_ENTRY=aitdRunAgaProbe`,
+`GDBSCRIPT=cursor_probe.gdb` on baseline `a1200-020` in PAL and NTSC.
+Both `tmp/m2-cursor-pal-native-full.log` and
+`tmp/m2-cursor-ntsc-native-full.log` exit 0. `check_cursor_capture.py` with
+`--status 0 --video PAL|NTSC` verifies five complete frames, all 256 colours,
+sprite pointer ownership and DMA rows, upper-left/bottom clipping, hiding,
+disabling and released allocations. Captures are archived under
+`tmp/m2-cursor-pal/` and `tmp/m2-cursor-ntsc/`; use `--folder` to select them.
+Palette-mode publication is gated by game display ownership, so VBI work during
+OS handbacks does not change OS registers. Original-game pointer enablement and
+rendered verification remain pending. Inverted Macintosh cursor pixels
 are explicitly unsupported by this black/white helper, never approximated by
 a grey entry; original CURS 130 and 132 contain such pixels and need a separate
 measured implementation if reached.

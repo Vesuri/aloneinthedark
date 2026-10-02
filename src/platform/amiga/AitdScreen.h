@@ -50,7 +50,8 @@ public:
     // Convert a Macintosh 8-bpp 640x480 surface and device ColorTable into the Amiga's
     // interleaved planes.  The completed frame is swapped in by vbiUpdate(), so
     // the copper never scans a half-converted picture.
-    // Returns 1 when queued, 0 while a previous frame is pending, -1 for unsupported input.
+    // Returns 1 when queued, 0 while pending, -1 for unsupported display input,
+    // -2 for an inverted cursor shape, or -3 for unsupported cursor colours.
     int16_t presentMacFrame(const uint8_t* chunky, const uint8_t* colorTable,
                          const DirtyRect* dirtyRects, uint16_t dirtyRectCount,
                          uint16_t cropLeft = kLoresLeft, uint16_t cropTop = 0,
@@ -66,7 +67,7 @@ public:
     // apply hardware movement, and clamp the hotspot to the displayed area.
     void updateMouseCoordinates(int16_t& x, int16_t& y, int16_t dx, int16_t dy);
 
-    // Publish the Macintosh cursor shape/state to Amiga sprite 0. Physical
+    // Publish the Macintosh cursor shape/state to Amiga sprites 0 and 7. Physical
     // position is sampled by the VBI independently of game/Toolbox polling.
     void setMouseCursor(const uint8_t* cursor, int16_t x, int16_t y, bool visible);
 

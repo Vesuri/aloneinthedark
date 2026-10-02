@@ -71,7 +71,8 @@ and other general tuning remain M5.
 - [ ] **M2.1c** — verify both original PAK payloads; validate intervening palette
   reactivation, then resume the filtered original-read observer.
 - [ ] **M2.5** — PAL/NTSC automated display and native audio-clock checks pass;
-  finish pointer palette ownership and rendered-picture acceptance.
+  pointer fixtures also pass in both standards. Enable original-game pointer
+  presentation and finish rendered-picture acceptance.
 - [ ] **M2.10** — intro regression and four state-paired frames pass;
   finish the remaining car/frog frame acceptance.
 - [ ] **M2.3g44 visual report** — demonstrate the black-interval cause and verify
@@ -115,6 +116,10 @@ and other general tuning remain M5.
     bytes; see [palette.md](palette.md#reusing-the-presentation-palette).
     Runtime integration is under native verification; it and both-payload
     acceptance remain open until their checks pass.
+    The focused repeat-call observer reached its 15-minute deadline without
+    that checkpoint (`m2-palette-rebind-direct-timeout-full.log`, exit 124).
+    This does not establish palette or sequence acceptance; do not infer scene
+    position from the interrupted native service dispatcher.
 
   *Done when* the game opens and reads `ITD_RESS.PAK` and `PRESENT.PAK`, its
   returned bytes match the host files by debugger checksum, and startup window
@@ -133,9 +138,12 @@ and other general tuning remain M5.
     The two-sprite helper now preserves all 256 game RGBs with playfield XOR 1
     and the matching palette permutation, using sprite 0 for white and sprite 7
     for black. Sanitizer checks pass for all colours and mask pixels, and reject
-    inverted shapes. Working-tree display integration compiles, but native
-    pointer verification and enabling it for original-game presentation remain
-    pending; the helper alone does not close pointer acceptance.
+    inverted shapes. Native display integration now passes five-frame fixtures
+    on the baseline 68020 in both PAL and NTSC, including both sprite buffers,
+    upper-left/bottom clipping, hiding, disabling and cleanup. Every playfield
+    pixel and all 256 colours pass (`m2-cursor-pal-native-full.log` and
+    `m2-cursor-ntsc-native-full.log`, both exit 0). Original-game enablement
+    and rendered acceptance remain pending.
   - Publication in the VBI. Select the matching PAL/NTSC Paula clock for
     effect pitch and completion timing.
     Mode-dependent display placement, 60 Hz game ticks and effect/song clocks
@@ -145,8 +153,8 @@ and other general tuning remain M5.
     and DMA/sample cleanup (`m2-video-effect-pal-native-full.log` and
     `m2-video-effect-ntsc-native-full.log`, both exit 0). The earlier failed
     guard read write-only AUD0PER; the maintained observer checks the actual
-    Paula programming call instead. Pointer ownership and by-eye acceptance
-    remain open.
+    Paula programming call instead. Original-game pointer enablement and by-eye
+    acceptance remain open.
 
   *Done when* a test pattern and a 256-colour ramp display correctly (by eye, plus
   a gdb register dump) on `a1200-020` in PAL and NTSC, and the visible pointer

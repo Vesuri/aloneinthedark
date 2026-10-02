@@ -18,7 +18,7 @@ def read(folder, name, size):
     return data
 
 
-def check_frame(folder, prefix, source, clut, left, top, front, transfer):
+def check_frame(folder, prefix, source, clut, left, top, front, transfer, playfield_xor=0):
     planes = read(folder, prefix + '-planes.bin', 64000)
     for y in range(200):
         for x in range(320):
@@ -50,7 +50,7 @@ def check_frame(folder, prefix, source, clut, left, top, front, transfer):
             and moves[-1] == (0xffff, 0xfffe), 'complete palette and terminator')
     for i in range(256):
         values = struct.unpack_from('>3H', clut, 10+i*8)
-        require(rgb[i] == [transfer[v] for v in values], f'{prefix} palette {i}')
+        require(rgb[i ^ playfield_xor] == [transfer[v] for v in values], f'{prefix} palette {i}')
     return planes
 
 

@@ -173,6 +173,12 @@ ifeq ($(AGAPROBE),1)
 EXTRA_DEFINES += -DAITD_AGA_PROBE
 PROBE_SYMS_AGA = g_agaProbeStage g_agaProbeError g_agaProbeDone g_agaProbeScreen g_agaProbeSource g_agaProbeColors g_agaProbeViewport
 endif
+ifeq ($(CURSORPROBE),1)
+ifneq ($(AGAPROBE),1)
+$(error CURSORPROBE=1 requires AGAPROBE=1)
+endif
+EXTRA_DEFINES += -DAITD_AGA_CURSOR_PROBE
+endif
 
 ifeq ($(WINDOWPROBE),1)
 ifndef PROBES
