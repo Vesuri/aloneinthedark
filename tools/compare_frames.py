@@ -9,15 +9,20 @@ from check_aga_capture import check_frame, read, require
 
 STATES = [(1, 5, 0x1c94), (2, 5, 0x1f46), (3, 13, 0x2ed4), (4, 4, 0x5220)]
 ROOT = Path(__file__).resolve().parents[1]
+PLACEHOLDER_RUNS = {3: [('©1992 I•Motion/Infogrames, 1994 Interplay',37,196)],
+                    4: [('Music',102,58),('Conversion:',140,58),
+                        ('Mathew',108,74),('Berardo',156,74),
+                        ('Additional',90,98),('Artwork',151,98),('by:',201,98),
+                        ('Keith',110,114),('Robinson',143,114)]}
 
 
 def placeholder_policy(frame):
     # D6: owned capitals/block artwork, original Times/plain/14 spacing.
     # These are the original copyright and final-credit text runs, not a
     # screen-wide mask. The native ink must match the authored stencil exactly.
-    runs = {3: [('©1992 I•Motion/Infogrames, 1994 Interplay',37,196)],
-            4: [('Music Conversion:',101,58),('Mathew Berardo',107,74),
-                ('Additional Artwork by:',88,98),('Keith Robinson',110,114)]}.get(frame,[])
+    # The original credits issue separate calls per word, each with fraction
+    # $8000. Joining the words would silently change their measured spacing.
+    runs = PLACEHOLDER_RUNS.get(frame,[])
     shapes=json.loads((ROOT/'resources/placeholder-font.json').read_text())['glyphs']
     metrics=(ROOT/'src/mac/Times14Metrics.h').read_text().split('advances[256]={')[1].split('};')[0]
     units=[int(x) for x in re.findall(r'\d+',metrics)]
@@ -75,6 +80,14 @@ def capture(log, status, side):
 def compare(reference, native, reference_status, native_status, folder, allow_placeholder=False):
     capture(reference, reference_status, 'reference')
     capture(native, native_status, 'native')
+    if allow_placeholder:
+        text_calls=re.findall(r'^INTRO_TEXT state=(\d+) x=(-?\d+) y=(-?\d+) fraction=([0-9A-F]+) font=(\d+) size=(\d+) face=(\d+) mode=(\d+) extra=([0-9A-F]+) hex=([0-9A-F]*)$',reference,re.M)
+        for frame,runs in PLACEHOLDER_RUNS.items():
+            rows=[r for r in text_calls if int(r[0])==frame and r[9]][-len(runs):]
+            require(len(rows)==len(runs),'original caption text-call coverage')
+            for row,(text,x,y) in zip(rows,runs):
+                settings=tuple(int(v,16 if i in (2,7) else 10) for i,v in enumerate(row[1:9]))
+                require(settings==(x,y,0x8000,20,14,0,1,0) and bytes.fromhex(row[9])==text.encode('mac_roman'),'original caption text/position/style')
     publications = re.findall(r'^INTRO_PUBLICATION n=(\d+) front=([0-9A-F]+) queued=(\d+) presented=(\d+) randomCalls=(\d+)$', native, re.M)
     require(len(publications) == 4, 'four native publications')
     transfer = read(folder, 'video-transfer-lut16.bin', 65536)

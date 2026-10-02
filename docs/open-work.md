@@ -68,8 +68,8 @@ and other general tuning remain M5.
 - [ ] **M2.1c** — verify both original PAK payloads; filtered observer awaits validation.
 - [ ] **M2.5** — PAL/NTSC automated display and native audio-clock checks pass;
   finish pointer palette ownership and rendered-picture acceptance.
-- [ ] **M2.10** — add the intro regression and state-pair frame comparison;
-  include the remaining car/frog frame acceptance.
+- [ ] **M2.10** — intro regression and four state-paired frames pass;
+  finish the remaining car/frog frame acceptance.
 - [ ] **M2.3g44 visual report** — demonstrate the black-interval cause and verify
   the rendered result when authorized capture is available. M2 remains open
   while its required acceptance is outstanding.
@@ -150,21 +150,21 @@ and other general tuning remain M5.
   *Done when* the verifier reports zero mismatches over the intro on
   `a1200-020`, including preservation across partial updates.
 - **M2.10 Frame compare.**
-  - `tools/mac_intro.lua` now captures four instruction-matched original states
-    without skipping the intro: Dark2+$1C94, Dark2+$1F46, Dan2+$2ED4 and
-    Dark+$5220. `m2-intro-reference.log` exits 0 with all four captures and
-    uninterrupted completion. `tools/compare_frames.py`
-    checks these state keys, every viewport pixel, palettes and AGA publication;
-    `--allow-placeholder-text` requires the owned glyph ink and permits only
-    bounded caption differences under D6. Rejection tests cover missing glyphs,
-    stray ink, changed backgrounds and incomplete runs. The current baseline
-    run has matching logo checkpoints and explained title glyph differences;
-    full native paired capture and acceptance remain pending.
-  - Add the fixed-seed hook on both sides and the state keys for the intro.
+  - The baseline `intro` regression and four original instruction-matched
+    frames pass: Dark2+$1C94, Dark2+$1F46, Dan2+$2ED4 and Dark+$5220.
+    Both logo states are exact; title/credits differ only by verified D6 owned
+    glyphs (1,015/1,722 pixels), with all palettes and AGA publications exact.
+    `m2-intro-text-reference.log` and `m2-intro-native-full.log` both exit 0.
+    Reproduction and acceptance details are in
+    [development.md](development.md#full-intro-c2p-acceptance-m26).
+  - The paired entropy fixture already matches 64 original Engine calls;
+    these intro states precede its first call. Use that fixture for the remaining
+    near-camera car endpoint and frog transition, with original scene/animation
+    keys. Elapsed time alone is not frame pairing.
 
-  *Done when* the Infogrames logo and three intro states match MAME
-  pixel-for-pixel, or with documented and explained differences, and the `intro`
-  regression case passes.
+  *Done when* the remaining car/frog states match MAME pixel-for-pixel, or with
+  documented and explained differences, alongside the now-passing logo and
+  three intro states and the `intro` regression.
 
 ### M2.3g44 — unresolved visual report and sequence acceptance
 

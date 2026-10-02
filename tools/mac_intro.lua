@@ -15,6 +15,12 @@ local states={{5,0x1c94,0x2d5f},{5,0x1f46,0x2f0b},{13,0x2ed4,0x42a7},{4,0x5220,0
 local app='Alone In The Dark';local cond=string.format('b@910==0x%x',#app)
 for i=1,#app do cond=cond..string.format(' && b@0x%x==0x%x',0x910+i,app:byte(i))end
 local done=false;local state=1;local target
+local traceText=os.getenv('AITD_INTRO_TEXT')=='1';local traceArmed=false;local thePort
+local function armTrace()
+ if not traceText or traceArmed then return end
+ cpu.debug:bpset(0xdd60,cond..' && w@(d@(sp+2))=='..(thePort and '0xa885' or '0xa86e'),'')
+ traceArmed=true
+end
 local function save(suffix,a,n)
  local f=assert(io.open('tmp/intro-reference-'..state..'-'..suffix..'.bin','wb'))
  for i=0,n-1 do f:write(string.char(mem:read_u8(a+i)))end
@@ -30,19 +36,33 @@ end
 local function nextState()
  state=state+1
  if state>#states then done=true;print('PASS original intro frames=4');dbg:command('quit');return end
- target=nil;dbg.execution_state='run'
+ target=nil;armTrace();dbg.execution_state='run'
 end
 emu.register_frame_done(function()
- if done or target or mac.frontmost()~=app then return end
+ if done then return end
+ if traceText and not traceArmed and mem:read_u32(0x28)==0xdd60 then armTrace()end
+ if target or mac.frontmost()~=app then return end
  local a5=ptr(0x904)
  if a5<0x100000 or a5-ptr(0x908)~=75616 then return end
  local ok,err=pcall(armState)
  if not ok then done=true;print('FAIL '..tostring(err));manager.machine:exit()end
 end)
 emu.register_periodic(function()
- if done or not target or dbg.execution_state~='stop' then return end
+ if done or dbg.execution_state~='stop' then return end
  local ok,err=pcall(function()
-  dbg:command('bpclear')
+  dbg:command('bpclear');traceArmed=false
+  if traceText and cpu.state.PC.value==0xdd60 then
+   local args=cpu.state.A7.value+8
+   if not thePort then thePort=ptr(args)
+   else
+    local port=ptr(thePort);local count=mem:read_u16(args);local text=ptr(args+4)+mem:read_u16(args+2)
+    assert(count<=4096,'INTRO / TEXT EXTENT')
+    local hex={};for i=0,count-1 do hex[#hex+1]=string.format('%02X',mem:read_u8(text+i))end
+    print(string.format('INTRO_TEXT state=%u x=%d y=%d fraction=%X font=%u size=%u face=%u mode=%u extra=%X hex=%s',state,mem:read_i16(port+50),mem:read_i16(port+48),mem:read_u16(port+14),mem:read_u16(port+68),mem:read_u16(port+74),mem:read_u8(port+70),mem:read_u16(port+72),mem:read_u32(port+76),table.concat(hex)))
+   end
+   if target then cpu.debug:bpset(target,'1','')end
+   armTrace();dbg.execution_state='run';return
+  end
   assert(cpu.state.PC.value==target,'INTRO / CHECKPOINT')
   if state==4 then assert(cpu.state.D0.value==0,'INTRO / SKIPPED')end
   local pm=ptr(ptr(ptr(ptr(0x8a4))+22));local ct=ptr(ptr(pm+42))

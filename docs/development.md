@@ -35,9 +35,7 @@ debugger-read global survives `--gc-sections`). C/C++ uses
 (it has no `-mtune` option). Integer multiplication/division uses native C/C++;
 the 68000 helper header is retired.
 
-## Original data
-
-### Full-intro C2P acceptance (M2.6)
+## Full-intro C2P acceptance (M2.6)
 
 `AMIGA_CONFIG=a1200-020 amiga/regression.sh intro` clean-builds with
 `C2PVERIFY=1 FIXEDRNG=1` and no input injection. The diagnostic independently
@@ -57,9 +55,30 @@ point. No game instruction is changed. This instrumented run is not a speed
 measurement.
 
 `tools/check_intro.py LOG --status 0` checks the full completion record.
-Four matching instruction checkpoints are captured for `compare_frames.py`;
-M2.10's reference-pixel acceptance remains separate. The archived source,
+Four matching instruction checkpoints are captured for `compare_frames.py`.
+The archived source,
 palette and display captures are in `tmp/m2-intro-baseline/`.
+
+The paired original run `tmp/m2-intro-text-reference.log` also exits 0.
+Dark2+$1C94 and +$1F46 match all 64,000 pixels exactly. Dan2+$2ED4 (title) has
+1,015 D6 glyph differences; Dark+$5220 (final credits) has 1,722. All four
+palettes and native AGA publications match. The comparator requires every
+authored glyph pixel and rejects changed background pixels or ink outside the
+measured captions. `AITD_INTRO_TEXT=1` records original DrawText calls, including
+each credit word's separately reset fractional pen. The initial comparison's
+joined-word assumption was rejected and replaced with those measured calls;
+no game text or layout was changed. Reproduce the accepted comparison with:
+
+```sh
+python3 tools/compare_frames.py tmp/m2-intro-text-reference.log tmp/m2-intro-native-full.log --reference-status 0 --native-status 0 --allow-placeholder-text
+```
+
+The four intro states precede the first Engine random call (the existing
+64-call entropy fixture covers subsequent menu/demo selection). Car/frog
+state-pair acceptance remains open under M2.10; rendered-window acceptance
+remains owner-deferred.
+
+## Original data
 
 Put your original archive in ignored `tmp/`, then:
 
