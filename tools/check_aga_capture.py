@@ -18,12 +18,17 @@ def read(folder, name, size):
     return data
 
 
-def check_frame(folder, prefix, source, clut, left, top, front, transfer, playfield_xor=0):
+def check_frame(folder, prefix, source, clut, left, top, front, transfer, playfield_xor=0, cursor_inversion=None):
     planes = read(folder, prefix + '-planes.bin', 64000)
     for y in range(200):
         for x in range(320):
             pixel = sum(((planes[y*320+p*40+x//8] >> (7-x%8)) & 1) << p for p in range(8))
-            require(pixel == source[(y+top)*640+x+left], f'{prefix} pixel {x},{y}')
+            expected = source[(y+top)*640+x+left]
+            if cursor_inversion:
+                cx,cy,rows=cursor_inversion
+                if 0<=x-cx<16 and 0<=y-cy<16 and rows[y-cy]&(0x8000>>(x-cx)):
+                    expected ^= 255
+            require(pixel == expected, f'{prefix} pixel {x},{y}')
     copper = read(folder, prefix + '-copper.bin', 2248)
     moves = list(struct.iter_unpack('>HH', copper))
     require(0 < front < 0x200000-64000, 'bitmap must fit chip memory')
@@ -60,6 +65,7 @@ def main():
     parser.add_argument('log', type=Path)
     parser.add_argument('--status', type=int, required=True)
     parser.add_argument('--folder', type=Path, default=Path('tmp'))
+    parser.add_argument('--pointer', action='store_true', help='require original-game pointer publication in startup captures')
     args = parser.parse_args()
     log = args.log.read_text()
     require(args.status == 0 and not re.search(r'FAIL|[Tt]imeout|[Tt]imed out|Error|Protocol error', log), 'run completion')
@@ -67,6 +73,9 @@ def main():
     transfer = read(args.folder, 'video-transfer-lut16.bin', 65536)
     require(hashlib.sha256(transfer).hexdigest() == 'bf0a6433c155a61989e5dc0571bae1357066ab476a24d0afaf2e2aa7094fe2aa', 'reference transfer identity')
     if args.mode == 'startup':
+        cursor = re.findall(r'^AGA_CURSOR enabled=(\d+) control=([0-9A-F]+)$', log, re.M)
+        require(not args.pointer or cursor == [('1','010F')], 'required pointer publication')
+        require(not cursor or cursor == [('1','010F')], 'pointer palette mode')
         require(log.count('PASS AGA startup queued and VBI-published frames=9') == 1, 'startup positive control')
         m = re.search(r'AGA_ACTIVE front=([0-9A-F]+) back=([0-9A-F]+) copper=([0-9A-F]+) crop=160/150 queued=9 presented=9 pending=0 line=(\d+) late=0', log)
         require(m and int(m[4]) < 72, 'startup publication')
@@ -93,7 +102,7 @@ def main():
             values = struct.unpack_from('>3H', clut, 10+i*8)
             rgb = bytes(transfer[v] for v in values)
             require(hardware[i*4+1:i*4+4] == rgb, 'reference video palette')
-        check_frame(args.folder, 'aga-startup-active', source, clut, 160, 150, int(m[1],16), transfer)
+        check_frame(args.folder, 'aga-startup-active', source, clut, 160, 150, int(m[1],16), transfer, 1 if cursor else 0)
         for suffix, size in [('planes',64000),('copper',2248)]:
             require(read(args.folder,'aga-startup-queued-'+suffix+'.bin',size) == read(args.folder,'aga-startup-active-'+suffix+'.bin',size), 'queued/published bytes')
     else:

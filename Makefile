@@ -97,6 +97,7 @@ host-tests:
 	@python3 tools/test_video_config.py
 	@python3 tools/test_compare_frames.py
 	@python3 tools/check_aga_cursor.py
+	@python3 tools/check_cursor_invert.py
 	@python3 tools/test_native_resource_exit.py
 	@python3 tools/check_resource_map.py
 	@python3 tools/check_resource_source.py

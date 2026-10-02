@@ -8,10 +8,15 @@ import struct
 from check_aga_capture import check_frame, read, require
 
 
-def check(log, status, folder, video):
+def check(log, status, folder, video, require_inversion=False):
     require(status == 0 and not re.search(r'FAIL|Error in|TIMEOUT|Program received signal', log), 'normal completion')
     require(log.count('PASS native cursor fixture frames=5 restored=1') == 1
             and log.count('[Inferior 1 (Remote target) detached]') == 1, 'positive completion and detach')
+    inverse_fixture = 'CURSOR_INVERSION fixture=1' in log
+    require(not require_inversion or inverse_fixture, 'required cursor inversion fixture')
+    if inverse_fixture:
+        coverage=re.findall(r'^CURSOR_C2P verified=5 failures=0 endLine=(\d+)$',log,re.M)
+        require(len(coverage)==1 and int(coverage[0])<(72 if video=='PAL' else 44), 'clean queued frames and cursor blanking deadline')
     transfer = read(folder, 'video-transfer-lut16.bin', 65536)
     require(hashlib.sha256(transfer).hexdigest() == 'bf0a6433c155a61989e5dc0571bae1357066ab476a24d0afaf2e2aa7094fe2aa', 'reference video transfer')
     states = re.findall(r'^CURSOR_FIX stage=(\d+) front=([0-9A-F]+) copper=([0-9A-F]+) sprite=([0-9A-F]+) empty=([0-9A-F]+) crop=(\d+)/(\d+) allowed=(\d+) visible=(\d+) x=(-?\d+) y=(-?\d+) hot=(-?\d+)/(-?\d+) pal=(\d+) control=([0-9A-F]+)$', log, re.M)
@@ -42,9 +47,8 @@ def check(log, status, folder, video):
         prefix = f'cursor-fixture-{stage}'
         require(read(folder,prefix+'-source.bin',307200) == source, 'complete fixture pixels')
         require(read(folder,prefix+'-clut.bin',2056) == clut, 'complete fixture colours')
-        planes = check_frame(folder,prefix,source,clut,left,top,front,transfer,control >> 8)
-        if stage == 4:
-            require(planes == previous, 'palette-only frame preserves pixels')
+        inversion = (x-hx-left,y-hy-top,[(0xa55a^(row*0x1111))&~(0xffff>>(row%5))&65535 for row in range(16)]) if inverse_fixture and allowed and visible else None
+        planes = check_frame(folder,prefix,source,clut,left,top,front,transfer,control >> 8,inversion)
         previous = planes
         moves = list(struct.iter_unpack('>HH', read(folder,prefix+'-copper.bin',2248)))
         for channel in range(8):
@@ -64,7 +68,8 @@ def check(log, status, folder, video):
             for row in range(rows):
                 original_row = row+first
                 mask = 0xffff >> (original_row%5)
-                image = (0xa55a^(original_row*0x1111)) & mask
+                image = (0xa55a^(original_row*0x1111)) & 65535
+                if not inverse_fixture:image &= mask
                 mask,image = (v<<max(0,-sx)&65535 for v in (mask,image))
                 a,b = struct.unpack_from('>HH',dma,base+4+row*4)
                 expected = ((~image&mask,0) if channel == 0 else (0,image&mask))
@@ -74,7 +79,8 @@ def check(log, status, folder, video):
             require(((control>>4)&15)*16+1 == 1 and (control&15)*16+12+2 == 254, 'independent sprite colour banks')
     require(states[0][1:3] == states[2][1:3] == states[4][1:3]
             and states[1][1:3] == states[3][1:3] and states[0][1] != states[1][1], 'double-buffer publication')
-    print(f'PASS native {video} cursor: five frames, all pixels/256 colours, two DMA sprites, clipping, hiding, disabling and cleanup')
+    inversion_text=', exact inversion' if inverse_fixture else ''
+    print(f'PASS native {video} cursor: five frames, all pixels/256 colours, two DMA sprites{inversion_text}, clipping, hiding, disabling and cleanup')
 
 
 if __name__ == '__main__':
@@ -83,8 +89,9 @@ if __name__ == '__main__':
     parser.add_argument('--status',type=int,required=True)
     parser.add_argument('--video',choices=['PAL','NTSC'],required=True)
     parser.add_argument('--folder',type=Path,default=Path('tmp'))
+    parser.add_argument('--inversion',action='store_true',help='require the measured XOR fixture and clean C2P verification')
     args = parser.parse_args()
     try:
-        check(args.log.read_text(),args.status,args.folder,args.video)
+        check(args.log.read_text(),args.status,args.folder,args.video,args.inversion)
     except (ValueError,OSError) as error:
         raise SystemExit('FAIL native cursor: '+str(error))

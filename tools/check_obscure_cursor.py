@@ -37,7 +37,7 @@ def check(ref,status,native=None,native_status=None):
             if int(b['D0'],16)!=expected_d0 or b['A7']!=a['A7'] or b['image']!=a['image']:raise ValueError('native D0/stack/image')
             for reg in ['D'+str(j) for j in range(1,8)]+['A'+str(j) for j in range(1,7)]:
                 if a[reg]!=b[reg]:raise ValueError('native preserved '+reg)
-            if b['allowed']!='0' or b['visible']!='0':raise ValueError('native cursor publication/gate')
+            if b['allowed']!=a['allowed'] or b['allowed'] not in ('0','1') or b['visible']!='0':raise ValueError('native cursor publication/gate')
     return 'PASS cursor obscuring: original bytes, distinct hidden/obscured state, conditional D0, stack/register contract and measured mouse restoration'
 if __name__=='__main__':
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('reference',type=Path);p.add_argument('--reference-status',type=int,required=True);p.add_argument('--native',type=Path);p.add_argument('--native-status',type=int);a=p.parse_args()

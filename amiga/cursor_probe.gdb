@@ -1,8 +1,9 @@
-# AGAPROBE=1 CURSORPROBE=1; GDB_ENTRY=aitdRunAgaProbe.
+# AGAPROBE=1 CURSORPROBE=1 C2PVERIFY=1; GDB_ENTRY=aitdRunAgaProbe.
 set pagination off
 set confirm off
 set width 0
 source video_mode.gdb
+echo CURSOR_INVERSION fixture=1\n
 break aitdAgaProbeCheckpoint
 set $cursor_n=1
 continue
@@ -28,6 +29,13 @@ while $cursor_n<=5
  eval "dump binary memory ../tmp/cursor-fixture-%u-empty.bin (char*)$screen->m_emptySprite (char*)$screen->m_emptySprite+8",$cursor_n
  if $cursor_n==5
   check_video_mode
+  printf "CURSOR_TIMING verified=%u failures=%u late=%u presentMax=%u endLine=%u\n",g_c2pVerifiedFrames,g_c2pVerifyFailures,g_beamPresentsLate,g_beamPresentMax,$screen->m_cursorProbeEndLine
+  if g_c2pVerifyFailures!=0 || g_c2pVerifiedFrames!=5 || g_beamPresentsLate!=0 || $screen->m_cursorProbeEndLine>=(g_videoPAL ? 72 : 44)
+   echo FAIL cursor clean conversion or blanking deadline\n
+   detach
+   quit 1
+  end
+  printf "CURSOR_C2P verified=%u failures=%u endLine=%u\n",g_c2pVerifiedFrames,g_c2pVerifyFailures,$screen->m_cursorProbeEndLine
  end
  set $cursor_n=$cursor_n+1
  continue

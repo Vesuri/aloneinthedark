@@ -5647,7 +5647,8 @@ static void presentMacRuntime()
         loaderStop("DISPLAY VIEWPORT GEOMETRY",0);showLoaderStop();
     }
     int16_t result=s_loudStopScreen->presentMacFrame(s_colorScreen,s_windowManagerColors,
-        s_dirtyRects,s_dirtyRectCount,left,top,false);
+        s_dirtyRects,s_dirtyRectCount,left,top,true);
+    if(result==-3) {loaderStop("CURSOR PALETTE",0);showLoaderStop();}
     if(result<0) {loaderStop("DISPLAY INPUT",0);showLoaderStop();}
     if(result>0) {s_screenDirty=false;s_pixelsDirty=false;s_dirtyRectCount=0;}
 }

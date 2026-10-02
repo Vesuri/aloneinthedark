@@ -166,11 +166,23 @@ sprite pointer ownership and DMA rows, upper-left/bottom clipping, hiding,
 disabling and released allocations. Captures are archived under
 `tmp/m2-cursor-pal/` and `tmp/m2-cursor-ntsc/`; use `--folder` to select them.
 Palette-mode publication is gated by game display ownership, so VBI work during
-OS handbacks does not change OS registers. Original-game pointer enablement and
-rendered verification remain pending. Inverted Macintosh cursor pixels
-are explicitly unsupported by this black/white helper, never approximated by
-a grey entry; original CURS 130 and 132 contain such pixels and need a separate
-measured implementation if reached.
+OS handbacks does not change OS registers. Original-game pointer enablement now
+passes its first nine publications (`tmp/m2-pointer-game-startup-full.log`,
+exit 0), checked by `check_aga_capture.py startup --pointer` with exact client
+pixels, all colours and actual BPLCON4=$010F.
+
+Original CURS 132 is reached during startup and has two inversion pixels.
+The original 256-index fixture proves XOR 255 with exact restoration and no
+palette change. `CursorInvert` applies that operation in the VBI and removes
+it from synchronized spans; no saved background or shadow framebuffer is used.
+The final baseline fixtures add `C2PVERIFY=1` and verify movement without a new
+frame, inverted pixels and clean queued frames. Both
+`tmp/m2-cursor-motion-pal-full.log` and `tmp/m2-cursor-motion-ntsc-full.log`
+exit 0 and pass `check_cursor_capture.py --inversion --status 0 --video PAL|NTSC`.
+Corresponding captures are archived under `tmp/m2-cursor-motion-pal/` and
+`tmp/m2-cursor-motion-ntsc/`. Publication reaches at most line 3 and cursor work
+finishes by line 17, before the PAL/NTSC picture. See [cursor.md](cursor.md) for
+the original measurement and host checks. Rendered verification remains pending.
 
 `stage_original_data.sh` copies the original application folder into `data/`
 beneath the executable directory on the emulated hard drive. The port executable

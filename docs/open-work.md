@@ -71,10 +71,11 @@ and other general tuning remain M5.
 - [ ] **M2.1c** — verify both original PAK payloads; validate intervening palette
   reactivation, then resume the filtered original-read observer.
 - [ ] **M2.5** — PAL/NTSC automated display and native audio-clock checks pass;
-  pointer fixtures also pass in both standards. Enable original-game pointer
-  presentation and finish rendered-picture acceptance.
-- [ ] **M2.10** — intro regression and four state-paired frames pass;
-  finish the remaining car/frog frame acceptance.
+  original-game pointer is enabled with verified inversion. Rendered-picture
+  acceptance remains owner-deferred.
+- [ ] **M2.10** — repeat the intro regression with the enabled pointer, then
+  finish the remaining car/frog frame acceptance. Four paired intro states
+  passed before pointer enablement.
 - [ ] **M2.3g44 visual report** — demonstrate the black-interval cause and verify
   the rendered result when authorized capture is available. M2 remains open
   while its required acceptance is outstanding.
@@ -137,13 +138,17 @@ and other general tuning remain M5.
     palette ownership before enabling the pointer; preserve all game colours.
     The two-sprite helper now preserves all 256 game RGBs with playfield XOR 1
     and the matching palette permutation, using sprite 0 for white and sprite 7
-    for black. Sanitizer checks pass for all colours and mask pixels, and reject
-    inverted shapes. Native display integration now passes five-frame fixtures
-    on the baseline 68020 in both PAL and NTSC, including both sprite buffers,
-    upper-left/bottom clipping, hiding, disabling and cleanup. Every playfield
-    pixel and all 256 colours pass (`m2-cursor-pal-native-full.log` and
-    `m2-cursor-ntsc-native-full.log`, both exit 0). Original-game enablement
-    and rendered acceptance remain pending.
+    for black. Original startup reaches CURS 132's two inversion pixels; the
+    measured Mac operation XORs each indexed pixel with 255 and restores it on
+    hiding without changing the palette. Native inversion retains only its
+    applied mask, removes it from copied spans, and preserves clean C2P buffers.
+    Baseline PAL/NTSC fixtures pass exact pixels/colours, motion without a new
+    frame, clipping, hiding, disabling, cleanup and clean partial conversion
+    (`m2-cursor-motion-pal-full.log` and `m2-cursor-motion-ntsc-full.log`, exit 0).
+    No publications are late; cursor work ends by line 17 in both standards.
+    Original-game startup now passes frame 9 with the pointer enabled and all
+    pixels/colours exact (`m2-pointer-game-startup-full.log`, exit 0).
+    Rendered acceptance remains pending; see [cursor.md](cursor.md).
   - Publication in the VBI. Select the matching PAL/NTSC Paula clock for
     effect pitch and completion timing.
     Mode-dependent display placement, 60 Hz game ticks and effect/song clocks
@@ -153,8 +158,7 @@ and other general tuning remain M5.
     and DMA/sample cleanup (`m2-video-effect-pal-native-full.log` and
     `m2-video-effect-ntsc-native-full.log`, both exit 0). The earlier failed
     guard read write-only AUD0PER; the maintained observer checks the actual
-    Paula programming call instead. Original-game pointer enablement and by-eye
-    acceptance remain open.
+    Paula programming call instead. By-eye acceptance remains open.
 
   *Done when* a test pattern and a 256-colour ramp display correctly (by eye, plus
   a gdb register dump) on `a1200-020` in PAL and NTSC, and the visible pointer
@@ -169,6 +173,8 @@ and other general tuning remain M5.
     `m2-intro-text-reference.log` and `m2-intro-native-full.log` both exit 0.
     Reproduction and acceptance details are in
     [development.md](development.md#full-intro-c2p-acceptance-m26).
+    Repeat this regression after pointer enablement; the observer now verifies
+    the matching pointer palette mode at all four states.
   - The paired entropy fixture already matches 64 original Engine calls;
     these intro states precede its first call. Use that fixture for the remaining
     near-camera car endpoint and frog transition, with original scene/animation

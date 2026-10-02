@@ -5,7 +5,8 @@ set width 0
 # FS-UAE debugger values, not Amiga reads of write-only registers.
 # DIWHIGH's serialized state includes flags at C080; BPLCON3 bank/LOCT vary.
 define check_mode
- if *(unsigned short*)0xdff100!=0x0211 || *(unsigned short*)0xdff102!=0 || *(unsigned short*)0xdff104!=0x0024 || (*(unsigned short*)0xdff106&0x1dff)!=0x0c60 || *(unsigned short*)0xdff10c!=0x0011 || (*(unsigned short*)0xdff002&0x380)!=0x380
+ set $mode_pointer_control=(s_loudStopScreen && s_loudStopScreen->m_mouseAllowed) ? 0x010f : 0x0011
+ if *(unsigned short*)0xdff100!=0x0211 || *(unsigned short*)0xdff102!=0 || *(unsigned short*)0xdff104!=0x0024 || (*(unsigned short*)0xdff106&0x1dff)!=0x0c60 || *(unsigned short*)0xdff10c!=$mode_pointer_control || (*(unsigned short*)0xdff002&0x380)!=0x380
   echo FAIL owned display mode or DMA\n
   detach
   quit 1

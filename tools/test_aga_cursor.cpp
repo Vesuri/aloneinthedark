@@ -45,5 +45,5 @@ int main() {
     assert(!AgaCursor::shapeSupported(nullptr,mask));
     colors[0]=0xfffffe;assert(!AgaCursor::paletteSupported(colors));
     assert(!AgaCursor::paletteSupported(nullptr));
-    puts("PASS pointer palette: all 256 game RGBs preserved, exact two-sprite black/white/transparent pixels, inverted shapes rejected");
+    puts("PASS pointer palette: all 256 game RGBs preserved, exact two-sprite black/white/transparent pixels, inversion identified for the separate XOR path");
 }

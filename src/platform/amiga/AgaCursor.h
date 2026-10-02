@@ -16,6 +16,8 @@ inline bool paletteSupported(const uint32_t* colors) {
     return colors && colors[0]==0xffffff && colors[255]==0;
 }
 inline bool shapeSupported(const uint16_t* image,const uint16_t* mask) {
+    // Sprite-only capability. The display handles remaining XOR pixels with
+    // CursorInvert, measured separately against the original indexed device.
     if(!image || !mask)return false;
     for(uint16_t row=0;row<16;++row)if(image[row]&~mask[row])return false;
     return true;

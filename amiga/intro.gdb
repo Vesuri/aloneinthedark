@@ -26,7 +26,13 @@ define intro_frame
   quit 1
  end
  set $intro_screen=s_loudStopScreen
+ if !$intro_screen->m_mouseAllowed || *(unsigned short*)0xdff10c!=0x010f
+  echo FAIL intro pointer palette publication\n
+  detach
+  quit 1
+ end
  printf "INTRO_FRAME n=%u segment=%u offset=%X d0=%X\n",$intro_n,$intro_segment,$intro_offset,$d0
+ printf "INTRO_CURSOR n=%u enabled=%u control=%04X\n",$intro_n,$intro_screen->m_mouseAllowed,*(unsigned short*)0xdff10c
  printf "INTRO_PUBLICATION n=%u front=%X queued=%u presented=%u randomCalls=%u\n",$intro_n,$intro_screen->m_chip,g_macFramesQueued,g_macFramesPresented,g_fixedRandomCalls
  eval "dump binary memory ../tmp/intro-native-%u-screen.bin %u %u",$intro_n,s_colorScreen,s_colorScreen+307200
  eval "dump binary memory ../tmp/intro-native-%u-clut.bin %u %u",$intro_n,s_windowManagerColors,s_windowManagerColors+2056

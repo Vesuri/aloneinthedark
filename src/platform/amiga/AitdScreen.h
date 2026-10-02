@@ -51,7 +51,7 @@ public:
     // interleaved planes.  The completed frame is swapped in by vbiUpdate(), so
     // the copper never scans a half-converted picture.
     // Returns 1 when queued, 0 while pending, -1 for unsupported display input,
-    // -2 for an inverted cursor shape, or -3 for unsupported cursor colours.
+    // -3 for unsupported cursor colours.
     int16_t presentMacFrame(const uint8_t* chunky, const uint8_t* colorTable,
                          const DirtyRect* dirtyRects, uint16_t dirtyRectCount,
                          uint16_t cropLeft = kLoresLeft, uint16_t cropTop = 0,
@@ -100,6 +100,8 @@ private:
 #endif
     void queueFrame(uint16_t left,uint16_t top,bool mouseAllowed);
     void updateMouseSprite();
+    void xorCursorInversion(uint8_t* picture);
+    void applyCursorInversion();
 
     uint32_t* m_copper = 0;
     uint32_t* m_copperAllocation = 0;
@@ -119,6 +121,13 @@ private:
     int16_t   m_cursorHotX = 0;
     int16_t   m_cursorHotY = 0;
     bool      m_cursorVisible = false;
+    // Only the applied 16x16 XOR mask is retained; no saved pixel background.
+    bool      m_invertActive = false;
+    int16_t   m_invertLeft = 0, m_invertTop = 0;
+    uint16_t  m_invertRows[16] = {0};
+#ifdef AITD_AGA_CURSOR_PROBE
+    uint16_t m_cursorProbeEndLine = 0;
+#endif
     DirtyRect m_syncRects[kMaxDirtyRects] = {};
     uint16_t m_syncRectCount = 0;
 };

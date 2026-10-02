@@ -17,11 +17,12 @@ if g_macFramesPresented<9
  continue
 end
 printf "AGA_ACTIVE front=%X back=%X copper=%X crop=%u/%u queued=%u presented=%u pending=%u line=%u late=%u\n",$screen->m_chip,$screen->m_back,$screen->m_copper,$screen->m_cropLeft,$screen->m_cropTop,g_macFramesQueued,g_macFramesPresented,$screen->m_framePending,g_beamPresentLine,g_beamPresentsLate
-if $screen->m_framePending || g_macFramesPresented!=9 || $screen->m_chip!=$target || $screen->m_copper!=$copper || $screen->m_cropLeft!=160 || $screen->m_cropTop!=150 || $screen->m_mouseAllowed
+if $screen->m_framePending || g_macFramesPresented!=9 || $screen->m_chip!=$target || $screen->m_copper!=$copper || $screen->m_cropLeft!=160 || $screen->m_cropTop!=150 || !$screen->m_mouseAllowed || *(unsigned short*)0xdff10c!=0x010f
  echo FAIL AGA VBI publication\n
  detach
  quit 1
 end
+printf "AGA_CURSOR enabled=%u control=%04X\n",$screen->m_mouseAllowed,*(unsigned short*)0xdff10c
 dump binary memory ../tmp/aga-startup-active-planes.bin (char*)$screen->m_chip (char*)$screen->m_chip+64000
 dump binary memory ../tmp/aga-startup-active-copper.bin (char*)$screen->m_copper (char*)$screen->m_copper+2248
 echo PASS AGA startup queued and VBI-published frames=9\n

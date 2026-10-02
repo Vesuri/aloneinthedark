@@ -6,6 +6,10 @@ break AitdScreen::showLoudStop
 commands
  silent
  printf "FAIL AGA startup: %s / %s selector=%u\n",manager,routine,selector
+ printf "CURSOR_STOP initialized=%u image=%X level=%d obscured=%u\n",s_cursor.initialized,s_cursor.image,s_cursor.visibility.level,s_cursor.visibility.obscured
+ if s_cursor.image
+  dump binary memory ../tmp/cursor-stop-shape.bin (char*)s_cursor.image (char*)s_cursor.image+68
+ end
  detach
  quit 1
 end

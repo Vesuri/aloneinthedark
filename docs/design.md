@@ -459,8 +459,10 @@ Native trap probes, host fragmentation tests and paired heap captures verify it:
     bitplane/sprite pointers are published first in the VBI.
   - Keep the logical Mac RGB16 CLUT distinct from the measured mdc48 output
     colours (M0.5); reproduce that colour transfer without guessed gamma (M2.7a).
-  - The sprite pointer uses a sprite palette bank (BPLCON4) that the game's colours
-    do not need, and gets its own colours.
+  - Preserve all 256 game colours. The pointer's two sprite banks select the
+    protected white/black endpoints through a matching BPLCON4 playfield XOR
+    and palette permutation. Inverted cursor pixels use the measured reversible
+    pixel-index XOR; retain only the cursor mask, never a shadow framebuffer.
 - **One display mode.** No alternate-mode build option or loader-patchable mode
   word remains. M2.4 replaces the bootstrap crop with the target display.
 - **C2P (task M2.6).**

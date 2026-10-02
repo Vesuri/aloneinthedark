@@ -90,6 +90,8 @@ def compare(reference, native, reference_status, native_status, folder, allow_pl
                 require(settings==(x,y,0x8000,20,14,0,1,0) and bytes.fromhex(row[9])==text.encode('mac_roman'),'original caption text/position/style')
     publications = re.findall(r'^INTRO_PUBLICATION n=(\d+) front=([0-9A-F]+) queued=(\d+) presented=(\d+) randomCalls=(\d+)$', native, re.M)
     require(len(publications) == 4, 'four native publications')
+    cursors = re.findall(r'^INTRO_CURSOR n=(\d+) enabled=(\d+) control=([0-9A-F]+)$', native, re.M)
+    require(not cursors or cursors == [(str(n),'1','010F') for n in range(1,5)], 'four pointer palette publications')
     transfer = read(folder, 'video-transfer-lut16.bin', 65536)
     require(hashlib.sha256(transfer).hexdigest() == 'bf0a6433c155a61989e5dc0571bae1357066ab476a24d0afaf2e2aa7094fe2aa', 'reference colour transfer')
     total = 0
@@ -105,7 +107,7 @@ def compare(reference, native, reference_status, native_status, folder, allow_pl
         original_clut = read(folder, 'intro-reference-'+n+'-clut.bin', 2056)
         for pen in range(256):
             require(clut[10+pen*8:16+pen*8] == original_clut[10+pen*8:16+pen*8], f'frame {n} palette {pen}')
-        check_frame(folder, prefix, pixels, clut, 160, 150, int(front, 16), transfer)
+        check_frame(folder, prefix, pixels, clut, 160, 150, int(front, 16), transfer, 1 if cursors else 0)
         differences = [(x, y) for y in range(200) for x in range(320)
                        if pixels[(y+150)*640+x+160] != original[(y+150)*640+x+160]]
         if differences and allow_placeholder:

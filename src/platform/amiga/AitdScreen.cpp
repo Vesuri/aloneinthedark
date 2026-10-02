@@ -15,6 +15,7 @@
 #include "Planar8.h"
 #include "AgaPalette.h"
 #include "AgaCursor.h"
+#include "CursorInvert.h"
 #include "VideoColor.h"
 #include "VideoTiming.h"
 #include "PerfProbe.h"
@@ -253,6 +254,7 @@ void AitdScreen::readPaletteProbe()
 void AitdScreen::vbiUpdate(bool install)
 {
     if(!m_copper || !m_chip)return;
+    uint8_t* invertedPicture=m_chip;
 #ifdef AITD_PALETTE_READ_FRAME
     if(install)readPaletteProbe();
 #endif
@@ -271,6 +273,9 @@ void AitdScreen::vbiUpdate(bool install)
         ++g_beamPresents;if(line>=16)++g_beamPresentsLate;
         *cop1lcPointer=m_copper;*copjmp1Pointer=0;
     }
+    // Pointer publication comes first. Undo the old XOR before input work and
+    // before returning the inactive bitmap to user-mode frame preparation.
+    if(m_invertActive) {xorCursorInversion(invertedPicture);m_invertActive=false;}
     if(present) {
         ++g_macFramesPresented;
         __asm__ volatile("" ::: "memory");
@@ -280,6 +285,13 @@ void AitdScreen::vbiUpdate(bool install)
     aitdMacMouseVBI();
 #endif
     updateMouseSprite();
+    if(install)applyCursorInversion();
+#ifdef AITD_AGA_CURSOR_PROBE
+    if(install) {
+        uint16_t line=beamLine();
+        if(line>m_cursorProbeEndLine)m_cursorProbeEndLine=line;
+    }
+#endif
 }
 
 void AitdScreen::setMouseCursor(const uint8_t* cursor, int16_t x, int16_t y,
@@ -301,6 +313,27 @@ void AitdScreen::setMouseCursor(const uint8_t* cursor, int16_t x, int16_t y,
         m_cursorHotX = (int16_t)(cursor[66] << 8 | cursor[67]);
     }
     Enable();
+}
+
+void AitdScreen::xorCursorInversion(uint8_t* picture)
+{
+    for(int16_t row=0;row<16;++row) {
+        int32_t y=int32_t(m_invertTop)+row;
+        if(y<0 || y>=200 || !m_invertRows[row])continue;
+        CursorInvert::planes(picture+y*kRowStride,m_invertLeft,m_invertRows[row]);
+    }
+}
+
+void AitdScreen::applyCursorInversion()
+{
+    if(!m_mouseAllowed || !m_cursorVisible)return;
+    m_invertLeft=m_cursorX-m_cursorHotX-m_cropLeft;
+    m_invertTop=m_cursorY-m_cursorHotY-m_cropTop;
+    for(uint16_t row=0;row<16;++row) {
+        m_invertRows[row]=m_cursorImage[row]&~m_cursorMask[row];
+        if(m_invertRows[row])m_invertActive=true;
+    }
+    if(m_invertActive)xorCursorInversion(m_chip);
 }
 
 void AitdScreen::updateMouseCoordinates(int16_t& x, int16_t& y, int16_t dx, int16_t dy)
@@ -383,7 +416,6 @@ int16_t AitdScreen::presentMacFrame(const uint8_t* chunky,const uint8_t* colorTa
        || dirtyRectCount>kMaxDirtyRects || (dirtyRectCount && !dirtyRects)
        || colorTable[4]!=0x80 || colorTable[5]!=0 || colorTable[6]!=0 || colorTable[7]!=255)return -1;
     if(m_framePending)return 0;
-    if(mouseAllowed && !AgaCursor::shapeSupported(m_cursorImage,m_cursorMask))return -2;
     if(mouseAllowed) {
         for(uint16_t c=0;c<6;++c)
             if(colorTable[10+c]!=255 || colorTable[10+255*8+c]!=0)return -3;
@@ -401,9 +433,21 @@ int16_t AitdScreen::presentMacFrame(const uint8_t* chunky,const uint8_t* colorTa
     { AitdProfileScope profile(kProfileSync);
     for(uint16_t i=0;i<m_syncRectCount;++i) {
         const DirtyRect& r=m_syncRects[i];
-        for(int16_t y=r.top;y<r.bottom;++y)for(uint16_t plane=0;plane<kPlanes;++plane) {
-            uint32_t base=uint32_t(y)*kRowStride+plane*kBytesPerRow;
-            for(int16_t x=r.left/8;x<r.right/8;++x)m_back[base+x]=m_chip[base+x];
+        for(int16_t y=r.top;y<r.bottom;++y) {
+            // A VBI can move the cursor between rows. Copy and undo its current
+            // XOR atomically for one plane span (at most 40 bytes), preserving
+            // a clean inactive bitmap without pausing input during conversion.
+            for(uint16_t plane=0;plane<kPlanes;++plane) {
+                Disable();
+                __asm__ volatile("" ::: "memory");
+                uint32_t base=uint32_t(y)*kRowStride+plane*kBytesPerRow;
+                for(int16_t x=r.left/8;x<r.right/8;++x)m_back[base+x]=m_chip[base+x];
+                int16_t row=y-m_invertTop;
+                if(m_invertActive && row>=0 && row<16)
+                    CursorInvert::row(m_back+base,r.left,r.right,m_invertLeft,m_invertRows[row]);
+                __asm__ volatile("" ::: "memory");
+                Enable();
+            }
         }
     }
     }
@@ -570,7 +614,7 @@ bool aitdRunAgaProbe(AitdScreen* screen)
     for(uint16_t c=0;c<6;++c) {colors[10+c]=255;colors[10+255*8+c]=0;}
     for(uint16_t row=0;row<16;++row) {
         uint16_t mask=uint16_t(0xffffu>>(row%5));
-        uint16_t image=uint16_t((0xa55au^(row*0x1111u))&mask);
+        uint16_t image=uint16_t(0xa55au^(row*0x1111u));
         cursor[row*2]=image>>8;cursor[row*2+1]=image;
         cursor[32+row*2]=mask>>8;cursor[33+row*2]=mask;
     }
@@ -593,7 +637,7 @@ bool aitdRunAgaProbe(AitdScreen* screen)
         // Centre, clipped upper-left, clipped bottom, hidden, then disabled.
         const int16_t x[5]={180,160,460,220,221};
         const int16_t y[5]={180,150,349,220,221};
-        screen->setMouseCursor(cursor,x[frame],y[frame],frame!=3);
+        screen->setMouseCursor(cursor,frame ? x[frame] : 170,frame ? y[frame] : 170,frame!=3);
         mouseAllowed=frame!=4;
 #endif
         if(screen->presentMacFrame(source,colors,&dirty,count,left,top,mouseAllowed)!=1) {
@@ -602,6 +646,15 @@ bool aitdRunAgaProbe(AitdScreen* screen)
         while(g_macFramesPresented<frame+1) {__asm__ volatile("nop");}
         uint16_t start=g_vbiCount;
         while(uint16_t(g_vbiCount-start)<2) {__asm__ volatile("nop");}
+#ifdef AITD_AGA_CURSOR_PROBE
+        if(frame==0) {
+            // Move after publication without queuing a frame. The full capture
+            // must contain the new XOR only, with no trail at the old position.
+            screen->setMouseCursor(cursor,x[frame],y[frame],true);
+            start=g_vbiCount;
+            while(uint16_t(g_vbiCount-start)<2) {__asm__ volatile("nop");}
+        }
+#endif
         g_agaProbeStage=frame+1;aitdAgaProbeCheckpoint();
     }
     return true;
