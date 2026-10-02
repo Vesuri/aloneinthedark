@@ -110,13 +110,14 @@ int main(int argc,char** argv) {
     assert(SongVoice::pitch(-61,60,step));assert(SongVoice::pitch(128,60,step));
     // Independent streaming oracle: advance one source byte at a time through
     // each wrap, and compare several hardware reloads plus guarded allocation.
+    for(uint32_t clock: {3546895u,3579545u})
     for(unsigned size: {101u,200u,301u})for(unsigned start: {0u,1u,100u})for(unsigned pitchIndex: {48u,72u,84u}) {
         if(start>=size)continue;
         std::vector<uint8_t> pcm(size);for(unsigned i=0;i<size;++i)pcm[i]=(i*47+13)&255;
         Sample spec;spec.pcm=pcm.data();spec.size=size;spec.rate=11025u<<16;spec.baseNote=60;
         spec.loopStart=start;spec.loopEnd=start ? size : 0;
-        SongVoice::Plan plan;assert(!SongVoice::describe(spec,pitchIndex,3546895,plan));
-        SongVoice::Dma dma;assert(!SongVoice::dma(spec,plan,3546895,dma));
+        SongVoice::Plan plan;assert(!SongVoice::describe(spec,pitchIndex,clock,plan));
+        SongVoice::Dma dma;assert(!SongVoice::dma(spec,plan,clock,dma));
         assert(dma.period>=124 && dma.stride>=1);
         std::vector<uint8_t> bytes(dma.layout.allocated+2,0x5a);SongVoice::convert(dma,bytes.data()+1);
         assert(bytes.front()==0x5a && bytes.back()==0x5a);

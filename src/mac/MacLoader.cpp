@@ -38,6 +38,7 @@ extern "C" void aitdDriverClockProbe();
 #include "ResourceForks.h"
 #include "ResourceDirectory.h"
 #include "platform/amiga/ResourceStage.h"
+#include "platform/amiga/VideoTiming.h"
 #include "platform/amiga/AitdScreen.h"
 #include "platform/amiga/MacInput.h"
 #include "platform/amiga/PerfProbe.h"
@@ -1352,7 +1353,7 @@ static const char* playNativeEffect(uint8_t* packet,uint32_t& scratch)
     if(!effectRange(sample,bytes))return "EFFECT SAMPLE RANGE";
     PaulaSample::Layout layout;uint16_t period;uint32_t ticks;
     const char* error=SoundEffect::describe(sample,bytes,rate,read32(packet+12),
-                                           read32(packet+16),layout,period,ticks);
+                                           read32(packet+16),layout,period,ticks,g_paulaClock);
     if(error)return error;
     serviceNativeEffects();
     uint16_t index=0,age=0x7fff;
@@ -1523,8 +1524,8 @@ static const char* playSongNote(const SongInputs::Event& event)
     while(sampleIndex<g_song.sampleCount && g_song.samples[sampleIndex].id!=sampleId)++sampleIndex;
     if(sampleIndex==g_song.sampleCount)return "SONG SAMPLE OWNERSHIP";
     auto& sample=g_song.samples[sampleIndex];SongVoice::Plan plan;SongVoice::Dma dma;
-    if((error=SongVoice::describe(sample.description,adjusted,3546895,plan)))return error;
-    if((error=SongVoice::dma(sample.description,plan,3546895,dma)))return error;
+    if((error=SongVoice::describe(sample.description,adjusted,g_paulaClock,plan)))return error;
+    if((error=SongVoice::dma(sample.description,plan,g_paulaClock,dma)))return error;
     int16_t channel=-1;
     for(uint16_t i=0;i<4;++i)if(g_soundDriver.channels[i]<0) {channel=i;break;}
     if(channel<0)channel=stealSongChannel();
@@ -1551,7 +1552,7 @@ static const char* playSongNote(const SongInputs::Event& event)
     if(!plan.loopEnd) {
         unsigned long long clocks=static_cast<unsigned long long>(dma.layout.attackBytes)*dma.period*60;
         uint32_t duration=0;
-        if(!SongVoice::divide(clocks+3546894,3546895,duration))return "SONG DURATION";
+        if(!SongVoice::divide(clocks+g_paulaClock-1,g_paulaClock,duration))return "SONG DURATION";
         native.ends=g_macTicks+duration+1;
     }
     return 0;

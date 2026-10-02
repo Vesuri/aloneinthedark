@@ -53,7 +53,7 @@ fsuae_claim_port || exit 1
   --keyboard_key_left=action_key_cursor_left --keyboard_key_right=action_key_cursor_right \
   --automatic_input_grab=0 --fullscreen=0 --window_width=720 --window_height=568 \
   --remote_debugger=20 --remote_debugger_port="$DEBUG_PORT" --remote_debugger_trigger=Alone \
-  --ntsc_mode=0 --state_dir="$RUN/state" > "$RUN/fsuae-dbg.log" 2>&1 &
+  --state_dir="$RUN/state" > "$RUN/fsuae-dbg.log" 2>&1 &
 FSUAE_PID=$!
 fsuae_track "$FSUAE_PID"
 echo "FS-UAE pid=$FSUAE_PID; waiting for stub..."

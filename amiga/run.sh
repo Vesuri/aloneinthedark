@@ -57,5 +57,5 @@ exec "$FSUAE" \
   --keyboard_key_up=action_key_cursor_up --keyboard_key_down=action_key_cursor_down \
   --keyboard_key_left=action_key_cursor_left --keyboard_key_right=action_key_cursor_right \
   --automatic_input_grab=1 --fullscreen=0 --window_width=720 --window_height=568 \
-  --ntsc_mode=0 --state_dir="$RUN/state" \
+  --state_dir="$RUN/state" \
   --screenshots_output_dir="$SHOTS"

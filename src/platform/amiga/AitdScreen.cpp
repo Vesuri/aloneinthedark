@@ -15,6 +15,7 @@
 #include "Planar8.h"
 #include "AgaPalette.h"
 #include "VideoColor.h"
+#include "VideoTiming.h"
 #include "PerfProbe.h"
 #include "mac/MacLoader.h"
 
@@ -63,13 +64,9 @@ static uint16_t beamLine()
     return (uint16_t)(((high & 1u) << 8) | (low >> 8));
 }
 
-// One AGA lores mode. PAL's conventional 256-line window begins at 44;
-// centre the 200-line client within it. FMODE remains 1x (D2/M5).
-#define VS_DIWHIGH 0x2100
+// Centre the 200-line client in the selected PAL/NTSC window. FMODE is 1x.
 #define VS_BPLCON0 0x0211 // BPU3, COLOR, ECSENA; no HAM/dual playfield
 #define VS_BPLCON2 0x0024
-static const uint16_t kLoresVStart=72;
-static const uint16_t kLoresVStop=kLoresVStart+AitdScreen::kLoresHeight;
 static_assert(AitdScreen::kPlanes==8 && AitdScreen::kWidth==320, "eight-plane lores");
 static_assert(AitdScreen::kPictureBytes==Planar8::bytes, "planar layout");
 static_assert(0xd0==0x38+8*(AitdScreen::kWidth/16-1), "fetch width");
@@ -183,9 +180,9 @@ void AitdScreen::writeModeRegisters()
     *bplcon2Pointer=VS_BPLCON2;
     *bplcon3Pointer=AgaPalette::control;
     *bplcon4Pointer=0x0011; // no bitplane XOR; hidden sprite banks explicitly owned
-    *diwstrtPointer=(kLoresVStart<<8)|0x81;
-    *diwstopPointer=((kLoresVStop&255)<<8)|0xc1;
-    *diwhighPointer=VS_DIWHIGH;
+    *diwstrtPointer=(VideoTiming::startLine(g_videoPAL!=0)<<8)|0x81;
+    *diwstopPointer=((VideoTiming::stopLine(g_videoPAL!=0)&255)<<8)|0xc1;
+    *diwhighPointer=VideoTiming::diwHigh(g_videoPAL!=0);
     *ddfstrtPointer=0x0038;
     *ddfstopPointer=0x00d0;
     *bpl1modPointer=kRowStride-kBytesPerRow;
@@ -341,7 +338,7 @@ void AitdScreen::updateMouseSprite()
         && left < (int16_t)kLoresWidth
         && left + 16 > 0 && rows;
     uint16_t hstart = (uint16_t)(129 + (left > 0 ? left : 0));
-    uint16_t vstart = (uint16_t)(kLoresVStart + top + firstSourceRow);
+    uint16_t vstart = (uint16_t)(VideoTiming::startLine(g_videoPAL!=0) + top + firstSourceRow);
     uint16_t vstop = (uint16_t)(vstart + rows);
     uint8_t* control = (uint8_t*)sprite;
     control[0] = visible ? (uint8_t)vstart : 0;

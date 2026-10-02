@@ -66,8 +66,8 @@ independent service implementation or automated acceptance. Region expansion
 and other general tuning remain M5.
 
 - [ ] **M2.1c** — verify both original PAK payloads; filtered observer awaits validation.
-- [ ] **M2.5** — PAL/NTSC automated display checks pass; finish native audio-clock,
-  pointer palette ownership and rendered-picture acceptance.
+- [ ] **M2.5** — PAL/NTSC automated display and native audio-clock checks pass;
+  finish pointer palette ownership and rendered-picture acceptance.
 - [ ] **M2.6** — finish full-intro C2P coverage.
 - [ ] **M2.10** — add the intro regression and state-pair frame comparison;
   include the remaining car/frog frame acceptance.
@@ -107,8 +107,8 @@ and other general tuning remain M5.
   counts are recorded. If original bytes establish an unused file, document the
   evidence before revising that requirement; absence from one route is not proof.
 - **M2.5 AGA 8-plane display.**
-  - Lores 320×200×8 in `AitdScreen`, centred for PAL and NTSC. Working-tree
-    video selection now passes the five-frame native display fixture on
+  - Lores 320×200×8 in `AitdScreen`, centred for PAL and NTSC. Video selection
+    now passes the five-frame native display fixture on
     `a1200-020` in both standards, including all planes, colours, partial
     updates, mode registers and OS restoration (`m2-video-pal-native-full.log`,
     `m2-video-ntsc-native-full.log`, both exit 0). PAL advances 83 game ticks
@@ -119,11 +119,14 @@ and other general tuning remain M5.
   - Publication in the VBI. Select the matching PAL/NTSC Paula clock for
     effect pitch and completion timing.
     Mode-dependent display placement, 60 Hz game ticks and effect/song clocks
-    are implemented in the working tree. Sanitizer-backed host checks pass for
-    both standards. The first PAL effect attempt passes the original driver ABI
-    and publication check but fails the selected-clock pitch/duration guard
-    (`m2-video-effect-pal-native.log`, exit 1). Resolve that guard and obtain
-    passing natural-completion captures in both standards before accepting audio.
+    are implemented. Sanitizer-backed host checks pass for both standards.
+    Native original-effect captures also pass in both standards: selected
+    Paula programming period, paired PCM, exact duration, natural completion
+    and DMA/sample cleanup (`m2-video-effect-pal-native-full.log` and
+    `m2-video-effect-ntsc-native-full.log`, both exit 0). The earlier failed
+    guard read write-only AUD0PER; the maintained observer checks the actual
+    Paula programming call instead. Pointer ownership and by-eye acceptance
+    remain open.
 
   *Done when* a test pattern and a 256-colour ramp display correctly (by eye, plus
   a gdb register dump) on `a1200-020` in PAL and NTSC, and the visible pointer

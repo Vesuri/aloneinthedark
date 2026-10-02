@@ -1,6 +1,7 @@
 set pagination off
 set confirm off
 set width 0
+source video_mode.gdb
 break aitdAgaProbeCheckpoint
 continue
 if g_agaProbeStage!=1 || g_agaProbeError!=0 || g_macFramesQueued!=1 || g_macFramesPresented!=1
@@ -62,6 +63,17 @@ dump binary memory ../tmp/aga-fixture-5-planes.bin (char*)$screen->m_chip (char*
 dump binary memory ../tmp/aga-fixture-5-copper.bin (char*)$screen->m_copper (char*)$screen->m_copper+2248
 dump binary memory ../tmp/aga-fixture-5-source.bin (char*)g_agaProbeSource (char*)g_agaProbeSource+307200
 dump binary memory ../tmp/aga-fixture-5-clut.bin (char*)g_agaProbeColors (char*)g_agaProbeColors+2056
+check_video_mode
+set $video_fields=(g_vbiCount-$video_fields_start)&65535
+set $video_ticks=g_macTicks-$video_ticks_start
+set $video_min=g_videoPAL ? $video_fields+$video_fields/5 : $video_fields
+set $video_max=g_videoPAL ? $video_fields+($video_fields+4)/5 : $video_fields
+if $video_fields<10 || $video_ticks<$video_min || $video_ticks>$video_max
+ echo FAIL native field-to-Mac-clock conversion\n
+ detach
+ quit 1
+end
+printf "PASS native video timing pal=%u fields=%u ticks=%u\n",g_videoPAL,$video_fields,$video_ticks
 continue
 printf "AGA_RESTORED stage=%u done=%u error=%u front=%X back=%X copper=%X\n",g_agaProbeStage,g_agaProbeDone,g_agaProbeError,g_agaProbeScreen->m_chip,g_agaProbeScreen->m_back,g_agaProbeScreen->m_copper
 if g_agaProbeStage!=99 || g_agaProbeDone!=1 || g_agaProbeError!=0 || g_agaProbeScreen->m_chip!=0 || g_agaProbeScreen->m_back!=0 || g_agaProbeScreen->m_copper!=0

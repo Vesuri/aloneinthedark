@@ -286,6 +286,7 @@ ifeq ($(LINEAPROBE),1)
 PROBE_SYMS += g_lineAProbe
 endif
 PROBE_SYMS += g_macTicks
+PROBE_SYMS += g_videoPAL g_paulaClock
 PROBE_SYMS += g_macFramesQueued g_macFramesPresented
 PROBE_SYMS += g_beamPresentLine g_beamPresentMin g_beamPresentMax \
               g_beamPresents g_beamPresentsLate

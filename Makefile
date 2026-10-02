@@ -94,6 +94,7 @@ host-tests:
 	@python3 tools/check_native_font.py --selftest
 	@python3 tools/check_startup_prefs.py --selftest
 	@python3 tools/test_fsuae_launcher.py
+	@python3 tools/test_video_config.py
 	@python3 tools/test_native_resource_exit.py
 	@python3 tools/check_resource_map.py
 	@python3 tools/check_resource_source.py

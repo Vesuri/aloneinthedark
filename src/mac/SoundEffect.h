@@ -12,13 +12,13 @@ namespace SoundEffect {
 inline const char* describe(const uint8_t* pcm,uint32_t bytes,uint32_t rate,
                             uint32_t loopStart,uint32_t loopEnd,
                             PaulaSample::Layout& layout,uint16_t& period,
-                            uint32_t& ticks) {
+                            uint32_t& ticks,uint32_t paulaClock) {
     if(!pcm || !bytes || bytes>131070)return "EFFECT SAMPLE SIZE";
     if(loopStart || loopEnd)return "EFFECT LOOP";
     if(!rate || (rate&0xffff))return "EFFECT RATE";
+    if(paulaClock!=3546895 && paulaClock!=3579545)return "EFFECT CLOCK";
     uint32_t hz=rate>>16;
-    // PAL colour clock; the sole configured display is PAL until M2.5.
-    uint32_t clocks=(3546895UL+hz/2)/hz;
+    uint32_t clocks=(paulaClock+hz/2)/hz;
     if(clocks<124 || clocks>65535)return "EFFECT PERIOD";
     layout={};layout.pcm=pcm;layout.size=bytes;layout.rate=(uint16_t)hz;
     layout.attackBytes=(bytes+1)&~1UL;layout.reloadOffset=layout.attackBytes;
@@ -29,9 +29,9 @@ inline const char* describe(const uint8_t* pcm,uint32_t bytes,uint32_t rate,
     // attackBytes <= 131070, so there is at most one high chunk.
     uint32_t low=(layout.attackBytes&65535)*clocks;
     uint32_t high=(layout.attackBytes>>16)*(65536UL*clocks);
-    uint32_t seconds=low/3546895UL+high/3546895UL;
-    uint32_t remainder=low%3546895UL+high%3546895UL;
-    ticks=seconds*60+(remainder*60+3546894UL)/3546895UL;
+    uint32_t seconds=low/paulaClock+high/paulaClock;
+    uint32_t remainder=low%paulaClock+high%paulaClock;
+    ticks=seconds*60+(remainder*60+paulaClock-1)/paulaClock;
     return 0;
 }
 }

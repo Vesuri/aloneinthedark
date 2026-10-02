@@ -73,6 +73,38 @@ Eight configuration selection/rejection checks and shell syntax checks pass.
 All three launchers share these settings and write the emulator core log to
 `amiga/.run/logs/fs-uae.log.txt`.
 
+`AMIGA_VIDEO=PAL` (default) or `AMIGA_VIDEO=NTSC` selects the video standard
+in all three launchers. The installed FS-UAE requires the explicit core
+`uae_ntsc` option as well as `ntsc_mode`; the frontend option alone booted PAL
+and was rejected by the native mode verifier. On real hardware the runtime
+reads `graphics.library`'s PAL flag before taking over the display. It centres
+the 200-line viewport at line 72 in PAL and line 44 in NTSC, advances Mac ticks
+at 6/5 per PAL field or one per NTSC field, and uses the corresponding Paula
+clock (3,546,895 or 3,579,545 Hz) for effects and songs. These clocks follow the
+[Commodore Hardware Reference Manual](https://oldcrap.org/wp-content/uploads/2023/04/amiga-all-hw-ref-manual.pdf)
+(audio chapter, printed page 138).
+
+M2.5 automated display evidence: `AGAPROBE=1`, `GDB_ENTRY=aitdRunAgaProbe`,
+`GDBSCRIPT=aga_probe.gdb` on `a1200-020` passes in both standards. The captures
+`tmp/m2-video-pal-native-full.log` and `tmp/m2-video-ntsc-native-full.log`
+both exit 0. `check_aga_capture.py fixture` verifies every pixel, plane pointer,
+all 256 colours and partial updates across five frames; `check_video_mode.py`
+also verifies geometry, field-to-tick conversion and restoration. Archived
+buffers are in `tmp/m2-video-pal/` and `tmp/m2-video-ntsc/`. These checks do not
+replace the pending rendered-picture and visible-pointer acceptance.
+
+With a normal build (no `INTROSKIP`), `GDBSCRIPT=video_effect.gdb` captures the
+first original effect and its natural completion. Both baseline runs pass:
+`tmp/m2-video-effect-pal-native-full.log` and
+`tmp/m2-video-effect-ntsc-native-full.log` (exit 0). The paired 30,783-byte
+sample uses period 443 in PAL and 447 in NTSC, with a 231-tick DMA duration.
+The observer verifies the period passed to Paula programming, original driver
+ABI, sample conversion, completion at the scheduled tick, DMA shutdown and
+sample disposal. AUD0PER is write-only: this debugger returns zero for it, so
+reading that address is not valid pitch evidence. Run `check_video_mode.py`
+with `--case effect --video PAL|NTSC --status 0`; the paired sample captures
+are archived under `tmp/m2-video-effect-pal/` and `tmp/m2-video-effect-ntsc/`.
+
 `stage_original_data.sh` copies the original application folder into `data/`
 beneath the executable directory on the emulated hard drive. The port executable
 and diagnostic files remain outside this Mac-visible namespace. Override

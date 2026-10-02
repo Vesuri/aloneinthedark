@@ -34,6 +34,7 @@ extern "C" void aitdFileCleanupFinished();
 extern "C" { void aitdResourceExitCleanupFinished();extern volatile uint32_t g_resourceExitCleanupOK; }
 #endif
 #include "AitdScreen.h"
+#include "VideoTiming.h"
 #ifdef AITD_AGA_PROBE
 extern "C" bool aitdRunAgaProbe(AitdScreen*);
 extern "C" void aitdAgaProbeRestored(uint16_t);
@@ -129,7 +130,9 @@ static bool loadOverlayResourceFile(ResourceFileSource& files) {
 //
 // Bootstrap diagnostics: field count, allocation status and chip-RAM checksum.
 extern "C" {
-volatile uint16_t g_vbiCount      = 0;   // real PAL fields, the only honest timebase
+volatile uint16_t g_vbiCount      = 0;   // real hardware fields
+uint16_t g_videoPAL=1;
+uint32_t g_paulaClock=3546895;
 volatile uint32_t g_planeChecksum = 0;   // of the blob IN CHIP RAM (AitdScreen)
 volatile uint16_t g_screenReady   = 0;   // 0 = allocation failed, 1 = displaying
 extern volatile uint32_t g_macTicks;
@@ -198,10 +201,8 @@ static uint32_t vbiHandler()
     // (docs/amiga-arch.md)
     if (s_screen) s_screen->vbiUpdate();
 
-    // Macintosh Ticks advances at ~60 Hz; PAL VERTB is 50 Hz.  Four fields add
-    // one tick and every fifth adds two, preserving real-time animation speed.
-    uint16_t tickDelta = 1;
-    if (++s_macTickRemainder == 5) { s_macTickRemainder = 0; tickDelta = 2; }
+    // PAL fields need the 50-to-60 Hz conversion; NTSC advances one Mac tick.
+    uint16_t tickDelta=VideoTiming::tickDelta(g_videoPAL!=0,s_macTickRemainder);
     g_macTicks += tickDelta;
     if (g_macTicksAddress) *g_macTicksAddress = g_macTicks;
     // System 6 keeps its low-memory random seed live independently of each
@@ -271,6 +272,9 @@ bool PlatformAmiga::run()
     // for why none of this is in a constructor.
     GfxBase = (struct GfxBase*)OpenLibrary((CONST_STRPTR)"graphics.library", 33);
     if (!GfxBase) return false;     // nothing has been changed yet, so there is nothing to undo
+    g_videoPAL=(GfxBase->DisplayFlags&PAL)!=0;
+    g_paulaClock=VideoTiming::paulaClock(g_videoPAL!=0);
+    s_macTickRemainder=0;
     // Use the OS chipset report: OCS has no reliable DENISEID register.
     AmigaHardware::hasAGAChipSet = GfxBase->LibNode.lib_Version >= 39
         && (GfxBase->ChipRevBits0 & GFXF_AA_LISA) != 0;
