@@ -36,6 +36,7 @@ end
 dump binary memory ../tmp/song-cost-next.bin chunky chunky+307200
 dump binary memory ../tmp/song-cost-next-colors.bin colorTable colorTable+2056
 printf "SONG_COST_GAP clear=%u next=%u elapsed=%u events=%u noteTicks=%u maxNoteTicks=%u calls=%u serviceTicks=%u maxServiceTicks=%u convertTicks=%u maxConvertTicks=%u\n",$clearTick,g_macTicks,g_macTicks-$clearTick,g_songCost[0],g_songCost[1],g_songCost[2],g_songCost[3],g_songCost[4],g_songCost[5],g_songCost[6],g_songCost[7]
+printf "SONG_LOAD_COST resources=%u loadTicks=%u moveTicks=%u lockTicks=%u\n",g_songCost[8],g_songCost[9],g_songCost[10],g_songCost[11]
 echo PASS song cost measurement: consecutive frame submissions and elapsed game ticks\n
 detach
 quit 0

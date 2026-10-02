@@ -66,6 +66,23 @@ int main() {
     CHECK(h.recoverHandle(pin)==nullptr && h.error()==MacHeap::nilHandleErr);
     CHECK(std::memcmp(arena,queryArena.data(),sizeof(arena))==0);
     CHECK(h.check());
+    // Match resource loading: target, free gap, movable data, locked barrier.
+    // Include overlapping target/gap swaps as well as a large free interval.
+    for(unsigned gapBytes: {8u,2048u,16000u}) {
+        CHECK(h.init(arena,sizeof(arena)));
+        a=h.newHandle(1024);auto hole=h.newHandle(gapBytes);b=h.newHandle(512);
+        auto barrier=h.newHandle(128);CHECK(a&&b&&hole&&barrier);
+        pattern(*a,1024,0x6d);pattern(*b,512,0x42);pattern(*barrier,128,0x91);
+        CHECK(h.setState(barrier,0x80)==0);auto fixed=*barrier;before=*a;
+        auto middle=*b;auto targetSpan=*hole-before;
+        auto middleSpan=*barrier-middle;auto freeBefore=h.freeBytes();
+        CHECK(h.disposeHandle(hole)==0);auto gapSpan=h.freeBytes()-freeBefore;
+        auto freeAfter=h.freeBytes();CHECK(h.moveHigh(a)==0);
+        CHECK(*a==before+gapSpan+middleSpan && *b==middle-targetSpan);
+        CHECK(patternIs(*a,1024,0x6d) && patternIs(*b,512,0x42));
+        CHECK(*barrier==fixed && patternIs(*barrier,128,0x91));
+        CHECK(h.state(barrier)==0x80 && h.freeBytes()==freeAfter && h.check());
+    }
     // Deterministic fragmentation: validate every surviving payload after every operation.
     CHECK(h.init(arena,sizeof(arena)));handles.assign(48,nullptr);uint32_t rng=1;
     unsigned sizes[48]={};

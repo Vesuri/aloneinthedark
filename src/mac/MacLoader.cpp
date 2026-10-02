@@ -131,7 +131,7 @@ struct NativeSong {
 NativeSong g_song;
 #ifdef AITD_SONG_COST_PROBE
 // Diagnostic only: elapsed game ticks in note preparation and song catch-up.
-extern "C" { volatile uint32_t g_songCost[8]={}; }
+extern "C" { volatile uint32_t g_songCost[12]={}; }
 #endif
 #ifdef AITD_SONG_PROBE
 volatile uint32_t g_songTraceCount=0,g_songTrace[4096][10]={};
@@ -1418,6 +1418,9 @@ static int32_t resourceHandleIndex(uint8_t** handle);
 static bool dirtyResourceHandle(uint8_t** handle);
 static const char* ownSongResource(uint32_t type,uint16_t id,MacHeap::Handle& result)
 {
+#ifdef AITD_SONG_COST_PROBE
+    uint32_t loadBegin=g_macTicks;
+#endif
     if(g_song.ownedCount>=160)return "SONG RESOURCE CAPACITY";
     result=getResource(type,(int16_t)id);
     MacHeap* zone=handleZone(result);
@@ -1428,9 +1431,21 @@ static const char* ownSongResource(uint32_t type,uint16_t id,MacHeap::Handle& re
     zone->setState(result,zone->state(result)&~0x20);
     auto& owned=g_song.owned[g_song.ownedCount++];
     owned.handle=result;owned.type=type;owned.id=id;
+#ifdef AITD_SONG_COST_PROBE
+    uint32_t moveBegin=g_macTicks;
+    ++g_songCost[8];g_songCost[9]+=moveBegin-loadBegin;
+#endif
     if(zone->moveHigh(result))return "SONG RESOURCE MOVE";
+#ifdef AITD_SONG_COST_PROBE
+    uint32_t lockBegin=g_macTicks;
+    g_songCost[10]+=lockBegin-moveBegin;
+#endif
     zone->setState(result,(zone->state(result)&~0x40)|0x80);
-    refreshCodeViews();return 0;
+    refreshCodeViews();
+#ifdef AITD_SONG_COST_PROBE
+    g_songCost[11]+=g_macTicks-lockBegin;
+#endif
+    return 0;
 }
 static void stopNativeSongVoice(uint16_t index)
 {

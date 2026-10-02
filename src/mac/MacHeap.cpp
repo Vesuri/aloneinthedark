@@ -342,6 +342,16 @@ int16_t MacHeap::moveHigh(Handle h)
     uint32_t off=findPtr(*h,handleBlock);if(!off)return result(memWZErr);
     uint32_t span=block(off).span,limit=off+span;
     while(limit<end_ && (block(limit).kind==freeBlock || movable(limit)))limit+=block(limit).span;
+    uint32_t next=off+span;
+    if(next<limit && block(next).kind==freeBlock) {
+        // Swap past unused space without reading/copying its payload. Continue
+        // the same rotation through any live blocks beyond the hole, retaining
+        // their order and the target's final address before the next barrier.
+        uint32_t gap=block(next).span;
+        moveBytes(arena_+off+gap,arena_+off,span);
+        block(off)={gap,0,0,freeBlock,0,0};
+        off+=gap;
+    }
     // Rotate blocks without allocating scratch memory; immovable barriers remain fixed.
     reverseBytes(arena_+off,arena_+off+span);
     reverseBytes(arena_+off+span,arena_+limit);

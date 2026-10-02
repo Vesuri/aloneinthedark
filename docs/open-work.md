@@ -96,9 +96,10 @@ and other general tuning remain M5.
   with owner-provided captures and assess the remaining loading interval.
   M2 remains open while its required acceptance is outstanding.
 - [ ] **M2.3g44 demo reliability** — investigate the owner's renewed car-circling
-  report in the normal PAL run. Reproduce with measured actor/track state and
-  verify natural completion on the normal uninterrupted route; retain original
-  game instructions. One successful diagnostic route does not close this report.
+  report in the normal PAL run. The post-music-fix uninterrupted baseline route
+  now completes all nine transitions naturally with choice 1 and passes both
+  PAK/palette checks. Confirm normal visible behavior after the loading fix;
+  retain original game instructions and track any recurrence with actor state.
 
 - **M2.5 AGA 8-plane display.**
   - Lores 320×200×8 in `AitdScreen`, centred for PAL and NTSC. Video selection
@@ -190,7 +191,29 @@ observations do not support an intentional 46–50-second black pause; the
 remaining native delay needs assessment as port overhead, while preserving
 the original timing and scene progression.
 
+Resource-stage timing then isolated 2,385 ticks (39.75 seconds) in `MoveHHi`,
+versus 62 ticks loading all 41 song resources. The captured layout is a sound
+handle followed by a large free block, then small movable blocks. Skipping
+the free payload while preserving the same rotation/order/final addresses
+reduces relocation to 113 ticks and the complete gap to 474 ticks (7.9 seconds),
+with exact heap/fragmentation host tests passing
+(`m2-song-load-cost-native-full.log`, `m2-movehigh-gap-native-full.log`, exit 0).
+The full host suite passes (`m2-movehigh-gap-host-suite.log`, exit 0).
+All six baseline native regression cases pass, including eight resource-exit
+phases (`m2-movehigh-native-regression.log`, exit 0). The focused native heap
+fixture passes all three stages (`m2-movehigh-heap-native-full.log`, exit 0),
+and both link audits pass. The compiled move routine uses 36 bytes for locals
+and saved registers, with no temporary buffer. Rendered confirmation of this
+heap change remains pending. Two narrower, ineffective heap trials were reverted.
+
 Already verified (details and capture names in [development.md](development.md)):
+- After sample reuse, a full uninterrupted intro and ordinary-randomness run
+  completes all nine transitions and exits naturally at tick 54,416, choice 1,
+  without demo input (`m2-song-reuse-full-route-native-full.log`, exit 0).
+  The previous room-2 stall guard is crossed without stalling. Both original
+  PAK payloads and palette reactivation pass; 1,524 windows, 111 resource reads
+  and 56,819 balanced services. Build uses `PAKPROBE=1`, without `INTROSKIP`
+  or `FIXEDRNG`; captures are archived in `tmp/m2-song-reuse-full-route-native/`.
 - The baseline ordinary-randomness demo completes all nine original
   room/camera transitions and exits naturally at tick 60,426 with choice 0.
   Both original PAK payloads and palette reactivation pass. The earlier room-2
