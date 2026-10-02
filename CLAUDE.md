@@ -68,6 +68,10 @@ solutions already paid for. Read [README.md](README.md),
 
 ## Changes
 
+- Keep `docs/open-work.md` strictly about unresolved work and its acceptance
+  criteria. Do not add completion summaries, current-state inventories or
+  historical progress logs. The overall plan belongs in `docs/design.md`;
+  completed work belongs in Git history.
 - Work [docs/open-work.md](docs/open-work.md) top down, one item at a time
   (design.md §8). Delete the item in the commit that completes it and add
   newly found work, with an ID and acceptance check, at its place in the queue.

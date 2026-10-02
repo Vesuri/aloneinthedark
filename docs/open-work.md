@@ -6,80 +6,18 @@ because the Git log records finished work. The design and its rationale are in
 [design.md](design.md), cited below by § number; owner decisions D1–D8 are in
 design.md §5.
 
-**M2 completed 2026-10-02.** Startup, intro, original demo, music and PAL/NTSC
-rendered display acceptance pass. Evidence is in [development.md](development.md).
-M3 is the next implementation milestone; the separately deferred M1.7b2 window
-fixture acceptance remains listed below.
-
-**Current state:**
-- Original CODE 1 loads, expands the exact A5 world, relocates Core and enters
-  startup on the 68020 without an FPU. Resources and hidden compatibility state
-  support the measured initialization path; original MDRV code is never loaded.
-- The uninterrupted intro passes on the baseline 68020: all 956 frames, including
-  944 partial updates and all 840 book batches, pass C2P verification. Four
-  instruction-matched intro frames pass paired pixel/palette/AGA checks; both
-  logos are exact and title/credits have only verified owned-font differences.
-  The pointer-enabled rerun passes the same complete coverage and comparisons.
-  M2.10 also passes the car/frog frame checks: matched actual model/transform
-  inputs produce exact 64,000-pixel Mac images, all 256 colours and native AGA
-  publications. The car comparison exposed and fixed descending LineTo ties;
-  all 80 original slope fixtures and 47 measured car calls pass. The final
-  uninterrupted-intro rerun after the display synchronization change also
-  passes all 956 frames and four paired captures. The full host suite and all
-  six native regression cases now pass on `a1200-020`, including all eight
-  resource-exit phases (`m2-final-native-regression-isolated.log`, exit 0).
-  Rendered-window acceptance remains separate.
-- M2.1c now passes actual native reads of both PAKs: 1,536 bytes from
-  ITD_Ress and 17,920 bytes from Present match the installed files exactly.
-  The intervening palette reactivation matches the Mac. The baseline
-  `a1200-020` ordinary-randomness run now completes all nine room/camera
-  transitions and exits naturally without demo input, with 1,500 windows,
-  111 resource reads and 70,729 balanced services
-  (`m2-sync-ordinary-native-full.log`, exit 0). Both payload and palette
-  checkers pass. The subsequent six-minute black interval was traced to repeated
-  sample conversion and free-memory copying. Both are fixed; the owner video
-  confirms a 7.95-second transition and completion of the visible demo.
-- The title-screen copy now matches the Mac with documented placeholder text
-  differences. The credits now use the measured 16-pixel line spacing and owned dot-above
-  artwork, including â in the original “Yaâl” credit. Game-window lines and
-  their AGA publication pass. The intro returns successfully;
-  the post-intro offscreen copy also matches. GetKeys now passes its original-call and native
-  held/released-key checks. Selector 13 now passes its control-word/ABI checks;
-  selector 0 now retains and arms song $87 with verified native playback.
-  The clock query now passes its original ABI and 32-bit condition-code checks.
-  Song-status selector 4 now passes its original ABI and flags; the direct-map
-  CopyBits at Dark+$1E4A now returns with matching pixels. RectRgn and the reached canonical-empty
-  EmptyRgn now pass exact region/ABI checks.
-  Intro LineTo and mode-0 fills match the Mac; the first raw effect plays on Paula and its
-  real polling loop observes completion with sample/DMA cleanup verified.
-  Detailed completed service contracts and regression evidence are in
-  [development.md](development.md). No Mac dialogs, menu bar or chrome are drawn.
-- The original runs in MAME on the System 7.5.5 reference volume.
-
 Each item gives the **goal**, then the scope, then *done when*: the evidence
 required.
 
 ## Pending verification (owner-deferred)
 
 - **M1.7b2 Rendered-picture acceptance for system windows — pending.**
-  Owner update 2026-09-28: window access is not granted; inspect Slicks,
-  Rescue on Fractalus, Revs and Vette, and leave screenshot verification pending
-  if their methods cannot supply it. This is not a completed acceptance check.
-  The active implementation queue resumes at M3 below.
-  - M1.7b1's `window-core` verifies 1 MB/64 KB reads, exact bytes/clock,
-    Paula interrupts, keyboard flush, DOS errors/save/readback, native resload
-    ABI and bitplane snapshots on 68020. Memory snapshots do not prove video.
-  - Slicks exports logical pixels/BMPs, not actual FS-UAE output. Revs/Vette
-    use F12+S. Rescue's rendered captures use host Screen Recording permission.
-    Revs additionally warns that remote-debugger runs grey/freeze the display;
-    paused GDB checkpoints cannot establish appearance.
-  - A local diagnostic app bundle makes the emulator discoverable, but computer
-    use is not approved. Do not retry window access or substitute host event
-    injection/capture for that denied access. GDB `monitor sc` is unsupported.
-  - Future verification needs an authorized live emulator video capture before,
-    during and after a window. If the OS changes the active copper/display,
-    instrument and fix it before accepting the picture.
-
+  - Obtain owner-provided live emulator captures before, during and after the
+    1 MB/64 KB system-window probe. Debugger-paused frames and logical
+    bitplane dumps do not establish rendered stability.
+  - Autonomous host-window capture/input remains restricted. Do not substitute
+    host event injection for owner-provided captures.
+  - If OS handback changes the display, instrument and fix it.
   *Done when* actual rendered snapshots are stable through the 1 MB/64 KB probe,
   `window-core` and production `boot` pass, and the window entry/exit cost is
   recorded with the full acceptance result. Only then is M1.7b complete.
@@ -115,8 +53,7 @@ required.
   have replacements entirely inside 320×200, choices/results match the reference,
   and frame pairs prove no Mac dialog presentation or menu bar is drawn.
 - **M3.4 Apple Events and misc Toolbox.**
-  - Pack8 registration/lookup already pass; complete and verify event delivery
-    at user-mode safe points.
+  - Complete and verify Apple Event delivery at user-mode safe points.
   - Exercise the five integer-only SANE ops implemented at Engine $47C2–$4852
     in the integrated session; unimplemented operations/states remain loud stops.
   - The remaining Window Manager calls.
@@ -130,9 +67,8 @@ required.
 
   *Done when* both cases pass on `a1200-020`.
 - **M3.6 Durable writes.**
-  - Existing file/resource writes, pending-write tracking and preference exit
-    persistence pass native fixtures. Verify them through the actual game save
-    and reload path, including reset immediately after reported save success.
+  - Verify actual game save and reload, including reset immediately after
+    reported save success.
 
   *Done when* a save survives an emulator reset made immediately after the game
   reports it saved.
@@ -140,11 +76,9 @@ required.
 ## M4 Audio
 
 - **M4.1 Remaining driver-interface coverage.**
-  - The intro-driver prerequisite and its no-loud-stop exit criterion pass with
-    M2. Preserve the broader selector inventory: decode every selector used by
-    gameplay and implement each reached contract against the original driver.
+  - Complete the gameplay selector inventory and implement each reached
+    contract against the original driver.
     Unimplemented selectors remain loud stops; original MDRV never runs.
-  - Full-game selector coverage is not established by the intro song fixture.
 
 - **M4.2 Music on Paula voices.**
   - A native SONG/MIDI sequencer and INST→`snd ` mapping on the four channels.
@@ -157,9 +91,8 @@ required.
   differences.
 - **M4.3 Sound effects and toggles.**
   - Effects through the driver's selectors take priority on the channels.
-  - Selector 22 now uses the same quiesce/free path as verified natural effect
-    completion. Exercise an actual active-effect stop through its interface,
-    including music-channel isolation and sample ownership.
+  - Verify active-effect stop through selector 22, including music-channel
+    isolation and sample ownership.
   - The S/M keys and the game's toggles work.
   - `SysBeep` becomes a short Paula click.
 
@@ -167,11 +100,10 @@ required.
   MAME by event.
 
 - **M4.3a Remaining effect packet/allocation variants.**
-  - M2.3g26 enables raw one-shots at integral rates. Loop boundaries/counter
-    updates, fractional rates, samples beyond one DMA segment and occupied
-    effect/Paula voice selection still have named stops.
+  - Measure and implement loop boundaries/counter updates, fractional rates,
+    samples beyond one DMA segment and occupied effect/Paula voice selection.
     A free second effect slot must also reproduce D1.W from the preceding active
-    slot; the old guessed $7FFF result is now `EFFECT SECOND SLOT`.
+    slot; resolve the `EFFECT SECOND SLOT` loud stop against the original.
   - Bring any reached prerequisite forward. Measure the original driver before
     implementing looping, aging/stealing and interaction with music.
 
@@ -198,8 +130,6 @@ required.
   - Revisit 68030/68040/68060 only after the functional milestones on 68020.
     Add explicit configurations and verify ROM compatibility, actual CPU and
     OS-visible RAM before using them for later profiling/stairs checks.
-  - The exploratory 68040 run failed before the loader, with Z3 fast RAM not
-    configured by the selected ROM; it is not a supported configuration.
 
   *Done when* each added configuration reports its intended CPU and available
   memory, and passes all regression cases implemented so far in bounded runs.
@@ -226,8 +156,7 @@ required.
 - **M5.2a Region expansion cost.**
   - After streaming masked copies, four InsetRgn calls use 14,256,985 of
     24,022,099 beam units in a bounded diagnostic sample. RegionExpand decodes
-    the complete region three times per output row. The unprofiled idle demo
-    now completes, so further optimization belongs here rather than blocking M2.
+    the complete region three times per output row.
   - Consider validated forward traversal of neighbouring rows, preserving exact
     encoding and atomic malformed/capacity rejection. Inspect combined native
     stack usage and interrupt headroom; no large new automatic arrays.
