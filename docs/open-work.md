@@ -83,24 +83,13 @@ required.
 ## M2 Startup to intro
 
 Delivery update (owner, 2026-10-02): finish M2 without blocking on
-micro-optimizations. Work the actionable items below in order. Preserve the
-unresolved visual report as an explicit acceptance gap; it does not block
-independent service implementation or automated acceptance. Region expansion
-and other general tuning remain M5.
+micro-optimizations. Work the actionable items below in order. The owner video
+now resolves the reported black interval and demo circling; PAL/NTSC rendered
+fixture acceptance remains. Region expansion and general tuning remain M5.
 
 - [ ] **M2.5** — PAL/NTSC automated display and native audio-clock checks pass;
   original-game pointer is enabled with verified inversion. Rendered-picture
   acceptance remains owner-deferred.
-- [ ] **M2.3g44 visual report** — music catch-up caused most of the measured
-  blank-frame delay and sample reuse reduces it. Verify the rendered correction
-  with owner-provided captures and assess the remaining loading interval.
-  M2 remains open while its required acceptance is outstanding.
-- [ ] **M2.3g44 demo reliability** — investigate the owner's renewed car-circling
-  report in the normal PAL run. The post-music-fix uninterrupted baseline route
-  now completes all nine transitions naturally with choice 1 and passes both
-  PAK/palette checks. Confirm normal visible behavior after the loading fix;
-  retain original game instructions and track any recurrence with actor state.
-
 - **M2.5 AGA 8-plane display.**
   - Lores 320×200×8 in `AitdScreen`, centred for PAL and NTSC. Video selection
     now passes the five-frame native display fixture on
@@ -140,71 +129,11 @@ and other general tuning remain M5.
   preserves game colours, and effect period/duration use the selected video
   clock. Other processors remain deferred (D2).
 
-### M2.3g44 — unresolved visual report
-
-The main application-side delay is diagnosed and corrected below; **rendered
-confirmation and the remaining loading interval are still open**. Follow the
-host-window restriction under M1.7b2; inspect owner-provided captures, but do
-not retry denied autonomous capture or substitute host input injection.
-
-Owner-provided F12+S captures from a normal, unpaused `a1200-020` PAL run on
-2026-10-02 are now available in `tmp/m2-owner-screenshots-pal/` (40 PNGs).
-Amsterdam timestamps show the menu at 20:45:10, 14 identical all-black captures
-from 20:45:25 through 20:51:01, and landscape at 20:51:44. They support the
-owner's roughly six-minute black interval, but do not identify its cause.
-The owner reports a moving mouse pointer during black output; the saved black
-images contain no pointer, so that observation is not independently captured.
-Later images show car movement and scene progression through 20:54:09; they
-do not alone prove the reported circling or natural completion. The run was
-stopped at the owner's request. No Enter was requested: the letter belongs to
-the new-game route and is not expected in this idle demo. User-saved screenshot
-inspection is authorized; autonomous host capture/input remains restricted.
-
-A subsequent bounded baseline diagnostic (`tmp/m2-black-timeline-native-full.log`,
-exit 0; `INTROSKIP=1`, ordinary randomness) reproduces a 21,678-tick gap
-between frame submissions: tick 3,296 to 24,974, about 361 seconds. The first
-frame's entire viewport is index 255 with RGB (0,0,0). Song/instrument/sample
-resource requests occupy ticks 3,444–5,850; no further frame is submitted until
-24,974. Follow-up measurements below locate the dominant work in that gap.
-
-Follow-up activity and cost captures identify native music catch-up as the main
-delay (`m2-black-activity-native-full.log`, `m2-black-cost-native-full.log`, both
-exit 0). Only a handful of original calls progress while song catch-up consumes
-17,181 ticks; repeated PCM conversion accounts for 16,697 ticks (278 seconds).
-The committed sample-reuse change reduces the same blank-frame submission
-gap from 21,663 to 2,976 ticks (361 to 49.6 seconds), with 65 conversion ticks
-before the next picture (`m2-black-reuse-native-full.log`, exit 0). The host
-original-event comparison and full native playback now pass, including all
-3,736 timed events, 25 byte-exact retained PCM variants (458,974 bytes), effect
-priority, natural completion and cleanup (`m2-song-reuse-native-full.log`,
-exit 0). Normal route reliability and owner-rendered confirmation remain required;
-the residual loading interval is not yet accepted.
-
-Original-Mac cross-check of the owner's artistic-pause hypothesis: the existing
-unattended sequence has the menu in `tmp/story-reference-35-reference.png`
-(frame 13,381) and landscape in capture 36 (frame 13,681), only 300 emulated
-frames apart. The separately completed natural-idle reference trace
-`tmp/m2-pak-idle-complete.log` records menu timeout at tick $2DB8 and scene
-loaded at $2E28, a 112-tick interval (about 1.9 seconds). Its byte-guarded
-observer leaves game code, timers and post-selection input untouched. These
-observations do not support an intentional 46–50-second black pause; the
-remaining native delay needs assessment as port overhead, while preserving
-the original timing and scene progression.
-
-Resource-stage timing then isolated 2,385 ticks (39.75 seconds) in `MoveHHi`,
-versus 62 ticks loading all 41 song resources. The captured layout is a sound
-handle followed by a large free block, then small movable blocks. Skipping
-the free payload while preserving the same rotation/order/final addresses
-reduces relocation to 113 ticks and the complete gap to 474 ticks (7.9 seconds),
-with exact heap/fragmentation host tests passing
-(`m2-song-load-cost-native-full.log`, `m2-movehigh-gap-native-full.log`, exit 0).
-The full host suite passes (`m2-movehigh-gap-host-suite.log`, exit 0).
-All six baseline native regression cases pass, including eight resource-exit
-phases (`m2-movehigh-native-regression.log`, exit 0). The focused native heap
-fixture passes all three stages (`m2-movehigh-heap-native-full.log`, exit 0),
-and both link audits pass. The compiled move routine uses 36 bytes for locals
-and saved registers, with no temporary buffer. Rendered confirmation of this
-heap change remains pending. Two narrower, ineffective heap trials were reverted.
+M2.3g44 visible acceptance now passes: the owner recording measures a 7.95-second
+menu-to-landscape black interval and shows the demo progressing to its final
+room and returning to the logo. See [development.md](development.md) for the
+recording, timing and supporting native evidence. PAL/NTSC fixture acceptance
+above remains open.
 
 Already verified (details and capture names in [development.md](development.md)):
 - After sample reuse, a full uninterrupted intro and ordinary-randomness run
@@ -218,8 +147,7 @@ Already verified (details and capture names in [development.md](development.md))
   room/camera transitions and exits naturally at tick 60,426 with choice 0.
   Both original PAK payloads and palette reactivation pass. The earlier room-2
   stall is absent in that particular run after eliminating back-buffer copies
-  of spans immediately overwritten by C2P; the later visible-run report reopens
-  reliability. Original movement instructions and timers are unchanged.
+  of spans immediately overwritten by C2P; the later visible-run report is now resolved by the owner recording. Original movement instructions and timers are unchanged.
   Car/frog frame fidelity passes with matched actual draw inputs.
 - The idle menu has all 64,000 pixels, plane pointers and 256 colours verified.
   Read-only mode checks pass after 135 OS handbacks and at its original 900-tick
