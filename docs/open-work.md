@@ -48,7 +48,7 @@ required.
   Owner update 2026-09-28: window access is not granted; inspect Slicks,
   Rescue on Fractalus, Revs and Vette, and leave screenshot verification pending
   if their methods cannot supply it. This is not a completed acceptance check.
-  The active implementation queue resumes at M2.1 below.
+  The active implementation queue resumes at M2 below.
   - M1.7b1's `window-core` verifies 1 MB/64 KB reads, exact bytes/clock,
     Paula interrupts, keyboard flush, DOS errors/save/readback, native resload
     ABI and bitplane snapshots on 68020. Memory snapshots do not prove video.
@@ -80,6 +80,10 @@ and other general tuning remain M5.
   acceptance remains owner-deferred.
 - [ ] **M2.10** — finish the remaining car/frog frame acceptance. The full
   pointer-enabled intro and all four paired intro states now pass.
+- [ ] **M2.3g44 sequence** — finish the baseline run with ordinary randomness,
+  verifying natural demo exit without input, both PAK reads and palette
+  reactivation. The current run has reached five room transitions; final
+  acceptance is still pending.
 - [ ] **M2.3g44 visual report** — demonstrate the black-interval cause and verify
   the rendered result when authorized capture is available. M2 remains open
   while its required acceptance is outstanding.
@@ -144,7 +148,11 @@ and other general tuning remain M5.
     pixels; the actual animation frames and transforms differ too. The strict
     checker retains this failure rather than masking moving actors. Replaying
     the native car transform in the original Mac renderer reduces its mismatch
-    to two adjacent pixels; complete that attribution before acceptance.
+    to two adjacent pixels, unchanged across six animation-frame-1 samples.
+    Replaying the frog transform, including actor position and bounds, still
+    leaves 128 differing pixels. Neither experiment closes acceptance.
+    Next: capture the actual native model and transform inputs at Dark+$3ED4
+    and pair those inputs with the original renderer before further hypotheses.
     See [native demo captures](development.md#native-car-and-pond-captures-m210).
 
   *Done when* the remaining car/frog states match MAME pixel-for-pixel, or with
@@ -189,6 +197,12 @@ An unseeded native PAK acceptance run also timed out before its cleanup
 checkpoint after 25 minutes, with the interrupted PC in frame presentation.
 It did not capture scene state; neither its sequence position nor the cause of
 that missed checkpoint is established by this result.
+A replacement baseline `a1200-020` run is in progress with ordinary randomness
+and an observer installed before the first PAK read
+(`m2-pak-ordinary-early-native.log`). It has read ITD_Ress and recorded five
+room transitions, through room 2/camera 4 at frame 734. Natural exit, the
+Present read, palette reactivation and a successful terminal result remain
+required; partial progress is not acceptance.
 Routine service tests use `INTROSKIP=1`; uninterrupted playback is reserved for
 sequence acceptance. `FIXEDRNG=1` needs the matching Mac entropy fixture;
 elapsed ticks alone do not establish paired scene state.
