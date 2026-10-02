@@ -439,3 +439,30 @@ python3 tools/check_aga_capture.py startup tmp/m2-restorepalette-native-final.lo
 Startup reaches COPYBITS, Misc2+$24D2, with original MDRV absent. Counts are
 128 windows, 463/463 services, 68 resource reads / 333,998 bytes, CODE mask $3FFB.
 Fresh-preference counts are derived (154 windows, 471/471 services).
+
+## Reusing the presentation palette
+
+The later original Dark2+$20CC call reuses the palette that was restored above.
+The native PAK run reaches this call after the song catch-up change but rejects
+its already-realized header (`tmp/m2-pak-catchup-palette-stop-full.log`, exit 1).
+
+`tools/mac_palette_rebind.lua` captures the original first binding and default
+restoration, then invokes the real SetPalette trap on that same inactive
+presentation palette. `tmp/m2-palette-rebind-reference.log` exits 0. Its header
+stays $C003, state changes from 0 to 1, entry records remain unchanged, and a new
+seed reaches both the device table and private block. The default palette and
+its private data are preserved, as are all client pixels. For the three
+non-endpoint entries whose RGB already matches the device (1, 15 and 191),
+the original clears the explicit ownership flag to zero; changed RGB entries
+use $2000. This differs from initial realization and default restoration.
+
+The explicit reactivation path in `Palette8::realize` reproduces the complete
+captured palette, CLUT and private block. Run:
+
+```sh
+python3 tools/check_palette_rebind.py tmp/m2-palette-rebind-reference.log --status 0 --helper
+python3 tools/check_palette8.py
+```
+
+Both sanitizer-backed checks pass. The working-tree SetPalette integration and
+the subsequent original PAK route still need native acceptance.

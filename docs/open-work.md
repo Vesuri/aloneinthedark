@@ -104,8 +104,12 @@ and other general tuning remain M5.
     original Misc3+$111E, then reaches `SONG SAFE POINT GAP` on the baseline
     68020: 640 elapsed ticks exceed the native sequencer's arbitrary 600-tick
     guard (`m2-pak-filtered-songgap-detail-full.log`, exit 1). A working-tree
-    change lets the existing timeline consume all elapsed pulses; the bounded
-    catch-up/PAK run must pass before this change or either payload is accepted.
+    change lets the existing timeline consume all elapsed pulses. Its baseline
+    run passes that stop, then rejects reuse of the presentation palette at
+    Dark2+$20CC (`m2-pak-catchup-palette-stop-full.log`, exit 1). Original Mac
+    reactivation is now measured and the helper matches all palette/CLUT/private
+    bytes; see [palette.md](palette.md#reusing-the-presentation-palette).
+    The working-tree runtime integration and both-payload acceptance remain open.
 
   *Done when* the game opens and reads `ITD_RESS.PAK` and `PRESENT.PAK`, its
   returned bytes match the host files by debugger checksum, and startup window

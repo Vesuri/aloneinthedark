@@ -43,8 +43,8 @@ inline bool supported(const uint8_t* palette,uint32_t size,uint16_t entryState=0
 }
 inline bool realize(uint8_t* palette,uint32_t paletteBytes,uint8_t* table,
                     uint32_t tableBytes,uint8_t* privateData,uint32_t privateBytes,
-                    uint32_t seed,uint16_t entryState=0) {
-    if((entryState!=0 && entryState!=0x800a) || !supported(palette,paletteBytes,entryState) || !table || tableBytes!=2056
+                    uint32_t seed,uint16_t entryState=0,bool reactivating=false) {
+    if((reactivating && entryState!=0x800a) || (entryState!=0 && entryState!=0x800a) || !supported(palette,paletteBytes,entryState) || !table || tableBytes!=2056
        || word(table+4)!=0x8000 || word(table+6)!=255 || !privateData || privateBytes!=4
        || !rgb(table+10,0xffff) || !rgb(table+10+255*8,0))return false;
     for(uint16_t i=0;i<256;++i) {
@@ -53,7 +53,12 @@ inline bool realize(uint8_t* palette,uint32_t paletteBytes,uint8_t* table,
         // explicit slots retain the previous device colours rather than being
         // overwritten with black or white.
         if(!rgb(e,0) && !rgb(e,0xffff)) {
-            uint8_t* target=table+8+i*8;word(target,0x2000);
+            uint8_t* target=table+8+i*8;
+            // Measured inactive-palette reactivation releases an old explicit
+            // slot when its RGB already matches; changed RGB claims the slot.
+            bool matching=word(target+2)==word(e) && word(target+4)==word(e+2)
+                && word(target+6)==word(e+4);
+            word(target,reactivating && matching ? 0 : 0x2000);
             word(target+2,word(e));word(target+4,word(e+2));word(target+6,word(e+4));
         }
         word(e+10,0x800a);
