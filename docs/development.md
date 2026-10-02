@@ -5411,3 +5411,8 @@ This closes baseline ordinary sequence acceptance. It does not prove a
 frame-rate multiplier, diagnose the owner's black interval or replace
 rendered-picture acceptance. The final uninterrupted-intro regression after
 this display change remains separately tracked in open work.
+
+The complete `make host-tests` suite passes after making generated offsets in
+`mac_palette_rebind.lua` explicitly hexadecimal (`tmp/m2-final-host-tests-fixed.log`,
+exit 0). The first suite run rejected that observer's unprefixed `%x` literal;
+the corrected form emits `0x20cc`/`0x214c` for the same original call sites.

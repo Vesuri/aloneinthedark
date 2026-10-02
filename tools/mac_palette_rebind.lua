@@ -23,7 +23,7 @@ local function capture(label)
  print(string.format('REBIND_%s header=%X state=%X oldHeader=%X oldState=%X seed=%X sp=%X',label,mem:read_u32(ptr(palette)+4),mem:read_u32(ptr(palette)+8),mem:read_u32(ptr(old)+4),mem:read_u32(ptr(old)+8),mem:read_u32(ct),cpu.state.A7.value))
 end
 local function arm(offset)
- cpu.debug:bpset(0xdd60,cond..' && w@(d@(sp+2))==0xaa95 && (d@(sp+2)&ffffff)=='..base(5)..'+'..string.format('%x',offset),'')
+ cpu.debug:bpset(0xdd60,cond..' && w@(d@(sp+2))==0xaa95 && (d@(sp+2)&ffffff)=='..base(5)..'+'..string.format('0x%x',offset),'')
  dbg.execution_state='run'
 end
 emu.register_frame_done(function()

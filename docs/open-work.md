@@ -85,9 +85,10 @@ and other general tuning remain M5.
 - [ ] **M2.5** — PAL/NTSC automated display and native audio-clock checks pass;
   original-game pointer is enabled with verified inversion. Rendered-picture
   acceptance remains owner-deferred.
-- [ ] **M2.3g44 intro regression** — verify uninterrupted playback after the
+- [ ] **M2.3g44 final regression** — verify uninterrupted playback after the
   display synchronization change: all 840 book batches, every-frame C2P and
-  four paired Macintosh pixel/palette/publication captures.
+  four paired Macintosh pixel/palette/publication captures. Run the existing
+  `make regression` milestone cases on `a1200-020` as required by design §8.
 - [ ] **M2.3g44 visual report** — demonstrate the black-interval cause and verify
   the rendered result when authorized capture is available. M2 remains open
   while its required acceptance is outstanding.
