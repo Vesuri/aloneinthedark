@@ -95,7 +95,11 @@ fixture acceptance remains. Region expansion and general tuning remain M5.
   and the pointer over the coloured logo and portrait-selection picture
   (`tmp/m2-owner-pointer-pal/`). PAL game-pointer visibility passes; exact
   colour preservation is supported by the earlier native comparisons.
-  PAL/NTSC ramp fixtures and NTSC rendered pointer acceptance remain open.
+  PAL rendered ramp/pattern/pointer acceptance also passes: the three owner
+  captures at 23:10–23:11 show the full ramp, pointer movement and edge clipping
+  (`tmp/m2-owner-ramp-pal/`), paired with exact five-frame native validation
+  (`m2-visual-pal-native-full.log`, exit 0, checker `--inversion --visual`).
+  NTSC rendered ramp/pattern/pointer acceptance remains open.
 - **M2.5 AGA 8-plane display.**
   - Lores 320×200×8 in `AitdScreen`, centred for PAL and NTSC. Video selection
     now passes the five-frame native display fixture on
@@ -168,15 +172,9 @@ Already verified (details and capture names in [development.md](development.md))
   do not establish the cause of the preceding black interval. The DOS video is
   content context only, never the Macintosh pixel/font reference.
 
-Remaining: capture the reported black state across logical pixels, palette,
-AGA publication and authorized rendered output. FS-UAE's
-`Not a valid drawable size for glViewport` remains a clue, not a diagnosis.
-The completed sequence checks do not establish what the host window displayed.
-See [development.md](development.md) for the baseline sequence evidence and
-[cursor.md](cursor.md) for display synchronization checks.
-
-*Done when* the black-interval cause is demonstrated and the rendered result
-is verified. This remains pending while authorized capture is unavailable.
+The black-interval acceptance is complete: timing measurements identified
+repeated sample conversion and free-memory copying, and the owner video verifies
+the corrected rendered result. See [development.md](development.md) for evidence.
 
 ## M3 Playable
 

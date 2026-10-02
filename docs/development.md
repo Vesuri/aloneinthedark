@@ -42,6 +42,21 @@ debugger-read global survives `--gc-sections`). C/C++ uses
 (it has no `-mtune` option). Integer multiplication/division uses native C/C++;
 the 68000 helper header is retired.
 
+## Rendered display fixture (M2.5)
+
+Clean-build with `AGAPROBE=1 CURSORPROBE=1 C2PVERIFY=1 AGAVISUAL=1` for
+owner screenshots. The visual variant adds a ramp containing all 256 colour
+indices above the bitplane test pattern. Each of the five pointer stages stays
+visible for 30 game-clock seconds with the display and interrupts running.
+Use the normal launcher and F12+S in both PAL and NTSC. This diagnostic does
+not affect production builds.
+
+Automated validation uses `GDB_ENTRY=aitdRunAgaProbe`,
+`GDBSCRIPT=cursor_probe.gdb` and a 400-second deadline. Verify the captures with
+`tools/check_cursor_capture.py LOG --status 0 --video PAL --inversion --visual`
+(select NTSC for the NTSC run). The checker independently reconstructs the
+ramp and checks all pixels, colours, sprite data and publication registers.
+
 ## Full-intro C2P acceptance (M2.6)
 
 `AMIGA_CONFIG=a1200-020 amiga/regression.sh intro` clean-builds with

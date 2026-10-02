@@ -8,7 +8,7 @@ import struct
 from check_aga_capture import check_frame, read, require
 
 
-def check(log, status, folder, video, require_inversion=False):
+def check(log, status, folder, video, require_inversion=False, visual=False):
     require(status == 0 and not re.search(r'FAIL|Error in|TIMEOUT|Program received signal', log), 'normal completion')
     require(log.count('PASS native cursor fixture frames=5 restored=1') == 1
             and log.count('[Inferior 1 (Remote target) detached]') == 1, 'positive completion and detach')
@@ -22,6 +22,10 @@ def check(log, status, folder, video, require_inversion=False):
     states = re.findall(r'^CURSOR_FIX stage=(\d+) front=([0-9A-F]+) copper=([0-9A-F]+) sprite=([0-9A-F]+) empty=([0-9A-F]+) crop=(\d+)/(\d+) allowed=(\d+) visible=(\d+) x=(-?\d+) y=(-?\d+) hot=(-?\d+)/(-?\d+) pal=(\d+) control=([0-9A-F]+)$', log, re.M)
     require(len(states) == 5, 'five pointer publications')
     source = bytearray((x*37+y*71+(x^y)) & 255 for y in range(480) for x in range(640))
+    if visual:
+        ramp = bytes(x*256//320 for x in range(320))
+        for y in range(150,230):
+            source[y*640+160:y*640+480] = ramp
     clut = bytearray(struct.pack('>IHH', 0, 0x8000, 255))
     for i in range(256):
         clut.extend(struct.pack('>4H', 0x800, i*257, (255-i)*257, ((i*71)&255)*257))
@@ -90,8 +94,9 @@ if __name__ == '__main__':
     parser.add_argument('--video',choices=['PAL','NTSC'],required=True)
     parser.add_argument('--folder',type=Path,default=Path('tmp'))
     parser.add_argument('--inversion',action='store_true',help='require the measured XOR fixture and clean C2P verification')
+    parser.add_argument('--visual',action='store_true',help='verify the AGAVISUAL colour-ramp fixture')
     args = parser.parse_args()
     try:
-        check(args.log.read_text(),args.status,args.folder,args.video,args.inversion)
+        check(args.log.read_text(),args.status,args.folder,args.video,args.inversion,args.visual)
     except (ValueError,OSError) as error:
         raise SystemExit('FAIL native cursor: '+str(error))

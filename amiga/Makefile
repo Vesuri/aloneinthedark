@@ -183,6 +183,12 @@ $(error CURSORPROBE=1 requires AGAPROBE=1)
 endif
 EXTRA_DEFINES += -DAITD_AGA_CURSOR_PROBE
 endif
+ifeq ($(AGAVISUAL),1)
+ifneq ($(AGAPROBE),1)
+$(error AGAVISUAL=1 requires AGAPROBE=1)
+endif
+EXTRA_DEFINES += -DAITD_AGA_VISUAL
+endif
 
 ifeq ($(WINDOWPROBE),1)
 ifndef PROBES

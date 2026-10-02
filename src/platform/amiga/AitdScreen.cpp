@@ -601,6 +601,7 @@ const uint8_t* g_agaProbeSource=0;
 const uint8_t* g_agaProbeColors=0;
 int16_t g_agaProbeViewport[4]={0,0,0,0};
 extern volatile uint16_t g_vbiCount;
+extern volatile uint32_t g_macTicks;
 __attribute__((noinline,used)) void aitdAgaProbeCheckpoint() { __asm__ volatile("nop" ::: "memory"); }
 
 bool aitdRunAgaProbe(AitdScreen* screen)
@@ -610,6 +611,11 @@ bool aitdRunAgaProbe(AitdScreen* screen)
     for(uint16_t y=0;y<480;++y)for(uint16_t x=0;x<640;++x)
         source[uint32_t(y)*640+x]=uint8_t(x*37+y*71+(x^y));
     colors[4]=0x80;colors[7]=255;
+#ifdef AITD_AGA_VISUAL
+    // All 256 indices in a readable ramp above the bitplane stress pattern.
+    for(uint16_t y=150;y<230;++y)for(uint16_t x=160;x<480;++x)
+        source[uint32_t(y)*640+x]=uint8_t(uint32_t(x-160)*256/320);
+#endif
     for(uint16_t i=0;i<256;++i) {
         uint8_t* c=colors+8+i*8;c[0]=8;
         c[2]=c[3]=uint8_t(i);c[4]=c[5]=uint8_t(255-i);c[6]=c[7]=uint8_t(i*71);
@@ -663,6 +669,11 @@ bool aitdRunAgaProbe(AitdScreen* screen)
         }
 #endif
         g_agaProbeStage=frame+1;aitdAgaProbeCheckpoint();
+#ifdef AITD_AGA_VISUAL
+        // Let the owner capture real, running video rather than a debugger stop.
+        uint32_t visibleStart=g_macTicks;
+        while(uint32_t(g_macTicks-visibleStart)<30*60) {__asm__ volatile("nop");}
+#endif
     }
     return true;
 }
