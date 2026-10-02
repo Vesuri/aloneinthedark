@@ -91,9 +91,10 @@ and other general tuning remain M5.
 - [ ] **M2.5** — PAL/NTSC automated display and native audio-clock checks pass;
   original-game pointer is enabled with verified inversion. Rendered-picture
   acceptance remains owner-deferred.
-- [ ] **M2.3g44 visual report** — demonstrate the black-interval cause and verify
-  the rendered result when authorized capture is available. M2 remains open
-  while its required acceptance is outstanding.
+- [ ] **M2.3g44 visual report** — music catch-up caused most of the measured
+  blank-frame delay and sample reuse reduces it. Verify the rendered correction
+  with owner-provided captures and assess the remaining loading interval.
+  M2 remains open while its required acceptance is outstanding.
 - [ ] **M2.3g44 demo reliability** — investigate the owner's renewed car-circling
   report in the normal PAL run. Reproduce with measured actor/track state and
   verify natural completion on the normal uninterrupted route; retain original
@@ -140,10 +141,10 @@ and other general tuning remain M5.
 
 ### M2.3g44 — unresolved visual report
 
-The reported black interval is **not diagnosed or fixed**. Existing memory and
-register checks cannot establish what the host window displayed. Follow the
-host-window restriction under M1.7b2; do not retry denied capture or substitute
-host input injection. This verification gap must not stall independent M2 work.
+The main application-side delay is diagnosed and corrected below; **rendered
+confirmation and the remaining loading interval are still open**. Follow the
+host-window restriction under M1.7b2; inspect owner-provided captures, but do
+not retry denied autonomous capture or substitute host input injection.
 
 Owner-provided F12+S captures from a normal, unpaused `a1200-020` PAL run on
 2026-10-02 are now available in `tmp/m2-owner-screenshots-pal/` (40 PNGs).
@@ -163,17 +164,13 @@ exit 0; `INTROSKIP=1`, ordinary randomness) reproduces a 21,678-tick gap
 between frame submissions: tick 3,296 to 24,974, about 361 seconds. The first
 frame's entire viewport is index 255 with RGB (0,0,0). Song/instrument/sample
 resource requests occupy ticks 3,444–5,850; no further frame is submitted until
-24,974. This establishes a long application-side blank-frame gap as a concrete
-lead, but does not yet locate the work/wait after the last sample request or
-prove why the normal run stayed black. Next measure the original continuation
-and native service activity across that gap, then verify the correction against
-the original Mac and owner-rendered output.
+24,974. Follow-up measurements below locate the dominant work in that gap.
 
 Follow-up activity and cost captures identify native music catch-up as the main
 delay (`m2-black-activity-native-full.log`, `m2-black-cost-native-full.log`, both
 exit 0). Only a handful of original calls progress while song catch-up consumes
 17,181 ticks; repeated PCM conversion accounts for 16,697 ticks (278 seconds).
-The in-progress sample-reuse change reduces the same blank-frame submission
+The committed sample-reuse change reduces the same blank-frame submission
 gap from 21,663 to 2,976 ticks (361 to 49.6 seconds), with 65 conversion ticks
 before the next picture (`m2-black-reuse-native-full.log`, exit 0). The host
 original-event comparison and full native playback now pass, including all
