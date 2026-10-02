@@ -42,12 +42,46 @@ def check(text, status):
     print('PASS original GlobalToLocal: Engine+16E8, selected live origin, point/guards, stack and all registers')
 
 
+def check_native(text, status):
+    if (status != 0 or any(x in text for x in ('FAIL', 'TIMEOUT', 'Error in', 'Program received signal'))
+            or text.count('PASS native original GlobalToLocal call') != 1
+            or text.count('[Inferior 1 (Remote target) detached]') != 1):
+        raise ValueError('native completion')
+    e = fields(one(text, r'^GL_NATIVE_ENTRY (.*)$'))
+    r = fields(one(text, r'^GL_NATIVE_RETURN (.*)$'))
+    if int(one(text, r'^GL_INPUT point=00FD0141 button=1 samples=(\d+) site=native-vbi-mouse$')) == 0:
+        raise ValueError('native VBI input consumption')
+    before, after, pm = [(ROOT/'tmp'/f'globallocal-native-{x}.bin').read_bytes()
+                         for x in ('before', 'after', 'pm')]
+    if tuple(map(len, (before, after, pm))) != (12, 12, 50):
+        raise ValueError('native capture sizes')
+    original_pm = (ROOT/'tmp/globallocal-reference-inverse-pm.bin').read_bytes()
+    if pm[6:14] != original_pm[6:14] or struct.unpack_from('>H', pm, 32)[0] != 8:
+        raise ValueError('native selected port origin/depth')
+    if (e['value'], r['value']) != (0x00fd0141, 0x006700a1):
+        raise ValueError('native/reference point pair')
+    expected = bytearray(before)
+    struct.pack_into('>I', expected, 4, r['value'])
+    if before[4:8] != struct.pack('>I', e['value']) or expected != after:
+        raise ValueError('native point/adjacent bytes')
+    if r['sp'] != e['args']+4:
+        raise ValueError('native argument cleanup')
+    for reg in [f'd{i}' for i in range(8)]+[f'a{i}' for i in range(7)]:
+        if e[reg] != r[reg]:
+            raise ValueError('native preserved '+reg)
+    print('PASS native GlobalToLocal: original menu event/caller, exact reference point pair, live port, guards, stack/registers')
+
+
 if __name__ == '__main__':
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('reference', type=Path)
     p.add_argument('--status', type=int, required=True)
+    p.add_argument('--native', type=Path)
+    p.add_argument('--native-status', type=int)
     a = p.parse_args()
     try:
         check(a.reference.read_text(), a.status)
+        if a.native:
+            check_native(a.native.read_text(), a.native_status)
     except (ValueError, OSError, KeyError) as error:
         raise SystemExit('FAIL GlobalToLocal: '+str(error))

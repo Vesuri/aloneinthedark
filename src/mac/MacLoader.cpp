@@ -55,6 +55,14 @@ void aitd_user_vbl_trampoline();
 extern volatile uint16_t g_macFramesPresented;
 extern volatile uint16_t g_macFramesQueued;
 extern volatile uint16_t g_vbiCount;
+#ifdef AITD_MOUSE_INPUT_PROBE
+// Diagnostic guest input, consumed through the normal VBI mouse sampler.
+volatile uint16_t g_mouseProbeEnabled=0,g_mouseProbeDown=0;
+volatile int16_t g_mouseProbeX=0,g_mouseProbeY=0;
+volatile uint32_t g_mouseProbeSamples=0;
+volatile uint16_t g_mouseProbeStage=0;
+volatile uint32_t g_mouseProbeTick=0;
+#endif
 #ifdef AITD_MAPPED_COPY_ASM
 void aitdMappedCopyRowsAsm(const uint8_t* source, uint8_t* destination,
                             const uint8_t* map, uint32_t rowBytes, uint32_t height,
@@ -5909,6 +5917,12 @@ extern "C" void aitdMacMouseVBI()
         x = addClampedMouseDelta(x, deltaX, 511);
         y = addClampedMouseDelta(y, deltaY, 319);
     }
+#ifdef AITD_MOUSE_INPUT_PROBE
+    if(g_mouseProbeEnabled) {
+        x=g_mouseProbeX;y=g_mouseProbeY;buttonDown=g_mouseProbeDown!=0;
+        ++g_mouseProbeSamples;
+    }
+#endif
     s_mouseX = x;
     s_mouseY = y;
     // Include viewport motion and edge clamping in all redirected Mac mouse
@@ -6605,6 +6619,26 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     // Original Dan1+$1376 TickCount inside the game menu's 900-tick wait.
     aitdInputMenuEnter(trap==0xa975 && s_segments[12].begin
                       && pc==(uint32_t)s_segments[12].begin+0x1376,g_macTicks);
+#endif
+#ifdef AITD_MOUSE_INPUT_PROBE
+    // The same byte-checked menu wait used by the normal Enter diagnostic.
+    if(!g_mouseProbeStage && trap==0xa975 && s_segments[12].begin
+       && pc==(uint32_t)s_segments[12].begin+0x1376) {
+        if(read32(s_segments[12].begin+0x1374)!=0x42a7a975UL) {
+            loaderStop("MOUSE PROBE MENU BYTES",12);showLoaderStop();
+        }
+        g_mouseProbeTick=g_macTicks;g_mouseProbeStage=1;
+    }
+    if(g_mouseProbeStage==1 && g_macTicks-g_mouseProbeTick>=30) {
+        g_mouseProbeX=321;g_mouseProbeY=253;g_mouseProbeDown=1;
+        g_mouseProbeEnabled=1;g_mouseProbeStage=2;
+    }
+    if(g_mouseProbeStage==2 && g_macTicks-g_mouseProbeTick>=42) {
+        g_mouseProbeDown=0;g_mouseProbeStage=3;
+    }
+    if(g_mouseProbeStage==3 && g_macTicks-g_mouseProbeTick>=48) {
+        g_mouseProbeEnabled=0;g_mouseProbeStage=4;
+    }
 #endif
 #ifdef AITD_STORY_ENTER
     // Engine Button -> Dan1 input poll -> Dan2 portrait wait. Follow only
@@ -7691,19 +7725,23 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         if (g_stageCDepth < 26) g_stageCDepth = 26;
         return 5;
     }
-    if(trap==0xa870) {                      // LocalToGlobal(Point*)
+    if(trap==0xa870 || trap==0xa871) {       // LocalToGlobal / GlobalToLocal(Point*)
         uint8_t* point=(uint8_t*)read32(userStack);
         uint8_t* port=s_qdThePort ? (uint8_t*)read32(s_qdThePort) : 0;
         WindowSlot* window=windowSlot(port);WindowGeometry::Rect bounds;
         if(!point || !window || !colorWindowFrame(*window,bounds)
            || read16(window->pixelMap+32)!=8
            || read32(window->pixelMap)!=(uint32_t)s_colorScreen)goto unsupportedTrap;
-        uint16_t v=read16(point)-read16(window->pixelMap+6);
-        uint16_t h=read16(point+2)-read16(window->pixelMap+8);
+        // The screen-backed PixMap carries the selected port's live origin.
+        // QuickDraw point components wrap as words in both directions.
+        uint16_t v=read16(point),h=read16(point+2);
+        if(trap==0xa870) {
+            v-=read16(window->pixelMap+6);h-=read16(window->pixelMap+8);
+        } else {
+            v+=read16(window->pixelMap+6);h+=read16(window->pixelMap+8);
+        }
         write16(point,v);write16(point+2,h);return 5;
     }
-    // Vette's fixed (64,91) inverse origin does not describe these windows.
-    if(trap==0xa871)goto unsupportedTrap; // GlobalToLocal: pending measurement.
     if(trap==0xa8cb) {                       // OpenPoly() -> owned PolyHandle
         uint8_t* port=s_qdThePort ? (uint8_t*)read32(s_qdThePort) : 0;
         if(!port || (!gWorldForPort(port) && !windowSlot(port)) || s_recordingPolygon

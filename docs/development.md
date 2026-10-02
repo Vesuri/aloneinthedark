@@ -5095,7 +5095,7 @@ evidence. The corrected observer checks actual free-slot and owner-ledger
 semantics. M2.1c retains the independent requirement to read and compare original
 Present.PAK payloads beyond these services.
 
-### M2.3b — original inverse-coordinate prerequisite
+### M2.3b — verified inverse coordinates
 
 Normal Return input skips the book; a normal mouse click in the main game menu
 then reaches Engine+$16E8 GlobalToLocal. `mac_globallocal.lua` limits capture to
@@ -5104,8 +5104,19 @@ eight-bit window PixMap has origin (-150,-160): point (253,321) becomes (103,161
 All adjacent bytes and D0–D7/A0–A6 remain unchanged; four argument bytes are
 removed from the stack. `check_globallocal.py` passes the maintained capture
 `m2-globallocal-reference.log` (exit zero), including original caller bytes and
-selected-port records. Native implementation and original-call acceptance remain
-open; earlier exploratory captures are not acceptance evidence.
+selected-port records. GlobalToLocal now adds that selected PixMap origin;
+LocalToGlobal retains the inverse subtraction. Unsupported port layouts still
+stop explicitly.
+
+The baseline `a1200-020` capture `m2-globallocal-native-auto-full.log` exits zero
+and passes the same checker with `--native` and `--native-status 0`: the actual
+Engine+$16E8 call produces the identical point pair and preserves all guards,
+registers and stack behavior. Build with `INTROSKIP=1 MOUSEPROBE=1` and run
+`amiga/globallocal.gdb`. The opt-in mouse fixture byte-checks the original menu
+wait, then supplies guest coordinates/button through the normal VBI sampler.
+It changes no game instruction or service result. Both link audits pass.
+Earlier debugger-written mouse attempts did not persist to runtime and provide
+no acceptance evidence; the compiled input fixture removes that dependency.
 
 ### M2.8 — original EmptyRgn variant prerequisite
 

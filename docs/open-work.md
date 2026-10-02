@@ -66,7 +66,6 @@ independent service implementation or automated acceptance. Region expansion
 and other general tuning remain M5.
 
 - [ ] **M2.1c** — verify original PAK payloads; deterministic-route observer ready.
-- [ ] **M2.3b** — inverse coordinates implemented; native original-call verification active.
 - [ ] **M2.4** — close integrated fresh-start screen/viewport acceptance.
 - [ ] **M2.5** — finish PAL/NTSC, pointer palette ownership and video-clock acceptance.
 - [ ] **M2.6 / M2.8** — finish full-intro C2P coverage and the remaining region variants.
@@ -98,24 +97,6 @@ and other general tuning remain M5.
   returned bytes match the host files by debugger checksum, and startup window
   counts are recorded. If original bytes establish an unused file, document the
   evidence before revising that requirement; absence from one route is not proof.
-- **M2.3b Inverse coordinate conversion.**
-  - The inherited GlobalToLocal subtracted Vette's fixed (64,91) origin.
-    M2.3g11 replaces that guessed result with a named stop.
-  - Measure the reached inverse conversion and use its actual selected port.
-  - Normal Macintosh menu mouse input now reaches Engine+$16E8. The maintained
-    `mac_globallocal.lua` / `check_globallocal.py` capture passes point/guard,
-    stack and register checks (`m2-globallocal-reference.log`, exit zero):
-    selected PixMap origin (-150,-160), point (253,321) becomes (103,161).
-    The selected-port inverse is implemented in the working tree; matching
-    native original-call verification remains open. Debugger-written mouse
-    values did not persist in the running target, so those failed attempts
-    provide no acceptance. A compiled, test-only guest mouse sequence now
-    feeds the normal VBI sampler, following the existing Enter-test approach.
-    Its build and native capture must pass before this item can be closed.
-
-
-  *Done when* the reached GlobalToLocal calls match MAME, with point/adjacent-byte
-  checks and no fixed Vette screen origin remaining.
 - **M2.4 Mac screen model and 320×200 only — integrated acceptance.**
   - Main-device storage, fresh/existing preference selection of WIND 128 and
     live window geometry have separate passing captures. Combine the fresh-start

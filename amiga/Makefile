@@ -359,6 +359,13 @@ EXTRA_DEFINES += -DAITD_MENU_ENTER
 PROBE_SYMS += g_menuEnterState g_menuEnterTick g_menuEnterReleased
 endif
 
+# Opt-in guest mouse fixture; normal builds always sample the physical mouse.
+ifeq ($(MOUSEPROBE),1)
+EXTRA_DEFINES += -DAITD_MOUSE_INPUT_PROBE
+PROBE_SYMS += g_mouseProbeEnabled g_mouseProbeDown g_mouseProbeX g_mouseProbeY g_mouseProbeSamples
+PROBE_SYMS += g_mouseProbeStage g_mouseProbeTick
+endif
+
 # Opt-in diagnostic Enter input; normal builds have no scripted keys.
 ifeq ($(INTROSKIP),1)
 EXTRA_DEFINES += -DAITD_INTRO_SKIP
