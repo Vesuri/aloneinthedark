@@ -48,6 +48,20 @@ int main() {
     CHECK(h.setState(a,0x80)==0);before=*a;CHECK(h.setHandleSize(a,128)==0);CHECK(*a==before);CHECK(patternIs(*a,128,0x52));
     CHECK(h.disposeHandle(a)==0);CHECK(h.disposePtr(pin)==0);
     CHECK(h.newHandle(0)!=nullptr);CHECK(h.newPtr(0)!=nullptr);CHECK(h.check());
+    // A small region grows beside a large live allocation. Its master pointer,
+    // flags and prefix survive relocation; locked neighbours and their data
+    // remain valid. A later failed growth must also preserve that contract.
+    CHECK(h.init(arena,sizeof(arena)));
+    a=h.newHandle(252);b=h.newHandle(24000);auto barrier=h.newHandle(128);
+    CHECK(a&&b&&barrier);pattern(*a,252,0x31);pattern(*b,24000,0x72);
+    pattern(*barrier,128,0x93);CHECK(h.setState(a,0x60)==0);
+    CHECK(h.setState(barrier,0x80)==0);auto fixedBarrier=*barrier;
+    CHECK(h.setHandleSize(a,516)==0 && h.handleSize(a)==516 && h.state(a)==0x60);
+    CHECK(patternIs(*a,252,0x31) && patternIs(*b,24000,0x72));
+    CHECK(*barrier==fixedBarrier && patternIs(*barrier,128,0x93) && h.check());
+    CHECK(h.setHandleSize(a,sizeof(arena))==MacHeap::memFullErr);
+    CHECK(h.handleSize(a)==516 && h.state(a)==0x60 && patternIs(*a,252,0x31));
+    CHECK(patternIs(*b,24000,0x72) && *barrier==fixedBarrier && h.check());
     // Read-only success and failure retain every arena byte, including the
     // published zone header and free-master chain, while reporting MemError.
     CHECK(h.init(arena,sizeof(arena),2));

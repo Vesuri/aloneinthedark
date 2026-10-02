@@ -22,6 +22,8 @@ enum AitdProfileCategory {
     kProfileCopyMap,
     kProfileCodeViews,
     kProfileHeapPublish,
+    kProfileRegionExpand,
+    kProfileRegionResize,
     kProfileCategoryCount
 };
 

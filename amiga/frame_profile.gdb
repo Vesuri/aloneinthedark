@@ -1,4 +1,5 @@
 # PROFILEFRAME=<publication> PROBEFIELDS=<fields> (default 300).
+# Or PROFILEROOM=<room> PROFILECAMERA=<camera> for a scene-triggered sample.
 # Arrays are dumped in bulk to avoid thousands of remote-debugger round trips.
 set pagination off
 set confirm off
@@ -12,6 +13,7 @@ if g_stageBState==3 || g_profileState!=2
  quit 1
 end
 printf "IDLE_PROFILE fields=%u frames=%u epoch=%u start=%u ticks=%u\n",g_profileStopField-g_profileStartField,g_profileStopFrames-g_profileStartFrames,g_profileStopEpoch-g_profileStartEpoch,g_profileStartFrames,g_macTicks
+printf "IDLE_LOCATION room=%u camera=%u\n",*(unsigned short*)(s_currentA5-0xcd68),*(unsigned short*)(s_currentA5-0xcd70)
 set $i=0
 while $i<sizeof(g_profileTicks)/sizeof(g_profileTicks[0])
  printf "IDLE_PHASE id=%u ticks=%u calls=%u\n",$i,g_profileTicks[$i],g_profileCalls[$i]

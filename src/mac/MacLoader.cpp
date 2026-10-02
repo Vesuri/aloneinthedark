@@ -6778,7 +6778,12 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
 #ifdef AITD_PROFILE_FRAME
     extern volatile uint16_t g_profileState;
     if(g_profileState==2)aitdFrameProfileCheckpoint();
-    if(g_macFramesPresented>=AITD_PROFILE_FRAME)aitdProfileStart();
+    if(g_macFramesPresented>=AITD_PROFILE_FRAME
+#ifdef AITD_PROFILE_ROOM
+       && s_currentA5 && read16(s_currentA5-0xcd68)==AITD_PROFILE_ROOM
+       && read16(s_currentA5-0xcd70)==AITD_PROFILE_CAMERA
+#endif
+       )aitdProfileStart();
     AitdTrapProfileScope trapProfile(trap);
 #endif
 #ifdef AITD_BOOK_PROFILE
@@ -7955,8 +7960,15 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         MacHeap::Handle expanded=newHandle(RegionExpand::capacity,false);
         MacHeap* temporaryOwner=handleZone(expanded);
         if(!temporaryOwner || !*expanded)goto unsupportedTrap;
-        bool valid=RegionExpand::one(*region,owner->handleSize(region),*expanded,RegionExpand::capacity,size);
-        if(valid)valid=owner->setHandleSize(region,size)==MacHeap::noErr;
+        bool valid;
+        {
+            AitdProfileScope profile(kProfileRegionExpand);
+            valid=RegionExpand::one(*region,owner->handleSize(region),*expanded,RegionExpand::capacity,size);
+        }
+        if(valid) {
+            AitdProfileScope profile(kProfileRegionResize);
+            valid=owner->setHandleSize(region,size)==MacHeap::noErr;
+        }
         if(valid)for(uint16_t i=0;i<size;++i) {volatile uint8_t value=(*expanded)[i];(*region)[i]=value;}
         if(temporaryOwner->disposeHandle(expanded)!=MacHeap::noErr || !valid)goto unsupportedTrap;
         regs[0]=0;regs[1]=(regs[1]&0xffff0000UL)|0xffff;

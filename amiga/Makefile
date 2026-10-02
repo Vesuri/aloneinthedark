@@ -123,6 +123,20 @@ PROBEFIELDS=65535
 EXTRA_DEFINES += -DAITD_BOOK_PROFILE
 endif
 
+# Optional scene filter: use original room/camera state instead of guessing
+# a presentation count, which changes with the unseeded demo route.
+ifneq ($(PROFILEROOM),)
+ifeq ($(PROFILECAMERA),)
+$(error PROFILEROOM requires PROFILECAMERA)
+endif
+PROFILEFRAME?=0
+EXTRA_DEFINES += -DAITD_PROFILE_ROOM=$(PROFILEROOM) -DAITD_PROFILE_CAMERA=$(PROFILECAMERA)
+else
+ifneq ($(PROFILECAMERA),)
+$(error PROFILECAMERA requires PROFILEROOM)
+endif
+endif
+
 ifneq ($(PROFILEFRAME),)
 PROBES=1
 PROBEFIELDS?=300

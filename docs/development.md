@@ -4877,8 +4877,10 @@ identical game states: the latter ends at tick 6,303 instead of 13,537, and has
 result from those counts. Host regressions pass; the idle endpoint remains open.
 
 `PROFILEFRAME` enables a diagnostic-only start at the requested published frame;
-`PROBEFIELDS` bounds it in emulated fields. `amiga/frame_profile.gdb` captures
-16 nested phase totals and bulk per-trap tick/call arrays, then detaches at a
+`PROFILEROOM=<room> PROFILECAMERA=<camera>` instead selects original scene state
+(both are required). `PROBEFIELDS` bounds the sample in emulated fields.
+`amiga/frame_profile.gdb` captures 19 nested phase totals, the ending room/camera,
+and bulk per-trap tick/call arrays, then detaches at a
 positive frozen-profile checkpoint. It never treats a timeout as completion.
 
 The separate host-window lead remains unproven for the installed executable.

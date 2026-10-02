@@ -370,8 +370,14 @@ int16_t MacHeap::setHandleSize(Handle h,uint32_t bytes)
         compactUp();bool ok=resizeInPlace(off,bytes);*flags(h)=saved;
         return result(ok ? 0 : memFullErr);
     }
-    moveHigh(h);compact();off=findPtr(*h,handleBlock);
-    if(resizeInPlace(off,bytes)) { *flags(h)=saved;return result(0); }
+    // Relocate only this unlocked allocation when an existing hole fits.
+    // Moving it high and compacting first can copy the surrounding megabytes
+    // merely to grow a small region by a few bytes. Keep that recovery path
+    // for fragmented/low-memory cases where no complete replacement fits.
+    if(!findSpace(bytes)) {
+        moveHigh(h);compact();off=findPtr(*h,handleBlock);
+        if(resizeInPlace(off,bytes)) { *flags(h)=saved;return result(0); }
+    }
     uint32_t oldSize=block(off).logical;
     uint32_t fresh=allocate(bytes,handleBlock,(uint8_t*)h-arena_);
     if(!fresh) { *flags(h)=saved;return result(memFullErr); }

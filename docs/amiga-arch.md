@@ -87,6 +87,40 @@ in `tmp/intro-030-region-host-tests.log`. A remaining 753-tick (12.55-second)
 gap between room 2/camera 5 and room 2/camera 3 requires separate attribution;
 the region fix does not close the overall intro performance goal.
 
+The corresponding Mac IIx run (`tmp/intro-030-route-mac-retry.log`, exit 0)
+completes the original demo as well. At the original Dark+$5658 loop entry,
+the room 2/camera 5 → camera 3 checkpoint gap is 97 ticks (1.617 seconds),
+versus 753 ticks (12.55 seconds) on Amiga. The first two camera-5 loop entries
+are 55 ticks apart on Mac and 504 on Amiga (0.917 versus 8.4 seconds).
+These identify substantial port-side scene costs. Both runs use natural game
+entropy: actor trajectories and loop counts differ, so total demo duration
+and room/camera median loop times are not exact state-paired FPS comparisons.
+The initial Mac observer stopped before measurement because Dark was not yet
+loaded; only the successful retry is accepted evidence.
+
+A scene-triggered profile (`INTROSKIP=1 PROFILEROOM=2 PROFILECAMERA=5
+PROBEFIELDS=1500`) avoids selecting the wrong scene when natural car trajectories
+change the publication count. `tmp/intro-hall-detail-full.log` exits 0 after
+1,500 PAL fields: 120,173,863 beam units, 34 publications, ending in camera 3.
+Nested region decoding accounts for 2,930,467 units (2.44%); resizing the region
+handle accounts for 39,603,949 (32.96%). These scopes separate the geometry from
+the Memory Manager work inside InsetRgn; they must not be added to its inclusive
+trap cost. CopyBits accounts for a further 13,192,684 units (10.98%).
+
+Unlocked handle growth now uses an already-available replacement block before
+trying MoveHHi and heap compaction. Only the small source payload needs copying
+in that case. Locked handles retain their in-place rules, and fragmented heaps
+retain the compaction fallback. Sanitizer checks cover small growth beside a
+large live allocation, preserved state/data, locked neighbours and failed
+growth. The full host suite (`tmp/intro-heap-grow-host-tests.log`) and native
+Memory Manager fixture (`tmp/intro-heap-grow-native.log`, all three stages)
+pass. The unprofiled repeat (`tmp/intro-heap-grow-route-full.log`, exit 0)
+completes all nine room transitions with a minimum observed mouse-VBI stack
+margin of 928 bytes. Camera-5 initial setup falls from 504 to 180 ticks
+(8.4 → 3.0 seconds), and camera 5 → 3 falls from 753 to 240 ticks
+(12.55 → 4.0 seconds). Both remain slower than the Mac measurements above;
+the overall performance goal remains open.
+
 `AitdScreen` owns one 320×200 eight-plane display, using the live WIND 128
 content rectangle within the 640×480×8 logical Mac screen. Each chip bitmap
 contains 200 interleaved rows of eight 40-byte planes (64,000 bytes). Explicit
