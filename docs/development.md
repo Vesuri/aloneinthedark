@@ -5379,3 +5379,35 @@ CopyBits return, balanced services and the preference-specific window count.
 It passes the established `m2-effectreplace-native-full.log` capture paired with
 `m2-menu-lifecycle-reference-final.log`; the menu runtime observer is unchanged.
 All checker success messages now follow their terminal assertions.
+
+
+## Baseline ordinary demo completion (M2.3g44)
+
+After the display synchronization change in `92a5cdf`, the `a1200-020`
+ordinary-randomness run finishes normally (`tmp/m2-sync-ordinary-native-full.log`,
+exit 0). Build flags are `INTROSKIP=1 PAKPROBE=1`, without `FIXEDRNG`.
+The observer checks the entropy mode, original route instructions, zero input
+at each transition and the original natural-exit flag. All nine reference
+room/camera pairs occur in order: 0/1, 1/2, 0/1, 5/1, 2/4, 7/3, 1/1, 0/2, 6/0.
+Choice is 0; natural exit is at tick 60,426. The temporary observer also guards
+against 256 frames remaining at actor 288's track 26, word 59; this guard does
+not fire. The earlier stalled coordinates also stall the original Mac when
+replayed as diagnostic data, so they did not justify changing game decisions.
+
+The ITD_Ress read returns exactly 1,536 bytes at offset 9,216, and Present
+returns exactly 17,920 bytes at offset 512. Palette reactivation matches the
+original active state, complete CLUT and private seed. The run records 1,500
+system windows, 111 resource reads and 70,729 balanced services. Payloads and
+palette captures are archived under `tmp/m2-sync-ordinary-native/`.
+
+The maintained `amiga/pak_reads.gdb` supports both entropy modes. Use
+`tools/check_pak_native.py LOG --status STATUS --ordinary-entropy` for the
+ordinary run; it requires natural exit and the full route in addition to
+payload equality. `check_palette_rebind.py` independently validates the paired
+palette captures. Both pass this run. Skipped rooms, wrong cameras, manual
+input, missing exit flags, wrong entropy modes and duplicate exits are rejected.
+
+This closes baseline ordinary sequence acceptance. It does not prove a
+frame-rate multiplier, diagnose the owner's black interval or replace
+rendered-picture acceptance. The final uninterrupted-intro regression after
+this display change remains separately tracked in open work.

@@ -18,15 +18,17 @@ design.md §5.
   M2.10 also passes the car/frog frame checks: matched actual model/transform
   inputs produce exact 64,000-pixel Mac images, all 256 colours and native AGA
   publications. The car comparison exposed and fixed descending LineTo ties;
-  all 80 original slope fixtures and 47 measured car calls pass. Natural
-  sequence completion and rendered-window acceptance remain separate gaps.
+  all 80 original slope fixtures and 47 measured car calls pass. The display
+  synchronization change is undergoing a final uninterrupted-intro regression;
+  rendered-window acceptance remains separate.
 - M2.1c now passes actual native reads of both PAKs: 1,536 bytes from
   ITD_Ress and 17,920 bytes from Present match the installed files exactly.
-  The intervening palette reactivation matches the Mac; the completed
-  deterministic a4000-030 run records 1,490 windows, 111 resource reads and
-  42,132 balanced services (`m2-pak-pointer-native-full.log`, exit 0).
-  Both payload and palette checkers pass. This does not close the separate
-  unseeded route or rendered-picture gaps.
+  The intervening palette reactivation matches the Mac. The baseline
+  `a1200-020` ordinary-randomness run now completes all nine room/camera
+  transitions and exits naturally without demo input, with 1,500 windows,
+  111 resource reads and 70,729 balanced services
+  (`m2-sync-ordinary-native-full.log`, exit 0). Both payload and palette
+  checkers pass. Rendered-picture acceptance remains pending.
 - The title-screen copy now matches the Mac with documented placeholder text
   differences. The credits now use the measured 16-pixel line spacing and owned dot-above
   artwork, including â in the original “Yaâl” credit. Game-window lines and
@@ -83,13 +85,9 @@ and other general tuning remain M5.
 - [ ] **M2.5** — PAL/NTSC automated display and native audio-clock checks pass;
   original-game pointer is enabled with verified inversion. Rendered-picture
   acceptance remains owner-deferred.
-- [ ] **M2.3g44 sequence** — finish the baseline run with ordinary randomness,
-  verifying natural demo exit without input, both PAK reads and palette
-  reactivation through all nine reference room/camera transitions. Ordinary
-  baseline runs stall in room 2; the latest copy-span trial also failed its
-  256-frame movement guard. Resolve that stall; baseline natural exit remains unverified.
-  The faster `a4000-030` ordinary run passes all nine transitions, natural exit,
-  both PAK payloads and palette reactivation; this does not close the baseline gap.
+- [ ] **M2.3g44 intro regression** — verify uninterrupted playback after the
+  display synchronization change: all 840 book batches, every-frame C2P and
+  four paired Macintosh pixel/palette/publication captures.
 - [ ] **M2.3g44 visual report** — demonstrate the black-interval cause and verify
   the rendered result when authorized capture is available. M2 remains open
   while its required acceptance is outstanding.
@@ -133,7 +131,7 @@ and other general tuning remain M5.
   preserves game colours, and effect period/duration use the selected video
   clock. Other processors remain deferred (D2).
 
-### M2.3g44 — unresolved visual report and sequence acceptance
+### M2.3g44 — unresolved visual report
 
 The reported black interval is **not diagnosed or fixed**. Existing memory and
 register checks cannot establish what the host window displayed. Follow the
@@ -141,11 +139,12 @@ host-window restriction under M1.7b2; do not retry denied capture or substitute
 host input injection. This verification gap must not stall independent M2 work.
 
 Already verified (details and capture names in [development.md](development.md)):
-- Streaming masked copies let the fixed-entropy idle demo exit naturally without
-  manual input through all nine Mac room/camera transitions. Actor identity,
-  room, life and track agree; the final entrance position is 105 versus 109,
-  followed by native completion at 122. Car/frog frame fidelity now passes
-  with matched actual draw inputs; ordinary-randomness progression is separate.
+- The baseline ordinary-randomness demo completes all nine original
+  room/camera transitions and exits naturally at tick 60,426 with choice 0.
+  Both original PAK payloads and palette reactivation pass. The earlier room-2
+  stall is absent after eliminating back-buffer copies of spans immediately
+  overwritten by C2P. Original movement instructions and timers are unchanged.
+  Car/frog frame fidelity passes with matched actual draw inputs.
 - The idle menu has all 64,000 pixels, plane pointers and 256 colours verified.
   Read-only mode checks pass after 135 OS handbacks and at its original 900-tick
   exit. Persistent mode loss at those checkpoints is ruled out; transient
@@ -159,62 +158,15 @@ Already verified (details and capture names in [development.md](development.md))
   do not establish the cause of the preceding black interval. The DOS video is
   content context only, never the Macintosh pixel/font reference.
 
-Remaining: resolve the ordinary-randomness room-2 movement stall and verify
-natural sequence completion; capture the reported black state across logical
-pixels, palette, AGA publication and authorized rendered output. FS-UAE's
+Remaining: capture the reported black state across logical pixels, palette,
+AGA publication and authorized rendered output. FS-UAE's
 `Not a valid drawable size for glViewport` remains a clue, not a diagnosis.
-An unseeded native PAK acceptance run also timed out before its cleanup
-checkpoint after 25 minutes, with the interrupted PC in frame presentation.
-It did not capture scene state; neither its sequence position nor the cause of
-that missed checkpoint is established by this result.
-A replacement baseline `a1200-020` run used ordinary randomness
-and an observer installed before the first PAK read
-(`m2-pak-ordinary-early-native.log`, exit 124). It read ITD_Ress and recorded five
-room transitions, through room 2/camera 4 at frame 734, but reached the
-2,400-second limit without another transition; the final tick count was 184,708.
-Natural exit, the Present read and palette reactivation remain unverified.
-The follow-up baseline diagnostic completes 257 observed frames in that room
-(`m2-room2-ordinary-native-full.log`, exit 0). With choice 1, actor 288/body 265
-remains on track 26 at word offset 59 while its x position varies around 2,550
-and z remains 1,085. Original Dark2+$49F0/+4A08 identify the track resource and
-word offset at actor +$54/+$58. The ordinary Mac run with the same choice
-advances to room 7 in 129 frames (`m2-room2-ordinary-reference.log`, exit 0).
-This establishes a native movement stall; its cause is still under investigation.
-The follow-up longword copy-span trial also fails on baseline `a1200-020`
-with ordinary randomness (`m2-copyspan-ordinary-native-full.log`, exit 1).
-It reaches room 2/camera 4 at frame 587, then actor 288 stays on track 26,
-word 59 for 256 observed frames; its later position is 2,460/0/1,099.
-The observer deliberately stops on this guard, rather than waiting for a
-timeout. This trial does not resolve the sequence failure or establish a
-speedup. Keep further general copy tuning in M5; the next acceptance work is
-to explain and correct the native movement divergence from the original Mac.
-Replaying the stalled native position into the original Mac confirms distance
-1,109 and steering 0 for the target 2,450/0
-(`m2-room2-stall-replay-reference.log`, exit 0). With matching numeric actor
-bounds and world coordinates, the original also remains at 2,460/0/1,099,
-track word 59 for 257 frames while its animation advances
-(`m2-room2-stall-recovery-reference.log`, exit 0). These diagnostic data
-fixtures preserve original instructions and timers. They locate the next
-investigation earlier in the approach to the waypoint: the stalled state's
-turn calculation itself agrees with the Mac. They do not prove the cause of
-entering that state or complete sequence acceptance.
-The unmodified runtime subsequently completes the ordinary route on the faster
-`a4000-030` test machine (`m2-ordinary-fast-native-full.log`, exit 0): choice 0,
-nine transitions, zero input at the checkpoints and natural exit at tick 26,923.
-Both PAK payloads and palette reactivation pass, with 1,490 windows and 41,078
-balanced services. The maintained `pak_reads.gdb` now supports ordinary builds;
-`check_pak_native.py --ordinary-entropy` requires the full reference route and
-natural exit as well as exact payloads. This supports investigating execution
-timing; it does not prove that speed alone explains the baseline failure.
-Routine service tests use `INTROSKIP=1`; uninterrupted playback is reserved for
-sequence acceptance. `FIXEDRNG=1` needs the matching Mac entropy fixture;
-elapsed ticks alone do not establish paired scene state.
+The completed sequence checks do not establish what the host window displayed.
+See [development.md](development.md) for the baseline sequence evidence and
+[cursor.md](cursor.md) for display synchronization checks.
 
-*Done when* the black-interval cause is demonstrated, the car reaches its
-near-camera endpoint and advances to the frog without repeated circling or
-manual input, and fixes pass original sequence and paired frame/publication
-checks. Rendered verification remains explicitly pending while authorized
-capture is unavailable.
+*Done when* the black-interval cause is demonstrated and the rendered result
+is verified. This remains pending while authorized capture is unavailable.
 
 ## M3 Playable
 
