@@ -65,8 +65,8 @@ unresolved visual report as an explicit acceptance gap; it does not block
 independent service implementation or automated acceptance. Region expansion
 and other general tuning remain M5.
 
-- [ ] **M2.1c** — verify original PAK payloads (active).
-- [ ] **M2.3b** — verify and implement inverse coordinates.
+- [ ] **M2.1c** — verify original PAK payloads; deterministic-route observer ready.
+- [ ] **M2.3b** — inverse coordinates implemented; native original-call verification active.
 - [ ] **M2.4** — close integrated fresh-start screen/viewport acceptance.
 - [ ] **M2.5** — finish PAL/NTSC, pointer palette ownership and video-clock acceptance.
 - [ ] **M2.6 / M2.8** — finish full-intro C2P coverage and the remaining region variants.
@@ -106,7 +106,12 @@ and other general tuning remain M5.
     `mac_globallocal.lua` / `check_globallocal.py` capture passes point/guard,
     stack and register checks (`m2-globallocal-reference.log`, exit zero):
     selected PixMap origin (-150,-160), point (253,321) becomes (103,161).
-    Native implementation and matching original-call verification remain open.
+    The selected-port inverse is implemented in the working tree; matching
+    native original-call verification remains open. Debugger-written mouse
+    values did not persist in the running target, so those failed attempts
+    provide no acceptance. A compiled, test-only guest mouse sequence now
+    feeds the normal VBI sampler, following the existing Enter-test approach.
+    Its build and native capture must pass before this item can be closed.
 
 
   *Done when* the reached GlobalToLocal calls match MAME, with point/adjacent-byte
