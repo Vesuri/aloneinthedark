@@ -125,6 +125,12 @@ and other general tuning remain M5.
     pass. These are automated checks, not by-eye acceptance.
   - A 256-colour copper palette through BPLCON3 banks, plus verified sprite
     palette ownership before enabling the pointer; preserve all game colours.
+    The two-sprite helper now preserves all 256 game RGBs with playfield XOR 1
+    and the matching palette permutation, using sprite 0 for white and sprite 7
+    for black. Sanitizer checks pass for all colours and mask pixels, and reject
+    inverted shapes. Working-tree display integration compiles, but native
+    pointer verification and enabling it for original-game presentation remain
+    pending; the helper alone does not close pointer acceptance.
   - Publication in the VBI. Select the matching PAL/NTSC Paula clock for
     effect pitch and completion timing.
     Mode-dependent display placement, 60 Hz game ticks and effect/song clocks

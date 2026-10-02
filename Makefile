@@ -96,6 +96,7 @@ host-tests:
 	@python3 tools/test_fsuae_launcher.py
 	@python3 tools/test_video_config.py
 	@python3 tools/test_compare_frames.py
+	@python3 tools/check_aga_cursor.py
 	@python3 tools/test_native_resource_exit.py
 	@python3 tools/check_resource_map.py
 	@python3 tools/check_resource_source.py

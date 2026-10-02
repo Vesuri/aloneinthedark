@@ -105,6 +105,20 @@ reading that address is not valid pitch evidence. Run `check_video_mode.py`
 with `--case effect --video PAL|NTSC --status 0`; the paired sample captures
 are archived under `tmp/m2-video-effect-pal/` and `tmp/m2-video-effect-ntsc/`.
 
+The M2.5 pointer helper uses BPLCON4's independent playfield XOR and even/odd
+sprite banks, as described in the
+[AGA register specification transcription](https://www.ikod.se/references/amiga-aga-guide/registers-by-name/#BPLCON4).
+XOR 1 paired with `physicalPalette[i ^ 1] = logicalPalette[i]` preserves every
+game colour without changing pixel indices. Sprite 0/value 1 uses physical
+white slot 1; sprite 7/value 2 uses physical black slot 254 (odd bank 15 plus
+pair offset 12). The two masks are disjoint. `check_aga_cursor.py` reconstructs
+every copper colour and checks all pointer bits under sanitizers; the existing
+palette tests still pass with the default mapping. Native display integration
+and original-game enablement remain pending. Inverted Macintosh cursor pixels
+are explicitly unsupported by this black/white helper, never approximated by
+a grey entry; original CURS 130 and 132 contain such pixels and need a separate
+measured implementation if reached.
+
 `stage_original_data.sh` copies the original application folder into `data/`
 beneath the executable directory on the emulated hard drive. The port executable
 and diagnostic files remain outside this Mac-visible namespace. Override
