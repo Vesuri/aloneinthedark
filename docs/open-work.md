@@ -179,6 +179,17 @@ priority, natural completion and cleanup (`m2-song-reuse-native-full.log`,
 exit 0). Normal route reliability and owner-rendered confirmation remain required;
 the residual loading interval is not yet accepted.
 
+Original-Mac cross-check of the owner's artistic-pause hypothesis: the existing
+unattended sequence has the menu in `tmp/story-reference-35-reference.png`
+(frame 13,381) and landscape in capture 36 (frame 13,681), only 300 emulated
+frames apart. The separately completed natural-idle reference trace
+`tmp/m2-pak-idle-complete.log` records menu timeout at tick $2DB8 and scene
+loaded at $2E28, a 112-tick interval (about 1.9 seconds). Its byte-guarded
+observer leaves game code, timers and post-selection input untouched. These
+observations do not support an intentional 46–50-second black pause; the
+remaining native delay needs assessment as port overhead, while preserving
+the original timing and scene progression.
+
 Already verified (details and capture names in [development.md](development.md)):
 - The baseline ordinary-randomness demo completes all nine original
   room/camera transitions and exits naturally at tick 60,426 with choice 0.
