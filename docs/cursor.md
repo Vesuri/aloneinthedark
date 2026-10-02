@@ -17,6 +17,17 @@ interrupt guard and removes any applied XOR from the copied bytes. Thus queued
 bitmaps remain clean while movement also works without new frames. Only the
 16-row mask and position are retained; no pixel background is saved.
 
+Synchronization excludes spans that this frame's C2P conversion will overwrite.
+`Planar8::syncRowMask` subtracts the current normalized dirty rectangles from
+each previous dirty row, using ten bits for the ten 32-pixel spans. Remaining
+spans retain the same cursor removal and interrupt guard; no pixel cache or
+shadow framebuffer is introduced. The sanitizer-backed planar check verifies
+160 alternating-buffer frames with overlapping, disjoint, empty and full
+updates against complete decoded pixels. Baseline PAL and NTSC cursor fixtures
+also pass after this change (`m2-sync-cursor-pal-native-full.log` and
+`m2-sync-cursor-ntsc-native-full.log`, both exit 0). These checks establish
+display correctness, not a measured frame-rate gain or demo-stall resolution.
+
 ```sh
 python3 tools/check_cursor_invert.py tmp/m2-cursor-invert-reference.log --status 0
 python3 tools/check_cursor_capture.py tmp/m2-cursor-motion-pal-full.log --status 0 --video PAL --inversion --folder tmp/m2-cursor-motion-pal

@@ -429,24 +429,31 @@ int16_t AitdScreen::presentMacFrame(const uint8_t* chunky,const uint8_t* colorTa
         if(local.top<local.bottom && local.left<local.right)normalized[count++]=local;
     }
     // Vette's explicit synchronization: bring the previous frame's changed
-    // spans to the inactive bitmap before converting this frame's spans.
+    // spans to the inactive bitmap, excluding pixels converted this frame.
     { AitdProfileScope profile(kProfileSync);
     for(uint16_t i=0;i<m_syncRectCount;++i) {
         const DirtyRect& r=m_syncRects[i];
         for(int16_t y=r.top;y<r.bottom;++y) {
-            // A VBI can move the cursor between rows. Copy and undo its current
-            // XOR atomically for one plane span (at most 40 bytes), preserving
-            // a clean inactive bitmap without pausing input during conversion.
-            for(uint16_t plane=0;plane<kPlanes;++plane) {
-                Disable();
-                __asm__ volatile("" ::: "memory");
-                uint32_t base=uint32_t(y)*kRowStride+plane*kBytesPerRow;
-                for(int16_t x=r.left/8;x<r.right/8;++x)m_back[base+x]=m_chip[base+x];
-                int16_t row=y-m_invertTop;
-                if(m_invertActive && row>=0 && row<16)
-                    CursorInvert::row(m_back+base,r.left,r.right,m_invertLeft,m_invertRows[row]);
-                __asm__ volatile("" ::: "memory");
-                Enable();
+            uint16_t mask=Planar8::syncRowMask({r.top,r.left,r.bottom,r.right},y,normalized,count);
+            for(int16_t block=0;mask && block<10;) {
+                if(!(mask&(1u<<block))) {++block;continue;}
+                int16_t left=block*32;
+                do {mask&=uint16_t(~(1u<<block));++block;} while(block<10 && (mask&(1u<<block)));
+                int16_t right=block*32;
+                // A VBI can move the cursor between spans. Copy and undo its
+                // current XOR atomically for one plane span (at most 40 bytes),
+                // preserving a clean inactive bitmap during conversion.
+                for(uint16_t plane=0;plane<kPlanes;++plane) {
+                    Disable();
+                    __asm__ volatile("" ::: "memory");
+                    uint32_t base=uint32_t(y)*kRowStride+plane*kBytesPerRow;
+                    for(int16_t x=left/8;x<right/8;++x)m_back[base+x]=m_chip[base+x];
+                    int16_t row=y-m_invertTop;
+                    if(m_invertActive && row>=0 && row<16)
+                        CursorInvert::row(m_back+base,left,right,m_invertLeft,m_invertRows[row]);
+                    __asm__ volatile("" ::: "memory");
+                    Enable();
+                }
             }
         }
     }

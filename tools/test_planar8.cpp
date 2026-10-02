@@ -13,7 +13,53 @@ static unsigned decode(const uint8_t* plane,unsigned x,unsigned y) {
 static bool same(const Planar8::Rect& a,const Planar8::Rect& b) {
     return a.top==b.top && a.left==b.left && a.bottom==b.bottom && a.right==b.right;
 }
+static void checkBufferSync() {
+    std::vector<uint8_t> source(640*480),front(Planar8::bytes),back(Planar8::bytes);
+    std::vector<Planar8::Rect> previous;
+    const Planar8::Rect viewport{0,0,200,320};
+    uint32_t seed=7;
+    auto random=[&]() {seed=seed*1664525u+1013904223u;return seed;};
+    for(unsigned frame=0;frame<160;++frame) {
+        std::vector<Planar8::Rect> dirty,converted;
+        unsigned count=frame%13;
+        for(unsigned i=0;i<count;++i) {
+            int16_t left=random()%320,top=random()%200;
+            int16_t right=left+1+random()%(320-left),bottom=top+1+random()%(200-top);
+            dirty.push_back({top,left,bottom,right});
+        }
+        if(frame%17==0)dirty={viewport};
+        for(const auto& r:dirty) {
+            for(int y=r.top;y<r.bottom;++y)for(int x=r.left;x<r.right;++x)
+                source[y*640+x]=uint8_t(frame*37+x*13+y*71);
+            Planar8::Rect local;
+            assert(Planar8::normalize(viewport,r,local));converted.push_back(local);
+        }
+        for(const auto& r:previous)for(int16_t y=r.top;y<r.bottom;++y) {
+            uint16_t mask=Planar8::syncRowMask(r,y,converted.data(),converted.size());
+            // Compare selected bytes against geometric coverage, independently
+            // of the helper's bit arithmetic, then synchronize the old buffer.
+            for(int x=0;x<320;x+=8) {
+                bool needed=x>=r.left && x<r.right;
+                for(const auto& c:converted)
+                    if(y>=c.top && y<c.bottom && x>=c.left && x<c.right)needed=false;
+                assert(bool(mask&(1u<<(x/32)))==needed);
+                if(needed)for(unsigned p=0;p<8;++p)back[y*320+p*40+x/8]=front[y*320+p*40+x/8];
+            }
+        }
+        for(const auto& r:dirty) {
+            Planar8::Rect local;
+            assert(Planar8::convert(source.data(),back.data(),viewport,r,local));
+        }
+        Planar8::Mismatch mismatch{};
+        assert(Planar8::verify(source.data(),back.data(),viewport,mismatch));
+        front.swap(back);previous=converted;
+    }
+    const Planar8::Rect full{0,0,200,320},split[]={{0,0,200,160},{0,160,200,320}};
+    for(int16_t y=0;y<200;++y)assert(Planar8::syncRowMask(full,y,split,2)==0);
+    puts("PASS Planar8 synchronization: 160 alternating-buffer frames, overlapping/disjoint/full/empty updates and exact copied-byte coverage");
+}
 int main() {
+    checkBufferSync();
     std::vector<uint8_t> source(640*480),storage(Planar8::bytes+64,0xa5);
     uint8_t* output=storage.data()+32;
     for(unsigned y=0;y<480;++y)for(unsigned x=0;x<640;++x)

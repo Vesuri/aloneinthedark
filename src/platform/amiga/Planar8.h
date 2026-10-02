@@ -12,6 +12,21 @@ static const uint16_t width=320, height=200, planes=8, planeRow=40, rowBytes=320
 static const uint32_t bytes=uint32_t(rowBytes)*height;
 struct Rect { int16_t top,left,bottom,right; };
 
+// All rectangles here have already been normalized to 32-pixel boundaries.
+// Each bit selects one four-byte span of a plane row. Pixels converted from
+// chunky this frame need no copy from the previous front buffer.
+inline uint16_t syncRowMask(const Rect& previous,int16_t y,
+                            const Rect* converted,uint16_t count) {
+    if(y<previous.top || y>=previous.bottom)return 0;
+    uint16_t mask=uint16_t((1u<<(previous.right/32))-(1u<<(previous.left/32)));
+    for(uint16_t i=0;i<count && mask;++i) {
+        const Rect& r=converted[i];
+        if(y>=r.top && y<r.bottom)
+            mask&=uint16_t(~((1u<<(r.right/32))-(1u<<(r.left/32))));
+    }
+    return mask;
+}
+
 inline bool viewportValid(const Rect& viewport) {
     return viewport.top>=0 && viewport.left>=0 && viewport.bottom<=480
         && viewport.right<=640 && viewport.bottom-viewport.top==height
