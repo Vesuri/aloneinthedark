@@ -65,8 +65,9 @@ unresolved visual report as an explicit acceptance gap; it does not block
 independent service implementation or automated acceptance. Region expansion
 and other general tuning remain M5.
 
-- [ ] **M2.1c** — verify original PAK payloads; direct-read observer active.
-- [ ] **M2.5** — finish PAL/NTSC, pointer palette ownership and video-clock acceptance.
+- [ ] **M2.1c** — verify both original PAK payloads; filtered observer awaits validation.
+- [ ] **M2.5** — PAL/NTSC automated display checks pass; finish native audio-clock,
+  pointer palette ownership and rendered-picture acceptance.
 - [ ] **M2.6** — finish full-intro C2P coverage.
 - [ ] **M2.10** — add the intro regression and state-pair frame comparison;
   include the remaining car/frog frame acceptance.
@@ -92,24 +93,37 @@ and other general tuning remain M5.
     original presentation/file calls directly; keep the unseeded route gap
     explicit under M2.3g44.
   - The deterministic presentation-checkpoint attempt also failed its guard
-    (`m2-pak-fixed-native-failed-full.log`); it is not acceptance. The active
-    retry observes original PBRead calls directly through both PAK payloads,
-    retaining byte checks, real caller checks and startup window counts.
-    The direct observer reached 1,025 actual reads before its original count
-    bound (`m2-pak-direct-bound-full.log`, exit 1); the retry increases the
-    observation limit to 10,000 without changing game behavior.
+    (`m2-pak-fixed-native-failed-full.log`); it is not acceptance. The direct
+    observer reached 1,025 actual reads before its count bound. Its expanded
+    retry stopped after 1,244 reads because the debugger lost the `trap` local
+    (`m2-pak-expanded-context-failed-full.log`, exit 1); this is an observer
+    failure, not payload acceptance or evidence of a game failure.
+    A test-only marker now filters for the first substantial original read of
+    each PAK, retaining real callers, payload bytes and startup window counts.
+    This replacement observer is in the working tree and still needs validation.
 
   *Done when* the game opens and reads `ITD_RESS.PAK` and `PRESENT.PAK`, its
   returned bytes match the host files by debugger checksum, and startup window
   counts are recorded. If original bytes establish an unused file, document the
   evidence before revising that requirement; absence from one route is not proof.
 - **M2.5 AGA 8-plane display.**
-  - Lores 320×200×8 in `AitdScreen`, centred for PAL and NTSC. The M2.5a
-    prerequisite currently supplies the pinned PAL configuration.
+  - Lores 320×200×8 in `AitdScreen`, centred for PAL and NTSC. Working-tree
+    video selection now passes the five-frame native display fixture on
+    `a1200-020` in both standards, including all planes, colours, partial
+    updates, mode registers and OS restoration (`m2-video-pal-native-full.log`,
+    `m2-video-ntsc-native-full.log`, both exit 0). PAL advances 83 game ticks
+    over 69 fields; NTSC advances 90 ticks over 90 fields. Both mode checkers
+    pass. These are automated checks, not by-eye acceptance.
   - A 256-colour copper palette through BPLCON3 banks, plus verified sprite
     palette ownership before enabling the pointer; preserve all game colours.
   - Publication in the VBI. Select the matching PAL/NTSC Paula clock for
-    effect pitch and completion timing; M2.3g26 currently uses PAL only.
+    effect pitch and completion timing.
+    Mode-dependent display placement, 60 Hz game ticks and effect/song clocks
+    are implemented in the working tree. Sanitizer-backed host checks pass for
+    both standards. The first PAL effect attempt passes the original driver ABI
+    and publication check but fails the selected-clock pitch/duration guard
+    (`m2-video-effect-pal-native.log`, exit 1). Resolve that guard and obtain
+    passing natural-completion captures in both standards before accepting audio.
 
   *Done when* a test pattern and a 256-colour ramp display correctly (by eye, plus
   a gdb register dump) on `a1200-020` in PAL and NTSC, and the visible pointer
