@@ -10,8 +10,11 @@ design.md §5.
 - Original CODE 1 loads, expands the exact A5 world, relocates Core and enters
   startup on the 68020 without an FPU. Resources and hidden compatibility state
   support the measured initialization path; original MDRV code is never loaded.
-- MacPlay and the Infogrames logo have exact paired client pixels/colours. Nine
-  AGA publications pass memory/copper checks. Full intro acceptance remains open.
+- The uninterrupted intro passes on the baseline 68020: all 956 frames, including
+  944 partial updates and all 840 book batches, pass C2P verification. Four
+  instruction-matched intro frames pass paired pixel/palette/AGA checks; both
+  logos are exact and title/credits have only verified owned-font differences.
+  Remaining M2 acceptance is listed below.
 - The title-screen copy now matches the Mac with documented placeholder text
   differences. The credits now use the measured 16-pixel line spacing and owned dot-above
   artwork, including â in the original “Yaâl” credit. Game-window lines and
@@ -65,7 +68,8 @@ unresolved visual report as an explicit acceptance gap; it does not block
 independent service implementation or automated acceptance. Region expansion
 and other general tuning remain M5.
 
-- [ ] **M2.1c** — verify both original PAK payloads; filtered observer awaits validation.
+- [ ] **M2.1c** — verify both original PAK payloads; validate intervening palette
+  reactivation, then resume the filtered original-read observer.
 - [ ] **M2.5** — PAL/NTSC automated display and native audio-clock checks pass;
   finish pointer palette ownership and rendered-picture acceptance.
 - [ ] **M2.10** — intro regression and four state-paired frames pass;
@@ -102,13 +106,15 @@ and other general tuning remain M5.
     The filtered observer captures a real 1,536-byte ITD_Ress payload at
     original Misc3+$111E, then reaches `SONG SAFE POINT GAP` on the baseline
     68020: 640 elapsed ticks exceed the native sequencer's arbitrary 600-tick
-    guard (`m2-pak-filtered-songgap-detail-full.log`, exit 1). A working-tree
-    change lets the existing timeline consume all elapsed pulses. Its baseline
+    guard (`m2-pak-filtered-songgap-detail-full.log`, exit 1). The committed
+    fix lets the existing timeline consume all elapsed pulses and passes the
+    uninterrupted baseline intro regression. Its baseline PAK
     run passes that stop, then rejects reuse of the presentation palette at
     Dark2+$20CC (`m2-pak-catchup-palette-stop-full.log`, exit 1). Original Mac
     reactivation is now measured and the helper matches all palette/CLUT/private
     bytes; see [palette.md](palette.md#reusing-the-presentation-palette).
-    The working-tree runtime integration and both-payload acceptance remain open.
+    Runtime integration is under native verification; it and both-payload
+    acceptance remain open until their checks pass.
 
   *Done when* the game opens and reads `ITD_RESS.PAK` and `PRESENT.PAK`, its
   returned bytes match the host files by debugger checksum, and startup window
@@ -147,8 +153,6 @@ and other general tuning remain M5.
   preserves game colours, and effect period/duration use the selected video
   clock. Other processors remain deferred (D2).
 
-  *Done when* the verifier reports zero mismatches over the intro on
-  `a1200-020`, including preservation across partial updates.
 - **M2.10 Frame compare.**
   - The baseline `intro` regression and four original instruction-matched
     frames pass: Dark2+$1C94, Dark2+$1F46, Dan2+$2ED4 and Dark+$5220.
