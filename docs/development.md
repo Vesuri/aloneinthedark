@@ -5118,7 +5118,7 @@ It changes no game instruction or service result. Both link audits pass.
 Earlier debugger-written mouse attempts did not persist to runtime and provide
 no acceptance evidence; the compiled input fixture removes that dependency.
 
-### M2.8 — original EmptyRgn variant prerequisite
+### M2.8 — paired EmptyRgn variants
 
 After observing the real Dark+$4182 query, `mac_emptyrgn_variants.lua` allocates
 64 bytes through the original CPU NewHandle trap and runs six isolated queries:
@@ -5131,8 +5131,14 @@ All 64 body/guard bytes are unchanged in every case. Boolean output preserves it
 padding byte. D0.W receives top and D1.W receives left, preserving deliberately
 nonzero high words; A0 ends at body+8 when top>=bottom, otherwise body+10. A1 is
 the return PC; other registers, stack cleanup and MemError match the checks.
-The current native canonical-only adapter does not implement this full contract.
-The measured variants and native pairing therefore remain M2.8 work.
+The native adapter now implements this bounding-box query for owned rectangular
+and complex regions, validating declared size against allocation size first.
+`REGIONPROBE=1` and `amiga/region_variants.gdb` execute the same six inputs through
+native Line-A traps, including deliberately nonzero D0/D1 high words and Boolean
+padding. `m2-emptyrgn-variants-native-full.log` exits zero on `a1200-020` and passes
+the paired checker with all 64 bytes unchanged per case, exact register/stack
+results and successful allocation/disposal. Both link audits pass. No debugger
+writes to target memory or registers are used.
 
 ### M2.8 — original RectRgn variant prerequisite
 

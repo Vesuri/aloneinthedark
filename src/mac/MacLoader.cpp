@@ -196,6 +196,9 @@ void aitdPaletteProbe();
 #ifdef AITD_CTABLE_PROBE
 void aitdCTableProbe();
 #endif
+#ifdef AITD_REGION_PROBE
+void aitdRegionProbe();
+#endif
 #ifdef AITD_APPLE_EVENT_PROBE
 volatile uint32_t g_aeProbeForm=AITD_APPLE_EVENT_FORM;
 void aitdAppleEventProbe();
@@ -7890,12 +7893,17 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     if(trap==0xa8e2) {                       // EmptyRgn(RgnHandle) -> Boolean
         MacHeap::Handle region=(MacHeap::Handle)read32(userStack);
         MacHeap* owner=handleZone(region);
-        // The reached original query is a canonical empty owned region.
-        // Other region forms await paired region acceptance (M2.8).
-        if(!owner || !*region || owner->handleSize(region)!=10 || read16(*region)!=10
-           || read32(*region+2)!=0 || read32(*region+6)!=0)goto unsupportedTrap;
-        userStack[4]=1;                     // Preserve the Boolean slot's pad.
-        regs[1]=0;regs[8]=(uint32_t)*region+8;
+        if(!owner || !*region || owner->handleSize(region)<10)goto unsupportedTrap;
+        uint16_t size=read16(*region);
+        if(size<10 || (size&1) || size>owner->handleSize(region))goto unsupportedTrap;
+        int16_t top=(int16_t)read16(*region+2),left=(int16_t)read16(*region+4);
+        bool verticalEmpty=top>=(int16_t)read16(*region+6);
+        userStack[4]=verticalEmpty || left>=(int16_t)read16(*region+8);
+        // Original QuickDraw reads only the bounding rectangle, including
+        // complex regions; MOVE.W preserves each data register's high word.
+        regs[0]=(regs[0]&0xffff0000UL)|(uint16_t)top;
+        regs[1]=(regs[1]&0xffff0000UL)|(uint16_t)left;
+        regs[8]=(uint32_t)*region+(verticalEmpty ? 8 : 10);
         regs[9]=read32(frame+2)+2;
         return 5;
     }
@@ -8996,6 +9004,12 @@ bool MacLoader::run(AitdScreen* screen)
 #ifdef AITD_CTABLE_PROBE
     installLineAVector();
     aitd_call_mac_code((void*)aitdCTableProbe,a5,g_macStackBase+65536);
+    restoreLineAVector();
+    return true;
+#endif
+#ifdef AITD_REGION_PROBE
+    installLineAVector();
+    aitd_call_mac_code((void*)aitdRegionProbe,a5,g_macStackBase+65536);
     restoreLineAVector();
     return true;
 #endif

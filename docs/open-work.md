@@ -119,14 +119,6 @@ and other general tuning remain M5.
 - **M2.8 Regions and polygons.** Implement real QuickDraw regions and polygons,
   with host fixtures. Include RectRgn resizing, empty/inverted rectangles and
   ownership variants beyond the measured ten-byte, nonempty startup case.
-  Extend EmptyRgn beyond the measured canonical empty region with paired
-  nonempty/complex-region results and register/Boolean-padding checks.
-  Original CPU fixtures now cover six empty, nonempty, inverted and complex
-  shapes (`mac_emptyrgn_variants.lua`, `check_emptyrgn_variants.py`; reference
-  log `m2-emptyrgn-variants-reference.log`, exit zero). They preserve the high
-  words of D0/D1 and return top/left in the low words; A0 depends on the vertical
-  comparison. Native generalization and a CPU-executed fixture are prepared in
-  the working tree; the paired native check remains open.
   RectRgn now has seven passing original CPU fixtures covering resizing,
   empty/inverted bounds and locked/purgeable ownership (`mac_rectrgn_variants.lua`,
   `check_rectrgn_variants.py`; `m2-rectrgn-variants-reference.log`, exit zero).

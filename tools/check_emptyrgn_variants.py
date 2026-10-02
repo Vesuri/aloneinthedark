@@ -28,10 +28,14 @@ def check(text, status):
     struct.pack_into('>I', raw, 4, (original['a5']-0xbfc8) & 0xffffffff)
     if one(text, r'^EMPTYRGN_BYTES (\w+)$') != raw.hex().upper():
         raise ValueError('live original caller')
+    check_shapes(text, 'reference')
+
+
+def check_shapes(text, side):
     for i, shape in enumerate(SHAPES, 1):
         e, r = [fields(one(text, rf'^EMPTY_VARIANT_{phase} n={i} (.*)$'))
                 for phase in ('ENTER', 'RETURN')]
-        before, after = [(ROOT/'tmp'/f'emptyrgn-variants-reference-case{i}-{phase}.bin').read_bytes()
+        before, after = [(ROOT/'tmp'/f'emptyrgn-variants-{side}-case{i}-{phase}.bin').read_bytes()
                          for phase in ('enter', 'return')]
         data = bytes.fromhex(shape)
         if before != data+bytes([0xa5])*(64-len(data)) or before != after:
@@ -49,15 +53,27 @@ def check(text, status):
                 raise ValueError(f'case {i}: preserved {key}')
         if not e['handle'] or not e['body'] or e['memerr']:
             raise ValueError(f'case {i}: owned fixture allocation')
-    print('PASS original EmptyRgn: six empty/nonempty/inverted/complex shapes, full guards, Boolean padding and exact register/stack effects')
+    print(f'PASS {side} EmptyRgn: six empty/nonempty/inverted/complex shapes, full guards, Boolean padding and exact register/stack effects')
+
+
+def check_native(text, status):
+    if (status != 0 or any(x in text for x in ('FAIL', 'TIMEOUT', 'Error in', 'Program received signal'))
+            or text.count('PASS native EmptyRgn variants cases=6') != 1
+            or text.count('[Inferior 1 (Remote target) detached]') != 1):
+        raise ValueError('native completion')
+    check_shapes(text, 'native')
 
 
 if __name__ == '__main__':
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('reference', type=Path)
     p.add_argument('--status', type=int, required=True)
+    p.add_argument('--native', type=Path)
+    p.add_argument('--native-status', type=int)
     a = p.parse_args()
     try:
         check(a.reference.read_text(), a.status)
+        if a.native:
+            check_native(a.native.read_text(), a.native_status)
     except (ValueError, OSError, KeyError) as error:
         raise SystemExit('FAIL EmptyRgn variants: '+str(error))
