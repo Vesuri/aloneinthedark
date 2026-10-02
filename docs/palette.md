@@ -443,8 +443,8 @@ Fresh-preference counts are derived (154 windows, 471/471 services).
 ## Reusing the presentation palette
 
 The later original Dark2+$20CC call reuses the palette that was restored above.
-The native PAK run reaches this call after the song catch-up change but rejects
-its already-realized header (`tmp/m2-pak-catchup-palette-stop-full.log`, exit 1).
+The runtime now accepts the measured inactive, already-realized palette and
+reactivates it while preserving the existing ownership and layout guards.
 
 `tools/mac_palette_rebind.lua` captures the original first binding and default
 restoration, then invokes the real SetPalette trap on that same inactive
@@ -464,5 +464,19 @@ python3 tools/check_palette_rebind.py tmp/m2-palette-rebind-reference.log --stat
 python3 tools/check_palette8.py
 ```
 
-Both sanitizer-backed checks pass. The working-tree SetPalette integration and
-the subsequent original PAK route still need native acceptance.
+Both sanitizer-backed checks pass. Native integration also passes at the actual
+Dark2+$20CC call in `tmp/m2-pak-pointer-native-full.log` (exit 0), including ABI,
+complete palette/device state, renewed private seed and preserved client pixels.
+The same deterministic a4000-030 run completes both original PAK reads with
+exact payloads and 42,132 balanced services across 1,490 system windows.
+
+```sh
+python3 tools/check_palette_rebind.py tmp/m2-palette-rebind-reference.log --status 0 --helper --native tmp/m2-pak-pointer-native-full.log --native-status 0
+python3 tools/check_pak_native.py tmp/m2-pak-pointer-native-full.log --status 0
+```
+
+Reproduce with a clean `INTROSKIP=1 FIXEDRNG=1 PAKPROBE=1` build, then
+`AMIGA_CONFIG=a4000-030 GDBSCRIPT=pak_reads.gdb EXTRA_ARGS=--warp_mode=1 amiga/diag_run.sh 2400`.
+The observer requires both payloads and the intervening palette checkpoint
+before successful detach. Captures are archived locally in
+`tmp/m2-pak-pointer-accepted/`; original game bytes remain untracked.

@@ -47,6 +47,13 @@ extern "C" void aitdDriverClockProbe();
 #include "SoundEffect.h"
 
 extern "C" {
+#ifdef AITD_PAK_READ_PROBE
+volatile uint16_t g_pakProbeMask=0;
+volatile uint32_t g_pakProbePB=0,g_pakProbeCall=0,g_pakProbeFileID=0;
+__attribute__((noinline)) void aitdPakReadProbe() { __asm__ volatile("nop" ::: "memory"); }
+volatile uint32_t g_rebindProbeRegs=0,g_rebindProbeFrame=0,g_rebindProbeArgs=0;
+__attribute__((noinline)) void aitdPaletteRebindProbe() { __asm__ volatile("nop" ::: "memory"); }
+#endif
 void aitd_line_a_handler();
 void aitd_call_mac_code(void* entry, void* a5, void* stackTop);
 void aitd_user_exit_request();
@@ -6297,6 +6304,25 @@ static bool dispatchFileData(uint16_t trap,uint32_t* regs) {
     if(openDF)trap=(trap&0x200) ? 0xa200 : 0xa000;
     if(!isFileDataService(trap))return false;
     uint8_t* pb=(uint8_t*)regs[8];if(!pb)return false;
+#ifdef AITD_PAK_READ_PROBE
+    // Filter observation only: the original read and its result are untouched.
+    if(trap==0xa002 && read32(pb+36)>=1024) {
+        const MacFiles::Fork* probeFork=s_files.fork((int16_t)read16(pb+24));
+        const MacFiles::Entry* probeEntry=probeFork && !probeFork->resource ? s_files.entry(probeFork->id) : 0;
+        if(probeEntry) {
+            const char* names[2]={"ITD_Ress.PAK","Present.PAK"};
+            for(uint16_t which=0;which<2;++which)if(!(g_pakProbeMask&(1<<which))) {
+                uint16_t i=0;
+                while(names[which][i] && names[which][i]==probeEntry->name[i])++i;
+                if(!names[which][i] && !probeEntry->name[i]) {
+                    g_pakProbePB=(uint32_t)pb;g_pakProbeFileID=probeFork->id;
+                    g_pakProbeCall=read32(s_userService.frame+2);
+                    g_pakProbeMask|=1<<which;aitdPakReadProbe();
+                }
+            }
+        }
+    }
+#endif
     int16_t error=0;
     if(trap==0xa013) {
         uint8_t* name=(uint8_t*)read32(pb+18);char volume[256];
@@ -8118,14 +8144,29 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
                            || read32(*outgoing+4)!=(0xc000UL|uint32_t(oldSlot+2))
                            || read32(*outgoing+8)!=1)goto unsupportedTrap;
                     }
+                    // A previously restored presentation palette retains its
+                    // realized header/entries and private seed with state 0.
+                    // Original SetPalette realizes it again when rebound.
+                    bool realized=restoring || (owner && *palette && owner->handleSize(palette)==4112
+                        && read32(*palette+4)==(0xc000UL|uint32_t(slot+2)));
                     if(!owner || !*palette || owner->handleSize(palette)!=4112
-                        || read32(*palette+4)!=(restoring ? (0xc000UL|uint32_t(slot+2)) : uint32_t(slot+2))
+                        || read32(*palette+4)!=(realized ? (0xc000UL|uint32_t(slot+2)) : uint32_t(slot+2))
                         || read32(*palette+8)!=(restoring ? 1UL : 0UL)
                         || read32(*palette+12)!=(uint32_t)privateHandle
                         || !privateOwner || !*privateHandle || privateOwner->handleSize(privateHandle)!=4
-                        || (!restoring && read32(*privateHandle)!=0))goto unsupportedTrap;
+                        || (!realized && read32(*privateHandle)!=0))goto unsupportedTrap;
+#ifdef AITD_PAK_READ_PROBE
+                    // Observe the reached PAK-route dependency once; do not
+                    // alter the original palette call or its return values.
+                    if(realized && !restoring && !g_rebindProbeArgs) {
+                        g_rebindProbeRegs=(uint32_t)regs;
+                        g_rebindProbeFrame=(uint32_t)frame;
+                        g_rebindProbeArgs=(uint32_t)userStack;
+                        aitdPaletteRebindProbe();
+                    }
+#endif
                     if(!Palette8::realize(*palette,4112,s_windowManagerColors,sizeof(s_windowManagerColors),
-                        *privateHandle,4,s_colorSeed,restoring ? 0x800a : 0))goto unsupportedTrap;
+                        *privateHandle,4,s_colorSeed,realized ? 0x800a : 0,realized && !restoring))goto unsupportedTrap;
                     ++s_colorSeed;
                     write32(*palette+4,0xc000UL|uint32_t(slot+2));write32(*palette+8,1);
                     if(restoring)write32(*outgoing+8,0);

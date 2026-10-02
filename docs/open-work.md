@@ -14,7 +14,14 @@ design.md §5.
   944 partial updates and all 840 book batches, pass C2P verification. Four
   instruction-matched intro frames pass paired pixel/palette/AGA checks; both
   logos are exact and title/credits have only verified owned-font differences.
-  Remaining M2 acceptance is listed below.
+  This full-intro result predates pointer enablement; its rerun remains below.
+- M2.1c now passes actual native reads of both PAKs: 1,536 bytes from
+  ITD_Ress and 17,920 bytes from Present match the installed files exactly.
+  The intervening palette reactivation matches the Mac; the completed
+  deterministic a4000-030 run records 1,490 windows, 111 resource reads and
+  42,132 balanced services (`m2-pak-pointer-native-full.log`, exit 0).
+  Both payload and palette checkers pass. This does not close the separate
+  unseeded route or rendered-picture gaps.
 - The title-screen copy now matches the Mac with documented placeholder text
   differences. The credits now use the measured 16-pixel line spacing and owned dot-above
   artwork, including â in the original “Yaâl” credit. Game-window lines and
@@ -68,8 +75,6 @@ unresolved visual report as an explicit acceptance gap; it does not block
 independent service implementation or automated acceptance. Region expansion
 and other general tuning remain M5.
 
-- [ ] **M2.1c** — verify both original PAK payloads; validate intervening palette
-  reactivation, then resume the filtered original-read observer.
 - [ ] **M2.5** — PAL/NTSC automated display and native audio-clock checks pass;
   original-game pointer is enabled with verified inversion. Rendered-picture
   acceptance remains owner-deferred.
@@ -80,52 +85,6 @@ and other general tuning remain M5.
   the rendered result when authorized capture is available. M2 remains open
   while its required acceptance is outstanding.
 
-- **M2.1c Original File Manager read acceptance (after M2.2).**
-  - This retains M2.1's original acceptance; diagnostic fixture reads do not count
-    as original-game reads. M2.1b2a measured the intervening Get1NamedResource
-    dependency at Engine+$3CDC. File/resource services and the native idle route
-    are now implemented; the remaining work is original-game payload verification.
-  - The original no-input idle route now proves both PAK reads on the Mac.
-    Reproduce actual native execution and compare returned payloads; synthetic
-    fixture reads do not satisfy this requirement. The intervening original
-    song-stop and resource-release calls now pass native ABI/ownership checks,
-    including disposal of all 41 owned song resources.
-  - The subsequent unseeded observer timed out after 25 minutes before its
-    Dark2+$5768 checkpoint (`m2-pak-native-after-release-timeout-full.log`,
-    runner exit 124). It captured initial ITD_Ress reads only; the interrupted
-    PC was in frame presentation. This is not PAK or sequence acceptance.
-    Resume with the established deterministic entropy fixture and observe the
-    original presentation/file calls directly; keep the unseeded route gap
-    explicit under M2.3g44.
-  - The deterministic presentation-checkpoint attempt also failed its guard
-    (`m2-pak-fixed-native-failed-full.log`); it is not acceptance. The direct
-    observer reached 1,025 actual reads before its count bound. Its expanded
-    retry stopped after 1,244 reads because the debugger lost the `trap` local
-    (`m2-pak-expanded-context-failed-full.log`, exit 1); this is an observer
-    failure, not payload acceptance or evidence of a game failure.
-    A test-only marker now filters for the first substantial original read of
-    each PAK, retaining real callers, payload bytes and startup window counts.
-    The filtered observer captures a real 1,536-byte ITD_Ress payload at
-    original Misc3+$111E, then reaches `SONG SAFE POINT GAP` on the baseline
-    68020: 640 elapsed ticks exceed the native sequencer's arbitrary 600-tick
-    guard (`m2-pak-filtered-songgap-detail-full.log`, exit 1). The committed
-    fix lets the existing timeline consume all elapsed pulses and passes the
-    uninterrupted baseline intro regression. Its baseline PAK
-    run passes that stop, then rejects reuse of the presentation palette at
-    Dark2+$20CC (`m2-pak-catchup-palette-stop-full.log`, exit 1). Original Mac
-    reactivation is now measured and the helper matches all palette/CLUT/private
-    bytes; see [palette.md](palette.md#reusing-the-presentation-palette).
-    Runtime integration is under native verification; it and both-payload
-    acceptance remain open until their checks pass.
-    The focused repeat-call observer reached its 15-minute deadline without
-    that checkpoint (`m2-palette-rebind-direct-timeout-full.log`, exit 124).
-    This does not establish palette or sequence acceptance; do not infer scene
-    position from the interrupted native service dispatcher.
-
-  *Done when* the game opens and reads `ITD_RESS.PAK` and `PRESENT.PAK`, its
-  returned bytes match the host files by debugger checksum, and startup window
-  counts are recorded. If original bytes establish an unused file, document the
-  evidence before revising that requirement; absence from one route is not proof.
 - **M2.5 AGA 8-plane display.**
   - Lores 320×200×8 in `AitdScreen`, centred for PAL and NTSC. Video selection
     now passes the five-frame native display fixture on
@@ -179,6 +138,10 @@ and other general tuning remain M5.
     these intro states precede its first call. Use that fixture for the remaining
     near-camera car endpoint and frog transition, with original scene/animation
     keys. Elapsed time alone is not frame pairing.
+    Fresh captures (`m2-demo-frames-reference.log`, exit 0) preserve matching
+    logged actor bytes, but the candidate labelled “pond” still renders a car
+    scene. Room/camera values and Dark+$5BE8 alone do not identify the frog
+    transition. Select and inspect the actual scene before paired acceptance.
 
   *Done when* the remaining car/frog states match MAME pixel-for-pixel, or with
   documented and explained differences, alongside the now-passing logo and
@@ -196,8 +159,10 @@ Already verified (details and capture names in [development.md](development.md))
   manual input through all nine Mac room/camera transitions. Actor identity,
   room, life and track agree; the final entrance position is 105 versus 109,
   followed by native completion at 122. Exact car/animation frame pairing remains open.
-- The first pond frame has matching palette, background and AGA publication;
-  two pixels differ inside an actor with different animation state.
+- The previously labelled first-pond checkpoint has matching palette, background
+  and AGA publication; two pixels differ inside an actor with different animation
+  state. Its scene label needs revalidation: a fresh capture selected by the same
+  transition condition still shows the car scene. This is not frog acceptance.
 - The idle menu has all 64,000 pixels, plane pointers and 256 colours verified.
   Read-only mode checks pass after 135 OS handbacks and at its original 900-tick
   exit. Persistent mode loss at those checkpoints is ruled out; transient

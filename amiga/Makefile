@@ -159,6 +159,10 @@ endif
 ifeq ($(REGIONPROBE),1)
 EXTRA_DEFINES += -DAITD_REGION_PROBE
 endif
+ifeq ($(PAKPROBE),1)
+EXTRA_DEFINES += -DAITD_PAK_READ_PROBE
+PROBE_SYMS_PAK = g_pakProbeMask g_pakProbePB g_pakProbeCall g_pakProbeFileID g_rebindProbeRegs g_rebindProbeFrame g_rebindProbeArgs
+endif
 ifeq ($(APPLEEVENTPROBE),1)
 APPLEEVENTFORM ?= 0
 EXTRA_DEFINES += -DAITD_APPLE_EVENT_PROBE -DAITD_APPLE_EVENT_FORM=$(APPLEEVENTFORM)
@@ -297,6 +301,7 @@ PROBE_SYMS += g_lineAProbe
 endif
 PROBE_SYMS += g_macTicks
 PROBE_SYMS += g_videoPAL g_paulaClock
+PROBE_SYMS += $(PROBE_SYMS_PAK)
 PROBE_SYMS += $(PROBE_SYMS_C2P)
 PROBE_SYMS += g_macFramesQueued g_macFramesPresented
 PROBE_SYMS += g_beamPresentLine g_beamPresentMin g_beamPresentMax \
