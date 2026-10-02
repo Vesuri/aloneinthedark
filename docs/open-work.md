@@ -18,9 +18,12 @@ design.md §5.
   M2.10 also passes the car/frog frame checks: matched actual model/transform
   inputs produce exact 64,000-pixel Mac images, all 256 colours and native AGA
   publications. The car comparison exposed and fixed descending LineTo ties;
-  all 80 original slope fixtures and 47 measured car calls pass. The display
-  synchronization change is undergoing a final uninterrupted-intro regression;
-  rendered-window acceptance remains separate.
+  all 80 original slope fixtures and 47 measured car calls pass. The final
+  uninterrupted-intro rerun after the display synchronization change also
+  passes all 956 frames and four paired captures. The full host suite and all
+  six native regression cases now pass on `a1200-020`, including all eight
+  resource-exit phases (`m2-final-native-regression-isolated.log`, exit 0).
+  Rendered-window acceptance remains separate.
 - M2.1c now passes actual native reads of both PAKs: 1,536 bytes from
   ITD_Ress and 17,920 bytes from Present match the installed files exactly.
   The intervening palette reactivation matches the Mac. The baseline
@@ -85,10 +88,6 @@ and other general tuning remain M5.
 - [ ] **M2.5** — PAL/NTSC automated display and native audio-clock checks pass;
   original-game pointer is enabled with verified inversion. Rendered-picture
   acceptance remains owner-deferred.
-- [ ] **M2.3g44 final regression** — verify uninterrupted playback after the
-  display synchronization change: all 840 book batches, every-frame C2P and
-  four paired Macintosh pixel/palette/publication captures. Run the existing
-  `make regression` milestone cases on `a1200-020` as required by design §8.
 - [ ] **M2.3g44 visual report** — demonstrate the black-interval cause and verify
   the rendered result when authorized capture is available. M2 remains open
   while its required acceptance is outstanding.

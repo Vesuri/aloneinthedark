@@ -28,6 +28,13 @@ make -C amiga -j4
 ```
 
 The output is `amiga/out/Alone.exe`. The build needs no copyrighted input.
+Each `amiga/regression.sh` case uses temporary preferences through
+`tools/regression_preferences.py`. Existing preferences are moved outside the
+emulated drive and restored when the case ends, including failure. Probe-created
+preferences are retained under `.run/regression-prefs-*/fixture` for diagnosis.
+This prevents an early boot checkpoint's incomplete resource fork from poisoning
+the next case, and lets the file-write fixture start with its required absent
+preferences directory without deleting existing files.
 Always clean when changing build flags or shared headers. Every link runs two audits:
 `no-float-audit` (no libgcc floating-point helpers) and `probe-audit` (every
 debugger-read global survives `--gc-sections`). C/C++ uses
@@ -5410,9 +5417,26 @@ input, missing exit flags, wrong entropy modes and duplicate exits are rejected.
 This closes baseline ordinary sequence acceptance. It does not prove a
 frame-rate multiplier, diagnose the owner's black interval or replace
 rendered-picture acceptance. The final uninterrupted-intro regression after
-this display change remains separately tracked in open work.
+this display change also passes (`tmp/m2-sync-intro-native-full.log`, exit 0):
+956 frames, 944 partial updates, all 840 book batches, zero conversion
+mismatches and balanced queued/presented frames. The original return is D0=0
+at tick 116,556. Both logos match all 64,000 pixels, palette and publication;
+title/credits retain exactly the verified 1,015/1,722 owned-glyph differences.
+The captures and build log are archived under `tmp/m2-sync-intro-native/`.
 
 The complete `make host-tests` suite passes after making generated offsets in
 `mac_palette_rebind.lua` explicitly hexadecimal (`tmp/m2-final-host-tests-fixed.log`,
 exit 0). The first suite run rejected that observer's unprefixed `%x` literal;
 the corrected form emits `0x20cc`/`0x214c` for the same original call sites.
+
+The final full `make regression` also passes on `a1200-020`
+(`tmp/m2-final-native-regression-isolated.log`, exit 0): resource-exit (all
+eight phases), file-write, file-read, window-core, boot and resource-read,
+covering 13 native boots. Per-case preference isolation fixes the harness's
+cross-case state leak: existing preferences prevented file-write preparation,
+and boot's early checkpoint left an incomplete fork for resource-read.
+All six original preference files were restored byte-for-byte after the suite.
+The isolation helper's four restoration/failure tests and complete host suite
+pass (`tmp/m2-final-host-tests-isolated.log`, exit 0). This completes automated
+M2 regression acceptance; rendered PAL/NTSC and black-interval checks remain
+open under the owner's window-access restriction.

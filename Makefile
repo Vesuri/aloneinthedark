@@ -94,6 +94,7 @@ host-tests:
 	@python3 tools/check_native_font.py --selftest
 	@python3 tools/check_startup_prefs.py --selftest
 	@python3 tools/test_fsuae_launcher.py
+	@python3 tools/test_regression_preferences.py
 	@python3 tools/test_video_config.py
 	@python3 tools/test_compare_frames.py
 	@python3 tools/check_aga_cursor.py

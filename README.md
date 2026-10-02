@@ -11,73 +11,42 @@ and Toolbox layer are carried over from Vette!; see
 
 ## Current state
 
-Production display conversion now uses Kalms eight-plane assembly on the 68020;
-the scalar converter remains only in host tests. Book-page drawing now batches
-each completed animation step before conversion; the measured whole intro uses
-18.2% fewer emulated ticks than Kalms alone on the temporary test configuration.
+The original 68020 game code completes startup and the ordinary idle demo on
+the baseline A1200 configuration. The demo passes all nine Macintosh room/camera
+transitions and exits naturally without demo input. Both original PAK payloads
+and the intervening palette reactivation match the installed data and Mac
+reference; service/window accounting is balanced.
 
-Original 68020 game code now returns successfully from the **startup intro**. The MacPlay
-picture, its palette transitions and the logo match the Mac reference pixels
-and colours; nine AGA frames are verified through bitplane/copper captures and
-vertical-blank publication. These memory captures do not replace the
-owner-deferred rendered-window check. Full intro frame acceptance and gameplay remain unfinished.
+Frame acceptance covers the two logos, title and credits, plus the car and frog
+with their actual model/transform inputs replayed in the original Mac renderer.
+The model frames match all 64,000 pixels, all 256 colours and native AGA
+publication. Title/credits retain only verified differences in the owned
+placeholder glyph artwork. The latest uninterrupted-intro regression verifies all 956 frames, including
+944 partial updates and all 840 book-animation batches, with zero conversion
+mismatches. Remaining acceptance is tracked in [open work](docs/open-work.md).
 
-The title-screen copy now uses the Mac’s measured colour mapping. Its full
-client matches apart from the documented placeholder copyright glyphs. The direct-map **CopyBits** at Dark+$1E4A now returns with matching pixels.
-Owner screenshots confirm visible menu, portraits and story text after Enter.
-The automated normal-input reading route now matches all eight Carnby letter
-pages: 257 text calls, artwork, backgrounds, palettes and AGA publication pass;
-placeholder glyph artwork differs as intended.
-The Enter-skipped idle route reaches the pond background. Its polygon and region recording
-now match the Mac, including contour expansion, polygon disposal and masked copying. The polygon encoder now keeps its scratch arrays off the system stack, fixing
-a verified VBI overflow into Exec state. Interrupt stress and paired native
-region checks pass. Pond region disposal now passes paired ownership, drawing-isolation
-and original cleanup-continuation checks. The next reached relative-line call
-also passes matched-input Mac/native checks; its extreme pen coordinate is now traced to
-an overlapping local write in the original game. A current point-command pair
-matches; whole-scene animation pairing remains open. Direct AGA colour-RAM readback at the idle
-menu now matches all 256 intended colours, and its menu planes and 900-tick
-continuation pass. The idle route’s mode-0 window fill now passes the original
-native call and matching Mac service-fixture pixels and registers. The preceding
-black interval and full car/frog sequence acceptance remain open. Removing
-redundant heap work now lets the car pass the waypoint where a paired diagnostic
-previously reproduced circling. Streaming masked bitmap copies now let a bounded
-idle-demo run complete naturally through all nine Mac room/camera transitions.
-Exact animation/frame pairing and the owner-visible black interval remain open. An opt-in
-diagnostic now pairs the game’s complete
-random inputs (including its clock mixing); all 64 measured calls and the
-selected character match the original.
-Routine diagnostic builds use `INTROSKIP=1` to send normal Enter and skip the
-book; `amiga/intro_skip.gdb` verifies the skip and key release.
-Song start now retains its 41 resources and returns successfully. A complete
-native playback fixture matches all 3,736 timed note events and verifies Paula
-sample conversion, effect priority and cleanup. Startup advances native song playback before the first song-status query;
-The reached occupied effect slot now replaces its sample with verified DMA
-ownership, callback age and unchanged music voices; broader music support remains M4. The driver clock query now returns the measured
-32-bit result and condition codes. The song-status query also matches the
-original track-status result, registers and condition codes. RectRgn now
-returns with exact region bytes and ownership. The reached canonical-empty
-EmptyRgn query also matches the Mac Boolean, padding and register contract.
-GetKeys now reports current held/released keys and passes its paired calling
-contract, including native modifier aliases and event-queue preservation.
-The post-intro offscreen copy now matches every defined destination pixel and
-preserves both buffers outside the copied area.
-The original credit “Yaâl” now renders with owned artwork and measured spacing.
-Game-window lines now match the Mac,
-including exact clipping, dirty bounds and AGA publication.
-The credits render “I˙Motion” with owned glyphs and the measured 16-pixel line
-spacing. The copyright line uses owned glyphs with the
-Mac’s measured spacing and pen advance. The preceding mode-0 offscreen fill
-matches the Mac. The first intro line matches the Mac across the complete offscreen
-buffer, with 48 additional slope/clipping fixtures. The first sound effect
-plays on Paula and the game's polling loop now observes its completion.
-Original MDRV code remains unloaded. Startup initialization, resource
-loading, twenty offscreen pictures, 220 text measurements, window geometry,
-clipping, colours, events and cursor state pass their paired checks. The
-75,616-byte A5 globals match exactly. Detailed contracts and current evidence
-are in [docs/development.md](docs/development.md),
-[docs/picture-drawing.md](docs/picture-drawing.md),
-[docs/palette.md](docs/palette.md) and [docs/copybits.md](docs/copybits.md).
+Production output uses Kalms eight-plane conversion and explicit dirty
+rectangles. Book drawing publishes completed animation steps; back-buffer
+synchronization skips pixels about to be replaced by conversion. Baseline PAL
+and NTSC fixtures verify every pixel and colour, pointer motion and inversion,
+partial updates and cleanup. Actual rendered-window acceptance, including the
+reported black interval, remains owner-deferred.
+
+Normal Enter reaches portraits and the story. All eight Carnby letter pages
+pass their text layout, artwork, palette and AGA checks, with the documented
+owned-font differences. GetKeys passes held/released-key and calling-contract
+checks. Routine diagnostic builds use `INTROSKIP=1` to send normal Enter and
+skip the book; uninterrupted-intro acceptance uses no injected input.
+
+The native song fixture matches all 3,736 timed note events. Original effect
+playback, replacement, completion, DMA ownership and cleanup are verified;
+PAL/NTSC effect clocks and the original driver's 32-bit clock/status contracts
+also pass. Original MDRV code remains unloaded. Gameplay, save/load and broader
+music support remain later milestones.
+
+Detailed contracts and evidence are in [development](docs/development.md),
+[picture drawing](docs/picture-drawing.md), [palettes](docs/palette.md),
+[bitmap copies](docs/copybits.md) and [cursor display](docs/cursor.md).
 
 The sole active target is 68020 without an FPU. Tests temporarily default to
 an A4000 model running a 68030 at maximum emulator speed; the explicit A1200

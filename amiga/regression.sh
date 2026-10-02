@@ -3,6 +3,9 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 . ./env.sh
+if [[ "${AITD_REGRESSION_PREFS_ISOLATED:-}" != 1 ]]; then
+  exec python3 ../tools/regression_preferences.py "$@"
+fi
 deadline=60
 case "${1:-boot}" in
   resource-exit) exec bash ./resource_exit.sh ;;
