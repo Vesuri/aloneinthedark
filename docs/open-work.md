@@ -100,7 +100,12 @@ and other general tuning remain M5.
     failure, not payload acceptance or evidence of a game failure.
     A test-only marker now filters for the first substantial original read of
     each PAK, retaining real callers, payload bytes and startup window counts.
-    This replacement observer is in the working tree and still needs validation.
+    The filtered observer captures a real 1,536-byte ITD_Ress payload at
+    original Misc3+$111E, then reaches `SONG SAFE POINT GAP` on the baseline
+    68020: 640 elapsed ticks exceed the native sequencer's arbitrary 600-tick
+    guard (`m2-pak-filtered-songgap-detail-full.log`, exit 1). A working-tree
+    change lets the existing timeline consume all elapsed pulses; the bounded
+    catch-up/PAK run must pass before this change or either payload is accepted.
 
   *Done when* the game opens and reads `ITD_RESS.PAK` and `PRESENT.PAK`, its
   returned bytes match the host files by debugger checksum, and startup window
@@ -137,6 +142,12 @@ and other general tuning remain M5.
     fixture against the independent decoder (M2.3g41p1). Retain the host C oracle
     and finish the full intro comparison below; general tuning remains M5.
   - Rectangles aligned to 32 pixels.
+  - Working-tree `C2PVERIFY=1` independently decodes every complete converted
+    viewport before publication, including preserved pixels outside dirty
+    rectangles. Host checks pass for all eight planes, injected corruption,
+    matching partial updates and shifted viewports. `amiga/intro.gdb` requires
+    uninterrupted original completion and all 840 book batches; native
+    full-intro verification remains pending.
 
   *Done when* the verifier reports zero mismatches over the intro on
   `a1200-020`, including preservation across partial updates.
