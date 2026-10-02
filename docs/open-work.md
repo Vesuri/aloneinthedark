@@ -32,6 +32,9 @@ design.md §5.
   111 resource reads and 70,729 balanced services
   (`m2-sync-ordinary-native-full.log`, exit 0). Both payload and palette
   checkers pass. Rendered-picture acceptance remains pending.
+  A later normal visible PAL run (2026-10-02) produced a roughly six-minute
+  black interval and an owner report of renewed car circling; repeatability
+  is reopened below. The earlier successful diagnostic run is not a fix proof.
 - The title-screen copy now matches the Mac with documented placeholder text
   differences. The credits now use the measured 16-pixel line spacing and owned dot-above
   artwork, including â in the original “Yaâl” credit. Game-window lines and
@@ -91,6 +94,10 @@ and other general tuning remain M5.
 - [ ] **M2.3g44 visual report** — demonstrate the black-interval cause and verify
   the rendered result when authorized capture is available. M2 remains open
   while its required acceptance is outstanding.
+- [ ] **M2.3g44 demo reliability** — investigate the owner's renewed car-circling
+  report in the normal PAL run. Reproduce with measured actor/track state and
+  verify natural completion on the normal uninterrupted route; retain original
+  game instructions. One successful diagnostic route does not close this report.
 
 - **M2.5 AGA 8-plane display.**
   - Lores 320×200×8 in `AitdScreen`, centred for PAL and NTSC. Video selection
@@ -138,12 +145,26 @@ register checks cannot establish what the host window displayed. Follow the
 host-window restriction under M1.7b2; do not retry denied capture or substitute
 host input injection. This verification gap must not stall independent M2 work.
 
+Owner-provided F12+S captures from a normal, unpaused `a1200-020` PAL run on
+2026-10-02 are now available in `tmp/m2-owner-screenshots-pal/` (40 PNGs).
+Amsterdam timestamps show the menu at 20:45:10, 14 identical all-black captures
+from 20:45:25 through 20:51:01, and landscape at 20:51:44. They support the
+owner's roughly six-minute black interval, but do not identify its cause.
+The owner reports a moving mouse pointer during black output; the saved black
+images contain no pointer, so that observation is not independently captured.
+Later images show car movement and scene progression through 20:54:09; they
+do not alone prove the reported circling or natural completion. The run was
+stopped at the owner's request. No Enter was requested: the letter belongs to
+the new-game route and is not expected in this idle demo. User-saved screenshot
+inspection is authorized; autonomous host capture/input remains restricted.
+
 Already verified (details and capture names in [development.md](development.md)):
 - The baseline ordinary-randomness demo completes all nine original
   room/camera transitions and exits naturally at tick 60,426 with choice 0.
   Both original PAK payloads and palette reactivation pass. The earlier room-2
-  stall is absent after eliminating back-buffer copies of spans immediately
-  overwritten by C2P. Original movement instructions and timers are unchanged.
+  stall is absent in that particular run after eliminating back-buffer copies
+  of spans immediately overwritten by C2P; the later visible-run report reopens
+  reliability. Original movement instructions and timers are unchanged.
   Car/frog frame fidelity passes with matched actual draw inputs.
 - The idle menu has all 64,000 pixels, plane pointers and 256 colours verified.
   Read-only mode checks pass after 135 OS handbacks and at its original 900-tick
