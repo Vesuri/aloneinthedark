@@ -1,5 +1,13 @@
 # Graphics-device startup
 
+**Status, 2026-10-02:** M2 device selection, eight-bit backing and PAL/NTSC display acceptance pass.
+
+The checkpoint sections below preserve service-level evidence. References to
+an intermediate startup stop or a then-pending M2 gate are historical; current
+acceptance is recorded in [development.md](development.md), and remaining work
+is in [open-work.md](open-work.md). Unsupported contracts remain unsupported
+unless a later section explicitly verifies them.
+
 The logical device now has a real 640×480, eight-bit screen in fast RAM, as
 specified in design.md §4.7. Original device selection passes; native startup
 passes SetDepth, GetGWorld and hidden dialog creation. It stops next at

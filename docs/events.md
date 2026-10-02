@@ -1,5 +1,14 @@
 # Startup events
 
+**Status, 2026-10-02:** Startup/menu events, normal Enter selection and the automatic demo pass M2.
+First-room gameplay and broader event coverage remain M3.
+
+The checkpoint sections below preserve service-level evidence. References to
+an intermediate startup stop or a then-pending M2 gate are historical; current
+acceptance is recorded in [development.md](development.md), and remaining work
+is in [open-work.md](open-work.md). Unsupported contracts remain unsupported
+unless a later section explicitly verifies them.
+
 The original Engine+$44F0 WaitNextEvent passes mask $FFFF, a 16-byte
 EventRecord, zero sleep and a nil mouse region. Original bytes at
 +$44E2–+$44F1 are `42273f3cffff2f2e000c42a742a7a860`; no game instructions

@@ -1,5 +1,14 @@
 # Eight-bit intro copy
 
+**Status, 2026-10-02:** Intro CopyBits and full/partial presentation pass M2, including all 956 intro
+frames and separately verified PAL/NTSC rendered output.
+
+The checkpoint sections below preserve service-level evidence. References to
+an intermediate startup stop or a then-pending M2 gate are historical; current
+acceptance is recorded in [development.md](development.md), and remaining work
+is in [open-work.md](open-work.md). Unsupported contracts remain unsupported
+unless a later section explicitly verifies them.
+
 The first original intro CopyBits displays the Infogrames logo. Misc2+$24D2
 calls it with bytes `20502f102047486800022f0b486b0008426742a7a8ec`
 at +$24BE. Arguments are a direct source PixMap, destination game-port bitmap,
@@ -39,11 +48,13 @@ source-edge clipping and row padding, plus rejected scaling/capacity checks;
 `make host-tests` runs them with address/undefined-behaviour sanitizers. The
 helper also matches the complete original reference destination capture.
 
-Startup next stops at native driver selector 22, Core+$1A74. Its service is in
+At this historical checkpoint startup stopped at native driver selector 22,
+Core+$1A74. Its service is in
 progress (464 entered / 463 completed, active=1, trap $A0F8); this is an explicit
 unsupported call, not balanced-service or successful-intro acceptance. Original
 MDRV is absent. Logo matching here is evidence for M2.10, whose general frame
-comparator, fixed-seed state keys and complete intro regression remain pending.
+comparator, fixed-seed state keys and complete intro regression were then pending.
+Those M2 gates now pass; see the current completion record in development.md.
 
 
 ## Copyright presentation colour mapping

@@ -1,10 +1,20 @@
 # Startup palette construction and binding
 
+**Status, 2026-10-02:** M2 palette activation, measured colour transfer and PAL/NTSC rendered display
+acceptance are complete; unsupported palette forms retain their named stops.
+
+The checkpoint sections below preserve service-level evidence. References to
+an intermediate startup stop or a then-pending M2 gate are historical; current
+acceptance is recorded in [development.md](development.md), and remaining work
+is in [open-work.md](open-work.md). Unsupported contracts remain unsupported
+unless a later section explicitly verifies them.
+
 The original NewPalette request is measured by `tools/mac_palette.lua` and
 validated by `tools/check_palette.py`. Native construction implements both measured startup source forms. Startup
 activation, complete device realization and measured video transfer are verified;
 see the consolidated M2 acceptance in [development.md](development.md).
-Full-intro frame comparison and rendered display acceptance remain separate.
+Full-intro frame comparison and PAL/NTSC rendered display acceptance also pass
+as separately verified M2 gates (2026-10-02).
 Vette has GetNewPalette resource loading but no NewPalette constructor to reuse.
 
 ## Original request and returned record [M]

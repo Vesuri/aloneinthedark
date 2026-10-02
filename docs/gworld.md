@@ -1,5 +1,14 @@
 # Eight-bit offscreen worlds
 
+**Status, 2026-10-02:** Offscreen-world bindings and drawing required by startup/intro pass M2.
+Unmeasured gameplay forms retain their named stops.
+
+The checkpoint sections below preserve service-level evidence. References to
+an intermediate startup stop or a then-pending M2 gate are historical; current
+acceptance is recorded in [development.md](development.md), and remaining work
+is in [open-work.md](open-work.md). Unsupported contracts remain unsupported
+unless a later section explicitly verifies them.
+
 The first original request is Misc2+$0074, QDExtensions selector 0. It asks for
 8-bit pixels, flags 8 (`keepLocal`), no explicit device, a supplied 256-entry
 colour table and bounds (0,0)–(648,401). The allocator now creates real current-zone

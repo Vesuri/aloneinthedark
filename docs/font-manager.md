@@ -1,5 +1,15 @@
 # Font Manager
 
+**Status, 2026-10-02:** Startup/intro font lookup, layout and the eight letter pages pass M2. Owned
+placeholder glyph differences are documented; broader gameplay text and the
+later engine-font replacement remain outside that acceptance.
+
+The checkpoint sections below preserve service-level evidence. References to
+an intermediate startup stop or a then-pending M2 gate are historical; current
+acceptance is recorded in [development.md](development.md), and remaining work
+is in [open-work.md](open-work.md). Unsupported contracts remain unsupported
+unless a later section explicitly verifies them.
+
 ## GetFNum reference contract
 
 The original Dan1 calls at +$0012 and +$0038 request the Pascal string `Times`

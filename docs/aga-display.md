@@ -1,12 +1,17 @@
 # Eight-bit display bring-up
 
-The integrated display publishes the first client clear and reaches
+M2 display acceptance is complete (2026-10-02): full intro conversion, paired
+Mac frames, and native plus owner-rendered PAL/NTSC ramp/pointer checks pass.
+See [development.md](development.md) for the completion audit. The diagnostic
+checkpoints below record how the implementation was established.
+
+The initial integrated display published the first client clear and reached
 `TIME MANAGER / TICKCOUNT` at Dark+$41F4 after palette binding/activation,
 background ShowHide and game-port binding. ShowHide changes no displayed pixel and queues no extra frame. Independent startup and
 five-frame fixture capture decoders pass, as do the 21 startup observers and
 paired checks, fresh/existing preferences, host tests, system-window checks,
 clean boot and streamed-resource regressions. This is M2.5a prerequisite
-acceptance; rendered video and intro acceptance remain pending.
+acceptance; the later M2 completion record supersedes that early boundary.
 
 `Planar8.h` defines a 320×200 destination with eight interleaved 40-byte plane
 rows (64,000 bytes total), sampled from the live viewport of the 640×480 Mac
@@ -16,7 +21,7 @@ check partial-write preservation, edge clipping, an unaligned source origin,
 and invalid-input atomicity. The integer converter is now a host-only oracle. Production calls Kalms
 `c2p1x1_8_c5_gen` through a 68020 C ABI wrapper, one dirty row at a time.
 The unchanged upstream source and pinned revision are recorded in
-`src/platform/amiga/kalms/README.md`. This does not complete M2.6 intro acceptance.
+`src/platform/amiga/kalms/README.md`. The later M2.6 run verifies all 956 full-intro frames.
 
 `AgaPalette.h` emits all 256 RGB24 colours through eight banks, writing high
 and low nibbles separately and restoring bank zero/LOCT-clear state. Its input

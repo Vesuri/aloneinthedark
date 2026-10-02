@@ -1,5 +1,14 @@
 # Fixed screen-size selection
 
+**Status, 2026-10-02:** The fixed 320×200 startup path passes M2. Broader dialog replacements remain
+M3.3.
+
+The checkpoint sections below preserve service-level evidence. References to
+an intermediate startup stop or a then-pending M2 gate are historical; current
+acceptance is recorded in [development.md](development.md), and remaining work
+is in [open-work.md](open-work.md). Unsupported contracts remain unsupported
+unless a later section explicitly verifies them.
+
 D4 requires 320×200 and no displayed size dialog. Hidden construction,
 positioning, automatic item-2 selection, item lookup/disposal and restoration of
 the main world are implemented. Native startup passes default palette binding,

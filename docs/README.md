@@ -1,10 +1,19 @@
 # Documentation
 
-Start with the [project README](../README.md).
+Start with the [project README](../README.md). **M2 is complete; M3 is next.**
+Use [open work](open-work.md) for current status and the
+[M2 completion audit](development.md#m2-completion--2026-10-02) for evidence.
+Subsystem documents retain historical diagnostic checkpoints, explicitly
+separated from their current status. The M1.7b2 system-window rendered fixture
+remains deferred independently of M2.
 
 - [Design](design.md): the port plan: architecture, owner decisions,
   verification, phases and workflow.
 - [Development](development.md): build tools, local data, running and debugging.
+- [AGA display](aga-display.md): eight-plane output, colour transfer and fixtures.
+- [CopyBits](copybits.md): intro copies and partial-frame presentation.
+- [File Manager](file-manager.md): measured file contracts and PAK-read acceptance.
+- [Window geometry](window-geometry.md): hidden windows and viewport placement.
 - [Amiga architecture](amiga-arch.md): runtime, display, input, audio and cleanup.
 - [Original-data extraction](install-original-data.md): how the original
   release unpacks into the files the port reads.

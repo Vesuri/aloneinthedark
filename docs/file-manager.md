@@ -1,8 +1,18 @@
 # File Manager reference contract
 
-M2.1a adds full 80-byte parameter blocks to the existing byte-checked MAME
-logger and corrects the initial diagnostic. M2.1b1 implements the catalog/identity subset below; the remaining File Manager
-services are M2.1b2b; integrated read acceptance is M2.1c after M2.2.
+**Status, 2026-10-02:** Original PAK reads and measured file services pass M2; actual game save/load
+and immediate-reset durability remain M3.
+
+The checkpoint sections below preserve service-level evidence. References to
+an intermediate startup stop or a then-pending M2 gate are historical; current
+acceptance is recorded in [development.md](development.md), and remaining work
+is in [open-work.md](open-work.md). Unsupported contracts remain unsupported
+unless a later section explicitly verifies them.
+
+The M2 File Manager work is complete, including catalog identity, measured
+data/resource fork services and original PAK reads. Actual gameplay save/reset
+acceptance remains M3.6. The sections below preserve the measured contracts and
+implementation checkpoints, beginning with the 80-byte parameter-block logger.
 
 ## First call: application file control block
 

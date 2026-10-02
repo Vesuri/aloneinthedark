@@ -1,5 +1,14 @@
 # Hidden window titles
 
+**Status, 2026-10-02:** The measured hidden-window title and text contracts pass startup/intro
+acceptance; no Mac window chrome is displayed.
+
+The checkpoint sections below preserve service-level evidence. References to
+an intermediate startup stop or a then-pending M2 gate are historical; current
+acceptance is recorded in [development.md](development.md), and remaining work
+is in [open-work.md](open-work.md). Unsupported contracts remain unsupported
+unless a later section explicitly verifies them.
+
 The original Misc1+$1296 SetWTitle call renames WIND 131, the invisible
 "Background Hider", from `New Window` to `Hider`. This is compatibility state;
 it draws no window chrome, dialog or menu bar. Original game instructions stay

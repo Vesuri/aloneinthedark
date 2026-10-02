@@ -1,5 +1,14 @@
 # Eight-bit picture preparation
 
+**Status, 2026-10-02:** M2 picture/intro acceptance is complete, supported by state-matched Mac frames
+and owner-rendered output.
+
+The checkpoint sections below preserve service-level evidence. References to
+an intermediate startup stop or a then-pending M2 gate are historical; current
+acceptance is recorded in [development.md](development.md), and remaining work
+is in [open-work.md](open-work.md). Unsupported contracts remain unsupported
+unless a later section explicitly verifies them.
+
 The original Dan2 loop draws PICT 10000–10019 into a locked 138×542 GWorld
 with row stride 144. The unchanged caller at +$037C–$0383 is
 `2f0b486efff8a8f6`; +$0382 is DrawPicture. Images are detached before drawing,

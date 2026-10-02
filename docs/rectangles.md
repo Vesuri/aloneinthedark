@@ -1,5 +1,14 @@
 # Rectangle operations
 
+**Status, 2026-10-02:** The rectangle services used by startup and intro pass M2; the full intro and
+paired frame checks are complete.
+
+The checkpoint sections below preserve service-level evidence. References to
+an intermediate startup stop or a then-pending M2 gate are historical; current
+acceptance is recorded in [development.md](development.md), and remaining work
+is in [open-work.md](open-work.md). Unsupported contracts remain unsupported
+unless a later section explicitly verifies them.
+
 ## UnionRect
 
 The original Dan2+$01DA loop runs twenty times while preparing image bounds.

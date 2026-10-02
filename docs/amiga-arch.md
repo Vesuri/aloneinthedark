@@ -7,27 +7,30 @@ parts.
 
 ## Original game and compatibility layer
 
-`PlatformAmiga` reads the application's raw resource fork from `PROGDIR:data/`
-or `PROGDIR:` before hardware takeover, then takes the machine over in the order
+`PlatformAmiga` opens the application resource fork under `PROGDIR:data/`
+or `PROGDIR:`, retaining its map rather than preloading every body. It takes
+the machine over in the order
 established by the earlier ports (LoadView(NULL), display DMA down, VERTB vector
 taken over, screen built, published to the ISR, DMA up, Forbid, run, restore in
 reverse). The Workbench startup message is handled as in Vette.
 
-`MacLoader` copies every CODE resource into aligned resident storage, allocates
-the A5 world from CODE 0's sizes, resolves the jump table to absolute jumps and
-enters the first entry in user mode with the Line-A handler on vector $28. Loader
+`MacLoader` validates CODE resources before takeover and retains CODE 0/1 for
+startup. The original CODE 1 expands the A5 world, handles later segment loads
+and relocates the jump table. Resource bodies stream into owned zone handles
+on demand; the original executes in user mode through the Line-A service bridge. Loader
 failures and unimplemented traps are named loud stops painted by `AitdScreen`;
 the VBI keeps running so the report stays visible. See [static-map.md](static-map.md).
 
 Page-0 globals the original touches are redirected, after byte checks, to the
 private `s_portLowMemory` block (Ticks, RndSeed, WMgrPort, GrayRgn, KeyMap,
 CurrentA5, mouse and button state). The VBI keeps Ticks at 60 Hz and the mouse
-shadows current. No redirections are installed yet for this game.
+shadows current. All 58 census low-memory accesses are redirected to private
+shadows; the original A5 state and startup path pass M2 acceptance.
 
 The Memory, Resource, QuickDraw (PICT, CopyBits, GWorlds), Palette, Window,
-Menu, Dialog, Event, Vertical Retrace and Trap Manager services are Vette's
-implementations. They cover what Vette called and nothing more; each new call
-Alone in the Dark makes arrives as a loud stop.
+Menu, Dialog, Event, Vertical Retrace and Trap Manager services began with
+Vette and now implement the measured Alone in the Dark startup/intro contracts.
+Unimplemented calls or forms still produce named loud stops.
 
 ## Display
 
@@ -41,9 +44,10 @@ Main-thread conversion prepares the inactive bitmap and complete copper list.
 VBI swaps both together before input/audio work. The list includes all 256
 RGB24 colours, using BPLCON3 banks and high/low nibble writes. An integer lookup
 reproduces the measured Mac video transfer while preserving the logical RGB16
-CLUT. The current mode is PAL, with one-times fetch; NTSC and visible-pointer
-palette ownership remain M2.5 requirements. The pointer stays hidden for this
-startup path. See [aga-display.md](aga-display.md) for evidence and limitations.
+CLUT. PAL and NTSC use one-times fetch and have passed native and owner-rendered
+acceptance. The pointer preserves all game colours through sprite-bank
+ownership and reversible index inversion; see [cursor.md](cursor.md).
+See [aga-display.md](aga-display.md) for display evidence.
 
 ### Book-step presentation
 
@@ -94,10 +98,12 @@ Misc2+$1D9C–$1DA9 has SHA-256
 `fb490c8d89ec18e2450bab69eff1861a43f579444050b9850a75e26b8c3390b7`.
 `EmptyRgn` at Dark+$4182 queries an owned canonical empty ten-byte region.
 It preserves its bytes and Boolean padding, writes true, and reproduces the
-measured D1/A0/A1 results. Unsupported nonempty/complex forms remain named
-stops. `mac_emptyrgn.lua`, `emptyrgn_call.gdb` and `check_emptyrgn.py` retain the
+measured D1/A0/A1 results. Later M2 fixtures cover the nonempty forms reached
+by the intro; unmeasured complex forms remain named stops.
+`mac_emptyrgn.lua`, `emptyrgn_call.gdb` and `check_emptyrgn.py` retain the
 original/native calling contract.
-Broader region operations and clipped drawing remain M2.8 work.
+M2.8 acceptance is complete for reached screens. Broader region expansion is
+tracked in M5; see [open-work.md](open-work.md).
 
 See [offscreen worlds](gworld.md) for the real eight-bit allocation, private
 device, owned auxiliary handles and measured inverse-colour lookup.

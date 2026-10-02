@@ -35,6 +35,11 @@ The final normal build is recorded in `tmp/m2-complete-production-build.log`.
 No fixture flag is part of the production build. M3 gameplay work and the
 owner-deferred M1.7b2 system-window rendered fixture remain separate open work.
 
+The service-by-service checkpoint records below retain historical stops and
+acceptance boundaries. Their then-pending M2 gates are superseded by the
+completion audit above. They do not reopen M2 or close unimplemented gameplay
+contracts. The current remaining scope is in [open-work.md](open-work.md).
+
 ## Build dependencies
 
 The production game is the Amiga executable; there is no host game renderer.

@@ -1,5 +1,14 @@
 # Native SoundMusicSys driver
 
+**Status, 2026-10-02:** The native intro driver and complete reference song pass M2. All-song coverage,
+gameplay effect variants/toggles and perceived audio quality remain M4.
+
+The checkpoint sections below preserve service-level evidence. References to
+an intermediate startup stop or a then-pending M2 gate are historical; current
+acceptance is recorded in [development.md](development.md), and remaining work
+is in [open-work.md](open-work.md). Unsupported contracts remain unsupported
+unless a later section explicitly verifies them.
+
 D8 replaces the original software mixer at its driver interface. Native Jnth 11
 supplies measured initialization, quality selection, raw one-shot effects and
 effect stopping. Original MDRV code never runs on the Amiga. Unimplemented
@@ -365,7 +374,10 @@ playback now passes (`tmp/m2-song-reuse-native-full.log`, exit 0): all 3,736
 original timed events, 1,868 note starts, 25 byte-exact retained PCM variants,
 effect priority, natural completion and cleared voice/sample ownership after
 release. The independent playback checker verifies every retained byte and
-the 458,974-byte total. Normal-route and rendered confirmation remain open.
+the 458,974-byte total. Subsequent heap movement avoids copying free payload,
+reducing the complete blank interval to 474 ticks (7.9 seconds). The owner video
+confirms 7.95 seconds and natural demo completion; normal-route and rendered
+acceptance are complete. Broader music and perceived audio quality remain M4.
 Build `INTROSKIP=1 SONGCOST=1` and use `amiga/song_cost.gdb` to repeat the
 consecutive-frame/tick measurement; its counters are absent from normal builds.
 The host suite's initial window-geometry run and first retry hit its 30-second
@@ -732,4 +744,5 @@ Paula sample, SONG/MIDI, clock and instrument host regressions pass.
 
 Four corrupt/incomplete reference logs and four corrupt/incomplete native logs
 are rejected. This verifies targeted effect cleanup, not perceived audio quality
-or the still-open complete intro sequence.
+or perceived quality of the complete intro; sequence completion itself now
+passes M2.

@@ -171,7 +171,7 @@ subsystem with its design decision and the queue tasks that implement it.
     Nested ordinary traps are allowed; recursive services and unsupported
     exception frames stop explicitly. Pending VBL callbacks wait until the
     service is complete. HFSDispatch is routed through the bridge; its file
-    operations remain M2.1. OS handback is implemented (M1.7b1); actual rendered
+    operations pass M2.1 acceptance. OS handback is implemented (M1.7b1); actual rendered
     picture acceptance remains M1.7b2.
   - **Measure it.** The window's entry/exit cost and the display and audio
     continuity across a window must be measured (probe counters and a
@@ -208,7 +208,7 @@ The original startup path is implemented (M1.1–M1.3):
    - even offsets add A5;
    - odd offsets add the STRS base.
    The original alone applies CREL. CODE copies are zone handles with lock/purge/resource flags;
-   file-backed resource reads remain M2.2.
+   file-backed resource reads and ownership pass M2.2 acceptance.
 6. **Trap patching must be real.** `GetTrapAddress` returns, per trap, the address
    of a small stub `dc.w $AFxx, <trap>` that runs the built-in implementation and
    bypasses any patch. CODE 1's `JSR handler; JMP original` then works, and so
@@ -315,9 +315,8 @@ Native trap probes, host fragmentation tests and paired heap captures verify it:
   GetFCBInfo/OpenWD, SetVol and Preferences FindFolder pass (M2.1b2a).
   Get1NamedResource and the first GetFNum now pass. Named Finder metadata and independent
   data/resource streams, installed-file metadata and the application namespace
-  are implemented; remaining dispatch variants are pending
-  M2.1b2c9c2c. Integrated original
-  PAK read acceptance is M2.1c after the intervening Resource Manager work.
+  are implemented, along with the measured dispatch variants. Integrated
+  original PAK reads and palette reactivation pass M2.1c acceptance.
 - **File Manager calls (task M2.1).** Implement the ones the census lists over
   that catalog:
   - open, read and write: `_Open`, `_Read`, `_Write`, `_Close`;
@@ -341,7 +340,7 @@ Native trap probes, host fragmentation tests and paired heap captures verify it:
     on demand; larger reads bypass it and split DOS transfers inside one window.
     Errors retain actual transferred byte counts and never validate failed cache
     fills. Remaining handles are closed after full OS restoration on exit.
-    This is verified by native synthetic reads; original PAK acceptance is M2.1c.
+    Native fixtures and original-game PAK payload comparisons both pass.
   - The game reads whole `.PAK` entries (Dark JT182), so a room change costs a
     few windows, not one per call.
   - Count windows per room change and record the number (M5).
@@ -356,8 +355,9 @@ Native trap probes, host fragmentation tests and paired heap captures verify it:
   valid until the last reference closes. Failed flushes retain the open fork
   and dirty ledger for retry. Shutdown flushes after full OS restoration and
   reports failures. Native protection is queried in the existing open window
-  using a DOS-allocated, longword-aligned FileInfoBlock. Resource storage and
-  remaining variants are pending.
+  using a DOS-allocated, longword-aligned FileInfoBlock. Measured resource
+  storage/lifecycle variants also pass M2; actual game save/reset acceptance
+  remains M3.6.
 - **Writes (save games, "Alone Prefs").** Writes are buffered per fork and
   written through in a system window at `_Close`/`FlushVol`, so a save the game
   reports as written is on disk (task M3.6). WHDLoad uses `resload_SaveFile`.
@@ -435,7 +435,8 @@ Native trap probes, host fragmentation tests and paired heap captures verify it:
     OffsetRect and GetNextDevice now pass that original selection with real
     eight-bit backing. The measured already-active SetDepth request also passes;
     GetGWorld now returns the live current port and main device. Further
-    current-world bindings and drawing remain pending.
+    current-world bindings and drawing used by startup/intro now pass M2;
+    unmeasured gameplay forms remain named stops.
   - The logical main screen is 640×480 at 8 bits (the reference's mdc48 mode), in
     fast RAM, with one GDevice and a 256-entry CLUT.
   - QuickDraw draws game content into this screen. Mac dialog presentation and
@@ -474,7 +475,8 @@ Native trap probes, host fragmentation tests and paired heap captures verify it:
     ([upstream](https://github.com/Kalmalyzer/kalms-c2p)). The 68020 integer
     wrapper converts dirty rows into the existing interleaved eight-plane layout.
     The C converter remains a host-only oracle. General tuning and other CPU
-    targets remain deferred; intro frame acceptance is still M2.6.
+    targets remain deferred. M2.6 passes all 956 intro frames, including
+    partial book updates; see the M2 completion record in development.md.
 - **Dirty rectangles.** Keep the explicit list. They come from every QuickDraw
   write to the screen port, plus the presentation `CopyBits` dest rectangle. The
   back buffer inherits the previous update's rectangles.
@@ -492,9 +494,8 @@ Native trap probes, host fragmentation tests and paired heap captures verify it:
     window SetPalette and the already-realized ActivatePalette, both preserving
     that state. ShowHide reveals the background with exact regions and no
     viewport or palette change. SetGWorld now binds the visible game port; startup subsequently passes TickCount, unchanged geometry, point and region
-    setup and real eight-bit GWorld allocation. Offscreen binding/initialization is
-    the current prerequisite (see [gworld.md](gworld.md)). Broader activation and rendered intro
-    acceptance remain pending. See [palette.md](palette.md) and
+    setup and real eight-bit GWorld allocation. Offscreen binding/initialization,
+    intro palette reactivation and rendered PAL/NTSC acceptance now pass M2. See [palette.md](palette.md) and
     [aga-display.md](aga-display.md).
 - **Fonts.** See 4.11 and D6.
 
@@ -659,9 +660,9 @@ system font ID 0 at 12; some system/default draws report size 0. `GetFNum` reque
 
 The port may not ship Apple fonts.
 
-1. **Confirm remaining uses (task M2.9).** Use the MAME trap log (`TextFont`/`GetFNum`/
-   `DrawText` with the strings) to see exactly which text uses which Mac font and
-   size.
+1. **Measured startup/intro uses (M2.9 complete).** MAME call/string captures
+   establish the fonts used by the accepted intro, menu and letter pages.
+   Measure any additional gameplay uses when reached.
 2. **Placeholder fonts.** Supply them for those uses as port overlay `FONT`/`NFNT`
    resources: one simple committed bitmap font per required family and size,
    drawn for the port. `GetFNum`, `TextFont`, `TextSize`, `TextFace` (synthesized
@@ -728,7 +729,7 @@ the owner.
 | New trap | Bounded run past the old loud stop. Where the result is observable, compare with the MAME trap log (M0.2) for the same call's arguments and results |
 | Display / QuickDraw | State-pair frame compare with MAME: same game state, same RNG seed, 8-bit framebuffer + CLUT from both sides (`tools/compare_frames.py`, M2.10) |
 | Audio | Driver event log (selector, song, note, instrument) against MAME |
-| Performance | `PROBES=1` full-accounting profile on `a1200-020` and `a1200-030`, run twice, ms per frame by phase |
+| Performance | `PROBES=1` full-accounting profile on `a1200-020`, run twice, ms per frame by phase; additional CPUs require M5.0 validation |
 | Release | `make release-check` and WHDLoad smoke/boot/load/quit tests |
 
 **Emulator configuration** (FS-UAE via the three launch scripts).
@@ -785,7 +786,9 @@ no unexpected loud stop. The cases are added as their milestone lands:
 
 Every phase ends with a tagged checkpoint commit that updates README "Current
 state". Task-level detail and acceptance checks are in
-[open-work.md](open-work.md).
+[open-work.md](open-work.md). M2 completed on 2026-10-02; M3 is the next
+implementation milestone. The separately deferred M1.7b2 rendered window
+fixture remains open. See development.md for the M2 completion audit.
 
 | Phase | Goal | Exit criterion |
 | --- | --- | --- |

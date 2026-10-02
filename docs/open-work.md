@@ -65,7 +65,7 @@ required.
   Owner update 2026-09-28: window access is not granted; inspect Slicks,
   Rescue on Fractalus, Revs and Vette, and leave screenshot verification pending
   if their methods cannot supply it. This is not a completed acceptance check.
-  The active implementation queue resumes at M2 below.
+  The active implementation queue resumes at M3 below.
   - M1.7b1's `window-core` verifies 1 MB/64 KB reads, exact bytes/clock,
     Paula interrupts, keyboard flush, DOS errors/save/readback, native resload
     ABI and bitplane snapshots on 68020. Memory snapshots do not prove video.
@@ -87,8 +87,10 @@ required.
 ## M3 Playable
 
 - **M3.1 Events and keyboard.**
-  - Implement WaitNextEvent, GetNextEvent, GetKeys, Button, StillDown,
-    FlushEvents, SystemClick and ObscureCursor.
+  - Extend the existing startup event, key and cursor services through gameplay.
+    Verify WaitNextEvent, GetNextEvent, GetKeys, Button, StillDown, FlushEvents,
+    SystemClick and ObscureCursor on the first-room paths; implement any
+    remaining measured contracts.
   - Map Amiga keys to the game's keys; confirm them against `tmp/manual.pdf`.
 
   *Done when* a new game can be started, and Carnby walks, runs (Shift) and acts
@@ -113,7 +115,8 @@ required.
   have replacements entirely inside 320×200, choices/results match the reference,
   and frame pairs prove no Mac dialog presentation or menu bar is drawn.
 - **M3.4 Apple Events and misc Toolbox.**
-  - Pack8 handler installation.
+  - Pack8 registration/lookup already pass; complete and verify event delivery
+    at user-mode safe points.
   - Exercise the five integer-only SANE ops implemented at Engine $47C2–$4852
     in the integrated session; unimplemented operations/states remain loud stops.
   - The remaining Window Manager calls.
@@ -125,25 +128,24 @@ required.
   - PASS records keyed on game state: the room, and actor positions read from the
     A5 world.
 
-  *Done when* both cases pass on `a1200-030`.
+  *Done when* both cases pass on `a1200-020`.
 - **M3.6 Durable writes.**
-  - Write-through of closed written files (saves, prefs) in a system window.
-  - A ledger of pending writes.
+  - Existing file/resource writes, pending-write tracking and preference exit
+    persistence pass native fixtures. Verify them through the actual game save
+    and reload path, including reset immediately after reported save success.
 
   *Done when* a save survives an emulator reset made immediately after the game
   reports it saved.
 
 ## M4 Audio
 
-- **M4.1 Driver interface.**
-  - Decode every SoundMusicSys selector the game uses (M0.2 log,
-    `tmp/plan/MDRV_11.bin`, `SoundMusicSystem.h`).
-  - Extend the native startup seam from M2.1c3c (`Jnth`; original loader call
-    Core+$1CC6, entry store +$1CF4) and the native driver stub. Unimplemented selectors are loud
-    stops. The original MDRV never runs.
+- **M4.1 Remaining driver-interface coverage.**
+  - The intro-driver prerequisite and its no-loud-stop exit criterion pass with
+    M2. Preserve the broader selector inventory: decode every selector used by
+    gameplay and implement each reached contract against the original driver.
+    Unimplemented selectors remain loud stops; original MDRV never runs.
+  - Full-game selector coverage is not established by the intro song fixture.
 
-  *Done when* the game runs through the intro with the native driver answering
-  every selector it calls, with no loud stop and no sound yet.
 - **M4.2 Music on Paula voices.**
   - A native SONG/MIDI sequencer and INST→`snd ` mapping on the four channels.
   - Tempo from the VBI tick counter, run at safe points.
@@ -202,8 +204,8 @@ required.
   *Done when* each added configuration reports its intended CPU and available
   memory, and passes all regression cases implemented so far in bounded runs.
 - **M5.1 Full-accounting profile.**
-  - A PROBES build and a gameplay scene, on `a1200-020` and `a1200-030`, run
-    twice.
+  - A PROBES build and a gameplay scene on `a1200-020`, run twice. Add a
+    68030 comparison only after M5.0 validates its configuration.
   - Report ms/frame by phase: game code, drawing traps, CopyBits, C2P, palette,
     audio sequencer, system windows.
 
@@ -248,7 +250,7 @@ required.
 
 ## M6 Completion
 
-- **M6.1 Full manual play-through,** in MAME and on `a1200-030`, with the runtime
+- **M6.1 Full manual play-through,** in MAME and on `a1200-020`, with the runtime
   trap log. Implement every new trap and path it finds.
 
   *Done when* the game can be finished on the Amiga with no loud stop.

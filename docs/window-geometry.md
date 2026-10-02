@@ -1,5 +1,14 @@
 # Colour-window geometry and background visibility
 
+**Status, 2026-10-02:** Startup/intro window geometry and presentation pass M2. The dedicated M1.7b2
+system-window rendered fixture remains separately deferred.
+
+The checkpoint sections below preserve service-level evidence. References to
+an intermediate startup stop or a then-pending M2 gate are historical; current
+acceptance is recorded in [development.md](development.md), and remaining work
+is in [open-work.md](open-work.md). Unsupported contracts remain unsupported
+unless a later section explicitly verifies them.
+
 The ShowHide request at Misc1+$0FC6 is `(WIND 131, true)`, revealing the hidden
 background window behind WIND 128. The Mac changes its visible byte from 0 to 1,
 rebuilds its visibility/structure/content/update regions, and changes 135,512
