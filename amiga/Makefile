@@ -300,6 +300,10 @@ ifeq ($(LINEAPROBE),1)
 PROBE_SYMS += g_lineAProbe
 endif
 PROBE_SYMS += g_macTicks
+ifeq ($(SONGCOST),1)
+EXTRA_DEFINES += -DAITD_SONG_COST_PROBE
+PROBE_SYMS += g_songCost
+endif
 PROBE_SYMS += g_videoPAL g_paulaClock
 PROBE_SYMS += $(PROBE_SYMS_PAK)
 PROBE_SYMS += $(PROBE_SYMS_C2P)

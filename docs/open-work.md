@@ -169,6 +169,19 @@ prove why the normal run stayed black. Next measure the original continuation
 and native service activity across that gap, then verify the correction against
 the original Mac and owner-rendered output.
 
+Follow-up activity and cost captures identify native music catch-up as the main
+delay (`m2-black-activity-native-full.log`, `m2-black-cost-native-full.log`, both
+exit 0). Only a handful of original calls progress while song catch-up consumes
+17,181 ticks; repeated PCM conversion accounts for 16,697 ticks (278 seconds).
+The in-progress sample-reuse change reduces the same blank-frame submission
+gap from 21,663 to 2,976 ticks (361 to 49.6 seconds), with 65 conversion ticks
+before the next picture (`m2-black-reuse-native-full.log`, exit 0). The host
+original-event comparison and full native playback now pass, including all
+3,736 timed events, 25 byte-exact retained PCM variants (458,974 bytes), effect
+priority, natural completion and cleanup (`m2-song-reuse-native-full.log`,
+exit 0). Normal route reliability and owner-rendered confirmation remain required;
+the residual loading interval is not yet accepted.
+
 Already verified (details and capture names in [development.md](development.md)):
 - The baseline ordinary-randomness demo completes all nine original
   room/camera transitions and exits naturally at tick 60,426 with choice 0.

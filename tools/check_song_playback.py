@@ -58,7 +58,45 @@ def check(reference,reference_status,text,status):
             result=bytes(v^128 for v in pcm[::stride]);result+=b'\0'*(len(result)%2)+b'\0'*4
         actual=(ROOT/f'tmp/song-probe-pcm-{stride}.bin').read_bytes()
         if len(actual)!=allocated or actual!=result: raise ValueError('complete Paula PCM / loop phase / release silence')
-    print('PASS native song playback: 3736 exact timed events, two complete PCM/DMA variants, effect priority, natural completion and resource/voice cleanup')
+    needed=set()
+    for on,offset,iid,note,velocity,channel,sequence,step in expected:
+        if not on: continue
+        instrument=resources[b'INST',iid];root=int.from_bytes(instrument[2:4],'big')
+        adjusted=note-root+60 if root else note
+        sid=int.from_bytes(instrument[:2],'big')
+        for i in range(int.from_bytes(instrument[12:14],'big')):
+            row=instrument[14+i*8:22+i*8]
+            if (not row[0] or adjusted>=row[0]) and (row[1]>=127 or adjusted<=row[1]):
+                sid=int.from_bytes(row[2:4],'big') or sid;break
+        sample=resources[b'snd ',sid];pitch=pitches[adjusted+60-sample[35]]
+        if pitch&65535<4:pitch&=0xffff0000
+        denominator=pitch*0x56ee8ba3;stride=1
+        while ((3546895*stride<<33)+denominator//2)//denominator<124 and stride<16:stride*=2
+        needed.add((sid,stride))
+    cached=re.findall(r'^SONG_PROBE_CACHE sample=(\d+) stride=(\d+) allocated=(\d+)$',text,re.M)
+    keys=[(int(sid),int(stride)) for sid,stride,size in cached]
+    if len(keys)!=len(set(keys)) or set(keys)!=needed:raise ValueError('complete retained sample/stride set')
+    total_bytes=0
+    for sid,stride,allocated in cached:
+        sid,stride,allocated=map(int,(sid,stride,allocated));sample=resources[b'snd ',sid]
+        size,rate,start,end=struct.unpack_from('>4I',sample,18);pcm=sample[36:36+size]
+        loop=bool(start and end and end!=0xffffffff and ((end-start)&65535)>=100)
+        attack=(((end if loop else size)+stride-1)//stride+1)&~1
+        cycle=(end-start)//math.gcd(end-start,stride) if loop else 2
+        reload=cycle*2 if cycle&1 else cycle
+        cursor=0;result=bytearray()
+        for i in range(attack+reload):
+            result.append(pcm[cursor]^128 if cursor<size else 0)
+            for k in range(stride):
+                cursor+=1
+                if loop and cursor==end:cursor=start
+        result+=b'\0\0'
+        actual=(ROOT/f'tmp/song-cache-{sid}-{stride}.bin').read_bytes()
+        if allocated!=len(result) or actual!=result:raise ValueError('retained PCM bytes, padding or loop phase')
+        total_bytes+=allocated
+    if text.count(f'SONG_PROBE_CACHE_TOTAL entries={len(needed)} bytes={total_bytes}')!=1:
+        raise ValueError('retained PCM memory accounting')
+    print(f'PASS native song playback: 3736 exact timed events, {len(needed)} retained PCM variants ({total_bytes} bytes), effect priority, natural completion and resource/voice cleanup')
 
 if __name__=='__main__':
     p=argparse.ArgumentParser(description=__doc__)

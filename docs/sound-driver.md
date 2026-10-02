@@ -346,6 +346,34 @@ from the original software mixer's sample tail. Natural one-shots finish using
 the actual programmed period. Shutdown quiesces DMA before freeing chip memory
 and disposes all retained song handles.
 
+The M2 black-interval investigation found that repeatedly converting PCM for
+each note starved original game execution. On baseline 68020, conversion used
+16,697 of 17,181 music-service ticks before the first demo picture, within a
+21,663-tick blank-frame gap (`tmp/m2-black-cost-native-full.log`, exit 0).
+Converted samples are now owned by the song and keyed by sample/decimation
+stride (1, 2, 4, 8 or 16). Voices borrow immutable buffers; note period and
+channel allocation remain independent. Stop/steal quiesces the channel and
+drops the voice reference; song release stops all voices before freeing every
+retained buffer and then its original resources.
+
+The same baseline diagnostic now measures a 2,976-tick gap and 65 conversion
+ticks (`tmp/m2-black-reuse-native-full.log`, exit 0). This is a reduction from
+361 to 49.6 emulated seconds, not a claim of instantaneous loading or rendered
+acceptance. The complete event stream needs 25 distinct converted variants,
+458,974 bytes, rather than converting 36,334,284 bytes repeatedly. Full native
+playback now passes (`tmp/m2-song-reuse-native-full.log`, exit 0): all 3,736
+original timed events, 1,868 note starts, 25 byte-exact retained PCM variants,
+effect priority, natural completion and cleared voice/sample ownership after
+release. The independent playback checker verifies every retained byte and
+the 458,974-byte total. Normal-route and rendered confirmation remain open.
+Build `INTROSKIP=1 SONGCOST=1` and use `amiga/song_cost.gdb` to repeat the
+consecutive-frame/tick measurement; its counters are absent from normal builds.
+The host suite's initial window-geometry run and first retry hit its 30-second
+deadline. The identical sanitizer binary then passed in 10.54 seconds under a
+120-second diagnostic ceiling; all subsequent suite checks passed. Evidence:
+`tmp/m2-song-reuse-host-suite.log`, `tmp/m2-window-geometry-check.log` and
+`tmp/m2-song-reuse-host-suite-tail.log`. No geometry code or assertions changed.
+
 `SONGPROBE=1` is a compiled diagnostic fixture. Immediately after the original
 quality initialization it starts the native song in user mode, records every
 note, injects one short effect when all channels hold music, then checks complete

@@ -43,12 +43,46 @@ if g_songTraceCount!=3736 || g_song.events!=3736 || g_songProbeEffects!=2 || g_s
 end
 printf "SONG_PROBE_PLAYBACK events=%u pulses=%u starts=%u steals=%u dropped=%u effects=%u/%u tick=%u\n",g_song.events,g_song.timeline.pulses,g_song.starts,g_song.steals,g_song.dropped,g_effectStarts,g_effectStops,g_macTicks
 dump binary memory ../tmp/song-probe-events.bin (char*)g_songTrace (char*)g_songTrace+g_songTraceCount*40
+set $sample=0
+set $cached=0
+set $cacheBytes=0
+while $sample<g_song.sampleCount
+ set $variant=0
+ while $variant<5
+  set $pcm=g_song.samples[$sample].chip[$variant]
+  set $bytes=g_song.samples[$sample].allocated[$variant]
+  if $pcm
+   set $id=g_song.samples[$sample].id
+   set $stride=1<<$variant
+   printf "SONG_PROBE_CACHE sample=%u stride=%u allocated=%u\n",$id,$stride,$bytes
+   eval "dump binary memory ../tmp/song-cache-%u-%u.bin $pcm $pcm+$bytes",$id,$stride
+   set $cached=$cached+1
+   set $cacheBytes=$cacheBytes+$bytes
+  end
+  set $variant=$variant+1
+ end
+ set $sample=$sample+1
+end
+printf "SONG_PROBE_CACHE_TOTAL entries=%u bytes=%u\n",$cached,$cacheBytes
 tbreak aitdSongProbeComplete
 continue
 if g_song.ownedCount!=0 || g_song.sampleCount!=0 || g_song.playing || !g_songProbeHeapOK
  echo FAIL song probe cleanup state\n
  detach
  quit 1
+end
+set $sample=0
+while $sample<128
+ set $variant=0
+ while $variant<5
+  if g_song.samples[$sample].chip[$variant] || g_song.samples[$sample].allocated[$variant]
+   echo FAIL song probe retained PCM cleanup\n
+   detach
+   quit 1
+  end
+  set $variant=$variant+1
+ end
+ set $sample=$sample+1
 end
 set $i=0
 while $i<6

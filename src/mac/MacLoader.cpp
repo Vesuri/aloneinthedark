@@ -112,7 +112,13 @@ NativeEffect g_effects[2]={};
 volatile uint32_t g_effectStarts=0,g_effectStops=0,g_effectStatusCalls=0;
 struct NativeSong {
     struct Owned {MacHeap::Handle handle;uint32_t type;uint16_t id;} owned[160]={};
-    struct Sample {MacHeap::Handle handle;uint16_t id;SongInputs::Sample description;} samples[128]={};
+    struct Sample {
+        MacHeap::Handle handle;uint16_t id;SongInputs::Sample description;
+        // Immutable Paula bytes depend on sample and decimation stride, not
+        // note period. Retain them until song release so catch-up does not
+        // repeatedly convert the same PCM while the game waits to draw.
+        uint8_t* chip[5]={};uint32_t allocated[5]={};
+    } samples[128]={};
     struct Voice {
         uint8_t* chip;uint32_t allocated,ends,serial;
         uint16_t note,channel,instrument,sample,period,stride;
@@ -123,6 +129,10 @@ struct NativeSong {
     uint16_t ownedCount=0,sampleCount=0,id=0,midiId=0,playing=0;
 };
 NativeSong g_song;
+#ifdef AITD_SONG_COST_PROBE
+// Diagnostic only: elapsed game ticks in note preparation and song catch-up.
+extern "C" { volatile uint32_t g_songCost[8]={}; }
+#endif
 #ifdef AITD_SONG_PROBE
 volatile uint32_t g_songTraceCount=0,g_songTrace[4096][10]={};
 volatile uint16_t g_songProbeEffects=0,g_songProbeHeapOK=0,g_songLastVoice=0;
@@ -1430,7 +1440,7 @@ static void stopNativeSongVoice(uint16_t index)
         g_soundDriver.channels[voice.channel]=-1;
     }
     voice.channel=-1;voice.active=0;
-    if(native.chip)FreeMem(native.chip,native.allocated);
+    // DMA has stopped; the sample owns these immutable bytes until release.
     native.chip=0;native.allocated=0;native.ends=0;
 }
 static int16_t stealSongChannel()
@@ -1445,6 +1455,11 @@ static int16_t stealSongChannel()
 static void releaseNativeSong()
 {
     for(uint16_t i=0;i<6;++i)stopNativeSongVoice(i);
+    for(uint16_t i=0;i<g_song.sampleCount;++i)for(uint16_t v=0;v<5;++v) {
+        auto& sample=g_song.samples[i];
+        if(sample.chip[v])FreeMem(sample.chip[v],sample.allocated[v]);
+        sample.chip[v]=0;sample.allocated[v]=0;
+    }
     for(uint16_t i=0;i<g_song.ownedCount;++i) {
         auto handle=g_song.owned[i].handle;
         MacHeap* zone=handleZone(handle);
@@ -1548,10 +1563,26 @@ static const char* playSongNote(const SongInputs::Event& event)
     stopNativeSongVoice(slot);
     auto& native=g_song.voices[slot];auto& voice=g_soundDriver.songs[slot];
     native.allocated=dma.layout.allocated+2;
-    native.chip=(uint8_t*)AllocMem(native.allocated,MEMF_CHIP);
-    if(!native.chip) {native.allocated=0;return "SONG CHIP MEMORY";}
-    SongVoice::convert(dma,native.chip);
-    native.chip[native.allocated-2]=native.chip[native.allocated-1]=0;
+    uint16_t variant=0;
+    for(uint16_t stride=dma.stride;stride>1;stride>>=1)++variant;
+    if(variant>=5)return "SONG PCM STRIDE";
+    if(!sample.chip[variant]) {
+        uint8_t* chip=(uint8_t*)AllocMem(native.allocated,MEMF_CHIP);
+        if(!chip) {native.allocated=0;return "SONG CHIP MEMORY";}
+#ifdef AITD_SONG_COST_PROBE
+        uint32_t convertBegin=g_macTicks;
+#endif
+        SongVoice::convert(dma,chip);
+#ifdef AITD_SONG_COST_PROBE
+        uint32_t convertTicks=g_macTicks-convertBegin;
+        g_songCost[6]+=convertTicks;
+        if(convertTicks>g_songCost[7])g_songCost[7]=convertTicks;
+#endif
+        chip[native.allocated-2]=chip[native.allocated-1]=0;
+        sample.chip[variant]=chip;sample.allocated[variant]=native.allocated;
+    }
+    if(sample.allocated[variant]!=native.allocated)return "SONG PCM LAYOUT";
+    native.chip=sample.chip[variant];
     native.note=event.note;native.channel=event.channel;native.instrument=event.instrument;
     native.sample=sampleId;native.period=dma.period;native.stride=dma.stride;
     native.serial=++g_song.starts;native.ends=0;
@@ -1576,6 +1607,9 @@ static bool nativeSongDue()
 static const char* serviceNativeSong()
 {
     if(!nativeSongDue())return 0;
+#ifdef AITD_SONG_COST_PROBE
+    uint32_t costBegin=g_macTicks;
+#endif
     uint32_t elapsed=g_macTicks-g_song.lastTick;
     // Original game work can exceed ten seconds on the baseline 68020.
     // Catch up every elapsed pulse at this safe point; elapsed time alone is
@@ -1593,7 +1627,15 @@ static const char* serviceNativeSong()
             if(!ready)break;
             if(event.kind==SongInputs::Event::NoteOn || event.kind==SongInputs::Event::NoteOff) {
                 ++g_song.events;
+#ifdef AITD_SONG_COST_PROBE
+                uint32_t noteBegin=g_macTicks;
+#endif
                 if((error=playSongNote(event)))return error;
+#ifdef AITD_SONG_COST_PROBE
+                uint32_t noteTicks=g_macTicks-noteBegin;
+                ++g_songCost[0];g_songCost[1]+=noteTicks;
+                if(noteTicks>g_songCost[2])g_songCost[2]=noteTicks;
+#endif
 #ifdef AITD_SONG_PROBE
                 if(g_songTraceCount>=4096)return "SONG TRACE CAPACITY";
                 volatile uint32_t* trace=g_songTrace[g_songTraceCount++];
@@ -1610,6 +1652,11 @@ static const char* serviceNativeSong()
         for(const auto& voice:g_song.voices)if(voice.chip)pending=true;
         if(!pending)g_song.playing=0;
     }
+#ifdef AITD_SONG_COST_PROBE
+    uint32_t costTicks=g_macTicks-costBegin;
+    ++g_songCost[3];g_songCost[4]+=costTicks;
+    if(costTicks>g_songCost[5])g_songCost[5]=costTicks;
+#endif
     return 0;
 }
 
