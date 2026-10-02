@@ -38,6 +38,7 @@ aitdRegionEmptyReturn:
     .globl aitdRegionProbeComplete
 aitdRegionProbeComplete:
     nop
+    jsr aitdRectRegionProbe
     movem.l (sp)+,d2-d7/a2-a6
     rts
 regionShapes:

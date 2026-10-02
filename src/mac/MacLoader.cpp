@@ -7879,14 +7879,19 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         const uint8_t* rectangle=(const uint8_t*)read32(userStack);
         MacHeap::Handle region=(MacHeap::Handle)read32(userStack+4);
         MacHeap* owner=handleZone(region);
-        // The measured caller replaces an owned ten-byte region. Broader
-        // region resizing and empty/inverted inputs await region acceptance.
-        if(!rectangle || !owner || !*region || owner->handleSize(region)!=10
-           || read16(*region)!=10)goto unsupportedTrap;
+        if(!rectangle || !owner || !*region || region==s_recordedRegion
+           || resourceHandleIndex(region)>=0 || owner->handleSize(region)<10
+           || read16(*region)<10 || (read16(*region)&1)
+           || read16(*region)>owner->handleSize(region))goto unsupportedTrap;
         int16_t top=(int16_t)read16(rectangle),left=(int16_t)read16(rectangle+2);
         int16_t bottom=(int16_t)read16(rectangle+4),right=(int16_t)read16(rectangle+6);
-        if(top>=bottom || left>=right)goto unsupportedTrap;
-        writeRect(*region+2,top,left,bottom,right);
+        // Capture the input before resizing: it may alias the old region body.
+        // Shrinking preserves locked/purgeable state in the owning heap.
+        if(memoryResult(owner->setHandleSize(region,10))!=MacHeap::noErr)goto unsupportedTrap;
+        write16(*region,10);
+        if(top>=bottom || left>=right)writeRect(*region+2,0,0,0,0);
+        else writeRect(*region+2,top,left,bottom,right);
+        regs[0]=(uint16_t)(top<bottom && left>=right ? left : top);
         regs[8]=(uint32_t)region;regs[9]=(uint32_t)*region;
         return 9;
     }

@@ -5140,7 +5140,7 @@ the paired checker with all 64 bytes unchanged per case, exact register/stack
 results and successful allocation/disposal. Both link audits pass. No debugger
 writes to target memory or registers are used.
 
-### M2.8 — original RectRgn variant prerequisite
+### M2.8 — paired RectRgn variants
 
 `mac_rectrgn_variants.lua` observes Dark+$3D46, then uses real CPU allocation,
 state, RectRgn, size and ownership traps for seven isolated cases. A ten-byte
@@ -5155,7 +5155,17 @@ nonempty vertical comparison returns the left word. D1–D7/A2–A6 are unchange
 A0 is the handle and A1 is its master-pointer value. The 24-bit Mac includes
 handle flags in A1's high byte for the locked/purgeable cases; the port's existing
 heap model stores flags separately from clean 32-bit pointers (design §4.4).
-Native implementation and paired acceptance remain open.
+The native implementation now shrinks through the owning heap, preserves handle
+state and implements the measured empty-region and D0 results. The baseline
+`a1200-020` capture `m2-rectrgn-variants-native-full.log` exits zero and passes
+`check_rectrgn_variants.py --native ... --native-status 0`. Build with
+`REGIONPROBE=1` and run `amiga/rectrgn_variants.gdb`; all seven native CPU cases
+match, including allocation size, input guards, state flags and owning zone.
+Both link audits pass. The host polygon, region encoding, InsetRgn and all 122
+clipped CopyBits cases also pass. Together with the maintained paired pond
+region/expansion/masked-copy captures (picture-drawing.md), this closes the
+remaining M2.8 acceptance for the screens reached so far. Broader region
+operations remain subject to measured callers and named unsupported stops.
 
 ### M2.4 — integrated fresh-start viewport acceptance
 

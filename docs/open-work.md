@@ -67,7 +67,7 @@ and other general tuning remain M5.
 
 - [ ] **M2.1c** — verify original PAK payloads; direct-read observer active.
 - [ ] **M2.5** — finish PAL/NTSC, pointer palette ownership and video-clock acceptance.
-- [ ] **M2.6 / M2.8** — finish full-intro C2P coverage and the remaining region variants.
+- [ ] **M2.6** — finish full-intro C2P coverage.
 - [ ] **M2.10a / M2.10** — repair stale observers, add the intro regression and
   state-pair frame comparison; include the remaining car/frog frame acceptance.
 - [ ] **M2.3g44 visual report** — demonstrate the black-interval cause and verify
@@ -120,16 +120,6 @@ and other general tuning remain M5.
 
   *Done when* the verifier reports zero mismatches over the intro on
   `a1200-020`, including preservation across partial updates.
-- **M2.8 Regions and polygons.** Implement real QuickDraw regions and polygons,
-  with host fixtures. Include RectRgn resizing, empty/inverted rectangles and
-  ownership variants beyond the measured ten-byte, nonempty startup case.
-  RectRgn now has seven passing original CPU fixtures covering resizing,
-  empty/inverted bounds and locked/purgeable ownership (`mac_rectrgn_variants.lua`,
-  `check_rectrgn_variants.py`; `m2-rectrgn-variants-reference.log`, exit zero).
-  Native RectRgn generalization and paired checks remain open.
-
-  *Done when* the host tests pass and region-clipped draws in the screens reached
-  so far match MAME.
 - **M2.10a Retire stale standalone AGA endpoint assumptions.**
   - `pixbase.gdb` still embeds an obsolete frame-4 AGA capture; standalone
     `aga_startup.gdb` expects frame 9 at the latest loud stop. They must target
