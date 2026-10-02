@@ -85,8 +85,9 @@ and other general tuning remain M5.
   acceptance remains owner-deferred.
 - [ ] **M2.3g44 sequence** — finish the baseline run with ordinary randomness,
   verifying natural demo exit without input, both PAK reads and palette
-  reactivation. The baseline run timed out after five room transitions;
-  natural exit remains unverified.
+  reactivation through all nine reference room/camera transitions. Ordinary
+  baseline runs stall in room 2; the latest copy-span trial also failed its
+  256-frame movement guard. Resolve that stall; natural exit remains unverified.
 - [ ] **M2.3g44 visual report** — demonstrate the black-interval cause and verify
   the rendered result when authorized capture is available. M2 remains open
   while its required acceptance is outstanding.
@@ -177,6 +178,14 @@ and z remains 1,085. Original Dark2+$49F0/+4A08 identify the track resource and
 word offset at actor +$54/+$58. The ordinary Mac run with the same choice
 advances to room 7 in 129 frames (`m2-room2-ordinary-reference.log`, exit 0).
 This establishes a native movement stall; its cause is still under investigation.
+The follow-up longword copy-span trial also fails on baseline `a1200-020`
+with ordinary randomness (`m2-copyspan-ordinary-native-full.log`, exit 1).
+It reaches room 2/camera 4 at frame 587, then actor 288 stays on track 26,
+word 59 for 256 observed frames; its later position is 2,460/0/1,099.
+The observer deliberately stops on this guard, rather than waiting for a
+timeout. This trial does not resolve the sequence failure or establish a
+speedup. Keep further general copy tuning in M5; the next acceptance work is
+to explain and correct the native movement divergence from the original Mac.
 Routine service tests use `INTROSKIP=1`; uninterrupted playback is reserved for
 sequence acceptance. `FIXEDRNG=1` needs the matching Mac entropy fixture;
 elapsed ticks alone do not establish paired scene state.
