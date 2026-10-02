@@ -333,8 +333,11 @@ pass in `tmp/m2-song-runtime-regressions.log`, including intro return, effects,
 GetKeys, offscreen/window drawing, AGA publication and the full initial A5 world.
 
 The native sequencer runs at user-mode safe points driven by the VBI's 60 Hz
-clock. A late safe point delivers due events in order without altering pitch;
-an unhandled gap over 600 ticks stops explicitly. Native code owns converted
+clock. A late safe point delivers every elapsed pulse in order without altering
+pitch. The former 600-tick guard rejected a real 640-tick interval on the
+baseline 68020; elapsed time alone is no longer treated as an unsupported song.
+The full-intro C2P regression completes with this catch-up path, and malformed
+MIDI/timeline states still fail their existing checks. Native code owns converted
 chip buffers and applies the verified sample/loop/pitch helpers. A free Paula
 channel is preferred; otherwise the oldest music voice is replaced. Effects
 have priority over music. Note-off selects silent reload and quiesces the

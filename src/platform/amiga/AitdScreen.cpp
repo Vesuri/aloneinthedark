@@ -28,6 +28,11 @@ volatile uint16_t g_beamPresentMin = 0xffff;
 volatile uint16_t g_beamPresentMax = 0;
 volatile uint32_t g_beamPresents = 0;
 volatile uint32_t g_beamPresentsLate = 0;
+#ifdef AITD_C2P_VERIFY
+volatile uint32_t g_c2pVerifiedFrames=0,g_c2pPartialFrames=0,g_c2pVerifyFailures=0;
+Planar8::Mismatch g_c2pMismatch={};
+__attribute__((noinline)) void aitdC2PVerifyFailed() { __asm__ volatile("nop" ::: "memory"); }
+#endif
 #ifdef AITD_PALETTE_READ_FRAME
 volatile uint16_t g_paletteReadHigh[256] = {};
 volatile uint16_t g_paletteReadLow[256] = {};
@@ -404,6 +409,18 @@ int16_t AitdScreen::presentMacFrame(const uint8_t* chunky,const uint8_t* colorTa
     }
     }
     m_syncRectCount=count;
+#ifdef AITD_C2P_VERIFY
+    if(!Planar8::verify(chunky,m_back,viewport,g_c2pMismatch)) {
+        ++g_c2pVerifyFailures;aitdC2PVerifyFailed();return -1;
+    }
+    ++g_c2pVerifiedFrames;
+    bool full=false;
+    for(uint16_t i=0;i<count;++i) {
+        const Planar8::Rect& r=normalized[i];
+        if(r.top==0 && r.left==0 && r.bottom==200 && r.right==320)full=true;
+    }
+    if(count && !full)++g_c2pPartialFrames;
+#endif
     { AitdProfileScope profile(kProfilePalette);
     for(uint16_t i=0;i<256;++i) {
         const uint8_t* c=colorTable+10+i*8;

@@ -7,6 +7,10 @@ deadline=60
 case "${1:-boot}" in
   resource-exit) exec bash ./resource_exit.sh ;;
   boot) flags=(); observer=boot.gdb ;;
+  intro)
+    flags=(C2PVERIFY=1 FIXEDRNG=1); observer=intro.gdb; deadline=1800
+    export AMIGA_CONFIG="${AMIGA_CONFIG:-a1200-020}"
+    ;;
   resource-read)
     flags=(); observer=resource_read.gdb
     python3 ../tools/check_resource_reads.py --prepare
@@ -35,7 +39,9 @@ if ! make -j4 "${flags[@]}" >> .run/regression-build.log 2>&1; then
 fi
 status=0
 GDBTAIL=120 EXTRA_ARGS=--warp_mode=1 GDBSCRIPT="$observer" ./diag_run.sh "$deadline" || status=$?
-if [[ "$observer" == resource_read.gdb ]]; then
+if [[ "$observer" == intro.gdb ]]; then
+  python3 ../tools/check_intro.py .run/gdb-out.log --status "$status"
+elif [[ "$observer" == resource_read.gdb ]]; then
   python3 ../tools/check_resource_reads.py --status "$status"
 elif [[ "$observer" == file_read.gdb ]]; then
   python3 ../tools/check_file_read_probe.py --status "$status"

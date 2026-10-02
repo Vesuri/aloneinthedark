@@ -18,6 +18,23 @@ inline bool viewportValid(const Rect& viewport) {
         && viewport.right-viewport.left==width;
 }
 
+struct Mismatch { uint16_t x,y;uint8_t expected,actual; };
+// Independent bitplane decoder for diagnostic builds. Check the entire frame,
+// including pixels preserved outside the current dirty rectangles.
+inline bool verify(const uint8_t* chunky,const uint8_t* planar,
+                   const Rect& viewport,Mismatch& mismatch) {
+    if(!chunky || !planar || !viewportValid(viewport))return false;
+    for(uint16_t y=0;y<height;++y)for(uint16_t x=0;x<width;++x) {
+        uint8_t actual=0;
+        for(uint16_t bit=0;bit<planes;++bit)
+            if(planar[uint32_t(y)*rowBytes+bit*planeRow+x/8]&(128u>>(x&7)))
+                actual|=1u<<bit;
+        uint8_t expected=chunky[uint32_t(y+viewport.top)*640+x+viewport.left];
+        if(actual!=expected) {mismatch={x,y,expected,actual};return false;}
+    }
+    return true;
+}
+
 // Output coordinates are local to the viewport. Empty intersections are valid
 // and produce an empty rectangle. Align relative to the destination, then clip.
 inline bool normalize(const Rect& viewport,const Rect& dirty,Rect& local) {

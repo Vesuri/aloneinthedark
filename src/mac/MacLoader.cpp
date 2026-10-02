@@ -1565,7 +1565,10 @@ static const char* serviceNativeSong()
 {
     if(!nativeSongDue())return 0;
     uint32_t elapsed=g_macTicks-g_song.lastTick;
-    if(elapsed>600)return "SONG SAFE POINT GAP";
+    // Original game work can exceed ten seconds on the baseline 68020.
+    // Catch up every elapsed pulse at this safe point; elapsed time alone is
+    // not an unsupported song format. The bounded MIDI decoder still rejects
+    // malformed events, and timeline completion ends this loop naturally.
     g_song.lastTick+=elapsed;
     for(uint16_t i=0;i<6;++i)if(g_song.voices[i].chip && g_song.voices[i].ends
         && (int32_t)(g_macTicks-g_song.voices[i].ends)>=0)stopNativeSongVoice(i);

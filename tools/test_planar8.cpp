@@ -24,12 +24,30 @@ int main() {
     Planar8::Rect viewport{150,160,350,480},full{},partial{};
     assert(Planar8::convert(source.data(),output,viewport,viewport,full));
     assert(same(full,{0,0,200,320}));
+    Planar8::Mismatch mismatch{};
+    assert(Planar8::verify(source.data(),output,viewport,mismatch));
+    // Each hardware plane must be checked, including a pixel outside a later
+    // partial update and the final pixel of the viewport.
+    for(unsigned bit=0;bit<8;++bit) {
+        const unsigned at=199*320+bit*40+39;
+        output[at]^=1;
+        assert(!Planar8::verify(source.data(),output,viewport,mismatch));
+        assert(mismatch.x==319 && mismatch.y==199);
+        assert((mismatch.expected^mismatch.actual)==(1u<<bit));
+        output[at]^=1;
+    }
     for(unsigned y=0;y<200;++y)for(unsigned x=0;x<320;++x)
         assert(decode(output,x,y)==source[(y+150)*640+x+160]);
     auto previous=storage;
     std::fill(source.begin(),source.end(),0x69);
     assert(Planar8::convert(source.data(),output,viewport,{153,195,155,229},partial));
     assert(same(partial,{3,32,5,96}));
+    // A partial conversion cannot claim the unrelated source changes match.
+    assert(!Planar8::verify(source.data(),output,viewport,mismatch));
+    auto partialSource=original;
+    for(unsigned y=153;y<155;++y)
+        std::fill(partialSource.begin()+y*640+192,partialSource.begin()+y*640+256,0x69);
+    assert(Planar8::verify(partialSource.data(),output,viewport,mismatch));
     for(unsigned y=0;y<200;++y)for(unsigned x=0;x<320;++x)
         assert(decode(output,x,y)==(y>=3 && y<5 && x>=32 && x<96 ? 0x69 : decode(previous.data()+32,x,y)));
     for(unsigned i=0;i<32;++i)assert(storage[i]==0xa5 && storage[storage.size()-32+i]==0xa5);
@@ -57,8 +75,13 @@ int main() {
     auto immutable=original;
     assert(Planar8::convert(immutable.data(),output,viewport,viewport,full));
     assert(immutable==original);
+    assert(Planar8::verify(immutable.data(),output,viewport,mismatch));
     Planar8::Rect shifted{151,161,351,481};
     assert(Planar8::convert(immutable.data(),output,shifted,shifted,full));
+    assert(Planar8::verify(immutable.data(),output,shifted,mismatch));
+    assert(!Planar8::verify(nullptr,output,shifted,mismatch));
+    assert(!Planar8::verify(immutable.data(),nullptr,shifted,mismatch));
+    assert(!Planar8::verify(immutable.data(),output,{0,0,1,1},mismatch));
     for(unsigned y=0;y<200;++y)for(unsigned x=0;x<320;++x)
         assert(decode(output,x,y)==immutable[(y+151)*640+x+161]);
     puts("PASS Planar8: all pens/planes, full viewport, partial preservation, 32-pixel alignment, edge clipping and invalid-input atomicity");

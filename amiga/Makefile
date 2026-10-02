@@ -108,6 +108,10 @@ endif
 ifeq ($(C2P_SPLIT),1)
 $(error C2P split profiling is deferred to M5)
 endif
+ifeq ($(C2PVERIFY),1)
+EXTRA_DEFINES += -DAITD_C2P_VERIFY
+PROBE_SYMS_C2P = g_c2pVerifiedFrames g_c2pPartialFrames g_c2pVerifyFailures g_c2pMismatch
+endif
 
 
 # `make PROBES=1` — the sub-frame timing accumulators, read via the gdb stub (amiga/diag_run.sh).
@@ -287,6 +291,7 @@ PROBE_SYMS += g_lineAProbe
 endif
 PROBE_SYMS += g_macTicks
 PROBE_SYMS += g_videoPAL g_paulaClock
+PROBE_SYMS += $(PROBE_SYMS_C2P)
 PROBE_SYMS += g_macFramesQueued g_macFramesPresented
 PROBE_SYMS += g_beamPresentLine g_beamPresentMin g_beamPresentMax \
               g_beamPresents g_beamPresentsLate

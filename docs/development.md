@@ -37,6 +37,30 @@ the 68000 helper header is retired.
 
 ## Original data
 
+### Full-intro C2P acceptance (M2.6)
+
+`AMIGA_CONFIG=a1200-020 amiga/regression.sh intro` clean-builds with
+`C2PVERIFY=1 FIXEDRNG=1` and no input injection. The diagnostic independently
+decodes the complete 320×200 planar frame before each publication and compares
+it with the logical viewport, including pixels outside the current dirty
+rectangles. It does not replace the production Kalms converter or add a shadow
+framebuffer. Host tests inject errors into every plane and check correct and
+stale partial updates, clipping and shifted viewports.
+
+The baseline run `tmp/m2-intro-native-full.log` exits 0: 956 frames verified,
+944 partial-update frames, zero mismatches, 956 queued/presented frames, and
+all 840 original book batches complete. The original Dark+$5220 return has
+D0=0, no pending pixels or publication, and no injected intro skip. The run
+uses the existing sequencer catch-up loop without its arbitrary 600-tick stop;
+original computation and diagnostic overhead can legitimately delay a safe
+point. No game instruction is changed. This instrumented run is not a speed
+measurement.
+
+`tools/check_intro.py LOG --status 0` checks the full completion record.
+Four matching instruction checkpoints are captured for `compare_frames.py`;
+M2.10's reference-pixel acceptance remains separate. The archived source,
+palette and display captures are in `tmp/m2-intro-baseline/`.
+
 Put your original archive in ignored `tmp/`, then:
 
 ```sh

@@ -68,7 +68,6 @@ and other general tuning remain M5.
 - [ ] **M2.1c** — verify both original PAK payloads; filtered observer awaits validation.
 - [ ] **M2.5** — PAL/NTSC automated display and native audio-clock checks pass;
   finish pointer palette ownership and rendered-picture acceptance.
-- [ ] **M2.6** — finish full-intro C2P coverage.
 - [ ] **M2.10** — add the intro regression and state-pair frame comparison;
   include the remaining car/frog frame acceptance.
 - [ ] **M2.3g44 visual report** — demonstrate the black-interval cause and verify
@@ -147,17 +146,6 @@ and other general tuning remain M5.
   a gdb register dump) on `a1200-020` in PAL and NTSC, and the visible pointer
   preserves game colours, and effect period/duration use the selected video
   clock. Other processors remain deferred (D2).
-- **M2.6 8-bit C2P with dirty rectangles.**
-  - The owner-requested Kalms assembly converter passes the five-frame native
-    fixture against the independent decoder (M2.3g41p1). Retain the host C oracle
-    and finish the full intro comparison below; general tuning remains M5.
-  - Rectangles aligned to 32 pixels.
-  - Working-tree `C2PVERIFY=1` independently decodes every complete converted
-    viewport before publication, including preserved pixels outside dirty
-    rectangles. Host checks pass for all eight planes, injected corruption,
-    matching partial updates and shifted viewports. `amiga/intro.gdb` requires
-    uninterrupted original completion and all 840 book batches; native
-    full-intro verification remains pending.
 
   *Done when* the verifier reports zero mismatches over the intro on
   `a1200-020`, including preservation across partial updates.
