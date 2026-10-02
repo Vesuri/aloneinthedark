@@ -134,6 +134,11 @@ required.
   *Done when* each added configuration reports its intended CPU and available
   memory, and passes all regression cases implemented so far in bounded runs.
 - **M5.1 Full-accounting profile.**
+  - Separate steady 3D rendering from complete scene-transition preparation.
+    Attribute the reported long intro pauses across file/cache reads, original
+    decompression, region construction, drawing and compatibility services;
+    correlate emulated timing with the owner recording. Do not infer a steady
+    FPS from a sample containing loading, or sum nested profile categories.
   - A PROBES build and a gameplay scene on `a1200-020`, run twice. Add a
     68030 comparison only after M5.0 validates its configuration.
   - Report ms/frame by phase: game code, drawing traps, CopyBits, C2P, palette,

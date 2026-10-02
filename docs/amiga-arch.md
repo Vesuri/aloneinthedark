@@ -34,6 +34,38 @@ Unimplemented calls or forms still produce named loud stops.
 
 ## Display
 
+### Intro performance investigation (2026-10-02)
+
+M2 functional/rendered acceptance does not establish acceptable frame rate or
+transition latency. The owner recording contains a nearly unchanged interval
+at 334.2–348.9 seconds (14.7 seconds), immediately before the entrance-hall
+camera changes to the stair view. Frames at 337 and 345 seconds show the same
+character position; at 350 seconds the next view has appeared. This is separate
+from the 7.95-second menu-to-landscape black interval. Video analysis and
+extracted frames are local under `tmp/m2-owner-video/`. The white cache-window
+interruption is not used as performance evidence.
+
+The baseline launcher deliberately emulates a cycle-exact PAL A1200 at
+14,187,580 Hz with 8 MB fast RAM; host CPU speed does not remove that limit.
+Current-build diagnostics (`INTROSKIP=1 PROFILEFRAME=250 PROBEFIELDS=300`)
+identify room 0/camera 1, then measure publications 250–253 over 300 PAL fields.
+`tmp/m2-performance-car-native-full.log` exits 0; the trap arrays are archived
+under `tmp/m2-performance-car/`. C2P accounts for 445,662 of 24,036,231 beam
+units (1.85%). There are also 94 Read dispatches and substantial memory,
+drawing and sound-driver dispatch activity. These are inclusive instrumented
+service counts, not disk-read counts or a shipping FPS benchmark. They show
+that this sample includes preparation work; they do not isolate steady 3D
+rasterization from scene loading. Nested categories must not be added together.
+
+The earlier `m2-mask-spans-profile-full.log` sample attributed 14,256,985 of
+24,022,099 units (59.35%) to four InsetRgn calls. The relevant implementation
+still calls `RegionRows::row` up to three times for every output row, and each
+call traverses the full region stream. That repeated decoding is a concrete
+CPU bottleneck, not an intentional scene delay. It is evidence for the existing
+M5.2a work, not proof that every recorded pause has the same cause. Attribution
+of complete transitions and a separate steady-rendering profile remain open
+under M5.1. No production optimization was made during this investigation.
+
 `AitdScreen` owns one 320×200 eight-plane display, using the live WIND 128
 content rectangle within the 640×480×8 logical Mac screen. Each chip bitmap
 contains 200 interleaved rows of eight 40-byte planes (64,000 bytes). Explicit
