@@ -66,7 +66,6 @@ independent service implementation or automated acceptance. Region expansion
 and other general tuning remain M5.
 
 - [ ] **M2.1c** — verify original PAK payloads; deterministic-route observer ready.
-- [ ] **M2.4** — close integrated fresh-start screen/viewport acceptance.
 - [ ] **M2.5** — finish PAL/NTSC, pointer palette ownership and video-clock acceptance.
 - [ ] **M2.6 / M2.8** — finish full-intro C2P coverage and the remaining region variants.
 - [ ] **M2.10a / M2.10** — repair stale observers, add the intro regression and
@@ -97,18 +96,6 @@ and other general tuning remain M5.
   returned bytes match the host files by debugger checksum, and startup window
   counts are recorded. If original bytes establish an unused file, document the
   evidence before revising that requirement; absence from one route is not proof.
-- **M2.4 Mac screen model and 320×200 only — integrated acceptance.**
-  - Main-device storage, fresh/existing preference selection of WIND 128 and
-    live window geometry have separate passing captures. Combine the fresh-start
-    and viewport evidence; older pre-window loud-stop descriptions are historical.
-  - A 640×480×8 main screen with a GDevice list, and windows over it.
-  - A fixed viewport on WIND 128's live content rectangle; M0.5 measures
-    (160,150)–(480,350) after positioning, not the initial resource bounds.
-  - No screen-size dialog (D4): pick the seam by byte check (a port-supplied
-    `PREF`, or `ModalDialog` for DLOG 1000) and document it.
-
-  *Done when* a fresh start (no prefs) never shows DLOG 1000, the game creates
-  WIND 128, and the viewport equals its content rectangle.
 - **M2.5 AGA 8-plane display.**
   - Lores 320×200×8 in `AitdScreen`, centred for PAL and NTSC. The M2.5a
     prerequisite currently supplies the pinned PAL configuration.

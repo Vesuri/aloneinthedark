@@ -5150,3 +5150,22 @@ A0 is the handle and A1 is its master-pointer value. The 24-bit Mac includes
 handle flags in A1's high byte for the locked/purgeable cases; the port's existing
 heap model stores flags separately from clean 32-bit pointers (design §4.4).
 Native implementation and paired acceptance remain open.
+
+### M2.4 — integrated fresh-start viewport acceptance
+
+`amiga/fresh_viewport.gdb` now follows one fresh startup from the original
+Dan2 GetNewDialog 1000 through ModalDialog item 2 and disposal, the original
+Misc1+$109A WIND 128 request, and first native frame publication. No frame is
+queued while the hidden size dialog exists. Its live record remains hidden;
+the selected item is 2 and the dialog is disposed before the game window opens.
+The first presentation uses WIND 128's live content rectangle
+(160,150)–(480,350), a (160,150) crop of the actual 640×480×8 main screen.
+VBI publishes exactly that viewport as the first frame.
+
+`m2-fresh-viewport-native-full.log` passes on `a1200-020` with exit zero.
+The existing `INTROSKIP=1 FIXEDRNG=1` diagnostic binary was used; acceptance
+ends before either input/random fixture is exercised. The launcher classifies
+preferences before execution and this observer rejects an existing-preference
+fixture. Recognized diagnostic preferences were temporarily isolated and
+restored after the run. This verifies the integrated startup/display contract;
+it does not replace the owner-deferred visual acceptance in M2.5/M2.3g44.
