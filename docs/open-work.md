@@ -152,7 +152,12 @@ and other general tuning remain M5.
   *Done when* the verifier reports zero mismatches over the intro on
   `a1200-020`, including preservation across partial updates.
 - **M2.10 Frame compare.**
-  - Write `tools/compare_frames.py`.
+  - `tools/mac_intro.lua` now captures four instruction-matched original states
+    without skipping the intro: Dark2+$1C94, Dark2+$1F46, Dan2+$2ED4 and
+    Dark+$5220. `m2-intro-reference.log` exits 0 with all four captures and
+    uninterrupted completion. The working-tree `tools/compare_frames.py`
+    checks these state keys, every viewport pixel, palettes and AGA publication;
+    native paired capture and acceptance remain pending.
   - Add the fixed-seed hook on both sides and the state keys for the intro.
 
   *Done when* the Infogrames logo and three intro states match MAME
