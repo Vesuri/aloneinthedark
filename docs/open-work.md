@@ -19,8 +19,10 @@ required.
   - Identify and remove dominant algorithmic or compatibility costs. Preserve
     original instructions, game decisions, sample content and timing; do not
     substitute a faster emulator or focus on minor optimizations.
-  - Prioritize repeated region decoding and other measured scene-preparation
-    costs, then remeasure the whole experience rather than isolated helpers.
+  - Prioritize the remaining jerky car and early frog animation, and scene
+    transitions still reported to take up to 15 seconds. Attribute complete
+    scene-preparation costs and remeasure the whole experience rather than
+    isolated helpers.
 
   *Done when* matched scene/transition timings demonstrate roughly comparable
   performance to the reference Mac, long unexplained port stalls are resolved,
@@ -177,18 +179,6 @@ required.
 
   *Done when* the profile shows no remaining optimisation worth its risk, and the
   frame rates on both configs are recorded in README.
-- **M5.2a Region expansion cost.**
-  - After streaming masked copies, four InsetRgn calls use 14,256,985 of
-    24,022,099 beam units in a bounded diagnostic sample. RegionExpand decodes
-    the complete region three times per output row.
-  - Consider validated forward traversal of neighbouring rows, preserving exact
-    encoding and atomic malformed/capacity rejection. Inspect combined native
-    stack usage and interrupt headroom; no large new automatic arrays.
-
-  *Done when* independent host shapes and original/native InsetRgn bytes, ABI
-  and ownership pass, measured native cost decreases, interrupt headroom is
-  verified, and the unprofiled idle route still completes without manual Enter.
-
 - **M5.3 Safe-point gap audit.**
   - Measure the worst interval between trap boundaries during gameplay; the
     sequencer and VBL tasks only run at those points.

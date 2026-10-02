@@ -39,8 +39,10 @@ def run(reference=None,status=None,native=None,native_status=None):
 #include <cstdio>
 #include <cstring>
 #include "src/mac/RegionExpand.h"
-int main(){uint8_t p[4096],out[4096],saved[4096];unsigned n=0,v;uint16_t size;
+int main(int argc,char**){uint8_t p[4096],out[4096],saved[4096];unsigned n=0,v;uint16_t size;
 while(scanf("%2x",&v)==1){if(n==sizeof p)return 1;p[n++]=v;}
+if(argc>1){memset(out,0xa5,sizeof out);memcpy(saved,out,sizeof out);
+return RegionExpand::one(p,n,out,sizeof out,size)||size||memcmp(out,saved,sizeof out)?5:0;}
 if(!RegionExpand::one(p,n,out,sizeof out,size))return 2;
 for(unsigned i=0;i<size;++i)printf("%02x",out[i]);puts("");
 unsigned required=size;memset(out,0xa5,sizeof out);memcpy(saved,out,sizeof out);
@@ -59,10 +61,18 @@ return 0;}
                 {(x,y) for x in range(12) for y in range(12) if x<3 or y<3},
                 {(x,y) for x in range(20) for y in range(12) if x<5 or x>8},
                 {(x,y) for x in range(20) for y in range(12) if x<5 or x>6},
-                {(x,y) for x in range(12) for y in range(12) if x<2 or x>9 or y<2 or y>9}]
+                {(x,y) for x in range(12) for y in range(12) if x<2 or x>9 or y<2 or y>9},
+                # Many transitions, negative coordinates, and long empty gaps
+                # exercise forward decoding and the three-row expansion window.
+                {(x,y) for y in range(-100,200) for x in range(-8,12)
+                 if y % 31 < 20 and (x < (y % 7)-5 or x > (y % 5)+5)}]
         for points in shapes:
             expected=encode({(x+dx,y+dy) for x,y in points for dx in (-1,0,1) for dy in (-1,0,1)})
             if model(encode(points))!=expected:raise ValueError('independent pixel oracle')
+        malformed=bytearray(encode(shapes[-1]))
+        malformed[-2:]=b'\x00\x00'  # Invalid tail must be checked before publishing.
+        rejected=subprocess.run([str(exe),'reject'],input=malformed.hex(),capture_output=True,text=True)
+        if rejected.returncode:raise ValueError('malformed tail published output: '+rejected.stderr)
         if reference:
             text=reference.read_text()
             if status!=0 or text.count('COMPLETE original pond region expansion')!=1 or text.count('Exited via the debugger')!=1 or re.search(r'FAIL|LUA ERROR|TIMEOUT|Timed out',text):raise ValueError('completion')
@@ -84,9 +94,9 @@ return 0;}
             if size['size']!=len(after) or size['memerr'] or flags['flags'] or flags['memerr'] or owner['owner']!=owner['zone'] or owner['memerr']:raise ValueError('ownership')
         if native:
             t=native.read_text()
-            if native_status!=0 or t.count('PASS native InsetRgn; next stop KillPoly')!=1 or t.count('[Inferior 1 (Remote target) detached]')!=1 or re.search(r'FAIL|Error in|TIMEOUT|Timed out|Program received signal',t):raise ValueError('native completion')
+            if native_status!=0 or t.count('PASS native InsetRgn measured original return')!=1 or t.count('[Inferior 1 (Remote target) detached]')!=1 or re.search(r'FAIL|Error in|TIMEOUT|Timed out|Program received signal',t):raise ValueError('native completion')
             stack=fields(one(t,r'^INSET_SYSTEM_STACK (.*)$'));dispatch=fields(one(t,r'^INSET_DISPATCH (.*)$'))
-            if not stack['lower']+4800<dispatch['sp']<=stack['upper']:raise ValueError('native stack headroom')
+            if not stack['lower']+5200<dispatch['sp']<=stack['upper']:raise ValueError('native stack headroom')
             a,b=[fields(one(t,rf'^INSET_NATIVE_{phase} (.*)$')) for phase in ('ENTER','RETURN')]
             if a['distances']!=0xffffffff or b['sp']!=a['sp']+8 or b['d0'] or b['memerr'] or a['region']!=b['region']:raise ValueError('native ABI/result')
             for reg in [f'd{i}' for i in range(3,8)]+[f'a{i}' for i in range(2,7)]:

@@ -213,8 +213,10 @@ accepts only the measured -1,-1 distances; other distances stay at INSETRGN.
 The host check compares exact original region bytes, an independent pixel-set
 oracle for empty, rectangular, concave, separated, merging and holed shapes, and atomic
 rejection. It runs with address/undefined-behavior sanitizers in `make host-tests`.
-Native validation passes in `amiga/insetrgn.gdb`, including ownership,
-unchanged pixels and continuation to KillPoly at Dark+$3410.
+Native validation in `amiga/insetrgn.gdb` checks ownership and unchanged pixels,
+then stops at the original InsetRgn return. It also records elapsed game ticks.
+The current forward-cursor implementation and performance evidence are in
+[amiga-arch.md](amiga-arch.md#intro-performance-investigation-2026-10-02).
 
 
 The first native InsetRgn attempt fails with SIGBUS before its return. The

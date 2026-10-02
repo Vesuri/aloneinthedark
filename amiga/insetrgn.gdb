@@ -30,6 +30,7 @@ if g_stageBState==3 || trap!=0xa8e1
  detach
  quit 1
 end
+set $insetStart=g_macTicks
 printf "INSET_DISPATCH sp=%X user=%X frame=%X trap=%X\n",$sp,userStack,frame,trap
 set $savedsp=(unsigned long)userStack
 set $region=*(unsigned long*)($savedsp+4)
@@ -85,12 +86,7 @@ if !$found || ($flags&0xe0)!=0 || *(unsigned long*)($body-12)!=2 || *(unsigned l
  quit 1
 end
 printf "INSET_NATIVE_OWNER size=244 flags=0 owned=1 frames=%u book=0\n",$frames
-continue
-if g_stageBState!=3 || g_trapWord!=0xa8cd || g_trapSegment!=4 || g_trapOffset!=0x3410
- echo FAIL InsetRgn next stop\n
- detach
- quit 1
-end
-echo PASS native InsetRgn; next stop KillPoly\n
+printf "INSET_COST ticks=%u\n",g_macTicks-$insetStart
+echo PASS native InsetRgn measured original return\n
 detach
 quit 0

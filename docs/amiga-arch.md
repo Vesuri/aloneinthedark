@@ -45,9 +45,9 @@ from the 7.95-second menu-to-landscape black interval. Video analysis and
 extracted frames are local under `tmp/m2-owner-video/`. The white cache-window
 interruption is not used as performance evidence.
 
-The baseline launcher deliberately emulates a cycle-exact PAL A1200 at
+The original investigation used a cycle-exact PAL A1200 at
 14,187,580 Hz with 8 MB fast RAM; host CPU speed does not remove that limit.
-Current-build diagnostics (`INTROSKIP=1 PROFILEFRAME=250 PROBEFIELDS=300`)
+Diagnostics before the region expansion change (`INTROSKIP=1 PROFILEFRAME=250 PROBEFIELDS=300`)
 identify room 0/camera 1, then measure publications 250–253 over 300 PAL fields.
 `tmp/m2-performance-car-native-full.log` exits 0; the trap arrays are archived
 under `tmp/m2-performance-car/`. C2P accounts for 445,662 of 24,036,231 beam
@@ -59,12 +59,33 @@ rasterization from scene loading. Nested categories must not be added together.
 
 The earlier `m2-mask-spans-profile-full.log` sample attributed 14,256,985 of
 24,022,099 units (59.35%) to four InsetRgn calls. The relevant implementation
-still calls `RegionRows::row` up to three times for every output row, and each
-call traverses the full region stream. That repeated decoding is a concrete
+called `RegionRows::row` up to three times for every output row, and each
+call traversed the full region stream. That repeated decoding was a concrete
 CPU bottleneck, not an intentional scene delay. It is evidence for the existing
 M5.2a work, not proof that every recorded pause has the same cause. Attribution
 of complete transitions and a separate steady-rendering profile remain open
-under M5.1. No production optimization was made during this investigation.
+under M5.1.
+
+The selected comparison machine is now `a4000-030-reference`, a 68030 at
+15.6672 MHz matching MAME's Mac IIx clock. FS-UAE's `~cycle-exact` timing and
+different memory systems remain limits on exact hardware equivalence.
+Region expansion now uses three validated forward cursors: each neighbour
+consumes the region transitions once, rather than rescanning them on every row.
+The first pond expansion falls from 17 game ticks to 1 on this configuration
+(`tmp/intro-030-inset-{before,after}-full.log`, both exit 0). The same original
+Mac call begins and ends in tick 20913 (`tmp/intro-030-inset-mac.log`, exit 0).
+These are coarse 60 Hz tick measurements of one operation, not whole-scene
+speedups. All 244 result bytes match the original, with unchanged ownership,
+register contract, port and pixels. Host checks include a tall region with
+many transitions and empty gaps, plus atomic rejection of an invalid tail.
+The helper reserves 4,436 bytes instead of 4,296; the dispatcher reserves 328.
+A read-only interrupt observation in the complete demo run records a minimum
+928 bytes above the system-stack lower bound at mouse-VBI entry. That run
+(`tmp/intro-030-route-after-full.log`, exit 0) completes all nine room changes
+without further input after the normal book skip. The full host suite passes
+in `tmp/intro-030-region-host-tests.log`. A remaining 753-tick (12.55-second)
+gap between room 2/camera 5 and room 2/camera 3 requires separate attribution;
+the region fix does not close the overall intro performance goal.
 
 `AitdScreen` owns one 320×200 eight-plane display, using the live WIND 128
 content rectangle within the 640×480×8 logical Mac screen. Each chip bitmap

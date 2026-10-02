@@ -37,14 +37,20 @@ inline bool one(const uint8_t* region,uint32_t bytes,uint8_t* out,uint16_t limit
         if(top<=-32768 || left<=-32768 || bottom>=32766 || right>=32766)return false;
         if(extent==10) {--top;--left;++bottom;++right;}
         else {
+            // Each neighbour advances monotonically as the output row moves
+            // down. Validate once per cursor, then consume each transition
+            // once instead of decoding the complete region for every row.
+            RegionRows::Cursor rows[3];
+            for(uint16_t i=0;i<3;++i)if(!rows[i].begin(region,extent))return false;
             RegionRows::Edges previous{};
             int16_t resultTop=32767,resultLeft=32767,resultBottom=0,resultRight=-32768;
             for(int32_t y=int32_t(top)-1;y<=int32_t(bottom)+1;++y) {
                 RegionRows::Edges next{};
                 for(int32_t source=y-1;source<=y+1;++source) {
                     if(source<top || source>=bottom)continue;
-                    RegionRows::Edges row{};
-                    if(!RegionRows::row(region,extent,int16_t(source),row))return false;
+                    RegionRows::Cursor& cursor=rows[source-y+1];
+                    if(!cursor.advance(int16_t(source)))return false;
+                    const RegionRows::Edges& row=cursor.edges;
                     for(uint16_t i=0;i<row.count;i+=2) {
                         if(row.x[i]<=-32768 || row.x[i+1]>=32766
                            || !unite(next,int16_t(row.x[i]-1),int16_t(row.x[i+1]+1)))return false;
