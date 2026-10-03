@@ -27,6 +27,11 @@ enum AitdProfileCategory {
     kProfileHeapLookup,
     kProfileTrapServices,
     kProfileMacVBL,
+    kProfileSceneBoundary,
+    kProfileBookBoundary,
+    kProfileEffectService,
+    kProfileVBLSchedule,
+    kProfileMacVBLTrap,
     kProfileCategoryCount
 };
 
@@ -49,7 +54,7 @@ private:
 
 class AitdProfileScope {
 public:
-    explicit AitdProfileScope(AitdProfileCategory category);
+    explicit AitdProfileScope(AitdProfileCategory category, bool enabled = true);
     ~AitdProfileScope();
 private:
     AitdProfileCategory m_category;
@@ -61,7 +66,7 @@ inline void aitdProfileStart() {}
 inline void aitdProfileOnVBI() {}
 class AitdProfileScope {
 public:
-    explicit AitdProfileScope(AitdProfileCategory) {}
+    explicit AitdProfileScope(AitdProfileCategory, bool = true) {}
 };
 #endif
 

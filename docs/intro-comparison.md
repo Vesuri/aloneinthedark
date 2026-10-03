@@ -473,3 +473,28 @@ This explains the first mismatch with the song-only model, not every difference
 between VBI and CIA runs. A full allocation comparison must include effect
 start/stop times and their priority; treating the intro as music alone gives
 false discrepancies. Do not change the allocator to satisfy that model.
+
+The expanded late-corridor profile (`corridor-services.log`, exit zero;
+`CORRIDORPROFILE=1 INTROSKIP=1 FIXEDRNG=1 PROBEFIELDS=250`, audio on, warp
+off) covers 250 fields and 20,030,443 beam units. Original VBL callbacks
+occupy 4,980,580 units across 295 calls; traps entered within those callbacks
+occupy 3,179,253 units across 1,601 dispatches, approximately 64% of the
+callback bracket. These are inclusive instrumented costs, not shipping FPS.
+
+Shared services total 5,960,170 units. Scene-boundary checks total 2,680,889,
+but include completion-time presentation; total presentation is 2,494,397,
+including C2P 2,091,002. Do not sum these overlapping categories. Book-boundary
+checks, effect service and VBL scheduling respectively total 411,877,
+391,515 and 421,741 units over approximately 2,940 calls each. The empty
+control bracket itself costs 346,494 units over 2,941 calls, so those small
+categories offer little evidence for worthwhile local optimization. Extra
+scopes perturb this run; its five publications are not a shipping speed score.
+
+The private sound-driver trap remains substantial: 2,368,836 units across
+720 dispatches (the preceding lighter profile measured 1,801,691 across 784).
+Current dispatch defers every driver selector to user mode, including read-only
+song/effect status and clock queries. Investigate avoiding the extra dispatch
+for verified non-OS queries, while preserving return registers/CCR and keeping
+allocation, sample mutation and OS calls on their existing safe path. The
+original callback itself maintains audio/effect state and invokes game hooks;
+removing it is not a behavior-preserving optimization.

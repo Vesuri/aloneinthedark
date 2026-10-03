@@ -103,10 +103,10 @@ void aitdProfileOnVBI()
 #endif
 }
 
-AitdProfileScope::AitdProfileScope(AitdProfileCategory category)
+AitdProfileScope::AitdProfileScope(AitdProfileCategory category, bool enabled)
     : m_category(category), m_start(0), m_generation(0)
 {
-    if (g_profileState != 1) return;
+    if (!enabled || g_profileState != 1) return;
     m_generation = g_profileGeneration;
     m_start = aitdProfileBeamEpoch();
     ++g_profileCalls[category];

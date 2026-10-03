@@ -142,6 +142,7 @@ struct NativeSong {
     uint32_t busyFields=0,lastBusyTick=0,lateTick=0,lateBusyTick=0;
 };
 NativeSong g_song;
+volatile uint32_t g_macTicks = 0;
 static uint32_t nativeMusicClock()
 {
 #ifdef AITD_CIA_MUSIC
@@ -199,7 +200,6 @@ __attribute__((noinline)) void aitdSongVoiceStarted() {__asm__ volatile("" ::: "
 volatile uint16_t g_jumpEntryCount = 0;
 volatile uint16_t g_blockMoveCount = 0;
 volatile uint16_t g_stageCDepth = 1;       // _BlockMove is row 1
-volatile uint32_t g_macTicks = 0;
 volatile uint16_t g_macBookFrameActive=0;
 volatile uint32_t g_macBookFramesBegun=0,g_macBookFramesCompleted=0;
 #ifdef AITD_SCENE_FRAME_BATCH
@@ -7193,16 +7193,25 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     // observer cost and catches a timer whose apparent resolution is fiction.
     { AitdProfileScope profileControl(kProfileControl); }
     AitdProfileScope profileTrap(aitdProfileTrapCategory(trap));
+    // Inclusive trap cost within an original callback. Compare with MacVBL
+    // to separate original instructions from compatibility dispatch work.
+    AitdProfileScope profileCallbackTrap(kProfileMacVBLTrap,g_macVBLCallbackActive!=0);
 #endif
     uint32_t bookOwner=0;
     uint16_t bookEdge;
     {
     AitdProfileScope profileServices(kProfileTrapServices);
 #ifdef AITD_SCENE_FRAME_BATCH
-    sceneFrameBoundary(trap,pc,regs);
+    {
+        AitdProfileScope profileBoundary(kProfileSceneBoundary);
+        sceneFrameBoundary(trap,pc,regs);
+    }
 #endif
-    bookEdge=bookFrameEdge(trap,pc,regs,bookOwner);
-    if(bookEdge==1 || bookEdge==2)beginBookFrame(bookEdge,bookOwner,uint16_t(regs[7]));
+    {
+        AitdProfileScope profileBook(kProfileBookBoundary);
+        bookEdge=bookFrameEdge(trap,pc,regs,bookOwner);
+        if(bookEdge==1 || bookEdge==2)beginBookFrame(bookEdge,bookOwner,uint16_t(regs[7]));
+    }
     // Mouse position and button live in redirected low-memory shadows that
     // original code may read directly, so refresh them at every safe Line-A
     // boundary while keyboard polling remains independent.
@@ -7214,8 +7223,14 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
             loaderStop(error,3);showLoaderStop();
         }
     }
-    serviceNativeEffects();
-    scheduleVBLTask();
+    {
+        AitdProfileScope profileEffects(kProfileEffectService);
+        serviceNativeEffects();
+    }
+    {
+        AitdProfileScope profileSchedule(kProfileVBLSchedule);
+        scheduleVBLTask();
+    }
     presentMacRuntime();
     }
     if(read16(s_windowManagerPixMap+32)==8) {

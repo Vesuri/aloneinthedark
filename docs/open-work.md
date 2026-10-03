@@ -23,7 +23,11 @@ required.
     2.0–2.6× after complete-scene presentation and bulk pixel copies. Check
     the reference machines' memory timing and the remaining substantial
     compatibility costs; original Mac VBL callbacks occupy about 17% of
-    the latest corridor profile. Use the late visit, not the
+    the lighter corridor profile. Investigate the extra user-mode dispatch
+    for read-only native sound-driver queries; preserve their complete ABI
+    and OS safety. The expanded profile puts 64% of callback time inside
+    compatibility traps; small service scopes are near observer overhead.
+    Use the late visit, not the
     earlier front-door scene that reuses room 1/camera 2, and the full
     [matched-scene comparison](intro-comparison.md).
     Then address
