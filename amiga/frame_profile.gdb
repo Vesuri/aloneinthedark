@@ -1,5 +1,6 @@
 # PROFILEFRAME=<publication> PROBEFIELDS=<fields> (default 300).
 # Or PROFILEROOM=<room> PROFILECAMERA=<camera> for a scene-triggered sample.
+# Or MASKPROFILE=1 for the first complete room-0/camera-3 mask construction.
 # Arrays are dumped in bulk to avoid thousands of remote-debugger round trips.
 set pagination off
 set confirm off

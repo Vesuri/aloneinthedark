@@ -125,6 +125,11 @@ endif
 
 # Optional scene filter: use original room/camera state instead of guessing
 # a presentation count, which changes with the unseeded demo route.
+ifeq ($(MASKPROFILE),1)
+PROFILEFRAME=0
+PROBEFIELDS=65535
+EXTRA_DEFINES += -DAITD_MASK_PROFILE
+endif
 ifneq ($(PROFILEROOM),)
 ifeq ($(PROFILECAMERA),)
 $(error PROFILEROOM requires PROFILECAMERA)
@@ -297,6 +302,9 @@ CPPFLAGS  = $(CCFLAGS) -fno-rtti -fno-exceptions -fno-use-cxa-atexit -std=gnu++1
             -I"$(CURDIR)"
 # GNU as has no scheduling/tuning flag; hand-written code targets the 68020 ISA.
 ASFLAGS   = -mcpu=68020 -mno-float -g --register-prefix-optional -I"$(SDKDIR)" -I"$(CURDIR)"
+ifdef PROBES
+ASFLAGS += --defsym AITD_PROBE=1
+endif
 VASMFLAGS = -m68020 -Felf -quiet -x -no-opt -nowarn=62 $(EXTRA_VASMDEFS)
 
 # ⚠⚠ Every global a committed .gdb script reads MUST be listed here.  -Wl,--gc-sections drops

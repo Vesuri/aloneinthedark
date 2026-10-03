@@ -4879,9 +4879,18 @@ result from those counts. Host regressions pass; the idle endpoint remains open.
 `PROFILEFRAME` enables a diagnostic-only start at the requested published frame;
 `PROFILEROOM=<room> PROFILECAMERA=<camera>` instead selects original scene state
 (both are required). `PROBEFIELDS` bounds the sample in emulated fields.
-`amiga/frame_profile.gdb` captures 19 nested phase totals, the ending room/camera,
+`MASKPROFILE=1` instead brackets the first pond mask construction, from
+Dark+$317C GetGWorld to +$355C SetGWorld in room 0/camera 3, with original-byte
+and selector checks. Use `INTROSKIP=1 FIXEDRNG=1` with this diagnostic;
+the ordinary build has none of these timing reads.
+`amiga/frame_profile.gdb` captures 22 nested phase totals, the ending room/camera,
 and bulk per-trap tick/call arrays, then detaches at a
 positive frozen-profile checkpoint. It never treats a timeout as completion.
+The additional scopes distinguish heap pointer lookup, shared trap services
+and original user-mode VBL callbacks. Audio is measured at native song/effect
+service boundaries. Callback instrumentation preserves the parked registers
+and CCR. Inclusive scopes overlap; do not sum them or quote FPS from a probe
+build.
 
 The separate host-window lead remains unproven for the installed executable.
 The preserved emulator log `tmp/m2-idle-profile-fsuae.log` repeatedly reports

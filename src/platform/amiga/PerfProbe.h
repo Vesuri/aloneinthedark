@@ -24,6 +24,9 @@ enum AitdProfileCategory {
     kProfileHeapPublish,
     kProfileRegionExpand,
     kProfileRegionResize,
+    kProfileHeapLookup,
+    kProfileTrapServices,
+    kProfileMacVBL,
     kProfileCategoryCount
 };
 

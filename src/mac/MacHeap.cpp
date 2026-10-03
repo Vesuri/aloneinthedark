@@ -61,6 +61,7 @@ bool MacHeap::isHandle(Handle handle) const { uint8_t* f=flags(handle);return f 
 bool MacHeap::isFreeHandleSlot(Handle handle) const { uint8_t* f=flags(handle);return f && !(*f&1); }
 uint32_t MacHeap::findPtr(const uint8_t* ptr, uint32_t kind) const
 {
+    AitdProfileScope profile(kProfileHeapLookup);
     if (!owns(ptr)) return 0;
     uint32_t pos=ptr-arena_;
     for (uint32_t off=headerBytes;off<end_;off+=block(off).span)

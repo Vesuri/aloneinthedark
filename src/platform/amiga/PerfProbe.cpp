@@ -23,6 +23,24 @@ volatile uint32_t g_profileCalls[kProfileCategoryCount] = {0};
 }
 
 #ifdef AITD_PROBE
+static uint32_t s_macVBLStart;
+static uint16_t s_macVBLGeneration;
+extern "C" void aitdProfileMacVBLBegin()
+{
+    s_macVBLGeneration=0;
+    if(g_profileState!=1)return;
+    s_macVBLGeneration=g_profileGeneration;
+    s_macVBLStart=aitdProfileBeamEpoch();
+    ++g_profileCalls[kProfileMacVBL];
+}
+extern "C" void aitdProfileMacVBLEnd()
+{
+    if(!s_macVBLGeneration || s_macVBLGeneration!=g_profileGeneration)return;
+    uint32_t end=g_profileState==1 ? aitdProfileBeamEpoch() : g_profileStopEpoch;
+    if(end>s_macVBLStart)g_profileTicks[kProfileMacVBL]+=end-s_macVBLStart;
+    s_macVBLGeneration=0;
+}
+
 static uint32_t beamPosition()
 {
     uint16_t high = *vposrPointer;
@@ -135,9 +153,8 @@ AitdProfileCategory aitdProfileTrapCategory(uint16_t trap)
     case 0xa9b9: case 0xa9bc:
         return kProfileResource;
 
-    // No Sound Manager trap is implemented yet.  Keep this category explicit
-    // so the profile says zero rather than silently folding future audio work
-    // into compatibility overhead.
+    // Native audio is measured at the song/effect service boundaries, including
+    // work delivered inside other traps. Do not classify unrelated calls as audio.
     default:
         return kProfileOtherTrap;
     }

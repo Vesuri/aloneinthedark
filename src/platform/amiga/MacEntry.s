@@ -116,6 +116,11 @@ aitd_user_vbl_trampoline:
 	move.w ccr,-(sp)
 	movem.l d0-d7/a0-a6,-(sp)
 1:
+ .ifdef AITD_PROBE
+	move.w ccr,-(sp)
+	jsr aitdProfileMacVBLBegin
+	move.w (sp)+,ccr
+ .endif
 	movem.l (sp),d0-d7/a0-a6
 	move.l g_macVBLCallbackEntry,a1
 	clr.l g_macVBLCallbackEntry
@@ -123,6 +128,9 @@ aitd_user_vbl_trampoline:
 	move.l g_macVBLCallbackA5,a5
 	move.w #1,g_macVBLCallbackActive
 	jsr (a1)
+ .ifdef AITD_PROBE
+	jsr aitdProfileMacVBLEnd
+ .endif
 	clr.w g_macVBLCallbackActive
 	jsr aitdVBLCallbackComplete
 	tst.l g_macVBLCallbackEntry

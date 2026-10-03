@@ -1367,6 +1367,7 @@ static int16_t stealSongChannel();
 
 static const char* playNativeEffect(uint8_t* packet,uint32_t& scratch)
 {
+    AitdProfileScope profile(kProfileAudio);
     if(!g_soundDriver.initialized)return "NOT INITIALIZED";
     if(((uint32_t)packet&1) || !effectRange(packet,26))return "EFFECT PACKET";
     uint8_t* sample=(uint8_t*)read32(packet);
@@ -1499,6 +1500,7 @@ static const char* loadSongSample(uint16_t id)
 }
 static const char* startNativeSong(uint32_t argument)
 {
+    AitdProfileScope profile(kProfileAudio);
     if(!g_soundDriver.initialized)return "NOT INITIALIZED";
     if(g_song.ownedCount)return "SONG REPLACEMENT";
     if(argument!=135)return "SONG UNMEASURED";
@@ -1622,6 +1624,7 @@ static bool nativeSongDue()
 static const char* serviceNativeSong()
 {
     if(!nativeSongDue())return 0;
+    AitdProfileScope profile(kProfileAudio);
 #ifdef AITD_SONG_COST_PROBE
     uint32_t costBegin=g_macTicks;
 #endif
@@ -6778,12 +6781,28 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
 #ifdef AITD_PROFILE_FRAME
     extern volatile uint16_t g_profileState;
     if(g_profileState==2)aitdFrameProfileCheckpoint();
+#ifdef AITD_MASK_PROFILE
+    if(trap==0xab1d && s_segments[4].begin && s_currentA5
+       && read16(s_currentA5-0xcd68)==0 && read16(s_currentA5-0xcd70)==3) {
+        const uint32_t dark=(uint32_t)s_segments[4].begin;
+        if(pc==dark+0x317c || pc==dark+0x355c) {
+            const uint16_t selector=pc==dark+0x317c ? 5 : 6;
+            if(read32((uint8_t*)pc-6)!=0x203c0008 || read16((uint8_t*)pc-2)!=selector
+               || regs[0]!=(0x00080000UL|selector)) {
+                loaderStop("MASK PROFILE BYTES",4);showLoaderStop();
+            }
+            if(selector==5)aitdProfileStart();
+            else if(g_profileState==1) {aitdProfileStop();aitdFrameProfileCheckpoint();}
+        }
+    }
+#else
     if(g_macFramesPresented>=AITD_PROFILE_FRAME
 #ifdef AITD_PROFILE_ROOM
        && s_currentA5 && read16(s_currentA5-0xcd68)==AITD_PROFILE_ROOM
        && read16(s_currentA5-0xcd70)==AITD_PROFILE_CAMERA
 #endif
        )aitdProfileStart();
+#endif
     AitdTrapProfileScope trapProfile(trap);
 #endif
 #ifdef AITD_BOOK_PROFILE
@@ -6816,7 +6835,10 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     AitdProfileScope profileTrap(aitdProfileTrapCategory(trap));
 #endif
     uint32_t bookOwner=0;
-    const uint16_t bookEdge=bookFrameEdge(trap,pc,regs,bookOwner);
+    uint16_t bookEdge;
+    {
+    AitdProfileScope profileServices(kProfileTrapServices);
+    bookEdge=bookFrameEdge(trap,pc,regs,bookOwner);
     if(bookEdge==1 || bookEdge==2)beginBookFrame(bookEdge,bookOwner,uint16_t(regs[7]));
     // Mouse position and button live in redirected low-memory shadows that
     // original code may read directly, so refresh them at every safe Line-A
@@ -6833,6 +6855,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     serviceNativeEffects();
     scheduleVBLTask();
     presentMacRuntime();
+    }
     if(read16(s_windowManagerPixMap+32)==8) {
         switch(trap) {
         case 0xab1d:
