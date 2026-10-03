@@ -6,6 +6,39 @@ Pascal labels and removes the `|command` suffix through SetMenuItemText. The
 port implements those record operations; the game's code still interprets and
 stores the commands. Menu rendering and Mac MDEF execution are not involved.
 
+## Gameplay keyboard route (M3.2 in progress)
+
+The original keyboard run returns MENU 129/item 2 for Command-S, item 1 for
+Command-O and item 4 for Command-Q. The native Right-Amiga route returns the
+same packed results. S and M reach the game's sound/music feedback; M stops
+and resumes song 137. SetItemMark uses the actual packed menu item mark byte.
+
+The 68030 native fixture entered `m3test` and Return in the save prompt,
+returned to gameplay, opened Load and cancelled back to gameplay. The save
+created a 36,254-byte data fork containing that name and a thumbnail resource
+fork. This is an in-session save/Load-menu check; reset-and-load acceptance
+remains M3.6. Quit reaches Core+$1DCC driver selector 8, which remains a named
+stop. M3.2 remains open until that cleanup and the paired viewport audit pass.
+
+The reached save path additionally needs PBCreate's standard version byte at
+offset 26 (27 is the open-permission byte), InsetRect, contained indexed
+CopyBits scaling and picture recording. OpenPicture/ClosePicture record one
+same-world CopyBits into the requested frame without changing visible pixels.
+`PictureRecord8.h` writes a bounded v2 PackBits picture retaining source
+pixels, rectangles, palette and mode. Its encoding can differ from QuickDraw's
+padding/compression; the independently decoded source pixels and colours
+match the original save picture exactly. Other recording operations remain
+unsupported. Staging buffers use owned handles; the compiled copy/record
+helper's frame, including saved registers, is 368 bytes.
+
+`tools/mac_picture_record.lua` captures the original save operation through
+normal keyboard input. After capturing, run
+`python3 tools/check_picture_record8.py --reference-dir tmp` to compare its
+record with the native writer under address/undefined-behaviour sanitizers.
+The native keyboard fixture is `MENUPROBE=1 PROBES=1`; clean before changing
+these flags. It uses ordinary raw key events, including `m3test` plus Return,
+and never writes game flags or invokes original game functions directly.
+
 ## Original contract
 
 `mac_menu_records.lua` observes original Engine+$2DEE CountMItems,

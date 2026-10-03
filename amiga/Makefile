@@ -417,6 +417,11 @@ PROBE_SYMS += g_paletteReadHigh g_paletteReadLow g_paletteReadBanks g_paletteRea
 endif
 
 # Opt-in direct-game testing route; input only, normal initialization retained.
+ifeq ($(MENUPROBE),1)
+INGAME=1
+EXTRA_DEFINES += -DAITD_MENU_PROBE
+PROBE_SYMS += g_menuProbeStage g_menuProbeTick g_menuProbeKey g_menuProbeResult g_menuProbeExitOK
+endif
 ifeq ($(GAMEINPUT),1)
 INGAME=1
 EXTRA_DEFINES += -DAITD_GAME_INPUT

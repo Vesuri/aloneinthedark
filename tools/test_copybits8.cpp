@@ -70,7 +70,8 @@ int main(int argc,char** argv) {
         assert(dst==initial);mask.back()=255;
     }
     auto from=box(0,0,10,10),to=box(0,0,11,10);auto actual=initial;uint8_t drawn[8];
-    assert(!CopyBits8::copy(src.data(),src.size(),44,sm.data(),actual.data(),actual.size(),56,dm.data(),from.data(),to.data(),dm.data(),vis.data(),clip.data(),drawn));assert(actual==initial);
+    assert(CopyBits8::copy(src.data(),src.size(),44,sm.data(),actual.data(),actual.size(),56,dm.data(),from.data(),to.data(),dm.data(),vis.data(),clip.data(),drawn));
+    actual=initial;
     assert(!CopyBits8::copy(src.data(),1,44,sm.data(),actual.data(),actual.size(),56,dm.data(),from.data(),from.data(),dm.data(),vis.data(),clip.data(),drawn));assert(actual==initial);
     if(argc==3) {
         std::string p=std::string(argv[1])+"/maskcopy-reference-"+argv[2];
@@ -89,5 +90,5 @@ int main(int argc,char** argv) {
         assert(CopyBits8::copy(pixels.data(),pixels.size(),RectBounds::word(sp.data()+4)&0x3fff,sp.data()+6,dst.data(),dst.size(),RectBounds::word(dp.data()+4)&0x3fff,dp.data()+6,r.data(),r.data(),port.data()+16,v.data()+2,c.data()+2,drawn));
         assert(dst==expected);
     }
-    puts("PASS CopyBits8: 122 full-buffer clipped direct/remapped copies, irregular masks and atomic malformed-mask rejection, rejected scaling/capacity mutation, optional original Mac capture");
+    puts("PASS CopyBits8: 122 full-buffer clipped direct/remapped copies, irregular masks and atomic malformed-mask rejection, scaling and rejected capacity mutation, optional original Mac capture");
 }

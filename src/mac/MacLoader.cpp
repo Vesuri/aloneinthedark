@@ -16,6 +16,7 @@
 #include "PolygonRecord.h"
 #include "PolygonRegion.h"
 #include "CopyBits8.h"
+#include "PictureRecord8.h"
 #include "CursorVisibility.h"
 #include "RegionRows.h"
 #include "RegionExpand.h"
@@ -48,6 +49,11 @@ extern "C" void aitdDriverClockProbe();
 #include "SoundEffect.h"
 
 extern "C" {
+#ifdef AITD_MENU_PROBE
+volatile uint16_t g_menuProbeKey=0;
+volatile uint32_t g_menuProbeResult=0;
+__attribute__((noinline)) void aitdMenuKeyCheckpoint() { __asm__ volatile("nop" ::: "memory"); }
+#endif
 #ifdef AITD_GAME_INPUT
 volatile uint32_t g_gameInputTraps[8]={};
 #endif
@@ -421,6 +427,9 @@ static uint8_t* s_trapAddresses[4096];
 static uint8_t* s_qdThePort;
 static MacHeap::Handle s_recordingPolygon;
 static uint8_t* s_polygonPort;
+static MacHeap::Handle s_recordingPicture;
+static uint8_t* s_picturePort;
+static uint32_t s_pictureBytes;
 static uint8_t s_regionRecord[PolygonRegion::capacity];
 static uint8_t* s_regionPort;
 static bool s_regionHasPolygon;
@@ -969,6 +978,8 @@ static const TrapName s_trapNames[] = {
     {0xa8a7,"QUICKDRAW","SETRECT"},
     {0xa8a2,"QUICKDRAW","PAINTRECT"}, {0xa891,"QUICKDRAW","LINETO"}, {0xa892,"QUICKDRAW","LINE"},
     {0xa8cb,"QUICKDRAW","OPENPOLY"}, {0xa8cc,"QUICKDRAW","CLOSEPOLY"},
+    {0xa8f3,"QUICKDRAW","OPENPICTURE"}, {0xa8f4,"QUICKDRAW","CLOSEPICTURE"},
+    {0xa8f5,"QUICKDRAW","KILLPICTURE"},
     {0xa8d9,"QUICKDRAW","DISPOSERGN"}, {0xa8da,"QUICKDRAW","OPENRGN"}, {0xa8db,"QUICKDRAW","CLOSERGN"}, {0xa8e1,"QUICKDRAW","INSETRGN"},
     {0xa8c6,"QUICKDRAW","FRAMEPOLY"}, {0xa8cd,"QUICKDRAW","KILLPOLY"},
     {0xa8a4,"QUICKDRAW","INVERTRECT"},
@@ -980,7 +991,7 @@ static const TrapName s_trapNames[] = {
     {0xa914,"WINDOW MANAGER","DISPOSEWINDOW"}, {0xa90d,"WINDOW MANAGER","PAINTBEHIND"},
     {0xa04d,"MEMORY MANAGER","PURGEMEM"}, {0xa04c,"MEMORY MANAGER","COMPACTMEM"},
     {0xa939,"MENU MANAGER","ENABLEITEM"}, {0xa93a,"MENU MANAGER","DISABLEITEM"},
-    {0xa945,"MENU MANAGER","CHECKITEM"}, {0xa93e,"MENU MANAGER","MENUKEY"},
+    {0xa944,"MENU MANAGER","SETITEMMARK"}, {0xa945,"MENU MANAGER","CHECKITEM"}, {0xa93e,"MENU MANAGER","MENUKEY"},
     {0xa938,"MENU MANAGER","HILITEMENU"},
     {0xa931,"MENU MANAGER","NEWMENU"},
     {0xa933,"MENU MANAGER","APPENDMENU"}, {0xa94d,"MENU MANAGER","ADDRESMENU"},
@@ -3210,7 +3221,7 @@ static bool drawIndexedPictureBits(const uint8_t* picture, uint32_t size, uint32
     const uint8_t* rasterSource = picture + offset;
     const uint8_t* rasterDestination = picture + offset + 8;
     uint16_t mode = read16(picture + offset + 16);
-    if (mode != 0) return false;              // srcCopy is the measured title path
+    if (mode != 0 && !(destination8 && mode == 64)) return false;
     offset += 18;
 
     uint16_t height = (uint16_t)(sourceBottom - sourceTop);
@@ -4411,7 +4422,7 @@ static bool copyPortBits8(const uint8_t* sourceBitmap,const uint8_t* destination
                             const uint8_t* from,const uint8_t* to,uint16_t mode,const uint8_t* mask)
 {
     AitdProfileScope profileCopy(kProfileCopyBits);
-    if(mode!=0)return false;
+    if(mode!=0 && mode!=64)return false;
     const uint8_t* maskBody=0;uint16_t maskBytes=0;
     if(mask) {
         MacHeap::Handle handle=(MacHeap::Handle)mask;
@@ -4428,6 +4439,23 @@ static bool copyPortBits8(const uint8_t* sourceBitmap,const uint8_t* destination
     WindowSlot* window=destination ? 0 : windowSlot(port);
     if(!source || !source->locked || !port || (destinationBitmap!=port+2 && (!destination || destinationBitmap!=destination->pixMap))
        || read16(source->pixMap+32)!=8 || read32(source->pixMap)!=(uint32_t)source->pixels)return false;
+    if(s_recordingPicture) {
+        // OpenPicture suppresses the visible copy. This reached save path
+        // records exactly one full-room copy into the thumbnail frame.
+        MacHeap* owner=handleZone(s_recordingPicture);
+        if(!owner || !*s_recordingPicture || port!=s_picturePort || source!=destination
+           || mask || s_pictureBytes || read16(port+66)!=0xffff
+           || read32(port+92)!=(uint32_t)s_recordingPicture)return false;
+        uint8_t frame[8];blockMove(*s_recordingPicture+2,frame,8);
+        const uint16_t stride=read16(from+6)-read16(from+2);
+        const uint16_t height=read16(from+4)-read16(from);
+        uint32_t capacity=PictureRecord8::capacity(stride,height);
+        if(capacity>350000 || owner->setHandleSize(s_recordingPicture,capacity)!=MacHeap::noErr)return false;
+        s_pictureBytes=PictureRecord8::record(*s_recordingPicture,capacity,frame,
+            source->pixMap,source->colorTable,source->pixels,
+            source->owner->handleSize(source->handles[1]),from,to,mode);
+        return s_pictureBytes!=0;
+    }
     const uint8_t* map;const uint8_t* destinationColors;const uint8_t* inverse;
     uint8_t* pixels;uint32_t pixelBytes;
     if(destination) {
@@ -4456,7 +4484,17 @@ static bool copyPortBits8(const uint8_t* sourceBitmap,const uint8_t* destination
     }
 #endif
     uint8_t colors[256];const uint8_t* remap=0;
-    if(read32(source->colorTable)!=read32(destinationColors)) {
+    // The save-slot thumbnail requests ditherCopy. Its indexed colour tables
+    // are identical: no quantization or dithering is required. Other dither
+    // colour environments remain unsupported until measured.
+    if(mode==64) {
+        if(read16(source->colorTable+6)!=255 || read16(destinationColors+6)!=255)return false;
+        for(uint16_t i=0;i<256;++i)
+            for(uint16_t channel=2;channel<8;channel+=2)
+                if(read16(source->colorTable+8+uint32_t(i)*8+channel)
+                   !=read16(destinationColors+8+uint32_t(i)*8+channel))return false;
+    }
+    if(mode!=64 && read32(source->colorTable)!=read32(destinationColors)) {
         AitdProfileScope profile(kProfileCopyMap);
         const uint8_t* ct=source->colorTable;
         if(read16(ct+6)!=255 || (read16(ct+4)!=0 && read16(ct+4)!=0x8000))return false;
@@ -5524,7 +5562,7 @@ static bool enableMenuItem(uint8_t** menu, uint16_t item)
     return true;
 }
 
-static bool checkMenuItem(uint8_t** handle, uint16_t requestedItem, bool checked)
+static bool markMenuItem(uint8_t** handle, uint16_t requestedItem, uint8_t mark)
 {
     if (!handle || !*handle) return false;
     uint8_t* menu = *handle;
@@ -5539,7 +5577,7 @@ static bool checkMenuItem(uint8_t** handle, uint16_t requestedItem, bool checked
         uint8_t length = menu[offset];
         if (offset + 5UL + length > size) return false;
         if (item == requestedItem) {
-            menu[offset + 3 + length] = checked ? 0x12 : 0; // classic checkMark
+            menu[offset + 3 + length] = mark;
             return true;
         }
         offset += 5UL + length;
@@ -6704,7 +6742,7 @@ static bool dispatchFileCatalog(uint16_t trap,uint32_t* regs) {
     uint32_t directory=(trap&0x200) ? read32(pb+48) : 0,id=0;
     int16_t error=0;
     if(operation==8) {
-        if(pb[27])return false; // Unmeasured legacy version-number form.
+        if(pb[(trap&0x200) ? 31 : 26])return false; // Actual file version, not Open permission.
         MacFiles::Entry plan;
         error=s_files.planCreate((int16_t)read16(pb+22),directory,path,plan);
         if(!error) {
@@ -7180,6 +7218,9 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
 #ifdef AITD_GAME_INPUT
     if(trap==0xa976)aitdInputGameplay(g_macTicks);
 #endif
+#ifdef AITD_MENU_PROBE
+    if(trap==0xa976 || trap==0xa970 || trap==0xa860 || trap==0xa974)aitdInputMenuProbe(g_macTicks);
+#endif
 #else
     aitdInputStoryEnter(atPortraits,g_macTicks);
 #endif
@@ -7520,6 +7561,9 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     }
 
     if (trap == 0xa9f4) {                    // original ExitToShell after patch cleanup
+#ifdef AITD_MENU_PROBE
+        aitdInputMenuProbeQuit();
+#endif
         // The bridge keeps file I/O in user mode before the exit trampoline
         // restores the host stack. Keep the application source until OS cleanup.
         int16_t key=0;
@@ -7803,15 +7847,19 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         if (enableMenuItem((uint8_t**)read32(userStack + 2), read16(userStack)))
             return 7;
     }
-    if (trap == 0xa945) {                    // CheckItem(menu, item, checked)
-        if (checkMenuItem((uint8_t**)read32(userStack + 4), read16(userStack + 2),
-                          read16(userStack) != 0)) {
+    if (trap == 0xa945 || trap == 0xa944) { // CheckItem / SetItemMark
+        if (markMenuItem((uint8_t**)read32(userStack + 4), read16(userStack + 2),
+                          trap==0xa945 ? (read16(userStack) ? 0x12 : 0) : (uint8_t)read16(userStack))) {
             if (g_stageCDepth < 92) g_stageCDepth = 92;
             return 9;
         }
     }
     if (trap == 0xa93e) {                    // MenuKey(key) -> menuID/item
-        write32(userStack + 2, menuKey((uint8_t)read16(userStack)));
+        uint32_t result=menuKey((uint8_t)read16(userStack));
+        write32(userStack + 2, result);
+#ifdef AITD_MENU_PROBE
+        g_menuProbeKey=read16(userStack);g_menuProbeResult=result;aitdMenuKeyCheckpoint();
+#endif
         return 3;
     }
     if (trap == 0xa938) {                    // HiliteMenu(menuID)
@@ -8069,12 +8117,13 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         regs[8]=read32(frame+2)+2;regs[9]=(uint32_t)b+8;
         return 13;
     }
-    if(trap==0xa8a8) { // OffsetRect: signed 16-bit coordinates wrap modulo 65536
+    if(trap==0xa8a8 || trap==0xa8a9) { // OffsetRect / InsetRect: 16-bit coordinates wrap
         uint8_t* rect=(uint8_t*)read32(userStack+4);
         if(rect) {
             uint16_t dv=read16(userStack),dh=read16(userStack+2);
             write16(rect,read16(rect)+dv);write16(rect+2,read16(rect+2)+dh);
-            write16(rect+4,read16(rect+4)+dv);write16(rect+6,read16(rect+6)+dh);
+            write16(rect+4,read16(rect+4)+(trap==0xa8a9 ? -dv : dv));
+            write16(rect+6,read16(rect+6)+(trap==0xa8a9 ? -dh : dh));
             return 9;
         }
     }
@@ -8325,6 +8374,38 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
             v+=read16(window->pixelMap+6);h+=read16(window->pixelMap+8);
         }
         write16(point,v);write16(point+2,h);return 5;
+    }
+    if(trap==0xa8f3) {                       // OpenPicture(Rect*) -> PicHandle
+        uint8_t* port=s_qdThePort ? (uint8_t*)read32(s_qdThePort) : 0;
+        const uint8_t* frame=(const uint8_t*)read32(userStack);
+        if(!port || !gWorldForPort(port) || !frame || s_recordingPicture
+           || read16(port+66) || read32(port+92) || read32(port+96) || read32(port+100)
+           || (int16_t)read16(frame+4)<=(int16_t)read16(frame)
+           || (int16_t)read16(frame+6)<=(int16_t)read16(frame+2))goto unsupportedTrap;
+        uint8_t bounds[8];blockMove(frame,bounds,8);
+        MacHeap::Handle picture=newHandle(12,true);
+        if(!picture)goto unsupportedTrap;
+        write16(*picture,12);blockMove(bounds,*picture+2,8);
+        s_recordingPicture=picture;s_picturePort=port;s_pictureBytes=0;
+        write16(port+66,0xffff);write32(port+92,(uint32_t)picture);
+        write32(userStack+4,(uint32_t)picture);return 5;
+    }
+    if(trap==0xa8f4) {                       // ClosePicture()
+        uint8_t* port=s_qdThePort ? (uint8_t*)read32(s_qdThePort) : 0;
+        MacHeap* owner=handleZone(s_recordingPicture);
+        if(!owner || !*s_recordingPicture || port!=s_picturePort || !s_pictureBytes
+           || read16(port+66)!=0xffff || read32(port+92)!=(uint32_t)s_recordingPicture
+           || owner->setHandleSize(s_recordingPicture,s_pictureBytes)!=MacHeap::noErr)goto unsupportedTrap;
+        write16(port+66,0);write32(port+92,0);
+        s_recordingPicture=0;s_picturePort=0;s_pictureBytes=0;return 1;
+    }
+    if(trap==0xa8f5) {                       // KillPicture(PicHandle)
+        MacHeap::Handle picture=(MacHeap::Handle)read32(userStack);
+        MacHeap* owner=handleZone(picture);
+        if(!owner || !*picture || picture==s_recordingPicture || owner->handleSize(picture)<12)goto unsupportedTrap;
+        stopDirtyResourceMutation(picture);
+        if(owner->disposeHandle(picture)!=MacHeap::noErr)goto unsupportedTrap;
+        forgetHandle(picture);memoryResult(0);return 5;
     }
     if(trap==0xa8cb) {                       // OpenPoly() -> owned PolyHandle
         uint8_t* port=s_qdThePort ? (uint8_t*)read32(s_qdThePort) : 0;

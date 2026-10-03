@@ -38,7 +38,56 @@ inline bool copy(const uint8_t* src,uint32_t srcBytes,uint16_t srcStride,const u
         if(h<=0 || w<=0 || uint32_t(w)>strides[i] || uint32_t(h)*strides[i]>sizes[i])return false;
     }
     int32_t h=coord(from,2)-coord(from,0),w=coord(from,3)-coord(from,1);
-    if(h<=0 || w<=0 || h!=coord(to,2)-coord(to,0) || w!=coord(to,3)-coord(to,1))return false;
+    const int32_t targetH=coord(to,2)-coord(to,0),targetW=coord(to,3)-coord(to,1);
+    if(h<=0 || w<=0 || targetH<=0 || targetW<=0)return false;
+    if(h!=targetH || w!=targetW) {
+        // Reached save-slot thumbnail: a contained source, distinct owned buffers,
+        // srcCopy/ditherCopy with exact indexed colours. Sample pixel centres.
+        for(unsigned i=0;i<4;++i)
+            if(i<2 ? coord(from,i)<coord(srcMap,i) : coord(from,i)>coord(srcMap,i))return false;
+        int32_t limits[4];
+        for(unsigned i=0;i<4;++i) {
+            int32_t bound=coord(to,i);
+            const uint8_t* boxes[4]={dstMap,port,vis,clip};
+            for(unsigned j=0;j<4;++j) {
+                const int32_t value=coord(boxes[j],i);
+                bound=i<2 ? (bound>value?bound:value) : (bound<value?bound:value);
+            }
+            limits[i]=bound;
+        }
+        RegionRows::Cursor rows;
+        if(mask && !rows.begin(mask,maskBytes))return false;
+        if(mask)for(unsigned i=0;i<4;++i) {
+            const int32_t value=coord(mask+2,i);
+            limits[i]=i<2 ? (limits[i]>value?limits[i]:value) : (limits[i]<value?limits[i]:value);
+        }
+        const bool visible=limits[0]<limits[2] && limits[1]<limits[3];
+        for(unsigned i=0;i<4;++i) {
+            const uint16_t value=visible?uint16_t(limits[i]):0;
+            drawn[2*i]=uint8_t(value>>8);drawn[2*i+1]=uint8_t(value);
+        }
+        if(!visible)return true;
+        for(int32_t y=limits[0];y<limits[2];++y) {
+            const uint32_t sy=uint32_t(coord(from,0)-coord(srcMap,0))
+                +(uint32_t(y-coord(to,0))*uint32_t(h)+uint32_t(h)/2)/uint32_t(targetH);
+            if(mask && !rows.advance(int16_t(y)))return false;
+            const uint16_t spans=mask?rows.edges.count:2;
+            for(uint16_t span=0;span<spans;span+=2) {
+                int32_t left=limits[1],right=limits[3];
+                if(mask) {
+                    if(left<rows.edges.x[span])left=rows.edges.x[span];
+                    if(right>rows.edges.x[span+1])right=rows.edges.x[span+1];
+                }
+                for(int32_t x=left;x<right;++x) {
+                    const uint32_t sx=uint32_t(coord(from,1)-coord(srcMap,1))
+                        +(uint32_t(x-coord(to,1))*uint32_t(w)+uint32_t(w)/2)/uint32_t(targetW);
+                    const uint8_t value=src[sy*srcStride+sx];
+                    dst[uint32_t(y-coord(dstMap,0))*dstStride+uint32_t(x-coord(dstMap,1))]=colors?colors[value]:value;
+                }
+            }
+        }
+        return true;
+    }
     int32_t limits[4];
     for(unsigned i=0;i<4;++i) {
         int32_t bound=coord(to,i),source=coord(to,i<2?i:i-2)+coord(srcMap,i)-coord(from,i<2?i:i-2);

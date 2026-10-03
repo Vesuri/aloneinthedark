@@ -189,6 +189,52 @@ void aitdInputGameplay(uint32_t ticks)
 }
 #endif
 
+#ifdef AITD_MENU_PROBE
+extern "C" { volatile uint16_t g_menuProbeStage=0,g_menuProbeExitOK=0; volatile uint32_t g_menuProbeTick=0; }
+extern "C" __attribute__((noinline)) void aitdMenuProbeCheckpoint()
+{ __asm__ volatile("nop" ::: "memory"); }
+static const uint8_t s_menuProbeKeys[]={0,0x21,0x21,0x37,0x37,0x21,0x37,0x18,0x45,0x10};
+static const uint8_t s_menuProbeText[]={0x37,0x03,0x14,0x12,0x21,0x14,0x44}; // m3test, Return
+static uint16_t s_menuProbeTextIndex=0;
+static bool s_menuProbeHeld=false;
+static void menuProbeKey(bool down)
+{
+    const uint16_t stage=g_menuProbeStage;
+    const bool command=stage==5 || stage==7 || stage==9;
+    if(command && down)aitdInputInjectProbeKey(0x67,true);
+    aitdInputInjectProbeKey(stage==6 ? s_menuProbeText[s_menuProbeTextIndex] : s_menuProbeKeys[stage],down);
+    if(command && !down)aitdInputInjectProbeKey(0x67,false);
+    s_menuProbeHeld=down;
+}
+void aitdInputMenuProbe(uint32_t ticks)
+{
+    if(g_ingameStage!=5 || g_menuProbeStage>=9)return;
+    if(!g_menuProbeTick) {g_menuProbeTick=ticks;return;}
+    const uint32_t elapsed=ticks-g_menuProbeTick;
+    if(!g_menuProbeStage) {
+        if(elapsed<300)return;
+    } else if(s_menuProbeHeld) {
+        if(elapsed>=8) {menuProbeKey(false);g_menuProbeTick=ticks;}
+        return;
+    } else if(g_menuProbeStage==6 && s_menuProbeTextIndex<6) {
+        if(elapsed<8)return;
+        ++s_menuProbeTextIndex;g_menuProbeTick=ticks;menuProbeKey(true);return;
+    } else if(elapsed<90)return;
+    ++g_menuProbeStage;g_menuProbeTick=ticks;
+    aitdMenuProbeCheckpoint();
+    menuProbeKey(true);
+}
+void aitdInputMenuProbeQuit()
+{
+    if(s_menuProbeHeld)menuProbeKey(false);
+    g_menuProbeStage=10;aitdMenuProbeCheckpoint();
+}
+void aitdInputMenuProbeFinished(bool ok)
+{
+    g_menuProbeExitOK=ok;g_menuProbeStage=11;aitdMenuProbeCheckpoint();
+}
+#endif
+
 #ifdef AITD_INTRO_SKIP
 extern "C" { volatile uint16_t g_introSkipState = 0; volatile uint32_t g_introSkipTick = 0; }
 void aitdInputIntroSkip(uint16_t trap, uint32_t ticks)

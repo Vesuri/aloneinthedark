@@ -28,6 +28,9 @@ required.
   - Keep menus as data and never draw the menu bar (D7).
   - `MenuKey` maps Right-Amiga to the game's Command-key items. Rely on the game's
     keys for everything M0.2 showed they cover.
+  - Measure and implement the quit path's driver selector 8 at Core+$1DCC,
+    then verify ExitToShell, file closure and complete OS/audio restoration.
+  - Complete the paired viewport/feedback checks for the keyboard fixture.
 
   *Done when* load, save, quit, sound and music are reachable from the keyboard,
   and nothing draws outside the viewport.

@@ -501,5 +501,8 @@ bool PlatformAmiga::run()
 #ifdef AITD_AGA_PROBE
     aitdAgaProbeRestored(filesClosed && ok);
 #endif
+#ifdef AITD_MENU_PROBE
+    aitdInputMenuProbeFinished(filesClosed && ok);
+#endif
     return filesClosed && ok;
 }
