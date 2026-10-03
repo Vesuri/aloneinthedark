@@ -8,7 +8,7 @@ static std::vector<uint8_t> read(const char* path) {
     std::ifstream in(path,std::ios::binary);assert(in.good());return {std::istreambuf_iterator<char>(in),{}};
 }
 int main(int argc,char** argv) {
-    assert(argc==3);auto fond=read(argv[1]),nfnt=read(argv[2]);BitmapFont::Family family={};
+    assert(argc==3 || argc==5);auto fond=read(argv[1]),nfnt=read(argv[2]);BitmapFont::Family family={};
     assert(BitmapFont::family(fond.data(),fond.size(),20,family));
     BitmapFont font;assert(font.open(nfnt.data(),nfnt.size(),family));
     const uint8_t map[]={0,0,0,0,1,145,2,136}; // 648 x 401, padded stride 652
@@ -22,7 +22,7 @@ int main(int argc,char** argv) {
     assert(draw(text,0,41,map) && pen==285 && fraction==0x1c00);
     unsigned ink=0;
     for(unsigned y=0;y<401;++y)for(unsigned x=0;x<652;++x) {
-        if(pixels[y*652+x]!=83) {assert(pixels[y*652+x]==26 && x>=37 && x<285 && y>=184 && y<198);++ink;}
+        if(pixels[y*652+x]!=83) {assert(pixels[y*652+x]==26 && x>=37 && x<285 && y>=184 && y<199);++ink;}
     }
     assert(ink>300);
     assert(draw(text,0,41,map) && pen==532 && fraction==0xb800);
@@ -49,7 +49,7 @@ int main(int argc,char** argv) {
                       dotText,0,8,98,pen,fraction,26));
     assert(pen==179 && fraction==0xb900);
     for(unsigned y=0;y<401;++y)for(unsigned x=0;x<652;++x)
-        if(pixels[y*652+x]!=83)assert(x>=129 && x<179 && y>=86 && y<98);
+        if(pixels[y*652+x]!=83)assert(x>=129 && x<179 && y>=85 && y<98);
     assert(Text8::draw(pixels.data(),pixels.size(),652,map,map,map,map,font,
                       dotText,0,8,98,pen,fraction,26));
     assert(pen==229 && fraction==0xf200);
@@ -71,5 +71,14 @@ int main(int argc,char** argv) {
     for(unsigned y=180;y<196;++y)
         for(unsigned x=0;x<320;++x)pixels[y*652+x]=83;
     assert(pixels==untouched);
+    if(argc==5) {
+        auto actual=read(argv[3]);auto expected=read(argv[4]);
+        const uint8_t referenceMap[]={0,0,0,0,1,145,2,136};
+        pen=37;fraction=0x8000;
+        assert(Text8::draw(actual.data(),actual.size(),652,referenceMap,referenceMap,
+                          referenceMap,referenceMap,font,text,0,41,196,pen,fraction,26));
+        assert(actual==expected);
+        puts("PASS Times14: original Macintosh caption matches every pixel, including padding");
+    }
     puts("PASS Text8: measured fractional endpoints, repeat, empty, clipping, padding, range and atomic rejection");
 }

@@ -683,27 +683,20 @@ on a 68020/030.
 
 ### 4.11 Text and fonts
 
-D6 keeps the game's font where the engine draws it, with placeholder Mac fonts
-first for QuickDraw text and the engine-font replacement later. The M0.2 trace
-shows broader Mac-font use than the initial static estimate: Times (font ID 20)
-at 14 points draws credits, menus, character narrative, save/load labels,
-inventory actions and S/M feedback. Pause uses Times 36. Chooser controls use
-system font ID 0 at 12; some system/default draws report size 0. `GetFNum` requests
-"Times". These are observed paths, not proof that other sizes are unused.
+D6 keeps the engine font for engine-drawn text. Owner update 2026-10-04
+replaces the temporary Mac-font artwork with raw bitmaps of the original Mac
+font, bundled with the executable and eventual slave. Do not replace Times
+with the engine font. The measured game path uses Times (family 20) at 14 points
+for credits, menus, narrative, save/load labels, inventory actions and S/M
+feedback; pause requests Times 36. Hidden system/default controls also request
+other families and sizes.
 
-The port may not ship Apple fonts.
-
-1. **Measured startup/intro uses (M2.9 complete).** MAME call/string captures
-   establish the fonts used by the accepted intro, menu and letter pages.
-   Measure any additional gameplay uses when reached.
-2. **Placeholder fonts.** Supply them for those uses as port overlay `FONT`/`NFNT`
-   resources: one simple committed bitmap font per required family and size,
-   drawn for the port. `GetFNum`, `TextFont`, `TextSize`, `TextFace` (synthesized
-   bold and italic) and `DrawText` use them.
-3. **Eventually (a later queue item):** render those texts with the game engine's
-   own font instead. It exists in the Mac `ITD_RESS.PAK` and in the PC version,
-   so the Amiga looks like the DOS game. Check the PC data's font entry against
-   the Mac one first.
+`resources/times14-bitmap.json` contains the original Times/plain/14 MacRoman
+glyphs, captured through isolated original QuickDraw DrawText calls. The compiled
+raw table preserves bearings and measured fractional spacing without runtime
+font rasterization. Other installed placeholder definitions still provide
+compatibility metrics; remaining reached visible font faces must receive the
+same original bitmap treatment. See [Font Manager](font-manager.md).
 
 ### 4.12 Time, VBL, pacing
 
@@ -749,7 +742,7 @@ the owner.
 | D3 | **No frame cap** unless bug-free gameplay requires one. Such a bug, for example the stairs, is addressed separately. |
 | D4 | **No screen-size dialog;** only 320×200. |
 | D5 | **Replace all Mac dialogs**, including new-game and save/load, with an in-game interface inside 320×200. Preserve choices/actions through measured service contracts; no Mac dialog appearance (owner update 2026-09-29). |
-| D6 | **Fonts:** most are game-provided (the engine font). For Mac-font text, placeholder fonts first; eventually the game's own font, from the PC version if needed. |
+| D6 | **Fonts:** retain engine fonts where used; bundle raw bitmaps of the original Mac fonts for Mac-font text (owner update 2026-10-04). |
 | D7 | **No menus** (the DOS version had none). Keys only: the game's keys, plus Right-Amiga for its Command-key items. |
 | D8 | **Paula channels instead of software mixing:** a native driver behind the SoundMusicSys interface. |
 

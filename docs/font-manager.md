@@ -1,14 +1,40 @@
 # Font Manager
 
-**Status, 2026-10-02:** Startup/intro font lookup, layout and the eight letter pages pass M2. Owned
-placeholder glyph differences are documented; broader gameplay text and the
-later engine-font replacement remain outside that acceptance.
+**Status, 2026-10-04:** Visible Times/plain/14 now uses raw glyph bitmaps captured
+from the original Macintosh renderer, under the owner's revised D6. Lowercase,
+serifs, accents and punctuation retain their original ink and bearings. Hidden
+font definitions still supply compatibility metrics; other visible font faces
+remain separate work.
 
 The checkpoint sections below preserve service-level evidence. References to
 an intermediate startup stop or a then-pending M2 gate are historical; current
 acceptance is recorded in [development.md](development.md), and remaining work
 is in [open-work.md](open-work.md). Unsupported contracts remain unsupported
 unless a later section explicitly verifies them.
+
+## Bundled Times/14 bitmap
+
+`tools/mac_times_bitmap.lua` calls the original DrawText service in scratch
+fixtures after the first real Times/plain/14 draw. It captures all MacRoman
+characters 32–255 into `tmp/m3-menu/glyph-NNN.bin`; the original game
+instructions are unchanged. Create that directory and use the documented
+headless Mac IIx debugger command with this script as `-autoboot_script`.
+Require `PASS original Times14 glyphs=224` and terminal exit zero.
+
+`tools/times14_bitmap.py --capture-dir tmp/m3-menu` converts those bounded
+monochrome captures into `resources/times14-bitmap.json` and the compiled
+`Times14Bitmap.h`. Only bitmap artwork is bundled; the Mac font suitcase and
+outline font are local inputs. `--check` verifies the generated table.
+`Text8.h` uses each glyph's original bearing and rows directly, with the
+existing measured fractional advances. It does not stretch ink into cells or
+convert lowercase into capitals.
+
+`tools/check_text8.py --reference-dir tmp` passes sanitizer checks and compares
+the compiled renderer against the original intro-caption buffer, including
+clipping, untouched pixels and row padding: **zero differing bytes**. The
+original caption contains 664 changed pixels. Existing font-family metrics and
+unsupported-face loud stops remain unchanged. The historical placeholder
+contracts below describe their original implementation, not current Times/14 ink.
 
 ## GetFNum reference contract
 

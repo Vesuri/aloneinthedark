@@ -6,8 +6,8 @@ from pathlib import Path
 import re
 import unittest
 ROOT=Path(__file__).resolve().parents[1]
-# These are a Lua pattern and a host-only map key, never debugger operands.
-NON_OPERANDS={'INPUT_COUNT=(%x+)','%x:%d'}
+# These exact formats are host patterns, map keys and capture filenames, never debugger operands.
+NON_OPERANDS={'INPUT_COUNT=(%x+)','%x:%d','poly-%03u','region-%03u'}
 STRINGS=re.compile(r"--[^\n]*|(?P<quote>['\"])(?P<body>(?:\\.|(?!(?P=quote)).)*)(?P=quote)",re.S)
 FORMAT=re.compile(r'(?<!%)%(?:0?\d*)[xXdiu]')
 def inspect(source):
@@ -48,7 +48,7 @@ class Checks(unittest.TestCase):
         for text in ["'d@(base+%x)'", "'d@(base+%X)'", "'d@(base+%d)'", "'d@(base+0x%d)'", "'temp0=%x'", "'d0=%X'", "'b@(%s+0x%x)=%s;'"]:
             with self.subTest(text=text):self.assertTrue(inspect(text))
     def test_literals_and_diagnostics(self):
-        for text in ["'d@(base+0x%x)'", "'d@(base+0x%X)'", "'temp0=0x%x'", "'b@(%s+0x%x)=0x%s;'", "'logerror \"address=%08X sp=%X\\n\",sp'", "'INPUT_COUNT=(%x+)'", "'%x:%d'", "-- 'd@(base+%x)'\n"]:
+        for text in ["'d@(base+0x%x)'", "'d@(base+0x%X)'", "'temp0=0x%x'", "'b@(%s+0x%x)=0x%s;'", "'logerror \"address=%08X sp=%X\\n\",sp'", "'INPUT_COUNT=(%x+)'", "'%x:%d'", "-- 'd@(base+%x)'\n", "dump(string.format('poly-%03u',n),a,b)", "dump(string.format('region-%03u',n),a,b)"]:
             with self.subTest(text=text):self.assertFalse(inspect(text))
     def test_dump_mutation(self):
         source=(ROOT/'tools/mac_hidden_dialog.lua').read_text()

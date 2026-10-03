@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Paired intro DrawText contract; owned glyphs intentionally differ from Times."""
+"""Paired intro DrawText contract with original Times bitmap artwork."""
 import argparse,json,re,struct
 from pathlib import Path
 from resource_fork import read_resource_fork
@@ -71,25 +71,20 @@ def check(reference,status,native=None,native_status=None,dot=False,accent=False
         if read('native','return','clut')[4:]!=read('reference','return','clut')[4:]:raise ValueError('paired colours')
         expected=bytearray(read('native','enter','pixels'));pm=read('native','enter','pm')
         if struct.unpack_from('>4h',pm,6)!=(0,0,401,648) or word(pm,4)&0x3fff!=652:raise ValueError('geometry')
-        # Independent placeholder stencil from the authored shapes, with measured
-        # cell boundaries. This verifies every pixel, including stride padding.
-        shapes=json.loads((ROOT/'resources/placeholder-font.json').read_text())['glyphs']
+        # Independently decode the raw Macintosh capture and preserve clipping/padding.
+        glyphs=json.loads((ROOT/'resources/times14-bitmap.json').read_text())['glyphs']
         metrics=(ROOT/'src/mac/Times14Metrics.h').read_text().split('advances[256]={')[1].split('};')[0]
-        units=[int(x) for x in re.findall(r'\d+',metrics)];position=32768
+        units=[int(v) for v in re.findall(r'\d+',metrics)];position=32768
         limits=[struct.unpack_from('>4h',before,16)]+[struct.unpack_from('>4h',read('native','enter',r),2) for r in ('vis','clip')]
         for c in text:
-            end=position+units[c]*76544;cell=end//65536-position//65536
-            shape=shapes[bytes([c]).decode('mac_roman').upper()]
-            columns=[x for x in range(5) if any(row&(16>>x) for row in shape)]
-            if columns:
-                lo,hi=min(columns),max(columns)+1;width=min(hi-lo,cell-1)
-                for row in range(10):
-                    for col in range(width):
-                        px=x+position//65536+col;py=y-10+row
-                        if shape[row*7//10]&(16>>(lo+col*(hi-lo)//width)) and all(t<=py<b and l<=px<r for t,l,b,r in limits):expected[py*652+px]=26
-            position=end
+            left,top,width,rows=glyphs[c-32]
+            for row,bits in enumerate(rows):
+                for col in range(width):
+                    px=x+position//65536+left+col;py=y+top+row
+                    if bits&(1<<(width-1-col)) and all(t<=py<b and l<=px<r for t,l,b,r in limits):expected[py*652+px]=26
+            position+=units[c]*76544
         if read('native','return','pixels')!=expected:raise ValueError('native full-buffer stencil/preservation')
-        print('PASS native DrawText: original string/ABI/pen/colour, full-buffer owned glyph stencil and preservation')
+        print('PASS native DrawText: original string/ABI/pen/colour, full-buffer original glyph stencil and preservation')
     print('PASS original DrawText: fractional accumulation, repeated draw, MoveTo reset, empty draw, ABI and preserved metadata')
 if __name__=='__main__':
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('reference',type=Path);p.add_argument('--status',required=True,type=int);p.add_argument('--native',type=Path);p.add_argument('--native-status',type=int);p.add_argument('--dot',action='store_true');p.add_argument('--accent',action='store_true');a=p.parse_args()

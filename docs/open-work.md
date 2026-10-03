@@ -174,12 +174,12 @@ required.
   restored, and both Workbench and Shell starts work.
 
   *Done when* it passes on all configs.
-- **M6.5 Engine font for Mac-font text** (D6, eventually). Replace the
-  placeholder fonts with the game's own font, from `ITD_RESS.PAK` or the PC
-  version, for the texts M2.9 covers.
+- **M6.5 Remaining visible Mac font faces (D6).** Capture and bundle raw
+  original bitmaps for reached visible families/sizes beyond Times/plain/14,
+  including pause. Preserve glyph bearings, styles and measured text layout.
 
-  *Done when* the texts render in the game's font and match the layout of MAME
-  frames.
+  *Done when* every reached visible Mac-font draw uses the original bitmap
+  artwork and state-matched text captures agree with MAME.
 
 ## M7 Release
 

@@ -24,8 +24,8 @@ eight seconds after fixing repeated sound conversion and memory movement.
 
 The full intro passes all 956 frame conversions, including 840 book-animation
 batches. State-matched Mac comparisons verify logos, title, credits, car and
-frog; title/credits retain documented differences in the owned placeholder
-font artwork. Normal Enter reaches the portraits and all eight letter pages.
+frog; title/credits used placeholder artwork in that acceptance. Times/14 now uses
+bundled original Mac bitmaps; its caption passes an exact pixel comparison. Normal Enter reaches the portraits and all eight letter pages.
 
 PAL and NTSC pass native display, palette, pointer and audio-clock checks.
 Owner screenshots verify the rendered colour ramp, test pattern and pointer
