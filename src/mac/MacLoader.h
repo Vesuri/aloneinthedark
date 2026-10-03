@@ -24,6 +24,8 @@ public:
 // keyboard interrupt.  The Amiga CIA edge path calls this bridge so original
 // code that waits without making a Toolbox call still sees transitions.
 extern "C" void aitdMacRawKeyChanged(uint8_t rawKey, bool down);
+// OS-window return: release the translated keys without translating them again.
+extern "C" void aitdMacReleaseKeys();
 // Snapshot current native key levels into the 16-byte Macintosh polling map.
 extern "C" bool aitdMacGetKeys(uint8_t* destination);
 

@@ -6081,6 +6081,44 @@ extern "C" void aitdMacRawKeyChanged(uint8_t rawKey, bool down)
     setKeyMapState(key.virtualKey, down);
 }
 
+extern "C" void aitdMacReleaseKeys()
+{
+    // Preserve exactly the bits cleared by releasing all 128 raw keys,
+    // including aliases and unmapped Mac bits. Translation is immutable.
+    static uint8_t mask[16]={};
+    static bool ready=false;
+    if(!ready) {
+        for(uint16_t raw=0;raw<128;++raw) {
+            KeyTranslation key;
+            if(translateAmigaKey((uint8_t)raw,key))
+                mask[key.virtualKey>>3]|=(uint8_t)(1u<<(key.virtualKey&7));
+        }
+        ready=true;
+    }
+    uint8_t* keys=s_portLowMemory+kLowKeyMap;
+    for(uint16_t i=0;i<16;++i)keys[i]&=(uint8_t)~mask[i];
+}
+
+#ifdef AITD_WINDOW_PROBE
+extern "C" bool aitdMacKeyReleaseProbe()
+{
+    uint8_t* keys=s_portLowMemory+kLowKeyMap;
+    uint8_t saved[16],expected[16];bool ok=true;
+    for(uint16_t i=0;i<16;++i)saved[i]=keys[i];
+    uint8_t before=keys[-1],after=keys[16];
+    for(uint16_t pattern=0;pattern<256;++pattern) {
+        for(uint16_t i=0;i<16;++i)keys[i]=(uint8_t)pattern;
+        for(uint16_t raw=0;raw<128;++raw)aitdMacRawKeyChanged((uint8_t)raw,false);
+        for(uint16_t i=0;i<16;++i) {expected[i]=keys[i];keys[i]=(uint8_t)pattern;}
+        aitdMacReleaseKeys();
+        for(uint16_t i=0;i<16;++i)if(keys[i]!=expected[i])ok=false;
+        if(keys[-1]!=before || keys[16]!=after)ok=false;
+    }
+    for(uint16_t i=0;i<16;++i)keys[i]=saved[i];
+    return ok;
+}
+#endif
+
 static int16_t addClampedMouseDelta(int16_t value, int16_t delta, int16_t maximum)
 {
     int16_t changed = (int16_t)(value + delta);

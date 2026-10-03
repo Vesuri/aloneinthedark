@@ -11,6 +11,7 @@
 #include "MacInput.h"
 #include "mac/MacLoader.h"
 extern "C" int aitdResloadBridgeProbe();
+extern "C" bool aitdMacKeyReleaseProbe();
 extern "C" {
 extern volatile uint32_t g_macTicks,g_windowFields,g_systemWindows;
 extern volatile uint32_t* g_macTicksAddress;
@@ -101,7 +102,7 @@ static bool probeKeyMap()
 extern "C" bool aitdWindowProbe()
 {
     if(!aitdResloadBridgeProbe()) { g_windowProbeError=8;return false; }
-    if(!probeKeyMap()) { g_windowProbeError=16;return false; }
+    if(!probeKeyMap() || !aitdMacKeyReleaseProbe()) { g_windowProbeError=16;return false; }
     AudioProbe audio;
     if(!audio.sample) { g_windowProbeError=5;return false; }
     aitdWindowProbeBefore();

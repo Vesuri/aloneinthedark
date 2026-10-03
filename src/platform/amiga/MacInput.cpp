@@ -200,9 +200,8 @@ void aitdInputSuspend()
 // these stores, so display/audio interrupts need not be masked for the loop.
 void aitdInputFlush()
 {
-    for(uint16_t i=0;i<128;++i) {
-        s_keyDown[i]=0;aitdMacRawKeyChanged(i,false);
-    }
+    for(uint16_t i=0;i<128;++i)s_keyDown[i]=0;
+    aitdMacReleaseKeys();
     s_head=s_tail=0;
 }
 void aitdInputResume()

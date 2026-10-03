@@ -39,6 +39,7 @@ printf "window display: late-fields=%u max-line=%u\n",g_beamPresentsLate-$window
 printf "window measured: hash=$%x fields=%u ticks=%u inside-fields=%u entry=%u exit=%u\n",g_windowProbeHash,g_windowProbeFields,g_windowProbeTicks,g_windowFields,g_windowEnterTicks,g_windowExitTicks
 printf "window Paula: interrupts=%u inside=%u positive-windows=%u\n",g_windowProbeAudio,g_windowProbeAudioInside,g_windowProbeAudioWindows
 echo PASS native KeyMap: 11 guarded released/held/multiple-key/alias snapshots; events not consumed\n
+echo PASS native key release: 256 patterns match individual releases; unmapped bits and extent preserved\n
 echo PASS window-read: bytes=1048576 chunks=16 checksum=59bc1dc5\n
 detach
 quit 0

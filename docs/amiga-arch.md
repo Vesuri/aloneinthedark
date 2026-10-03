@@ -48,10 +48,11 @@ Performance claims below use unprofiled game ticks (60 Hz), not host time.
 | --- | ---: | ---: |
 | Matched near-car renderer call, VBI-music build | 15 | 12 |
 | Same near-car draw → next original loop, VBI-music build | 18 | 12 |
-| Natural first frog mask construction | 35 | 11 |
-| Natural first frog loop → next loop | 59 | 27 |
-| First two hallway loop entries, room 2/camera 5 | 105 | 55 |
-| Last hallway loop → first stair-view loop, camera 5 → 3 | 141 | 97 |
+| Natural first frog mask construction | 32 | 11 |
+| Natural first frog loop → next loop | 54 | 27 |
+| Room-2 transition → first hallway loop | 275 | 274 |
+| First two hallway loop entries, room 2/camera 5 | 104 | 55 |
+| Last hallway loop → first stair-view loop, camera 5 → 3 | 140 | 97 |
 
 The model replay pairs geometry, transforms and mask inputs, not every other
 actor or timing state. It now explicitly captures the first cold frog loop;
@@ -76,6 +77,38 @@ takes 373 + 104 = 477 ticks (7.95 seconds) across that complete entry, and
 3,736 music events and 920-byte minimum original stack margin pass. Music's
 maximum delivery delay is one logical tick in this run; an earlier two-tick
 outlier remains documented in [sound-driver.md](sound-driver.md).
+
+The room-entry attribution run (`tmp/intro-room-entry-profile-full.log`, exit 0)
+starts at the first profiled trap in room 2/camera 4 and stops at the first
+camera-5 loop, including the intervening camera-0 loop. It records 152 Open,
+152 Close and 460 Read calls. Their inclusive totals are respectively
+3,498,103, 2,684,489 and 5,685,388 beam units, about 36% combined of the
+408-field interval. Drawing-service time is only 306,781 units. This identifies
+file traffic as a substantial transition cost; profiler overhead means its
+490 elapsed ticks are not a replacement for the unprofiled timing above.
+The retained per-open cache fetches up to 64 KiB on a tiny header miss and
+discards those bytes on close. A 4 KiB read-ahead/direct-payload trial did not
+improve room entry: 437 ticks to the first camera-5 loop versus 373 retained.
+The trial was deliberately stopped after that measurement, not accepted as a
+complete route (`tmp/intro-read-ahead-route-full.log`, exit 1). Its two cache
+changes are reverted. The OS-window return path translates all 128 raw key
+codes to release them on every operation. The bulk-release trial computes the
+translated-key mask once, then applies it to the 16-byte Mac map, preserving
+unmapped bits. Its 256-pattern native comparison matches individual releases.
+`tmp/intro-key-release-window-full.log` (exit 0) passes the original 21-window
+fixture, exact 1 MiB data, save/error cases, held-key/alias checks, Paula progress
+and bitplane snapshots. Total entry/exit costs are 11,475/25,140 beam units,
+about 2.1/4.7 scanlines per window. The historical fixture's approximately
+3/110 lines used an older build/setup, so it is not a matched speedup ratio.
+The unprofiled run (`tmp/intro-key-release-route-full.log`) reduces room entry
+from 373 to 275 ticks, versus 274 on Mac. Including the first hallway loop is
+379 versus 329 ticks (6.32 versus 5.48 seconds). The table above uses this run
+for frog/hallway/stair observations. All nine transitions, natural completion,
+3,736 music events and the 920-byte minimum original stack margin are present.
+The observer exits 1 because the known music timing outlier recurs: two ticks,
+with a busy channel-ownership field at tick 9550 and late delivery at 9552.
+This establishes the deferred field's source; it is not a complete audio pass.
+The key-reset change is retained on its exact input tests and transition gain.
 
 The measured hallway-to-stairs span is 2.35 seconds versus 1.62 on Mac; initial
 camera-5 loop preparation is 1.75 versus 0.92 seconds. The owner's earlier recording

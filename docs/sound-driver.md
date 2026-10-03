@@ -385,6 +385,13 @@ exclusion, but none produces a greater note delay in this run. The earlier
 two-tick outlier is not reproduced or explained by this result. Fresh listening
 acceptance and sub-field interrupt-duration measurement remain open.
 
+The subsequent bulk key-release run (`tmp/intro-key-release-route-full.log`)
+reproduces and attributes that outlier: a channel-ownership exclusion at tick
+9550 precedes maximum lateness two at 9552, during sound-effect activity. All
+3,736 events and the natural route complete, but the one-tick music gate fails
+(exit 1). This is a deferred VBI at an effect boundary, rather than a long
+rendering-safe-point catch-up. Its audible impact and remedy remain open.
+
 Startup attribution before the span-copy conversion change is recorded in
 `tmp/music-vbi-cost-full.log` (exit 0, `INTROSKIP=1 SONGCOST=1`, same 68030,
 audio on, no warp). The blank-frame interval is 519 ticks; PCM conversion
