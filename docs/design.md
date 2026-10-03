@@ -530,6 +530,10 @@ Native trap probes, host fragmentation tests and paired heap captures verify it:
   the Mac. Keep a fast path for the unscaled 8-bit→8-bit srcCopy with identical
   colour tables and 4-aligned rectangles, verified against the general path
   (`VERIFY=1`).
+  The masked 8-bit path validates the complete region before intersecting its
+  bounding rectangle in destination coordinates. Empty intersections write
+  nothing; surviving rows still use the exact region spans. Disjoint malformed
+  masks are rejected rather than bypassing validation.
 - **Regions.** Replace the rectangle-only regions with real QuickDraw regions
   (task M2.8): `NewRgn`, `OpenRgn`/`CloseRgn`, `RectRgn`, `CopyRgn`, `SetEmptyRgn`,
   `InsetRgn`, `DiffRgn`, `XorRgn`, `MapRgn`, `EmptyRgn`, `PaintRgn`, and clipping by

@@ -51,6 +51,24 @@ int main(int argc,char** argv) {
         assert(!CopyBits8::copy(src.data(),src.size(),44,sm.data(),dst.data(),dst.size(),56,dm.data(),r.data(),r.data(),dm.data(),vis.data(),clip.data(),bounds,nullptr,mask.data(),mask.size()));
         assert(dst==initial);mask.back()=255;
     }
+    // The same irregular mask against rectangles on each side, inside it and
+    // crossing its edges. Expected membership is independent of region decoding.
+    for(int t=-6;t<=12;t+=3)for(int l=-8;l<=16;l+=3) {
+        auto r=box(t,l,t+5,l+7),dst=initial,expected=initial;uint8_t bounds[8];
+        for(int y=0;y<8;++y)for(int x=-2;x<12;++x)
+            if(y>=t && y<t+5 && x>=l && x<l+7 && (y>=4 || x<3 || x>=8))
+                expected[(y+10)*56+x+12]=src[(y+5)*44+x+7];
+        assert(CopyBits8::copy(src.data(),src.size(),44,sm.data(),dst.data(),dst.size(),56,dm.data(),r.data(),r.data(),dm.data(),vis.data(),clip.data(),bounds,nullptr,mask.data(),mask.size()));
+        assert(dst==expected);
+        if(t>=8 || t+5<=0 || l>=12 || l+7<=-2)
+            for(uint8_t v:bounds)assert(v==0);
+    }
+    // An entirely disjoint malformed mask must still fail without writes.
+    {
+        auto r=box(10,20,12,24),dst=initial;uint8_t bounds[8];mask.back()=0;
+        assert(!CopyBits8::copy(src.data(),src.size(),44,sm.data(),dst.data(),dst.size(),56,dm.data(),r.data(),r.data(),dm.data(),vis.data(),clip.data(),bounds,nullptr,mask.data(),mask.size()));
+        assert(dst==initial);mask.back()=255;
+    }
     auto from=box(0,0,10,10),to=box(0,0,11,10);auto actual=initial;uint8_t drawn[8];
     assert(!CopyBits8::copy(src.data(),src.size(),44,sm.data(),actual.data(),actual.size(),56,dm.data(),from.data(),to.data(),dm.data(),vis.data(),clip.data(),drawn));assert(actual==initial);
     assert(!CopyBits8::copy(src.data(),1,44,sm.data(),actual.data(),actual.size(),56,dm.data(),from.data(),from.data(),dm.data(),vis.data(),clip.data(),drawn));assert(actual==initial);

@@ -11,65 +11,33 @@ required.
 
 ## Priority: intro performance before M3
 
-- **P1 Comparable-Mac intro performance.**
-  - Compare matched intro scenes, steady animation and complete transitions on
-    the fixed-clock 68030 Amiga and original Mac IIx at 15.6672 MHz. Record
-    remaining machine/timing-model differences and use
-    emulated time, not host wall time, for performance claims.
-  - Identify and remove dominant algorithmic or compatibility costs. Preserve
-    original instructions, game decisions, sample content and timing; do not
-    substitute a faster emulator or focus on minor optimizations.
-  - Address the remaining late reverse-corridor gap of approximately
-    1.8–2.1× after complete-scene presentation, bulk pixel copies, direct
-    sound queries and exact changed-block conversion suppression. Check
-    the reference machines' memory timing and the remaining substantial
-    compatibility costs. The post-query CIA corridor profile attributes 20%
-    inclusively to original Mac VBL callbacks (13.4% in their compatibility
-    traps), 12.5% to presentation and 11% to CopyBits. These categories overlap
-    and include observer overhead. Natural corridor person draws have a
-    four-tick median on both machines, but full loop medians are 10 versus 20
-    ticks. The paired scene-stage trace localizes the largest persistent
-    difference before scene-renderer entry (2 versus 8 ticks). A focused native
-    trace puts six median ticks at the first GetGWorld return, consistent with
-    deferred presentation; subsequent update stages are mostly zero or one.
-    Remeasure the residual presentation cost after changed-block suppression
-    only if needed to identify substantial remaining work. Foreground masking also
-    costs 16 versus 43 ticks on first expensive use, then about 2 versus 9–11.
-    Compare its actual mask inputs and remove the dominant extra work.
-    Geometry matches exist but exact transforms differ;
-    do not label these identical-pose comparisons.
-    Small service scopes are near observer overhead;
-    avoid further local tuning without evidence of a substantial cost.
-    Use the late visit, not the
-    earlier front-door scene that reuses room 1/camera 2, and the full
-    [matched-scene comparison](intro-comparison.md).
-    Then address
-    remaining car/frog animation and cold scene-preparation costs. Remeasure
-    the whole experience rather than isolated helpers.
-  - Separate first-frame preparation from warmed-up rendering in paired
-    measurements. Matching model geometry alone does not match scene-cache
-    state or other actors. Carry the remaining CPU/memory timing-model limits
-    into comparisons rather than attributing the whole gap to the port.
-  - Bring intro music-delivery jitter from M4.3b forward. Measure actual Paula
-    note delivery against its intended clock during uninterrupted rendering,
-    including static scenes and transitions; logical event timestamps alone
-    do not establish even audible timing.
-    Verify the default CIA scheduler's remaining actual-output behavior.
-    Preserve event/sample fidelity and distinguish DMA arming from actual
-    first-sample output; keep the game/display clocks unchanged.
-    Short-view averages
-    have unequal motion samples; the second toward-corridor passage is 6.6%
-    longer while final hall is shorter. Use residual-cost evidence rather than
-    claiming unchanged rendering performance throughout.
-    Replace the reset-prone CIAB-TOD duration
-    diagnostic before using it for further interrupt-cost claims.
-    Verify actual output/release-tail timing and explain the four-channel
-    stereo/voice-stealing limitations; consistent channel ownership alone
-    does not establish audible fidelity.
-  - Repeat the direct two-machine comparison after substantial fixes: active
-    car/frog and character frame rates, scene inventory, car waypoint progression
-    and complete mansion camera transitions. Explain remaining large gaps from
-    evidence. Do not require the owner to perform or assess the Mac comparison.
+- **P1 Comparable-Mac intro performance — final attribution and fidelity checks.**
+  - Preserve the fixed-clock comparison: 68030 at 15.6672 MHz, Amiga audio on
+    and warp off, unchanged original game instructions and decisions. Use
+    emulated time, not host wall time. Current same-character scene, transition
+    and route results are in [intro-comparison.md](intro-comparison.md).
+  - Resolve the remaining attribution question around first-use foreground
+    masks. The first late reverse-corridor visit is still 2.12 times Mac's frame
+    time; the reverse-to-toward transition is 3.12 versus 1.58 seconds. Compare
+    actual Mac polygon inputs/cold-cache behavior with the native 14-polygon
+    first-use call before deciding whether another substantial fix is warranted.
+    Do not keep tuning row copies or model drawing based on small natural-run
+    differences: most measured scenes now take 1.1–1.9 times Mac's frame time.
+  - Finish actual Paula output/release-tail verification for the default CIA
+    scheduler. Preserve original event/sample fidelity and distinguish DMA
+    arming timestamps from first-sample output. Explain the four-channel
+    stereo/voice-stealing limits. Existing uninterrupted hardware-timing and
+    channel-ownership checks are evidence, but do not prove analog/host output
+    fidelity. Do not use the reset-prone CIAB-TOD diagnostic as interrupt-duration
+    evidence.
+  - Complete the whole-intro acceptance audit against the current build:
+    car/frog/person animation, full mansion camera transitions, scene inventory,
+    car waypoint progression and frame/audio fidelity. Reuse the unchanged Mac
+    reference where it answers the comparison; measure missing evidence directly
+    without asking the owner to perform or assess Mac runs. Explain remaining
+    large gaps and retain CPU/memory timing-model limits. Keep cold preparation
+    distinct from warmed-up rendering and same-view samples distinct from
+    identical-pose measurements.
 
   *Done when* matched scene/transition timings demonstrate roughly comparable
   performance to the reference Mac, long unexplained port stalls are resolved,

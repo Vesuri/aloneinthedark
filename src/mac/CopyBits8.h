@@ -51,6 +51,14 @@ inline bool copy(const uint8_t* src,uint32_t srcBytes,uint16_t srcStride,const u
     }
     RegionRows::Cursor rows;
     if(mask && !rows.begin(mask,maskBytes))return false;
+    // Region bounds are in destination coordinates. Validate the complete
+    // stream first, including empty intersections, then avoid traversing rows
+    // that cannot contain any masked pixels (common for foreground polygons).
+    if(mask)for(unsigned i=0;i<4;++i) {
+        int32_t bound=coord(mask+2,i);
+        limits[i]=i<2 ? (limits[i]>bound ? limits[i] : bound)
+                     : (limits[i]<bound ? limits[i] : bound);
+    }
     bool nonempty=limits[0]<limits[2] && limits[1]<limits[3];
     for(unsigned i=0;i<4;++i) {
         uint16_t v=nonempty?uint16_t(limits[i]):0;drawn[2*i]=uint8_t(v>>8);drawn[2*i+1]=uint8_t(v);

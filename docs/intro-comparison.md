@@ -1,12 +1,15 @@
 # 68030 intro comparison — 2026-10-03
 
-The latest controlled Carnby run reaches 2.92 FPS for the car, 3.24/2.95 for
-the near/far frog and 2.54/3.19 for the two late reverse-corridor visits.
+The latest controlled Carnby run reaches 2.86 FPS for the car, 3.36/3.35 for
+the near/far frog and 2.76/3.75 for the two late reverse-corridor visits.
 The same-character Mac reference reaches 4.36, 4.73/3.80 and 5.84/6.29 FPS
-respectively. The earlier fivefold corridor gap has narrowed to about 2.0–2.3×;
-some indoor views still exceed twice the Mac's frame time. Mansion entry is
-8.95 seconds versus 8.05 on Mac. Overall parity is not established. The
-sections below retain the baseline, methods and successive measured changes.
+respectively. Most measured scene frame times are now 1.1–1.9 times Mac;
+the first late corridor visit remains 2.12 times. Mansion entry is 8.82 seconds
+versus 8.05 on Mac. The reverse-to-toward corridor transition remains 3.12
+versus 1.58 seconds. No current camera transition reproduces a 15-second gap.
+The sections below distinguish the current comparison from the initial baseline
+and explain the remaining limits. Overall acceptance, including the remaining
+actual-audio-output checks, is still open.
 
 ## Setup and measurement
 
@@ -26,7 +29,7 @@ timing classification therefore does not support blaming the residual gap on
 a 16-bit fast-RAM bottleneck. Retain the fixed reference configuration; do not
 substitute a faster memory setup on that unproven assumption.
 
-The ordinary native build is commit `8cd8f60` with `INTROSKIP=1`, without
+The initial baseline native build is commit `8cd8f60` with `INTROSKIP=1`, without
 profiling or fixed randomness. The original Mac game is unmodified. Read-only
 observers capture original Dark+$5658 loop entries, indexed viewport pixels,
 palette and actor records. Normal input gets to the menu; no debugger writes
@@ -35,7 +38,7 @@ menu's unattended demo, excluding the book.
 
 The first Mac run selected Carnby and the Amiga selected Emily. A second Mac
 run, with a one-frame change in normal launch-input timing, selected Emily
-naturally. **Tables below compare Emily with Emily.** All three runs reached
+naturally. **The initial baseline tables compare Emily with Emily.** All three runs reached
 natural completion and all nine original major transition checkpoints. The
 native run also passed all 3,736 music events, maximum delivery lateness one
 logical tick and zero late frame publications. An earlier native run that
@@ -62,7 +65,78 @@ and `amiga/` for Emily. The corresponding Lua/GDB observers and `analyze.py`
 are alongside the captures. Mac Emily has 2,410 loop snapshots; Amiga has
 1,100. Both runners exit zero. Original pixels and data are not committed.
 
-## Active animation
+## Current comparison: same-character Carnby
+
+This is the complete mask-bounds run (`tmp/mask-bounds.log`, exit zero),
+compared with `tmp/route-comparison/mac-loops.log`. Both use the same fixed-clock
+68030 setups above. The native build uses `INTROSKIP=1 FIXEDRNG=1`, default CIA
+music, changed-block conversion and mask-bounds clipping, without broad profiling.
+The entire indoor room/camera sequence matches, including setup-only states;
+visits are aligned from mansion entry so repeated room/camera numbers are not
+confused. Natural actor poses and sample counts differ. Original game instructions
+and movement decisions remain unchanged.
+
+| Moving scene | Mac FPS | Current Amiga FPS | Amiga frame time / Mac |
+| --- | ---: | ---: | ---: |
+| Opening car | 4.36 | 2.86 | 1.52× |
+| Near frog | 4.73 | 3.36 | 1.41× |
+| Distant frog | 3.80 | 3.35 | 1.13× |
+| Entering front doors | 6.02 | 3.77 | 1.60× |
+| Entrance hall, next view | 6.14 | 4.98 | 1.23× |
+| Lower hallway, first view | 8.89 | 6.70 | 1.33× |
+| Lower hallway, stairs visible | 7.30 | 4.17 | 1.75× |
+| Foot of stairs | 6.43 | 3.80 | 1.69× |
+| Ascending stairs | 10.59 | 6.92 | 1.53× |
+| Upper hall, camera 5 | 7.59 | 4.05 | 1.87× |
+| Upper hall, camera 3 | 8.84 | 5.04 | 1.75× |
+| Upper landing | 11.21 | 7.25 | 1.55× |
+| Later corridor, toward camera | 9.31 | 5.91 | 1.58× |
+| Later corridor, reverse, first visit | 5.84 | 2.76 | 2.12× |
+| Later corridor, toward, second visit | 8.45 | 5.05 | 1.67× |
+| Later corridor, reverse, second visit | 6.29 | 3.75 | 1.68× |
+| Final hallway, first view | 7.41 | 3.80 | 1.95× |
+| Final hallway, next view | 10.34 | 5.65 | 1.83× |
+| Final room | 10.98 | 7.31 | 1.50× |
+
+| Complete indoor transition | Mac seconds | Current Amiga seconds |
+| --- | ---: | ---: |
+| Window view → inside front doors | 8.05 | 8.82 |
+| Front doors → next entrance-hall view | 2.05 | 2.82 |
+| Entrance hall → lower hallway | 3.73 | 4.60 |
+| Lower hallway → stairs visible | 1.73 | 2.10 |
+| Stairs visible → foot of stairs | 1.78 | 2.18 |
+| Foot of stairs → ascending view | 1.55 | 1.95 |
+| Ascending view → upper hall | 6.05 | 6.67 |
+| Upper hall camera 5 → camera 3 | 1.78 | 2.53 |
+| Upper hall → landing | 4.45 | 4.63 |
+| Landing → later corridor | 2.92 | 3.98 |
+| Corridor toward camera → reverse | 1.15 | 1.53 |
+| Corridor reverse → toward camera | 1.58 | 3.12 |
+| Corridor toward camera → reverse again | 1.17 | 1.75 |
+| Corridor → final hallway | 1.97 | 2.38 |
+| Final hallway camera change | 1.02 | 1.00 |
+| Final hallway → final room | 1.07 | 0.98 |
+
+The current car trace visits the same script-offset sequence as Mac, including
+all approach/departure waypoints. Its straight approach at word 4 has identical
+sampled endpoints and takes 17.85 seconds versus 12.82 on Mac. Turning still
+produces different geometric trajectories: the early word-20 residence is
+31.17 seconds versus 120.23 on Mac, while word 60 takes 20.30 versus 0.18.
+These are first-to-last sampled spans, not exact instruction durations. They
+support the existing frame-step/waypoint-overshoot explanation and do not show
+an Amiga-only route replacement. Total demo duration remains unsuitable as a
+performance score.
+
+The remaining first-use foreground-mask cost still warrants comparison of
+actual Mac polygon inputs; the row-clipping improvement does not eliminate
+polygon construction. Shared compatibility services and Amiga display-format
+conversion also remain additional work. Do not pursue local tuning merely to
+make every short natural sample faster: upper landing and final-room averages
+are slightly lower than the immediately preceding run, with unequal motion
+samples. The overall scene comparison, rather than total intro duration or one
+helper, is the performance evidence.
+
+## Initial baseline: active animation
 
 | Scene | Mac FPS | Amiga FPS | Amiga time per visible frame / Mac |
 | --- | ---: | ---: | ---: |
@@ -101,7 +175,7 @@ Mac/Amiga active intervals, giving 0.65/0.60 FPS. The longest individual
 intervals are 205/189 ticks. This is a short, irregular scripted passage and
 does not establish a general car-rendering rate.
 
-## Camera transitions
+## Initial baseline: camera transitions
 
 | From → to | Mac seconds | Amiga seconds |
 | --- | ---: | ---: |
@@ -777,3 +851,31 @@ roughly 1.8–2.1 times the Mac frame time. This does not establish improved
 scene-transition latency or resolve the foreground-mask bottleneck. Retain
 the verified change and prioritize that larger residual cost rather than
 further tuning block comparisons.
+
+The subsequent mask-stage run (`tmp/corridor-mask/amiga.log`, natural runner
+exit zero, unchanged changed-block build) brackets 40 complete calls across
+20 corridor steps. Its analysis explicitly excludes 169 later internal stage
+hits outside those bracketed scene-mask calls, after the scene starts changing.
+Within the complete calls, 88 CopyBits intervals total 41 game ticks, 22
+FramePoly intervals total 16 ticks, and 22 InsetRgn intervals total 22 ticks.
+Polygon setup through FramePoly entry totals another 12 ticks. The large first
+Carnby mask call remains 43 ticks and builds 14 polygons; later calls take
+8–10 ticks and each build one polygon. Tick rounding and callback/observer
+cost remain included, so these are measured intervals rather than exclusive
+instruction costs.
+
+Inspection of the earlier 89 saved mask/rectangle pairs finds 48 empty bounding
+intersections and 51 calls with no actual output pixels. Their destination
+rectangles cover 15,049 rows before the mask bounds are considered, versus
+4,265 rows after intersection. CopyBits previously walked the larger range.
+The candidate now validates the region, intersects its destination-coordinate
+bounds, then walks only the remaining rows. Host checks cover disjoint and
+partly clipped irregular masks and malformed-input atomicity. All 89 captured
+geometries also pass against independently decoded full 64,000-pixel expected
+results. The full native run exits zero and passes `tools/check_scene_batches.py`:
+all 1,117 captured buffers match every pixel and palette entry, 1,380 scene
+batches balance, all 1,131 queued frames are displayed, and all 3,736 music
+events complete with zero recorded logical lateness and late publications.
+Evidence is under `tmp/mask-bounds*` and
+`tmp/route-comparison/amiga-mask-bounds`. The current comparison above reports
+the complete measured result; retain this clipping change.
