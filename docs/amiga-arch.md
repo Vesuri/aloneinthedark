@@ -36,20 +36,22 @@ Unimplemented calls or forms still produce named loud stops.
 
 ### Intro performance comparison (2026-10-03)
 
-The [complete same-character 68030 comparison](intro-comparison.md) records
-active animation rates, all camera-transition spans, scene inventory and car
-trajectories. It supersedes any broad performance conclusion from the isolated
-checkpoints below: the later corridor runs at about 1.1–1.3 FPS on Amiga versus
-5.7–6.1 on Mac, while the longest comparable transition spans are 9.05/8.07
-seconds. P1 therefore remains open for substantial indoor rendering work.
+The [complete same-character 68030 comparison](intro-comparison.md) closes
+intro performance before M3. Current Amiga/Mac frame-time ratios are mostly
+1.1–1.9×, with one 2.12× late-corridor visit whose cold preparation cost is
+measured. The car runs at 2.86 versus 4.36 FPS; near/far frog rates are
+3.36/3.35 versus 4.73/3.80 FPS. Mansion entry takes 8.82 versus 8.05 seconds,
+and no current camera transition reproduces the reported 15-second gap.
 
-M2 functional acceptance does not establish acceptable animation or transition
-latency. P1 remains open before M3. The selected `a4000-030-reference` uses a
-68030 at 15.6672 MHz, matching the MAME Mac IIx CPU clock, with 8 MB fast RAM,
-AGA and no JIT. FS-UAE's approximate 68030 cycle timing and the different memory
-systems limit exact hardware equivalence. A controlled data-cache toggle did
-not remove the cold-mask stall; the default configuration remains unchanged.
-Performance claims below use unprofiled game ticks (60 Hz), not host time.
+The selected `a4000-030-reference` uses a 68030 at 15.6672 MHz, matching the
+MAME Mac IIx clock, with 8 MB fast RAM, AGA and no JIT. Music uses CIA timing;
+complete note, sample and ownership checks pass. Recorded output gaps originate
+in FS-UAE's host audio queue and remain an emulator limitation. Different
+memory systems and approximate emulator timings limit hardware equivalence.
+
+The chronological checkpoints below retain intermediate measurements and
+then-open gates; the current comparison and acceptance audit supersede their
+status conclusions. Performance uses emulated ticks, not host elapsed time.
 
 | Checkpoint span | Amiga ticks | Mac ticks |
 | --- | ---: | ---: |

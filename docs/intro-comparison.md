@@ -8,8 +8,11 @@ the first late corridor visit remains 2.12 times. Mansion entry is 8.82 seconds
 versus 8.05 on Mac. The reverse-to-toward corridor transition remains 3.12
 versus 1.58 seconds. No current camera transition reproduces a 15-second gap.
 The sections below distinguish the current comparison from the initial baseline
-and explain the remaining limits. Overall acceptance, including the remaining
-actual-audio-output checks, is still open.
+and explain the remaining limits. The intro-performance goal is complete for
+the fixed-clock 68030 comparison. FS-UAE host-output underruns are a documented
+test-environment limitation, not a requirement to change the port or rebuild
+the emulator. This conclusion does not claim identical hardware timing, full
+Mac polyphony, or completion of gameplay and other milestones.
 
 ## Acceptance audit of the current runtime
 
@@ -32,7 +35,7 @@ captures and 1,411 Amiga loop captures overall).
 | Scenes and car route | Framebuffer inventory, identical indoor sequence, original track-word progression | Established within measured idle-demo path; geometric car turns remain timing-dependent on both systems |
 | Pixel/palette preservation | Independent decode of every captured native display buffer plus paired original drawing contracts | Established for measured path |
 | Music clock and channel policy | Uninterrupted DMA timestamps and complete ownership replay | Established for intro; four-channel voice limits documented |
-| Actual output and note endings | SDL PCM, directly correlated queue starvation, four exposed release gaps, complete ownership lifetimes | Incomplete: output starvation remains; masked tails have structural rather than isolated-waveform evidence |
+| Actual output and note endings | SDL PCM, directly correlated queue starvation, four exposed release gaps, complete ownership lifetimes | Port timing, sample and ownership checks pass; exposed releases agree within 0.7 ms. Host queue starvation is an external limitation; masked tails have structural rather than isolated-waveform evidence |
 
 An isolated emulator rebuild has not been used as acceptance evidence. The
 retained SDL2 branch identifies its core as WinUAE 4.2.1, whereas the installed
@@ -40,12 +43,21 @@ binary reports 4.10.0; the nearby current checkout uses SDL3 and core 6.0.1.
 The local native dependency set also lacks SDL2_ttf development metadata.
 Neither source is an established reproduction of the installed build. Avoid
 silently changing emulator cores or claiming an untested buffer setting fixes
-the issue. Overall completion remains unproven for the audio-output row.
+the issue. These emulator-source limitations do not block port acceptance.
 The installed binary SHA-256 is
 `ffd5c960322f445e72a02bc47c84312dfb8b189ce8327b55e1211d7fa170148d`.
-Local source/build searches did not identify its provenance; an owner question
-for the matching source or build recipe is pending. Further identical playback
-runs cannot validate a remedy that has not been applied.
+Local source/build searches did not identify its provenance. The request for
+its source or build recipe is no longer needed for this goal. PCM shortages
+occur after Paula emulation, in the emulator-to-host output queue. They do not
+show a port-side note-clock defect; why the host queue starves remains unknown.
+No emulator buffering fix is claimed.
+
+The historical investigation below records intermediate failures, open gates
+and experiments as they stood at the time. This current audit supersedes those
+intermediate status statements. The accepted changes address repeated frame
+presentation, pixel copying/conversion and sound-service overhead; the
+remaining cold-mask cost is measured and bounded. No further micro-optimization
+is required to meet the owner’s roughly twofold, explained-gap tolerance.
 
 ## Setup and measurement
 

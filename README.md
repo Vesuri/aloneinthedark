@@ -28,12 +28,13 @@ in both standards. Music passes all 3,736 timed events, sample bytes, effect
 priority and cleanup. The full host suite and six baseline native regression
 cases pass. Original game instructions and timers remain intact.
 
-Intro performance is the current priority before M3, using a fixed-clock 68030
-and the original Mac IIx as reference. Complete-scene presentation, bulk pixel
-copies and direct sound queries have reduced the late corridor's roughly
-fivefold gap to about 2.0–2.3×. Some indoor views still exceed twice the Mac's
-frame time. Music uses a dedicated CIA timer; uninterrupted note-onset jitter
-measures 0.86 ms versus 17.6 ms with the former VBI scheduler.
+The fixed-clock 68030 intro-performance goal is complete. Compared with the
+same-clock Mac IIx, most scene frame times are 1.1–1.9×; the worst measured
+visit is 2.12× with explained cold preparation cost. Mansion entry takes
+8.82 seconds versus 8.05 on Mac, and no current camera transition takes
+15 seconds. Music uses a dedicated CIA timer with measured onset phase range
+below 1 ms. Occasional captured audio gaps are FS-UAE host-buffer underruns;
+four-channel voice stealing remains a documented Paula limitation.
 See the current [scene timings and comparison limits](docs/intro-comparison.md).
 
 Gameplay, save/load and broader music support remain later milestones. The

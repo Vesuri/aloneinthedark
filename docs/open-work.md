@@ -9,36 +9,6 @@ design.md §5.
 Each item gives the **goal**, then the scope, then *done when*: the evidence
 required.
 
-## Priority: intro performance before M3
-
-- **P1 Comparable-Mac intro performance — final fidelity and acceptance checks.**
-  - Preserve the fixed-clock comparison: 68030 at 15.6672 MHz, Amiga audio on
-    and warp off, unchanged original game instructions and decisions. Use
-    emulated time, not host wall time. Current same-character scene, transition
-    and route results are in [intro-comparison.md](intro-comparison.md).
-  - Resolve installed FS-UAE output-buffer starvation, directly established by
-    `tmp/audio-output/trace-core.log` and its paired PCM capture. Obtain the
-    installed SDL2/WinUAE 4.10.0 build's source or build recipe, then test a
-    buffering remedy in an isolated emulator build. Available local sources
-    use different cores; no supported buffer-target option is established.
-    The build-provenance question is pending with the owner. Do not alter game
-    timing to compensate for this host-output defect.
-  - Verify the remedy with a complete audio-on, non-warp run without verbose
-    tracing, comparing PCM gaps and onset/release timing with the retained
-    captures. Keep the documented four-channel voice-stealing and stereo
-    limitations distinct from buffer starvation. Reuse completed native
-    clock, ownership, sample and exposed-release evidence where unchanged.
-  - Close the audio-output row of the whole-intro acceptance audit in
-    [intro-comparison.md](intro-comparison.md), preserving its existing visual,
-    route, transition and timing-model evidence. Recheck affected comparisons
-    if the emulator core or runtime changes; a different core cannot silently
-    replace the fixed reference.
-
-  *Done when* matched scene/transition timings demonstrate roughly comparable
-  performance to the reference Mac, long unexplained port stalls are resolved,
-  and original frame/audio/route checks plus the measured two-machine scene,
-  route and animation comparison substantiate the result.
-
 ## Pending verification (owner-deferred)
 
 - **M1.7b2 Rendered-picture acceptance for system windows — pending.**
@@ -141,24 +111,6 @@ required.
   *Done when* each reached variant has paired original/native playback events,
   exact loop/sample ownership checks and verified stop/replacement cleanup;
   unsupported variants retain named stops.
-
-- **M4.3b Investigate music jitter and grainy playback.**
-  - The owner reports uneven spacing between music ticks in uninterrupted
-    fixed-clock 68030 playback with audio on and warp off (2026-10-03), even
-    though average tempo sounds correct. Intro timing is a P1 prerequisite.
-    Distinguish this from the earlier grain/buffering report under diagnostics.
-  - Compare an uninterrupted, non-warp run with the diagnostic run. Inspect
-    emulator audio timing and native Paula sample/loop/note timing before
-    attributing the symptom to host speed or normal 8-bit quantization.
-    Verify actual note-start spacing in uninterrupted playback after the
-    deferred-delivery fix; passing tick-level delivery traces and the measured
-    interrupt duration do not establish sub-field hardware timing or audible
-    quality.
-
-  *Done when* a repeatable listening/capture test establishes the cause,
-  any playback defect is fixed with regression evidence, and remaining
-  sample-fidelity limitations are explained. Do not infer audio quality from
-  successful note-event tests alone.
 
 ## M5 Performance
 
