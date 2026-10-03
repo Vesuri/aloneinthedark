@@ -7127,6 +7127,8 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     bool unsupportedGraphics=false;
     bool sizeSelection=false;
     uint16_t fileTrap=0;
+    const uint32_t querySelector=trap==0xa0f8 ? read32(userStack+4) : 0xffffffffUL;
+    const bool directDriverQuery=querySelector==4 || querySelector==15 || querySelector==20;
 #ifdef AITD_PROBE
 #ifdef AITD_PROFILE_FRAME
     extern volatile uint16_t g_profileState;
@@ -7280,7 +7282,9 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         regs[0]=(uint32_t)aitdFileWriteBackendProbe();return 1;
     }
 #endif
-    if(isUserService(trap) && !inUserService)
+    // These queries only inspect owned state. Keep allocation, effect changes
+    // and every other driver operation on the existing user-mode path.
+    if(isUserService(trap) && !inUserService && !directDriverQuery)
         return deferUserService(trap,builtin,frame,userStack);
 #ifdef AITD_SERVICE_PROBE
     if(inUserService && ((trap&0xfeff)==0xa0fc || trap==0xabfb)) {
@@ -7361,6 +7365,13 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
             else driverStop="SELECTOR";
             if(!driverStop) {
                 ++g_soundDriverCalls;regs[0]=selector==15 ? clockResult : driverResult;regs[1]=selector==0 ? 12 : selector==24 ? 1 : (selector==22 || selector==17 || selector==18 || selector==20 || selector==13 || selector==15 || selector==4 || selector==5 || selector==7) ? scratch : 0;
+                if(!inUserService && directDriverQuery) {
+                    uint16_t ccr=read16(frame);
+                    if(selector==15)ccr=(ccr&0xffe0)|SoundDriver::clockCCR(clockResult);
+                    else if(selector==4)ccr=(ccr&0xffe0)|SoundDriver::songStatusCCR(driverResult);
+                    else ccr=(ccr&0xfff0)|(driverResult ? ((int16_t)driverResult<0 ? 8 : 0) : 4);
+                    write16(frame,ccr);
+                }
                 return 1; // C caller owns arguments; stub executes RTS.
             }
         }

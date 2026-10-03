@@ -5,7 +5,7 @@ set $d20_n=0
 set $d20_active=0
 set $d20_finished=0
 while $d20_finished==0
- tbreak dispatchMacTrap if (trap==0xa891 && $line_seen==0) || (trap==0xa0f8 && inUserService && *(unsigned long*)(userStack+4)==20) || (trap==0xa8a2 && *(unsigned long*)(frame+2)==(unsigned long)s_segments[5].begin+0x1e44)
+ tbreak dispatchMacTrap if (trap==0xa891 && $line_seen==0) || (trap==0xa0f8 && *(unsigned long*)(userStack+4)==20) || (trap==0xa8a2 && *(unsigned long*)(frame+2)==(unsigned long)s_segments[5].begin+0x1e44)
  continue
  if g_stageBState==3
   echo FAIL driver20 unexpected drawing dependency\n

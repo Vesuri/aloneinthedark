@@ -1,10 +1,12 @@
 # 68030 intro comparison — 2026-10-03
 
-The current port is not yet comparable throughout the intro. Outdoor animation
-is about 1.6–1.8 times slower than the reference. Several indoor views are
-2–3.5 times slower, and the later corridor reverse view is approximately five
-times slower. Camera-transition gaps are much closer: the longest measured
-boundary span is 9.05 seconds on Amiga versus 8.07 seconds on Mac.
+The latest controlled Carnby run reaches 2.92 FPS for the car, 3.24/2.95 for
+the near/far frog and 2.54/3.19 for the two late reverse-corridor visits.
+The same-character Mac reference reaches 4.36, 4.73/3.80 and 5.84/6.29 FPS
+respectively. The earlier fivefold corridor gap has narrowed to about 2.0–2.3×;
+some indoor views still exceed twice the Mac's frame time. Mansion entry is
+8.95 seconds versus 8.05 on Mac. Overall parity is not established. The
+sections below retain the baseline, methods and successive measured changes.
 
 ## Setup and measurement
 
@@ -498,3 +500,66 @@ for verified non-OS queries, while preserving return registers/CCR and keeping
 allocation, sample mutation and OS calls on their existing safe path. The
 original callback itself maintains audio/effect state and invokes game hooks;
 removing it is not a behavior-preserving optimization.
+
+The direct-query candidate keeps selectors 4 (song status), 15 (clock) and
+20 (effect status) in the normal trap handler, while other driver operations
+retain user-mode deferral. Selector-specific CCR handling preserves the
+measured clock and song-status flags; the assembly return skips its generic
+word-sized status calculation for the private driver trap.
+
+`driver-query-clock.log` passes the original-matched seven full-width clock
+boundary cases and X/N/Z/V/C checks. `driver-query-live.log` completes with
+the unchanged game's clock and active-song callers preserving stack/registers
+and returning the expected D0/D1/CCR; the clock check brackets driver state
+before callback delivery. Two earlier observer attempts are rejected: one
+armed a breakpoint before Core residency, and another still required the old
+deferred path. They provide no candidate acceptance evidence.
+
+`driver-query-effect.log` completes 239 observed direct status queries: 238
+playing and one finished, with preserved caller registers and complete
+effect/DMA/sample cleanup. `check_driver20.py` passes against the original
+Mac reference. The native start-effect call remains deferred. Full published
+buffer checks and matched-scene speed measurements are still pending in the
+`amiga-fixed-query` run; ABI success alone does not justify adoption.
+
+That run now completes naturally (exit zero): all 1,034 captured buffers pass
+independent pixel/palette checks, 1,272 scene batches balance, all 1,048 queued
+frames are presented, and all 3,736 music events arrive within one VBI-clock
+tick. The indoor visit order matches the bulk-copy baseline after aligning
+the approach: the new run has three fewer repeated outdoor visits, which
+must not be mistaken for missing indoor scenes or a total-duration speedup.
+
+| Scene | Bulk-copy baseline FPS | Direct-query FPS |
+|---|---:|---:|
+| Opening car | 2.85 | 2.92 |
+| Near frog | 2.94 | 3.24 |
+| Far frog | 2.62 | 2.95 |
+| Approach | 7.53 | 7.92 |
+| Window | 4.48 | 4.64 |
+| Front doors | 2.96 | 3.76 |
+| Next foyer | 3.83 | 5.51 |
+| Lower hall | 5.91 | 6.20 |
+| Stairs visible | 3.41 | 3.53 |
+| Foot of stairs | 2.91 | 2.88 |
+| Ascending stairs | 6.52 | 6.58 |
+| Upper hall, camera 5 | 3.17 | 3.46 |
+| Upper hall, camera 3 | 3.86 | 4.24 |
+| Landing | 7.02 | 7.04 |
+| Late corridor toward | 4.83 | 4.72 |
+| Late corridor reverse | 2.26 | 2.54 |
+| Late corridor toward again | 4.21 | 4.46 |
+| Late corridor reverse again | 3.11 | 3.19 |
+| Final hall | 2.95 | 4.02 |
+| Next view | 5.04 | 5.34 |
+| Final room | 7.13 | 7.22 |
+
+Active-motion samples differ, so large percentage gains in short views should
+not be read as identical-pose speedups. Median active steps in upper hall
+camera 3 fall 16→14 ticks; reverse-corridor medians fall 21→20 and 20→19.
+Complete transition spans improve slightly: mansion entry 9.07→8.95 seconds,
+stairs→upper hall 6.78→6.73 and late reverse→toward 3.32→3.25. Foot-of-stairs
+and late-toward averages fall slightly, without a median-step regression.
+The overall measured gain and full-frame/ABI checks support keeping direct
+queries. Move on to the residual performance gap rather than tuning this
+helper further. This run uses the default VBI music scheduler; it does not
+validate the combination with the opt-in CIA scheduler.

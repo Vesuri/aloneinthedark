@@ -28,9 +28,9 @@ set $d15_a5=$a5
 set $d15_a6=$a6
 # The return trampoline may run queued original VBL callbacks. Bracket the
 # query dispatcher itself so song progression cannot masquerade as a mutation.
-tbreak dispatchMacTrap if trap==0xa0f8 && inUserService && *(unsigned long*)(userStack+4)==15
+tbreak dispatchMacTrap if trap==0xa0f8 && !inUserService && *(unsigned long*)(userStack+4)==15
 continue
-if trap!=0xa0f8 || !inUserService || *(unsigned long*)(userStack+4)!=15
+if trap!=0xa0f8 || inUserService || *(unsigned long*)(userStack+4)!=15
  echo FAIL driver15 query boundary\n
  detach
  quit 1

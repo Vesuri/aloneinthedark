@@ -20,13 +20,13 @@ required.
     original instructions, game decisions, sample content and timing; do not
     substitute a faster emulator or focus on minor optimizations.
   - Address the remaining late reverse-corridor gap of approximately
-    2.0–2.6× after complete-scene presentation and bulk pixel copies. Check
+    2.0–2.3× after complete-scene presentation, bulk pixel copies and direct
+    sound queries. Check
     the reference machines' memory timing and the remaining substantial
     compatibility costs; original Mac VBL callbacks occupy about 17% of
-    the lighter corridor profile. Investigate the extra user-mode dispatch
-    for read-only native sound-driver queries; preserve their complete ABI
-    and OS safety. The expanded profile puts 64% of callback time inside
-    compatibility traps; small service scopes are near observer overhead.
+    the pre-query lighter corridor profile. Do not reuse that percentage as
+    a post-query attribution. Small service scopes are near observer overhead;
+    avoid further local tuning without evidence of a substantial cost.
     Use the late visit, not the
     earlier front-door scene that reuses room 1/camera 2, and the full
     [matched-scene comparison](intro-comparison.md).
@@ -47,6 +47,7 @@ required.
     fidelity and distinguish DMA arming from actual first-sample output.
     Validate the opt-in `CIAMUSIC=1` candidate's remaining audio behavior
     before adoption; keep the game/display clocks unchanged.
+    Validate CIA scheduling together with the accepted direct-query path.
     Replace the reset-prone CIAB-TOD duration
     diagnostic before using it for further interrupt-cost claims.
     Resolve the changed voice allocation: the CIA capture preserves all note

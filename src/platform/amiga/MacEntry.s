@@ -94,6 +94,9 @@ aitd_line_a_handler:
 	move.l a0,usp
 	btst #11,d7
 	bne.s 3f
+	| Direct sound queries publish their measured selector-specific CCR.
+	cmpi.w #0xa0f8,d7
+	beq.s 3f
 	| OS return: TST.W D0 semantics, retaining X and all saved SR high bits.
 	andi.w #0xfff0,60(sp)
 	tst.w 2(sp)	| Low word of saved D0, not the dispatcher cleanup result.
