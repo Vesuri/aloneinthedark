@@ -10,11 +10,25 @@ aitd_song_vbi:
 	jsr aitdSongInterrupt
 	move.l (sp)+,sp
 	rts
+| Ownership release can run in user or supervisor mode. Keep its stack
+| separate from both the caller's small stack and the VBI music stack.
+	.globl aitd_song_deferred
+aitd_song_deferred:
+	move.l sp,a0
+	lea aitd_song_deferred_stack_end,sp
+	move.l a0,-(sp)
+	jsr aitdSongDeferred
+	move.l (sp)+,sp
+	rts
 	.bss
 	.balign 4
 aitd_song_stack:
 	.space 8192
 aitd_song_stack_end:
+	.balign 4
+aitd_song_deferred_stack:
+	.space 8192
+aitd_song_deferred_stack_end:
 	.text
 	.even
 	.globl aitd_call_mac_code

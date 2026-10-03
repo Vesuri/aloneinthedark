@@ -149,6 +149,15 @@ from 104 to 99. These small gains do not justify continued heap-level tuning
 for P1. A single passing music run does not resolve the previously reproduced
 effect-boundary deferral; that remains a separate correctness/timing issue.
 
+The subsequent deferred-music fix services excluded VBI updates when outer
+audio ownership is released. Its normal route (`tmp/music-deferred-route-full.log`,
+exit 0) completes nine transitions, 3,736 events and 1,046 frames with maximum
+music lateness one tick despite seven excluded fields. No late publications
+occur; minimum observed game-stack margin remains 920 bytes. The first hallway
+loop is 105 ticks, effectively unchanged from 104. See
+[sound-driver.md](sound-driver.md) for the forced nested-ownership fixture and
+remaining listening/sub-field timing acceptance.
+
 The measured hallway-to-stairs span is 2.35 seconds versus 1.62 on Mac; initial
 camera-5 loop preparation is 1.75 versus 0.92 seconds. The owner's earlier recording
 showed a nearly unchanged 14.7-second interval at 334.2–348.9 seconds before

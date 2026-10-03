@@ -353,6 +353,11 @@ variants. It uses only the requested song resources, already detached and
 locked by the song loader. The interrupt performs no allocation, conversion,
 resource access or original-code callback. Main-thread channel ownership changes
 exclude music briefly; stop/release disables playback before freeing any data.
+If VBI encounters ownership exclusion, it records a pending update. The outer
+ownership release services it immediately on a separate 8 KiB stack, rather
+than waiting another field. VBI may interrupt this completion safely; both
+update paths hold ownership across the complete decoder operation so nested
+voice guards cannot re-enter it. No original Mac callbacks run on either stack.
 Interrupt errors are reported through the existing named stop at the next
 user-mode boundary.
 
@@ -390,7 +395,20 @@ reproduces and attributes that outlier: a channel-ownership exclusion at tick
 9550 precedes maximum lateness two at 9552, during sound-effect activity. All
 3,736 events and the natural route complete, but the one-tick music gate fails
 (exit 1). This is a deferred VBI at an effect boundary, rather than a long
-rendering-safe-point catch-up. Its audible impact and remedy remain open.
+rendering-safe-point catch-up. Immediate ownership-release servicing now
+addresses this cause; fresh listening acceptance remains open.
+
+The forced-deferral fixture (`tmp/music-deferred-forced-song-full.log`, exit 0)
+holds nested ownership across a VBI, verifies that the inner release cannot
+advance music, then requires the outer release to service that tick before any
+further service call. The full-song checker with `--interrupt` passes all 3,736
+events, 25 PCM variants, effect priority and cleanup, with maximum lateness one
+tick. The normal intro (`tmp/music-deferred-route-full.log`, exit 0) completes
+all nine transitions and 3,736 events at tick 20,613. Seven fields encounter
+ownership exclusion; maximum lateness remains one tick. It presents 1,046
+frames with no late publications and retains the 920-byte minimum observed
+game-stack margin. Sub-field interrupt-duration measurement and owner listening
+remain separate acceptance requirements.
 
 Startup attribution before the span-copy conversion change is recorded in
 `tmp/music-vbi-cost-full.log` (exit 0, `INTROSKIP=1 SONGCOST=1`, same 68030,

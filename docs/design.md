@@ -636,6 +636,9 @@ on a 68020/030.
     publication on a private interrupt stack. Resource access, PCM preparation
     and allocation remain in user mode. Original Mac VBL callbacks still run
     at safe user-mode points; they are not the native music scheduler.
+    When an effect briefly excludes the sequencer, the outer ownership release
+    completes the pending VBI update on a separate private stack. Both paths
+    exclude decoder re-entry; this avoids waiting another video field.
 - **Voices and effects.** Four channels, allocated by priority: sound effects
   (the `snd `/`LISTSAMP` samples the game requests through the driver) take a
   channel, and music takes the rest. Voice stealing drops the oldest or quietest

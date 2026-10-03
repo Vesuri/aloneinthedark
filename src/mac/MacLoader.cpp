@@ -144,11 +144,16 @@ NativeSong g_song;
 // Main-thread channel mutations exclude the native music ISR. Preparation and
 // resource access happen before entering these short ownership sections.
 static volatile uint16_t s_nativeAudioBusy=0;
+static volatile uint16_t s_nativeSongPending=0;
 static const char* volatile s_songInterruptError=0;
+extern "C" void aitd_song_deferred();
 class NativeAudioGuard {
 public:
     NativeAudioGuard() { ++s_nativeAudioBusy; __asm__ volatile("" ::: "memory"); }
-    ~NativeAudioGuard() { __asm__ volatile("" ::: "memory"); --s_nativeAudioBusy; }
+    ~NativeAudioGuard() {
+        __asm__ volatile("" ::: "memory");
+        if(--s_nativeAudioBusy==0 && s_nativeSongPending)aitd_song_deferred();
+    }
 };
 #ifdef AITD_SONG_COST_PROBE
 // Diagnostic only: elapsed game ticks in note preparation and song catch-up.
@@ -1765,15 +1770,37 @@ static const char* advanceNativeSong()
     return 0;
 }
 
-// Called only from the VBI wrapper on a private interrupt stack.
+// Both entry points own the channel state for the complete update. Nested
+// voice guards must not dispatch another update while the decoder is active.
+static void advanceOwnedNativeSong()
+{
+    const char* error=advanceNativeSong();
+    if(error) {s_songInterruptError=error;g_song.playing=0;}
+}
+// Called only from the VBI wrapper on its private interrupt stack.
 extern "C" void aitdSongInterrupt()
 {
     if(!g_song.playing || s_songInterruptError)return;
     if(s_nativeAudioBusy) {
+        s_nativeSongPending=1;
         ++g_song.busyFields;g_song.lastBusyTick=g_macTicks;return;
     }
-    const char* error=advanceNativeSong();
-    if(error) {s_songInterruptError=error;g_song.playing=0;}
+    ++s_nativeAudioBusy;s_nativeSongPending=0;
+    advanceOwnedNativeSong();
+    --s_nativeAudioBusy;
+}
+// Finish a VBI request as soon as the outer ownership section releases it.
+// A separate stack allows VBI to interrupt this work without overwriting it.
+extern "C" void aitdSongDeferred()
+{
+    if(s_nativeAudioBusy)return;
+    ++s_nativeAudioBusy;
+    do {
+        s_nativeSongPending=0;
+        __asm__ volatile("" ::: "memory");
+        if(g_song.playing && !s_songInterruptError)advanceOwnedNativeSong();
+    } while(s_nativeSongPending && g_song.playing && !s_songInterruptError);
+    --s_nativeAudioBusy;
 }
 static const char* serviceNativeSong()
 {
@@ -1797,6 +1824,20 @@ static const char* runNativeSongProbe()
     g_songProbeIRQTicks=g_macTicks-began;
     g_songProbeIRQEvents=g_song.events-beforeEvents;
     if(!g_songProbeIRQEvents)return "SONG INTERRUPT PROGRESS";
+    // Force a VBI while ownership is nested. The inner release must leave it
+    // pending; the outer release must catch up before any further service call.
+    uint32_t deferredTick;
+    {
+        NativeAudioGuard outer;
+        uint32_t busyFields=g_song.busyFields;
+        {
+            NativeAudioGuard inner;
+            while(g_song.busyFields==busyFields) {__asm__ volatile("nop" ::: "memory");}
+            deferredTick=g_macTicks;
+        }
+        if(!s_nativeSongPending || g_song.lastTick>=deferredTick)return "SONG NESTED OWNERSHIP";
+    }
+    if(s_nativeSongPending || g_song.lastTick<deferredTick)return "SONG DEFERRED RELEASE";
     while(true) {
         if(g_macTicks-began>18000)return "SONG PROBE TIMEOUT";
         serviceNativeEffects();
