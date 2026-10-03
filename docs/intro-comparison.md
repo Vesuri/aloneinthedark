@@ -127,9 +127,9 @@ support the existing frame-step/waypoint-overshoot explanation and do not show
 an Amiga-only route replacement. Total demo duration remains unsuitable as a
 performance score.
 
-The remaining first-use foreground-mask cost still warrants comparison of
-actual Mac polygon inputs; the row-clipping improvement does not eliminate
-polygon construction. Shared compatibility services and Amiga display-format
+Matched polygon captures below attribute the remaining first-use mask gap
+to processing the same geometry, rather than different scene inputs. The
+row-clipping improvement does not eliminate polygon construction. Shared compatibility services and Amiga display-format
 conversion also remain additional work. Do not pursue local tuning merely to
 make every short natural sample faster: upper landing and final-room averages
 are slightly lower than the immediately preceding run, with unequal motion
@@ -879,3 +879,37 @@ events complete with zero recorded logical lateness and late publications.
 Evidence is under `tmp/mask-bounds*` and
 `tmp/route-comparison/amiga-mask-bounds`. The current comparison above reports
 the complete measured result; retain this clipping change.
+
+
+The paired cold-mask comparison now passes on the original Mac as well
+(`tmp/corridor-mask/mac.log`, runner exit zero). Reproduce with
+`tools/mac_corridor_mask.lua` and `amiga/corridor_mask.gdb`, then run
+`tools/check_corridor_masks.py tmp/corridor-mask --mac-status 0 --amiga-status 0`.
+The saved native trace predates the mask-bounds fix; the tracked native observer
+now limits internal-stage reporting to bracketed scene-mask calls. The checker
+explicitly excludes the saved trace's 169 later unbracketed stages.
+
+All 16 unique polygon inputs match exactly, and every expanded output region
+is byte-for-byte identical across the two machines. The expensive cold call
+builds the same ordered set of 14 polygons on both machines. This strengthens
+the earlier same-view comparison: its construction inputs and outputs really
+match even though the moving actor poses do not.
+
+| Matched cold call component, game ticks | Mac | Amiga before mask-bounds clipping |
+| --- | ---: | ---: |
+| Polygon setup through FramePoly entry | 1 | 8 |
+| FramePoly conversion | 1 | 9 |
+| CloseRgn | 3 | 1 |
+| InsetRgn expansion | 11 | 13 |
+| Expanded region through copy entry | 0 | 2 |
+| Masked CopyBits | 0 | 10 |
+| Entire cold call | 16 | 43 |
+
+These are adjacent checkpoint totals for one matched cold call; they include
+callbacks and observation costs, and zero ticks means below clock resolution.
+The 27-tick excess is primarily setup/conversion and copying, not region
+expansion. The accepted mask-bounds change addresses unnecessary row traversal;
+its complete current-run gains and limits are reported above. The remaining
+first-use polygon work explains a bounded subsecond part of the residual gap,
+not an unexplained multi-second stall. Do not launch another expansion rewrite
+or micro-optimize warmed model drawing on the basis of these results.

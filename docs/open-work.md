@@ -11,18 +11,11 @@ required.
 
 ## Priority: intro performance before M3
 
-- **P1 Comparable-Mac intro performance — final attribution and fidelity checks.**
+- **P1 Comparable-Mac intro performance — final fidelity and acceptance checks.**
   - Preserve the fixed-clock comparison: 68030 at 15.6672 MHz, Amiga audio on
     and warp off, unchanged original game instructions and decisions. Use
     emulated time, not host wall time. Current same-character scene, transition
     and route results are in [intro-comparison.md](intro-comparison.md).
-  - Resolve the remaining attribution question around first-use foreground
-    masks. The first late reverse-corridor visit is still 2.12 times Mac's frame
-    time; the reverse-to-toward transition is 3.12 versus 1.58 seconds. Compare
-    actual Mac polygon inputs/cold-cache behavior with the native 14-polygon
-    first-use call before deciding whether another substantial fix is warranted.
-    Do not keep tuning row copies or model drawing based on small natural-run
-    differences: most measured scenes now take 1.1–1.9 times Mac's frame time.
   - Finish actual Paula output/release-tail verification for the default CIA
     scheduler. Preserve original event/sample fidelity and distinguish DMA
     arming timestamps from first-sample output. Explain the four-channel
