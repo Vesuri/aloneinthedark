@@ -61,8 +61,8 @@ The earlier `m2-mask-spans-profile-full.log` sample attributed 14,256,985 of
 24,022,099 units (59.35%) to four InsetRgn calls. The relevant implementation
 called `RegionRows::row` up to three times for every output row, and each
 call traversed the full region stream. That repeated decoding was a concrete
-CPU bottleneck, not an intentional scene delay. It is evidence for the existing
-M5.2a work, not proof that every recorded pause has the same cause. Attribution
+CPU bottleneck, not an intentional scene delay. It is not proof that every
+recorded pause has the same cause. Attribution
 of complete transitions and a separate steady-rendering profile remain open
 under M5.1.
 
@@ -133,6 +133,35 @@ Host and native heap checks pass. The unprofiled full demo
 (`tmp/intro-master-list-route-full.log`, exit 0) again completes all nine room
 changes; initial hallway setup is 146 ticks (2.433 seconds), and camera 5 → 3
 is 199 ticks (3.317 seconds). Matching Mac values remain 55 and 97 ticks.
+
+Matched-input frame checks after these changes pass all 64,000 viewport pixels,
+256 colours and actual AGA publication for both car and frog
+(`tmp/intro-demo-publish-full.log`, `tmp/intro-{car,frog}-timing-mac.log`, all
+exit 0; `tools/check_demo_model_replay.py`). The final car sample takes 20 native
+ticks versus 11 on Mac from Dark+$3ED4 to the next +$5658. The first close-up
+frog sample takes 88 versus 10. These spans include work after the actor draw;
+the replay pairs model geometry and transform, not every actor or scene-cache
+state. In particular, do not interpret the frog ratio as steady renderer FPS.
+The natural-route first camera-3 loop gap is 99 native ticks versus 27 on Mac.
+
+The scene-triggered frog profile (`tmp/intro-frog-profile-full.log`, exit 0)
+covers 150 PAL fields and one publication. Of 12,015,539 beam units, nested
+region geometry is 642,701 (5.35%), region resizing 64,517 (0.54%), heap
+publication 1,214,578 (10.11%), and CopyBits 435,966 (3.63%). These overlapping,
+instrumented scopes identify remaining costs; they are not shipping timings.
+The overall performance and owner-visible playback acceptance remain open.
+The retained changes also pass the full song regression
+(`tmp/intro-final-song-full.log`, exit 0): 3,736 exact timed events, 25 retained
+PCM variants totalling 458,974 bytes, effect priority, natural completion and
+resource/voice cleanup. This verifies sequencing and bytes, not listening quality.
+
+An earlier native frame observer stopped with pending logical pixels at
+Dark+$5658 (`tmp/intro-perf-frames-native-full.log`, exit 1). Presentation runs
+at safe trap boundaries and can defer while a bitmap awaits VBI. The successful
+repeat above reached every selected frame with no pending logical pixels and
+proved unchanged pixels through publication; it did not reproduce that failure.
+Do not count the failed run as a pass or infer a display bug solely from that
+checkpoint. Any reproduced deferral still needs its delay and image checked.
 
 `AitdScreen` owns one 320×200 eight-plane display, using the live WIND 128
 content rectangle within the 640×480×8 logical Mac screen. Each chip bitmap
