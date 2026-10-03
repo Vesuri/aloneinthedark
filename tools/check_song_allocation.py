@@ -5,7 +5,7 @@ Checks the documented oldest-note policy and sample-duration/release ownership.
 This does not measure analog output, host audio, or uninterrupted onset jitter.
 """
 import argparse
-from collections import defaultdict
+from collections import Counter, defaultdict
 from pathlib import Path
 import re
 import struct
@@ -33,6 +33,15 @@ def replay(events, notes, clocks, effects, started, duration):
         changes[count].append(row)
     serviced = started
     starts = steals = 0
+    endings = Counter()
+    retired = set()
+
+    def retire(voice, reason):
+        if voice is None or voice['kind'] != 'song':
+            return
+        require(voice['serial'] not in retired, 'note ownership retired exactly once')
+        retired.add(voice['serial'])
+        endings[reason] += 1
 
     def expire(tick):
         nonlocal serviced
@@ -41,6 +50,7 @@ def replay(events, notes, clocks, effects, started, duration):
             return
         for channel, voice in enumerate(voices):
             if voice and voice['kind'] == 'song' and voice['end'] and voice['end'] <= tick:
+                retire(voice, 'natural expiry' if voice['active'] else 'released expiry')
                 voices[channel] = None
         serviced = tick
 
@@ -75,6 +85,9 @@ def replay(events, notes, clocks, effects, started, duration):
                     require(voices[channel] is None, 'replacement channel free')
                 else:
                     require(choose() == channel, f'effect allocation at event {count}')
+                old = voices[channel]
+                if old and old['kind'] == 'song':
+                    retire(old, 'effect steals active note' if old['active'] else 'effect steals release tail')
                 voices[channel] = {'kind': 'effect', 'slot': slot}
                 last_stop = None
         if count == len(events):
@@ -98,11 +111,19 @@ def replay(events, notes, clocks, effects, started, duration):
         channel = choose()
         require(channel == row[4], f'note {starts}: expected channel {channel}, captured {row[4]}')
         length = duration(instrument, note, row[5])
+        old = voices[channel]
+        if old and old['kind'] == 'song':
+            retire(old, 'note steals active note' if old['active'] else 'note steals release tail')
         voices[channel] = dict(kind='song', serial=starts, note=note, midi=midi,
                                active=True, end=actual+length+1 if length else 0)
         starts += 1
     require(starts == len(notes), 'complete note allocation')
-    return starts, steals
+    for voice in voices:
+        if voice and voice['kind'] == 'song':
+            retire(voice, 'still active at last event' if voice['active'] else 'release pending at last event')
+    require(retired == set(range(starts)) and sum(endings.values()) == starts,
+            'all note lifetimes accounted for')
+    return starts, steals, endings
 
 
 def main():
@@ -163,10 +184,12 @@ def main():
             return 0
         attack = ((size+stride-1)//stride+1) & ~1
         return (attack*period*60+3546894)//3546895
-    observed_starts, predicted_steals = replay(events, notes, clocks, effects, started, duration)
+    observed_starts, predicted_steals, endings = replay(events, notes, clocks, effects, started, duration)
     require(predicted_steals == steals, 'complete oldest-note stealing count')
     print(f'PASS allocation: {observed_starts} original notes, {effect_count} effect transitions, '
           f'{steals} predicted steals; all channel assignments follow the policy')
+    for reason, count in sorted(endings.items()):
+        print(f'Ownership lifetime: {reason}: {count}')
     print('Immediate paired effect stop/start may retain its channel; replacement intent is not separately traced.')
     print('Ownership/release-policy check only; not analog or host-output fidelity.')
 

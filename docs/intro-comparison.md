@@ -1064,3 +1064,24 @@ prove every tail obscured by another voice, stereo equivalence, or correction
 of host buffering. The normal `INTROSKIP=1 FIXEDRNG=1` runtime is restored
 after these captures. Its clean build exits zero with no-float and 98-symbol
 probe audits passing (`tmp/audio-output/restore-build.log`).
+
+The allocation checker now accounts for the end of ownership of every note,
+including tails hidden by other music or effects. In the idle-host capture it
+classifies all 1,868 starts exactly once: 280 active notes stolen by another
+note, 14 active notes stolen by effects, 873 released voices replaced by notes,
+8 released voices replaced by effects, 686 released voices reaching expiry,
+and 7 natural expiries. Nothing remains owned at the final event. The trace
+capture independently passes the same accounting (269, 22, 865, 4, 701 and 7).
+These are inferred ownership lifetimes validated against every observed channel
+claim, not measurements of the last audible sample. A channel can remain owned
+while already playing its silent reload word. In particular, replacing a
+released voice does not establish audible truncation of that many tails.
+
+This gives the explicit four-channel fidelity limit: in the idle-host run,
+294 still-active notes lose their channel to newer notes or effects. Preserved
+event order and immutable sample bytes do not make those voices audible for
+their full Mac duration. The exhaustive retained-PCM regression also passes
+again: all 25 variants, 458,974 bytes, loop phases and release padding agree
+with original resources, and all 3,736 events match the original timing stream.
+This closes missing ownership accounting; individual masked waveforms remain
+supported by these structural checks rather than independently isolated PCM.

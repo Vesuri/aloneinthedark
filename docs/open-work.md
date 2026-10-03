@@ -31,9 +31,10 @@ required.
     (`tmp/audio-output/trace-core.log`). Find a supported buffering remedy
     and verify its output impact without verbose tracing. Nearby SDL3 source
     is not version-matched evidence for the installed SDL2 build.
-    Four exposed release deadlines now pass the targeted PCM-rest checker
-    in `tools/check_song_release_gaps.py`; account for the remaining masked
-    tails and overall four-channel fidelity in the final acceptance audit.
+    Four exposed release deadlines pass the targeted PCM-rest checker, and
+    all 1,868 ownership lifetimes are accounted for. Preserve the documented
+    limit: masked tails have structural/ownership evidence, not individually
+    isolated PCM, and four-channel stealing shortens some active notes.
   - Complete the whole-intro acceptance audit against the current build:
     car/frog/person animation, full mansion camera transitions, scene inventory,
     car waypoint progression and frame/audio fidelity. Reuse the unchanged Mac
