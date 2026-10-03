@@ -140,6 +140,24 @@ inline void convertSpan(const Dma& dma,uint8_t* destination,uint32_t bytes,uint3
         uint32_t count=1+(end-1-position)/dma.stride;
         if(count>bytes)count=bytes;
         bytes-=count;
+        // Ordinary PCM needs only a sign-bit flip. The 68020+ permits unaligned
+        // longword transfers; use explicit instructions to avoid byte copies.
+        if(dma.stride==1)while(count>=4) {
+            uint32_t word;
+#if defined(__m68k__)
+            __asm__ volatile("move.l (%1),%0\n\t"
+                             "eor.l #0x80808080,%0\n\t"
+                             "move.l %0,(%2)"
+                             : "=&d"(word)
+                             : "a"(layout.pcm+position),"a"(destination)
+                             : "cc","memory");
+#else
+            __builtin_memcpy(&word,layout.pcm+position,4);
+            word^=0x80808080UL;
+            __builtin_memcpy(destination,&word,4);
+#endif
+            position+=4;destination+=4;count-=4;
+        }
         while(count--) {
             *destination++=layout.pcm[position]^0x80;
             position+=dma.stride;

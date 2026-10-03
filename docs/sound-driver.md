@@ -405,6 +405,24 @@ Resource loading/movement/locking is 26/98/1 ticks in that run. The sanitized
 native verification of all 25 variants and 3,736 events after this revision
 (`tmp/music-vbi-span-song-full.log`, exit 0; checker with `--interrupt`).
 
+Ordinary (stride-one) PCM now converts four bytes per iteration using explicit
+68020+ `move.l`, `eor.l #$80808080` and `move.l` instructions. Loop boundaries,
+remaining bytes and decimated streams retain the bounded byte path. This runs
+once while preparing each retained sample variant, never during note playback.
+The generated binary confirms longword loads/stores; a compiler-only memcpy
+version still emitted byte transfers. On the current bulk-key-release build,
+conversion falls from 88 to 32 ticks and the blank-frame interval from 402 to
+336 ticks (6.70 to 5.60 seconds). Resource loading/movement/locking is 7/105/0
+ticks in both runs (`tmp/intro-key-release-cost-full.log` and
+`tmp/intro-pcm-long-cost-full.log`, exit 0, same flags and reference 68030 setup,
+audio on, no warp). The sanitized 27-stream host oracle passes in
+`tmp/intro-pcm-long-host.log`. Full native verification also passes
+(`tmp/intro-pcm-long-song-full.log`, exit 0; checker with `--interrupt`):
+all 458,974 bytes across 25 variants, 3,736 exact timed events, effect priority
+and cleanup. Thirty events play during the 180-tick CPU-only interval;
+maximum delivery lateness is one tick in this focused fixture. This does not
+close the integrated effect-boundary timing outlier described above.
+
 The M2 black-interval investigation found that repeatedly converting PCM for
 each note starved original game execution. On baseline 68020, conversion used
 16,697 of 17,181 music-service ticks before the first demo picture, within a
