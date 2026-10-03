@@ -101,6 +101,24 @@ is now 1.9% of that interval. Region geometry is 647,352 units, pointer lookup
 336,498 and original VBL callbacks 588,453. Remaining costs need separate
 attribution; the profile does not justify another geometry micro-optimization.
 
+After private workspace reuse, the complete-mask profile is 2,956,031 beam
+units over 37 fields (`tmp/intro-current-mask-profile-full.log`, exit 0).
+The largest inclusive trap totals are InsetRgn 739,937 units (12 calls),
+recording LineTo 656,765 (112), and FramePoly 303,118 (12). Shared services
+take 256,067 units and original VBL callbacks 431,724; these overlap trap
+totals. Expansion geometry itself remains 647,375 units. This is attribution,
+not a shipping-build timing measurement.
+
+Two further trials each reduce the identical twelve-polygon unprofiled mask
+only from 35 to 34 ticks: jumping between region-row transitions instead of
+visiting every row, and dispatching common pen operations before unrelated
+manager checks (`tmp/intro-region-events-frog-full.log` and
+`tmp/intro-mask-fast-dispatch-frog-full.log`, both exit 0). All twelve input
+records match the retained baseline. The region trial also passes independent
+pixel/atomic-rejection tests and the original Mac region bytes. Neither trial
+is retained: their measured benefit does not address the remaining experience
+enough to justify further tuning before current owner-visible playback.
+
 A separate cold-workload replay rules out different polygon inputs as the
 remaining mask explanation. Both runs construct the same 12 polygons in the
 same order, with every record byte equal, and produce identical viewport pixels
