@@ -220,7 +220,7 @@ static uint32_t vbiHandler()
 }
 
 // Keep the port's display/time update in the OS server chain during DOS work.
-// The OS owns all other restored vectors; Paula vectors and DMA are untouched.
+// Keyboard ownership, Paula vectors and DMA are untouched.
 int32_t aitdSystemWindow(int32_t (*operation)(void*),void* context)
 {
     if(!operation || !s_vertbTaken || g_systemWindowActive
@@ -232,7 +232,7 @@ int32_t aitdSystemWindow(int32_t (*operation)(void*),void* context)
     if(!aitdMacSuspendLineA()) { Enable();return -50; }
     uint16_t portMask=AmigaHardware::enabledInterrupts();
     struct IntVector portVertb=SysBase->IntVects[INTB_VERTB];
-    aitdInputSuspend();
+    // Keep keyboard input live through DOS, including held keys and releases.
     SysBase->IntVects[INTB_VERTB]=s_savedVertb;
     s_windowVbi.is_Node.ln_Type=NT_INTERRUPT;
     s_windowVbi.is_Node.ln_Pri=127;
@@ -253,11 +253,9 @@ int32_t aitdSystemWindow(int32_t (*operation)(void*),void* context)
     begin=aitdProfileBeamEpoch();
 #endif
     Forbid();
-    aitdInputFlush();
     Disable();
     RemIntServer(INTB_VERTB,&s_windowVbi);
     SysBase->IntVects[INTB_VERTB]=portVertb;
-    aitdInputResume();
     aitdMacResumeLineA();
     *intenaPointer=0x7fff;
     *intenaPointer=(uint16_t)(INTF_SETCLR|INTF_INTEN|portMask);

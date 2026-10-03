@@ -1,7 +1,44 @@
 # Startup events
 
-**Status, 2026-10-02:** Startup/menu events, normal Enter selection and the automatic demo pass M2.
-First-room controls and broader event coverage remain M3.
+**Status, 2026-10-04:** Startup/menu events pass M2. First-room walking,
+Shift-running, Fight selection and kicking are verified on the 68030.
+Broader menus, dialogs and gameplay service coverage remain subsequent work.
+
+## First-room controls
+
+`GAMEINPUT=1` implies `INGAME=1` and supplies ordinary keyboard transitions:
+Up, release, Shift+Up, release, F, release, Space+Up, release. The keys match
+the manual's movement/action controls and its F shortcut for Fight mode.
+`amiga/gameplay.gdb` records actor state and internal frames at each boundary;
+`tools/mac_gameplay.lua` performs the same sequence on the original Mac IIx.
+Create `tmp/m3-input` before running these fixtures.
+
+The original run `tmp/m3-input/mac-controls-traps.log` and native run
+`tmp/m3-input/gameplay5-run.log` exit zero. Both show Carnby (actor 1/body 12)
+in room 0 using animation 254 for walking, 255 for running, 262 for a kick,
+then animation 4 after release. Both move farther during the running interval
+than walking. Captures are keyed by control phase and animation, not identical
+positions: resource loading and polling cadence produce different intermediate
+positions. No game instructions, actor state or decisions are overridden.
+
+This exposed and fixed a real bug: the old DOS handback cleared held keys and
+their queue on every resource read. Keyboard interrupts now remain active
+through those windows. `tmp/m3-input/window-controls-run.log` passes all 27
+key checks, including hold/release across disk access, plus existing file,
+clock, Paula and display-buffer checks. The startup shortcut now uses bounded
+Space presses so the game's wait-for-release paths work without accidental
+key clearing.
+
+The native first-room interval observes WaitNextEvent (25), GetKeys (26),
+Button (25) and ObscureCursor (1). The Mac control interval observes
+WaitNextEvent (33), GetNextEvent (33), GetKeys (33) and Button (32); Mac
+WaitNextEvent calls the OS GetNextEvent implementation, whereas the native
+wrapper calls its shared event helper directly. Native counting includes the
+room setup; the Mac trace begins at the first attic frame. ObscureCursor's
+startup contract is already verified below. Neither control trace calls
+StillDown, FlushEvents or SystemClick. Their absence is not new ABI acceptance;
+SystemClick remains unsupported, and broader menu/desktop paths remain outside
+this control fixture.
 
 ## Direct-game build — 2026-10-03
 
@@ -74,7 +111,8 @@ modifiers. Activation adds activeFlag. The Amiga display already maintains globa
 pointer coordinates, so the inherited Vette (64,91) addition has been removed
 from event records and initial low-memory mouse shadows. Sleep is ignored under
 design §4.9; nonnil mouse-region wakeups remain an explicit unsupported trap.
-Full gameplay input, broader window lifecycle and high-level events remain M3.
+The first-room gameplay extension is described above; broader window lifecycle
+and high-level events remain later M3 work.
 
 Reproduce with the documented headless MAME command and
 `tools/mac_startup_events.lua`, then the combined native `menu_lifecycle.gdb`

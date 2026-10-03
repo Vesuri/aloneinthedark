@@ -23,7 +23,7 @@ dump binary memory ../tmp/window-during.bin g_windowProbePicture g_windowProbePi
 printf "window inside: fields=%u ticks=%u OS multitasking active\n",g_windowFields,g_macTicks
 tbreak aitdWindowProbeAfter
 continue
-if g_windowProbeKeyChecks != 11 || g_windowProbeDone != 1 || g_windowProbeHash != 0x59bc1dc5 || g_systemWindows != 21 || g_windowProbeIOChecks != 5 || g_systemWindowActive != 0 || g_macLineAInstalled != 1 || ((struct ExecBase*)SysBase)->TDNestCnt != 0
+if g_windowProbeKeyChecks != 27 || g_windowProbeDone != 1 || g_windowProbeHash != 0x59bc1dc5 || g_systemWindows != 21 || g_windowProbeIOChecks != 5 || g_systemWindowActive != 0 || g_macLineAInstalled != 1 || ((struct ExecBase*)SysBase)->TDNestCnt != 0
  printf "window FAIL: done=%u hash=$%x windows=%u active=%u\n",g_windowProbeDone,g_windowProbeHash,g_systemWindows,g_systemWindowActive
  detach
  quit 1

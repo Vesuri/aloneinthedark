@@ -24,15 +24,6 @@ required.
 
 ## M3 Playable
 
-- **M3.1 Events and keyboard.**
-  - Extend the existing startup event, key and cursor services through gameplay.
-    Verify WaitNextEvent, GetNextEvent, GetKeys, Button, StillDown, FlushEvents,
-    SystemClick and ObscureCursor on the first-room paths; implement any
-    remaining measured contracts.
-  - Map Amiga keys to the game's keys; confirm them against `tmp/manual.pdf`.
-
-  *Done when* a new game can be started, and Carnby walks, runs (Shift) and acts
-  in the first room.
 - **M3.2 Menus without a menu bar.**
   - Keep menus as data and never draw the menu bar (D7).
   - `MenuKey` maps Right-Amiga to the game's Command-key items. Rely on the game's

@@ -1,5 +1,24 @@
 # Development
 
+## M3.1 completion — 2026-10-04
+
+Carnby's first-room walk, Shift-run, Fight selection, kick and release pass
+paired Mac IIx/Amiga 68030 checks. A gameplay bug clearing held keys on disk
+access is fixed; the keyboard handler now remains live through DOS windows.
+The native run uses audio and no warp. `window-core` verifies 27 keyboard
+checks plus the existing file/clock/Paula/display checks, and production `boot`
+passes after a clean build. Details and service-coverage boundaries are in
+[events.md](events.md). M3.2 menus are the next open milestone.
+
+For the maintained gameplay fixture, create `tmp/m3-input`, clean-build with
+`GAMEINPUT=1`, and run `GDBSCRIPT=gameplay.gdb amiga/diag_run.sh 180`.
+The Mac counterpart is `tools/mac_gameplay.lua`, using the documented headless
+Mac IIx setup with the debugger enabled. Check the paired captures with
+`tools/check_gameplay.py`, passing both logs and their actual exit statuses.
+Accepted logs are `tmp/m3-input/mac-controls-traps.log` and
+`tmp/m3-input/gameplay5-gdb.log` (both exit zero); the OS-window and production
+checks are `window-controls-run.log` and `boot-controls-run.log` in that folder.
+
 ## M2 completion — 2026-10-02
 
 M2 startup-to-intro acceptance is complete on the baseline `a1200-020`.
@@ -724,8 +743,9 @@ records all SysEnvRec bytes on the original trap return.
 returns, then compares the eleven Engine flags at Engine+$43E2 against MAME:
 `01010101 01010100 0101 01` (offsets 4 through 14). This exposed and fixed an
 inherited missing WaitNextEvent entry. Its availability now matches the Mac;
-execution remains a named stop pending M3.1. Unknown Toolbox availability is
-not claimed from this one observation.
+execution was still a named stop at this checkpoint. Its later startup and
+gameplay implementation is documented in [events.md](events.md). Unknown
+Toolbox availability is not claimed from this observation.
 
 A clean `IDENTITYPROBE=1` build with `identity_errors.gdb` executes native
 Line-A instructions: QuickTime and A/UX return the exact captured errors, and

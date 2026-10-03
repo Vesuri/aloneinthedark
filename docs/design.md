@@ -157,12 +157,14 @@ subsystem with its design decision and the queue tasks that implement it.
   preloading (D1).
   - **Enter a window:**
     - restore the OS interrupt vectors and INTENA, keeping the port's audio
-      interrupt and a VERTB server that keeps the port's copper list, so the
-      picture and Paula keep going;
+      and keyboard interrupts and a VERTB server that keeps the port's copper
+      list, so picture, Paula and keyboard transitions keep going;
     - `Permit()`;
     - run the operation from the Mac-code task in **user mode**.
-  - **Leave a window:** `Forbid()`, re-take the vectors, flush the keyboard
-    state the OS consumed, and correct Ticks for the elapsed fields.
+  - **Leave a window:** `Forbid()`, re-take the vectors and correct Ticks for
+    the elapsed fields. Preserve held keys and queued transitions: clearing
+    them during animation loading interrupted gameplay movement. The keyboard
+    handler stays installed until normal shutdown restores the OS handler.
   - **Line-A dispatch in user mode (bridge implemented, M1.7a).** Line-A services that call the OS (File
     Manager, Resource Manager misses, durable writes) cannot run in the
     supervisor-mode exception handler. The handler redirects the RTE to a

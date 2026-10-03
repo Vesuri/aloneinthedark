@@ -100,8 +100,8 @@ discards those bytes on close. A 4 KiB read-ahead/direct-payload trial did not
 improve room entry: 437 ticks to the first camera-5 loop versus 373 retained.
 The trial was deliberately stopped after that measurement, not accepted as a
 complete route (`tmp/intro-read-ahead-route-full.log`, exit 1). Its two cache
-changes are reverted. The OS-window return path translates all 128 raw key
-codes to release them on every operation. The bulk-release trial computes the
+changes are reverted. The then-current OS-window return path translated all 128 raw key
+codes to release them on every operation. The bulk-release trial computed the
 translated-key mask once, then applies it to the 16-byte Mac map, preserving
 unmapped bits. Its 256-pattern native comparison matches individual releases.
 `tmp/intro-key-release-window-full.log` (exit 0) passes the original 21-window
@@ -117,7 +117,9 @@ for frog/hallway/stair observations. All nine transitions, natural completion,
 The observer exits 1 because the known music timing outlier recurs: two ticks,
 with a busy channel-ownership field at tick 9550 and late delivery at 9552.
 This establishes the deferred field's source; it is not a complete audio pass.
-The key-reset change is retained on its exact input tests and transition gain.
+M3.1 subsequently removed automatic key resets entirely: they interrupted
+held movement keys during animation loading. Keyboard ownership now spans DOS
+windows; the measurements above describe the earlier intro-performance build.
 
 The longword sample-conversion build repeats the complete route in
 `tmp/intro-longword-route-full.log`: nine transitions, natural completion at
@@ -406,6 +408,12 @@ Macintosh virtual keys, so held arrow keys are visible to original code that
 polls GetKeys/KeyMap. Original VBL tasks run at safe user-mode trap-return
 boundaries, never from the ISR. `FramePacer` remains available for
 maximum-rate pacing of identified animation loops.
+
+Keyboard ownership remains with the port during DOS windows, as it does for
+music. Held keys and their event queue survive resource loading; a release
+during a window is recorded normally. The window regression checks a key held
+across eight reads, release inside the eighth window, and continued released
+state through the remaining reads, alongside the existing guarded KeyMap tests.
 
 `TickCount` reads the same private, unsigned 32-bit Ticks shadow as the original
 redirected low-memory accesses. It preserves the existing counter and its wrap

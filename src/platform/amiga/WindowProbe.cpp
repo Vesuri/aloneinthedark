@@ -27,6 +27,11 @@ __attribute__((noinline)) void aitdWindowProbeInside()
     static uint32_t previous=0;
     if(g_windowProbeAudioInside>previous)++g_windowProbeAudioWindows;
     previous=g_windowProbeAudioInside;
+    if(g_windowProbeChunk && g_systemWindows<16) {
+        if(aitdInputKeyDown(0x20)!=(g_windowProbeChunk<=8))g_windowProbeError=17;
+        ++g_windowProbeKeyChecks;
+        if(g_windowProbeChunk==8)aitdInputInjectProbeKey(0x20,false);
+    }
 }
 __attribute__((noinline)) void aitdWindowProbeAfter() { __asm__ volatile("" ::: "memory"); }
 }
@@ -135,7 +140,11 @@ extern "C" bool aitdWindowProbe()
     if(g_windowProbeAudioWindows!=16 || !g_windowProbeAudioInside
         || g_windowProbeAudio<=g_windowProbeAudioInside) { g_windowProbeError=7;return false; }
     uint8_t key;bool down;uint16_t mods;
-    if(aitdInputKeyDown(0x20) || aitdInputPopKey(key,down,mods)) { g_windowProbeError=3;return false; }
+    if(g_windowProbeError)return false;
+    if(aitdInputKeyDown(0x20)
+       || !aitdInputPopKey(key,down,mods) || key!=0x20 || !down
+       || !aitdInputPopKey(key,down,mods) || key!=0x20 || down
+       || aitdInputPopKey(key,down,mods)) { g_windowProbeError=3;return false; }
     if(g_systemWindowActive || g_systemWindows!=16 || g_windowFields<16) { g_windowProbeError=4;return false; }
     // The primary 16-window clock/audio checks precede these five DOS operations.
     uint32_t actual=123;

@@ -136,10 +136,11 @@ void aitdInputInGame(uint16_t trap,bool menu,bool portraits,bool story,
     if(g_ingameStage==4 && gameplay && trap==0xa976) {
         g_ingameStage=5;g_ingameTick=ticks;
     }
-    // Publisher screens poll events before the book polls GetKeys. Keep
-    // Space down through both so their ordinary skip paths run immediately.
+    // Publisher screens poll events before the book polls GetKeys. Send
+    // bounded presses: some normal skip paths explicitly wait for release.
     if(g_ingameStage==0 && (announced || trap==0xa860 || trap==0xa970
-       || trap==0xa976 || trap==0xa974 || trap==0xa891))key=0x40;
+       || trap==0xa976 || trap==0xa974 || trap==0xa891)
+       && ticks%30<4)key=0x40;
     if((g_ingameStage==1 && menu)
        || (g_ingameStage==3 && story)) {
         // Leave a released interval between successive Return selections.
@@ -156,13 +157,35 @@ void aitdInputInGame(uint16_t trap,bool menu,bool portraits,bool story,
         if(held!=0xff)aitdInputInjectProbeKey(held,false);
         held=key;
     }
-    // OS handback may flush the queue; reassert only at the original poll.
+    // Do not enqueue duplicate presses while the requested key is held.
     if(key!=0xff && !aitdInputKeyDown(key)) {
         aitdInputInjectProbeKey(key,true);pressed=ticks;
     }
     if(previous!=g_ingameStage || (!announced && key!=0xff)) {
         announced=true;aitdInputInGameCheckpoint();
     }
+}
+#endif
+
+#ifdef AITD_GAME_INPUT
+extern "C" { volatile uint16_t g_gameInputStage=0; volatile uint32_t g_gameInputTick=0; }
+extern "C" __attribute__((noinline)) void aitdInputGameplayCheckpoint()
+{ __asm__ volatile("nop" ::: "memory"); }
+void aitdInputGameplay(uint32_t ticks)
+{
+    if(g_ingameStage!=5 || g_gameInputStage==9)return;
+    static const uint16_t duration[]={300,60,30,60,30,20,30,90,60};
+    if(!g_gameInputTick) {g_gameInputTick=ticks;return;}
+    if(ticks-g_gameInputTick<duration[g_gameInputStage])return;
+    // Ordinary keyboard levels only: walk, release, Shift-run, release,
+    // F for Fight, release, Space+Up action, release. Never write game state.
+    ++g_gameInputStage;g_gameInputTick=ticks;
+    const uint16_t stage=g_gameInputStage;
+    aitdInputInjectProbeKey(0x4c,stage==1 || stage==3 || stage==7);
+    aitdInputInjectProbeKey(0x60,stage==3);
+    aitdInputInjectProbeKey(0x23,stage==5);
+    aitdInputInjectProbeKey(0x40,stage==7);
+    aitdInputGameplayCheckpoint();
 }
 #endif
 
@@ -241,24 +264,3 @@ void aitdInputStoryRead(bool atStory,uint16_t page,bool lastPage,uint32_t ticks)
     }
 }
 #endif
-
-void aitdInputSuspend()
-{
-    if(!s_ciaaBase)return;
-    RemICRVector(s_ciaaBase,CIAICRB_SP,&s_keyboardInterrupt);
-    if(s_savedVector)AddICRVector(s_ciaaBase,CIAICRB_SP,s_savedVector);
-}
-// Only call while the OS owns the keyboard vector: no port ISR can race
-// these stores, so display/audio interrupts need not be masked for the loop.
-void aitdInputFlush()
-{
-    for(uint16_t i=0;i<128;++i)s_keyDown[i]=0;
-    aitdMacReleaseKeys();
-    s_head=s_tail=0;
-}
-void aitdInputResume()
-{
-    if(!s_ciaaBase)return;
-    if(s_savedVector)RemICRVector(s_ciaaBase,CIAICRB_SP,s_savedVector);
-    AddICRVector(s_ciaaBase,CIAICRB_SP,&s_keyboardInterrupt);
-}

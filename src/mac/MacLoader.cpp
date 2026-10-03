@@ -48,6 +48,9 @@ extern "C" void aitdDriverClockProbe();
 #include "SoundEffect.h"
 
 extern "C" {
+#ifdef AITD_GAME_INPUT
+volatile uint32_t g_gameInputTraps[8]={};
+#endif
 #ifdef AITD_PAK_READ_PROBE
 volatile uint16_t g_pakProbeMask=0;
 #ifdef AITD_FIXED_GAME_RANDOM
@@ -7114,6 +7117,12 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     aitdInputIntroSkip(trap, g_macTicks);
 #endif
     uint32_t pc = read32(frame + 2);
+#ifdef AITD_GAME_INPUT
+    if(g_ingameStage==5) {
+        static const uint16_t observed[]={0xa860,0xa970,0xa976,0xa974,0xa973,0xa032,0xa9b3,0xa856};
+        for(uint16_t i=0;i<8;++i)if(trap==observed[i])++g_gameInputTraps[i];
+    }
+#endif
 #if defined(AITD_MENU_ENTER) && !defined(AITD_INGAME)
     // Original Dan1+$1376 TickCount inside the game menu's 900-tick wait.
     aitdInputMenuEnter(trap==0xa975 && s_segments[12].begin
@@ -7168,6 +7177,9 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     aitdInputInGame(trap,trap==0xa975 && s_segments[12].begin
         && pc==(uint32_t)s_segments[12].begin+0x1376,
         atPortraits,atStory,gameplay,g_macTicks);
+#ifdef AITD_GAME_INPUT
+    if(trap==0xa976)aitdInputGameplay(g_macTicks);
+#endif
 #else
     aitdInputStoryEnter(atPortraits,g_macTicks);
 #endif
