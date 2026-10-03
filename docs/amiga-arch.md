@@ -120,6 +120,20 @@ the first frame, rather than room entry. The observer exits 1 on the known
 audio gate: maximum lateness two ticks, after ownership exclusion at 8764
 and delivery at 8766. This is route completion evidence, not audio acceptance.
 
+An isolated first-hallway-frame profile (`tmp/intro-hall-first-full.log`, exit 0)
+subtracts counters at consecutive original Dark+$5658 entries in room 2/camera
+5. It spans exactly one publication, 113 fields / 136 diagnostic ticks; these
+instrumented times are not a shipping-build benchmark. The largest inclusive
+trap totals are InsetRgn 1,417,244 beam units (15 calls), LineTo 1,250,890 (214),
+CopyBits 1,033,557 (34), the sound-driver trap 564,614 (280), and FramePoly
+551,963 (15). Expansion geometry accounts for 1,278,996 units; shared trap
+services 919,215, heap lookup 682,399 and original VBL callbacks 1,342,449.
+These categories overlap and must not be added. Resource/audio preparation
+categories are zero; the driver still handles its ordinary callback traffic.
+This directs the remaining first-frame investigation toward geometry, drawing
+and copying rather than file read-ahead. Before/after arrays are retained as
+`tmp/hall-first-{phase,trap,calls}-{before,after}.bin`.
+
 The measured hallway-to-stairs span is 2.35 seconds versus 1.62 on Mac; initial
 camera-5 loop preparation is 1.75 versus 0.92 seconds. The owner's earlier recording
 showed a nearly unchanged 14.7-second interval at 334.2–348.9 seconds before
