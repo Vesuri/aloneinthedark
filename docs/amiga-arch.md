@@ -96,6 +96,38 @@ is now 1.9% of that interval. Region geometry is 647,352 units, pointer lookup
 336,498 and original VBL callbacks 588,453. Remaining costs need separate
 attribution; the profile does not justify another geometry micro-optimization.
 
+A separate cold-workload replay rules out different polygon inputs as the
+remaining mask explanation. Both runs construct the same 12 polygons in the
+same order, with every record byte equal, and produce identical viewport pixels
+and all 256 colours. Native mask time is 46 ticks versus 10 on Mac
+(`tmp/intro-workload-native-full.log`, `tmp/intro-workload-mac.log`, both exit 0).
+This comparison injects the captured native frog model/transform before the
+first Mac frog draw and observes original FramePoly at Dark+$33EC; it does not
+alter original instructions or precompute regions.
+
+A separate matched near-car pose (previous projected width at least 100 pixels)
+also matches every viewport pixel and colour. The original renderer call at
+Dark+$3ED4 → +$3EDA takes 17 native ticks versus 12 Mac ticks. Masking and the
+overlay call finish in the same tick. Native then takes six ticks from +$419A
+through the actual display-copy phase to +$5658; Mac takes less than a tick
+in this replay
+(`tmp/intro-car-phases-native-full.log`, `tmp/intro-car-phases-mac-retry.log`,
+both exit 0). Attribute that presentation interval separately before treating the
+whole-frame ratio as a model-renderer slowdown. Other actor/cache/timer state
+is not fully paired by the model fixture. Its accepted inputs and outputs are
+archived under `tmp/intro-car-phases-baseline/`.
+
+The valid steady-car sample (`tmp/intro-car-scene-profile-detail-full.log`,
+exit 0) stays in room 0/camera 0 for 45 fields, spans one publication and
+records 1,117 trap entries. C2P is 7,695 of 3,602,660 beam units (0.21%) and
+bitmap synchronization 3,371 (0.09%), so neither explains the remaining car
+slowdown. Shared trap services take 571,938 units (15.9%); original VBL
+callbacks take 531,615 (14.8%). Inclusive LineTo, RGBForeColor, MoveTo and
+PenMode dispatches together account for 48.8%, overlapping the shared work.
+Their total is not an isolated rasterization cost. The earlier short sample
+failed its acceptance guard and is not evidence; the accepted repeat reports
+all counters before checking scene, publication and converter activity.
+
 Current evidence:
 
 - `tmp/intro-incremental-route-full.log` exits 0 after all nine original room
