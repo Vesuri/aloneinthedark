@@ -105,6 +105,21 @@ int main() {
     CHECK(h.newHandle(0xffffffff)==nullptr);freeChain(h,arena,slots);
     a=h.newEmptyHandle();CHECK(a==slots[1]);freeChain(h,arena,slots);
     CHECK(h.disposeHandle(a)==0);freeChain(h,arena,slots);
+    // A later master block may occupy a lower hole. Keep both the published
+    // descending chain and lowest-address allocation order across that insert.
+    CHECK(h.init(arena,sizeof(arena),2));
+    a=h.newHandle(1024);b=h.newHandle(512);c=h.newEmptyHandle();
+    CHECK(a&&b&&c);pattern(*b,512,0x71);
+    CHECK(h.disposeHandle(a)==0);CHECK(h.moreMasters(2)==0);
+    CHECK(h.newEmptyHandle()==a);
+    auto low=h.newEmptyHandle(),lowNext=h.newEmptyHandle(),high=h.newEmptyHandle();
+    CHECK(low<c && lowNext==low+1 && high==c+1);
+    slots={a,b,c,low,lowNext,high};freeChain(h,arena,slots);
+    CHECK(h.disposeHandle(low)==0);CHECK(h.disposeHandle(c)==0);
+    h.compact();CHECK(h.moveHigh(b)==0);CHECK(patternIs(*b,512,0x71));
+    freeChain(h,arena,slots);
+    CHECK(h.newEmptyHandle()==low);CHECK(h.newEmptyHandle()==c);
+    freeChain(h,arena,slots);
     // Match resource loading: target, free gap, movable data, locked barrier.
     // Include overlapping target/gap swaps as well as a large free interval.
     for(unsigned gapBytes: {8u,2048u,16000u}) {

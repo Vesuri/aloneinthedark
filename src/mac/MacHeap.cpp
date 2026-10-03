@@ -29,12 +29,13 @@ void MacHeap::reverseBytes(uint8_t* first, uint8_t* last)
 {
     while (first<last) { --last;if(first>=last)break;uint8_t v=*first;*first++=*last;*last=v; }
 }
-void MacHeap::reset() { arena_=0;bytes_=end_=0;error_=0;mastersDirty_=true; }
+void MacHeap::reset() { arena_=0;bytes_=end_=freeBytes_=0;error_=0;freeMasters_=0; }
 bool MacHeap::init(uint8_t* arena, uint32_t bytes, uint16_t masters)
 {
     reset();
     if (!arena || (unsigned long)arena%8 || bytes<1024 || !masters) { error_=paramErr;return false; }
     arena_=arena;bytes_=bytes&~7UL;end_=bytes_-trailerBytes;masters_=masters;
+    freeBytes_=end_-headerBytes;
     for (uint32_t i=0;i<headerBytes;++i) arena_[i]=0;
     block(headerBytes)={end_-headerBytes,0,0,freeBlock,0,0};
     return moreMasters()==0;
@@ -70,10 +71,7 @@ uint32_t MacHeap::findPtr(const uint8_t* ptr, uint32_t kind) const
 }
 uint32_t MacHeap::freeBytes() const
 {
-    uint32_t total=0;
-    for(uint32_t off=headerBytes;off<end_;off+=block(off).span)
-        if(block(off).kind==freeBlock) total+=block(off).span;
-    return total;
+    return freeBytes_;
 }
 uint32_t MacHeap::largestBlock() const
 {
@@ -93,8 +91,10 @@ void MacHeap::split(uint32_t off,uint32_t span,uint32_t logical,uint32_t kind,ui
 {
     uint32_t stateOffset=kind==handleBlock ? flags((Handle)(arena_+owner))-arena_ : 0;
     uint32_t available=block(off).span;
+    if(block(off).kind==freeBlock)freeBytes_-=available;
     if(available-span>=minimumBlock)block(off+span)={available-span,0,0,freeBlock,0,0};
     else span=available;
+    freeBytes_+=available-span;
     block(off)={span,logical,owner,kind,stateOffset,0};
 }
 void MacHeap::coalesce()
@@ -106,7 +106,7 @@ void MacHeap::coalesce()
         else off=next;
     }
 }
-void MacHeap::release(uint32_t off) { block(off).kind=freeBlock;block(off).logical=block(off).owner=0;coalesce(); }
+void MacHeap::release(uint32_t off) { freeBytes_+=block(off).span;block(off).kind=freeBlock;block(off).logical=block(off).owner=0;coalesce(); }
 bool MacHeap::movable(uint32_t off) const
 {
     if(block(off).kind!=handleBlock)return false;
@@ -118,21 +118,7 @@ void MacHeap::publish()
 {
     AitdProfileScope profile(kProfileHeapPublish);
     if(!arena_)return;
-    // Master blocks never move. Resizing data or changing lock/purge flags
-    // cannot change this chain; rebuild it only when slot membership changes.
-    if(mastersDirty_) {
-        Handle first=0;
-        for(uint32_t off=headerBytes;off<end_;off+=block(off).span) {
-            const Block& b=block(off);if(b.kind!=masterBlock)continue;
-            Handle handles=(Handle)(arena_+off+blockBytes);
-            uint8_t* states=(uint8_t*)(handles+b.owner);
-            for(uint32_t i=0;i<b.owner;++i)if(!(states[i]&1)) {
-                handles[i]=(uint8_t*)first;first=handles+i;
-            }
-        }
-        heapWrite32(arena_+8,heapAddress(first));
-        mastersDirty_=false;
-    }
+    heapWrite32(arena_+8,heapAddress(freeMasters_));
     heapWrite32(arena_,heapAddress(arena_+end_));
     heapWrite32(arena_+12,freeBytes());
     arena_[20]=masters_>>8;arena_[21]=masters_;
@@ -220,8 +206,28 @@ int16_t MacHeap::moreMasters(uint16_t count)
     uint32_t off=allocate(bytes,ptrBlock);if(!off)return error_;
     for(uint32_t i=0;i<bytes;++i)arena_[off+blockBytes+i]=0;
     block(off).kind=masterBlock;block(off).owner=count;
-    mastersDirty_=true;
+    // Splice the new, contiguous slots into the descending-address free
+    // chain. Master blocks are pinned, so data moves never change these links.
+    Handle handles=(Handle)(arena_+off+blockBytes);
+    Handle previous=0,next=freeMasters_;
+    while(next && (uint8_t*)next>(uint8_t*)handles) {
+        previous=next;next=(Handle)*next;
+    }
+    handles[0]=(uint8_t*)next;
+    for(uint16_t i=1;i<count;++i)handles[i]=(uint8_t*)(handles+i-1);
+    if(previous)*previous=(uint8_t*)(handles+count-1);
+    else freeMasters_=handles+count-1;
     return result(0);
+}
+void MacHeap::releaseMaster(Handle handle)
+{
+    Handle previous=0,next=freeMasters_;
+    while(next && (uint8_t*)next>(uint8_t*)handle) {
+        previous=next;next=(Handle)*next;
+    }
+    *handle=(uint8_t*)next;
+    if(previous)*previous=(uint8_t*)handle;
+    else freeMasters_=handle;
 }
 uint8_t* MacHeap::newPtr(uint32_t bytes,bool clear)
 {
@@ -249,6 +255,7 @@ bool MacHeap::resizeInPlace(uint32_t off,uint32_t bytes)
     if(needed>saved.span) {
         uint32_t next=off+saved.span;
         if(next>=end_ || block(next).kind!=freeBlock || saved.span+block(next).span<needed)return false;
+        freeBytes_-=block(next).span;
         block(off).span+=block(next).span;
     }
     split(off,needed,bytes,saved.kind,saved.owner);coalesce();return true;
@@ -261,24 +268,19 @@ int16_t MacHeap::setPtrSize(uint8_t* ptr,uint32_t bytes)
 }
 MacHeap::Handle MacHeap::newEmptyHandle()
 {
-    for(unsigned pass=0;pass<2;++pass) {
-        for(uint32_t off=headerBytes;off<end_;off+=block(off).span) {
-            Block b=block(off);if(b.kind!=masterBlock)continue;
-            Handle handles=(Handle)(arena_+off+blockBytes);
-            uint8_t* states=(uint8_t*)(handles+b.owner);
-            for(uint32_t i=0;i<b.owner;++i)if(!(states[i]&1)) {
-                states[i]=1;handles[i]=0;mastersDirty_=true;result(0);return handles+i;
-            }
-        }
-        if(pass==0 && moreMasters()!=0)return 0;
-    }
-    result(memFullErr);return 0;
+    if(!freeMasters_ && moreMasters()!=0)return 0;
+    // Preserve the existing lowest-address allocation order. Only free slots
+    // are visited; allocated slots and unrelated data blocks are irrelevant.
+    Handle previous=0,handle=freeMasters_;
+    while(*handle) {previous=handle;handle=(Handle)*handle;}
+    if(previous)*previous=0;else freeMasters_=0;
+    *flags(handle)=1;*handle=0;result(0);return handle;
 }
 MacHeap::Handle MacHeap::newHandle(uint32_t bytes,bool clear)
 {
     Handle h=newEmptyHandle();if(!h)return 0;
     uint32_t off=allocate(bytes,handleBlock,(uint8_t*)h-arena_);
-    if(!off) { *flags(h)=0;mastersDirty_=true;result(memFullErr);return 0; }
+    if(!off) { *flags(h)=0;releaseMaster(h);result(memFullErr);return 0; }
     *h=arena_+off+blockBytes;
     if(clear)for(uint32_t i=0;i<bytes;++i)(*h)[i]=0;
     result(0);return h;
@@ -287,7 +289,7 @@ int16_t MacHeap::disposeHandle(Handle h)
 {
     if(!isHandle(h))return result(nilHandleErr);
     if(*h) { uint32_t off=findPtr(*h,handleBlock);if(!off)return result(memWZErr);release(off); }
-    *h=0;*flags(h)=0;mastersDirty_=true;return result(0);
+    *flags(h)=0;releaseMaster(h);return result(0);
 }
 int16_t MacHeap::emptyHandle(Handle h)
 {
@@ -396,7 +398,8 @@ int16_t MacHeap::setHandleSize(Handle h,uint32_t bytes)
 bool MacHeap::check() const
 {
     if(!arena_ || end_+trailerBytes!=bytes_)return false;
-    uint32_t off=headerBytes;
+    uint32_t off=headerBytes,freeBytes=0;
+    Handle previousFree=0;
     while(off<end_) {
         const Block& b=block(off);
         if(b.span<minimumBlock || (b.span&7) || b.span>end_-off || b.kind>masterBlock)return false;
@@ -406,8 +409,17 @@ bool MacHeap::check() const
             if(!isHandle(h) || *h!=arena_+off+blockBytes
                 || flags(h)!=arena_+b.stateOffset)return false;
         }
-        if(b.kind==masterBlock && b.logical!=b.owner*(sizeof(uint8_t*)+1))return false;
+        if(b.kind==freeBlock)freeBytes+=b.span;
+        if(b.kind==masterBlock) {
+            if(b.logical!=b.owner*(sizeof(uint8_t*)+1))return false;
+            Handle handles=(Handle)(arena_+off+blockBytes);
+            const uint8_t* states=(uint8_t*)(handles+b.owner);
+            for(uint32_t i=0;i<b.owner;++i)if(!(states[i]&1)) {
+                if(handles[i]!=(uint8_t*)previousFree)return false;
+                previousFree=handles+i;
+            }
+        }
         off+=b.span;
     }
-    return off==end_;
+    return off==end_ && freeBytes==freeBytes_ && previousFree==freeMasters_;
 }

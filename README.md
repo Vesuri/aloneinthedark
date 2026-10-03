@@ -7,7 +7,7 @@ The port follows the approach of the completed Vette! port: run the original
 68k game code with an Amiga implementation of the Macintosh services it uses,
 using native bitplanes, a hardware mouse pointer and Paula sound. The runtime
 and Toolbox layer are carried over from Vette!; see
-[docs/open-work.md](docs/open-work.md) for what works today.
+[docs/open-work.md](docs/open-work.md) for the remaining work.
 
 ## Current state
 
@@ -27,6 +27,11 @@ Owner screenshots verify the rendered colour ramp, test pattern and pointer
 in both standards. Music passes all 3,736 timed events, sample bytes, effect
 priority and cleanup. The full host suite and six baseline native regression
 cases pass. Original game instructions and timers remain intact.
+
+Intro performance is the current priority before M3, using a fixed-clock 68030
+and the original Mac IIx as reference. Scene preparation has improved, but car
+animation and the first frog frame still lag behind the Mac. See the current
+[timings and comparison limits](docs/amiga-arch.md#intro-performance-comparison-2026-10-03).
 
 Gameplay, save/load and broader music support remain later milestones. The
 separately deferred M1 system-window fixture still needs its specific rendered

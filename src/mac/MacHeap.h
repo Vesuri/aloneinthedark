@@ -41,10 +41,11 @@ private:
     enum { freeBlock=0, ptrBlock=1, handleBlock=2, masterBlock=3,
            headerBytes=64, trailerBytes=16, blockBytes=24, minimumBlock=32 };
     uint8_t* arena_ = 0;
-    uint32_t bytes_ = 0, end_ = 0;
+    // Sum of free physical spans; moving/coalescing blocks preserves it.
+    uint32_t bytes_ = 0, end_ = 0, freeBytes_ = 0;
     uint16_t masters_ = 64;
     int16_t error_ = 0;
-    bool mastersDirty_ = true;
+    Handle freeMasters_ = 0;
     Block& block(uint32_t off) const { return *(Block*)(arena_+off); }
     static uint32_t physical(uint32_t logical);
     static void moveBytes(uint8_t* dst, const uint8_t* src, uint32_t bytes);
@@ -60,6 +61,7 @@ private:
     void compactUp();
     bool resizeInPlace(uint32_t off, uint32_t bytes);
     void publish();
+    void releaseMaster(Handle handle);
     // Queries update MemError without rebuilding unchanged zone metadata.
     int16_t queryResult(int16_t code) { error_=code; return code; }
     int16_t result(int16_t code) { error_=code; publish(); return code; }

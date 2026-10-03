@@ -34,134 +34,90 @@ Unimplemented calls or forms still produce named loud stops.
 
 ## Display
 
-### Intro performance investigation (2026-10-02)
+### Intro performance comparison (2026-10-03)
 
-M2 functional/rendered acceptance does not establish acceptable frame rate or
-transition latency. The owner recording contains a nearly unchanged interval
-at 334.2–348.9 seconds (14.7 seconds), immediately before the entrance-hall
-camera changes to the stair view. Frames at 337 and 345 seconds show the same
-character position; at 350 seconds the next view has appeared. This is separate
-from the 7.95-second menu-to-landscape black interval. Video analysis and
-extracted frames are local under `tmp/m2-owner-video/`. The white cache-window
-interruption is not used as performance evidence.
+M2 functional acceptance does not establish acceptable animation or transition
+latency. P1 remains open before M3. The selected `a4000-030-reference` uses a
+68030 at 15.6672 MHz, matching the MAME Mac IIx CPU clock, with 8 MB fast RAM,
+AGA and no JIT. FS-UAE's approximate 68030 cycle timing and the different memory
+systems limit exact hardware equivalence. A controlled data-cache toggle did
+not remove the cold-mask stall; the default configuration remains unchanged.
+Performance claims below use unprofiled game ticks (60 Hz), not host time.
 
-The original investigation used a cycle-exact PAL A1200 at
-14,187,580 Hz with 8 MB fast RAM; host CPU speed does not remove that limit.
-Diagnostics before the region expansion change (`INTROSKIP=1 PROFILEFRAME=250 PROBEFIELDS=300`)
-identify room 0/camera 1, then measure publications 250–253 over 300 PAL fields.
-`tmp/m2-performance-car-native-full.log` exits 0; the trap arrays are archived
-under `tmp/m2-performance-car/`. C2P accounts for 445,662 of 24,036,231 beam
-units (1.85%). There are also 94 Read dispatches and substantial memory,
-drawing and sound-driver dispatch activity. These are inclusive instrumented
-service counts, not disk-read counts or a shipping FPS benchmark. They show
-that this sample includes preparation work; they do not isolate steady 3D
-rasterization from scene loading. Nested categories must not be added together.
+| Checkpoint span | Amiga ticks | Mac ticks |
+| --- | ---: | ---: |
+| Matched car draw → next original loop | 17 | 10 |
+| Matched first frog draw → next original loop, cold mask | 65 | 22 |
+| Natural first frog mask construction | 47 | 11 |
+| Natural first frog loop → next loop | 70 | 27 |
+| First two hallway loop entries, room 2/camera 5 | 120 | 55 |
+| Last hallway loop → first stair-view loop, camera 5 → 3 | 162 | 97 |
 
-The earlier `m2-mask-spans-profile-full.log` sample attributed 14,256,985 of
-24,022,099 units (59.35%) to four InsetRgn calls. The relevant implementation
-called `RegionRows::row` up to three times for every output row, and each
-call traversed the full region stream. That repeated decoding was a concrete
-CPU bottleneck, not an intentional scene delay. It is not proof that every
-recorded pause has the same cause. Attribution
-of complete transitions and a separate steady-rendering profile remain open
-under M5.1.
+The model replay pairs geometry, transforms and mask inputs, not every other
+actor or timing state. It now explicitly captures the first cold frog loop;
+the older 10-tick Mac replay had a warmed mask and is not a valid cold-frame
+comparison. Neither draw-to-loop span is an isolated renderer benchmark.
+Natural-route timings can differ with actor trajectories and animation phase.
+In the phase observation, the frog model itself takes 3–4 native ticks versus
+2–3 on Mac; its first mask is much more expensive than subsequent masks.
 
-The selected comparison machine is now `a4000-030-reference`, a 68030 at
-15.6672 MHz matching MAME's Mac IIx clock. FS-UAE's `~cycle-exact` timing and
-different memory systems remain limits on exact hardware equivalence.
-Region expansion now uses three validated forward cursors: each neighbour
-consumes the region transitions once, rather than rescanning them on every row.
-The first pond expansion falls from 17 game ticks to 1 on this configuration
-(`tmp/intro-030-inset-{before,after}-full.log`, both exit 0). The same original
-Mac call begins and ends in tick 20913 (`tmp/intro-030-inset-mac.log`, exit 0).
-These are coarse 60 Hz tick measurements of one operation, not whole-scene
-speedups. All 244 result bytes match the original, with unchanged ownership,
-register contract, port and pixels. Host checks include a tall region with
-many transitions and empty gaps, plus atomic rejection of an invalid tail.
-The helper reserves 4,436 bytes instead of 4,296; the dispatcher reserves 328.
-A read-only interrupt observation in the complete demo run records a minimum
-928 bytes above the system-stack lower bound at mouse-VBI entry. That run
-(`tmp/intro-030-route-after-full.log`, exit 0) completes all nine room changes
-without further input after the normal book skip. The full host suite passes
-in `tmp/intro-030-region-host-tests.log`. A remaining 753-tick (12.55-second)
-gap between room 2/camera 5 and room 2/camera 3 requires separate attribution;
-the region fix does not close the overall intro performance goal.
+The remaining measured hallway pause is 2.7 seconds versus 1.62 on Mac; initial
+hallway preparation is 2.0 versus 0.92 seconds. The owner's earlier recording
+showed a nearly unchanged 14.7-second interval at 334.2–348.9 seconds before
+this stair view. That recording used the earlier A1200 setup and implementation,
+so it is not a same-machine before/after benchmark. Its white cache-window
+interruption is excluded from evidence.
 
-The corresponding Mac IIx run (`tmp/intro-030-route-mac-retry.log`, exit 0)
-completes the original demo as well. At the original Dark+$5658 loop entry,
-the room 2/camera 5 → camera 3 checkpoint gap is 97 ticks (1.617 seconds),
-versus 753 ticks (12.55 seconds) on Amiga. The first two camera-5 loop entries
-are 55 ticks apart on Mac and 504 on Amiga (0.917 versus 8.4 seconds).
-These identify substantial port-side scene costs. Both runs use natural game
-entropy: actor trajectories and loop counts differ, so total demo duration
-and room/camera median loop times are not exact state-paired FPS comparisons.
-The initial Mac observer stopped before measurement because Dark was not yet
-loaded; only the successful retry is accepted evidence.
+The retained service changes address repeated work:
 
-A scene-triggered profile (`INTROSKIP=1 PROFILEROOM=2 PROFILECAMERA=5
-PROBEFIELDS=1500`) avoids selecting the wrong scene when natural car trajectories
-change the publication count. `tmp/intro-hall-detail-full.log` exits 0 after
-1,500 PAL fields: 120,173,863 beam units, 34 publications, ending in camera 3.
-Nested region decoding accounts for 2,930,467 units (2.44%); resizing the region
-handle accounts for 39,603,949 (32.96%). These scopes separate the geometry from
-the Memory Manager work inside InsetRgn; they must not be added to its inclusive
-trap cost. CopyBits accounts for a further 13,192,684 units (10.98%).
+- Region expansion streams three neighbouring rows through validated forward
+  cursors instead of rescanning the whole encoded region for every row. Its
+  first pond call takes one tick and matches all 244 original result bytes.
+- Unlocked handle growth uses an existing free block before shuffling the
+  surrounding heap. Locked handles and fragmented-heap recovery retain their
+  original contracts.
+- Heap mutations maintain the free-byte total and descending free-master chain
+  incrementally. Publishing the zone no longer rescans all blocks or rebuilds
+  every free link. Lowest-address slot allocation and the published chain order
+  are preserved, including new master blocks allocated into lower holes.
 
-Unlocked handle growth now uses an already-available replacement block before
-trying MoveHHi and heap compaction. Only the small source payload needs copying
-in that case. Locked handles retain their in-place rules, and fragmented heaps
-retain the compaction fallback. Sanitizer checks cover small growth beside a
-large live allocation, preserved state/data, locked neighbours and failed
-growth. The full host suite (`tmp/intro-heap-grow-host-tests.log`) and native
-Memory Manager fixture (`tmp/intro-heap-grow-native.log`, all three stages)
-pass. The unprofiled repeat (`tmp/intro-heap-grow-route-full.log`, exit 0)
-completes all nine room transitions with a minimum observed mouse-VBI stack
-margin of 928 bytes. Camera-5 initial setup falls from 504 to 180 ticks
-(8.4 → 3.0 seconds), and camera 5 → 3 falls from 753 to 240 ticks
-(12.55 → 4.0 seconds). Both remain slower than the Mac measurements above;
-the overall performance goal remains open.
+The complete cold-mask profile before the last change attributes 1,216,280 of
+5,777,665 beam units (21.1%) to 374 heap publications
+(`tmp/intro-mask-complete-ccr-full.log`, exit 0). This brackets the actual mask
+call rather than diluting it with subsequent frames in a fixed-duration sample.
+The unprofiled first-mask measurement falls from 67 to 47 ticks, and the first
+whole frog loop from 90 to 70. Hallway preparation falls from 146 to 120 ticks,
+and the stair transition from 199 to 162. These useful gains do not close P1.
+Nested diagnostic categories overlap and must not be added or quoted as FPS.
+The repeated complete-call profile (`tmp/intro-incremental-profile-full.log`,
+exit 0) records the same 374 publications at 75,688 beam units, down 93.8%.
+The whole instrumented interval is 3,935,487 units over 49 fields; publication
+is now 1.9% of that interval. Region geometry is 647,352 units, pointer lookup
+336,498 and original VBL callbacks 588,453. Remaining costs need separate
+attribution; the profile does not justify another geometry micro-optimization.
 
-The subsequent six-second setup profile (`tmp/intro-hall-after-full.log`,
-exit 0) attributes only 209,968 of 24,034,708 beam units to 18 region resizes
-(0.87%), but 4,315,494 to 586 heap publications (17.96%). The free-master list
-was being rebuilt even when no slot had been allocated or disposed. A private
-dirty flag now limits rebuilding to those membership changes, including failed
-handle allocations and newly allocated master blocks. Master blocks are pinned,
-so moving data or changing lock/purge flags cannot invalidate their links.
-Tests verify the actual published chain and allocation order, not just payloads.
-Host and native heap checks pass. The unprofiled full demo
-(`tmp/intro-master-list-route-full.log`, exit 0) again completes all nine room
-changes; initial hallway setup is 146 ticks (2.433 seconds), and camera 5 → 3
-is 199 ticks (3.317 seconds). Matching Mac values remain 55 and 97 ticks.
+Current evidence:
 
-Matched-input frame checks after these changes pass all 64,000 viewport pixels,
-256 colours and actual AGA publication for both car and frog
-(`tmp/intro-demo-publish-full.log`, `tmp/intro-{car,frog}-timing-mac.log`, all
-exit 0; `tools/check_demo_model_replay.py`). The final car sample takes 20 native
-ticks versus 11 on Mac from Dark+$3ED4 to the next +$5658. The first close-up
-frog sample takes 88 versus 10. These spans include work after the actor draw;
-the replay pairs model geometry and transform, not every actor or scene-cache
-state. In particular, do not interpret the frog ratio as steady renderer FPS.
-The natural-route first camera-3 loop gap is 99 native ticks versus 27 on Mac.
+- `tmp/intro-incremental-route-full.log` exits 0 after all nine original room
+  transitions and natural completion. Minimum observed mouse-VBI stack margin
+  remains 928 bytes above the 6 KiB supervisor-stack lower bound.
+- `tmp/intro-incremental-frog-full.log` and `tmp/intro-frog-phases-mac.log` give
+  the cold/warm phase observations. Both exit 0 at explicit completion checks.
+- `tmp/intro-incremental-frames-full.log` and
+  `tmp/intro-incremental-{car,frog}-mac.log` all exit 0. The matched-model checker
+  passes every one of the 64,000 viewport pixels, all 256 colours and actual
+  AGA publication for both actors. The frog replay asserts the first cold loop.
+- The full host suite (`tmp/intro-incremental-heap-host.log`), allocator
+  sanitizer checks and three-stage native heap fixture
+  (`tmp/intro-incremental-heap-native-full.log`) pass. Structural checks
+  independently recompute free space and verify every free-master link.
+- `tmp/intro-incremental-song-full.log` exits 0 and passes the original-song
+  checker: 3,736 exact timed events, 25 retained PCM variants (458,974 bytes),
+  effect priority, natural completion and resource/voice cleanup.
 
-The scene-triggered frog profile (`tmp/intro-frog-profile-full.log`, exit 0)
-covers 150 PAL fields and one publication. Of 12,015,539 beam units, nested
-region geometry is 642,701 (5.35%), region resizing 64,517 (0.54%), heap
-publication 1,214,578 (10.11%), and CopyBits 435,966 (3.63%). These overlapping,
-instrumented scopes identify remaining costs; they are not shipping timings.
-The overall performance and owner-visible playback acceptance remain open.
-The retained changes also pass the full song regression
-(`tmp/intro-final-song-full.log`, exit 0): 3,736 exact timed events, 25 retained
-PCM variants totalling 458,974 bytes, effect priority, natural completion and
-resource/voice cleanup. This verifies sequencing and bytes, not listening quality.
-
-An earlier native frame observer stopped with pending logical pixels at
-Dark+$5658 (`tmp/intro-perf-frames-native-full.log`, exit 1). Presentation runs
-at safe trap boundaries and can defer while a bitmap awaits VBI. The successful
-repeat above reached every selected frame with no pending logical pixels and
-proved unchanged pixels through publication; it did not reproduce that failure.
-Do not count the failed run as a pass or infer a display bug solely from that
-checkpoint. Any reproduced deferral still needs its delay and image checked.
+Normal owner-visible playback and the remaining car/cold-mask performance gap
+still require acceptance. A successful frame publication does not by itself
+establish smooth playback or audio quality.
 
 `AitdScreen` owns one 320×200 eight-plane display, using the live WIND 128
 content rectangle within the 640×480×8 logical Mac screen. Each chip bitmap

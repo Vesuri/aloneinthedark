@@ -25,8 +25,8 @@ required.
     isolated helpers.
   - Separate first-frame preparation from warmed-up rendering in paired
     measurements. Matching model geometry alone does not match scene-cache
-    state or other actors. Check CPU/cache timing-model differences before
-    attributing the whole remaining gap to the port.
+    state or other actors. Carry the remaining CPU/memory timing-model limits
+    into comparisons rather than attributing the whole gap to the port.
 
   *Done when* matched scene/transition timings demonstrate roughly comparable
   performance to the reference Mac, long unexplained port stalls are resolved,
