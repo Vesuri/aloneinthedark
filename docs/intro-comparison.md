@@ -1010,3 +1010,26 @@ binary's exact build revision remains unknown, so this is corroborating source
 evidence alongside the installed trace, not a binary-identical source claim.
 No supported larger-buffer setting has been established; changing that target
 would require an emulator-side change rather than a game scheduler fix.
+
+`tools/check_song_release_gaps.py tmp/audio-output/idle
+tmp/m2-song-clock-reference.log --origin 55.0095238095` now checks four
+exposed five-tick note-release deadlines against the actual stereo PCM. It
+derives each NoteOff from the original event sequence, uses captured event
+ticks for the deadline and beam timestamps for the next attack, then compares
+the intervening all-zero PCM duration. The independent first-note alignment
+only selects the nearby gap; a constant output latency cancels in its duration.
+
+| Last voice note index | Expected rest ms | Recorded rest ms | Difference ms |
+| --- | ---: | ---: | ---: |
+| 408 | 500.048 | 500.726 | +0.677 |
+| 1130 | 99.929 | 99.909 | −0.020 |
+| 1265 | 99.943 | 100.454 | +0.510 |
+| 1344 | 516.722 | 517.370 | +0.648 |
+
+All four pass a 2 ms tolerance and precede the idle-host output-starvation
+burst. The complete ownership checker separately passes for this capture.
+These rests verify exposed release cutoffs and following attacks; they do not
+prove every tail obscured by another voice, stereo equivalence, or correction
+of host buffering. The normal `INTROSKIP=1 FIXEDRNG=1` runtime is restored
+after these captures. Its clean build exits zero with no-float and 98-symbol
+probe audits passing (`tmp/audio-output/restore-build.log`).
