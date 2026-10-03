@@ -3,6 +3,30 @@
 **Status, 2026-10-02:** The native intro driver and complete reference song pass M2. All-song coverage,
 gameplay effect variants/toggles and perceived audio quality remain M4.
 
+## First-room music prerequisite — 2026-10-03
+
+New Game reaches SONG 137 / MIDI 907. `tools/mac_driver137.lua` follows normal
+Mac input into Carnby's attic and observes selector zero; its successful log is
+`tmp/m3-input/mac-driver137-retry.log`. `check_driver0.py --song 137 --prefix
+tmp/m3-input/driver137-reference` checks 237 paired services, preserved registers,
+34 newly owned resources, seven instruments and 25 samples. The four modifiers
+remain owned from the preceding song. The initial observer failed to reach the
+song; that failed log is not acceptance.
+
+The native decoder accepts this additional song with the same six music voices,
+three normalized voices and one effect voice. INST 10 adds flag $0400: original
+driver +$3292 reuses a voice matching the instrument, note and MIDI channel even
+while active. Native playback now releases and restarts that matching channel.
+Sample 15000 has a garbage loop-start field with a zero loop end. Original
++$34E4 disables that loop; the bounded parser now does the same, while still
+rejecting out-of-bounds enabled loops. Other instrument flags remain rejected.
+
+The host decoder processes all 2,250 song events and prepares the seven
+instruments/25 samples; sanitizer fixtures include the new flag and disabled
+loop case. The native `INGAME=1` 68030 run enters and renders the attic with
+audio enabled. This is first-room startup coverage, not a claim that every
+gameplay song or effect now passes M4.
+
 The checkpoint sections below preserve service-level evidence. References to
 an intermediate startup stop or a then-pending M2 gate are historical; current
 acceptance is recorded in [development.md](development.md), and remaining work

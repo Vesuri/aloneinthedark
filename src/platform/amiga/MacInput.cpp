@@ -114,6 +114,58 @@ void aitdInputInjectProbeKey(uint8_t rawKey, bool down)
 }
 
 
+#ifdef AITD_INGAME
+extern "C" { volatile uint16_t g_ingameStage=0; volatile uint32_t g_ingameTick=0; }
+extern "C" __attribute__((noinline)) void aitdInputInGameCheckpoint()
+{ __asm__ volatile("nop" ::: "memory"); }
+void aitdInputInGame(uint16_t trap,bool menu,bool portraits,bool story,
+                    bool gameplay,uint32_t ticks)
+{
+    static uint8_t held=0xff;
+    static uint32_t pressed=0;
+    static bool announced=false;
+    const uint16_t previous=g_ingameStage;
+    uint8_t key=0xff;
+    if(g_ingameStage==5)return;
+    if(menu && g_ingameStage==0) {g_ingameStage=1;g_ingameTick=ticks;}
+    if(portraits && g_ingameStage==1) {g_ingameStage=2;g_ingameTick=ticks;}
+    if(story && g_ingameStage==2) {g_ingameStage=3;g_ingameTick=ticks;}
+    if(g_ingameStage==3 && !story && ticks-g_ingameTick>=4) {
+        g_ingameStage=4;g_ingameTick=ticks;
+    }
+    if(g_ingameStage==4 && gameplay && trap==0xa976) {
+        g_ingameStage=5;g_ingameTick=ticks;
+    }
+    // Publisher screens poll events before the book polls GetKeys. Keep
+    // Space down through both so their ordinary skip paths run immediately.
+    if(g_ingameStage==0 && (announced || trap==0xa860 || trap==0xa970
+       || trap==0xa976 || trap==0xa974 || trap==0xa891))key=0x40;
+    if((g_ingameStage==1 && menu)
+       || (g_ingameStage==3 && story)) {
+        // Leave a released interval between successive Return selections.
+        if(ticks-g_ingameTick>=2)key=0x44;
+    }
+    if(g_ingameStage==2 && portraits) {
+        if(ticks-g_ingameTick>=2 && ticks-g_ingameTick<6)key=0x4e;
+        if(ticks-g_ingameTick>=8)key=0x44;
+    }
+    if(g_ingameStage==4 && !gameplay && trap==0xa976)key=0x45;
+    if((held==0x44 || held==0x4e) && ticks-pressed<2 && g_ingameStage>=1 && g_ingameStage<=3)
+        key=held;
+    if(held!=key) {
+        if(held!=0xff)aitdInputInjectProbeKey(held,false);
+        held=key;
+    }
+    // OS handback may flush the queue; reassert only at the original poll.
+    if(key!=0xff && !aitdInputKeyDown(key)) {
+        aitdInputInjectProbeKey(key,true);pressed=ticks;
+    }
+    if(previous!=g_ingameStage || (!announced && key!=0xff)) {
+        announced=true;aitdInputInGameCheckpoint();
+    }
+}
+#endif
+
 #ifdef AITD_INTRO_SKIP
 extern "C" { volatile uint16_t g_introSkipState = 0; volatile uint32_t g_introSkipTick = 0; }
 void aitdInputIntroSkip(uint16_t trap, uint32_t ticks)

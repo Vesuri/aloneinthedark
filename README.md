@@ -62,6 +62,11 @@ The game uses `m68k-amiga-elf-gcc`, `elf2hunk` and vasm.
 make -C amiga
 ```
 
+For testing directly in Carnby's first room, use a clean build with
+`make -C amiga clean` followed by `make -C amiga INGAME=1`. This skips all boot
+scenes, menus and story; initialization and loading still run. Clean-build
+without the option to restore the full startup.
+
 This builds `amiga/out/Alone.exe` without original game data. Extracting your
 original archive, running under FS-UAE and debugging are covered in
 [development.md](docs/development.md). The [documentation index](docs/README.md)

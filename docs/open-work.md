@@ -30,10 +30,6 @@ required.
     SystemClick and ObscureCursor on the first-room paths; implement any
     remaining measured contracts.
   - Map Amiga keys to the game's keys; confirm them against `tmp/manual.pdf`.
-  - Add the owner-requested `INGAME=1` build option to bypass publisher screens,
-    menu, story and intro and enter Carnby's first room for quick testing.
-    Preserve required initialization and keep normal builds unchanged; verify
-    the resulting first-room state against a normal new-game start.
 
   *Done when* a new game can be started, and Carnby walks, runs (Shift) and acts
   in the first room.

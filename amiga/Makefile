@@ -416,6 +416,13 @@ EXTRA_DEFINES += -DAITD_PALETTE_READ_FRAME=$(PALREADFRAME)
 PROBE_SYMS += g_paletteReadHigh g_paletteReadLow g_paletteReadBanks g_paletteReadStable g_paletteReadFrame g_paletteReadDone g_paletteReadBeamMax g_paletteReadDMABefore g_paletteReadDMAAfter
 endif
 
+# Opt-in direct-game testing route; input only, normal initialization retained.
+ifeq ($(INGAME),1)
+STORYENTER=1
+EXTRA_DEFINES += -DAITD_INGAME
+PROBE_SYMS += g_ingameStage g_ingameTick
+endif
+
 # Opt-in reading fixture: Right Arrow through pages, Return at the final page.
 ifeq ($(STORYREAD),1)
 STORYENTER=1

@@ -1682,7 +1682,7 @@ static const char* startNativeSong(uint32_t argument)
     AitdProfileScope profile(kProfileAudio);
     if(!g_soundDriver.initialized)return "NOT INITIALIZED";
     if(g_song.ownedCount)return "SONG REPLACEMENT";
-    if(argument!=135)return "SONG UNMEASURED";
+    if(argument!=135 && argument!=137)return "SONG UNMEASURED";
     const char* error=0;MacHeap::Handle song=0,midi=0;
     if((error=ownSongResource(0x534f4e47UL,(uint16_t)argument,song)))return error;
     if((error=g_song.description.parse(*song,handleZone(song)->handleSize(song))))return error;
@@ -1780,7 +1780,17 @@ static const char* playSongNote(const SongInputs::Event& event)
     if(!prepared.audible)return 0;
     const auto& dma=prepared.dma;
     int16_t channel=-1;
-    for(uint16_t i=0;i<4;++i)if(g_soundDriver.channels[i]<0) {channel=i;break;}
+    if(g_song.instruments[event.instrument].retrigger) {
+        for(uint16_t i=0;i<6;++i) {
+            const auto& voice=g_song.voices[i];
+            if(g_soundDriver.songs[i].channel>=0 && voice.note==event.note
+               && voice.channel==event.channel && voice.instrument==event.instrument) {
+                channel=g_soundDriver.songs[i].channel;
+                stopNativeSongVoice(i);break;
+            }
+        }
+    }
+    if(channel<0)for(uint16_t i=0;i<4;++i)if(g_soundDriver.channels[i]<0) {channel=i;break;}
     if(channel<0)channel=stealSongChannel();
     if(channel<0) {++g_song.dropped;return 0;} // Every channel belongs to effects.
     uint16_t slot=0;
@@ -5991,6 +6001,11 @@ extern "C" void aitdVBLCallbackComplete()
 static void presentMacRuntime()
 {
     AitdProfileScope profile(kProfilePresent);
+#ifdef AITD_INGAME
+    // Retain logical drawing and initialization, but publish only gameplay.
+    // Dirty state survives until the original playable stage is reached.
+    if(g_ingameStage<5)return;
+#endif
 #ifdef AITD_SCENE_FRAME_BATCH
     if(g_macSceneFrameOwner)return;
 #endif
@@ -7095,11 +7110,11 @@ extern "C" __attribute__((noinline)) void aitdBookProfileCheckpoint() { __asm__ 
 static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
                                uint8_t* frame, uint8_t* userStack, bool inUserService=false)
 {
-#ifdef AITD_INTRO_SKIP
+#if defined(AITD_INTRO_SKIP) && !defined(AITD_INGAME)
     aitdInputIntroSkip(trap, g_macTicks);
 #endif
     uint32_t pc = read32(frame + 2);
-#ifdef AITD_MENU_ENTER
+#if defined(AITD_MENU_ENTER) && !defined(AITD_INGAME)
     // Original Dan1+$1376 TickCount inside the game menu's 900-tick wait.
     aitdInputMenuEnter(trap==0xa975 && s_segments[12].begin
                       && pc==(uint32_t)s_segments[12].begin+0x1376,g_macTicks);
@@ -7128,7 +7143,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     // Engine Button -> Dan1 input poll -> Dan2 portrait wait. Follow only
     // these two validated stack frames to distinguish portraits from reading.
     bool atPortraits=false;
-#ifdef AITD_STORY_READ
+#if defined(AITD_STORY_READ) || defined(AITD_INGAME)
     bool atStory=false;
 #endif
     if(trap==0xa974 && s_segments[7].begin && s_segments[12].begin
@@ -7140,13 +7155,22 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
                && read32((uint8_t*)frameAddress+4)==(uint32_t)s_segments[12].begin+0x6230) {
                 const uint32_t caller=read32((uint8_t*)parent+4);
                 atPortraits=caller==(uint32_t)s_segments[13].begin+0x1ebc;
-#ifdef AITD_STORY_READ
+#if defined(AITD_STORY_READ) || defined(AITD_INGAME)
                 atStory=caller==(uint32_t)s_segments[12].begin+0x4874;
 #endif
             }
         }
     }
+#ifdef AITD_INGAME
+    // The original Dark+$5314 sets this byte only for the playable stage,
+    // after the new-game narrative has returned. Read it; never force it.
+    bool gameplay=s_a5WorldStorage && s_a5WorldStorage[75616-0x11b4c]!=0;
+    aitdInputInGame(trap,trap==0xa975 && s_segments[12].begin
+        && pc==(uint32_t)s_segments[12].begin+0x1376,
+        atPortraits,atStory,gameplay,g_macTicks);
+#else
     aitdInputStoryEnter(atPortraits,g_macTicks);
+#endif
 #ifdef AITD_STORY_READ
     // Engine+$1F84 precedes changes to D3/D5: they still hold the reading
     // routine's page index and end-of-text flag at this specific caller.

@@ -40,13 +40,14 @@ struct Song {
 struct Instrument {
     const uint8_t* data=0;
     uint16_t baseSample=0,basePitch=0,ranges=0;
+    bool retrigger=false;
     const char* parse(const uint8_t* p,uint32_t size) {
         if(!p || size<22)return "INST HEADER";
         uint16_t count=word(p+12);
         if(count>128 || size!=22u+8u*count)return "INST RANGE SIZE";
-        // These are the seven instruments reached by SONG 135. Random,
-        // velocity, recursive instrument and modifier forms remain explicit.
-        if(p[4]!=255 || p[5] || word(p+6) || word(p+8) || word(p+10))return "INST FLAGS";
+        // SONG 137 adds high-byte bit 2: original +$3292 reuses the
+        // matching voice even while active. Other flag forms stay explicit.
+        if(p[4]!=255 || p[5] || (word(p+6)&~0x0400) || word(p+8) || word(p+10))return "INST FLAGS";
         if(word(p+2)>127)return "INST BASE PITCH";
         for(uint16_t i=0;i<count;++i) {
             const uint8_t* row=p+14+8*i;
@@ -55,6 +56,7 @@ struct Instrument {
         const uint8_t* end=p+14+8*count;
         if(word(end)!=0 || word(end+2)!=0x8000 || longword(end+4))return "INST TRAILER";
         data=p;baseSample=word(p);basePitch=word(p+2);ranges=count;
+        retrigger=(word(p+6)&0x0400)!=0;
         return 0;
     }
     uint16_t rangeSample(uint16_t index) const {
@@ -73,6 +75,9 @@ struct Sample {
         if(longword(h) || h[20])return "SND ENCODING";
         uint32_t length=longword(h+4),start=longword(h+12),end=longword(h+16);
         if(!length || length>bytes-36 || !longword(h+8) || h[21]>127)return "SND SAMPLE";
+        // Original +$34E4 disables looping when the end is zero, even
+        // with a garbage start (snd 15000 has $53540000).
+        if(!end)start=0;
         if(start>length || (end!=0xffffffffUL && end>length)
            || (end==0xffffffffUL && start) || (end && end!=0xffffffffUL && start>=end)
            || (!end && start))return "SND LOOP";

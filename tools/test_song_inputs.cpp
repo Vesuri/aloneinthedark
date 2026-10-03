@@ -85,6 +85,7 @@ int main(int argc,char** argv) {
     Instrument instrument;assert(!instrument.parse(inst,sizeof(inst)) && instrument.baseSample==1);
     for(unsigned n=0;n<sizeof(inst);++n)assert(instrument.parse(inst,n));
     inst[7]=1;assert(instrument.parse(inst,sizeof(inst)));inst[7]=0;
+    inst[6]=4;assert(!instrument.parse(inst,sizeof(inst)) && instrument.retrigger);inst[6]=0;
     inst[15]=127;assert(instrument.parse(inst,sizeof(inst)));inst[15]=0;
     uint8_t sound[40]={0,2,0,0,0,1,0x80,0x50,0,0,0,0,0,14,0,0,0,0,0,0,0,4,
                        0x2b,0x11,0,0,0,0,0,0,0,0,0,0,0,60,0,127,128,255};
@@ -94,6 +95,9 @@ int main(int argc,char** argv) {
     sound[33]=5;assert(sample.parse(sound,sizeof(sound)));sound[33]=4;
     assert(!sample.parse(sound,sizeof(sound)) && sample.loopEnd==4);
     sound[29]=4;assert(sample.parse(sound,sizeof(sound)));sound[29]=0;
+    sound[26]=0x53;sound[27]=0x54;sound[33]=0;
+    assert(!sample.parse(sound,sizeof(sound)) && !sample.loopStart && !sample.loopEnd);
+    sound[26]=sound[27]=0;sound[33]=4;
     auto padded=std::vector<uint8_t>(sound,sound+sizeof(sound));padded.resize(76,0xa5);
     assert(!sample.parse(padded.data(),padded.size()) && sample.size==4 && sample.trailingBytes==36);
     std::puts("PASS INST/SND fixtures: exact sizes, range trailer, encoding, sample bounds and loop bounds");

@@ -1,7 +1,27 @@
 # Startup events
 
 **Status, 2026-10-02:** Startup/menu events, normal Enter selection and the automatic demo pass M2.
-First-room gameplay and broader event coverage remain M3.
+First-room controls and broader event coverage remain M3.
+
+## Direct-game build — 2026-10-03
+
+`INGAME=1` enters Carnby's attic through ordinary queued keys and GetKeys state.
+It retains all initialization and original instructions, suppresses boot-frame
+publication, and releases its keys before handing control to gameplay. Normal
+builds retain the full startup sequence. See the build instructions in
+[development.md](development.md).
+
+The audio-on, warp-off 68030 runs `tmp/m3-input/ingame6-run.log` and
+`ingame7-run.log` both exit zero after two original Dark+$5658 loop entries,
+with character 0, room 0, camera 0 and gameplay mode 1. The captured first room
+shows Carnby in the attic, matching the normal Mac new-game route. Suppressing
+boot frames leaves that entire 640×480 indexed-screen RGB image unchanged.
+The final route reaches the gameplay flag at tick 1940 (about 32 seconds),
+with zero frames published before that point; room and song loading follow.
+The retained `amiga/ingame.gdb` check passes in
+`tmp/m3-input/ingame-final-run.log`: all four injected keys are released,
+and the first room is the first published frame at tick 2335 (about 39 seconds).
+This verifies automatic entry, not walking/running/action acceptance.
 
 ## M3.1 entry investigation — 2026-10-03
 
@@ -17,8 +37,8 @@ releases Return at 1866, reaches the Carnby portrait at 2042, and returns from
 all eight letter pages at 2920. This verifies entry through the front end, not
 the first-room gameplay loop. The original Mac session in
 `tools/mac_trap_session.lua` uses Escape after the letter's subsequent story
-intro before verifying the attic. The requested `INGAME=1` mode must cover
-that transition as well as the earlier startup scenes.
+intro before verifying the attic. `INGAME=1` now covers that transition as well
+as the earlier startup scenes.
 
 Earlier `reach` and `state` attempts in that folder timed out and are not
 acceptance. Their wrapper appended audio options after the diagnostic runner's

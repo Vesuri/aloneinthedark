@@ -79,6 +79,16 @@ make -C amiga -j4
 ```
 
 The output is `amiga/out/Alone.exe`. The build needs no copyrighted input.
+For quick gameplay testing, clean-build with `make -C amiga -j4 INGAME=1`.
+This automatically selects Carnby and skips the publisher screens, book, menu,
+letter and narrative intro through normal game input. Boot drawing remains
+internal; only gameplay is displayed. Required resource loading still runs,
+with music enabled and no change to the game clock or emulator speed.
+Run it with `amiga/run.sh`. Clean-build without `INGAME=1` to restore full startup.
+`GDBSCRIPT=ingame.gdb amiga/diag_run.sh 180` verifies the initial world and key
+release; the diagnostic runner's default audio is muted, so use the normal
+runner for listening.
+
 Each `amiga/regression.sh` case uses temporary preferences through
 `tools/regression_preferences.py`. Existing preferences are moved outside the
 emulated drive and restored when the case ends, including failure. Probe-created
