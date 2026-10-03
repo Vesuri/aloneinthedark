@@ -16,7 +16,8 @@ required.
     and warp off, unchanged original game instructions and decisions. Use
     emulated time, not host wall time. Current same-character scene, transition
     and route results are in [intro-comparison.md](intro-comparison.md).
-  - Analyze the completed SDL PCM capture (`tmp/audio-output/intro.wav`)
+  - Analyze the completed SDL PCM captures (`tmp/audio-output/intro.wav` and
+    the idle-host repeat `tmp/audio-output/idle.wav`)
     against note/effect timing to finish onset and release-tail verification
     for the default CIA scheduler. Preserve original event/sample fidelity and distinguish DMA
     arming timestamps from first-sample output. Explain the four-channel
@@ -24,6 +25,10 @@ required.
     channel-ownership checks are evidence, but do not prove analog/host output
     fidelity. Do not use the reset-prone CIAB-TOD diagnostic as interrupt-duration
     evidence.
+    The repeat has callback-aligned silence near audio time 164.5 seconds,
+    despite sub-millisecond fitted DMA-onset phase range. Establish emulator
+    buffer starvation directly (installed SDL2 build; nearby SDL3 source is
+    not version-matched evidence) and resolve or bound its output impact.
   - Complete the whole-intro acceptance audit against the current build:
     car/frog/person animation, full mansion camera transitions, scene inventory,
     car waypoint progression and frame/audio fidelity. Reuse the unchanged Mac

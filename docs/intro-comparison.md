@@ -940,4 +940,34 @@ limitations still apply; matching starts alone does not prove voice tails.
 not physical speaker output or a complete musical onset/release comparison.
 Silence in the waveform must be compared against actual note/effect lifetimes
 before labeling it a dropout. That analysis remains open. The ordinary
-`INTROSKIP=1 FIXEDRNG=1` build is restored after capture.
+`INTROSKIP=1 FIXEDRNG=1` build was restored after this first capture.
+
+An idle-host repeat, `tmp/audio-output/idle.log` (runner exit zero), avoids
+concurrent analysis while playback runs. Its capture checker passes 29,785
+contiguous callbacks, 60,999,680 PCM bytes, 345.803175 seconds and zero overflow.
+Callback gaps are median 11.611 ms, p99 11.699 ms and maximum 13.016 ms.
+Hardware checks pass all 1,868 starts and 3,736 events: mean tick 16.6667 ms,
+fitted onset phase range 0.948 ms, maximum same-tick spread 5.888 ms and zero
+logical lateness. Allocation replay passes 250 effect transitions and 1,175
+policy-predicted steals. Different total run length is not a performance metric
+because the outdoor route remains timing-sensitive.
+
+Exploratory waveform alignment finds output delay increases in the first
+capture near audio times 99.7 and 189.1 seconds. Those interruptions disappear
+in the idle-host repeat, but a smaller one occurs near 164.5 seconds. Thus
+concurrent host analysis does not explain the whole symptom. In the repeat,
+twelve all-zero stereo intervals of at least 44 samples between 164.5 and
+164.75 seconds total 44.354 ms; every interval ends at sample index modulo
+512 equal to 44. The capture uses 512-frame callbacks. This is strong evidence
+of output-buffer behavior, but not yet a direct underrun measurement. The
+exploratory mixed-envelope model also finds a persistent timing offset after
+this burst; its release model is not yet a checked acceptance oracle.
+
+Nearby FS-UAE source implements zero-fill on underrun and a roughly one-field
+audio target, but that checkout uses SDL3 while the installed x86-64 emulator
+uses SDL2. Do not claim that source proves the installed implementation or
+change game timing based on it. The installed binary contains the `log_audio`
+option; trace-level buffer evidence is the next investigation. The repeat
+leaves the diagnostic `INTROSKIP=1 FIXEDRNG=1 SONGHARDWARE=1` build in place;
+restore the ordinary build after the remaining captures. Audio-output and
+release-tail acceptance remain open.
