@@ -46,7 +46,8 @@ Performance claims below use unprofiled game ticks (60 Hz), not host time.
 
 | Checkpoint span | Amiga ticks | Mac ticks |
 | --- | ---: | ---: |
-| Earlier matched car draw → next original loop | 17 | 10 |
+| Matched near-car renderer call | 16 | 12 |
+| Same near-car draw → next original loop | 23 | 12 |
 | Natural first frog mask construction | 35 | 11 |
 | Natural first frog loop → next loop | 59 | 27 |
 | First two hallway loop entries, room 2/camera 5 | 105 | 55 |
@@ -109,17 +110,26 @@ This comparison injects the captured native frog model/transform before the
 first Mac frog draw and observes original FramePoly at Dark+$33EC; it does not
 alter original instructions or precompute regions.
 
-A separate matched near-car pose (previous projected width at least 100 pixels)
-also matches every viewport pixel and colour. The original renderer call at
-Dark+$3ED4 → +$3EDA takes 17 native ticks versus 12 Mac ticks. Masking and the
-overlay call finish in the same tick. Native then takes six ticks from +$419A
-through the actual display-copy phase to +$5658; Mac takes less than a tick
-in this replay
-(`tmp/intro-car-phases-native-full.log`, `tmp/intro-car-phases-mac-retry.log`,
-both exit 0). Attribute that presentation interval separately before treating the
-whole-frame ratio as a model-renderer slowdown. Other actor/cache/timer state
-is not fully paired by the model fixture. Its accepted inputs and outputs are
-archived under `tmp/intro-car-phases-baseline/`.
+A matched near-car pose (previous projected width at least 100 pixels) also
+matches every viewport pixel and colour. The original renderer call at
+Dark+$3ED4 → +$3EDA takes 16 native ticks versus 12 Mac ticks. Within Dark3,
+model setup through sorted surfaces (+$1DA0 → +$1EFE) takes 5 versus 7 ticks;
+drawing the sorted list (+$1EFE → +$1F2E) takes 11 versus 5. Geometry preparation
+does not explain this sample's renderer gap. The complete draw-to-next-loop
+span is 23 versus 12 ticks, including masking, overlay and presentation
+(`tmp/intro-car-work-native-full.log`, `tmp/intro-car-work-mac.log`, both exit 0).
+Attribute the work after drawing separately before treating the whole-frame
+ratio as a model-renderer slowdown. Other actor/cache/timer state is not fully
+paired by the model fixture. Accepted inputs and exact outputs are archived
+under `tmp/intro-car-work-baseline/`.
+
+The whole-route compiler experiment with `-O3` gives no useful overall gain:
+the first frog mask takes 41 rather than 35 ticks, hallway preparation 103
+rather than 105, and the stair transition remains 141. It completes naturally
+(`tmp/intro-o3-route-full.log`, exit 0), but the normal `-O2` build is retained.
+Temporary native model injection is not a clean timing baseline: although its
+output matches, surrounding callback/timer state remains unpaired. It is not
+used for the timing table or for attributing a compiler improvement.
 
 The valid steady-car sample (`tmp/intro-car-scene-profile-detail-full.log`,
 exit 0) stays in room 0/camera 0 for 45 fields, spans one publication and
