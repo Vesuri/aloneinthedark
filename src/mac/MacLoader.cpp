@@ -180,6 +180,21 @@ volatile uint32_t g_songHardwareCount=0,g_songHardwareOverflow=0;
 // Expected tick, delivery tick, DMA-enable bracket (field/raster), channel, period,
 // instrument and note. Captured in RAM without debugger stops during playback.
 volatile uint32_t g_songHardware[4096][8]={};
+volatile uint32_t g_songEventClocks[4096][2]={}; // Serviced tick and actual delivery.
+volatile uint32_t g_songEffectCount=0,g_songEffectOverflow=0;
+// Completed MIDI events, last serviced music tick, operation (0 stop/1 start/
+// 2 already active at song start), Paula channel, effect slot/ID, game clock,
+// scheduled effect end. Event count disambiguates same-tick ownership changes.
+volatile uint32_t g_songEffects[4096][8]={};
+static void recordSongEffect(uint32_t operation,uint16_t channel,uint16_t slot)
+{
+    if(!g_song.description.data)return;
+    if(g_songEffectCount>=4096) {++g_songEffectOverflow;return;}
+    volatile uint32_t* row=g_songEffects[g_songEffectCount++];
+    row[0]=g_song.events;row[1]=g_song.lastTick;row[2]=operation;
+    row[3]=channel;row[4]=slot;row[5]=g_effects[slot].id;
+    row[6]=g_macTicks;row[7]=g_effects[slot].ends;
+}
 static bool s_songHardwareNote=false;
 #endif
 #ifdef AITD_SONG_PROBE
@@ -1441,6 +1456,9 @@ static void stopNativeEffect(uint16_t index)
     NativeEffect& effect=g_effects[index];
     if(voice.channel>=0) {
         quiescePaulaChannel((uint16_t)voice.channel);
+#ifdef AITD_SONG_HARDWARE_PROBE
+        recordSongEffect(0,(uint16_t)voice.channel,index);
+#endif
         g_soundDriver.channels[voice.channel]=-1;
         voice.channel=-1;
         ++g_effectStops;
@@ -1514,6 +1532,9 @@ static const char* playNativeEffect(uint8_t* packet,uint32_t& scratch)
     g_soundDriver.channels[channel]=6+index;
     startPaulaSample(chip,layout,channel,period,64);
     effect.started=g_macTicks;effect.ends=effect.started+ticks+1; // Full duration after DMA latches.
+#ifdef AITD_SONG_HARDWARE_PROBE
+    recordSongEffect(1,(uint16_t)channel,index);
+#endif
     scratch=(scratch&0xffff0000UL)|age; // Original +$3524 / +$3536.
     return 0;
 }
@@ -1721,6 +1742,9 @@ static const char* startNativeSong(uint32_t argument)
     g_song.started=g_song.lastTick;g_song.maxDeliveryLateness=0;
 #ifdef AITD_SONG_HARDWARE_PROBE
     g_songHardwareCount=g_songHardwareOverflow=0;
+    g_songEffectCount=g_songEffectOverflow=0;
+    for(uint16_t i=0;i<2;++i)if(g_soundDriver.effects[i].active)
+        recordSongEffect(2,(uint16_t)g_soundDriver.effects[i].channel,i);
 #endif
     g_song.busyFields=g_song.lastBusyTick=g_song.lateTick=g_song.lateBusyTick=0;
     __asm__ volatile("" ::: "memory");
@@ -1820,6 +1844,12 @@ static const char* advanceNativeSong()
                 uint32_t noteBegin=g_macTicks;
 #endif
                 if((error=playSongNote(event)))return error;
+#ifdef AITD_SONG_HARDWARE_PROBE
+                if(g_song.events<=4096) {
+                    g_songEventClocks[g_song.events-1][0]=g_song.lastTick;
+                    g_songEventClocks[g_song.events-1][1]=nativeMusicClock();
+                } else ++g_songHardwareOverflow;
+#endif
                 uint32_t lateness=nativeMusicClock()-(g_song.started+g_song.timeline.pulses);
                 if(lateness>g_song.maxDeliveryLateness) {
                     g_song.maxDeliveryLateness=lateness;g_song.lateTick=g_macTicks;

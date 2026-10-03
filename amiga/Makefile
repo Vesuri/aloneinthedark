@@ -251,6 +251,7 @@ endif
 ifeq ($(SONGHARDWARE),1)
 EXTRA_DEFINES += -DAITD_SONG_HARDWARE_PROBE
 PROBE_SYMS_SONG += g_songHardwareCount g_songHardwareOverflow g_songHardware
+PROBE_SYMS_SONG += g_songEffectCount g_songEffectOverflow g_songEffects g_songEventClocks
 endif
 
 ifeq ($(CIAMUSIC),1)

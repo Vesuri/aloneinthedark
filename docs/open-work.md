@@ -47,13 +47,16 @@ required.
     fidelity and distinguish DMA arming from actual first-sample output.
     Validate the opt-in `CIAMUSIC=1` candidate's remaining audio behavior
     before adoption; keep the game/display clocks unchanged.
-    Validate CIA scheduling together with the accepted direct-query path.
+    Repeat uninterrupted onset timing with CIA and the accepted direct-query
+    path together. The combined frame/ownership run contains debugger stops
+    and cannot establish uninterrupted output timing. Examine the lower
+    active-motion averages in its second toward-corridor and final-hall views
+    before claiming unchanged rendering performance throughout.
     Replace the reset-prone CIAB-TOD duration
     diagnostic before using it for further interrupt-cost claims.
-    Resolve the changed voice allocation: the CIA capture preserves all note
-    starts but changes which notes replace each other within a chord. Verify
-    voice lifetimes, release tails and stereo placement, including actual
-    effect ownership/start/stop times rather than a song-only model.
+    Verify actual output/release-tail timing and explain the four-channel
+    stereo/voice-stealing limitations; consistent channel ownership alone
+    does not establish audible fidelity.
   - Repeat the direct two-machine comparison after substantial fixes: active
     car/frog and character frame rates, scene inventory, car waypoint progression
     and complete mansion camera transitions. Explain remaining large gaps from

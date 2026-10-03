@@ -563,3 +563,35 @@ The overall measured gain and full-frame/ABI checks support keeping direct
 queries. Move on to the residual performance gap rather than tuning this
 helper further. This run uses the default VBI music scheduler; it does not
 validate the combination with the opt-in CIA scheduler.
+
+Combined query/CIA validation now completes in `amiga-fixed-query-cia-retry`
+(runner exit zero). All 1,042 captured buffers match pixel-for-pixel and in
+palette; 1,267 scene batches balance and all 1,056 queued frames are presented.
+All 3,736 music events arrive with zero logical-tick lateness. The audio trace
+contains 1,868 note starts and 256 effect transitions, with neither trace
+overflowing. The first combined run reached the final scene but failed its
+audio-capture guard and remains rejected. Its observer omitted the specific
+counters; the retry's 256 transitions exceed the initial 64-entry capacity,
+supporting a capacity explanation without proving the missing original counts.
+
+`check_song_allocation.py` replays the original Mac event sequence using
+captured note service/release clocks and effect ownership, with pitch and
+non-looping sample durations derived from original resources. All 1,868
+channel assignments and the aggregate 1,160 steals follow the documented
+four-channel oldest-note policy. An immediate effect replacement retains its
+channel: the trace captures paired stop/start transitions but not replacement
+intent separately, so that part establishes policy consistency rather than
+unique intent. A synthetic effect/release fixture passes, and corrupting a
+note to take an effect-owned channel is rejected. This resolves the false
+discrepancies of the earlier song-only model; it does not prove analog output
+or exact audible voice tails.
+
+Combined car and near/far frog rates are 2.80 and 3.16/2.96 FPS, versus
+2.92 and 3.24/2.95 for the query-only run. Late corridor toward/reverse/toward/
+reverse rates are 4.78/2.54/3.95/3.10 versus 4.72/2.54/4.46/3.19. Final hall,
+next view and final room are 3.12/5.48/7.14 versus 4.02/5.34/7.22. These are
+different active-motion samples, with two additional outdoor revisits in the
+combined run; do not infer unchanged performance in every view from the
+matching first reverse-corridor average. The combined capture contains debugger
+frame stops, so its audio timestamps must not replace the separate uninterrupted
+onset-jitter measurement. Keep CIA opt-in pending that combined timing check.

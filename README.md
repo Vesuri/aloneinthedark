@@ -29,9 +29,11 @@ priority and cleanup. The full host suite and six baseline native regression
 cases pass. Original game instructions and timers remain intact.
 
 Intro performance is the current priority before M3, using a fixed-clock 68030
-and the original Mac IIx as reference. Scene preparation has improved, but car
-animation and the first frog frame still lag behind the Mac. See the current
-[timings and comparison limits](docs/amiga-arch.md#intro-performance-comparison-2026-10-03).
+and the original Mac IIx as reference. Complete-scene presentation, bulk pixel
+copies and direct sound queries have reduced the late corridor's roughly
+fivefold gap to about 2.0–2.3×. Some indoor views still exceed twice the Mac's
+frame time. The CIA music scheduler is opt-in pending combined validation.
+See the current [scene timings and comparison limits](docs/intro-comparison.md).
 
 Gameplay, save/load and broader music support remain later milestones. The
 separately deferred M1 system-window fixture still needs its specific rendered
