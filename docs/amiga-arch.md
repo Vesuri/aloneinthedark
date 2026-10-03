@@ -205,9 +205,10 @@ Current evidence:
   sanitizer checks and three-stage native heap fixture
   (`tmp/intro-incremental-heap-native-full.log`) pass. Structural checks
   independently recompute free space and verify every free-master link.
-- `tmp/intro-incremental-song-full.log` exits 0 and passes the original-song
-  checker: 3,736 exact timed events, 25 retained PCM variants (458,974 bytes),
-  effect priority, natural completion and resource/voice cleanup.
+- `tmp/intro-retained-song-full.log` rechecks the retained runtime after private
+  workspace reuse. It exits 0 and passes the original-song checker: 3,736 exact
+  timed events, 25 retained PCM variants (458,974 bytes), effect priority,
+  natural completion and resource/voice cleanup.
 
 Normal owner-visible playback and the remaining car/cold-mask performance gap
 still require acceptance. A successful frame publication does not by itself
