@@ -19,10 +19,13 @@ required.
   - Identify and remove dominant algorithmic or compatibility costs. Preserve
     original instructions, game decisions, sample content and timing; do not
     substitute a faster emulator or focus on minor optimizations.
-  - Prioritize the sustained late-corridor rendering gap (approximately 5×)
-    and other 3–4× indoor views established by the
-    [same-character comparison](intro-comparison.md). Profile the late visit,
-    not the earlier front-door scene that reuses room 1/camera 2. Then address
+  - Address the remaining late reverse-corridor gap of approximately
+    2.4–2.9× after complete-scene presentation. Pixel copying and original
+    Mac VBL callbacks each account for about 18% in the residual profile;
+    inspect the dominant copying path next. Use the late visit, not the
+    earlier front-door scene that reuses room 1/camera 2, and the full
+    [matched-scene comparison](intro-comparison.md).
+    Then address
     remaining car/frog animation and cold scene-preparation costs. Remeasure
     the whole experience rather than isolated helpers.
   - Separate first-frame preparation from warmed-up rendering in paired

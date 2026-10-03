@@ -201,3 +201,94 @@ times. Each publication performs conversion and back-buffer synchronization.
 Investigate complete-frame presentation boundaries before more local geometry
 optimizations. This is a measured source of repeated work, not yet a verified
 fix or a complete explanation of the fivefold gap.
+
+An opt-in `SCENEFRAMEBATCH=1` experiment now defers native presentation until
+the original scene renderer returns. Original drawing, trap services, input
+and music continue normally. The controlled `FIXEDRNG=1` baseline and trial
+both select Carnby. Their two late reverse-corridor visits improve from
+1.13 to 2.04 FPS and 1.22 to 2.65 FPS; median active-step times fall from
+48 to 24 and 46 to 23 Mac ticks. The Mac Carnby reference achieves 5.84 and
+6.29 FPS, so the remaining gap still requires investigation.
+
+The trial (`tmp/route-comparison/amiga-fixed-batch.log`) completes naturally
+with 1,411 balanced scene batches, 1,170 queued/presented frames, all 3,736
+music events, maximum logical note lateness one tick and no late presentation.
+`tools/check_scene_batches.py` independently decodes all 1,156 captured planar
+buffers from the first scene batch through the final publication. Every pixel
+and every palette entry matches the completed Mac surface. This establishes
+buffer correctness, not host-window or audible acceptance. Baseline and trial
+retain different timing-dependent outdoor routes; total intro duration is not
+a speed comparison. After the full buffer check and residual-cost profile,
+batching is enabled by default; `SCENEFRAMEBATCH=0` retains the diagnostic
+baseline. The overall performance goal remains open.
+Most controlled indoor averages improve, but the next foyer falls from 4.83
+to 4.31 FPS and the first far-frog visit from 2.86 to 1.94 FPS. The latter
+includes timing-dependent differences in visible motion and extra outdoor
+visits; neither decrease should be dismissed without examining matched active
+steps. Upper-hall and stairs views also remain more than twice as slow as the
+Mac. The corridor improvement alone does not establish goal completion.
+
+Closer inspection of the far-frog visit finds four unique matching moving
+steps (identical start/end position, angle and animation frame). They total
+55 baseline ticks versus 59 batched ticks, all producing changed images.
+The scene averages cover different jump portions and different numbers of
+unchanged subpixel/animation poses. Thus the 32% average FPS decrease does not
+establish a 32% drawing regression; these four matched steps are about 7%
+slower and remain too few to establish broad equivalence. The next foyer has
+no exact matching moving-step pair under the same criterion, so its average
+decrease also remains unassigned rather than being declared harmless.
+
+The controlled Carnby scene averages are below. The Mac column uses its
+naturally selected Carnby run; native columns use `FIXEDRNG=1`. These match
+characters and scene visits, not every pose or timing-dependent car waypoint.
+
+| Scene | Mac FPS | Native baseline FPS | Batched FPS |
+| --- | ---: | ---: | ---: |
+| Opening car | 4.36 | 2.75 | 2.95 |
+| Near frog | 4.73 | 2.83 | 2.90 |
+| Distant frog, first visit | 3.80 | 2.86 | 1.94 |
+| Mansion approach | 11.90 | 7.25 | 7.46 |
+| Window view | 6.50 | 4.60 | 4.67 |
+| Front doors | 6.02 | 2.58 | 3.56 |
+| Next foyer | 6.14 | 4.83 | 4.31 |
+| Lower hall | 8.89 | 4.65 | 5.85 |
+| Stairs visible | 7.30 | 2.04 | 3.33 |
+| Foot of stairs | 6.43 | 1.97 | 2.76 |
+| Ascending stairs | 10.59 | 6.45 | 6.49 |
+| Upper hall, camera 5 | 7.59 | 2.98 | 3.04 |
+| Upper hall, first camera 3 visit | 8.84 | 3.59 | 3.69 |
+| Landing | 11.21 | 6.70 | 7.05 |
+| Late corridor, toward camera | 9.31 | 3.72 | 4.51 |
+| Reverse corridor, first visit | 5.84 | 1.13 | 2.04 |
+| Toward camera, second visit | 8.45 | 3.56 | 3.68 |
+| Reverse corridor, second visit | 6.29 | 1.22 | 2.65 |
+| Final hallway | 7.41 | 2.34 | 3.47 |
+| Next hallway view | 10.34 | 4.69 | 5.23 |
+| Final room | 10.98 | 6.22 | 6.85 |
+
+Batching makes little difference to complete camera-transition spans: entering
+the mansion is 9.23→9.08 seconds (Mac 8.05), ascending stairs→upper hall is
+6.83→6.82 (Mac 6.05), and the first late reverse→toward corridor change is
+3.35→3.32 (Mac 1.58). These use the same checkpoint-span definition as the
+earlier table. No batched indoor boundary exceeds 9.08 seconds. Improving
+sustained rendering does not remove the remaining transition costs.
+
+The batched late-corridor profile completes successfully with Carnby at
+tick 24,240 (`amiga-fixed-batch-profile.log`, 250 PAL fields). Inclusive
+presentation falls from 31.1% to 13.9% of measured time; synchronization falls
+from 14.1% to 0.23%. Conversion is 10.5%, CopyBits 17.9%, original Mac VBL
+callbacks 18.0%, and region expansion 4.0%. Categories overlap. Six complete
+publications replace the old profile's ten intermediate publications; those
+counts are not directly comparable animation rates. The unprofiled table is
+the speed evidence. Buffer synchronization is no longer a major target;
+inspect the dominant pixel-copying path next.
+
+Reproduce the complete buffer/route check with a clean build using
+`INTROSKIP=1 FIXEDRNG=1`, create
+`tmp/route-comparison/amiga-fixed-batch/`, and run the maintained
+`amiga/scene_batches.gdb` through `diag_run.sh` with the audible/no-warp
+wrapper. Preserve the runner's exit status and log, then pass them to
+`tools/check_scene_batches.py LOG CAPTURE_DIRECTORY --status STATUS`.
+The checker also requires the independently measured, hash-checked local
+`tmp/video-transfer-lut16.bin`; it does not replace it with the runtime's
+colour implementation.

@@ -182,6 +182,10 @@ volatile uint16_t g_stageCDepth = 1;       // _BlockMove is row 1
 volatile uint32_t g_macTicks = 0;
 volatile uint16_t g_macBookFrameActive=0;
 volatile uint32_t g_macBookFramesBegun=0,g_macBookFramesCompleted=0;
+#ifdef AITD_SCENE_FRAME_BATCH
+volatile uint32_t g_macSceneFrameOwner=0;
+volatile uint32_t g_macSceneFramesBegun=0,g_macSceneFramesCompleted=0;
+#endif
 volatile uint32_t g_mouseVBISamples = 0;
 volatile uint32_t g_mouseVBIMoves = 0;
 #ifdef AITD_PROBE
@@ -443,6 +447,9 @@ static CreatedPalette s_createdPalettes[32];
 static bool s_screenDirty = true;
 static uint32_t s_bookFrameOwner=0;
 static uint16_t s_bookFrameColumn=0,s_bookFrameQueued=0;
+#ifdef AITD_SCENE_FRAME_BATCH
+static uint16_t s_sceneFrameQueued=0;
+#endif
 static bool s_pixelsDirty = false;
 static int16_t s_dirtyTop, s_dirtyLeft, s_dirtyBottom, s_dirtyRight;
 static AitdScreen::DirtyRect s_dirtyRects[AitdScreen::kMaxDirtyRects];
@@ -5861,6 +5868,9 @@ extern "C" void aitdVBLCallbackComplete()
 static void presentMacRuntime()
 {
     AitdProfileScope profile(kProfilePresent);
+#ifdef AITD_SCENE_FRAME_BATCH
+    if(g_macSceneFrameOwner)return;
+#endif
     if(g_macBookFrameActive) {
 #ifdef AITD_BOOK_PROFILE
         extern volatile uint16_t g_profileState;
@@ -5895,6 +5905,49 @@ static void presentMacRuntime()
     if(result<0) {loaderStop("DISPLAY INPUT",0);showLoaderStop();}
     if(result>0) {s_screenDirty=false;s_pixelsDirty=false;s_dirtyRectCount=0;}
 }
+
+#ifdef AITD_SCENE_FRAME_BATCH
+// Dark+$3CCE constructs a scene using several screen copies. Keep its dirty
+// rectangles together until its original stack frame has returned. Callbacks
+// and other trap services continue normally while native presentation waits.
+static void sceneFrameBoundary(uint16_t trap,uint32_t pc,const uint32_t* regs)
+{
+    if(g_macVBLCallbackActive || g_macFileCompletionDepth)return;
+    const uint32_t base=(uint32_t)g_macStackBase;
+    if(g_macSceneFrameOwner) {
+        uint32_t frame=regs[14];uint16_t depth=0;
+        while(frame && frame<g_macSceneFrameOwner) {
+            if(!base || (frame&1) || frame<base || frame>base+65528 || ++depth>64) {
+                loaderStop("SCENE FRAME STACK",4);showLoaderStop();return;
+            }
+            uint32_t parent=read32((uint8_t*)frame);
+            if(parent && parent<=frame) {
+                loaderStop("SCENE FRAME CHAIN",4);showLoaderStop();return;
+            }
+            frame=parent;
+        }
+        if(frame!=g_macSceneFrameOwner) {
+            if(g_macFramesQueued!=s_sceneFrameQueued) {
+                loaderStop("SCENE FRAME PARTIAL",4);showLoaderStop();return;
+            }
+            g_macSceneFrameOwner=0;++g_macSceneFramesCompleted;
+            presentMacRuntime();
+        }
+    }
+    if(trap!=0xab1d || !s_segments[4].begin
+       || pc!=(uint32_t)s_segments[4].begin+0x3ce8)return;
+    if(g_macSceneFrameOwner || !base || (regs[14]&1)
+       || regs[14]<base || regs[14]>base+65528
+       || read32(s_segments[4].begin+0x3cce)!=0x4e56fff0UL
+       || read32((uint8_t*)pc-6)!=0x203c0008UL
+       || read16((uint8_t*)pc-2)!=5 || regs[0]!=0x00080005UL) {
+        loaderStop("SCENE FRAME BEGIN",4);showLoaderStop();return;
+    }
+    presentMacRuntime();
+    s_sceneFrameQueued=g_macFramesQueued;
+    g_macSceneFrameOwner=regs[14];++g_macSceneFramesBegun;
+}
+#endif
 
 // The original book loops construct one position using several immediate-mode
 // QuickDraw calls. Existing Toolbox edges delimit that construction; no game
@@ -7052,6 +7105,9 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     uint16_t bookEdge;
     {
     AitdProfileScope profileServices(kProfileTrapServices);
+#ifdef AITD_SCENE_FRAME_BATCH
+    sceneFrameBoundary(trap,pc,regs);
+#endif
     bookEdge=bookFrameEdge(trap,pc,regs,bookOwner);
     if(bookEdge==1 || bookEdge==2)beginBookFrame(bookEdge,bookOwner,uint16_t(regs[7]));
     // Mouse position and button live in redirected low-memory shadows that
@@ -9170,6 +9226,10 @@ bool MacLoader::prepareResourceForks(const ResourceForks::Source& application,co
 #endif
     g_macBookFrameActive=0;g_macBookFramesBegun=g_macBookFramesCompleted=0;
     s_bookFrameOwner=0;s_bookFrameColumn=s_bookFrameQueued=0;
+#ifdef AITD_SCENE_FRAME_BATCH
+    g_macSceneFrameOwner=0;g_macSceneFramesBegun=g_macSceneFramesCompleted=0;
+    s_sceneFrameQueued=0;
+#endif
     g_appleEventHandlers.reset();
     for(uint16_t i=0;i<ResourceForks::kMaximumResources;++i) { s_resourceHandles[i]=0;s_resourceChanges[i]=0; }
     for(auto& touched:s_resourceMapTouched)touched=false;

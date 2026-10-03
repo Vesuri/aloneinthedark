@@ -342,6 +342,12 @@ PROBE_SYMS += g_videoPAL g_paulaClock
 PROBE_SYMS += $(PROBE_SYMS_PAK)
 PROBE_SYMS += $(PROBE_SYMS_C2P)
 PROBE_SYMS += g_macFramesQueued g_macFramesPresented
+# Present completed original scene renders; 0 retains the diagnostic baseline.
+SCENEFRAMEBATCH ?= 1
+ifeq ($(SCENEFRAMEBATCH),1)
+EXTRA_DEFINES += -DAITD_SCENE_FRAME_BATCH
+PROBE_SYMS += g_macSceneFrameOwner g_macSceneFramesBegun g_macSceneFramesCompleted
+endif
 PROBE_SYMS += g_beamPresentLine g_beamPresentMin g_beamPresentMax \
               g_beamPresents g_beamPresentsLate
 PROBE_SYMS += g_macVBLCallbackEntry g_macVBLCallbackTask g_macVBLCallbackA5 g_macVBLCallbackReturn
