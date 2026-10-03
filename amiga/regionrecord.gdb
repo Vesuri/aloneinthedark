@@ -91,7 +91,7 @@ while $n<=17
  if $n==16
   region_heap_snapshot
   printf "RREC_HEAP before_count=%X after_count=%X before_total=%X after_total=%X\n",$rrec_before_count,$rrec_count,$rrec_before_total,$rrec_total
-  if $rrec_count!=$rrec_before_count || $rrec_before_total-$rrec_total!=4096-252
+  if $rrec_count!=$rrec_before_count || $rrec_before_total!=$rrec_total
    echo FAIL polygon workspace leak or unexpected allocation delta\n
    detach
    quit 1
@@ -136,12 +136,19 @@ if *(unsigned long*)($body-12)!=2 || *(unsigned long*)($body-16)!=$region-$zone 
  quit 1
 end
 printf "RREC_OWNER size=%u owned=1 frames=%u book=%u\n",*(unsigned long*)($body-20),$frames,g_macBookFramesCompleted
-continue
-if g_stageBState!=3 || g_trapWord!=0xa8d9 || g_trapSegment!=4 || g_trapOffset!=0x3058 || *(unsigned long*)((char*)SysBase+0x230)!=$rrec_launch
- echo FAIL region next stop\n
+set $dispose=(unsigned long)s_segments[4].begin+0x3058
+if *(unsigned short*)$dispose!=0xa8d9
+ echo FAIL region disposal caller bytes\n
  detach
  quit 1
 end
-echo PASS native polygon region recording; next stop DisposeRgn\n
+tbreak *$dispose
+continue
+if g_stageBState==3 || $pc!=$dispose || *(unsigned long*)((char*)SysBase+0x230)!=$rrec_launch
+ echo FAIL region next disposal entry\n
+ detach
+ quit 1
+end
+echo PASS native polygon region recording; reached DisposeRgn\n
 detach
 quit 0

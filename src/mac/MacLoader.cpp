@@ -343,9 +343,16 @@ static uint8_t* s_trapAddresses[4096];
 static uint8_t* s_qdThePort;
 static MacHeap::Handle s_recordingPolygon;
 static uint8_t* s_polygonPort;
-static MacHeap::Handle s_recordedRegion;
+static uint8_t s_regionRecord[PolygonRegion::capacity];
 static uint8_t* s_regionPort;
 static bool s_regionHasPolygon;
+// Geometry services complete before original callbacks can run. Native VBI
+// does not touch these buffers, so sequential calls share private workspace
+// without allocating temporary handles in the application heap.
+static union {
+    PolygonRegion::Scratch polygon;
+    uint8_t expanded[RegionExpand::capacity];
+} s_regionWorkspace;
 #ifdef AITD_PROBE
 static volatile uint32_t s_randomTrapPC;
 #endif
@@ -7909,7 +7916,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     if(trap==0xa8d9) {                       // DisposeRgn: release an owned region
         MacHeap::Handle region=(MacHeap::Handle)read32(userStack);
         MacHeap* owner=handleZone(region);
-        if(!owner || !*region || region==s_recordedRegion
+        if(!owner || !*region
            || owner->handleSize(region)<10 || read16(*region)!=owner->handleSize(region)
            || resourceHandleIndex(region)>=0)goto unsupportedTrap;
         if(owner->disposeHandle(region)!=MacHeap::noErr)goto unsupportedTrap;
@@ -7918,12 +7925,11 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     }
     if(trap==0xa8da) {                       // OpenRgn(): hidden contour recording
         uint8_t* port=s_qdThePort ? (uint8_t*)read32(s_qdThePort) : 0;
-        if(!port || (!gWorldForPort(port) && !windowSlot(port)) || s_recordedRegion
+        if(!port || (!gWorldForPort(port) && !windowSlot(port)) || s_regionPort
            || s_recordingPolygon || read16(port+66) || read32(port+92)
            || read32(port+96) || read32(port+100))goto unsupportedTrap;
-        s_recordedRegion=newHandle(PolygonRegion::capacity,true);
-        if(!s_recordedRegion)goto unsupportedTrap;
         s_regionPort=port;s_regionHasPolygon=false;
+        memoryResult(0,false);
         write16(port+66,0xffff);write32(port+96,1);
         regs[0]=0xffffffffUL;regs[8]=(uint32_t)port;
         return 1;
@@ -7931,37 +7937,32 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     if(trap==0xa8c6) {                       // FramePoly during the measured region capture
         uint8_t* port=s_qdThePort ? (uint8_t*)read32(s_qdThePort) : 0;
         MacHeap::Handle polygon=(MacHeap::Handle)read32(userStack);
-        MacHeap* owner=handleZone(polygon);MacHeap* recordingOwner=handleZone(s_recordedRegion);
+        MacHeap* owner=handleZone(polygon);
         uint16_t bytes=0;
-        if(!owner || !*polygon || !recordingOwner || !*s_recordedRegion
+        if(!owner || !*polygon || !s_regionPort
            || port!=s_regionPort || s_regionHasPolygon || read16(port+66)!=0xffff
            || read32(port+96)!=1 || read16(port+52)!=1 || read16(port+54)!=1)goto unsupportedTrap;
-        // The system stack must also accommodate native interrupts. Keep both
-        // the contour edges and atomic output staging in an owned workspace.
-        MacHeap::Handle scratch=newHandle(sizeof(PolygonRegion::Scratch),false);
-        MacHeap* temporaryOwner=handleZone(scratch);
-        if(!temporaryOwner || !*scratch)goto unsupportedTrap;
-        bool valid=PolygonRegion::encode(*polygon,owner->handleSize(polygon),*s_recordedRegion,
-            recordingOwner->handleSize(s_recordedRegion),bytes,*(PolygonRegion::Scratch*)*scratch);
-        if(valid)valid=recordingOwner->setHandleSize(s_recordedRegion,bytes)==MacHeap::noErr;
-        if(temporaryOwner->disposeHandle(scratch)!=MacHeap::noErr || !valid)goto unsupportedTrap;
+        // Keep contour edges and atomic staging off the shared system stack.
+        bool valid=PolygonRegion::encode(*polygon,owner->handleSize(polygon),s_regionRecord,
+            sizeof(s_regionRecord),bytes,s_regionWorkspace.polygon);
+        if(!valid)goto unsupportedTrap;
         write32(port+48,read32(*polygon+read16(*polygon)-4));
+        memoryResult(0,false);
         s_regionHasPolygon=true;regs[0]=0;regs[8]=(uint32_t)s_qdThePort;
         return 5;
     }
     if(trap==0xa8db) {                       // CloseRgn(owned destination)
         uint8_t* port=s_qdThePort ? (uint8_t*)read32(s_qdThePort) : 0;
         MacHeap::Handle region=(MacHeap::Handle)read32(userStack);
-        MacHeap* owner=handleZone(region);MacHeap* recordingOwner=handleZone(s_recordedRegion);
-        if(!owner || !*region || !recordingOwner || !*s_recordedRegion || region==s_recordedRegion
+        MacHeap* owner=handleZone(region);
+        if(!owner || !*region || !s_regionPort
            || port!=s_regionPort || !s_regionHasPolygon || read16(port+66)!=0xffff
            || read32(port+96)!=1)goto unsupportedTrap;
-        uint16_t size=read16(*s_recordedRegion);
+        uint16_t size=read16(s_regionRecord);
         if(owner->setHandleSize(region,size)!=MacHeap::noErr)goto unsupportedTrap;
-        for(uint16_t i=0;i<size;++i)(*region)[i]=(*s_recordedRegion)[i];
+        for(uint16_t i=0;i<size;++i) {volatile uint8_t value=s_regionRecord[i];(*region)[i]=value;}
         regs[0]=0;regs[1]&=0xffff0000UL;regs[2]=(regs[2]&0xffff0000UL)|read16(*region+6);
-        if(recordingOwner->disposeHandle(s_recordedRegion)!=MacHeap::noErr)goto unsupportedTrap;
-        s_recordedRegion=0;s_regionPort=0;s_regionHasPolygon=false;
+        s_regionPort=0;s_regionHasPolygon=false;
         write16(port+66,0);write32(port+96,0);
         return 5;
     }
@@ -7978,20 +7979,19 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         MacHeap* owner=handleZone(region);uint16_t size=0;
         if(read32(userStack)!=0xffffffffUL || !owner || !*region)goto unsupportedTrap;
         // Keep large output storage off the shared supervisor trap stack.
-        MacHeap::Handle expanded=newHandle(RegionExpand::capacity,false);
-        MacHeap* temporaryOwner=handleZone(expanded);
-        if(!temporaryOwner || !*expanded)goto unsupportedTrap;
+        uint8_t* expanded=s_regionWorkspace.expanded;
         bool valid;
         {
             AitdProfileScope profile(kProfileRegionExpand);
-            valid=RegionExpand::one(*region,owner->handleSize(region),*expanded,RegionExpand::capacity,size);
+            valid=RegionExpand::one(*region,owner->handleSize(region),expanded,RegionExpand::capacity,size);
         }
         if(valid) {
             AitdProfileScope profile(kProfileRegionResize);
             valid=owner->setHandleSize(region,size)==MacHeap::noErr;
         }
-        if(valid)for(uint16_t i=0;i<size;++i) {volatile uint8_t value=(*expanded)[i];(*region)[i]=value;}
-        if(temporaryOwner->disposeHandle(expanded)!=MacHeap::noErr || !valid)goto unsupportedTrap;
+        if(valid)for(uint16_t i=0;i<size;++i) {volatile uint8_t value=expanded[i];(*region)[i]=value;}
+        if(!valid)goto unsupportedTrap;
+        memoryResult(0,false);
         regs[0]=0;regs[1]=(regs[1]&0xffff0000UL)|0xffff;
         regs[2]=(regs[2]&0xffff0000UL)|read16(*region+6);
         return 9;
@@ -7999,7 +7999,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     if(trap==0xa8dd) {                       // SetEmptyRgn(owned RgnHandle)
         MacHeap::Handle region=(MacHeap::Handle)read32(userStack);
         MacHeap* owner=handleZone(region);
-        if(!owner || !*region || region==s_recordedRegion
+        if(!owner || !*region
            || owner->handleSize(region)!=10 || read16(*region)!=10
            || resourceHandleIndex(region)>=0)goto unsupportedTrap;
         write16(*region,10);write32(*region+2,0);write32(*region+6,0);
@@ -8010,7 +8010,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         const uint8_t* rectangle=(const uint8_t*)read32(userStack);
         MacHeap::Handle region=(MacHeap::Handle)read32(userStack+4);
         MacHeap* owner=handleZone(region);
-        if(!rectangle || !owner || !*region || region==s_recordedRegion
+        if(!rectangle || !owner || !*region
            || resourceHandleIndex(region)>=0 || owner->handleSize(region)<10
            || read16(*region)<10 || (read16(*region)&1)
            || read16(*region)>owner->handleSize(region))goto unsupportedTrap;

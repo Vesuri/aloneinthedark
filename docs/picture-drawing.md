@@ -165,30 +165,17 @@ D1/D2/A0/A1 values are not address-for-address Macintosh ROM reproductions;
 the following original instructions overwrite them before consumption. Live
 D3–D7/A2–A6, stack behavior, results, owned data and port changes must match.
 
-Native acceptance passes. The bounded `amiga/regionrecord.gdb`
-observer uses `INTROSKIP=1` and original instruction breakpoints, compares the
-four calls and drawing isolation, then requires the next explicit stop at
-InsetRgn (Dark+$33F8). No full book replay is needed for this check.
+The bounded `amiga/regionrecord.gdb` observer uses `INTROSKIP=1` and original
+instruction breakpoints. It checks all four calls, drawing isolation, compiled
+stack headroom, unchanged application-heap allocation during FramePoly, and
+continuation to DisposeRgn at Dark+$3058. DisposeRgn is implemented; the observer
+must not wait for the historical unsupported-service stop.
 
-The first native attempt (`tmp/m2-regionrecord-native.log`, exit 1) stops before
-NewRgn at sound-driver selector 18, Core+$1828. It is not region acceptance.
-M2.3g44d1 now resolves that prerequisite with paired targeted-stop evidence.
-The clean `INTROSKIP=1` build
-passes both link audits (88 probe symbols); `make host-tests` exits zero in
-`tmp/m2-regionrecord-host-tests.log`. The follow-up runner exits zero in
-`tmp/m2-regionrecord-native-after-driver18.log`. Its abbreviated output omits
-NewRgn, so acceptance uses the complete debugger output saved as
-`tmp/m2-regionrecord-native-full.log`. The paired checker passes all four calls,
-all 252 output bytes, bounds, logical allocation size/owner, restored recording
-state and unchanged drawing pixels. Publication count stays 189 and book batches
-stay zero. The next stop is `$A8E1` at Dark+$33F8, now labeled INSETRGN in the
-trap-name table. This final label-only change passes the link audits.
-
-Three failed/incomplete reference logs and four failed/incomplete native logs
-are rejected by the verifier. Host sanitizer checks additionally cover malformed
-bounds, reserved coordinates and excessive complexity. This verifies region
-recording; InsetRgn and the complete frog sequence remain open.
-
+Current native acceptance is `tmp/intro-region-private-record-retry-full.log`
+(exit 0). Its paired checker passes all 252 output bytes, live registers,
+logical extent/owner, restored port fields, zero memory errors and unchanged
+pixels. The encoder has 5,392 bytes of interrupt headroom. Host sanitizer checks
+also cover malformed bounds, reserved coordinates and excessive complexity.
 
 ## Pond contour expansion (M2.3g44e)
 
@@ -352,32 +339,20 @@ Original ROM bytes at $F81428 load that scheduler launch pointer into A4;
 $F814C2 jumps through it. This attributes the later execution of heap data to
 a port stack overflow, rather than an emulator false alarm.
 
-`PolygonRegion::Scratch` now owns the edge array and atomic output staging.
-FramePoly allocates that workspace in an owned temporary handle, disposes it
-on success or encoding failure, and retains the named stop on allocation or
-unsupported-input failure. Original game instructions and region contents are
-unchanged. The stress build's encoder frame falls to 176 bytes plus 16 saved
-register bytes. `tmp/m2-polygon-stack-fixed-stress-full.log` exits zero with
-5,384 bytes of headroom, unchanged scheduler launch pointer, no exception, and
-continuation to the expected DisposeRgn stop. `POLYGONSTACKSTRESS=1` enables the
-one-field wait only for diagnostics; normal builds do not wait.
+`PolygonRegion::Scratch` keeps the edge array and atomic output staging off
+that stack. The runtime now reserves 9.25 KiB of private storage: a recording
+buffer plus a shared polygon/expansion workspace. These synchronous services
+finish before original callbacks run; native VBI never uses the buffers. The
+recording stays private until CloseRgn copies it into the caller-owned handle.
+Successful memory-error results and unsupported-input stops are preserved.
 
-All 11 original Mac region fixtures and atomic rejection checks pass in
-`tmp/m2-polygon-stack-reference-check.log`; the full host suite passes in
-`tmp/m2-polygon-stack-host-tests.log`. No-float and probe audits pass.
-`regionrecord.gdb` now verifies compiled stack headroom, temporary-workspace
-allocation balance and continuation through the later pond operations to
-DisposeRgn. `tmp/m2-polygon-stack-native-explicit-full.log` exits zero with
-5,392 bytes of headroom, the same 313 live application allocations before and
-after FramePoly, and the expected 3,844-byte reduction from shrinking the
-recorded region. Native region bytes, ABI, port fields and unchanged pixels
-match the original; book batches remain zero. The first observer attempt
-(`tmp/m2-polygon-stack-native-observer-failed-full.log`) stops before the expected
-return and is not acceptance; the accepted observer uses an explicit encoder
-checkpoint. Five negative logs (missing completion, timeout, inadequate
-headroom, leaked workspace and unexpected signal) are rejected in
-`tmp/m2-polygon-stack-negative-checks.log`.
+`regionrecord.gdb` checks that FramePoly changes neither the number nor total
+size of live application allocations. The current native fixture reports
+5,392 bytes of encoder interrupt headroom and passes exact original bytes,
+ABI, port fields, ownership and pixel isolation. `POLYGONSTACKSTRESS=1` retains
+the diagnostic one-field wait; normal builds do not wait. Historical temporary-
+handle and forced-overflow experiments are recorded in Git history.
 
 ```sh
-python3 tools/check_regionrecord.py --reference tmp/m2-regionrecord-fixtures-reference.log --status 0 --native tmp/m2-polygon-stack-native-explicit-full.log --native-status 0
+python3 tools/check_regionrecord.py --reference tmp/m2-regionrecord-fixtures-reference.log --status 0 --native tmp/intro-region-private-record-retry-full.log --native-status 0
 ```

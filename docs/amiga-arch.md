@@ -46,12 +46,11 @@ Performance claims below use unprofiled game ticks (60 Hz), not host time.
 
 | Checkpoint span | Amiga ticks | Mac ticks |
 | --- | ---: | ---: |
-| Matched car draw → next original loop | 17 | 10 |
-| Matched first frog draw → next original loop, cold mask | 65 | 22 |
-| Natural first frog mask construction | 47 | 11 |
-| Natural first frog loop → next loop | 70 | 27 |
-| First two hallway loop entries, room 2/camera 5 | 115 | 55 |
-| Last hallway loop → first stair-view loop, camera 5 → 3 | 156 | 97 |
+| Earlier matched car draw → next original loop | 17 | 10 |
+| Natural first frog mask construction | 35 | 11 |
+| Natural first frog loop → next loop | 59 | 27 |
+| First two hallway loop entries, room 2/camera 5 | 105 | 55 |
+| Last hallway loop → first stair-view loop, camera 5 → 3 | 141 | 97 |
 
 The model replay pairs geometry, transforms and mask inputs, not every other
 actor or timing state. It now explicitly captures the first cold frog loop;
@@ -61,14 +60,19 @@ Natural-route timings can differ with actor trajectories and animation phase.
 In the phase observation, the frog model itself takes 3–4 native ticks versus
 2–3 on Mac; its first mask is much more expensive than subsequent masks.
 
-The remaining measured hallway pause is 2.60 seconds versus 1.62 on Mac; initial
-hallway preparation is 1.92 versus 0.92 seconds. The owner's earlier recording
+The remaining measured hallway pause is 2.35 seconds versus 1.62 on Mac; initial
+hallway preparation is 1.75 versus 0.92 seconds. The owner's earlier recording
 showed a nearly unchanged 14.7-second interval at 334.2–348.9 seconds before
 this stair view. That recording used the earlier A1200 setup and implementation,
 so it is not a same-machine before/after benchmark. Its white cache-window
 interruption is excluded from evidence.
 
 The retained service changes address repeated work:
+
+- Geometry services reuse 9.25 KiB of private recording and scratch storage
+  instead of allocating temporary application-heap handles for each polygon.
+  The algorithms and caller-owned results are unchanged; original callbacks
+  run after these synchronous services finish.
 
 - Region expansion streams three neighbouring rows through validated forward
   cursors instead of rescanning the whole encoded region for every row. Its
@@ -99,7 +103,7 @@ attribution; the profile does not justify another geometry micro-optimization.
 A separate cold-workload replay rules out different polygon inputs as the
 remaining mask explanation. Both runs construct the same 12 polygons in the
 same order, with every record byte equal, and produce identical viewport pixels
-and all 256 colours. Native mask time is 46 ticks versus 10 on Mac
+and all 256 colours. That allocator-build baseline takes 46 ticks versus 10 on Mac
 (`tmp/intro-workload-native-full.log`, `tmp/intro-workload-mac.log`, both exit 0).
 This comparison injects the captured native frog model/transform before the
 first Mac frog draw and observes original FramePoly at Dark+$33EC; it does not
@@ -138,12 +142,26 @@ the bytewise accessors remain in use.
 
 Current evidence:
 
+- Private region workspace reduces the identical 12-polygon mask from 42 to
+  35 ticks. `tmp/intro-region-private-frog-full.log` and
+  `tmp/intro-region-private-mac.log` both exit 0, with exact viewport pixels,
+  256 colours and polygon records. The final normal build also takes 35 ticks
+  (`tmp/intro-region-private-route-full.log`, exit 0), completes all nine
+  transitions naturally and gives the 59/105/141-tick spans above. Minimum
+  observed VBI stack margin is 920 bytes. The native region ABI/ownership
+  checker passes `tmp/intro-region-private-record-retry-full.log`, including
+  unchanged heap allocation during FramePoly and 5,392-byte encoder headroom.
+  Original region/expansion host fixtures and atomic rejection checks pass.
+- Resource ownership searches are not a dominant cold-mask cost: the temporary
+  attribution in `tmp/intro-resource-cost-full.log` measures 7,197 of 3,728,711
+  beam units (0.2%), with no forgetHandle calls. No resource-index rewrite is
+  justified by that sample; its extra profiling scopes were removed.
 - Removing two debugger-only largest-free-block scans from memory-result
   processing reduces the identical 12-polygon cold mask from 46 to 42 ticks
   (`tmp/intro-heap-stat-frog-full.log`, exit 0; every polygon still matches the
   Mac record). The full natural route (`tmp/intro-heap-stat-route-full.log`,
   exit 0) completes all nine transitions with a 928-byte minimum observed
-  stack margin. Its hallway/stair spans are the 115/156 ticks above, versus
+  stack margin. Its hallway/stair spans were 115/156 ticks, versus
   120/162 before removing the scans. Allocator searches and original services
   are unchanged; diagnostic heap counters retain only constant-time totals.
 - `tmp/intro-incremental-route-full.log` exits 0 after all nine original room

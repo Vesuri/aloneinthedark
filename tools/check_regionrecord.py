@@ -89,7 +89,7 @@ int main() {
 
         if native is None:return
         native_text=native.read_text()
-        if native_status!=0 or native_text.count('PASS native polygon region recording; next stop DisposeRgn')!=1 or native_text.count('[Inferior 1 (Remote target) detached]')!=1 or re.search(r'FAIL|Error in|TIMEOUT|Timed out|Program received signal',native_text):
+        if native_status!=0 or native_text.count('PASS native polygon region recording; reached DisposeRgn')!=1 or native_text.count('[Inferior 1 (Remote target) detached]')!=1 or re.search(r'FAIL|Error in|TIMEOUT|Timed out|Program received signal',native_text):
             raise ValueError('native completion')
         stack=re.findall(r'^POLYGON_STACK frame=(\d+) saved=(\d+) entry=([0-9A-F]+) lower=([0-9A-F]+) upper=([0-9A-F]+) headroom=(\d+)$',native_text,re.M)
         if len(stack)!=1:raise ValueError('native polygon stack observation')
@@ -99,7 +99,7 @@ int main() {
         if not frame>0 or entry>upper or entry-lower-frame-saved!=headroom or headroom<4096:
             raise ValueError('native polygon interrupt headroom')
         heap=fields(one(native_text,r'^RREC_HEAP (.*)$'))
-        if heap['before_count']!=heap['after_count'] or heap['before_total']-heap['after_total']!=4096-252:
+        if heap['before_count']!=heap['after_count'] or heap['before_total']!=heap['after_total']:
             raise ValueError('native workspace ownership')
         for n,trap in [(14,0xa8d8),(15,0xa8da),(16,0xa8c6),(17,0xa8db)]:
             e,r=[fields(one(text,rf'^RREC_{phase} n={n} (.*)$')) for phase in ('ENTER','RETURN')]
