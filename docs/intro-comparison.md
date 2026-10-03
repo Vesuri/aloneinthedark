@@ -182,3 +182,22 @@ distinguish the later corridor from the earlier entrance. That run supplies no
 corridor attribution or performance result. The next profile must follow the
 original scene sequence through the upper landing before arming the corridor
 capture. The ordinary unprofiled build is restored after this experiment.
+
+The subsequent sequence-triggered profile succeeds (`CORRIDORPROFILE=1`,
+`INTROSKIP=1`, `PROBEFIELDS=250`; `amiga/corridor_profile.gdb`). It arms only
+after room 7/camera 1, then starts in the later room 1/camera 2. The retained
+`tmp/route-comparison/corridor-sequence-full.log` exits zero; its end-frame
+capture confirms the narrow corridor with Carnby. The interval contains 250
+PAL fields, 10 publications and 20,029,736 beam units. Inclusive presentation
+is 6,221,215 units (31.1%), including synchronization 2,821,028 and C2P
+2,914,705. Shared trap servicing is 7,054,685 (35.2%); original Mac VBL
+callbacks total 4,494,699 (22.4%). These categories overlap. Region expansion
+is only 652,802 (3.3%), so further tuning it would miss the main cost here.
+
+The unprofiled Emily trace exposes repeated presentation within each game
+step: after the first reverse-view loop, 10 animation intervals cause 29
+publications; on its second visit, six cause 19. Most steps publish three
+times. Each publication performs conversion and back-buffer synchronization.
+Investigate complete-frame presentation boundaries before more local geometry
+optimizations. This is a measured source of repeated work, not yet a verified
+fix or a complete explanation of the fivefold gap.

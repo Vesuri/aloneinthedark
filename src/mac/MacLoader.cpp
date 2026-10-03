@@ -7000,7 +7000,17 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         }
     }
 #else
+#ifdef AITD_CORRIDOR_PROFILE
+    // Room 1/camera 2 is also the entrance. Arm only after the upper landing;
+    // car circling makes a publication-count threshold unreliable.
+    static bool corridorAfterLanding=false;
+    if(s_currentA5 && read16(s_currentA5-0xcd68)==7
+       && read16(s_currentA5-0xcd70)==1)corridorAfterLanding=true;
+#endif
     if(g_macFramesPresented>=AITD_PROFILE_FRAME
+#ifdef AITD_CORRIDOR_PROFILE
+       && corridorAfterLanding
+#endif
 #ifdef AITD_PROFILE_ROOM
        && s_currentA5 && read16(s_currentA5-0xcd68)==AITD_PROFILE_ROOM
        && read16(s_currentA5-0xcd70)==AITD_PROFILE_CAMERA

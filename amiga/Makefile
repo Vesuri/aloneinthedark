@@ -125,6 +125,12 @@ endif
 
 # Optional scene filter: use original room/camera state instead of guessing
 # a presentation count, which changes with the unseeded demo route.
+ifeq ($(CORRIDORPROFILE),1)
+PROFILEFRAME=0
+PROFILEROOM=1
+PROFILECAMERA=2
+EXTRA_DEFINES += -DAITD_CORRIDOR_PROFILE
+endif
 ifeq ($(MASKPROFILE),1)
 PROFILEFRAME=0
 PROBEFIELDS=65535
