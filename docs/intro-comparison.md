@@ -11,6 +11,37 @@ The sections below distinguish the current comparison from the initial baseline
 and explain the remaining limits. Overall acceptance, including the remaining
 actual-audio-output checks, is still open.
 
+## Acceptance audit of the current runtime
+
+The runtime sources, build rules and machine configuration have no changes
+since `cbf61a4`, the measured mask-bounds implementation. Later commits add
+observers, audio verification and documentation. Rechecking the retained raw
+captures passes all 1,117 complete planar buffers and palettes, 1,380 balanced
+scene batches, natural completion and publication of every queued frame.
+Recomputing animation metrics reproduces the current car and near/far frog
+rates below. Independently regrouping both raw traces confirms the same ordered
+22 indoor room/camera states, including setup-only states (1,941 Mac loop
+captures and 1,411 Amiga loop captures overall).
+
+| Requirement | Current evidence | Assessment |
+| --- | --- | --- |
+| Fixed-clock 68030, audio on, warp off | Retained machine/core logs and current configuration | Established, subject to emulator timing-model limits |
+| Car and both frog animation rates | Raw frame/actor captures and recomputed scene metrics | Established |
+| Person movement throughout the mansion | Same-character scene table, aligned indoor visits | Established; worst frame-time ratio 2.12× with measured cold-mask cost |
+| Full camera transitions | Last-old-loop through completed-new-loop measurements | Established; no current 15-second transition |
+| Scenes and car route | Framebuffer inventory, identical indoor sequence, original track-word progression | Established within measured idle-demo path; geometric car turns remain timing-dependent on both systems |
+| Pixel/palette preservation | Independent decode of every captured native display buffer plus paired original drawing contracts | Established for measured path |
+| Music clock and channel policy | Uninterrupted DMA timestamps and complete ownership replay | Established for intro; four-channel voice limits documented |
+| Actual output and note endings | SDL PCM, directly correlated queue starvation, four exposed release gaps | Incomplete: output starvation remains; masked tails need final accounting |
+
+An isolated emulator rebuild has not been used as acceptance evidence. The
+retained SDL2 branch identifies its core as WinUAE 4.2.1, whereas the installed
+binary reports 4.10.0; the nearby current checkout uses SDL3 and core 6.0.1.
+The local native dependency set also lacks SDL2_ttf development metadata.
+Neither source is an established reproduction of the installed build. Avoid
+silently changing emulator cores or claiming an untested buffer setting fixes
+the issue. Overall completion remains unproven for the audio-output row.
+
 ## Setup and measurement
 
 Both CPUs run at 15.6672 MHz: MAME `maciix`, 8 MB RAM, and FS-UAE's
