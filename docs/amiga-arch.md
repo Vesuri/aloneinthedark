@@ -134,6 +134,13 @@ This directs the remaining first-frame investigation toward geometry, drawing
 and copying rather than file read-ahead. Before/after arrays are retained as
 `tmp/hall-first-{phase,trap,calls}-{before,after}.bin`.
 
+An eight-entry cache of validated heap-block locations was tested and rejected
+(`tmp/intro-pointer-cache-route-full.log`). It passes sanitized heap tests but
+changes the frog mask only from 33 to 31 ticks and the first hallway loop from
+104 to 100. The complete route still fails the two-tick music gate (exit 1).
+The small gain does not justify the extra cache/invalidation state; the normal
+heap lookup remains unchanged. The trace is not a matched-frame pixel check.
+
 The measured hallway-to-stairs span is 2.35 seconds versus 1.62 on Mac; initial
 camera-5 loop preparation is 1.75 versus 0.92 seconds. The owner's earlier recording
 showed a nearly unchanged 14.7-second interval at 334.2–348.9 seconds before
