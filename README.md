@@ -32,7 +32,8 @@ Intro performance is the current priority before M3, using a fixed-clock 68030
 and the original Mac IIx as reference. Complete-scene presentation, bulk pixel
 copies and direct sound queries have reduced the late corridor's roughly
 fivefold gap to about 2.0–2.3×. Some indoor views still exceed twice the Mac's
-frame time. The CIA music scheduler is opt-in pending combined validation.
+frame time. Music uses a dedicated CIA timer; uninterrupted note-onset jitter
+measures 0.86 ms versus 17.6 ms with the former VBI scheduler.
 See the current [scene timings and comparison limits](docs/intro-comparison.md).
 
 Gameplay, save/load and broader music support remain later milestones. The

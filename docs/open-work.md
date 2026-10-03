@@ -48,12 +48,9 @@ required.
     note delivery against its intended clock during uninterrupted rendering,
     including static scenes and transitions; logical event timestamps alone
     do not establish even audible timing.
-    Replace display-quantized music scheduling with a dedicated timer and
-    repeat `SONGHARDWARE=1`: the complete DMA capture shows approximately
-    20 ms variation in repeated intended onset gaps. Preserve event/sample
-    fidelity and distinguish DMA arming from actual first-sample output.
-    Validate the opt-in `CIAMUSIC=1` candidate's remaining audio behavior
-    before adoption; keep the game/display clocks unchanged.
+    Verify the default CIA scheduler's remaining actual-output behavior.
+    Preserve event/sample fidelity and distinguish DMA arming from actual
+    first-sample output; keep the game/display clocks unchanged.
     Short-view averages
     have unequal motion samples; the second toward-corridor passage is 6.6%
     longer while final hall is shorter. Use residual-cost evidence rather than

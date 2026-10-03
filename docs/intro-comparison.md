@@ -683,3 +683,11 @@ without proving these are identical events. Investigate complete scene work
 before and after the person—including other actors, background restoration,
 masking, copying and compatibility calls—rather than attributing the whole
 frame gap to the person model renderer or CPU frequency.
+
+CIA music scheduling is now the default (`CIAMUSIC=0` preserves the old VBI
+diagnostic path). Adoption is supported by the complete combined uninterrupted
+timing and allocation checks above, exact original event/PCM checks, successful
+timer stop/reacquisition and the full combined frame comparison. It does not
+claim unmeasured analog/host fidelity or exact first-sample and release-tail
+timing; those remain open. The earlier opt-in statements describe the trial
+stage, not the current ordinary build.

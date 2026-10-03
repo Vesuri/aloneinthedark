@@ -254,6 +254,9 @@ PROBE_SYMS_SONG += g_songHardwareCount g_songHardwareOverflow g_songHardware
 PROBE_SYMS_SONG += g_songEffectCount g_songEffectOverflow g_songEffects g_songEventClocks
 endif
 
+# A dedicated 60 Hz timer avoids PAL VBI quantization of note delivery.
+# CIAMUSIC=0 retains the measured display-clock baseline for diagnostics.
+CIAMUSIC ?= 1
 ifeq ($(CIAMUSIC),1)
 EXTRA_DEFINES += -DAITD_CIA_MUSIC
 PROBE_SYMS_SONG += g_musicTicks g_musicTimerSource

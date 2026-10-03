@@ -631,21 +631,24 @@ on a 68020/030.
     note and the sample rate; volume from velocity and channel volume; loops from
     the `snd ` loop points.
   - Owner update 2026-10-03: drive native music from an interrupt, independently
-    of rendering. VBI advances the existing 60 Hz clock (50-to-60 conversion
-    on PAL); the native sequencer and Paula note delivery run after display
-    publication on a private interrupt stack. Resource access, PCM preparation
+    of rendering. VBI advances the existing 60 Hz game clock (50-to-60
+    conversion on PAL). The initial interrupt implementation also ran the
+    native sequencer after display publication; the default now uses the CIA
+    timer below. Both use a private interrupt stack. Resource access, PCM preparation
     and allocation remain in user mode. Original Mac VBL callbacks still run
     at safe user-mode points; they are not the native music scheduler.
     When an effect briefly excludes the sequencer, the outer ownership release
-    completes the pending VBI update on a separate private stack. Both paths
+    completes the pending sequencer update on a separate private stack. Both paths
     exclude decoder re-entry; this avoids waiting another video field.
-  - The opt-in `CIAMUSIC=1` candidate uses a resource-allocated CIA-A timer
+  - The default `CIAMUSIC=1` scheduler uses a resource-allocated CIA-A timer
     at 60 Hz on the same private stack, with fractional E-clock reloads.
     Display, input and game clocks remain on VBI. Release stops and returns
     the timer before freeing samples; both busy timers produce a named error.
     Full-song, timer-lifecycle and complete-intro buffer regressions pass.
-    Onset jitter is substantially reduced, but remaining effect/voice and
-    actual-output validation keeps the candidate opt-in. See
+    Combined uninterrupted event/onset and effect/voice-ownership checks pass;
+    `CIAMUSIC=0` retains the VBI diagnostic baseline. First-sample output,
+    audible release tails and host-output fidelity remain separate open checks,
+    not claims established by DMA timestamps. See
     [intro comparison](intro-comparison.md) for evidence and limitations.
 - **Voices and effects.** Four channels, allocated by priority: sound effects
   (the `snd `/`LISTSAMP` samples the game requests through the driver) take a
