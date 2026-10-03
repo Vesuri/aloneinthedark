@@ -26,8 +26,12 @@ required.
     compatibility costs. The post-query CIA corridor profile attributes 20%
     inclusively to original Mac VBL callbacks (13.4% in their compatibility
     traps), 12.5% to presentation and 11% to CopyBits. These categories overlap
-    and include observer overhead; separate original drawing and compatibility
-    costs in matched indoor steps before choosing another optimization.
+    and include observer overhead. Natural corridor person draws have a
+    four-tick median on both machines, but full loop medians are 10 versus 20
+    ticks. Isolate the surrounding scene work (other actors, background
+    restoration, masks and copying), including the growing post-person cost
+    late in the visit. Geometry matches exist but exact transforms differ;
+    do not label these identical-pose comparisons.
     Small service scopes are near observer overhead;
     avoid further local tuning without evidence of a substantial cost.
     Use the late visit, not the

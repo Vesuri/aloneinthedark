@@ -653,3 +653,33 @@ a bottleneck. Presentation synchronization is no longer a substantial cost.
 The remaining gap requires separating original drawing from compatibility
 work in matched indoor steps, rather than another heap cache, region tweak
 or speculative rewrite of these small services.
+
+Read-only original drawing checkpoints now separate the person model from the
+rest of that corridor step (`tools/mac_corridor_phases.lua`,
+`amiga/corridor_phases.gdb`, checked by `tools/check_corridor_phases.py`).
+Both natural runs exit zero; the native build uses `INTROSKIP=1 FIXEDRNG=1
+CIAMUSIC=1` without the broad profiler. Captures are under
+`tmp/corridor-phases/{mac,amiga}` with their corresponding logs. The initial
+native observer failed because breakpoint command lists inside its continue
+loop did not dispatch as expected; `rejected-amiga*` is retained and excluded.
+The corrected observer handles each stopped PC explicitly.
+
+| Person-render stage, in 60 Hz game ticks | Mac: 27 calls, min/median/max | Amiga: 20 calls, min/median/max |
+| --- | ---: | ---: |
+| Original model call, Dark+$3ED4→+$3EDA | 3 / 4 / 5 | 3 / 4 / 5 |
+| Model setup through sorted surfaces | 2 / 3 / 3 | 1 / 1 / 3 |
+| Drawing the sorted surface list | 1 / 1 / 2 | 1 / 2 / 4 |
+
+Seven model-geometry keys are shared, covering 12 native calls, after excluding
+the model's ten-byte runtime header. No complete geometry-plus-transform key
+matches: these are natural same-view samples, not identical-pose timings.
+Their interval medians nevertheless localize the major remaining question:
+loop-to-loop is 10 ticks on Mac versus 20 on Amiga, while the person model
+call itself has the same four-tick median. The Mac trace also shows another
+model draw after the person. Post-person work is normally about 3 ticks on
+Mac versus 5–6 on Amiga; later in the visit it grows to about 5 versus 16–17.
+Both runs include a larger isolated post-person interval (20 versus 50 ticks),
+without proving these are identical events. Investigate complete scene work
+before and after the person—including other actors, background restoration,
+masking, copying and compatibility calls—rather than attributing the whole
+frame gap to the person model renderer or CPU frequency.
