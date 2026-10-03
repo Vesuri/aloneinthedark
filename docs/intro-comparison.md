@@ -292,3 +292,42 @@ wrapper. Preserve the runner's exit status and log, then pass them to
 The checker also requires the independently measured, hash-checked local
 `tmp/video-transfer-lut16.bin`; it does not replace it with the runtime's
 colour implementation.
+
+The pending bulk-copy candidate uses explicit `move.l` for direct 8-bit
+spans, retaining masks, clipping, byte tails and palette-remapped copies.
+Its complete controlled run (`amiga-fixed-copylong.log`, runner exit zero)
+passes 1,087 independently decoded buffers, 1,336 balanced scene batches,
+all 3,736 music events, maximum logical lateness one tick, and zero late
+publications. Host sanitizer checks cover all alignments and lengths 0–129,
+the existing clipping/mask suite, and retained original direct/masked-copy
+destinations. A separate older capture is excluded because `enter-from.bin`
+is missing. The first candidate was stopped after disassembly revealed GCC
+had expanded an alignment-one integer copy into byte shifts; it supplies no
+performance result. The tested candidate emits a real longword transfer.
+
+Relative to batching alone, the two late reverse-corridor averages improve
+2.04→2.26 and 2.65→3.11 FPS, with median intervals 24→21 and 23→20 ticks.
+Upper hall camera 5 improves 3.04→3.17, camera 3 3.69→3.86, and the final
+room 6.85→7.13. However, front doors fall 3.56→2.96, next foyer 4.31→3.83,
+and final hallway 3.47→2.95. These runs sample different animation steps;
+do not claim a universal speedup. The longest indoor transition remains
+9.07 seconds. The successful residual-cost profile below supports adoption.
+
+For the three lower averages, whole-view intervals are much closer than their
+active-motion samples: front doors contain 58→60 loop snapshots over 920→939
+ticks; next foyer 57→58 over 690→696; final hallway 15→15 over 220→222.
+The final-hall active sample changes from seven distinct images in 121 ticks
+to six in 122, explaining much of that reported FPS decrease. This does not
+prove equal cost at identical poses, but avoids mistaking a changed active
+sample for a 15% increase in the duration of the entire hallway passage.
+
+The follow-up profile (`amiga-fixed-copylong-profile.log`, exit zero) covers
+250 PAL fields at the late reverse corridor with Carnby. CopyBits falls from
+3,567,754 units across 51 calls to 2,638,466 across 58 calls: average inclusive
+call cost falls about 35%, and total copying time about 26% despite more calls.
+This is an aggregate attribution, not identical-argument per-call timing.
+Seven complete publications occur versus six in the preceding profile.
+CopyBits now occupies 13.2%, C2P 12.5%, original Mac VBL callbacks 17.4%, and
+region expansion 4.0%; categories overlap. Adopt the small bulk-copy change
+with the full-buffer evidence above, then investigate remaining large gaps
+and machine-memory differences rather than further instruction-level tuning.

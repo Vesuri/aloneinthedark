@@ -20,9 +20,10 @@ required.
     original instructions, game decisions, sample content and timing; do not
     substitute a faster emulator or focus on minor optimizations.
   - Address the remaining late reverse-corridor gap of approximately
-    2.4–2.9× after complete-scene presentation. Pixel copying and original
-    Mac VBL callbacks each account for about 18% in the residual profile;
-    inspect the dominant copying path next. Use the late visit, not the
+    2.0–2.6× after complete-scene presentation and bulk pixel copies. Check
+    the reference machines' memory timing and the remaining substantial
+    compatibility costs; original Mac VBL callbacks occupy about 17% of
+    the latest corridor profile. Use the late visit, not the
     earlier front-door scene that reuses room 1/camera 2, and the full
     [matched-scene comparison](intro-comparison.md).
     Then address

@@ -12,6 +12,16 @@ static std::vector<uint8_t> read(const std::string& path) {
     std::ifstream in(path,std::ios::binary);assert(in.good());return {std::istreambuf_iterator<char>(in),{}};
 }
 int main(int argc,char** argv) {
+    // Exercise all longword alignments and tails, retaining sentinels on both
+    // sides. This also checks zero-length copies without touching either side.
+    for(unsigned si=0;si<4;++si)for(unsigned di=0;di<4;++di)
+        for(unsigned count=0;count<=129;++count) {
+            std::vector<uint8_t> source(140),actual(140,0xa5),expected=actual;
+            for(unsigned i=0;i<source.size();++i)source[i]=uint8_t(i*37+13);
+            for(unsigned i=0;i<count;++i)expected[di+4+i]=source[si+4+i];
+            CopyBits8::copySpan(source.data()+si+4,actual.data()+di+4,count);
+            assert(actual==expected);
+        }
     auto sm=box(-5,-7,25,33),dm=box(-10,-12,30,38),vis=box(-8,-9,28,35),clip=box(-3,-4,22,30);
     std::vector<uint8_t> src(44*30),initial(56*40,0xa5);for(unsigned i=0;i<src.size();++i)src[i]=uint8_t(i*37+13);
     uint8_t colors[256];for(unsigned i=0;i<256;++i)colors[i]=uint8_t(255-i);

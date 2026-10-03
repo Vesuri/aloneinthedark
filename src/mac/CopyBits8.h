@@ -4,6 +4,23 @@
 #include "RegionRows.h"
 namespace CopyBits8 {
 inline int32_t coord(const uint8_t* r,unsigned i) { return int16_t(RectBounds::word(r+2*i)); }
+// Owned, distinct pixel buffers need no overlap handling. Permit arbitrary
+// byte alignment without violating aliasing rules; the target is 68020+.
+inline void copySpan(const uint8_t* in,uint8_t* out,uint32_t count) {
+    while(count>=4) {
+#ifdef AITD_PLATFORM_AMIGA
+        // GCC expands an alignment-one integer load/store into byte shifts.
+        // The 68020+ supports this longword transfer at every byte alignment.
+        __asm__ volatile("move.l (%0)+,(%1)+" : "+a"(in), "+a"(out) : : "cc", "memory");
+#else
+        typedef uint32_t PixelWord __attribute__((__may_alias__,__aligned__(1)));
+        *reinterpret_cast<PixelWord*>(out)=*reinterpret_cast<const PixelWord*>(in);
+        in+=4;out+=4;
+#endif
+        count-=4;
+    }
+    while(count--)*out++=*in++;
+}
 // Vette's unscaled clipping equations, applied to byte pixels. The caller
 // supplies a measured colour map when the colour environments differ, and
 // establishes distinct owned buffers.
@@ -57,7 +74,7 @@ inline bool copy(const uint8_t* src,uint32_t srcBytes,uint16_t srcStride,const u
             uint8_t* out=target+(destinationX+left);
             int32_t count=right-left;
             if(colors)while(count--)*out++=colors[*in++];
-            else while(count--)*out++=*in++;
+            else copySpan(in,out,uint32_t(count));
         }
     }
     return true;
