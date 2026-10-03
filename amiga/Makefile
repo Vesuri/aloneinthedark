@@ -321,7 +321,7 @@ PROBE_SYMS += g_resourceSourceReads g_resourceSourceBytes g_resourceSourceMax g_
 PROBE_SYMS += g_systemWindows g_windowFields g_systemWindowActive $(PROBE_SYMS_WINDOW)
 PROBE_SYMS += g_macServiceActive g_macServiceEntered g_macServiceCompleted $(PROBE_SYMS_SERVICE)
 PROBE_SYMS += g_stageCDepth $(PROBE_SYMS_HEAP) $(PROBE_SYMS_IDENTITY)
-PROBE_SYMS += g_loadedCodeMask g_code3Base g_applicationZoneBase g_systemZoneBase g_heapFree g_heapLargest g_heapSystemFree g_heapError g_lowMemoryValidatedSites g_lowMemoryAppliedSites
+PROBE_SYMS += g_loadedCodeMask g_code3Base g_applicationZoneBase g_systemZoneBase g_heapFree g_heapSystemFree g_heapError g_lowMemoryValidatedSites g_lowMemoryAppliedSites
 PROBE_SYMS += g_macLowMemory g_startupCode g_startupLowMemoryPatches
 PROBE_SYMS += SysBase g_macStackBase g_macLineAVectorAddress g_macSavedLineAVector g_macLineAInstalled g_macHostReturnSP
 ifeq ($(LINEAPROBE),1)

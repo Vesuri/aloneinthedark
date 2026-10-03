@@ -72,7 +72,7 @@ if $d0 != 0x73797376
  quit 1
 end
 dump binary memory ../tmp/amiga-heap.bin g_applicationZoneBase g_applicationZoneBase+3145728
-printf "heap app=$%08x sys=$%08x free=%u largest=%u system-free=%u error=%d\n",g_applicationZoneBase,g_systemZoneBase,g_heapFree,g_heapLargest,g_heapSystemFree,g_heapError
+printf "heap app=$%08x sys=$%08x free=%u system-free=%u error=%d\n",g_applicationZoneBase,g_systemZoneBase,g_heapFree,g_heapSystemFree,g_heapError
 continue
 echo startup FAIL: unexpected debugger stop\n
 detach

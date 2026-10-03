@@ -192,7 +192,7 @@ uint8_t* g_code3Base = 0;
 uint16_t g_overlayChainVerified = 0;
 uint8_t* g_applicationZoneBase=0;
 uint8_t* g_systemZoneBase=0;
-volatile uint32_t g_heapFree=0, g_heapLargest=0, g_heapSystemFree=0;
+volatile uint32_t g_heapFree=0, g_heapSystemFree=0;
 volatile int16_t g_heapError=0;
 volatile uint32_t g_macLineAVectorAddress = 0;
 volatile uint32_t g_macSavedLineAVector = 0;
@@ -1176,7 +1176,7 @@ static void refreshCodeViews()
         if(segment.begin)g_loadedCodeMask|=1UL<<n;
     }
     g_startupCode=s_segments[1].begin;g_code3Base=s_segments[3].begin;
-    g_heapFree=s_applicationZone.freeBytes();g_heapLargest=s_applicationZone.largestBlock();
+    g_heapFree=s_applicationZone.freeBytes();
     g_heapSystemFree=s_systemZone.freeBytes();
 }
 static uint8_t** loadResource(uint32_t index,const ResourceForks::Item& item,bool explicitLoad=true)
@@ -5519,11 +5519,9 @@ static int16_t memoryResult(int16_t error,bool refresh)
     s_memoryError=error;g_heapError=error;
     write16(s_portLowMemory+100,(uint16_t)error);
     // Querying/selecting the zone cannot invalidate heap-derived views.
-    if(refresh) {
-        g_heapFree=s_applicationZone.freeBytes();g_heapLargest=s_applicationZone.largestBlock();
-        g_heapSystemFree=s_systemZone.freeBytes();
-        refreshCodeViews();
-    }
+    // Refresh cached addresses and constant-time counters only; diagnostic
+    // largest-block scans must not walk the heap after every memory call.
+    if(refresh)refreshCodeViews();
     return error;
 }
 static uint8_t** newHandle(uint32_t size,bool clear)

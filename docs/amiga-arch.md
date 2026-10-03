@@ -50,8 +50,8 @@ Performance claims below use unprofiled game ticks (60 Hz), not host time.
 | Matched first frog draw → next original loop, cold mask | 65 | 22 |
 | Natural first frog mask construction | 47 | 11 |
 | Natural first frog loop → next loop | 70 | 27 |
-| First two hallway loop entries, room 2/camera 5 | 120 | 55 |
-| Last hallway loop → first stair-view loop, camera 5 → 3 | 162 | 97 |
+| First two hallway loop entries, room 2/camera 5 | 115 | 55 |
+| Last hallway loop → first stair-view loop, camera 5 → 3 | 156 | 97 |
 
 The model replay pairs geometry, transforms and mask inputs, not every other
 actor or timing state. It now explicitly captures the first cold frog loop;
@@ -61,8 +61,8 @@ Natural-route timings can differ with actor trajectories and animation phase.
 In the phase observation, the frog model itself takes 3–4 native ticks versus
 2–3 on Mac; its first mask is much more expensive than subsequent masks.
 
-The remaining measured hallway pause is 2.7 seconds versus 1.62 on Mac; initial
-hallway preparation is 2.0 versus 0.92 seconds. The owner's earlier recording
+The remaining measured hallway pause is 2.60 seconds versus 1.62 on Mac; initial
+hallway preparation is 1.92 versus 0.92 seconds. The owner's earlier recording
 showed a nearly unchanged 14.7-second interval at 334.2–348.9 seconds before
 this stair view. That recording used the earlier A1200 setup and implementation,
 so it is not a same-machine before/after benchmark. Its white cache-window
@@ -138,6 +138,14 @@ the bytewise accessors remain in use.
 
 Current evidence:
 
+- Removing two debugger-only largest-free-block scans from memory-result
+  processing reduces the identical 12-polygon cold mask from 46 to 42 ticks
+  (`tmp/intro-heap-stat-frog-full.log`, exit 0; every polygon still matches the
+  Mac record). The full natural route (`tmp/intro-heap-stat-route-full.log`,
+  exit 0) completes all nine transitions with a 928-byte minimum observed
+  stack margin. Its hallway/stair spans are the 115/156 ticks above, versus
+  120/162 before removing the scans. Allocator searches and original services
+  are unchanged; diagnostic heap counters retain only constant-time totals.
 - `tmp/intro-incremental-route-full.log` exits 0 after all nine original room
   transitions and natural completion. Minimum observed mouse-VBI stack margin
   remains 928 bytes above the 6 KiB supervisor-stack lower bound.
