@@ -639,6 +639,14 @@ on a 68020/030.
     When an effect briefly excludes the sequencer, the outer ownership release
     completes the pending VBI update on a separate private stack. Both paths
     exclude decoder re-entry; this avoids waiting another video field.
+  - The opt-in `CIAMUSIC=1` candidate uses a resource-allocated CIA-A timer
+    at 60 Hz on the same private stack, with fractional E-clock reloads.
+    Display, input and game clocks remain on VBI. Release stops and returns
+    the timer before freeing samples; both busy timers produce a named error.
+    Full-song, timer-lifecycle and complete-intro buffer regressions pass.
+    Onset jitter is substantially reduced, but remaining effect/voice and
+    actual-output validation keeps the candidate opt-in. See
+    [intro comparison](intro-comparison.md) for evidence and limitations.
 - **Voices and effects.** Four channels, allocated by priority: sound effects
   (the `snd `/`LISTSAMP` samples the game requests through the driver) take a
   channel, and music takes the rest. Voice stealing drops the oldest or quietest

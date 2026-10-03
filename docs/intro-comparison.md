@@ -364,3 +364,112 @@ The roughly one-field variation is consistent with the current 50-field to
 checks hide this sub-field unevenness. Replace music's display-quantized
 scheduling with a dedicated timer and remeasure; this is DMA-arming evidence,
 not yet proof of first-sample or host-output timing or audible acceptance.
+
+The opt-in `CIAMUSIC=1` candidate completes an uninterrupted intro using a
+resource-allocated CIA-A timer A (`song-hardware-cia.log`, exit zero). Its
+field/raster capture contains all 1,868 starts and 750 intended onset ticks.
+Comparison with the validated VBI capture preserves every relative intended
+onset tick, period, instrument and note. Mean ticks are 16.6667 ms; fitted
+onset phase range falls from 17.629 to 0.951 ms. Eight-tick gaps now range
+132.639–133.983 ms, and nine-tick gaps 149.279–150.591 ms. The maximum
+same-tick spread increases from 4.768 to 5.440 ms. These measure DMA arming,
+not first-sample output or audible acceptance.
+
+Voice fidelity remains unresolved: 1,263 physical channel assignments differ.
+Comparing note indexes that restart the same channel within one intended tick
+finds 155 replacement pairs in the VBI capture versus 156 in the CIA capture;
+44 prior pairs disappear and 45 new pairs appear. These affect 108 versus
+104 onset groups. Thus the difference is not merely a fixed permutation of
+Paula channels, and the exact note-start sequence cannot prove equal sounding
+notes, release tails or stereo placement. The existing allocator can steal
+the oldest channel when none is free; determine the actual voice lifetimes
+and effect interactions before adopting the timer. Resource shutdown and
+reallocation, deferred updates, retained PCM fidelity and complete published
+frames also require candidate validation. `CIAMUSIC` remains opt-in.
+
+The separate `SONGPROBE=1 CIAMUSIC=1` regression completes naturally with
+audio enabled and warp disabled (`music-cia-song.log`, runner exit zero).
+`check_song_playback.py --interrupt` matches all 3,736 timed events against
+`m2-song-clock-reference.log` and all 25 retained PCM variants (458,974 bytes)
+against the original resources, including loop phase and release silence.
+Music advances 28 events during 180 game ticks of CPU-only work; the forced
+nested-ownership/deferred-release fixture passes, and all deliveries have
+zero logical-tick lateness. Effect priority and effect/resource/voice cleanup
+pass. The observer verifies CIA-A timer A acquisition and a cleared ownership
+indicator after release. This does not yet prove that another client can
+reacquire the timer. There are 1,021 steals and no dropped starts; the prior
+VBI fixture had 1,008 steals. The documented four-channel oldest-note policy
+allows stealing, so validation must explain these differences against that
+policy rather than require the previous display-quantized allocation.
+
+The regression's old shared-CIAB-TOD duration diagnostic is invalid in this
+run: `maxLines=16776961` is a wrapped negative 255-line interval. Do not use
+its total or maximum as an interrupt-cost measurement. Functional assertions
+and byte/event comparisons above are independent of that counter. Replace
+the duration clock before making further interrupt-cost claims; the separate
+uninterrupted field/raster capture remains the valid onset-timing evidence.
+
+Timer lifecycle validation now passes in `music-cia-lifecycle.log` (runner
+exit zero), using `SONGPROBE=1 CIAMUSIC=1` and `amiga/song_timer.gdb`.
+Before loading the song, the fixture starts and releases the real timer twice.
+Each acquisition advances its clock, each release clears ownership and leaves
+the clock unchanged over six game ticks, and reacquisition selects the same
+timer. Subsequent normal song startup acquires CIA-A timer A again. These are
+runtime checks with a read-only observer, not debugger-injected calls.
+
+The complete controlled rendering run with `INTROSKIP=1 FIXEDRNG=1 CIAMUSIC=1`
+also finishes naturally (`amiga-fixed-cia.log`, runner exit zero, audio on and
+warp off). All 1,233 captured back buffers pass independent pixel and palette
+decoding; 1,489 scene batches balance, all 1,247 queued frames are presented,
+and all 3,736 music events arrive with zero logical-tick lateness. Carnby is
+selected, and the 31 consecutive room/camera groups match the preceding
+bulk-copy run in order. The retained core log is `amiga-fixed-cia-core.log`.
+
+| Scene | Previous VBI FPS | CIA FPS |
+|---|---:|---:|
+| Opening car | 2.85 | 2.91 |
+| Near frog | 2.94 | 2.99 |
+| Far frog | 2.62 | 2.63 |
+| Approach | 7.53 | 7.30 |
+| Window | 4.48 | 4.40 |
+| Front doors | 2.96 | 3.78 |
+| Next foyer | 3.83 | 4.42 |
+| Lower hall | 5.91 | 5.63 |
+| Stairs visible | 3.41 | 3.41 |
+| Foot of stairs | 2.91 | 2.82 |
+| Ascending stairs | 6.52 | 6.52 |
+| Upper hall, camera 5 | 3.17 | 3.13 |
+| Upper hall, camera 3 | 3.86 | 3.76 |
+| Landing | 7.02 | 7.14 |
+| Late corridor toward | 4.83 | 4.68 |
+| Late corridor reverse | 2.26 | 2.48 |
+| Late corridor toward again | 4.21 | 3.97 |
+| Late corridor reverse again | 3.11 | 3.11 |
+| Final hall | 2.95 | 4.04 |
+| Next view | 5.04 | 5.43 |
+| Final room | 7.13 | 7.09 |
+
+These use the same active-motion metric as earlier tables, not identical-pose
+per-call timings. Complete transition spans remain close: mansion entry
+9.07→9.08 seconds, ascending stairs→upper hall 6.78→6.83, and first late
+reverse→toward corridor 3.32→3.32. There is no broad rendering regression,
+but the existing Mac comparison still leaves substantial indoor gaps. CIA
+scheduling improves onset spacing; it does not establish overall performance
+parity. Voice-allocation explanation and actual output timing remain pending.
+
+A song-only offline replay does not explain the intro's channel assignments:
+its first mismatch is note-start index 8 (the ninth note). A targeted read-only
+runtime observation (`music-allocation.log`, runner exit zero) establishes
+why. Immediately beforehand, channel owners are `{0, 6, 2, -1}`: effect slot
+0 owns Paula channel 1, with two effect starts and one stop recorded. The
+active effect spans game ticks 3099–3333. Music therefore cannot choose the
+model's channel 1; channel 3 is the free channel, as in the hardware capture.
+The observer's optimized argument display is invalid and is not used as
+evidence; global voice/effect ownership supplies this finding. The earlier
+observer with an unreachable conditional breakpoint was stopped and retained
+as `music-allocation-rejected.log`, not counted as a passing run.
+
+This explains the first mismatch with the song-only model, not every difference
+between VBI and CIA runs. A full allocation comparison must include effect
+start/stop times and their priority; treating the intro as music alone gives
+false discrepancies. Do not change the allocator to satisfy that model.

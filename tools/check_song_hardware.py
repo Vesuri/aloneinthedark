@@ -13,6 +13,24 @@ def require(condition, message):
         raise SystemExit('FAIL '+message)
 
 
+def same_onset_replacements(rows):
+    """Identify notes restarted on a channel within the same intended tick.
+
+    A matching start sequence alone cannot establish sounding-note fidelity:
+    a later start may immediately replace an earlier member of a chord.
+    Normalize indexes rather than channel numbers so channel permutations
+    do not hide changes to which notes replace each other.
+    """
+    owners = {}
+    replacements = []
+    for index, row in enumerate(rows):
+        key = (row[0], row[4])
+        if key in owners:
+            replacements.append((owners[key], index))
+        owners[key] = index
+    return replacements
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('log', type=Path)
@@ -20,6 +38,8 @@ def main():
     parser.add_argument('--status', type=int, required=True)
     parser.add_argument('--field-lines', type=int, required=True,
                         help='PAL lines per field verified from the emulator core log')
+    parser.add_argument('--reference', type=Path,
+                        help='previously validated capture for note/pitch/timeline comparison')
     args = parser.parse_args()
     log = args.log.read_text()
     require(args.status == 0 and not re.search(r'FAIL|[Tt]imeout|Error in', log), 'runner completion')
@@ -34,6 +54,19 @@ def main():
     raw = args.capture.read_bytes()
     require(len(raw) == count*32, 'exact capture length')
     rows = list(struct.iter_unpack('>8I', raw))
+    if args.reference:
+        reference = list(struct.iter_unpack('>8I', args.reference.read_bytes()))
+        require(len(reference) == len(rows), 'reference start count')
+        expected = [(r[0]-reference[0][0], *r[5:8]) for r in reference]
+        actual = [(r[0]-rows[0][0], *r[5:8]) for r in rows]
+        require(actual == expected, 'unchanged intended onset ticks, periods, instruments and notes')
+        channels = sum(a[4] != b[4] for a, b in zip(reference, rows))
+        print(f'PASS reference note/pitch/timeline comparison; {channels} channel assignments differ')
+        prior = set(same_onset_replacements(reference))
+        current = set(same_onset_replacements(rows))
+        print(f'Same-onset channel replacements: reference {len(prior)}, current {len(current)}; '
+              f'{len(prior-current)} removed, {len(current-prior)} added. '
+              'Note-start agreement does not establish voice-lifetime or stereo fidelity.')
     require(args.field_lines in (312, 313), 'fixed PAL field length')
     def distance(a, b):
         return (((b >> 9)-(a >> 9)) & 65535)*args.field_lines+(b & 511)-(a & 511)

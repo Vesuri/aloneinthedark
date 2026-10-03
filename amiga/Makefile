@@ -253,6 +253,11 @@ EXTRA_DEFINES += -DAITD_SONG_HARDWARE_PROBE
 PROBE_SYMS_SONG += g_songHardwareCount g_songHardwareOverflow g_songHardware
 endif
 
+ifeq ($(CIAMUSIC),1)
+EXTRA_DEFINES += -DAITD_CIA_MUSIC
+PROBE_SYMS_SONG += g_musicTicks g_musicTimerSource
+endif
+
 ifeq ($(LINEAPROBE),1)
 EXTRA_DEFINES += -DAITD_LINE_A_PROBE
 endif

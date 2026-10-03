@@ -39,6 +39,7 @@ extern "C" void aitdDriverClockProbe();
 #include "ResourceDirectory.h"
 #include "platform/amiga/ResourceStage.h"
 #include "platform/amiga/VideoTiming.h"
+#include "platform/amiga/MusicTimer.h"
 #include "platform/amiga/AitdScreen.h"
 #include "platform/amiga/MacInput.h"
 #include "platform/amiga/PerfProbe.h"
@@ -141,6 +142,14 @@ struct NativeSong {
     uint32_t busyFields=0,lastBusyTick=0,lateTick=0,lateBusyTick=0;
 };
 NativeSong g_song;
+static uint32_t nativeMusicClock()
+{
+#ifdef AITD_CIA_MUSIC
+    return g_musicTicks;
+#else
+    return g_macTicks;
+#endif
+}
 // Main-thread channel mutations exclude the native music ISR. Preparation and
 // resource access happen before entering these short ownership sections.
 static volatile uint16_t s_nativeAudioBusy=0;
@@ -1418,7 +1427,7 @@ static void startPaulaSample(uint8_t* data, const PaulaSample::Layout& layout,
         if(g_songHardwareCount>=4096)++g_songHardwareOverflow;
         else {
             volatile uint32_t* row=g_songHardware[g_songHardwareCount++];
-            row[0]=g_song.started+g_song.timeline.pulses;row[1]=g_macTicks;
+            row[0]=g_song.started+g_song.timeline.pulses;row[1]=nativeMusicClock();
             row[2]=before;row[3]=after;row[4]=channel;row[5]=period;
         }
     }
@@ -1565,6 +1574,9 @@ static int16_t stealSongChannel()
 }
 static void releaseNativeSong()
 {
+#ifdef AITD_CIA_MUSIC
+    aitdMusicTimerStop();
+#endif
     g_song.playing=0;
     __asm__ volatile("" ::: "memory");
     for(uint16_t i=0;i<6;++i)stopNativeSongVoice(i);
@@ -1712,7 +1724,11 @@ static const char* startNativeSong(uint32_t argument)
 #endif
     g_song.busyFields=g_song.lastBusyTick=g_song.lateTick=g_song.lateBusyTick=0;
     __asm__ volatile("" ::: "memory");
-    g_song.playing=1;return 0;
+    g_song.playing=1;
+#ifdef AITD_CIA_MUSIC
+    if((error=aitdMusicTimerStart(g_song.started))) {g_song.playing=0;return error;}
+#endif
+    return 0;
 }
 static const char* playSongNote(const SongInputs::Event& event)
 {
@@ -1721,7 +1737,7 @@ static const char* playSongNote(const SongInputs::Event& event)
             auto& voice=g_soundDriver.songs[i];auto& native=g_song.voices[i];
             if(voice.active && native.note==event.note && native.channel==event.channel) {
                 voice.active=0;
-                uint32_t release=g_macTicks+5;
+                uint32_t release=nativeMusicClock()+5;
                 if(!native.ends || (int32_t)(release-native.ends)<0)native.ends=release;
                 if(voice.channel>=0) {
                     volatile uint8_t* audio=(volatile uint8_t*)(0xdff0a0UL+voice.channel*16);
@@ -1768,12 +1784,12 @@ static const char* playSongNote(const SongInputs::Event& event)
 #ifdef AITD_SONG_PROBE
     g_songLastVoice=slot;aitdSongVoiceStarted();
 #endif
-    if(prepared.duration)native.ends=g_macTicks+prepared.duration+1;
+    if(prepared.duration)native.ends=nativeMusicClock()+prepared.duration+1;
     return 0;
 }
 static bool nativeSongDue()
 {
-    return g_song.playing && g_macTicks!=g_song.lastTick;
+    return g_song.playing && nativeMusicClock()!=g_song.lastTick;
 }
 static const char* advanceNativeSong()
 {
@@ -1782,14 +1798,15 @@ static const char* advanceNativeSong()
 #ifdef AITD_SONG_COST_PROBE
     uint32_t costBegin=g_macTicks;
 #endif
-    uint32_t elapsed=g_macTicks-g_song.lastTick;
+    uint32_t now=nativeMusicClock();
+    uint32_t elapsed=now-g_song.lastTick;
     // PAL can advance two logical ticks in one field. Preserve every pulse,
     // including any tick deferred by a main-thread channel ownership update.
     // The decoder was preflighted before playback; errors still fail loudly
     // through the user-mode report, never through an OS call in this ISR.
     g_song.lastTick+=elapsed;
     for(uint16_t i=0;i<6;++i)if(g_song.voices[i].chip && g_song.voices[i].ends
-        && (int32_t)(g_macTicks-g_song.voices[i].ends)>=0)stopNativeSongVoice(i);
+        && (int32_t)(now-g_song.voices[i].ends)>=0)stopNativeSongVoice(i);
     const char* error=0;
     while(elapsed-- && g_song.timeline.active) {
         if((error=g_song.timeline.advance()))return error;
@@ -1803,7 +1820,7 @@ static const char* advanceNativeSong()
                 uint32_t noteBegin=g_macTicks;
 #endif
                 if((error=playSongNote(event)))return error;
-                uint32_t lateness=g_macTicks-(g_song.started+g_song.timeline.pulses);
+                uint32_t lateness=nativeMusicClock()-(g_song.started+g_song.timeline.pulses);
                 if(lateness>g_song.maxDeliveryLateness) {
                     g_song.maxDeliveryLateness=lateness;g_song.lateTick=g_macTicks;
                     g_song.lateBusyTick=g_song.lastBusyTick;
@@ -1816,7 +1833,7 @@ static const char* advanceNativeSong()
 #ifdef AITD_SONG_PROBE
                 if(g_songTraceCount>=4096)return "SONG TRACE CAPACITY";
                 g_songDelivery[g_songTraceCount][0]=g_song.started+g_song.timeline.pulses;
-                g_songDelivery[g_songTraceCount][1]=g_macTicks;
+                g_songDelivery[g_songTraceCount][1]=nativeMusicClock();
                 volatile uint32_t* trace=g_songTrace[g_songTraceCount++];
                 trace[0]=event.kind==SongInputs::Event::NoteOn;trace[1]=event.offset;
                 trace[2]=event.instrument;trace[3]=event.note;trace[4]=event.velocity;trace[5]=event.channel;
@@ -1891,6 +1908,28 @@ extern "C" __attribute__((noinline)) void aitdSongProbePlaybackComplete() {__asm
 extern "C" __attribute__((noinline)) void aitdSongProbeComplete() {__asm__ volatile("" ::: "memory");}
 static const char* runNativeSongProbe()
 {
+#ifdef AITD_CIA_MUSIC
+    // Exercise the real resource lifecycle before loading the fixture song.
+    // No debugger calls or writes: the timer must advance, stop, and be free
+    // for the next acquisition. The song is not yet playing during this test.
+    uint16_t timerSource=0;
+    for(uint16_t attempt=0;attempt<2;++attempt) {
+        const char* timerError=aitdMusicTimerStart(0);
+        if(timerError)return timerError;
+        if(attempt && g_musicTimerSource!=timerSource) {
+            aitdMusicTimerStop();return "SONG TIMER REACQUIRE";
+        }
+        timerSource=g_musicTimerSource;
+        uint32_t began=g_macTicks;
+        while(g_macTicks-began<6) {__asm__ volatile("nop" ::: "memory");}
+        uint32_t ticks=g_musicTicks;
+        aitdMusicTimerStop();
+        if(ticks<4 || ticks>8 || g_musicTimerSource)return "SONG TIMER PROGRESS";
+        ticks=g_musicTicks;began=g_macTicks;
+        while(g_macTicks-began<6) {__asm__ volatile("nop" ::: "memory");}
+        if(g_musicTicks!=ticks)return "SONG TIMER STOP";
+    }
+#endif
     const char* error=startNativeSong(135);if(error)return error;
     aitdSongProbeArmed();
     uint32_t began=g_macTicks;bool effectStarted=false;
@@ -1901,7 +1940,7 @@ static const char* runNativeSongProbe()
     g_songProbeIRQTicks=g_macTicks-began;
     g_songProbeIRQEvents=g_song.events-beforeEvents;
     if(!g_songProbeIRQEvents)return "SONG INTERRUPT PROGRESS";
-    // Force a VBI while ownership is nested. The inner release must leave it
+    // Force a music interrupt while ownership is nested. The inner release must leave it
     // pending; the outer release must catch up before any further service call.
     uint32_t deferredTick;
     {
@@ -1910,7 +1949,7 @@ static const char* runNativeSongProbe()
         {
             NativeAudioGuard inner;
             while(g_song.busyFields==busyFields) {__asm__ volatile("nop" ::: "memory");}
-            deferredTick=g_macTicks;
+            deferredTick=nativeMusicClock();
         }
         if(!s_nativeSongPending || g_song.lastTick>=deferredTick)return "SONG NESTED OWNERSHIP";
     }

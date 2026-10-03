@@ -41,6 +41,14 @@ required.
     repeat `SONGHARDWARE=1`: the complete DMA capture shows approximately
     20 ms variation in repeated intended onset gaps. Preserve event/sample
     fidelity and distinguish DMA arming from actual first-sample output.
+    Validate the opt-in `CIAMUSIC=1` candidate's remaining audio behavior
+    before adoption; keep the game/display clocks unchanged.
+    Replace the reset-prone CIAB-TOD duration
+    diagnostic before using it for further interrupt-cost claims.
+    Resolve the changed voice allocation: the CIA capture preserves all note
+    starts but changes which notes replace each other within a chord. Verify
+    voice lifetimes, release tails and stereo placement, including actual
+    effect ownership/start/stop times rather than a song-only model.
   - Repeat the direct two-machine comparison after substantial fixes: active
     car/frog and character frame rates, scene inventory, car waypoint progression
     and complete mansion camera transitions. Explain remaining large gaps from

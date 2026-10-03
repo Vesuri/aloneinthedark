@@ -211,7 +211,9 @@ static uint32_t vbiHandler()
     // Vette copies it into qd.randSeed once during startup.
     if (g_macRndSeedAddress) *g_macRndSeedAddress = g_macTicks - 1;
 
+#ifndef AITD_CIA_MUSIC
     aitd_song_vbi();
+#endif
 
     aitdProfileOnVBI();
     return 0;
