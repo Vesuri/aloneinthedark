@@ -55,6 +55,17 @@ PID-scoped process management. The default debugger port is **24377**, outside
 the shared helper's 40-port hash range; `DEBUG_PORT` can override it. Only this
 project's recorded emulator may be stopped. Any remaining listener causes a
 named busy-port failure; it is never killed merely for owning the port.
+
+Keep FS-UAE observers below the installed core's breakpoint capacity. A
+corridor observer filled the 20-entry table (including four internal
+breakpoints); resuming needed to reinsert the current loop breakpoint and
+received an empty `Z0` response. GDB reported conflicting enabled responses.
+Use at most 15 simultaneous observer breakpoints to retain a spare slot;
+count internal entries from the core log rather than only GDB's visible list.
+Also dispatch stopped PCs explicitly inside a GDB `while`/`continue` loop:
+breakpoint command lists can run later than that loop expects. Preserve failed
+observer logs and require the positive completion marker and normal detach.
+
 This completes M2.3g34a: the shared default collided with Pokeri at 2377.
 Default/override/busy-port fixtures pass; a real occupied TCP listener survives
 a refused launch, and native startup connects on 24377. The helper remains an
