@@ -113,7 +113,9 @@ def main():
     args = parser.parse_args()
     log = args.log.read_text()
     require(args.status == 0 and not re.search(r'FAIL|[Tt]imeout|Error in', log)
-            and log.count('PASS original demo timing complete') == 1
+            and sum(log.count(marker) for marker in (
+                'PASS original demo timing complete',
+                'PASS uninterrupted intro hardware note capture')) == 1
             and '[Inferior 1 (Remote target) detached]' in log, 'complete intro observer')
     meta = re.findall(r'AUDIO_OWNERSHIP starts=(\d+) steals=(\d+) effects=(\d+) overflow=(\d+) started=(\d+) source=(\d+)', log)
     require(len(meta) == 1, 'ownership metadata')

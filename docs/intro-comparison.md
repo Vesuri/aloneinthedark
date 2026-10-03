@@ -595,3 +595,31 @@ combined run; do not infer unchanged performance in every view from the
 matching first reverse-corridor average. The combined capture contains debugger
 frame stops, so its audio timestamps must not replace the separate uninterrupted
 onset-jitter measurement. Keep CIA opt-in pending that combined timing check.
+
+Examining the two lower averages more closely: the second toward-corridor
+visit spans 259 ticks with query-only scheduling and 276 with CIA (6.6% longer),
+with 17 loop snapshots in each. Its first loop grows from 61 to 66 ticks;
+the median active interval remains 11 ticks, while the maximum grows from
+30 to 34. The final-hall visit instead shrinks from 241 to 203 ticks,
+with 18 versus 14 snapshots. Its active sample contains 11 versus five
+changed images, and median intervals are 15 versus 16 ticks. Thus its lower
+FPS does not mean the whole passage takes longer. Neither view contains an
+exact matching person step when matching start/end position, angle, animation
+and track. These observations explain the limited comparability of the short
+averages but do not establish identical-pose costs or dismiss the modest
+toward-corridor slowdown. Avoid repeated full runs to tune these small samples;
+use a fresh residual-cost profile for the substantial remaining indoor gap.
+
+The combined uninterrupted run (`tmp/query-cia-uninterrupted.log`, exit zero)
+now reaches the original completion endpoint without playback breakpoints.
+It records all 3,736 events, 1,868 DMA starts and 258 effect transitions without
+overflow or logical lateness. The independent allocation replay agrees with
+every channel assignment and all 1,141 steals. Against the original event
+reference and retained VBI DMA capture, note identities, pitches and intended
+onsets agree. With the core's 313-line PAL field, the measured mean tick is
+16.6667 ms and fitted onset phase range is 0.855 ms (VBI: 17.629 ms).
+Eight-tick gaps range from 132.639 to 134.047 ms; nine-tick gaps from
+149.343 to 150.623 ms. The maximum spread within a chord is 5.504 ms.
+This closes the combined uninterrupted scheduling check, not actual
+first-sample latency, audible release tails or host-output fidelity. CIA
+remains opt-in while those audio checks remain open.

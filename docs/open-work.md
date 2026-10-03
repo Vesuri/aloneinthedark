@@ -47,11 +47,10 @@ required.
     fidelity and distinguish DMA arming from actual first-sample output.
     Validate the opt-in `CIAMUSIC=1` candidate's remaining audio behavior
     before adoption; keep the game/display clocks unchanged.
-    Repeat uninterrupted onset timing with CIA and the accepted direct-query
-    path together. The combined frame/ownership run contains debugger stops
-    and cannot establish uninterrupted output timing. Examine the lower
-    active-motion averages in its second toward-corridor and final-hall views
-    before claiming unchanged rendering performance throughout.
+    Short-view averages
+    have unequal motion samples; the second toward-corridor passage is 6.6%
+    longer while final hall is shorter. Use residual-cost evidence rather than
+    claiming unchanged rendering performance throughout.
     Replace the reset-prone CIAB-TOD duration
     diagnostic before using it for further interrupt-cost claims.
     Verify actual output/release-tail timing and explain the four-channel
