@@ -23,9 +23,12 @@ required.
     2.0–2.3× after complete-scene presentation, bulk pixel copies and direct
     sound queries. Check
     the reference machines' memory timing and the remaining substantial
-    compatibility costs; original Mac VBL callbacks occupy about 17% of
-    the pre-query lighter corridor profile. Do not reuse that percentage as
-    a post-query attribution. Small service scopes are near observer overhead;
+    compatibility costs. The post-query CIA corridor profile attributes 20%
+    inclusively to original Mac VBL callbacks (13.4% in their compatibility
+    traps), 12.5% to presentation and 11% to CopyBits. These categories overlap
+    and include observer overhead; separate original drawing and compatibility
+    costs in matched indoor steps before choosing another optimization.
+    Small service scopes are near observer overhead;
     avoid further local tuning without evidence of a substantial cost.
     Use the late visit, not the
     earlier front-door scene that reuses room 1/camera 2, and the full

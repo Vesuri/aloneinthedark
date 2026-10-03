@@ -623,3 +623,33 @@ Eight-tick gaps range from 132.639 to 134.047 ms; nine-tick gaps from
 This closes the combined uninterrupted scheduling check, not actual
 first-sample latency, audible release tails or host-output fidelity. CIA
 remains opt-in while those audio checks remain open.
+
+The post-query CIA corridor profile (`tmp/corridor-query-cia.log`, exit zero,
+`CORRIDORPROFILE=1 INTROSKIP=1 FIXEDRNG=1 CIAMUSIC=1 PROBEFIELDS=250`)
+reaches the late room 1/camera 2 after the upper landing with Carnby.
+Its 250 fields contain six publications and 19,993,157 beam units:
+
+| Inclusive phase | Beam units | Share of interval |
+| --- | ---: | ---: |
+| Presentation | 2,508,377 | 12.5% |
+| Chunky-to-planar conversion, within presentation | 2,090,660 | 10.5% |
+| Back-buffer synchronization, within presentation | 45,751 | 0.2% |
+| CopyBits | 2,208,546 | 11.0% |
+| Shared trap services, including presentation | 5,951,560 | 29.8% |
+| Original Mac VBL callbacks | 3,998,739 | 20.0% |
+| Compatibility traps within those callbacks | 2,684,923 | 13.4% |
+| Heap lookup | 900,317 | 4.5% |
+| Region expansion | 654,411 | 3.3% |
+
+Categories overlap and instrumentation perturbs the interval; do not sum these
+shares or quote six frames per five seconds as shipping performance. The
+empty control bracket alone totals 316,041 units over 2,669 dispatches.
+Private sound-driver dispatch now totals 1,636,531 units over 367 calls,
+versus 2,368,836 over 720 in the earlier service profile, with different
+scene samples and scheduler. GetZone/SetZone together account for 1,966,715
+inclusive units over 897 calls; their shared service/profiler work is included,
+so this does not justify treating the constant-time zone access itself as
+a bottleneck. Presentation synchronization is no longer a substantial cost.
+The remaining gap requires separating original drawing from compatibility
+work in matched indoor steps, rather than another heap cache, region tweak
+or speculative rewrite of these small services.
