@@ -3,6 +3,30 @@
 **Status, 2026-10-02:** Startup/menu events, normal Enter selection and the automatic demo pass M2.
 First-room gameplay and broader event coverage remain M3.
 
+## M3.1 entry investigation — 2026-10-03
+
+The manual's printed pages 6 and 8 specify arrows for forward/backward/turning,
+Shift+Up (or a quick second Up press) for running, and Space plus an arrow for
+fighting. These raw keys already map to the appropriate Mac virtual keys;
+gameplay behavior still needs native verification.
+
+The audio-on, warp-off 68030 observation
+`tmp/m3-input/story-return-audio.log` exits zero at the original
+Dan2+$2086 return from the letter. Normal input selects New Game at tick 1867,
+releases Return at 1866, reaches the Carnby portrait at 2042, and returns from
+all eight letter pages at 2920. This verifies entry through the front end, not
+the first-room gameplay loop. The original Mac session in
+`tools/mac_trap_session.lua` uses Escape after the letter's subsequent story
+intro before verifying the attic. The requested `INGAME=1` mode must cover
+that transition as well as the earlier startup scenes.
+
+Earlier `reach` and `state` attempts in that folder timed out and are not
+acceptance. Their wrapper appended audio options after the diagnostic runner's
+`audio_driver=dummy`; FS-UAE kept the first option. The corrected local wrapper
+removes that option before launching, and the accepted core log confirms
+CoreAudio, an opened audio device and warp zero. The ordinary owner-facing
+full-startup run was not affected by that diagnostic-wrapper issue.
+
 The checkpoint sections below preserve service-level evidence. References to
 an intermediate startup stop or a then-pending M2 gate are historical; current
 acceptance is recorded in [development.md](development.md), and remaining work
