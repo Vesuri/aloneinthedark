@@ -43,6 +43,22 @@ if g_songTraceCount!=3736 || g_song.events!=3736 || g_songProbeEffects!=2 || g_s
 end
 printf "SONG_PROBE_PLAYBACK events=%u pulses=%u starts=%u steals=%u dropped=%u effects=%u/%u tick=%u\n",g_song.events,g_song.timeline.pulses,g_song.starts,g_song.steals,g_song.dropped,g_effectStarts,g_effectStops,g_macTicks
 dump binary memory ../tmp/song-probe-events.bin (char*)g_songTrace (char*)g_songTrace+g_songTraceCount*40
+if g_songProbeIRQTicks<180 || !g_songProbeIRQEvents
+ echo FAIL music did not advance during CPU-only stall\n
+ detach
+ quit 1
+end
+printf "SONG_PROBE_INTERRUPT stalledTicks=%u events=%u started=%u\n",g_songProbeIRQTicks,g_songProbeIRQEvents,g_song.started
+set $periodmax=0
+set $i=0
+while $i<g_song.preparedCount
+ if g_song.prepared[$i].dma.period>$periodmax
+  set $periodmax=g_song.prepared[$i].dma.period
+ end
+ set $i=$i+1
+end
+printf "SONG_PROBE_PREPARED notes=%u bytes=%u maxPeriod=%u\n",g_song.preparedCount,g_song.preparedCount*sizeof(g_song.prepared[0]),$periodmax
+dump binary memory ../tmp/song-probe-delivery.bin (char*)g_songDelivery (char*)g_songDelivery+g_songTraceCount*8
 set $sample=0
 set $cached=0
 set $cacheBytes=0
@@ -110,6 +126,11 @@ while $i<g_resourceCount
   quit 1
  end
  set $i=$i+1
+end
+if g_song.prepared || g_song.preparedCount
+ echo FAIL prepared song memory cleanup\n
+ detach
+ quit 1
 end
 echo PASS native full song: playback, effect priority, PCM variants, cleanup and original MDRV absent\n
 detach

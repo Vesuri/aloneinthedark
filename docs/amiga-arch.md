@@ -61,8 +61,24 @@ Natural-route timings can differ with actor trajectories and animation phase.
 In the phase observation, the frog model itself takes 3–4 native ticks versus
 2–3 on Mac; its first mask is much more expensive than subsequent masks.
 
-The remaining measured hallway pause is 2.35 seconds versus 1.62 on Mac; initial
-hallway preparation is 1.75 versus 0.92 seconds. The owner's earlier recording
+Those hallway measurements exclude room entry before the first camera-5 loop.
+The complete entry also includes loading room 2 and passing through camera 0.
+The retained native route takes 379 ticks from its room-2 transition checkpoint
+to the first camera-5 loop, versus 274 on Mac. Including the first camera-5 loop
+gives 484 versus 329 ticks (8.07 versus 5.48 seconds). The Mac evidence is
+`tmp/intro-030-route-mac-retry.log`, with all nine transitions, explicit PASS and
+normal debugger exit. These are common original checkpoints, not a claim of
+identical actor/cache state or the exact moment the host picture changes.
+
+The subsequent native VBI-music run (`tmp/music-vbi-busy-route-full.log`, exit 0)
+takes 373 + 104 = 477 ticks (7.95 seconds) across that complete entry, and
+32 ticks for its first frog mask. Its nine transitions, natural completion,
+3,736 music events and 920-byte minimum original stack margin pass. Music's
+maximum delivery delay is one logical tick in this run; an earlier two-tick
+outlier remains documented in [sound-driver.md](sound-driver.md).
+
+The measured hallway-to-stairs span is 2.35 seconds versus 1.62 on Mac; initial
+camera-5 loop preparation is 1.75 versus 0.92 seconds. The owner's earlier recording
 showed a nearly unchanged 14.7-second interval at 334.2–348.9 seconds before
 this stair view. That recording used the earlier A1200 setup and implementation,
 so it is not a same-machine before/after benchmark. Its white cache-window

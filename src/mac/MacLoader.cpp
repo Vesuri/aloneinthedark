@@ -111,12 +111,21 @@ struct NativeEffect {
 NativeEffect g_effects[2]={};
 volatile uint32_t g_effectStarts=0,g_effectStops=0,g_effectStatusCalls=0;
 struct NativeSong {
+    struct PreparedNote {
+        SongVoice::Dma dma;
+        uint8_t* chip;
+        uint32_t allocated,duration;
+        uint16_t sample;
+        bool ready,audible;
+    };
+    PreparedNote* prepared=0;
+    uint16_t preparedCount=0,preparedIndex[128][128]={};
     struct Owned {MacHeap::Handle handle;uint32_t type;uint16_t id;} owned[160]={};
     struct Sample {
         MacHeap::Handle handle;uint16_t id;SongInputs::Sample description;
         // Immutable Paula bytes depend on sample and decimation stride, not
-        // note period. Retain them until song release so catch-up does not
-        // repeatedly convert the same PCM while the game waits to draw.
+        // note period. Prepare them before enabling playback and retain them
+        // until song release; the interrupt never converts or allocates PCM.
         uint8_t* chip[5]={};uint32_t allocated[5]={};
     } samples[128]={};
     struct Voice {
@@ -126,15 +135,29 @@ struct NativeSong {
     SongInputs::Instrument instruments[128]={};
     SongInputs::Song description;SongTimeline timeline;
     uint32_t lastTick=0,events=0,starts=0,steals=0,dropped=0;
-    uint16_t ownedCount=0,sampleCount=0,id=0,midiId=0,playing=0;
+    uint16_t ownedCount=0,sampleCount=0,id=0,midiId=0;
+    volatile uint16_t playing=0;
+    uint32_t started=0,maxDeliveryLateness=0;
+    uint32_t busyFields=0,lastBusyTick=0,lateTick=0,lateBusyTick=0;
 };
 NativeSong g_song;
+// Main-thread channel mutations exclude the native music ISR. Preparation and
+// resource access happen before entering these short ownership sections.
+static volatile uint16_t s_nativeAudioBusy=0;
+static const char* volatile s_songInterruptError=0;
+class NativeAudioGuard {
+public:
+    NativeAudioGuard() { ++s_nativeAudioBusy; __asm__ volatile("" ::: "memory"); }
+    ~NativeAudioGuard() { __asm__ volatile("" ::: "memory"); --s_nativeAudioBusy; }
+};
 #ifdef AITD_SONG_COST_PROBE
 // Diagnostic only: elapsed game ticks in note preparation and song catch-up.
 extern "C" { volatile uint32_t g_songCost[12]={}; }
 #endif
 #ifdef AITD_SONG_PROBE
 volatile uint32_t g_songTraceCount=0,g_songTrace[4096][10]={};
+volatile uint32_t g_songDelivery[4096][2]={};
+volatile uint32_t g_songProbeIRQTicks=0,g_songProbeIRQEvents=0;
 volatile uint16_t g_songProbeEffects=0,g_songProbeHeapOK=0,g_songLastVoice=0;
 __attribute__((noinline)) void aitdSongVoiceStarted() {__asm__ volatile("" ::: "memory");}
 #endif
@@ -1343,6 +1366,7 @@ static void startPaulaSample(uint8_t* data, const PaulaSample::Layout& layout,
 
 static void stopNativeEffect(uint16_t index)
 {
+    NativeAudioGuard guard;
     SoundDriver::Voice& voice=g_soundDriver.effects[index];
     NativeEffect& effect=g_effects[index];
     if(voice.channel>=0) {
@@ -1398,16 +1422,18 @@ static const char* playNativeEffect(uint8_t* packet,uint32_t& scratch)
             age=uint16_t(0x7ffeUL - elapsed);replacing=true;
         } else return "EFFECT VOICE STEAL"; // Multiple occupied slots remain unmeasured.
     }
-    // A replacement retains its Paula channel; music ownership is untouched.
-    int16_t channel=replacing ? g_soundDriver.effects[index].channel : -1;
-    if(replacing && (channel<0 || channel>3 || g_soundDriver.channels[channel]!=6+index))
-        return "EFFECT REPLACEMENT CHANNEL";
-    if(!replacing)for(uint16_t i=0;i<4;++i)if(g_soundDriver.channels[i]<0) {channel=i;break;}
-    if(channel<0)channel=stealSongChannel();
-    if(channel<0)return "EFFECT CHANNEL STEAL";
     uint8_t* chip=(uint8_t*)AllocMem(layout.allocated,MEMF_CHIP);
     if(!chip)return "EFFECT CHIP MEMORY";
     PaulaSample::convert(layout,chip);
+    NativeAudioGuard guard;
+    // A replacement retains its Paula channel; music ownership is untouched.
+    int16_t channel=replacing ? g_soundDriver.effects[index].channel : -1;
+    if(replacing && (channel<0 || channel>3 || g_soundDriver.channels[channel]!=6+index)) {
+        FreeMem(chip,layout.allocated);return "EFFECT REPLACEMENT CHANNEL";
+    }
+    if(!replacing)for(uint16_t i=0;i<4;++i)if(g_soundDriver.channels[i]<0) {channel=i;break;}
+    if(channel<0)channel=stealSongChannel();
+    if(channel<0) {FreeMem(chip,layout.allocated);return "EFFECT CHANNEL STEAL";}
     if(replacing)stopNativeEffect(index); // DMA off before releasing the old sample.
     NativeEffect& effect=g_effects[index];
     effect.chip=chip;effect.allocated=layout.allocated;effect.size=bytes;effect.rate=rate;
@@ -1457,6 +1483,7 @@ static const char* ownSongResource(uint32_t type,uint16_t id,MacHeap::Handle& re
 }
 static void stopNativeSongVoice(uint16_t index)
 {
+    NativeAudioGuard guard;
     auto& voice=g_soundDriver.songs[index];auto& native=g_song.voices[index];
     if(voice.channel>=0) {
         quiescePaulaChannel((uint16_t)voice.channel);
@@ -1477,6 +1504,8 @@ static int16_t stealSongChannel()
 }
 static void releaseNativeSong()
 {
+    g_song.playing=0;
+    __asm__ volatile("" ::: "memory");
     for(uint16_t i=0;i<6;++i)stopNativeSongVoice(i);
     for(uint16_t i=0;i<g_song.sampleCount;++i)for(uint16_t v=0;v<5;++v) {
         auto& sample=g_song.samples[i];
@@ -1493,6 +1522,8 @@ static void releaseNativeSong()
     g_song.description.data=0;
     for(uint16_t i=0;i<128;++i) {g_song.instruments[i].data=0;g_song.samples[i].handle=0;g_song.samples[i].description.pcm=0;}
     for(auto& voice:g_soundDriver.songs)voice.sample=0;
+    if(g_song.prepared)FreeMem(g_song.prepared,g_song.preparedCount*sizeof(NativeSong::PreparedNote));
+    g_song.prepared=0;g_song.preparedCount=0;s_songInterruptError=0;
 }
 static const char* loadSongSample(uint16_t id)
 {
@@ -1504,6 +1535,53 @@ static const char* loadSongSample(uint16_t id)
     const char* error=ownSongResource(0x736e6420UL,id,sample.handle);if(error)return error;
     if((error=sample.description.parse(*sample.handle,handleZone(sample.handle)->handleSize(sample.handle))))return error;
     ++g_song.sampleCount;return 0;
+}
+// Compile note parameters and immutable PCM before enabling interrupt playback.
+// Only resources belonging to the requested song are touched.
+static const char* prepareSongNote(const SongInputs::Event& event)
+{
+    uint16_t index=g_song.preparedIndex[event.instrument][event.note];
+    if(!index || index>g_song.preparedCount)return "SONG PREPARED INDEX";
+    auto& prepared=g_song.prepared[index-1];
+    if(prepared.ready)return 0;
+    uint16_t sampleId=0;int16_t adjusted=0;bool found=false;
+    const char* error=SongVoice::select(g_song.instruments[event.instrument],event.note,sampleId,adjusted,found);
+    if(error)return error;
+    prepared.ready=true;prepared.audible=found;
+    if(!found)return 0;
+    uint16_t sampleIndex=0;
+    while(sampleIndex<g_song.sampleCount && g_song.samples[sampleIndex].id!=sampleId)++sampleIndex;
+    if(sampleIndex==g_song.sampleCount)return "SONG SAMPLE OWNERSHIP";
+    auto& sample=g_song.samples[sampleIndex];SongVoice::Plan plan;
+    if((error=SongVoice::describe(sample.description,adjusted,g_paulaClock,plan)))return error;
+    if((error=SongVoice::dma(sample.description,plan,g_paulaClock,prepared.dma)))return error;
+    auto& dma=prepared.dma;
+    prepared.allocated=dma.layout.allocated+2;prepared.sample=sampleId;
+    uint16_t variant=0;
+    for(uint16_t stride=dma.stride;stride>1;stride>>=1)++variant;
+    if(variant>=5)return "SONG PCM STRIDE";
+    if(!sample.chip[variant]) {
+        uint8_t* chip=(uint8_t*)AllocMem(prepared.allocated,MEMF_CHIP);
+        if(!chip)return "SONG CHIP MEMORY";
+#ifdef AITD_SONG_COST_PROBE
+        uint32_t convertBegin=g_macTicks;
+#endif
+        SongVoice::convert(dma,chip);
+#ifdef AITD_SONG_COST_PROBE
+        uint32_t convertTicks=g_macTicks-convertBegin;
+        g_songCost[6]+=convertTicks;
+        if(convertTicks>g_songCost[7])g_songCost[7]=convertTicks;
+#endif
+        chip[prepared.allocated-2]=chip[prepared.allocated-1]=0;
+        sample.chip[variant]=chip;sample.allocated[variant]=prepared.allocated;
+    }
+    if(sample.allocated[variant]!=prepared.allocated)return "SONG PCM LAYOUT";
+    prepared.chip=sample.chip[variant];prepared.duration=0;
+    if(!plan.loopEnd) {
+        unsigned long long clocks=static_cast<unsigned long long>(dma.layout.attackBytes)*dma.period*60;
+        if(!SongVoice::divide(clocks+g_paulaClock-1,g_paulaClock,prepared.duration))return "SONG DURATION";
+    }
+    return 0;
 }
 static const char* startNativeSong(uint32_t argument)
 {
@@ -1527,6 +1605,8 @@ static const char* startNativeSong(uint32_t argument)
     // SMOD bodies are retained as original resource ownership only. None of
     // their executable code is called; reached INST forms use no modifiers.
     bool used[128]={};SongInputs::Midi preflight;SongInputs::Event event;
+    for(auto& instrument:g_song.preparedIndex)for(auto& index:instrument)index=0;
+    g_song.preparedCount=0;s_songInterruptError=0;
     uint32_t midiBytes=handleZone(midi)->handleSize(midi);
     if((error=preflight.begin(*midi,midiBytes,g_song.description)))return error;
     while(!preflight.ended) {
@@ -1534,6 +1614,11 @@ static const char* startNativeSong(uint32_t argument)
         if(event.kind==SongInputs::Event::NoteOn || event.kind==SongInputs::Event::NoteOff) {
             if(event.instrument>=128)return "SONG INSTRUMENT RANGE";
             used[event.instrument]=true;
+            if(event.kind==SongInputs::Event::NoteOn) {
+                if(event.note>=128)return "SONG NOTE RANGE";
+                auto& index=g_song.preparedIndex[event.instrument][event.note];
+                if(!index)index=++g_song.preparedCount;
+            }
         }
     }
     for(uint16_t id=0;id<128;++id)if(used[id]) {
@@ -1544,9 +1629,25 @@ static const char* startNativeSong(uint32_t argument)
         if((error=loadSongSample(spec.baseSample)))return error;
         for(uint16_t r=0;r<spec.ranges;++r)if((error=loadSongSample(spec.rangeSample(r))))return error;
     }
+    if(g_song.preparedCount) {
+        g_song.prepared=(NativeSong::PreparedNote*)AllocMem(
+            g_song.preparedCount*sizeof(NativeSong::PreparedNote),MEMF_FAST|MEMF_CLEAR);
+        if(!g_song.prepared)return "SONG PREPARED MEMORY";
+    }
+    if((error=preflight.begin(*midi,midiBytes,g_song.description)))return error;
+    while(!preflight.ended) {
+        if((error=preflight.next(event)))return error;
+        if(event.kind==SongInputs::Event::NoteOn && (error=prepareSongNote(event)))return error;
+    }
     if((error=g_song.timeline.start(*midi,midiBytes,g_song.description)))return error;
+    // Establish a bounded, known sample countdown before the first ISR note.
+    // The initial unknown AUDxPER ceiling must be drained in user mode.
+    for(uint16_t c=0;c<4;++c)if(g_soundDriver.channels[c]<0)quiescePaulaChannel(c);
     g_soundDriver.songLimit=6;g_soundDriver.normalizedLimit=3;g_soundDriver.effectLimit=1;
     g_song.id=(uint16_t)argument;g_song.midiId=midiId;g_song.lastTick=g_macTicks;
+    g_song.started=g_song.lastTick;g_song.maxDeliveryLateness=0;
+    g_song.busyFields=g_song.lastBusyTick=g_song.lateTick=g_song.lateBusyTick=0;
+    __asm__ volatile("" ::: "memory");
     g_song.playing=1;return 0;
 }
 static const char* playSongNote(const SongInputs::Event& event)
@@ -1567,16 +1668,13 @@ static const char* playSongNote(const SongInputs::Event& event)
         }
         return 0;
     }
-    uint16_t sampleId=0;int16_t adjusted=0;bool found=false;
-    if(event.instrument>=128)return "SONG INSTRUMENT RANGE";
-    const char* error=SongVoice::select(g_song.instruments[event.instrument],event.note,sampleId,adjusted,found);
-    if(error || !found)return error;
-    uint16_t sampleIndex=0;
-    while(sampleIndex<g_song.sampleCount && g_song.samples[sampleIndex].id!=sampleId)++sampleIndex;
-    if(sampleIndex==g_song.sampleCount)return "SONG SAMPLE OWNERSHIP";
-    auto& sample=g_song.samples[sampleIndex];SongVoice::Plan plan;SongVoice::Dma dma;
-    if((error=SongVoice::describe(sample.description,adjusted,g_paulaClock,plan)))return error;
-    if((error=SongVoice::dma(sample.description,plan,g_paulaClock,dma)))return error;
+    if(event.instrument>=128 || event.note>=128)return "SONG NOTE RANGE";
+    uint16_t index=g_song.preparedIndex[event.instrument][event.note];
+    if(!index || index>g_song.preparedCount)return "SONG PREPARED INDEX";
+    const auto& prepared=g_song.prepared[index-1];
+    if(!prepared.ready)return "SONG PREPARED MISSING";
+    if(!prepared.audible)return 0;
+    const auto& dma=prepared.dma;
     int16_t channel=-1;
     for(uint16_t i=0;i<4;++i)if(g_soundDriver.channels[i]<0) {channel=i;break;}
     if(channel<0)channel=stealSongChannel();
@@ -1586,49 +1684,24 @@ static const char* playSongNote(const SongInputs::Event& event)
     if(slot==6)return "SONG VOICE OWNERSHIP";
     stopNativeSongVoice(slot);
     auto& native=g_song.voices[slot];auto& voice=g_soundDriver.songs[slot];
-    native.allocated=dma.layout.allocated+2;
-    uint16_t variant=0;
-    for(uint16_t stride=dma.stride;stride>1;stride>>=1)++variant;
-    if(variant>=5)return "SONG PCM STRIDE";
-    if(!sample.chip[variant]) {
-        uint8_t* chip=(uint8_t*)AllocMem(native.allocated,MEMF_CHIP);
-        if(!chip) {native.allocated=0;return "SONG CHIP MEMORY";}
-#ifdef AITD_SONG_COST_PROBE
-        uint32_t convertBegin=g_macTicks;
-#endif
-        SongVoice::convert(dma,chip);
-#ifdef AITD_SONG_COST_PROBE
-        uint32_t convertTicks=g_macTicks-convertBegin;
-        g_songCost[6]+=convertTicks;
-        if(convertTicks>g_songCost[7])g_songCost[7]=convertTicks;
-#endif
-        chip[native.allocated-2]=chip[native.allocated-1]=0;
-        sample.chip[variant]=chip;sample.allocated[variant]=native.allocated;
-    }
-    if(sample.allocated[variant]!=native.allocated)return "SONG PCM LAYOUT";
-    native.chip=sample.chip[variant];
+    native.allocated=prepared.allocated;native.chip=prepared.chip;
     native.note=event.note;native.channel=event.channel;native.instrument=event.instrument;
-    native.sample=sampleId;native.period=dma.period;native.stride=dma.stride;
+    native.sample=prepared.sample;native.period=dma.period;native.stride=dma.stride;
     native.serial=++g_song.starts;native.ends=0;
-    voice.sample=(uint32_t)sample.description.pcm;voice.active=1;voice.channel=channel;
+    voice.sample=(uint32_t)dma.layout.pcm;voice.active=1;voice.channel=channel;
     g_soundDriver.channels[channel]=slot;
     startPaulaSample(native.chip,dma.layout,channel,dma.period,64);
 #ifdef AITD_SONG_PROBE
     g_songLastVoice=slot;aitdSongVoiceStarted();
 #endif
-    if(!plan.loopEnd) {
-        unsigned long long clocks=static_cast<unsigned long long>(dma.layout.attackBytes)*dma.period*60;
-        uint32_t duration=0;
-        if(!SongVoice::divide(clocks+g_paulaClock-1,g_paulaClock,duration))return "SONG DURATION";
-        native.ends=g_macTicks+duration+1;
-    }
+    if(prepared.duration)native.ends=g_macTicks+prepared.duration+1;
     return 0;
 }
 static bool nativeSongDue()
 {
     return g_song.playing && g_macTicks!=g_song.lastTick;
 }
-static const char* serviceNativeSong()
+static const char* advanceNativeSong()
 {
     if(!nativeSongDue())return 0;
     AitdProfileScope profile(kProfileAudio);
@@ -1636,10 +1709,10 @@ static const char* serviceNativeSong()
     uint32_t costBegin=g_macTicks;
 #endif
     uint32_t elapsed=g_macTicks-g_song.lastTick;
-    // Original game work can exceed ten seconds on the baseline 68020.
-    // Catch up every elapsed pulse at this safe point; elapsed time alone is
-    // not an unsupported song format. The bounded MIDI decoder still rejects
-    // malformed events, and timeline completion ends this loop naturally.
+    // PAL can advance two logical ticks in one field. Preserve every pulse,
+    // including any tick deferred by a main-thread channel ownership update.
+    // The decoder was preflighted before playback; errors still fail loudly
+    // through the user-mode report, never through an OS call in this ISR.
     g_song.lastTick+=elapsed;
     for(uint16_t i=0;i<6;++i)if(g_song.voices[i].chip && g_song.voices[i].ends
         && (int32_t)(g_macTicks-g_song.voices[i].ends)>=0)stopNativeSongVoice(i);
@@ -1656,6 +1729,11 @@ static const char* serviceNativeSong()
                 uint32_t noteBegin=g_macTicks;
 #endif
                 if((error=playSongNote(event)))return error;
+                uint32_t lateness=g_macTicks-(g_song.started+g_song.timeline.pulses);
+                if(lateness>g_song.maxDeliveryLateness) {
+                    g_song.maxDeliveryLateness=lateness;g_song.lateTick=g_macTicks;
+                    g_song.lateBusyTick=g_song.lastBusyTick;
+                }
 #ifdef AITD_SONG_COST_PROBE
                 uint32_t noteTicks=g_macTicks-noteBegin;
                 ++g_songCost[0];g_songCost[1]+=noteTicks;
@@ -1663,6 +1741,8 @@ static const char* serviceNativeSong()
 #endif
 #ifdef AITD_SONG_PROBE
                 if(g_songTraceCount>=4096)return "SONG TRACE CAPACITY";
+                g_songDelivery[g_songTraceCount][0]=g_song.started+g_song.timeline.pulses;
+                g_songDelivery[g_songTraceCount][1]=g_macTicks;
                 volatile uint32_t* trace=g_songTrace[g_songTraceCount++];
                 trace[0]=event.kind==SongInputs::Event::NoteOn;trace[1]=event.offset;
                 trace[2]=event.instrument;trace[3]=event.note;trace[4]=event.velocity;trace[5]=event.channel;
@@ -1685,6 +1765,22 @@ static const char* serviceNativeSong()
     return 0;
 }
 
+// Called only from the VBI wrapper on a private interrupt stack.
+extern "C" void aitdSongInterrupt()
+{
+    if(!g_song.playing || s_songInterruptError)return;
+    if(s_nativeAudioBusy) {
+        ++g_song.busyFields;g_song.lastBusyTick=g_macTicks;return;
+    }
+    const char* error=advanceNativeSong();
+    if(error) {s_songInterruptError=error;g_song.playing=0;}
+}
+static const char* serviceNativeSong()
+{
+    __asm__ volatile("" ::: "memory");
+    return s_songInterruptError;
+}
+
 #ifdef AITD_SONG_PROBE
 extern "C" __attribute__((noinline)) void aitdSongProbeArmed() {__asm__ volatile("" ::: "memory");}
 extern "C" __attribute__((noinline)) void aitdSongProbePlaybackComplete() {__asm__ volatile("" ::: "memory");}
@@ -1694,6 +1790,13 @@ static const char* runNativeSongProbe()
     const char* error=startNativeSong(135);if(error)return error;
     aitdSongProbeArmed();
     uint32_t began=g_macTicks;bool effectStarted=false;
+    uint32_t beforeEvents=g_song.events;
+    // Deliberately execute no service or trap for three seconds. Music must
+    // continue from interrupts even while the original renderer would be busy.
+    while(g_macTicks-began<180) {__asm__ volatile("nop" ::: "memory");}
+    g_songProbeIRQTicks=g_macTicks-began;
+    g_songProbeIRQEvents=g_song.events-beforeEvents;
+    if(!g_songProbeIRQEvents)return "SONG INTERRUPT PROGRESS";
     while(true) {
         if(g_macTicks-began>18000)return "SONG PROBE TIMEOUT";
         serviceNativeEffects();
@@ -1702,6 +1805,7 @@ static const char* runNativeSongProbe()
             bool full=true;
             for(uint16_t c=0;c<4;++c)if(g_soundDriver.channels[c]<0 || g_soundDriver.channels[c]>=6)full=false;
             if(full) {
+                NativeAudioGuard guard; // Stable ownership snapshot for this fixture.
                 uint8_t* packet=s_applicationZone.newPtr(26,true);
                 if(!packet)return "SONG PROBE PACKET";
                 auto& sample=g_song.samples[0].description;
@@ -6851,8 +6955,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     pollMacMouse();
     // Every handled trap return is a user-mode-safe opportunity to deliver
     // due VBL work, then to present the pixels drawn since the last boundary.
-    if(nativeSongDue()) {
-        if(!inUserService)return deferUserService(trap,builtin,frame,userStack);
+    if(s_songInterruptError) {
         if(const char* error=serviceNativeSong()) {
             loaderStop(error,3);showLoaderStop();
         }
@@ -6963,6 +7066,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
                 else {
                     // Original +$362 clears control/tracks and music voices,
                     // retaining song resources and every effect slot.
+                    NativeAudioGuard guard;
                     g_soundDriver.songControl=0;
                     g_song.timeline.active=false;g_song.playing=0;
                     for(uint16_t i=0;i<6;++i)stopNativeSongVoice(i);

@@ -180,6 +180,7 @@ volatile uint32_t g_windowEnterTicks=0,g_windowExitTicks=0;
 static_assert(__builtin_offsetof(struct ExecBase, IntVects) == 84,
               "ExecBase::IntVects moved — re-check the VERTB vector takeover");
 
+extern "C" void aitd_song_vbi();
 static uint32_t vbiHandler()
 {
     // ⚠ Clearing the request is THIS handler's job now -- exec's server-chain walker used
@@ -209,6 +210,8 @@ static uint32_t vbiHandler()
     // application's QuickDraw randSeed.  MAME shows it one tick behind Ticks;
     // Vette copies it into qd.randSeed once during startup.
     if (g_macRndSeedAddress) *g_macRndSeedAddress = g_macTicks - 1;
+
+    aitd_song_vbi();
 
     aitdProfileOnVBI();
     return 0;

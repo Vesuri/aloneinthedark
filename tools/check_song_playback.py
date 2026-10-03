@@ -98,10 +98,32 @@ def check(reference,reference_status,text,status):
         raise ValueError('retained PCM memory accounting')
     print(f'PASS native song playback: 3736 exact timed events, {len(needed)} retained PCM variants ({total_bytes} bytes), effect priority, natural completion and resource/voice cleanup')
 
+def check_interrupt(text):
+    rows=re.findall(r'^SONG_PROBE_INTERRUPT stalledTicks=(\d+) events=(\d+) started=(\d+)$',text,re.M)
+    if len(rows)!=1:raise ValueError('interrupt progress record')
+    stalled,progress,started=map(int,rows[0])
+    if stalled<180 or not progress:raise ValueError('music did not progress during CPU-only work')
+    events=list(struct.iter_unpack('>10I',(ROOT/'tmp/song-probe-events.bin').read_bytes()))
+    raw=(ROOT/'tmp/song-probe-delivery.bin').read_bytes()
+    if len(raw)!=len(events)*8:raise ValueError('complete note delivery trace')
+    deliveries=list(struct.iter_unpack('>2I',raw));previous=started;maximum=0
+    for event,(intended,actual) in zip(events,deliveries):
+        if intended!=started+event[6] or actual<previous:raise ValueError('note delivery clock/order')
+        late=actual-intended
+        # PAL converts 50 fields into 60 logical ticks. The earlier of a
+        # two-tick field can arrive one logical tick late, never in a later VBI.
+        if late<0 or late>1:raise ValueError(f'note delivery late by {late} ticks')
+        maximum=max(maximum,late);previous=actual
+    print(f'PASS interrupt music: {progress} events during {stalled} CPU-only ticks; {len(events)} deliveries, maximum lateness {maximum} tick')
+
 if __name__=='__main__':
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('reference',type=Path);p.add_argument('native',type=Path)
     p.add_argument('--reference-status',type=int,required=True);p.add_argument('--status',type=int,required=True)
+    p.add_argument('--interrupt',action='store_true',help='Require CPU-stall progress and actual note-delivery checks')
     a=p.parse_args()
-    try:check(a.reference.read_text(),a.reference_status,a.native.read_text(),a.status)
+    try:
+        text=a.native.read_text()
+        check(a.reference.read_text(),a.reference_status,text,a.status)
+        if a.interrupt:check_interrupt(text)
     except (ValueError,OSError,KeyError,struct.error) as error:raise SystemExit('FAIL song playback: '+str(error))

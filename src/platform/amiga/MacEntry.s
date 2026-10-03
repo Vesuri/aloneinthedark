@@ -1,5 +1,22 @@
 	.text
 	.even
+| Native music must not consume the interrupted graphics service's small
+| supervisor stack. This is a C ABI call within VBI, not a Mac callback.
+	.globl aitd_song_vbi
+aitd_song_vbi:
+	move.l sp,a0
+	lea aitd_song_stack_end,sp
+	move.l a0,-(sp)
+	jsr aitdSongInterrupt
+	move.l (sp)+,sp
+	rts
+	.bss
+	.balign 4
+aitd_song_stack:
+	.space 8192
+aitd_song_stack_end:
+	.text
+	.even
 	.globl aitd_call_mac_code
 aitd_call_mac_code:
 	move.l 4(sp),a0

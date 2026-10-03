@@ -3,7 +3,8 @@
 #include "SongInputs.h"
 
 // Original +$1686/$18C4/$1A40: 1/64 MIDI-tick countdowns, with tempo
-// quantized by the SONG clock divisor. Advance only at safe user-mode points.
+// quantized by the SONG clock divisor. Native playback advances from VBI;
+// resource ownership and prepared sample lifetime are managed in user mode.
 class SongTimeline {
     SongInputs::Midi midi;
     SongInputs::Event pending;

@@ -239,7 +239,7 @@ endif
 
 ifeq ($(SONGPROBE),1)
 EXTRA_DEFINES += -DAITD_SONG_PROBE
-PROBE_SYMS_SONG = g_songTraceCount g_songTrace g_songProbeEffects g_songProbeHeapOK g_songLastVoice
+PROBE_SYMS_SONG = g_songTraceCount g_songTrace g_songDelivery g_songProbeIRQTicks g_songProbeIRQEvents g_songProbeEffects g_songProbeHeapOK g_songLastVoice
 endif
 
 ifeq ($(LINEAPROBE),1)

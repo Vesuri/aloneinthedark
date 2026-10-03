@@ -630,9 +630,12 @@ on a 68020/030.
   - Notes become Paula voices: period from the MIDI note, the instrument's base
     note and the sample rate; volume from velocity and channel volume; loops from
     the `snd ` loop points.
-  - Tempo is driven by the VBI's tick counter, but the sequencer runs at safe
-    user-mode points, never in the interrupt. It schedules ahead, so a late safe
-    point shifts events, not pitch.
+  - Owner update 2026-10-03: drive native music from an interrupt, independently
+    of rendering. VBI advances the existing 60 Hz clock (50-to-60 conversion
+    on PAL); the native sequencer and Paula note delivery run after display
+    publication on a private interrupt stack. Resource access, PCM preparation
+    and allocation remain in user mode. Original Mac VBL callbacks still run
+    at safe user-mode points; they are not the native music scheduler.
 - **Voices and effects.** Four channels, allocated by priority: sound effects
   (the `snd `/`LISTSAMP` samples the game requests through the driver) take a
   channel, and music takes the rest. Voice stealing drops the oldest or quietest

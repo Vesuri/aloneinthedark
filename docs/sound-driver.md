@@ -341,29 +341,62 @@ The old stop is passed, not suppressed. All 36 earlier integrated regressions
 pass in `tmp/m2-song-runtime-regressions.log`, including intro return, effects,
 GetKeys, offscreen/window drawing, AGA publication and the full initial A5 world.
 
-The native sequencer runs at user-mode safe points driven by the VBI's 60 Hz
-clock. A late safe point delivers every elapsed pulse in order without altering
-pitch. The former 600-tick guard rejected a real 640-tick interval on the
-baseline 68020; elapsed time alone is no longer treated as an unsupported song.
-The full-intro C2P regression completes with this catch-up path, and malformed
-MIDI/timeline states still fail their existing checks. Native code owns converted
-chip buffers and applies the verified sample/loop/pitch helpers. A free Paula
-channel is preferred; otherwise the oldest music voice is replaced. Effects
-have priority over music. Note-off selects silent reload and quiesces the
-channel within five ticks; this Paula release waveform intentionally differs
-from the original software mixer's sample tail. Natural one-shots finish using
-the actual programmed period. Shutdown quiesces DMA before freeing chip memory
-and disposes all retained song handles.
+The native sequencer advances in VBI after display publication, using the
+existing 60 Hz game clock. PAL fields advance one or two logical ticks; NTSC
+fields advance one. A private 8 KiB interrupt stack keeps music work off the
+small supervisor stack that may already contain a drawing service. Original
+Mac VBL callbacks remain in user mode.
 
-This catch-up policy preserves the logical timeline, but does not guarantee
-even audible note spacing: delayed notes can reach Paula together at the next
-safe point. The song trace records timeline pulses/steps rather than actual
-Paula-write times, so its exact-event pass is not an audible-jitter check.
-The owner reports uneven music timing in normal-speed, audio-enabled 68030
-playback on 2026-10-03. The live log confirms CoreAudio and `warp_mode=0`,
-without an underrun report; absence of such a report does not exclude host
-audio problems. Actual delivery lateness still needs measurement before
-attributing the symptom solely to safe-point scheduling (P1 / M4.3b).
+Starting a song identifies every used instrument/note pair, prepares its pitch,
+DMA layout and one-shot duration, and converts the required immutable PCM
+variants. It uses only the requested song resources, already detached and
+locked by the song loader. The interrupt performs no allocation, conversion,
+resource access or original-code callback. Main-thread channel ownership changes
+exclude music briefly; stop/release disables playback before freeing any data.
+Interrupt errors are reported through the existing named stop at the next
+user-mode boundary.
+
+A free Paula channel is preferred; otherwise the oldest music voice is replaced.
+Effects have priority. Note-off selects silent reload and quiesces the channel
+within five ticks; this release waveform intentionally differs from the original
+software mixer tail. Natural one-shots finish using their programmed period.
+Shutdown quiesces DMA before releasing chip buffers and owned song handles.
+
+The owner reported uneven note spacing during normal-speed 68030 playback on
+2026-10-03. The previous safe-point catch-up policy preserved the logical
+sequence but could deliver overdue notes together. The original event trace
+alone did not test audible timing. The interrupt fixture adds actual delivery
+ticks and a three-second CPU-only interval with no service calls. The focused run
+(`tmp/music-vbi-span-song-full.log`, exit 0) delivers 30 events during that
+interval and all 3,736 events within one logical tick of their due time, the PAL
+quantization allowance. Exact events, all 25 PCM variants, effect priority and
+cleanup pass. Run `tools/check_song_playback.py` with `--interrupt` to check
+the delivery trace as well as the original logical event sequence.
+
+The integrated normal-speed, audio-enabled 68030 run
+`tmp/music-vbi-final-route-full.log` reaches all nine transitions and natural
+completion with 3,736 events and a 920-byte minimum original stack margin.
+It **fails** the music timing gate: maximum delivery lateness is two ticks,
+against the one-tick PAL allowance. After the span-copy revision,
+`tmp/music-vbi-busy-route-full.log` (exit 0) completes all nine transitions and
+3,736 events with maximum lateness one tick, zero late presentations and the
+same 920-byte original stack margin. Eight fields encounter channel-ownership
+exclusion, but none produces a greater note delay in this run. The earlier
+two-tick outlier is not reproduced or explained by this result. Fresh listening
+acceptance and sub-field interrupt-duration measurement remain open.
+
+Startup attribution before the span-copy conversion change is recorded in
+`tmp/music-vbi-cost-full.log` (exit 0, `INTROSKIP=1 SONGCOST=1`, same 68030,
+audio on, no warp). The blank-frame interval is 519 ticks; PCM conversion
+accounts for 166 ticks, resource loading 33, movement 92 and locking one.
+These are logical 60 Hz ticks, not host time. Moving per-byte bounds/wrap checks
+to span boundaries reduces conversion to 92 ticks (1.53 seconds), with the
+whole blank-frame interval at 436 ticks (7.27 seconds), in
+`tmp/music-vbi-span-cost-full.log` (exit 0, identical build flags and setup).
+Resource loading/movement/locking is 26/98/1 ticks in that run. The sanitized
+27-stream PCM oracle passes (`tmp/music-vbi-span-host-final.log`), as does full
+native verification of all 25 variants and 3,736 events after this revision
+(`tmp/music-vbi-span-song-full.log`, exit 0; checker with `--interrupt`).
 
 The M2 black-interval investigation found that repeatedly converting PCM for
 each note starved original game execution. On baseline 68020, conversion used

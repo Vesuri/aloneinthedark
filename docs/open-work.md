@@ -110,7 +110,8 @@ required.
 
 - **M4.2 Music on Paula voices.**
   - A native SONG/MIDI sequencer and INST→`snd ` mapping on the four channels.
-  - Tempo from the VBI tick counter, run at safe points.
+  - Tempo and note delivery from the native interrupt clock; resource and
+    sample preparation outside the interrupt.
   - Measure the songs' maximum simultaneous notes; record the voice-allocation
     policy.
 
@@ -147,8 +148,10 @@ required.
   - Compare an uninterrupted, non-warp run with the diagnostic run. Inspect
     emulator audio timing and native Paula sample/loop/note timing before
     attributing the symptom to host speed or normal 8-bit quantization.
-    Measure lateness and clustered delivery at actual note starts: the existing
-    event checker verifies sequencer pulses, not hardware-write timestamps.
+    Resolve the integrated intro's two-tick maximum delivery delay against the
+    one-tick PAL allowance. Measure interrupt duration and actual note-start
+    spacing; tick-level delivery traces do not establish sub-field hardware
+    timing or audible quality.
 
   *Done when* a repeatable listening/capture test establishes the cause,
   any playback defect is fixed with regression evidence, and remaining
@@ -190,10 +193,13 @@ required.
 
   *Done when* the profile shows no remaining optimisation worth its risk, and the
   frame rates on both configs are recorded in README.
-- **M5.3 Safe-point gap audit.**
-  - Measure the worst interval between trap boundaries during gameplay; the
-    sequencer and VBL tasks only run at those points.
-  - Add a verified hook only if audible timing suffers.
+- **M5.3 Interrupt budget and safe-point gap audit.**
+  - Measure native music interrupt duration, delivery lateness and interrupt
+    stack headroom during gameplay, including simultaneous note/effect changes.
+  - Measure the worst interval between trap boundaries for original Mac VBL
+    callbacks and remaining user-mode cleanup. Native music must keep playing
+    during those intervals; add a verified hook only for a measured remaining
+    callback or cleanup requirement.
 
   *Done when* the gap is recorded, and music timing is steady by event log.
 - **M5.4 Memory minimum.**

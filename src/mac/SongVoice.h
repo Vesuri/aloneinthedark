@@ -125,18 +125,37 @@ inline uint8_t pcmAt(const Dma& dma,uint32_t position) {
         position=layout.loopStart+(position-layout.loopEnd)%(layout.loopEnd-layout.loopStart);
     return position<layout.size ? layout.pcm[position]^0x80 : 0;
 }
+inline void convertSpan(const Dma& dma,uint8_t* destination,uint32_t bytes,uint32_t& position) {
+    const auto& layout=dma.layout;
+    while(bytes) {
+        if(layout.loopEnd && position>=layout.loopEnd)
+            position=layout.loopStart+(position-layout.loopEnd)%(layout.loopEnd-layout.loopStart);
+        if(position>=layout.size) {
+            while(bytes--) *destination++=0;
+            return;
+        }
+        // Copy an uninterrupted source span. Bounds and loop arithmetic belong
+        // at its boundary, not in the per-byte unsigned-to-signed conversion.
+        uint32_t end=layout.loopEnd ? layout.loopEnd : layout.size;
+        uint32_t count=1+(end-1-position)/dma.stride;
+        if(count>bytes)count=bytes;
+        bytes-=count;
+        while(count--) {
+            *destination++=layout.pcm[position]^0x80;
+            position+=dma.stride;
+        }
+    }
+}
 inline void convert(const Dma& dma,uint8_t* destination) {
     const auto& layout=dma.layout;
     uint32_t position=0;
-    for(uint32_t i=0;i<layout.attackBytes;++i,position+=dma.stride)
-        destination[i]=pcmAt(dma,position);
+    convertSpan(dma,destination,layout.attackBytes,position);
     if(!layout.loopEnd) {
         destination[layout.reloadOffset]=destination[layout.reloadOffset+1]=0;return;
     }
     // Decimate the source stream, including its wrap. Odd loops retain their
     // complete phase cycle; pad/reload alignment never repeats or loses a byte.
-    for(uint32_t i=0;i<layout.reloadBytes;++i,position+=dma.stride)
-        destination[layout.reloadOffset+i]=pcmAt(dma,position);
+    convertSpan(dma,destination+layout.reloadOffset,layout.reloadBytes,position);
 }
 
 }
