@@ -110,6 +110,16 @@ with a busy channel-ownership field at tick 9550 and late delivery at 9552.
 This establishes the deferred field's source; it is not a complete audio pass.
 The key-reset change is retained on its exact input tests and transition gain.
 
+The longword sample-conversion build repeats the complete route in
+`tmp/intro-longword-route-full.log`: nine transitions, natural completion at
+tick 19,906, 1,008 presented frames, all 3,736 music events and zero late
+publications. Hallway entry is 274 ticks, followed by a 104-tick first frame
+(378 combined versus 329 on Mac). The frog mask/first loop is 33/55 ticks;
+hallway-to-stairs is 139. These confirm that the remaining hallway gap is in
+the first frame, rather than room entry. The observer exits 1 on the known
+audio gate: maximum lateness two ticks, after ownership exclusion at 8764
+and delivery at 8766. This is route completion evidence, not audio acceptance.
+
 The measured hallway-to-stairs span is 2.35 seconds versus 1.62 on Mac; initial
 camera-5 loop preparation is 1.75 versus 0.92 seconds. The owner's earlier recording
 showed a nearly unchanged 14.7-second interval at 334.2–348.9 seconds before
