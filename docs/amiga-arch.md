@@ -141,6 +141,14 @@ changes the frog mask only from 33 to 31 ticks and the first hallway loop from
 The small gain does not justify the extra cache/invalidation state; the normal
 heap lookup remains unchanged. The trace is not a matched-frame pixel check.
 
+A local free-tail merge in `resizeInPlace`, replacing its whole-heap coalescing
+scan, was also tested and discarded. Sanitized heap tests pass, and
+`tmp/intro-local-coalesce-route-full.log` completes the route and music timing
+gate (exit 0). The frog mask changes from 33 to 30 ticks and first hallway loop
+from 104 to 99. These small gains do not justify continued heap-level tuning
+for P1. A single passing music run does not resolve the previously reproduced
+effect-boundary deferral; that remains a separate correctness/timing issue.
+
 The measured hallway-to-stairs span is 2.35 seconds versus 1.62 on Mac; initial
 camera-5 loop preparation is 1.75 versus 0.92 seconds. The owner's earlier recording
 showed a nearly unchanged 14.7-second interval at 334.2–348.9 seconds before
