@@ -163,6 +163,14 @@ extern "C" { volatile uint32_t g_songCost[12]={}; }
 volatile uint32_t g_songTraceCount=0,g_songTrace[4096][10]={};
 volatile uint32_t g_songDelivery[4096][2]={};
 volatile uint32_t g_songProbeIRQTicks=0,g_songProbeIRQEvents=0;
+volatile uint32_t g_songTiming[4]={}; // Calls, total lines, longest update, its events.
+static uint32_t songLineClock()
+{
+    // CIAB TOD counts horizontal syncs. High latches; low releases the latch.
+    // Called only with audio ownership held, so VBI cannot nest this read.
+    uint32_t high=*ciabtodhiPointer,mid=*ciabtodmidPointer,low=*ciabtodlowPointer;
+    return (high<<16)|(mid<<8)|low;
+}
 volatile uint16_t g_songProbeEffects=0,g_songProbeHeapOK=0,g_songLastVoice=0;
 __attribute__((noinline)) void aitdSongVoiceStarted() {__asm__ volatile("" ::: "memory");}
 #endif
@@ -1774,8 +1782,16 @@ static const char* advanceNativeSong()
 // voice guards must not dispatch another update while the decoder is active.
 static void advanceOwnedNativeSong()
 {
+#ifdef AITD_SONG_PROBE
+    uint32_t began=songLineClock(),events=g_song.events;
+#endif
     const char* error=advanceNativeSong();
     if(error) {s_songInterruptError=error;g_song.playing=0;}
+#ifdef AITD_SONG_PROBE
+    uint32_t lines=(songLineClock()-began)&0xffffff;
+    ++g_songTiming[0];g_songTiming[1]+=lines;
+    if(lines>g_songTiming[2]) {g_songTiming[2]=lines;g_songTiming[3]=g_song.events-events;}
+#endif
 }
 // Called only from the VBI wrapper on its private interrupt stack.
 extern "C" void aitdSongInterrupt()

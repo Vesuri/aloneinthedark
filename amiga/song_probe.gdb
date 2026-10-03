@@ -49,6 +49,12 @@ if g_songProbeIRQTicks<180 || !g_songProbeIRQEvents
  quit 1
 end
 printf "SONG_PROBE_INTERRUPT stalledTicks=%u events=%u started=%u\n",g_songProbeIRQTicks,g_songProbeIRQEvents,g_song.started
+if !g_songTiming[0] || !g_songTiming[1] || !g_songTiming[2]
+ echo FAIL music horizontal-sync timing counter\n
+ detach
+ quit 1
+end
+printf "SONG_PROBE_DURATION calls=%u totalLines=%u maxLines=%u maxEvents=%u\n",g_songTiming[0],g_songTiming[1],g_songTiming[2],g_songTiming[3]
 set $periodmax=0
 set $i=0
 while $i<g_song.preparedCount

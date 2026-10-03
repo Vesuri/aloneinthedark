@@ -410,6 +410,21 @@ frames with no late publications and retains the 920-byte minimum observed
 game-stack margin. Sub-field interrupt-duration measurement and owner listening
 remain separate acceptance requirements.
 
+The full-song diagnostic also brackets the owned music update with read-only
+CIAB TOD samples (`tmp/music-duration-song-full.log`, exit 0). This counter
+counts horizontal syncs; reading high latches the value and reading low releases
+it ([Hardware Reference Manual, appendix F](https://www.amigadev.elowar.com/read/ADCD_2.1/Hardware_Manual_guide/node012E.html)).
+Audio ownership prevents nested music reads of that latch. No CIA timer or
+counter configuration is changed. Across 7,378 updates, the measured total is
+43,395 scanlines and the maximum 87 lines, handling seven events. At roughly
+64 microseconds per PAL line, this is about 0.38 ms average and 5.6 ms maximum.
+The bracket includes the sequencer/Paula update and diagnostic overhead, but
+not the surrounding display/input ISR or stack wrapper. It covers the song
+fixture, including forced deferral and an effect, rather than all gameplay.
+The event/PCM checker still passes with maximum delivery lateness one tick.
+Normal builds omit the counters and CIA reads. Gameplay interrupt budgets and
+private-stack headroom remain part of M5.3; owner listening remains pending.
+
 Startup attribution before the span-copy conversion change is recorded in
 `tmp/music-vbi-cost-full.log` (exit 0, `INTROSKIP=1 SONGCOST=1`, same 68030,
 audio on, no warp). The blank-frame interval is 519 ticks; PCM conversion
