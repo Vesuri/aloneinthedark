@@ -27,6 +27,10 @@ required.
     measurements. Matching model geometry alone does not match scene-cache
     state or other actors. Carry the remaining CPU/memory timing-model limits
     into comparisons rather than attributing the whole gap to the port.
+  - Bring intro music-delivery jitter from M4.3b forward. Measure actual Paula
+    note delivery against its intended clock during uninterrupted rendering,
+    including static scenes and transitions; logical event timestamps alone
+    do not establish even audible timing.
 
   *Done when* matched scene/transition timings demonstrate roughly comparable
   performance to the reference Mac, long unexplained port stalls are resolved,
@@ -135,13 +139,16 @@ required.
   exact loop/sample ownership checks and verified stop/replacement cleanup;
   unsupported variants retain named stops.
 
-- **M4.3b Investigate reported grainy music playback.**
-  - The owner hears persistent grain/buffering-like breakup during diagnostic
-    playback. Current runs use warp and debugger pauses; the emulator log
-    confirms warp/no full synchronization but reports no audio underrun.
+- **M4.3b Investigate music jitter and grainy playback.**
+  - The owner reports uneven spacing between music ticks in uninterrupted
+    fixed-clock 68030 playback with audio on and warp off (2026-10-03), even
+    though average tempo sounds correct. Intro timing is a P1 prerequisite.
+    Distinguish this from the earlier grain/buffering report under diagnostics.
   - Compare an uninterrupted, non-warp run with the diagnostic run. Inspect
     emulator audio timing and native Paula sample/loop/note timing before
     attributing the symptom to host speed or normal 8-bit quantization.
+    Measure lateness and clustered delivery at actual note starts: the existing
+    event checker verifies sequencer pulses, not hardware-write timestamps.
 
   *Done when* a repeatable listening/capture test establishes the cause,
   any playback defect is fixed with regression evidence, and remaining

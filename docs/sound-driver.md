@@ -355,6 +355,16 @@ from the original software mixer's sample tail. Natural one-shots finish using
 the actual programmed period. Shutdown quiesces DMA before freeing chip memory
 and disposes all retained song handles.
 
+This catch-up policy preserves the logical timeline, but does not guarantee
+even audible note spacing: delayed notes can reach Paula together at the next
+safe point. The song trace records timeline pulses/steps rather than actual
+Paula-write times, so its exact-event pass is not an audible-jitter check.
+The owner reports uneven music timing in normal-speed, audio-enabled 68030
+playback on 2026-10-03. The live log confirms CoreAudio and `warp_mode=0`,
+without an underrun report; absence of such a report does not exclude host
+audio problems. Actual delivery lateness still needs measurement before
+attributing the symptom solely to safe-point scheduling (P1 / M4.3b).
+
 The M2 black-interval investigation found that repeatedly converting PCM for
 each note starved original game execution. On baseline 68020, conversion used
 16,697 of 17,181 music-service ticks before the first demo picture, within a
