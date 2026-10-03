@@ -481,7 +481,15 @@ Native trap probes, host fragmentation tests and paired heap captures verify it:
     partial book updates; see the M2 completion record in development.md.
 - **Dirty rectangles.** Keep the explicit list. They come from every QuickDraw
   write to the screen port, plus the presentation `CopyBits` dest rectangle. The
-  back buffer inherits the previous update's rectangles.
+  display owner keeps a 64 KB Fast RAM copy of the last submitted chunky
+  viewport. Exact comparisons within normalized dirty rectangles select changed
+  32-pixel blocks; there are no hashes or approximate comparisons. Adjacent
+  blocks and equal row masks are grouped for conversion. The inactive planar
+  buffer inherits the previous update's changed blocks except those converted
+  anew, with the existing atomic cursor-XOR removal during synchronization.
+  First use and viewport changes force full conversion; pending frames leave
+  the cache untouched. The cache contains game pixel indices, never cursor
+  pixels, and palette-only updates still publish normally.
 - **Palette (task M2.7).**
   - `ActivatePalette` realises the palette the way the Mac's Palette Manager does
     on an 8-bit device: pmExplicit plus pmTolerant with tolerance 0, and indices

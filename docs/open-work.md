@@ -20,8 +20,8 @@ required.
     original instructions, game decisions, sample content and timing; do not
     substitute a faster emulator or focus on minor optimizations.
   - Address the remaining late reverse-corridor gap of approximately
-    2.0–2.3× after complete-scene presentation, bulk pixel copies and direct
-    sound queries. Check
+    1.8–2.1× after complete-scene presentation, bulk pixel copies, direct
+    sound queries and exact changed-block conversion suppression. Check
     the reference machines' memory timing and the remaining substantial
     compatibility costs. The post-query CIA corridor profile attributes 20%
     inclusively to original Mac VBL callbacks (13.4% in their compatibility
@@ -29,8 +29,11 @@ required.
     and include observer overhead. Natural corridor person draws have a
     four-tick median on both machines, but full loop medians are 10 versus 20
     ticks. The paired scene-stage trace localizes the largest persistent
-    difference before scene-renderer entry (2 versus 8 ticks); separate early
-    deferred presentation from original update work. Foreground masking also
+    difference before scene-renderer entry (2 versus 8 ticks). A focused native
+    trace puts six median ticks at the first GetGWorld return, consistent with
+    deferred presentation; subsequent update stages are mostly zero or one.
+    Remeasure the residual presentation cost after changed-block suppression
+    only if needed to identify substantial remaining work. Foreground masking also
     costs 16 versus 43 ticks on first expensive use, then about 2 versus 9–11.
     Compare its actual mask inputs and remove the dominant extra work.
     Geometry matches exist but exact transforms differ;

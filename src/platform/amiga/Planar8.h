@@ -12,6 +12,48 @@ static const uint16_t width=320, height=200, planes=8, planeRow=40, rowBytes=320
 static const uint32_t bytes=uint32_t(rowBytes)*height;
 struct Rect { int16_t top,left,bottom,right; };
 
+// Exact comparison, not a hash: unchanged pixel indices require no conversion.
+// 68020+ accepts unaligned longwords (a moved viewport can start at odd x).
+inline uint32_t blockWord(const uint8_t* p) {
+#ifdef AITD_PLATFORM_AMIGA
+    uint32_t value;
+    __asm__ volatile("move.l (%1),%0" : "=d"(value) : "a"(p) : "memory");
+    return value;
+#else
+    return uint32_t(p[0])<<24 | uint32_t(p[1])<<16 | uint32_t(p[2])<<8 | p[3];
+#endif
+}
+inline bool refreshBlock(const uint8_t* source,uint8_t* cached,bool force) {
+    bool changed=force;
+    if(!changed)for(uint16_t x=0;x<32;x+=4)
+        if(blockWord(source+x)!=blockWord(cached+x)) {changed=true;break;}
+    if(changed)for(uint16_t x=0;x<32;x+=4) {
+        uint32_t value=blockWord(source+x);
+#ifdef AITD_PLATFORM_AMIGA
+        __asm__ volatile("move.l %0,(%1)" :: "d"(value),"a"(cached+x) : "memory");
+#else
+        cached[x]=uint8_t(value>>24);cached[x+1]=uint8_t(value>>16);
+        cached[x+2]=uint8_t(value>>8);cached[x+3]=uint8_t(value);
+#endif
+    }
+    return changed;
+}
+
+inline void changedRows(const uint8_t* source,uint8_t* cached,const Rect& viewport,
+                        const Rect* candidates,uint16_t count,bool force,uint16_t* rows) {
+    for(uint16_t y=0;y<height;++y)rows[y]=force ? 1023 : 0;
+    if(!force)for(uint16_t i=0;i<count;++i) {
+        const Rect& r=candidates[i];
+        uint16_t mask=uint16_t((1u<<(r.right/32))-(1u<<(r.left/32)));
+        for(int16_t y=r.top;y<r.bottom;++y)rows[y]|=mask;
+    }
+    for(uint16_t y=0;y<height;++y)for(uint16_t b=0;rows[y] && b<10;++b) {
+        if(!(rows[y]&(1u<<b)))continue;
+        if(!refreshBlock(source+uint32_t(y+viewport.top)*640+viewport.left+b*32,
+                         cached+uint32_t(y)*320+b*32,force))rows[y]&=uint16_t(~(1u<<b));
+    }
+}
+
 // All rectangles here have already been normalized to 32-pixel boundaries.
 // Each bit selects one four-byte span of a plane row. Pixels converted from
 // chunky this frame need no copy from the previous front buffer.

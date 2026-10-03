@@ -139,6 +139,11 @@ bool AitdScreen::initialize(const uint8_t* picture, const uint16_t* palette16)
         return false;
     }
 
+    m_chunkyCache = (uint8_t*)AllocMem(kPictureBytes, MEMF_FAST);
+    if (!m_chunkyCache) { shutdown(); return false; }
+    m_chunkyCacheValid = false;
+    for(uint16_t y=0;y<kHeight;++y)m_syncRows[y]=0;
+
     for (uint32_t i = 0; i < kPictureBytes; i++)
         m_chip[i] = m_back[i] = picture ? picture[i] : 0;
 
@@ -428,13 +433,16 @@ int16_t AitdScreen::presentMacFrame(const uint8_t* chunky,const uint8_t* colorTa
         if(!Planar8::normalize(viewport,{d.top,d.left,d.bottom,d.right},local))return -1;
         if(local.top<local.bottom && local.left<local.right)normalized[count++]=local;
     }
+    uint16_t changed[kHeight];
+    { AitdProfileScope profile(kProfileC2P);
+    Planar8::changedRows(chunky,m_chunkyCache,viewport,normalized,count,
+        !m_chunkyCacheValid || !matchesViewport(cropLeft,cropTop),changed);
+    }
     // Vette's explicit synchronization: bring the previous frame's changed
     // spans to the inactive bitmap, excluding pixels converted this frame.
     { AitdProfileScope profile(kProfileSync);
-    for(uint16_t i=0;i<m_syncRectCount;++i) {
-        const DirtyRect& r=m_syncRects[i];
-        for(int16_t y=r.top;y<r.bottom;++y) {
-            uint16_t mask=Planar8::syncRowMask({r.top,r.left,r.bottom,r.right},y,normalized,count);
+        for(int16_t y=0;y<kHeight;++y) {
+            uint16_t mask=m_syncRows[y]&uint16_t(~changed[y]);
             for(int16_t block=0;mask && block<10;) {
                 if(!(mask&(1u<<block))) {++block;continue;}
                 int16_t left=block*32;
@@ -457,17 +465,22 @@ int16_t AitdScreen::presentMacFrame(const uint8_t* chunky,const uint8_t* colorTa
             }
         }
     }
-    }
     { AitdProfileScope profile(kProfileC2P);
-    for(uint16_t i=0;i<count;++i) {
-        const Planar8::Rect& r=normalized[i];
-        aitdKalmsC2PRect(chunky+uint32_t(r.top+cropTop)*640+cropLeft+r.left,
-            m_back+uint32_t(r.top)*kRowStride+r.left/8,
-            uint32_t(r.right-r.left),uint32_t(r.bottom-r.top));
-        m_syncRects[i]={r.top,r.left,r.bottom,r.right};
+    for(uint16_t y=0;y<kHeight;) {
+        uint16_t bottom=y+1,mask=changed[y];
+        while(bottom<kHeight && changed[bottom]==mask)++bottom;
+        for(uint16_t block=0;mask && block<10;) {
+            if(!(mask&(1u<<block))) {++block;continue;}
+            uint16_t left=block*32;
+            do {mask&=uint16_t(~(1u<<block));++block;} while(block<10 && (mask&(1u<<block)));
+            aitdKalmsC2PRect(chunky+uint32_t(y+cropTop)*640+cropLeft+left,
+                m_back+uint32_t(y)*kRowStride+left/8,block*32-left,bottom-y);
+        }
+        y=bottom;
     }
     }
-    m_syncRectCount=count;
+    for(uint16_t y=0;y<kHeight;++y)m_syncRows[y]=changed[y];
+    m_chunkyCacheValid=true;
 #ifdef AITD_C2P_VERIFY
     if(!Planar8::verify(chunky,m_back,viewport,g_c2pMismatch)) {
         ++g_c2pVerifyFailures;aitdC2PVerifyFailed();return -1;
@@ -492,6 +505,8 @@ int16_t AitdScreen::presentMacFrame(const uint8_t* chunky,const uint8_t* colorTa
 
 void AitdScreen::shutdown()
 {
+    if (m_chunkyCache) { FreeMem(m_chunkyCache, kPictureBytes); m_chunkyCache = 0; }
+    m_chunkyCacheValid=false;
     if (m_copperAllocation) {
         FreeMem(m_copperAllocation, 2 * VS_CL_LONGS * sizeof(uint32_t));
         m_copperAllocation = 0;
@@ -588,7 +603,8 @@ void AitdScreen::showLoudStop(const char* manager, const char* routine, int32_t 
     drawLine(m_back, 24, 154, line);
     for(uint16_t i=0;i<256;++i)m_nextPalette[i]=0;
     m_nextPalette[255]=0xffffff;
-    m_syncRectCount=0;
+    for(uint16_t y=0;y<kHeight;++y)m_syncRows[y]=0;
+    m_chunkyCacheValid=false;
     queueFrame(m_cropLeft,m_cropTop,false);
 }
 

@@ -58,7 +58,46 @@ static void checkBufferSync() {
     for(int16_t y=0;y<200;++y)assert(Planar8::syncRowMask(full,y,split,2)==0);
     puts("PASS Planar8 synchronization: 160 alternating-buffer frames, overlapping/disjoint/full/empty updates and exact copied-byte coverage");
 }
+static void checkChangedBlocks() {
+    std::vector<uint8_t> source(640*480),cache(64000,0xa5),front(64000),back(64000);
+    uint16_t previous[200]={},changed[200];
+    Planar8::Rect viewport{150,160,350,480},full{0,0,200,320};
+    for(unsigned frame=0;frame<240;++frame) {
+        bool force=frame==0 || frame%47==0;
+        if(force && frame) {
+            viewport.left^=1;viewport.right=viewport.left+320;
+            viewport.top^=1;viewport.bottom=viewport.top+200;
+        }
+        // Broad dirty rectangles with sparse actual changes, including frames
+        // with no changes and pixels reverting to their earlier values.
+        if(frame%5)for(unsigned n=0;n<79;++n) {
+            unsigned x=(n*37+frame*13)%320,y=(n*19+frame*7)%200;
+            source[(y+viewport.top)*640+x+viewport.left]^=uint8_t(1u<<(n%8));
+        }
+        auto oldCache=cache;
+        Planar8::changedRows(source.data(),cache.data(),viewport,&full,1,force,changed);
+        for(unsigned y=0;y<200;++y)for(unsigned b=0;b<10;++b) {
+            bool differs=force;
+            for(unsigned x=b*32;x<b*32+32;++x)
+                differs|=oldCache[y*320+x]!=source[(y+viewport.top)*640+x+viewport.left];
+            assert(bool(changed[y]&(1u<<b))==differs);
+            if((previous[y]&(1u<<b)) && !differs)
+                for(unsigned p=0;p<8;++p)for(unsigned byte=b*4;byte<b*4+4;++byte)
+                    back[y*320+p*40+byte]=front[y*320+p*40+byte];
+            if(differs) {
+                Planar8::Rect r{int16_t(y+viewport.top),int16_t(b*32+viewport.left),
+                    int16_t(y+viewport.top+1),int16_t(b*32+viewport.left+32)},converted;
+                assert(Planar8::convert(source.data(),back.data(),viewport,r,converted));
+            }
+        }
+        Planar8::Mismatch mismatch{};
+        assert(Planar8::verify(source.data(),back.data(),viewport,mismatch));
+        front.swap(back);std::copy(changed,changed+200,previous);
+    }
+    puts("PASS changed blocks: 240 alternating buffers, sparse/reverted/unchanged pixels and odd viewport moves");
+}
 int main() {
+    checkChangedBlocks();
     checkBufferSync();
     std::vector<uint8_t> source(640*480),storage(Planar8::bytes+64,0xa5);
     uint8_t* output=storage.data()+32;

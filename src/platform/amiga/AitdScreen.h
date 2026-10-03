@@ -128,8 +128,11 @@ private:
 #ifdef AITD_AGA_CURSOR_PROBE
     uint16_t m_cursorProbeEndLine = 0;
 #endif
-    DirtyRect m_syncRects[kMaxDirtyRects] = {};
-    uint16_t m_syncRectCount = 0;
+    // Last submitted chunky viewport, solely for exact conversion suppression.
+    // Cursor pixels never enter this cache.
+    uint8_t* m_chunkyCache = 0;
+    bool m_chunkyCacheValid = false;
+    uint16_t m_syncRows[kHeight] = {};
 };
 
 #endif

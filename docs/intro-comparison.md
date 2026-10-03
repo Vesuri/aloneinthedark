@@ -724,3 +724,56 @@ ticks on subsequent steps. The different natural transforms prevent a claim
 of identical mask inputs, but identify the specific work to compare next.
 Prioritize the pre-render interval and this foreground-mask path; another
 person-renderer optimization would miss the measured gap.
+
+The focused native update trace (`tmp/corridor-update/amiga.log`, natural
+completion and runner exit zero) narrows the pre-render interval further.
+Across 21 complete samples, loop entry through the first GetGWorld return
+(Dark+$56C8) has a six-tick median. Input completion, the pre-actor hook,
+actor reset, motion and life stages each have a zero-tick median; visibility
+through scene entry has a one-tick median. These tick-granularity results
+support targeting deferred presentation rather than rewriting original logic.
+The earlier C2P profile corresponds to about 87 ms per submitted frame, although
+its six heavily observed frames must not be used as ordinary intro FPS.
+
+All 89 masked CopyBits samples in the same run have matching source/destination
+palette seeds (2/2), ruling out repeated palette remapping for those calls.
+Their rounded durations sum to 44 game ticks, with a zero-tick median and
+two-tick maximum. This does not yet explain the full foreground-mask interval.
+
+The 20 native corridor framebuffer captures from `tmp/corridor-phases/amiga`
+contain only 260 changed 32-pixel blocks at the median between successive
+images, out of 2,000 blocks (13%). An exact-byte Fast RAM cache and row masks
+now suppress redundant C2P work. Host checks cover sparse,
+reverting and unchanged pixels, alternating planar buffers and odd viewport
+moves. The clean `INTROSKIP=1 FIXEDRNG=1` build passes both link audits.
+
+The full native run (`tmp/changed-blocks.log`, runner exit zero, audio on,
+warp off, unchanged 15.6672 MHz 68030 setup) passes
+`tools/check_scene_batches.py` against
+`tmp/route-comparison/amiga-changed-blocks`: all 1,062 captured buffers match
+all 64,000 pixel indices and all palette entries, 1,321 scene batches balance,
+and all 1,076 queued frames are displayed. All 3,736 music events complete
+with zero recorded logical lateness and zero late publications. This capture
+run is not a new uninterrupted audio-jitter measurement.
+
+| Naturally moving view, visible FPS | Previous default CIA build | Changed-block conversion |
+| --- | ---: | ---: |
+| Initial car | 2.80 | 2.84 |
+| First frog view | 3.16 | 3.18 |
+| Close frog view | 2.96 | 3.35 |
+| Room 5, camera 0, person | 2.88 | 3.37 |
+| Room 2, camera 3, person | 4.15 | 4.29 |
+| Room 7, camera 1, person | 6.93 | 7.39 |
+| Late corridor 1/2, first visit | 2.54 | 2.74 |
+| Late corridor 1/2, second visit | 3.10 | 3.53 |
+
+Metrics use the existing changed-image/visible-moving-actor method, excluding
+the first loop. Logs, captures and metrics are under `tmp/route-comparison`
+with prefixes `amiga-fixed-query-cia-retry` and `amiga-changed-blocks`.
+Natural poses and numbers of samples differ; these are same-view comparisons,
+not exact-pose benchmarks. Late-corridor moving-interval medians fall from
+20 to 18 ticks and 19 to 16 ticks. The gain is useful but modest, leaving
+roughly 1.8–2.1 times the Mac frame time. This does not establish improved
+scene-transition latency or resolve the foreground-mask bottleneck. Retain
+the verified change and prioritize that larger residual cost rather than
+further tuning block comparisons.
