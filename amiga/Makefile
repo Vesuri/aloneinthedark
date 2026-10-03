@@ -248,6 +248,11 @@ EXTRA_DEFINES += -DAITD_SONG_PROBE
 PROBE_SYMS_SONG = g_songTraceCount g_songTrace g_songDelivery g_songProbeIRQTicks g_songProbeIRQEvents g_songTiming g_songProbeEffects g_songProbeHeapOK g_songLastVoice
 endif
 
+ifeq ($(SONGHARDWARE),1)
+EXTRA_DEFINES += -DAITD_SONG_HARDWARE_PROBE
+PROBE_SYMS_SONG += g_songHardwareCount g_songHardwareOverflow g_songHardware
+endif
+
 ifeq ($(LINEAPROBE),1)
 EXTRA_DEFINES += -DAITD_LINE_A_PROBE
 endif

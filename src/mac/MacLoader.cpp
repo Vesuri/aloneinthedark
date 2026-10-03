@@ -164,6 +164,15 @@ volatile uint32_t g_songTraceCount=0,g_songTrace[4096][10]={};
 volatile uint32_t g_songDelivery[4096][2]={};
 volatile uint32_t g_songProbeIRQTicks=0,g_songProbeIRQEvents=0;
 volatile uint32_t g_songTiming[4]={}; // Calls, total lines, longest update, its events.
+#endif
+#ifdef AITD_SONG_HARDWARE_PROBE
+volatile uint32_t g_songHardwareCount=0,g_songHardwareOverflow=0;
+// Expected tick, delivery tick, DMA-enable bracket (field/raster), channel, period,
+// instrument and note. Captured in RAM without debugger stops during playback.
+volatile uint32_t g_songHardware[4096][8]={};
+static bool s_songHardwareNote=false;
+#endif
+#ifdef AITD_SONG_PROBE
 static uint32_t songLineClock()
 {
     // CIAB TOD counts horizontal syncs. High latches; low releases the latch.
@@ -171,6 +180,8 @@ static uint32_t songLineClock()
     uint32_t high=*ciabtodhiPointer,mid=*ciabtodmidPointer,low=*ciabtodlowPointer;
     return (high<<16)|(mid<<8)|low;
 }
+#endif
+#ifdef AITD_SONG_PROBE
 volatile uint16_t g_songProbeEffects=0,g_songProbeHeapOK=0,g_songLastVoice=0;
 __attribute__((noinline)) void aitdSongVoiceStarted() {__asm__ volatile("" ::: "memory");}
 #endif
@@ -1305,6 +1316,20 @@ static uint16_t paulaBeamLine()
     return (uint16_t)(((after & 1) << 8) | (horizontal >> 8));
 }
 
+#ifdef AITD_SONG_HARDWARE_PROBE
+static uint32_t songHardwareClock()
+{
+    // The shared CIAB TOD was observed resetting during playback. Our VBI
+    // field count continues through file-service windows. Keep raw field and
+    // raster coordinates so the host checker explicitly selects field length.
+    uint16_t before,after,line;
+    do {
+        before=g_vbiCount;line=paulaBeamLine();after=g_vbiCount;
+    } while(before!=after);
+    return (uint32_t(after)<<9)|line;
+}
+#endif
+
 static void waitPaulaDmaLines(uint16_t lines)
 {
     uint16_t previous = paulaBeamLine();
@@ -1377,11 +1402,27 @@ static void startPaulaSample(uint8_t* data, const PaulaSample::Layout& layout,
 #ifdef AITD_PROBE
     g_probePaulaZeroedMask &= (uint16_t)~(1U << channel);
 #endif
+#ifdef AITD_SONG_HARDWARE_PROBE
+    uint32_t before=s_songHardwareNote ? songHardwareClock() : 0;
+#endif
     *dmaconPointer = (uint16_t)(DMAF_SETCLR | DMAF_MASTER | dma);
+#ifdef AITD_SONG_HARDWARE_PROBE
+    uint32_t after=s_songHardwareNote ? songHardwareClock() : 0;
+#endif
     // Let DMA latch the attack before publishing the next segment (RKM 5-3-1).
     waitPaulaDmaLines(2);
     *(volatile uint32_t*)(audio + 0) = (uint32_t)(data + layout.reloadOffset);
     *(volatile uint16_t*)(audio + 4) = (uint16_t)(layout.reloadBytes >> 1);
+#ifdef AITD_SONG_HARDWARE_PROBE
+    if(s_songHardwareNote) {
+        if(g_songHardwareCount>=4096)++g_songHardwareOverflow;
+        else {
+            volatile uint32_t* row=g_songHardware[g_songHardwareCount++];
+            row[0]=g_song.started+g_song.timeline.pulses;row[1]=g_macTicks;
+            row[2]=before;row[3]=after;row[4]=channel;row[5]=period;
+        }
+    }
+#endif
 }
 
 static void stopNativeEffect(uint16_t index)
@@ -1666,6 +1707,9 @@ static const char* startNativeSong(uint32_t argument)
     g_soundDriver.songLimit=6;g_soundDriver.normalizedLimit=3;g_soundDriver.effectLimit=1;
     g_song.id=(uint16_t)argument;g_song.midiId=midiId;g_song.lastTick=g_macTicks;
     g_song.started=g_song.lastTick;g_song.maxDeliveryLateness=0;
+#ifdef AITD_SONG_HARDWARE_PROBE
+    g_songHardwareCount=g_songHardwareOverflow=0;
+#endif
     g_song.busyFields=g_song.lastBusyTick=g_song.lateTick=g_song.lateBusyTick=0;
     __asm__ volatile("" ::: "memory");
     g_song.playing=1;return 0;
@@ -1710,7 +1754,17 @@ static const char* playSongNote(const SongInputs::Event& event)
     native.serial=++g_song.starts;native.ends=0;
     voice.sample=(uint32_t)dma.layout.pcm;voice.active=1;voice.channel=channel;
     g_soundDriver.channels[channel]=slot;
+#ifdef AITD_SONG_HARDWARE_PROBE
+    s_songHardwareNote=true;
+#endif
     startPaulaSample(native.chip,dma.layout,channel,dma.period,64);
+#ifdef AITD_SONG_HARDWARE_PROBE
+    s_songHardwareNote=false;
+    if(g_songHardwareCount && !g_songHardwareOverflow) {
+        g_songHardware[g_songHardwareCount-1][6]=event.instrument;
+        g_songHardware[g_songHardwareCount-1][7]=event.note;
+    }
+#endif
 #ifdef AITD_SONG_PROBE
     g_songLastVoice=slot;aitdSongVoiceStarted();
 #endif

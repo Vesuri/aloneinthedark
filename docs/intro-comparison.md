@@ -16,6 +16,14 @@ host execution does not change the emulated 60 Hz clock used here. Different
 memory systems and the emulators' approximate timing prevent cycle-exact
 hardware equivalence.
 
+The native configuration explicitly requests 8 MB Zorro II fast RAM and no
+motherboard RAM ([FS-UAE option definition](https://fs-uae.net/docs/options/fast_memory/)).
+However, the installed core's actual post-autoconfiguration map reports
+`00200000 8192K ID* F32 Fast memory` in the bulk-copy profile. Its effective
+timing classification therefore does not support blaming the residual gap on
+a 16-bit fast-RAM bottleneck. Retain the fixed reference configuration; do not
+substitute a faster memory setup on that unproven assumption.
+
 The ordinary native build is commit `8cd8f60` with `INTROSKIP=1`, without
 profiling or fixed randomness. The original Mac game is unmodified. Read-only
 observers capture original Dark+$5658 loop entries, indexed viewport pixels,
@@ -331,3 +339,28 @@ CopyBits now occupies 13.2%, C2P 12.5%, original Mac VBL callbacks 17.4%, and
 region expansion 4.0%; categories overlap. Adopt the small bulk-copy change
 with the full-buffer evidence above, then investigate remaining large gaps
 and machine-memory differences rather than further instruction-level tuning.
+
+An uninterrupted `SONGHARDWARE=1` run reaches natural completion with all
+3,736 events and 1,868 music starts, but its first CIA-TOD timestamp capture
+is rejected: the counter repeatedly resets and one before/after pair differs
+by -255 lines. Counts alone do not validate the hardware clock. The rejected
+data is retained locally as `song-hardware-cia-rejected.*`; do not use it for
+jitter or latency claims. The pending replacement records the VBI field count
+and raster position on both sides of the DMA-enable write, with no debugger
+stops during playback. Its checker requires an explicit field length verified
+from the emulator core log and distinguishes DMA arming from first-sample or
+host audio output.
+
+The corrected field/raster capture completes naturally (`song-hardware.log`,
+exit zero) and passes `check_song_hardware.py --field-lines 313`: all 1,868
+DMA starts cover 750 intended onset ticks, and the largest before/after
+timestamp bracket is one line (0.064 ms). The core log confirms 313-line PAL
+fields during playback. The fitted mean logical tick is 16.6933 ms; onset
+phase spans 17.629 ms after removing mean-rate drift. Notes intended on the
+same tick are armed up to 4.768 ms apart. Intended eight-tick gaps (133.546 ms)
+range 119.359–140.991 ms; nine-tick gaps (150.239 ms) range 139.711–160.767 ms.
+The roughly one-field variation is consistent with the current 50-field to
+60-logical-tick VBI scheduler. All events are present, but tick-level delivery
+checks hide this sub-field unevenness. Replace music's display-quantized
+scheduling with a dedicated timer and remeasure; this is DMA-arming evidence,
+not yet proof of first-sample or host-output timing or audible acceptance.

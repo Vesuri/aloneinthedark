@@ -37,6 +37,10 @@ required.
     note delivery against its intended clock during uninterrupted rendering,
     including static scenes and transitions; logical event timestamps alone
     do not establish even audible timing.
+    Replace display-quantized music scheduling with a dedicated timer and
+    repeat `SONGHARDWARE=1`: the complete DMA capture shows approximately
+    20 ms variation in repeated intended onset gaps. Preserve event/sample
+    fidelity and distinguish DMA arming from actual first-sample output.
   - Repeat the direct two-machine comparison after substantial fixes: active
     car/frog and character frame rates, scene inventory, car waypoint progression
     and complete mansion camera transitions. Explain remaining large gaps from
