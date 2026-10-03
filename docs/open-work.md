@@ -19,10 +19,12 @@ required.
   - Identify and remove dominant algorithmic or compatibility costs. Preserve
     original instructions, game decisions, sample content and timing; do not
     substitute a faster emulator or focus on minor optimizations.
-  - Prioritize the remaining jerky car and early frog animation, and the
-    remaining gap to Mac scene-preparation times, especially room 2/camera 5
-    and its change to camera 3. Remeasure the whole experience rather than
-    isolated helpers.
+  - Prioritize the sustained late-corridor rendering gap (approximately 5×)
+    and other 3–4× indoor views established by the
+    [same-character comparison](intro-comparison.md). Profile the late visit,
+    not the earlier front-door scene that reuses room 1/camera 2. Then address
+    remaining car/frog animation and cold scene-preparation costs. Remeasure
+    the whole experience rather than isolated helpers.
   - Separate first-frame preparation from warmed-up rendering in paired
     measurements. Matching model geometry alone does not match scene-cache
     state or other actors. Carry the remaining CPU/memory timing-model limits
@@ -31,11 +33,15 @@ required.
     note delivery against its intended clock during uninterrupted rendering,
     including static scenes and transitions; logical event timestamps alone
     do not establish even audible timing.
+  - Repeat the direct two-machine comparison after substantial fixes: active
+    car/frog and character frame rates, scene inventory, car waypoint progression
+    and complete mansion camera transitions. Explain remaining large gaps from
+    evidence. Do not require the owner to perform or assess the Mac comparison.
 
   *Done when* matched scene/transition timings demonstrate roughly comparable
   performance to the reference Mac, long unexplained port stalls are resolved,
-  and original frame/audio/route checks plus owner-visible playback confirm
-  the result.
+  and original frame/audio/route checks plus the measured two-machine scene,
+  route and animation comparison substantiate the result.
 
 ## Pending verification (owner-deferred)
 
@@ -148,10 +154,10 @@ required.
   - Compare an uninterrupted, non-warp run with the diagnostic run. Inspect
     emulator audio timing and native Paula sample/loop/note timing before
     attributing the symptom to host speed or normal 8-bit quantization.
-    Resolve the integrated intro's two-tick maximum delivery delay against the
-    one-tick PAL allowance. Measure interrupt duration and actual note-start
-    spacing; tick-level delivery traces do not establish sub-field hardware
-    timing or audible quality.
+    Verify actual note-start spacing in uninterrupted playback after the
+    deferred-delivery fix; passing tick-level delivery traces and the measured
+    interrupt duration do not establish sub-field hardware timing or audible
+    quality.
 
   *Done when* a repeatable listening/capture test establishes the cause,
   any playback defect is fixed with regression evidence, and remaining

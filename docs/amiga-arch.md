@@ -36,6 +36,13 @@ Unimplemented calls or forms still produce named loud stops.
 
 ### Intro performance comparison (2026-10-03)
 
+The [complete same-character 68030 comparison](intro-comparison.md) records
+active animation rates, all camera-transition spans, scene inventory and car
+trajectories. It supersedes any broad performance conclusion from the isolated
+checkpoints below: the later corridor runs at about 1.1–1.3 FPS on Amiga versus
+5.7–6.1 on Mac, while the longest comparable transition spans are 9.05/8.07
+seconds. P1 therefore remains open for substantial indoor rendering work.
+
 M2 functional acceptance does not establish acceptable animation or transition
 latency. P1 remains open before M3. The selected `a4000-030-reference` uses a
 68030 at 15.6672 MHz, matching the MAME Mac IIx CPU clock, with 8 MB fast RAM,
