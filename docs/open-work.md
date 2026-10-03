@@ -16,8 +16,9 @@ required.
     and warp off, unchanged original game instructions and decisions. Use
     emulated time, not host wall time. Current same-character scene, transition
     and route results are in [intro-comparison.md](intro-comparison.md).
-  - Finish actual Paula output/release-tail verification for the default CIA
-    scheduler. Preserve original event/sample fidelity and distinguish DMA
+  - Analyze the completed SDL PCM capture (`tmp/audio-output/intro.wav`)
+    against note/effect timing to finish onset and release-tail verification
+    for the default CIA scheduler. Preserve original event/sample fidelity and distinguish DMA
     arming timestamps from first-sample output. Explain the four-channel
     stereo/voice-stealing limits. Existing uninterrupted hardware-timing and
     channel-ownership checks are evidence, but do not prove analog/host output

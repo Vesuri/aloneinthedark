@@ -913,3 +913,31 @@ its complete current-run gains and limits are reported above. The remaining
 first-use polygon work explains a bounded subsecond part of the residual gap,
 not an unexplained multi-second stall. Do not launch another expansion rewrite
 or micro-optimize warmed model drawing on the basis of these results.
+
+
+Actual emulator-output evidence is now available from the current masked-copy
+build. `tools/capture_fsuae_audio.c` intercepts only FS-UAE's SDL2 playback
+callback, calls the original producer, and copies its unchanged PCM into a
+shared mapping. It records no microphone or other application audio. The
+installed emulator is x86-64; the library is built for that architecture.
+A deterministic SDL dummy-device fixture verified every captured byte and
+retention after forced process termination. This is capture infrastructure,
+not a change to native music playback.
+
+The complete `INTROSKIP=1 FIXEDRNG=1 SONGHARDWARE=1` run uses default CIA
+scheduling, audible output and warp off, with no debugger stops during the
+intro. `tmp/audio-output/intro.log` exits zero. Hardware and allocation checkers
+pass all 1,868 original note starts, 248 effect transitions and 1,162 modeled
+steals, with zero logical lateness. Hardware onset phase range is 0.875 ms,
+and maximum same-tick chord spread is 5.824 ms. The four-channel allocation
+limitations still apply; matching starts alone does not prove voice tails.
+
+`tools/check_sdl_audio_capture.py tmp/audio-output/intro.capture` validates
+31,238 contiguous callbacks, 63,975,424 committed PCM bytes and zero overflow:
+362.672472 seconds of 44.1 kHz, 16-bit stereo. Host callback gaps have median
+11.613 ms, p99 11.704 ms and maximum 15.575 ms. The exported WAV is
+`tmp/audio-output/intro.wav`. These measurements establish PCM supplied to SDL,
+not physical speaker output or a complete musical onset/release comparison.
+Silence in the waveform must be compared against actual note/effect lifetimes
+before labeling it a dropout. That analysis remains open. The ordinary
+`INTROSKIP=1 FIXEDRNG=1` build is restored after capture.
