@@ -16,33 +16,23 @@ required.
     and warp off, unchanged original game instructions and decisions. Use
     emulated time, not host wall time. Current same-character scene, transition
     and route results are in [intro-comparison.md](intro-comparison.md).
-  - Analyze the completed SDL PCM captures (`tmp/audio-output/intro.wav` and
-    the idle-host repeat `tmp/audio-output/idle.wav`)
-    against note/effect timing to finish onset and release-tail verification
-    for the default CIA scheduler. Preserve original event/sample fidelity and distinguish DMA
-    arming timestamps from first-sample output. Explain the four-channel
-    stereo/voice-stealing limits. Existing uninterrupted hardware-timing and
-    channel-ownership checks are evidence, but do not prove analog/host output
-    fidelity. Do not use the reset-prone CIAB-TOD diagnostic as interrupt-duration
-    evidence.
-    The repeat has callback-aligned silence near audio time 164.5 seconds,
-    despite sub-millisecond fitted DMA-onset phase range. Installed-emulator
-    queue tracing now confirms starvation during captured silent gaps
-    (`tmp/audio-output/trace-core.log`). Find a supported buffering remedy
-    and verify its output impact without verbose tracing. Nearby SDL3 source
-    is not version-matched evidence for the installed SDL2 build.
-    Four exposed release deadlines pass the targeted PCM-rest checker, and
-    all 1,868 ownership lifetimes are accounted for. Preserve the documented
-    limit: masked tails have structural/ownership evidence, not individually
-    isolated PCM, and four-channel stealing shortens some active notes.
-  - Complete the whole-intro acceptance audit against the current build:
-    car/frog/person animation, full mansion camera transitions, scene inventory,
-    car waypoint progression and frame/audio fidelity. Reuse the unchanged Mac
-    reference where it answers the comparison; measure missing evidence directly
-    without asking the owner to perform or assess Mac runs. Explain remaining
-    large gaps and retain CPU/memory timing-model limits. Keep cold preparation
-    distinct from warmed-up rendering and same-view samples distinct from
-    identical-pose measurements.
+  - Resolve installed FS-UAE output-buffer starvation, directly established by
+    `tmp/audio-output/trace-core.log` and its paired PCM capture. Obtain the
+    installed SDL2/WinUAE 4.10.0 build's source or build recipe, then test a
+    buffering remedy in an isolated emulator build. Available local sources
+    use different cores; no supported buffer-target option is established.
+    The build-provenance question is pending with the owner. Do not alter game
+    timing to compensate for this host-output defect.
+  - Verify the remedy with a complete audio-on, non-warp run without verbose
+    tracing, comparing PCM gaps and onset/release timing with the retained
+    captures. Keep the documented four-channel voice-stealing and stereo
+    limitations distinct from buffer starvation. Reuse completed native
+    clock, ownership, sample and exposed-release evidence where unchanged.
+  - Close the audio-output row of the whole-intro acceptance audit in
+    [intro-comparison.md](intro-comparison.md), preserving its existing visual,
+    route, transition and timing-model evidence. Recheck affected comparisons
+    if the emulator core or runtime changes; a different core cannot silently
+    replace the fixed reference.
 
   *Done when* matched scene/transition timings demonstrate roughly comparable
   performance to the reference Mac, long unexplained port stalls are resolved,
