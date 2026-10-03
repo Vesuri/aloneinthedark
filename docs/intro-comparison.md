@@ -996,3 +996,17 @@ silences have ample queued audio. The log ends mid-line after 31,503 callback
 records because runner cleanup kills the emulator; exclude its unlogged tail.
 The supported buffering remedy and musical release-tail verification remain
 open; no native scheduling change is justified by this evidence.
+
+The local FS-UAE repository also retains the SDL2 branch at
+`bfa0c7522c6c5f73cceb340d677491d056febd01` (`origin/fs-uae-4`). Its
+`fsemu/src/fsemu-sdlaudio.c` uses the observed SDL2 callback API, fills the
+unavailable suffix with zeros, and sets `add_silence=1` on shortage.
+`fsemu/src/fsemu-audiobuffer.c` then inserts one millisecond of silence before
+the next generated samples. At 44.1 kHz this is 44 stereo frames, explaining
+the observed silence ending at callback offset 44; it is inserted silence,
+not evidence of a fade-in ramp. This branch's latency target is hard-coded to
+one video frame and has no buffer-target option in that function. The installed
+binary's exact build revision remains unknown, so this is corroborating source
+evidence alongside the installed trace, not a binary-identical source claim.
+No supported larger-buffer setting has been established; changing that target
+would require an emulator-side change rather than a game scheduler fix.
