@@ -128,6 +128,14 @@ Their total is not an isolated rasterization cost. The earlier short sample
 failed its acceptance guard and is not evidence; the accepted repeat reports
 all counters before checking scene, publication and converter activity.
 
+The compiler's bytewise big-endian field reads are not an established cause of
+this gap. A discarded experiment replaced MacLoader's word/long accessors with
+native moves: the identical 12 cold-mask polygon records took 54 ticks rather
+than 46, and the near-car sample still took 17 renderer / 23 whole-frame ticks
+with a slightly different pose (`tmp/intro-native-access-cc-{frog,car}-full.log`,
+both exit 0). Fewer generated instructions alone do not justify that rewrite;
+the bytewise accessors remain in use.
+
 Current evidence:
 
 - `tmp/intro-incremental-route-full.log` exits 0 after all nine original room
