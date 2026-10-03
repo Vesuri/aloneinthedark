@@ -46,8 +46,8 @@ Performance claims below use unprofiled game ticks (60 Hz), not host time.
 
 | Checkpoint span | Amiga ticks | Mac ticks |
 | --- | ---: | ---: |
-| Matched near-car renderer call | 16 | 12 |
-| Same near-car draw → next original loop | 23 | 12 |
+| Matched near-car renderer call, VBI-music build | 15 | 12 |
+| Same near-car draw → next original loop, VBI-music build | 18 | 12 |
 | Natural first frog mask construction | 35 | 11 |
 | Natural first frog loop → next loop | 59 | 27 |
 | First two hallway loop entries, room 2/camera 5 | 105 | 55 |
@@ -145,17 +145,21 @@ first Mac frog draw and observes original FramePoly at Dark+$33EC; it does not
 alter original instructions or precompute regions.
 
 A matched near-car pose (previous projected width at least 100 pixels) also
-matches every viewport pixel and colour. The original renderer call at
-Dark+$3ED4 → +$3EDA takes 16 native ticks versus 12 Mac ticks. Within Dark3,
-model setup through sorted surfaces (+$1DA0 → +$1EFE) takes 5 versus 7 ticks;
+matches every viewport pixel and colour. On the VBI-music build, the original
+renderer call at Dark+$3ED4 → +$3EDA takes 15 native ticks versus 12 Mac ticks.
+Within Dark3, model setup through sorted surfaces (+$1DA0 → +$1EFE) takes 4 versus 7 ticks;
 drawing the sorted list (+$1EFE → +$1F2E) takes 11 versus 5. Geometry preparation
 does not explain this sample's renderer gap. The complete draw-to-next-loop
-span is 23 versus 12 ticks, including masking, overlay and presentation
-(`tmp/intro-car-work-native-full.log`, `tmp/intro-car-work-mac.log`, both exit 0).
+span is 18 versus 12 ticks, including masking, overlay and presentation
+(`tmp/intro-vbi-car-work-full.log`, `tmp/intro-vbi-car-work-mac.log`, both exit 0).
 Attribute the work after drawing separately before treating the whole-frame
 ratio as a model-renderer slowdown. Other actor/cache/timer state is not fully
 paired by the model fixture. Accepted inputs and exact outputs are archived
-under `tmp/intro-car-work-baseline/`.
+under `tmp/intro-vbi-car-work-captures/`. The earlier 16/23-tick native result
+used transform (6029, 0, 379, 0, 512, 0), whereas this pair uses
+(6022, 0, 367, 0, 512, 0). Both pairs match their Mac pixels, but the different
+poses and surrounding timing state prevent attributing the entire apparent
+improvement to interrupt music.
 
 The whole-route compiler experiment with `-O3` gives no useful overall gain:
 the first frog mask takes 41 rather than 35 ticks, hallway preparation 103
