@@ -26,9 +26,11 @@ required.
     fidelity. Do not use the reset-prone CIAB-TOD diagnostic as interrupt-duration
     evidence.
     The repeat has callback-aligned silence near audio time 164.5 seconds,
-    despite sub-millisecond fitted DMA-onset phase range. Establish emulator
-    buffer starvation directly (installed SDL2 build; nearby SDL3 source is
-    not version-matched evidence) and resolve or bound its output impact.
+    despite sub-millisecond fitted DMA-onset phase range. Installed-emulator
+    queue tracing now confirms starvation during captured silent gaps
+    (`tmp/audio-output/trace-core.log`). Find a supported buffering remedy
+    and verify its output impact without verbose tracing. Nearby SDL3 source
+    is not version-matched evidence for the installed SDL2 build.
   - Complete the whole-intro acceptance audit against the current build:
     car/frog/person animation, full mansion camera transitions, scene inventory,
     car waypoint progression and frame/audio fidelity. Reuse the unchanged Mac

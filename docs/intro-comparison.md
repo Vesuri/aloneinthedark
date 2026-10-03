@@ -971,3 +971,28 @@ option; trace-level buffer evidence is the next investigation. The repeat
 leaves the diagnostic `INTROSKIP=1 FIXEDRNG=1 SONGHARDWARE=1` build in place;
 restore the ordinary build after the remaining captures. Audio-output and
 release-tail acceptance remain open.
+
+The next installed-emulator trace (`tmp/audio-output/trace-core.log`,
+`--log_audio=5`) directly reports the audio queue before each callback.
+The uninterrupted runner exits zero. Capture validation passes 31,521
+callbacks, 64,555,008 bytes and 365.958095 seconds, with zero overflow;
+maximum host callback spacing is 12.598 ms. Hardware timing remains steady:
+1,868 starts, fitted phase range 0.952 ms, same-tick spread 5.504 ms and zero
+logical lateness. Allocation replay passes 252 effect transitions and 1,160
+predicted steals.
+
+The first post-startup burst provides direct corroboration of starvation:
+at audio times 67.205125, 67.226848 and 67.235102 seconds, captured callback
+indices 5788, 5790 and 5791 report only 6, 5 and 1 ms queued respectively,
+against 512/44100 = 11.610 ms requested. Their PCM has all-zero runs of
+6.032, 7.528 and 10.884 ms, ending 44 samples into the following callback.
+All twenty callback-aligned silent intervals identified between 67.2 and
+67.91 seconds coincide with queue levels of 1–11 ms. This establishes output
+buffer starvation in the installed emulator while emulated note timing stays
+steady. Trace logging can perturb host performance; use the previous untraced
+captures to establish that the symptom also exists without verbose logging.
+Do not label every silent passage an underrun: some later callback-aligned
+silences have ample queued audio. The log ends mid-line after 31,503 callback
+records because runner cleanup kills the emulator; exclude its unlogged tail.
+The supported buffering remedy and musical release-tail verification remain
+open; no native scheduling change is justified by this evidence.
