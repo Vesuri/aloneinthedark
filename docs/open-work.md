@@ -28,9 +28,12 @@ required.
     traps), 12.5% to presentation and 11% to CopyBits. These categories overlap
     and include observer overhead. Natural corridor person draws have a
     four-tick median on both machines, but full loop medians are 10 versus 20
-    ticks. Isolate the surrounding scene work (other actors, background
-    restoration, masks and copying), including the growing post-person cost
-    late in the visit. Geometry matches exist but exact transforms differ;
+    ticks. The paired scene-stage trace localizes the largest persistent
+    difference before scene-renderer entry (2 versus 8 ticks); separate early
+    deferred presentation from original update work. Foreground masking also
+    costs 16 versus 43 ticks on first expensive use, then about 2 versus 9–11.
+    Compare its actual mask inputs and remove the dominant extra work.
+    Geometry matches exist but exact transforms differ;
     do not label these identical-pose comparisons.
     Small service scopes are near observer overhead;
     avoid further local tuning without evidence of a substantial cost.

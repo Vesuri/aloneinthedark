@@ -691,3 +691,36 @@ timer stop/reacquisition and the full combined frame comparison. It does not
 claim unmeasured analog/host fidelity or exact first-sample and release-tail
 timing; those remain open. The earlier opt-in statements describe the trial
 stage, not the current ordinary build.
+
+The complete scene-stage comparison now succeeds on both machines
+(`tmp/corridor-scene/{mac,amiga}.log`, both exit zero). The native observer
+was reduced after its first attempt filled the emulator's breakpoint table;
+`rejected-amiga*` is excluded. Reproduce with `tools/mac_corridor_scene.lua`
+and `amiga/corridor_scene.gdb`, then run `tools/check_corridor_scene.py`
+with `mac` or `amiga` and the recorded `--status`. The native build has
+`INTROSKIP=1 FIXEDRNG=1` and default CIA scheduling, without broad profiling.
+
+| Interval, median game ticks | Mac, 27 steps | Amiga, 20 steps |
+| --- | ---: | ---: |
+| Previous loop entry to scene-renderer entry | 2 | 8 |
+| Scene entry through background restoration | 1 | 2 |
+| Actor processing, including drawing and masks | 6 | 6 |
+| Overlays/copies after actors through scene exit | 2 | 3 |
+| Scene exit through next loop entry | 0 | 0 |
+| Whole loop interval | 10 | 20 |
+
+Individual medians do not sum to the median whole interval. All intervals
+include callbacks and compatibility work occurring inside them; they are not
+exclusive CPU categories. The two actually drawn objects are Carnby (288,
+body 265) and object 56 (body 57). Their model-call medians are respectively
+four and one tick on both machines. The largest persistent difference is
+therefore before scene rendering starts. That interval also includes any
+deferred presentation at early trap boundaries, so do not label all eight
+ticks as original game logic without further separation.
+
+Masking accounts for the late-visit spike: Carnby's first expensive mask call
+takes 16 Mac ticks versus 43 native ticks, followed by about 2 versus 9–11
+ticks on subsequent steps. The different natural transforms prevent a claim
+of identical mask inputs, but identify the specific work to compare next.
+Prioritize the pre-render interval and this foreground-mask path; another
+person-renderer optimization would miss the measured gap.
