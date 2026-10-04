@@ -15,7 +15,9 @@ and Toolbox layer are carried over from Vette!; see
 in user mode, and all five implemented SANE operations pass integrated checks.
 The reached `MONSTER` music track now passes paired note-event and native
 playback checks.
-The ten-minute manual first-floor session remains open.
+The ten-minute scripted first-floor route remains open.
+The action-menu preview now runs at 2.07 updates/sec on the reference 68030
+versus 1.65 on Mac; keyboard choices, hover and cancellation pass paired checks.
 
 **M3.3 (game interfaces) is complete for the reached routes.** New game and
 save/load use the original engine UI inside 320×200. New-game and character-story

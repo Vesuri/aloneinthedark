@@ -84,7 +84,7 @@ void aitd_user_vbl_trampoline();
 extern volatile uint16_t g_macFramesPresented;
 extern volatile uint16_t g_macFramesQueued;
 extern volatile uint16_t g_vbiCount;
-#ifdef AITD_MOUSE_INPUT_PROBE
+#if defined(AITD_MOUSE_INPUT_PROBE) || defined(AITD_ACTION_NAV)
 // Diagnostic guest input, consumed through the normal VBI mouse sampler.
 volatile uint16_t g_mouseProbeEnabled=0,g_mouseProbeDown=0;
 volatile int16_t g_mouseProbeX=0,g_mouseProbeY=0;
@@ -6504,7 +6504,7 @@ extern "C" void aitdMacMouseVBI()
         x = addClampedMouseDelta(x, deltaX, 511);
         y = addClampedMouseDelta(y, deltaY, 319);
     }
-#ifdef AITD_MOUSE_INPUT_PROBE
+#if defined(AITD_MOUSE_INPUT_PROBE) || defined(AITD_ACTION_NAV)
     if(g_mouseProbeEnabled) {
         x=g_mouseProbeX;y=g_mouseProbeY;buttonDown=g_mouseProbeDown!=0;
         ++g_mouseProbeSamples;

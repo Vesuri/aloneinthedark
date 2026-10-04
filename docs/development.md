@@ -1,5 +1,32 @@
 # Development
 
+## M3.4 autonomous action navigation — 2026-10-05
+
+`ACTIONNAV=1` sends ordinary keyboard levels and VBI-owned pointer positions.
+The original engine selects action 0, then 1 on Down, then 0 on Up. Key-to-choice
+draw intervals are 28/25/26 ticks on Mac and 6/26/18 on Amiga. The navigation
+build includes inactive diagnostic probes and file-ledger counters; the separate
+ordinary-cost preview benchmark establishes frame rate. The selected-action
+pane matches all 16,000 pixels exactly. Hovering over the choices changes no
+selection on either platform; native low-memory coordinates and nonzero VBI
+sample counts prove pointer input was exercised. Pointer clicks remain open.
+
+Escape returns to room zero with action flags zero. Native Quit also verifies
+all file/resource streams closed, no close errors, complete trap-service drain,
+restored display/DMA/interrupt state and silenced Paula channels. Both final
+runners exit zero. This covers keyboard navigation, hover and cancellation,
+not combat, item use or the ten-minute first-floor route.
+
+Reproduce after creating `tmp/m3-action`: clean-build `ACTIONNAV=1` and run
+`GDBSCRIPT=action_navigation.gdb EXTRA_ARGS=--warp_mode=1 amiga/diag_run.sh 240`.
+Run `tools/mac_action_navigation.lua` with the same headless Mac IIx/debugger
+configuration as the preview fixture, then `tools/check_action_navigation.py`
+with both actual statuses. Accepted local logs are `navigation-mac3-run.log`,
+`navigation-final-gdb.log` and `navigation-checked.log`. The initial missing
+hover marker and unretained file-ledger-symbol runs fail acceptance. The final
+fixture explicitly retains every debugger-read counter.
+
+
 ## M3.4 action-menu colour translation — 2026-10-05
 
 Repeated srcCopy calls rebuild an identical 256-entry colour translation for
@@ -77,7 +104,7 @@ The final original captures are `mac-driver136-alias.log` and
 `native-song136-gameplay-gdb.log` passes the natural original-game transition,
 with all 13 registers preserved and exact resource ownership. All four runners
 exit zero. The host suite and both link audits pass. Captures are local-only in
-`tmp/m3-toolbox`. M3.4 still requires a successful manual first-floor session;
+`tmp/m3-toolbox`. M3.4 still requires a successful scripted first-floor route;
 other unmeasured songs and effect variants remain loud stops.
 
 ## M3.4 launch delivery — 2026-10-04
@@ -89,7 +116,7 @@ registers, single delivery and descriptor cleanup. The integrated 68030 run,
 with audio on and warp off, also exercises all five integer SANE operations
 (30 calls) and passes the existing keyboard Save/Load/Quit checks. See
 [the contract and reproduction](apple-events.md#launch-delivery-m).
-M3.4 remains open for the ten-minute manual first-floor session and any new
+M3.4 remains open for the ten-minute scripted first-floor route and any new
 services it reaches; external Apple Events and document descriptors are not
 implemented.
 The full host suite and all six maintained regression cases pass on
@@ -99,7 +126,7 @@ production boot. Existing preferences and saves are isolated and restored by
 the regression runner. Both link audits pass.
 The manual observer's preflight also passes launch delivery, integrated SANE
 and shutdown checks using the guest menu fixture (`manual-preflight-gdb.log`,
-runner exit zero). Its 3,759 elapsed ticks are not ten-minute manual acceptance.
+runner exit zero). Its 3,759 elapsed ticks are not ten-minute first-floor acceptance.
 The prepared live-play build uses `INGAME=1 PROBES=1` without menu/gameplay
 fixtures, so only boot navigation is automatic.
 

@@ -30,8 +30,8 @@ verifies all 33 calls' ABI and unchanged active voice ownership, captures values
 immediately after hardware volume writes, and observes seven later note starts
 inheriting silence before releasing all song resources and audio DMA. AUDxVOL
 is write-only; debugger register readback is not used as volume evidence.
-This covers the gain contract, not the complete owner-operated death/restart
-sequence or remaining FIGHT music loading.
+This covers the gain contract, not the complete death/restart
+route or remaining FIGHT music loading.
 
 ## Reached MONSTER music prerequisite — 2026-10-04
 
@@ -48,7 +48,7 @@ instrument, velocity and channel events. The native fixture also matches the
 verified sequencer timing, plays from the music interrupt during 180 ticks of
 CPU-only work, steals a music voice for its effect test, completes naturally,
 and releases its sample buffers, resources and Paula channels. This verifies
-this track; it does not close all-song M4.2 or manual first-floor acceptance.
+this track; it does not close all-song M4.2 or scripted first-floor acceptance.
 
 The Mac driver can execute through both ordinary and `$80xxxxxx` instruction
 addresses. The observers now cover both aliases. The first MONSTER preflight

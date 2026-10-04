@@ -326,9 +326,45 @@ extern "C" {
 volatile uint16_t g_actionProbeStage=0;
 volatile uint32_t g_actionProbeTick=0;
 }
+#ifdef AITD_ACTION_NAV
+extern "C" {
+volatile uint16_t g_actionNavStage=0;
+volatile uint32_t g_actionNavTick=0;
+extern volatile uint16_t g_mouseProbeEnabled,g_mouseProbeDown;
+extern volatile int16_t g_mouseProbeX,g_mouseProbeY;
+}
+static void actionNavigation(uint32_t ticks)
+{
+    if(!g_actionNavStage) {
+        g_mouseProbeX=620;g_mouseProbeY=470;g_mouseProbeDown=0;g_mouseProbeEnabled=1;
+        if(g_actionProbeStage!=3 || ticks-g_actionProbeTick<600)return;
+        g_actionNavStage=1;g_actionNavTick=ticks;
+        aitdInputInjectProbeKey(0x4e,true);return;
+    }
+    const uint32_t elapsed=ticks-g_actionNavTick;
+    const uint16_t stage=g_actionNavStage;
+    if(elapsed<(stage==11 ? 8U : stage==7 || stage==8 || stage==10 ? 120U : 60U))return;
+    if(stage==1)aitdInputInjectProbeKey(0x4e,false);
+    else if(stage==2)aitdInputInjectProbeKey(0x4d,true);
+    else if(stage==3)aitdInputInjectProbeKey(0x4d,false);
+    else if(stage==4)aitdInputInjectProbeKey(0x4c,true);
+    else if(stage==5)aitdInputInjectProbeKey(0x4c,false);
+    else if(stage==6) {g_mouseProbeX=410;g_mouseProbeY=285;}
+    else if(stage==7) {g_mouseProbeX=620;g_mouseProbeY=470;}
+    else if(stage==8)aitdInputInjectProbeKey(0x45,true);
+    else if(stage==9)aitdInputInjectProbeKey(0x45,false);
+    else if(stage==10) {aitdInputInjectProbeKey(0x67,true);aitdInputInjectProbeKey(0x10,true);}
+    else if(stage==11) {aitdInputInjectProbeKey(0x10,false);aitdInputInjectProbeKey(0x67,false);}
+    else return;
+    ++g_actionNavStage;g_actionNavTick=ticks;
+}
+#endif
 void aitdInputActionProbe(uint16_t trap,uint32_t ticks)
 {
     if(g_ingameStage!=5)return;
+#ifdef AITD_ACTION_NAV
+    actionNavigation(ticks);
+#endif
     if(!g_actionProbeStage) {g_actionProbeStage=1;g_actionProbeTick=ticks;}
     // Press at GetKeys so a short press cannot disappear during a slow render.
     // Release at any subsequent trap, including the menu's release-wait loop.

@@ -6,7 +6,7 @@
 #ifdef AITD_WINDOW_PROBE
 extern "C" void aitdWindowProbeInside();
 #endif
-#if defined(AITD_FILE_PROBE) || defined(AITD_RESOURCE_EXIT_PROBE)
+#if defined(AITD_FILE_PROBE) || defined(AITD_RESOURCE_EXIT_PROBE) || defined(AITD_ACTION_NAV)
 extern "C" { volatile uint32_t g_fileReadCalls=0,g_fileReadBytes=0,g_fileReadMax=0,g_fileOpenHandles=0,g_fileRestoredCloses=0,g_fileCloseErrors=0; }
 #endif
 #ifdef AITD_FILE_WRITE_PROBE
@@ -99,7 +99,7 @@ static int32_t openStreamOperation(void* context) {
         if(info)FreeDosObject(DOS_FIB,info);
         if(error) { Close(r.stream->handle);r.stream->handle=0;return error; }
     }
-#if defined(AITD_FILE_PROBE) || defined(AITD_RESOURCE_EXIT_PROBE)
+#if defined(AITD_FILE_PROBE) || defined(AITD_RESOURCE_EXIT_PROBE) || defined(AITD_ACTION_NAV)
     if(r.stream->handle)++g_fileOpenHandles;
 #endif
     return r.stream->handle ? ok : IoErr()==ERROR_OBJECT_NOT_FOUND ? notFound : ioError;
@@ -115,11 +115,11 @@ static int32_t readStreamOperation(void* context) {
     while(r.actual<r.bytes) {
         uint32_t count=r.bytes-r.actual;
         if(count>chunkBytes)count=chunkBytes;
-#if defined(AITD_FILE_PROBE) || defined(AITD_RESOURCE_EXIT_PROBE)
+#if defined(AITD_FILE_PROBE) || defined(AITD_RESOURCE_EXIT_PROBE) || defined(AITD_ACTION_NAV)
         ++g_fileReadCalls;if(count>g_fileReadMax)g_fileReadMax=count;
 #endif
         LONG got=Read(r.stream->handle,r.buffer+r.actual,count);
-#if defined(AITD_FILE_PROBE) || defined(AITD_RESOURCE_EXIT_PROBE)
+#if defined(AITD_FILE_PROBE) || defined(AITD_RESOURCE_EXIT_PROBE) || defined(AITD_ACTION_NAV)
         if(got>0)g_fileReadBytes+=got;
 #endif
         if(got<0)return ioError;
@@ -140,7 +140,7 @@ int32_t readStream(void* context,uint32_t offset,uint8_t* buffer,uint32_t bytes,
 static int32_t closeStreamOperation(void* context) {
     ReadStream& stream=*(ReadStream*)context;
     LONG closed=Close(stream.handle);stream.handle=0;
-#if defined(AITD_FILE_PROBE) || defined(AITD_RESOURCE_EXIT_PROBE)
+#if defined(AITD_FILE_PROBE) || defined(AITD_RESOURCE_EXIT_PROBE) || defined(AITD_ACTION_NAV)
     --g_fileOpenHandles;if(!closed)++g_fileCloseErrors;
 #endif
     return closed ? ok : ioError;
@@ -151,7 +151,7 @@ int32_t closeStream(ReadStream& stream) {
 }
 int32_t closeRestoredStream(ReadStream& stream) {
     if(!stream.handle)return invalid;
-#if defined(AITD_FILE_PROBE) || defined(AITD_RESOURCE_EXIT_PROBE)
+#if defined(AITD_FILE_PROBE) || defined(AITD_RESOURCE_EXIT_PROBE) || defined(AITD_ACTION_NAV)
     ++g_fileRestoredCloses;
 #endif
     return closeStreamOperation(&stream);

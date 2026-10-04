@@ -3,7 +3,7 @@
 M2.1c3c2c5b2c2b3a measures the original four calls and a separate table fixture.
 Native registration and lookup pass M2.1c3c2c5b2c2b3b acceptance. Native launch
 delivery now calls the original handler at a user-mode safe point. M3.4 still
-requires the ten-minute manual first-floor session.
+requires the ten-minute scripted first-floor route.
 
 ## Launch delivery [M]
 
@@ -59,9 +59,10 @@ DIAG_AUDIO=1 EXTRA_ARGS=--warp_mode=0 GDBSCRIPT=manual_play.gdb \
 The read-only observer records `MANUAL_READY` after boot input has stopped,
 and elapsed Mac ticks when the owner quits (36,000 ticks is ten minutes).
 It stops immediately on a named failure. Its duration record does not prove
-first-floor coverage or rendered stability: those still need the owner's manual
-observations. Normal quit must also pass OS restoration checks. A timeout or an
-unattended run cannot close M3.4.
+first-floor coverage: autonomous acceptance uses state-keyed scripted routes
+and paired Mac evidence. Rendered system-window stability remains the separate
+owner-deferred M1.7b2 check. Normal quit must pass OS restoration checks. A
+timeout or an idle unattended run cannot close M3.4.
 
 ## Original calls [M]
 

@@ -117,6 +117,13 @@ endif
 # `make PROBES=1` — the sub-frame timing accumulators, read via the gdb stub (amiga/diag_run.sh).
 # OFF by default: the probes read chip registers several times per iteration, which is exactly
 # what a framerate build must not do.  ⚠ NEVER quote a framerate from a PROBES build.
+ifeq ($(ACTIONNAV),1)
+ACTIONPROBE=1
+PROBES=1
+EXTRA_DEFINES += -DAITD_ACTION_NAV
+PROBE_SYMS_ACTION_NAV = g_fileOpenHandles g_fileCloseErrors g_actionNavStage g_actionNavTick g_mouseProbeEnabled g_mouseProbeDown g_mouseProbeX g_mouseProbeY g_mouseProbeSamples
+endif
+
 # Guest-key fixture for action-menu timing; no heavy probes by default.
 ifeq ($(ACTIONPROBE),1)
 INGAME=1
@@ -365,7 +372,7 @@ PROBE_SYMS += SysBase g_macStackBase g_macLineAVectorAddress g_macSavedLineAVect
 ifeq ($(LINEAPROBE),1)
 PROBE_SYMS += g_lineAProbe
 endif
-PROBE_SYMS += $(PROBE_SYMS_ACTION)
+PROBE_SYMS += $(PROBE_SYMS_ACTION) $(PROBE_SYMS_ACTION_NAV)
 PROBE_SYMS += g_macTicks
 ifeq ($(SONGCOST),1)
 EXTRA_DEFINES += -DAITD_SONG_COST_PROBE
