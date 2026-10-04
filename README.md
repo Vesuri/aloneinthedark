@@ -17,7 +17,7 @@ The reached `MONSTER` and `FIGHT` music tracks pass paired note-event, natural
 gameplay loading and complete native interrupt-playback checks.
 The ten-minute scripted first-floor route remains open.
 The action-menu preview now runs at 2.07 updates/sec on the reference 68030
-versus 1.65 on Mac; keyboard choices, hover and cancellation pass paired checks.
+versus 1.65 on Mac; keyboard choices, hover, clicks and cancellation pass paired checks.
 
 **M3.3 (game interfaces) is complete for the reached routes.** New game and
 save/load use the original engine UI inside 320×200. New-game and character-story

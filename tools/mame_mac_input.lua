@@ -183,6 +183,9 @@ function mac.menu(title_h, item_v, title_v)
 	mac.wait(30)
 end
 
+function mac.mouse_down() find_field("Mouse Button 0"):set_value(1) end
+function mac.mouse_up() find_field("Mouse Button 0"):set_value(0) end
+
 function mac.click(n)
 	local b = find_field("Mouse Button 0")
 	for _ = 1, n or 1 do

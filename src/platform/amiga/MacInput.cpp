@@ -343,6 +343,23 @@ static void actionNavigation(uint32_t ticks)
     }
     const uint32_t elapsed=ticks-g_actionNavTick;
     const uint16_t stage=g_actionNavStage;
+#ifdef AITD_ACTION_CLICK
+    if(elapsed<(stage==13 ? 8U : (stage>=7 && stage<=10) || stage==12 ? 120U : 60U))return;
+    if(stage==1)aitdInputInjectProbeKey(0x4e,false);
+    else if(stage==2)aitdInputInjectProbeKey(0x4d,true);
+    else if(stage==3)aitdInputInjectProbeKey(0x4d,false);
+    else if(stage==4)aitdInputInjectProbeKey(0x4c,true);
+    else if(stage==5)aitdInputInjectProbeKey(0x4c,false);
+    else if(stage==6) {g_mouseProbeX=410;g_mouseProbeY=285;}
+    else if(stage==7)g_mouseProbeDown=1;
+    else if(stage==8)g_mouseProbeDown=0;
+    else if(stage==9) {g_mouseProbeX=620;g_mouseProbeY=470;}
+    else if(stage==10)aitdInputInjectProbeKey(0x45,true);
+    else if(stage==11)aitdInputInjectProbeKey(0x45,false);
+    else if(stage==12) {aitdInputInjectProbeKey(0x67,true);aitdInputInjectProbeKey(0x10,true);}
+    else if(stage==13) {aitdInputInjectProbeKey(0x10,false);aitdInputInjectProbeKey(0x67,false);}
+    else return;
+#else
     if(elapsed<(stage==11 ? 8U : stage==7 || stage==8 || stage==10 ? 120U : 60U))return;
     if(stage==1)aitdInputInjectProbeKey(0x4e,false);
     else if(stage==2)aitdInputInjectProbeKey(0x4d,true);
@@ -356,6 +373,7 @@ static void actionNavigation(uint32_t ticks)
     else if(stage==10) {aitdInputInjectProbeKey(0x67,true);aitdInputInjectProbeKey(0x10,true);}
     else if(stage==11) {aitdInputInjectProbeKey(0x10,false);aitdInputInjectProbeKey(0x67,false);}
     else return;
+#endif
     ++g_actionNavStage;g_actionNavTick=ticks;
 }
 #endif

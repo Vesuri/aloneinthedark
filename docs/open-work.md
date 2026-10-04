@@ -25,9 +25,6 @@ required.
 ## M3 Playable
 
 - **M3.4 Apple Events and misc Toolbox.**
-  - **M3.4a Action-menu pointer clicks.** Measure clicks within the Actions
-    view against the original Mac, verify event handling, resulting choices and
-    cancellation, and fix any reached responsiveness or service gaps.
   - Exercise death/restart and the remaining first-floor paths, measuring and
     implementing newly reached Apple Event or Window Manager contracts.
     Unsupported operations and states remain loud stops.

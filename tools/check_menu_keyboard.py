@@ -74,8 +74,13 @@ def check(reference, native, folder, reference_status, native_status):
     require(original == mapped == expected, 'Save/Load/Quit menu mapping')
     stages = re.findall(r'^MENU_STAGE stage=(\d+) tick=(\d+) song=(\d+) playing=(\d+)', native, re.M)
     require([int(row[0]) for row in stages] == list(range(1, 11)), 'native stage order')
-    require([(int(stages[n-1][2]), int(stages[n-1][3])) for n in (1, 4, 5)]
-            == [(137, 1), (137, 0), (137, 1)], 'music stop/resume')
+    # The original world can request MONSTER while first-room setup completes.
+    # Assert the toggle's stop/resume identity, not a fixed first song forever.
+    initial=(int(stages[0][2]),int(stages[0][3]))
+    stopped=(int(stages[3][2]),int(stages[3][3]))
+    resumed=(int(stages[4][2]),int(stages[4][3]))
+    require(initial==(137,1) and stopped[0] in (136,137) and stopped[1]==0
+            and resumed==(stopped[0],1), 'music stop/resume identity')
     require('PASS driver8 native ABI preserved=13 ccr=4 DMA=0' in native, 'native shutdown ABI/DMA')
     require('MENU_EXIT ok=1 linea=0 view=1' in native, 'OS/file closure')
     before = (folder/'driver8-native-enter-config.bin').read_bytes()

@@ -5,6 +5,15 @@ Shift-running, Fight selection and kicking are verified on the 68030.
 Keyboard menus and the reached game interfaces pass M3.2/M3.3. Broader gameplay
 service coverage remains M3.4; newly reached Mac dialogs require D5 replacements.
 
+## Mouse button sampling — 2026-10-05
+
+Button and StillDown consume the VBI-owned button state used by low-memory and
+event polling. Action-menu held clicks pass paired original/native checks:
+the button is sampled, no action choice changes, and Escape cancels cleanly.
+The click route exercises Button; StillDown retains its existing Boolean ABI
+but broader caller coverage remains pending. See
+[the reproducible route](development.md#m34-action-menu-clicks--2026-10-05).
+
 ## First-room controls
 
 `GAMEINPUT=1` implies `INGAME=1` and supplies ordinary keyboard transitions:

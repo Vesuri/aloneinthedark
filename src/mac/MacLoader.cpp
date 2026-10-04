@@ -8745,7 +8745,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         // Macintosh Boolean is an 8-bit type in a word-aligned result slot.
         // Some Vette callers test the byte and others test the whole word, so
         // place the value in the first (big-endian) byte and clear the pad.
-        writeBoolean(userStack, AmigaHardware::isLeftMouseButtonPressed());
+        writeBoolean(userStack, pollMacMouse());
         if (exitChordPressed()) requestExitAfterTrap(frame);
         if (g_stageCDepth < 87) g_stageCDepth = 87;
         return 1;
@@ -9203,7 +9203,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     }
     if (trap == 0xa974) {                    // Button() -> Boolean
         serviceMacRuntime();
-        bool pressed = AmigaHardware::isLeftMouseButtonPressed();
+        bool pressed = pollMacMouse();
         writeBoolean(userStack, pressed);
         if (exitChordPressed()) requestExitAfterTrap(frame);
         if (g_stageCDepth < 64) g_stageCDepth = 64;

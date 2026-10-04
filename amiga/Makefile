@@ -117,6 +117,10 @@ endif
 # `make PROBES=1` — the sub-frame timing accumulators, read via the gdb stub (amiga/diag_run.sh).
 # OFF by default: the probes read chip registers several times per iteration, which is exactly
 # what a framerate build must not do.  ⚠ NEVER quote a framerate from a PROBES build.
+ifeq ($(ACTIONCLICK),1)
+ACTIONNAV=1
+EXTRA_DEFINES += -DAITD_ACTION_CLICK
+endif
 ifeq ($(ACTIONNAV),1)
 ACTIONPROBE=1
 PROBES=1

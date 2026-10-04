@@ -1,5 +1,33 @@
 # Development
 
+## M3.4 action-menu clicks — 2026-10-05
+
+A held click inside the Actions pane changes no choice on the original Mac.
+The Button trap observes MBState zero at (410,284); after release the selected
+choice remains zero. Native VBI input at (410,285) yields the same choice and
+no keyboard command. Escape executes no action, and Quit verifies full file,
+resource, display, interrupt and Paula cleanup. The selected-action pane still
+matches all 16,000 pixels, and the keyboard choices retain their paired timings.
+Button and StillDown now consume the same VBI-owned state as event polling,
+rather than a separate immediate hardware read. The click route reaches Button;
+it does not establish a new StillDown caller ABI.
+
+Reproduce with clean `ACTIONCLICK=1`, `amiga/action_clicks.gdb`, and
+`tools/mac_action_clicks.lua` on the documented headless Mac setup. Check actual
+zero statuses with `tools/check_action_clicks.py`. Accepted local logs are
+`click-mac3-run.log`, `click-native-gdb.log` and `click-checked.log` under
+`tmp/m3-action`. The first Mac observer watched the menu loop, which the held
+button wait does not return to until release; that missing positive-control
+capture was rejected. The final observer checks the Button trap itself.
+
+The integrated `MENUPROBE=1 PROBES=1` dialog/keyboard regression also passes
+exact startup artwork, Save/Load, four feedback glyphs and Quit restoration.
+Its world naturally switches from SUSPENSE to MONSTER before the music toggle.
+The checker now requires identical track ID across stop/resume rather than
+assuming SUSPENSE persists throughout gameplay. Accepted logs are
+`click-menu-gdb.log`, `click-menu-checked.log` and
+`click-menu-keyboard-checked.log`; both runners exit zero.
+
 ## M3.4 FIGHT music — 2026-10-05
 
 The next reached music prerequisite passes its paired original/native contract
@@ -19,7 +47,7 @@ build includes inactive diagnostic probes and file-ledger counters; the separate
 ordinary-cost preview benchmark establishes frame rate. The selected-action
 pane matches all 16,000 pixels exactly. Hovering over the choices changes no
 selection on either platform; native low-memory coordinates and nonzero VBI
-sample counts prove pointer input was exercised. Pointer clicks remain open.
+sample counts prove pointer input was exercised. Pointer clicks are verified in the route above.
 
 Escape returns to room zero with action flags zero. Native Quit also verifies
 all file/resource streams closed, no close errors, complete trap-service drain,

@@ -4,7 +4,7 @@ import argparse,re
 from pathlib import Path
 from check_menu_keyboard import require,rgb,display_transfer
 
-def check(original,native,folder,original_status,native_status):
+def check(original,native,folder,original_status,native_status,stem="nav"):
     for name,text,status,marker in (("Mac",original,original_status,"PASS original action navigation returned attic"),("Amiga",native,native_status,"PASS native action navigation down up hover cancel quit")):
         require(status==0 and text.count(marker)==1,name+" normal completion")
         require(not re.search(r"^FAIL|TIMEOUT|Error in|Program received signal",text,re.M),name+" failure")
@@ -25,8 +25,8 @@ def check(original,native,folder,original_status,native_status):
         native_latencies.append(min(matches))
     require(re.search(r"ACTION_NAV_PREVIEW tick=\d+ selection=0 mouse=4(?:0[0-9]|1[0-9]|20),28[0-9]",original),"original pointer over choices, no selection change")
     require(re.search(r"ACTION_NAV_HOVER tick=\d+ selection=0 mouse=410,285 samples=[1-9]\d*",native),"native VBI pointer sampling and same hover result")
-    mac=(folder/"mac-nav-rgb.bin").read_bytes()
-    amiga=rgb((folder/"native-nav-screen.bin").read_bytes(),(folder/"native-nav-clut.bin").read_bytes(),display_transfer()[::256])
+    mac=(folder/f"mac-{stem}-rgb.bin").read_bytes()
+    amiga=rgb((folder/f"native-{stem}-screen.bin").read_bytes(),(folder/f"native-{stem}-clut.bin").read_bytes(),display_transfer()[::256])
     require(len(mac)==len(amiga)==640*480*3,"frame extents")
     require(all(mac[(y*640+x)*3:(y*640+x)*3+3]==amiga[(y*640+x)*3:(y*640+x)*3+3] for y in range(250,350) for x in range(320,480)),"16000 exact selected-action pane pixels")
     print(f"PASS action navigation: original/native choices 0/1/0, same hover behavior, cancel executes no action, native quit restores OS/audio/files, exact action pane; key-to-choice ticks Mac={latencies} Amiga={native_latencies}")
