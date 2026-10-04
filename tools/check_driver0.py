@@ -6,10 +6,11 @@ from check_driver22 import fields,one,ROOT
 from resource_fork import read_resource_fork
 
 def check(text,status,song=135,prefix=None):
-    if song not in (135,137): raise ValueError('unsupported reference song')
-    services,requests_expected=(285,73) if song==135 else (237,62)
-    midi=905 if song==135 else 907
-    used=[0,1,11,22,26,28,31] if song==135 else [0,1,2,3,10,11,28]
+    measured={135:(285,73,905,[0,1,11,22,26,28,31]),
+              136:(203,53,906,[0,1,11,13,23,28]),
+              137:(237,62,907,[0,1,2,3,10,11,28])}
+    if song not in measured: raise ValueError('unsupported reference song')
+    services,requests_expected,midi,used=measured[song]
     prefix=prefix or ROOT/'tmp/driver0-reference'
     capture=lambda name:Path(str(prefix)+'-'+name+'.bin').read_bytes()
     if status!=0 or any(x in text for x in ('FAIL','LUA ERROR','timeout','Error in')) or text.count(f'PASS original driver0 call and service contracts calls={services}')!=1 or text.count('Exited via the debugger')!=1:
@@ -66,7 +67,10 @@ def check(text,status,song=135,prefix=None):
     if len(state)!=0x3048: raise ValueError('complete state')
     word=lambda o:struct.unpack_from('>H',state,o)[0]
     long=lambda o:struct.unpack_from('>I',state,o)[0]
-    if (long(0),long(4),word(8),long(0x10),word(0x36),word(0x38),word(0x2f74))!=(0,song,0,0xffffffff,0xff00,0,song): raise ValueError('armed song state')
+    nested=[fields(row) for row in re.findall(r'^DRIVER0_NESTED (.*)$',text,re.M)]
+    if any(row['selector']!=20 for row in nested): raise ValueError('unmeasured nested driver selector')
+    command,argument=(nested[-1]['selector'],nested[-1]['argument']) if nested else (0,song)
+    if (long(0),long(4),word(8),long(0x10),word(0x36),word(0x38),word(0x2f74))!=(command,argument,0,0xffffffff,0xff00,0,song): raise ValueError('armed song state')
     if [i for i,v in enumerate(state[0x72:0xf2]) if v!=255]!=used: raise ValueError('preflight instrument use')
     if [word(o) for o in (0x11c0,0x11c2,0x11c4)]!=[6,3,1] or word(0x11ba)!=0x2205: raise ValueError('SONG configuration')
     if long(0x6a)!=bodies[b'SONG',song] or long(0x6e)!=bodies[b'MIDI',midi]: raise ValueError('song/MIDI ownership')

@@ -13,6 +13,8 @@ and Toolbox layer are carried over from Vette!; see
 
 **M3.4 is in progress.** Launch Apple Event delivery calls the original handler
 in user mode, and all five implemented SANE operations pass integrated checks.
+The reached `MONSTER` music track now passes paired note-event and native
+playback checks.
 The ten-minute manual first-floor session remains open.
 
 **M3.3 (game interfaces) is complete for the reached routes.** New game and

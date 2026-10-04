@@ -1,5 +1,26 @@
 # Development
 
+## M3.4 reached MONSTER music — 2026-10-04
+
+The first owner-operated session stops at Core+$138C with `SOUND DRIVER /
+SONG UNMEASURED`, 5,420 ticks (about 90 seconds) after automatic in-game entry.
+The run exits with status 1; it is not manual acceptance. The trace is preserved
+in `tmp/m3-toolbox/manual-owner-stop-gdb.log`. Gameplay music coverage from M4.2
+is now a prerequisite. The original observer did not record the song argument;
+subsequent loud-stop records include the driver selector and argument.
+The idle-attic reproduction identifies SONG 136 / MIDI 906 (`MONSTER`). Its
+original loading contract and all 602 preflight notes now match native decoding
+and complete native interrupt playback, effect priority and cleanup. See the
+[music prerequisite and reproduction](sound-driver.md#reached-monster-music-prerequisite--2026-10-04).
+The final original captures are `mac-driver136-alias.log` and
+`mac-song136-events-alias.log`; the first incomplete captures are rejected.
+`native-song136-gdb.log` passes the full-song fixture, and
+`native-song136-gameplay-gdb.log` passes the natural original-game transition,
+with all 13 registers preserved and exact resource ownership. All four runners
+exit zero. The host suite and both link audits pass. Captures are local-only in
+`tmp/m3-toolbox`. M3.4 still requires a successful manual first-floor session;
+other unmeasured songs and effect variants remain loud stops.
+
 ## M3.4 launch delivery — 2026-10-04
 
 The native no-document launch event now calls the original `oapp` handler in

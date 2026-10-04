@@ -244,7 +244,11 @@ PROBE_SYMS_CLOCK = g_clockProbeCCR g_clockProbeD1 g_clockProbeCount g_clockProbe
 endif
 
 ifeq ($(SONGPROBE),1)
-EXTRA_DEFINES += -DAITD_SONG_PROBE
+SONGPROBEID ?= 135
+ifeq ($(filter $(SONGPROBEID),135 136),)
+$(error SONGPROBEID must be 135 or 136)
+endif
+EXTRA_DEFINES += -DAITD_SONG_PROBE -DAITD_SONG_PROBE_ID=$(SONGPROBEID)
 PROBE_SYMS_SONG = g_songTraceCount g_songTrace g_songDelivery g_songProbeIRQTicks g_songProbeIRQEvents g_songTiming g_songProbeEffects g_songProbeHeapOK g_songLastVoice
 endif
 

@@ -4,6 +4,52 @@
 M2. M3.2 verifies first-room sound/music controls and driver shutdown. All-song
 coverage, gameplay effect variants and perceived audio quality remain M4.
 
+## Reached MONSTER music prerequisite — 2026-10-04
+
+The owner-operated M3.4 session stopped with `SONG UNMEASURED`. A subsequent
+idle-attic reproduction records selector 0 / SONG 136 (`MONSTER`), matching the
+next natural request in the original Mac. The original capture establishes
+MIDI 906, six instruments, 21 samples and 29 newly owned resources; the four
+SMOD handles remain from the preceding song. Native loading owns 33 resources,
+including those four modifiers, and uses the existing supported formats.
+Other unmeasured song IDs retain the named stop.
+
+The complete original preflight and native playback agree on all 602 note,
+instrument, velocity and channel events. The native fixture also matches the
+verified sequencer timing, plays from the music interrupt during 180 ticks of
+CPU-only work, steals a music voice for its effect test, completes naturally,
+and releases its sample buffers, resources and Paula channels. This verifies
+this track; it does not close all-song M4.2 or manual first-floor acceptance.
+
+The Mac driver can execute through both ordinary and `$80xxxxxx` instruction
+addresses. The observers now cover both aliases. The first MONSTER preflight
+capture missed 47 notes and was rejected; the complete retry observes 602.
+The loading observer also records a nested selector-20 effect query, which
+overwrites the driver's last-command header while preserving the song state
+and the caller's registers. The checker compares that header with the observed
+last query instead of assuming the loading command remains there.
+
+For original captures, run `tools/mac_driver137.lua` with
+`AITD_GAMEPLAY_SONG=136`, and `tools/mac_song_events.lua` with
+`AITD_SONG_EVENTS=136`, using the documented headless Mac command. For native
+playback, clean and build `INTROSKIP=1 PROBES=1 SONGPROBE=1 SONGPROBEID=136`,
+then use `song136.gdb` with audio on and warp off. `SONGPROBEID` defaults to 135
+and changes only the CPU-executed diagnostic fixture. Require runner exit zero
+and check the captures with:
+
+```sh
+python3 tools/check_song136.py tmp/m3-toolbox/mac-song136-events-alias.log \
+  tmp/m3-toolbox/song136-host.log tmp/m3-toolbox/mac-driver136-alias.log \
+  tmp/m3-toolbox/native-song136-gdb.log \
+  --original-status 0 --host-status 0 --driver-status 0 --native-status 0
+```
+
+The host decoder capture is produced by `tools/test_song_inputs.cpp`, using
+SONG 136 / MIDI 906 and the original INST/`snd ` resources in a local-only
+directory. `gameplay_music.gdb` checks the natural original-game transition
+after an `INGAME=1 PROBES=1` build, including the Pascal/C call stack, all 13
+preserved registers, zero result and the exact native resource counts.
+
 ## Quit shutdown
 
 The normal original keyboard Quit route calls selector 8 at Core+$1DCC;

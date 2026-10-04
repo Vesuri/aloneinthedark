@@ -2,14 +2,20 @@
 local mac=dofile('tools/mame_mac_input.lua');local meta=dofile('tmp/mac-trap-map.lua')
 local cpu=manager.machine.devices[':maincpu'];local mem=cpu.spaces.program
 local dbg=assert(manager.machine.debugger,'DRIVER0 / DEBUGGER REQUIRED')
+local song=tonumber(os.getenv('AITD_GAMEPLAY_SONG') or '137')
+assert(song==136 or song==137,'DRIVER0 / UNMEASURED SONG')
 local function ptr(a)return mem:read_u32(a)&0xffffff end
+local function driver_break(a,condition)
+ cpu.debug:bpset(a&0xffffff,condition,'')
+ cpu.debug:bpset((a&0xffffff)|0x80000000,condition,'')
+end
 local function base(seg)
  local a5=ptr(0x904)
  for i,j in ipairs(meta.jt)do if j[1]==seg then return ptr(a5+36+(i-1)*8)-j[2] end end
  error('DRIVER0 / NO JUMP ENTRY')
 end
 local function bytes(a,n)local t={};for i=0,n-1 do t[#t+1]=string.format('%02X',mem:read_u8(a+i))end;return table.concat(t)end
-local function save(name,a,n)local f=assert(io.open('tmp/m3-input/driver137-reference-'..name..'.bin','wb'));for i=0,n-1 do f:write(string.char(mem:read_u8(a+i)))end;f:close()end
+local function save(name,a,n)local f=assert(io.open('tmp/m3-input/driver'..song..'-reference-'..name..'.bin','wb'));for i=0,n-1 do f:write(string.char(mem:read_u8(a+i)))end;f:close()end
 local regs={'D0','D1','D2','D3','D4','D5','D6','D7','A0','A1','A2','A3','A4','A5','A6'}
 local armed=false;local done=false;local phase='arm';local entry;local call;local ret;local originalSP;local scratch;local stack
 local calls=0;local trapret;local trapargs;local trapword;local trapped
@@ -20,6 +26,7 @@ local function capture(label)
 end
 local function arm_services()
  dbg:command('bpclear');cpu.debug:bpset(ret,'1','')
+ driver_break(entry,'d@(sp+4)!=0')
  cpu.debug:bpset(0xdd60,string.format('(d@(sp+2)&0xffffff)>=0x%x && (d@(sp+2)&0xffffff)<0x%x',entry,entry+0x4200),'')
  dbg.execution_state='run'
 end
@@ -33,12 +40,15 @@ emu.register_periodic(function()
  if done or not armed or dbg.execution_state~='stop' then return end
  local ok,err=pcall(function()
   if phase=='arm' then
-   call=base(3)+0x138c;dbg:command('bpclear');cpu.debug:bpset(call,'d@(sp+4)==0x89','');phase='entry';dbg.execution_state='run'
+   call=base(3)+0x138c;dbg:command('bpclear');cpu.debug:bpset(call,string.format('d@(sp+4)==0x%x',song),'');phase='entry';dbg.execution_state='run'
   elseif phase=='entry' then
    assert(cpu.state.PC.value==call);entry=ptr(cpu.state.A5.value-0x6ac);ret=call+2;originalSP=cpu.state.A7.value
    assert(bytes(call-10,14)=='2F2E000842A7206DF9544E90508F','DRIVER0 / CALLER BYTES')
    print('DRIVER0_BYTES '..bytes(call-10,14));print('DRIVER0_ENTRY_BYTES '..bytes(entry,12));save('driver',entry,0x7248)
    capture('ENTER');phase='services';arm_services()
+  elseif (cpu.state.PC.value&0xffffff)==entry then
+   print(string.format('DRIVER0_NESTED selector=%X argument=%X',mem:read_u32(cpu.state.A7.value+4),mem:read_u32(cpu.state.A7.value+8)))
+   dbg.execution_state='run'
   elseif cpu.state.PC.value==ret then
    assert(cpu.state.A7.value==originalSP);capture('RETURN');done=true
    print(string.format('PASS original driver0 call and service contracts calls=%d',calls));dbg:command('quit')
@@ -73,7 +83,7 @@ mac.run(function()
   assert(mac.wait_for('320x200',window320,1800));mac.mouse_to(620,470)
   mac.wait(3000);key('Space');mac.wait(120);key('Return');mac.wait(720)
   key('Right Arrow');key('Return');mac.wait(240);key('Return');mac.wait(180)
-  key('Esc');mac.wait(3600);error('DRIVER137 / NO COMPLETION')
+  key('Esc');mac.wait(song==136 and 7200 or 3600);error('GAMEPLAY SONG / NO COMPLETION')
  end)
  if not ok and not done then print('FAIL '..tostring(err));manager.machine:exit()end
 end)

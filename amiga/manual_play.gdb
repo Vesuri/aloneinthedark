@@ -14,6 +14,10 @@ break AitdScreen::showLoudStop
 commands
  silent
  printf "FAIL MANUAL %s / %s CODE %u+$%04x tick=%u elapsed=%u\n",g_trapManager,g_trapRoutine,g_trapSegment,g_trapOffset,g_macTicks,g_macTicks-$manual_tick
+ printf "MANUAL_TRAP word=%X selector=%d stack=%X\n",g_trapWord,g_trapSelector,g_trapUserStack
+ if g_trapWord==0xa0f8
+  printf "MANUAL_DRIVER selector=%u argument=%u\n",*(unsigned long*)(g_trapUserStack+4),*(unsigned long*)(g_trapUserStack+8)
+ end
  detach
  quit 1
 end
