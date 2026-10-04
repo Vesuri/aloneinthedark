@@ -25,9 +25,13 @@ required.
 ## M3 Playable
 
 - **M3.4 Apple Events and misc Toolbox.**
-  - Exercise the remaining first-floor paths, measuring and implementing newly
-    reached Apple Event or Window Manager contracts. Unsupported operations and
-    states remain loud stops.
+  - Measure and implement SONG 132 (`FIGHT`), reached at Core+$138C in the
+    follow-up manual session. Require paired original/native loading, note-event
+    and playback checks before repeating combat coverage; keep other unmeasured
+    audio paths loud.
+  - Exercise death/restart and the remaining first-floor paths, measuring and
+    implementing newly reached Apple Event or Window Manager contracts.
+    Unsupported operations and states remain loud stops.
   - If a new Mac dialog is reached, measure its choices/results and provide an
     engine-style interface inside 320×200 under D5; unsupported paths stay loud.
 

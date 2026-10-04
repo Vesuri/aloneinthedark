@@ -17,9 +17,19 @@ public:
     uint16_t effectIds[2]={};
     int16_t channels[4]={-1,-1,-1,-1};
 
+    uint16_t masterGain=256; // Selector 19: unsigned 8.8 linear mixer gain.
+
+    const char* setGain(uint32_t value) {
+        if(!initialized)return "NOT INITIALIZED";
+        if(value>256)return "GAIN RANGE";
+        masterGain=(uint16_t)value;return 0;
+    }
+    uint16_t paulaVolume(uint16_t volume=64) const {
+        return (uint16_t)((volume*masterGain)>>8);
+    }
     void reset() {
         initialized=0;songLimit=0;normalizedLimit=0;effectLimit=0;
-        requestedRate=0;interpolation=0;songControl=0;clockOrigin=0;
+        requestedRate=0;interpolation=0;songControl=0;clockOrigin=0;masterGain=256;
         for(auto& voice:songs) { voice.sample=0;voice.channel=-1;voice.active=0; }
         for(auto& voice:effects) { voice.sample=0;voice.channel=-1;voice.active=0; }
         for(auto& id:effectIds)id=0;
@@ -33,7 +43,7 @@ public:
         for(auto& id:effectIds)id=0;
         for(auto& channel:channels)channel=-1;
         songLimit=song;normalizedLimit=normalized;effectLimit=effect;
-        requestedRate=22;interpolation=0;songControl=0;clockOrigin=tick;initialized=1;
+        requestedRate=22;interpolation=0;songControl=0;clockOrigin=tick;masterGain=256;initialized=1;
         return 0;
     }
     const char* stopEffects() {

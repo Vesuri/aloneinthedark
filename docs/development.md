@@ -1,6 +1,27 @@
 # Development
 
+## M3.4 death fade — 2026-10-04
+
+The owner reports death followed by a loud stop. The captured service is
+selector 19, gain 248 at Core+$1F0A, after 9,012 gameplay ticks; the failed
+runner exits 1 and its trace is `tmp/m3-toolbox/manual-owner-death-stop-gdb.log`.
+The original Mac reaches the same call. Its natural capture and 33 isolated
+gain levels pass exact state/table and preserved-register checks. The native
+68030 CPU fixture passes all 33 calls, active voice ownership, hardware volume
+write values, seven new muted notes and complete song/DMA cleanup. Host
+sanitizer checks and both link audits pass. The normal keyboard menu pair also
+passes playback toggles, Save/Load, Quit ABI and complete OS restoration with
+the gain change; both runners exit zero. Native implementation and the
+reproduction procedure are in [the audio contract](sound-driver.md#death-fade-gain--2026-10-04).
+Full manual death/restart and ten-minute first-floor coverage remain pending;
+FIGHT music remains a separate prerequisite in open work.
+
 ## M3.4 reached MONSTER music — 2026-10-04
+
+The follow-up owner session reaches the next unsupported music request: SONG
+132 (`FIGHT`), selector 0 at Core+$138C, 6,850 ticks after in-game entry. Its
+status-1 trace is preserved in `tmp/m3-toolbox/manual-owner-retry1-gdb.log`.
+This is now an M3.4 prerequisite; the session does not close manual acceptance.
 
 The first owner-operated session stops at Core+$138C with `SOUND DRIVER /
 SONG UNMEASURED`, 5,420 ticks (about 90 seconds) after automatic in-game entry.

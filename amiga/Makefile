@@ -238,6 +238,11 @@ EXTRA_DEFINES += -DAITD_HEAP_PROBE
 PROBE_SYMS_HEAP = g_heapProbeStage g_heapProbeDone
 endif
 
+ifeq ($(GAINPROBE),1)
+EXTRA_DEFINES += -DAITD_GAIN_PROBE
+PROBE_SYMS_CLOCK += g_gainProbeCCR g_gainProbeD1 g_gainProbeCount g_gainProbeVolumes
+endif
+
 ifeq ($(DRIVERCLOCKPROBE),1)
 EXTRA_DEFINES += -DAITD_DRIVER_CLOCK_PROBE
 PROBE_SYMS_CLOCK = g_clockProbeCCR g_clockProbeD1 g_clockProbeCount g_clockProbeRows

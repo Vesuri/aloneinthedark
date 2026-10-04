@@ -4,6 +4,35 @@
 M2. M3.2 verifies first-room sound/music controls and driver shutdown. All-song
 coverage, gameplay effect variants and perceived audio quality remain M4.
 
+## Death fade gain — 2026-10-04
+
+Death reaches selector 19 at Core+$1F0A with gain 248. The original driver
+builds an unsigned mixer lookup table using linear 8.8 gain: 256 is unity,
+zero is silence. It returns D0=0, D1=$0000FFFF and CCR=4 (including X cleared),
+preserving D2–D7/A0–A6 and the caller's stack. The measured natural call and
+33 isolated levels (256 down to zero in steps of eight) preserve every state
+byte except the command/argument/status header; their complete 2,052-byte
+lookup tables match the integer oracle in `tools/check_driver19.py`.
+
+Native selector 19 scales Paula AUDxVOL for assigned music/effect channels,
+under the audio ownership guard. Future DMA starts use the same gain. Sample
+buffers, pitch, DMA and voice ownership remain unchanged; no sample conversion
+or allocation happens during fading. Paula quantizes volume to 0–64; the
+measured eight-unit fade steps map exactly to two hardware volume units.
+Unmeasured gain outside 0–256 remains loud. Gain resets on driver initialization,
+and song/effect loading retains it until the original game changes it.
+
+Reproduce the original with `tools/mac_driver19.lua` and the documented headless
+Mac command; check `tmp/m3-toolbox/mac-driver19.log` with `--status 0`. Clean and
+build `GAINPROBE=1 PROBES=1`, then run `amiga/gain.gdb` on the 68030 configuration.
+This CPU-executed fixture loads MONSTER through the ordinary driver service,
+verifies all 33 calls' ABI and unchanged active voice ownership, captures values
+immediately after hardware volume writes, and observes seven later note starts
+inheriting silence before releasing all song resources and audio DMA. AUDxVOL
+is write-only; debugger register readback is not used as volume evidence.
+This covers the gain contract, not the complete owner-operated death/restart
+sequence or remaining FIGHT music loading.
+
 ## Reached MONSTER music prerequisite — 2026-10-04
 
 The owner-operated M3.4 session stopped with `SONG UNMEASURED`. A subsequent

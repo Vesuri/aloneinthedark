@@ -183,6 +183,15 @@ public:
 // Diagnostic only: elapsed game ticks in note preparation and song catch-up.
 extern "C" { volatile uint32_t g_songCost[12]={}; }
 #endif
+#ifdef AITD_GAIN_PROBE
+extern "C" {
+uint32_t aitdProbeClockDriverResource();
+uint32_t aitdProbeDriverGain(uint32_t entry,uint32_t gain);
+uint32_t aitdProbeGainSong(uint32_t entry,uint32_t selector,uint32_t argument);
+volatile uint16_t g_gainProbeCCR=0,g_gainProbeCount=0,g_gainProbeVolumes[4]={};
+volatile uint32_t g_gainProbeD1=0;
+}
+#endif
 #ifdef AITD_SONG_PROBE
 volatile uint32_t g_songTraceCount=0,g_songTrace[4096][10]={};
 volatile uint32_t g_songDelivery[4096][2]={};
@@ -1457,7 +1466,11 @@ static void startPaulaSample(uint8_t* data, const PaulaSample::Layout& layout,
     *(volatile uint32_t*)(audio + 0) = (uint32_t)data;
     *(volatile uint16_t*)(audio + 4) = (uint16_t)(layout.attackBytes >> 1);
     setPaulaPeriod(channel, period);
+    volume=g_soundDriver.paulaVolume(volume);
     *(volatile uint16_t*)(audio + 8) = volume;
+#ifdef AITD_GAIN_PROBE
+    g_gainProbeVolumes[channel]=volume;
+#endif
 #ifdef AITD_PROBE
     g_probePaulaZeroedMask &= (uint16_t)~(1U << channel);
 #endif
@@ -1977,6 +1990,33 @@ static const char* serviceNativeSong()
     return s_songInterruptError;
 }
 
+#ifdef AITD_GAIN_PROBE
+extern "C" __attribute__((noinline)) void aitdGainProbeStep() {__asm__ volatile("" ::: "memory");}
+extern "C" __attribute__((noinline)) void aitdGainProbeComplete() {__asm__ volatile("" ::: "memory");}
+extern "C" void aitdGainProbe() {
+    uint32_t handle=aitdProbeClockDriverResource();
+    if(!handle || handle!=(uint32_t)g_soundDriverHandle) {loaderStop("GAIN PROBE RESOURCE",3);showLoaderStop();}
+    CacheClearU();
+    if(aitdProbeGainSong((uint32_t)*g_soundDriverHandle,0,136)) {loaderStop("GAIN PROBE SONG",3);showLoaderStop();}
+    uint32_t began=g_macTicks;
+    while(g_macTicks-began<180) {__asm__ volatile("nop" ::: "memory");}
+    // Freeze music ownership only over each CPU-executed service and snapshot.
+    for(uint16_t i=0;i<33;++i) {
+        NativeAudioGuard guard;
+        if(aitdProbeDriverGain((uint32_t)*g_soundDriverHandle,256-i*8)!=0
+           || g_gainProbeD1!=0xffff || (g_gainProbeCCR&31)!=4) {
+            loaderStop("GAIN PROBE ABI",3);showLoaderStop();
+        }
+        ++g_gainProbeCount;aitdGainProbeStep();
+    }
+    // New DMA starts must inherit the latest gain, not just existing voices.
+    began=g_macTicks;
+    while(g_macTicks-began<60) {__asm__ volatile("nop" ::: "memory");}
+    aitdGainProbeStep();
+    if(aitdProbeGainSong((uint32_t)*g_soundDriverHandle,7,0)) {loaderStop("GAIN PROBE RELEASE",3);showLoaderStop();}
+    aitdGainProbeComplete();
+}
+#endif
 #ifdef AITD_SONG_PROBE
 extern "C" __attribute__((noinline)) void aitdSongProbeArmed() {__asm__ volatile("" ::: "memory");}
 extern "C" __attribute__((noinline)) void aitdSongProbePlaybackComplete() {__asm__ volatile("" ::: "memory");}
@@ -7460,6 +7500,20 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
                     if(g_soundDriver.effects[i].active && g_soundDriver.effectIds[i]==read16(packet+24))
                         stopNativeEffect(i);
             }
+            else if(selector==19) {
+                NativeAudioGuard guard;
+                driverStop=g_soundDriver.setGain(argument);
+                if(!driverStop) {
+                    for(uint16_t c=0;c<4;++c)if(g_soundDriver.channels[c]>=0) {
+                        const uint16_t volume=g_soundDriver.paulaVolume();
+                        *(volatile uint16_t*)(0xdff0a8UL+c*16)=volume;
+#ifdef AITD_GAIN_PROBE
+                        g_gainProbeVolumes[c]=volume;
+#endif
+                    }
+                    scratch=0xffff; // Original mixer DBRA counter.
+                }
+            }
             else if(selector==20) {
                 uint8_t* packet=(uint8_t*)argument;
                 if((argument&1) || !effectRange(packet,26))driverStop="EFFECT STATUS PACKET";
@@ -7516,7 +7570,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
             }
             else driverStop="SELECTOR";
             if(!driverStop) {
-                ++g_soundDriverCalls;regs[0]=selector==15 ? clockResult : driverResult;regs[1]=selector==0 ? 12 : selector==24 ? 1 : (selector==22 || selector==17 || selector==18 || selector==20 || selector==13 || selector==15 || selector==4 || selector==5 || selector==7 || selector==8) ? scratch : 0;
+                ++g_soundDriverCalls;regs[0]=selector==15 ? clockResult : driverResult;regs[1]=selector==0 ? 12 : selector==24 ? 1 : (selector==19 || selector==22 || selector==17 || selector==18 || selector==20 || selector==13 || selector==15 || selector==4 || selector==5 || selector==7 || selector==8) ? scratch : 0;
                 if(!inUserService && directDriverQuery) {
                     uint16_t ccr=read16(frame);
                     if(selector==15)ccr=(ccr&0xffe0)|SoundDriver::clockCCR(clockResult);
@@ -9514,7 +9568,7 @@ extern "C" uint8_t* aitdUserServiceDispatch(uint8_t* parked)
     }
     if(driverSelector==15) {
         ccr=(ccr&0xffe0)|SoundDriver::clockCCR(read32(parked));
-    } else if(driverSelector==4 || driverSelector==5 || driverSelector==7 || driverSelector==8) {
+    } else if(driverSelector==19 || driverSelector==4 || driverSelector==5 || driverSelector==7 || driverSelector==8) {
         ccr=(ccr&0xffe0)|SoundDriver::songStatusCCR(read16(parked+2));
     } else if(!(trap&0x0800)) {
         ccr&=0xfff0;
@@ -9827,6 +9881,12 @@ bool MacLoader::run(AitdScreen* screen)
     aitd_call_mac_code((void*)aitdFileProbe,a5,g_macStackBase+65536);
     restoreLineAVector();
     return true; // Diagnostic exits through normal OS restoration and file cleanup.
+#endif
+#ifdef AITD_GAIN_PROBE
+    if(g_soundDriver.initialize(6,2,2,g_macTicks)) {loaderStop("GAIN PROBE SETUP",3);showLoaderStop();}
+    CacheClearU();installLineAVector();
+    aitd_call_mac_code((void*)aitdGainProbe,a5,g_macStackBase+65536);
+    restoreLineAVector();return true;
 #endif
 #ifdef AITD_DRIVER_CLOCK_PROBE
     if(g_soundDriver.initialize(6,2,2,g_macTicks)) {

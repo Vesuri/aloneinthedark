@@ -7,6 +7,20 @@
 #include <cstdio>
 #include <initializer_list>
 int main() {
+    SoundDriver gain;
+    assert(gain.masterGain==256 && gain.paulaVolume()==64);
+    assert(gain.setGain(248) && gain.masterGain==256);
+    assert(!gain.initialize(6,2,2));
+    for(unsigned value=0;value<=256;value+=8) {
+        assert(!gain.setGain(value));assert(gain.paulaVolume()==value/4);
+        assert(gain.paulaVolume(32)==value/8);
+        SoundDriver before=gain;
+        assert(gain.setGain(257) && gain.setGain(0xffffffff));
+        assert(!std::memcmp(&gain,&before,sizeof(gain)));
+        assert(!gain.setSongControl(1) && !gain.quality(0x10b));
+        assert(gain.masterGain==value);
+    }
+    gain.reset();assert(gain.masterGain==256 && gain.paulaVolume()==64);
     SoundDriver statusDriver;uint16_t songResult=0x1234;uint32_t scratch=0x12345678;
     assert(statusDriver.songStatus(false,0,songResult,scratch));
     assert(songResult==0x1234 && scratch==0x12345678);
