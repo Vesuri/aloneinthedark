@@ -7290,6 +7290,9 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
 #ifdef AITD_GAME_INPUT
     if(trap==0xa976)aitdInputGameplay(g_macTicks);
 #endif
+#ifdef AITD_ACTION_PROBE
+    aitdInputActionProbe(trap,g_macTicks);
+#endif
 #ifdef AITD_MENU_PROBE
     if(trap==0xa976 || trap==0xa970 || trap==0xa860 || trap==0xa974)aitdInputMenuProbe(g_macTicks);
 #endif

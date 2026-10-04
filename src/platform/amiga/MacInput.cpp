@@ -319,3 +319,24 @@ void aitdInputStoryRead(bool atStory,uint16_t page,bool lastPage,uint32_t ticks)
     }
 }
 #endif
+
+#ifdef AITD_ACTION_PROBE
+#include "PerfProbe.h"
+extern "C" {
+volatile uint16_t g_actionProbeStage=0;
+volatile uint32_t g_actionProbeTick=0;
+}
+void aitdInputActionProbe(uint16_t trap,uint32_t ticks)
+{
+    if(g_ingameStage!=5)return;
+    if(!g_actionProbeStage) {g_actionProbeStage=1;g_actionProbeTick=ticks;}
+    // Press at GetKeys so a short press cannot disappear during a slow render.
+    // Release at any subsequent trap, including the menu's release-wait loop.
+    if(g_actionProbeStage==1 && trap==0xa976 && ticks-g_actionProbeTick>=30) {
+        aitdProfileStart();aitdInputInjectProbeKey(0x44,true);
+        g_actionProbeStage=2;g_actionProbeTick=ticks;
+    } else if(g_actionProbeStage==2 && ticks-g_actionProbeTick>=4) {
+        aitdInputInjectProbeKey(0x44,false);g_actionProbeStage=3;
+    }
+}
+#endif

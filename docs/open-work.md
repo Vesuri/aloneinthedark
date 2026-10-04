@@ -25,6 +25,9 @@ required.
 ## M3 Playable
 
 - **M3.4 Apple Events and misc Toolbox.**
+  - **M3.4a Action-menu performance.** Measure Enter-menu opening and navigation
+    on the 68030 Mac and Amiga, fix the dominant native costs, and verify
+    unchanged menu pixels and choices.
   - Measure and implement SONG 132 (`FIGHT`), reached at Core+$138C in the
     follow-up manual session. Require paired original/native loading, note-event
     and playback checks before repeating combat coverage; keep other unmeasured

@@ -1,5 +1,37 @@
 # Development
 
+## M3.4 action-menu measurement — 2026-10-04
+
+The latest owner run ends with SONG 132 (`FIGHT`), selector 0 at Core+$138C,
+10,280 ticks after in-game entry. Its status-1 trace is preserved in
+`tmp/m3-action/manual-fight-gdb.log`. This remains the existing FIGHT prerequisite.
+
+The Actions character preview is measured at Dan1+$F7A, the angle decrement
+in the routine beginning at +$EB4. Twenty successive updates with angles
+0 through -160 take 726 ticks on the original Mac IIx and 1,194 ticks on the
+reference Amiga 68030: 1.65 versus 1.01 updates per second, a 1.64× interval.
+Both ordinary-cost runs exit zero. The maintained observers reproduce 726 and
+1,192 ticks, with actor index 2 and the same rotation sequence on both machines. Small border blits and screen-publication
+counts are not preview frames. Opening and navigation timings remain unresolved.
+
+Skipping repeated housekeeping during original VBL callback queries takes
+1,186 ticks in the same native fixture, less than 1% improvement; that
+experimental runtime change is discarded. The menu performance issue remains
+open. Accepted logs are `tmp/m3-action/mac-actions2-timing.log` and
+`tmp/m3-action/plain-baseline3-gdb.log`; the maintained fixture logs are
+`maintained-mac-run.log` and `maintained-native-gdb.log` in the same directory.
+Diagnostic warp affects host duration,
+while the reported intervals use emulated 60 Hz ticks. Heavy probes are off.
+
+Reproduce with a clean `ACTIONPROBE=1` build and
+`GDBSCRIPT=action_menu.gdb EXTRA_ARGS=--warp_mode=1 amiga/diag_run.sh 240`.
+Run `tools/mac_action_menu.lua` with the documented headless Mac IIx setup and
+`-debug -debugger none -oslog`; generate its local jump-table metadata with
+`tools/mac_trap_map.py` as for the other original observers. Require a normal
+zero exit and the final PASS record from each observer. The native fixture
+presses Return when GetKeys reads it and releases at subsequent trap boundaries.
+
+
 ## M3.4 death fade — 2026-10-04
 
 The owner reports death followed by a loud stop. The captured service is
