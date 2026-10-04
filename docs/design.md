@@ -835,6 +835,13 @@ fixture remains open. See development.md for the M2 completion audit.
 | **M6 Completion** | Whole-game fidelity | Scripted and manual play-through of all floors and the ending; stairs regression; no loud stop anywhere |
 | **M7 Release** | Installer, WHDLoad, packaging | 1.0 LHA; installer and WHDLoad tests pass on the test matrix |
 
+Owner update 2026-10-05 authorizes autonomous completion of M3, M4 and M5.
+Use scripted ordinary game controls and positive game-state checks for M3
+acceptance, including a ten-minute first-floor route. Compare reached states,
+frames and audio events with the original Mac. Owner play-testing supplements
+this coverage and does not block development. The separate owner-deferred
+M1.7b2 rendered-system-window acceptance remains unchanged.
+
 ## 8. Workflow (strict, quick)
 
 1. **Take the top item** in [open-work.md](open-work.md). Do not start a second

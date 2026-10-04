@@ -38,8 +38,13 @@ required.
   - If a new Mac dialog is reached, measure its choices/results and provide an
     engine-style interface inside 320×200 under D5; unsupported paths stay loud.
 
-  *Done when* no loud stop occurs in a 10-minute manual session covering the first
-  floor.
+  - Add autonomous, state-keyed input routes for combat, death/restart, object
+    and action menus, room transitions and first-floor exploration. Verify each
+    route against the original Mac; do not count idle time as coverage.
+
+  *Done when* scripted sessions cover those routes for at least ten minutes of
+  emulated gameplay without a loud stop, with positive state checks and paired
+  Mac evidence. Owner play-testing can supplement this acceptance.
 - **M3.5 `newgame` and `saveload` regressions.**
   - Scripted key input in the Amiga runner.
   - PASS records keyed on game state: the room, and actor positions read from the
