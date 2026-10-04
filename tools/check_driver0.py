@@ -6,7 +6,8 @@ from check_driver22 import fields,one,ROOT
 from resource_fork import read_resource_fork
 
 def check(text,status,song=135,prefix=None):
-    measured={132:(236,61,902,[1,2,5,6,10,11,17,31]),
+    measured={131:(95,25,901,[0,4]),
+              132:(236,61,902,[1,2,5,6,10,11,17,31]),
               135:(285,73,905,[0,1,11,22,26,28,31]),
               136:(203,53,906,[0,1,11,13,23,28]),
               137:(237,62,907,[0,1,2,3,10,11,28])}

@@ -1,5 +1,21 @@
 # Development
 
+## M3.4 BDISK2 prerequisite — 2026-10-05
+
+The original natural death sequence reaches SONG 131. Its original loading and
+all 1,338 preflight events agree with the host decoder; complete native
+interrupt playback, effect priority and cleanup also pass, with all four
+runners exiting zero. See [the contract](sound-driver.md#bdisk2-music--2026-10-05).
+
+The ordinary native attic reproduction reaches QuickDraw `Line` at tick 10,594
+before this song; its named stop is preserved in
+`tmp/m3-death/native-observe-gdb.log` with runner status 1. The newly reached
+Line variant is now the next open prerequisite. The idle original observation
+identifies the death/menu ordering only; it does not count as ten-minute
+first-floor acceptance. A fresh route must pin the application A5 world while
+system callbacks are active; reading temporary CurA5 values produced discarded
+mode/room readings in that exploratory trace.
+
 ## M3.4 action-menu clicks — 2026-10-05
 
 A held click inside the Actions pane changes no choice on the original Mac.

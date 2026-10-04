@@ -1731,7 +1731,7 @@ static const char* startNativeSong(uint32_t argument)
     AitdProfileScope profile(kProfileAudio);
     if(!g_soundDriver.initialized)return "NOT INITIALIZED";
     if(g_song.ownedCount)return "SONG REPLACEMENT";
-    if(argument!=132 && argument!=135 && argument!=136 && argument!=137)return "SONG UNMEASURED";
+    if(argument!=131 && argument!=132 && argument!=135 && argument!=136 && argument!=137)return "SONG UNMEASURED";
     const char* error=0;MacHeap::Handle song=0,midi=0;
     if((error=ownSongResource(0x534f4e47UL,(uint16_t)argument,song)))return error;
     if((error=g_song.description.parse(*song,handleZone(song)->handleSize(song))))return error;

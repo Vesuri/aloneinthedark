@@ -25,6 +25,10 @@ required.
 ## M3 Playable
 
 - **M3.4 Apple Events and misc Toolbox.**
+  - **M3.4c Reached combat Line variant.** Natural native attic combat stops at
+    QuickDraw `Line` before death music. Capture its caller, pen/pattern, clip
+    and raster result against the original Mac; implement the measured variant
+    with complete pixel, register and pen-state checks before continuing.
   - Exercise death/restart and the remaining first-floor paths, measuring and
     implementing newly reached Apple Event or Window Manager contracts.
     Unsupported operations and states remain loud stops.

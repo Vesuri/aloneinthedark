@@ -4,6 +4,31 @@
 M2. M3.2 verifies first-room sound/music controls and driver shutdown. All-song
 coverage, gameplay effect variants and perceived audio quality remain M4.
 
+## BDISK2 music — 2026-10-05
+
+The original natural death sequence requests SONG 131 / MIDI 901 (`BDISK2`).
+Its loading contract has 95 service pairs, two instruments and nine samples:
+13 new resources plus the preceding four SMOD handles. Native loading owns 17.
+The original call returns 0/12 and preserves all 13 registers and SP.
+
+All 1,338 note/instrument/velocity/channel events and pulse/step timings match
+complete native interrupt playback. Delivery is within one music tick. The
+fixture verifies 180 ticks without traps, effect priority and full resource,
+heap and Paula cleanup. Original loading, original preflight, host and native
+runners all exit zero. Other unmeasured song IDs remain named stops.
+The natural Amiga death route currently reaches an unsupported combat Line
+variant before this track; the song fixture does not claim death/restart
+acceptance or the natural call's native register comparison.
+
+Reproduce with `AITD_GAMEPLAY_SONG=131 tools/mac_driver137.lua` and
+`AITD_SONG_EVENTS=131 tools/mac_song_events.lua` environment/script pairs on
+headless Mac. Clean-build `INTROSKIP=1 PROBES=1 SONGPROBE=1 SONGPROBEID=131`
+and observe `amiga/song131.gdb`. Check the four actual zero statuses with
+`tools/check_song131.py`. Local-only logs and captures are under `tmp/m3-death`:
+`mac-driver131.log`, `mac-song131-events.log`, `host-song-131.log`,
+`native-song131-gdb.log` and `song131-checked.log`. The original resource
+inputs belong in its `inputs` directory; do not commit them.
+
 ## FIGHT music — 2026-10-05
 
 SONG 132 / MIDI 902 uses eight instruments and 24 samples. The original natural

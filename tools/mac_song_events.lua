@@ -3,8 +3,8 @@ local mac=dofile('tools/mame_mac_input.lua');local meta=dofile('tmp/mac-trap-map
 local cpu=manager.machine.devices[':maincpu'];local mem=cpu.spaces.program
 local dbg=assert(manager.machine.debugger,'SONG EVENTS / DEBUGGER REQUIRED')
 local song=tonumber(os.getenv('AITD_SONG_EVENTS') or '135')
-assert(song==132 or song==135 or song==136,'SONG EVENTS / UNMEASURED SONG')
-local prefix=song==135 and 'tmp/song-events-' or song==132 and 'tmp/m3-fight/song132-events-' or 'tmp/m3-toolbox/song136-events-'
+assert(song==131 or song==132 or song==135 or song==136,'SONG EVENTS / UNMEASURED SONG')
+local prefix=song==131 and 'tmp/m3-death/song131-events-' or song==135 and 'tmp/song-events-' or song==132 and 'tmp/m3-fight/song132-events-' or 'tmp/m3-toolbox/song136-events-'
 local function ptr(a)return mem:read_u32(a)&0xffffff end
 local function driver_break(a)
  cpu.debug:bpset(a&0xffffff,'1','')
@@ -68,7 +68,7 @@ mac.run(function()
    return false
   end
   if song==135 or not window320() then assert(mac.mouse_to(256,274));mac.click(1) end
-  if song==136 or song==132 then
+  if song==136 or song==132 or song==131 then
    assert(mac.wait_for('320x200',window320,1800));mac.mouse_to(620,470)
    local function key(name)mac.wait(2);mac.key_down(name);mac.wait(4);mac.key_up(name);mac.wait(10)end
    mac.wait(3000);key('Space');mac.wait(120);key('Return');mac.wait(720)
