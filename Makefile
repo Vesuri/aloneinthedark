@@ -89,6 +89,7 @@ host-tests:
 	@python3 tools/check_regionrecord.py
 	@python3 tools/check_insetrgn.py
 	@python3 tools/check_copybits8_helper.py
+	@python3 tools/check_colormap8_cache.py
 	@python3 tools/test_driver_query_accounting.py
 	@python3 tools/check_cursor_visibility.py
 	@python3 tools/check_startup_fonts.py

@@ -1,36 +1,42 @@
 # Development
 
-## M3.4 action-menu measurement — 2026-10-04
+## M3.4 action-menu colour translation — 2026-10-05
 
-The latest owner run ends with SONG 132 (`FIGHT`), selector 0 at Core+$138C,
-10,280 ticks after in-game entry. Its status-1 trace is preserved in
-`tmp/m3-action/manual-fight-gdb.log`. This remains the existing FIGHT prerequisite.
+Repeated srcCopy calls rebuild an identical 256-entry colour translation for
+menu borders and preview updates. `ColorMap8Cache` keeps four owned maps keyed
+by source/destination pointers and ctSeeds, inverse-table pointer/resolution
+and table flags. Relocation and colour-environment changes miss the cache;
+invalid inputs still fail, and an incomplete build is never published. Equal
+seeds and the separately measured ditherCopy path retain their existing rules.
+The cache adds about 1.2 KiB of static storage and removes a 256-byte trap local.
 
-The Actions character preview is measured at Dan1+$F7A, the angle decrement
-in the routine beginning at +$EB4. Twenty successive updates with angles
-0 through -160 take 726 ticks on the original Mac IIx and 1,194 ticks on the
-reference Amiga 68030: 1.65 versus 1.01 updates per second, a 1.64× interval.
-Both ordinary-cost runs exit zero. The maintained observers reproduce 726 and
-1,192 ticks, with actor index 2 and the same rotation sequence on both machines. Small border blits and screen-publication
-counts are not preview frames. Opening and navigation timings remain unresolved.
+On the fixed-clock 68030, twenty Actions character-preview updates take
+579 ticks after the change versus 1,192 before; the original Mac takes 726.
+That is 2.07 versus 1.01 native updates per second, with 1.65 on the Mac.
+Return to the first angle decrement takes 127 native ticks versus 231 before
+and 106 on Mac (2.12/3.85/1.77 seconds). This is the first-preview boundary,
+not an independent proof of when every menu pixel reaches the display.
+The comparison uses ordinary-cost builds, emulated 60 Hz ticks, actor index 2
+and the identical 0 through -160 rotation sequence. Diagnostic warp changes
+only host duration. The completed 21st preview matches all 64,000 Mac viewport
+pixels exactly using direct video memory and the hardware palette.
 
-Skipping repeated housekeeping during original VBL callback queries takes
-1,186 ticks in the same native fixture, less than 1% improvement; that
-experimental runtime change is discarded. The menu performance issue remains
-open. Accepted logs are `tmp/m3-action/mac-actions2-timing.log` and
-`tmp/m3-action/plain-baseline3-gdb.log`; the maintained fixture logs are
-`maintained-mac-run.log` and `maintained-native-gdb.log` in the same directory.
-Diagnostic warp affects host duration,
-while the reported intervals use emulated 60 Hz ticks. Heavy probes are off.
-
-Reproduce with a clean `ACTIONPROBE=1` build and
+Reproduce after creating `tmp/m3-action`: clean-build `ACTIONPROBE=1`, then
 `GDBSCRIPT=action_menu.gdb EXTRA_ARGS=--warp_mode=1 amiga/diag_run.sh 240`.
-Run `tools/mac_action_menu.lua` with the documented headless Mac IIx setup and
-`-debug -debugger none -oslog`; generate its local jump-table metadata with
-`tools/mac_trap_map.py` as for the other original observers. Require a normal
-zero exit and the final PASS record from each observer. The native fixture
-presses Return when GetKeys reads it and releases at subsequent trap boundaries.
+Run `tools/mac_action_menu.lua` with the documented headless Mac IIx setup,
+`-debug -debugger none -oslog` and local jump-table metadata from
+`tools/mac_trap_map.py`. Preserve the native observer log and run
+`tools/check_action_menu.py` with both actual zero statuses. Accepted captures
+and logs are `cache-capture-gdb.log`, `mac-capture-run.log` and `cache-checked.log`
+under `tmp/m3-action`. Host sanitizer tests cover exact permutation bytes,
+seed/resolution/pointer invalidation, eviction and failed-build retry. The full
+host suite and integrated startup/Save/Load/Quit regression pass, including
+exact new-game/story frames, audio toggles, shutdown ABI and OS restoration.
+The preview speed fix does not establish navigation or first-floor acceptance.
 
+The latest owner stop remains SONG 132 (`FIGHT`), selector 0 at Core+$138C,
+10,280 ticks after in-game entry; its status-1 trace is preserved in
+`tmp/m3-action/manual-fight-gdb.log`. It remains an open prerequisite.
 
 ## M3.4 death fade — 2026-10-04
 

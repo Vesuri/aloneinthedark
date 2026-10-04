@@ -16,6 +16,7 @@
 #include "PolygonRecord.h"
 #include "PolygonRegion.h"
 #include "CopyBits8.h"
+#include "ColorMap8Cache.h"
 #include "PictureRecord8.h"
 #include "CursorVisibility.h"
 #include "RegionRows.h"
@@ -4544,7 +4545,8 @@ static bool copyPortBits8(const uint8_t* sourceBitmap,const uint8_t* destination
         ++g_pageProfile[3];g_pageProfile[10]=read32(source->colorTable);g_pageProfile[11]=read32(destinationColors);
     }
 #endif
-    uint8_t colors[256];const uint8_t* remap=0;
+    static ColorMap8Cache colorMapCache;
+    const uint8_t* remap=0;
     // The save-slot thumbnail requests ditherCopy. Its indexed colour tables
     // are identical: no quantization or dithering is required. Other dither
     // colour environments remain unsupported until measured.
@@ -4562,13 +4564,11 @@ static bool copyPortBits8(const uint8_t* sourceBitmap,const uint8_t* destination
         if(window && (!s_mainDeviceITableValid || read32(inverse)!=read32(destinationColors))
            && !makeITable(0,0,4))return false;
         if(!inverse || read32(inverse)!=read32(destinationColors))return false;
-        for(uint16_t i=0;i<256;++i) {
-            const uint8_t* entry=ct+8+uint32_t(i)*8;uint16_t index;
-            if((read16(ct+4)==0 && read16(entry)!=i)
-               || !GWorld8::colorIndex(destinationColors,inverse,entry+2,index))return false;
-            colors[i]=uint8_t(index);
-        }
-        remap=colors;
+        bool hit;
+        if(!colorMapCache.map(ct,destinationColors,inverse,remap,hit))return false;
+#ifdef AITD_PROBE
+        if(hit)++g_probeCopyMapHits;else ++g_probeCopyMapMisses;
+#endif
     }
     uint8_t drawn[8];
     if(!CopyBits8::copy(source->pixels,source->owner->handleSize(source->handles[1]),

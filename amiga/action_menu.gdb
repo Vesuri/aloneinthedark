@@ -31,12 +31,19 @@ commands
  if $count==1
   set $began=g_macTicks
  end
- printf "ACTION_PREVIEW n=%u tick=%u angle=%d actor=%d\n",$count,g_macTicks,*(short*)(s_currentA5-0xce86),*(short*)($a6+8)
  if $count==21
-  printf "PASS action timing elapsed=%u updates=20 hz=60 keyTick=%u\n",g_macTicks-$began,g_actionProbeTick
-  detach
-  quit 0
+  set $elapsed=g_macTicks-$began
  end
+ printf "ACTION_PREVIEW n=%u tick=%u angle=%d actor=%d\n",$count,g_macTicks,*(short*)(s_currentA5-0xce86),*(short*)($a6+8)
  continue
+end
+break *((unsigned long)s_segments[12].begin+0x10ee) if $count==21
+commands
+ silent
+ dump binary memory ../tmp/m3-action/native-menu-screen.bin s_colorScreen s_colorScreen+sizeof(s_colorScreen)
+ dump binary memory ../tmp/m3-action/native-menu-clut.bin s_windowManagerColors s_windowManagerColors+sizeof(s_windowManagerColors)
+ printf "PASS action timing elapsed=%u updates=20 hz=60 keyTick=%u firstTick=%u\n",$elapsed,g_actionProbeTick,$began
+ detach
+ quit 0
 end
 continue
