@@ -1,7 +1,8 @@
 # File Manager reference contract
 
-**Status, 2026-10-02:** Original PAK reads and measured file services pass M2; actual game save/load
-and immediate-reset durability remain M3.
+**Status, 2026-10-04:** Original PAK reads and measured file services pass M2.
+M3.2 verifies an original-game save named `m3test`, opening Load and clean
+shutdown. Restored gameplay state and immediate-reset durability remain M3.6.
 
 The checkpoint sections below preserve service-level evidence. References to
 an intermediate startup stop or a then-pending M2 gate are historical; current

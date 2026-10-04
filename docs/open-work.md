@@ -24,16 +24,6 @@ required.
 
 ## M3 Playable
 
-- **M3.2 Menus without a menu bar.**
-  - Keep menus as data and never draw the menu bar (D7).
-  - `MenuKey` maps Right-Amiga to the game's Command-key items. Rely on the game's
-    keys for everything M0.2 showed they cover.
-  - Measure and implement the quit path's driver selector 8 at Core+$1DCC,
-    then verify ExitToShell, file closure and complete OS/audio restoration.
-  - Complete the paired viewport/feedback checks for the keyboard fixture.
-
-  *Done when* load, save, quit, sound and music are reachable from the keyboard,
-  and nothing draws outside the viewport.
 - **M3.3 Replace Mac dialogs with in-game interfaces (D5).**
   - Owner update 2026-09-29: replace all Mac dialog presentation, including
     new-game and save/load. Do not shrink/reproduce Mac dialogs or controls.

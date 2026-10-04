@@ -420,7 +420,7 @@ endif
 ifeq ($(MENUPROBE),1)
 INGAME=1
 EXTRA_DEFINES += -DAITD_MENU_PROBE
-PROBE_SYMS += g_menuProbeStage g_menuProbeTick g_menuProbeKey g_menuProbeResult g_menuProbeExitOK
+PROBE_SYMS += g_menuProbeStage g_menuProbeTick g_menuProbeKey g_menuProbeResult g_menuProbeExitOK g_menuFeedbackStage g_menuFeedbackText g_menuFeedbackLength
 endif
 ifeq ($(GAMEINPUT),1)
 INGAME=1

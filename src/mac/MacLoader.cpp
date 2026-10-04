@@ -50,9 +50,14 @@ extern "C" void aitdDriverClockProbe();
 
 extern "C" {
 #ifdef AITD_MENU_PROBE
+extern volatile uint16_t g_menuProbeStage;
 volatile uint16_t g_menuProbeKey=0;
 volatile uint32_t g_menuProbeResult=0;
 __attribute__((noinline)) void aitdMenuKeyCheckpoint() { __asm__ volatile("nop" ::: "memory"); }
+volatile uint16_t g_menuFeedbackStage=0,g_menuFeedbackLength=0;
+volatile uint32_t g_menuFeedbackText=0;
+__attribute__((noinline)) void aitdMenuFeedbackCheckpoint() { __asm__ volatile("nop" ::: "memory"); }
+static bool s_menuFeedbackPending=false;
 #endif
 #ifdef AITD_GAME_INPUT
 volatile uint32_t g_gameInputTraps[8]={};
@@ -6083,6 +6088,11 @@ static void presentMacRuntime()
     if(result==-3) {loaderStop("CURSOR PALETTE",0);showLoaderStop();}
     if(result<0) {loaderStop("DISPLAY INPUT",0);showLoaderStop();}
     if(result>0) {s_screenDirty=false;s_pixelsDirty=false;s_dirtyRectCount=0;}
+#ifdef AITD_MENU_PROBE
+    if(result>0 && s_menuFeedbackPending) {
+        s_menuFeedbackPending=false;aitdMenuFeedbackCheckpoint();
+    }
+#endif
 }
 
 #ifdef AITD_SCENE_FRAME_BATCH
@@ -7457,6 +7467,18 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
                 if(!g_soundDriver.initialized)driverStop="NOT INITIALIZED";
                 else releaseNativeSong(); // Original +$3F18: song ownership only.
             }
+            else if(selector==8) {
+                if(!g_soundDriver.initialized)driverStop="NOT INITIALIZED";
+                else {
+                    // Original +$3F8A closes playback and releases all driver
+                    // sample/storage ownership. The game disposes the entry
+                    // handle itself immediately after this call returns.
+                    releaseNativeSong();
+                    for(uint16_t i=0;i<2;++i)stopNativeEffect(i);
+                    for(uint16_t i=0;i<4;++i)quiescePaulaChannel(i);
+                    g_soundDriver.initialized=0;scratch=1;
+                }
+            }
             else if(selector==4) {
                 // The supported format-0 MIDI has one track in original slot 0.
                 // Status follows that track, not any remaining Paula release tail.
@@ -7471,7 +7493,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
             }
             else driverStop="SELECTOR";
             if(!driverStop) {
-                ++g_soundDriverCalls;regs[0]=selector==15 ? clockResult : driverResult;regs[1]=selector==0 ? 12 : selector==24 ? 1 : (selector==22 || selector==17 || selector==18 || selector==20 || selector==13 || selector==15 || selector==4 || selector==5 || selector==7) ? scratch : 0;
+                ++g_soundDriverCalls;regs[0]=selector==15 ? clockResult : driverResult;regs[1]=selector==0 ? 12 : selector==24 ? 1 : (selector==22 || selector==17 || selector==18 || selector==20 || selector==13 || selector==15 || selector==4 || selector==5 || selector==7 || selector==8) ? scratch : 0;
                 if(!inUserService && directDriverQuery) {
                     uint16_t ccr=read16(frame);
                     if(selector==15)ccr=(ccr&0xffe0)|SoundDriver::clockCCR(clockResult);
@@ -9035,6 +9057,20 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         GWorldSlot* world=gWorldForPort((uint8_t*)read32(s_qdThePort));
         if(world && drawGWorldText(*world,(const uint8_t*)read32(userStack+4),
                                   int16_t(read16(userStack+2)),int16_t(read16(userStack)))) {
+#ifdef AITD_MENU_PROBE
+            const uint8_t* text=(const uint8_t*)read32(userStack+4)+int16_t(read16(userStack+2));
+            uint16_t length=read16(userStack);
+            static const char* const expected[]={"", "Sound effects OFF", "Sound effects ON", "Music OFF", "Music ON"};
+            static const uint16_t lengths[]={0,17,16,9,8};
+            bool matches=g_menuProbeStage>=1 && g_menuProbeStage<=4
+                && length==lengths[g_menuProbeStage];
+            if(matches)for(uint16_t i=0;i<length;++i)
+                if(text[i]!=(uint8_t)expected[g_menuProbeStage][i]) {matches=false;break;}
+            if(matches) {
+                g_menuFeedbackStage=g_menuProbeStage;g_menuFeedbackText=(uint32_t)text;
+                g_menuFeedbackLength=length;s_menuFeedbackPending=true;
+            }
+#endif
             regs[0]=0;return 9;
         }
     }
@@ -9419,7 +9455,7 @@ extern "C" uint8_t* aitdUserServiceDispatch(uint8_t* parked)
     }
     if(driverSelector==15) {
         ccr=(ccr&0xffe0)|SoundDriver::clockCCR(read32(parked));
-    } else if(driverSelector==4 || driverSelector==5 || driverSelector==7) {
+    } else if(driverSelector==4 || driverSelector==5 || driverSelector==7 || driverSelector==8) {
         ccr=(ccr&0xffe0)|SoundDriver::songStatusCCR(read16(parked+2));
     } else if(!(trap&0x0800)) {
         ccr&=0xfff0;

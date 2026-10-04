@@ -6,7 +6,7 @@ Pascal labels and removes the `|command` suffix through SetMenuItemText. The
 port implements those record operations; the game's code still interprets and
 stores the commands. Menu rendering and Mac MDEF execution are not involved.
 
-## Gameplay keyboard route (M3.2 in progress)
+## Gameplay keyboard route (M3.2)
 
 The original keyboard run returns MENU 129/item 2 for Command-S, item 1 for
 Command-O and item 4 for Command-Q. The native Right-Amiga route returns the
@@ -17,8 +17,18 @@ The 68030 native fixture entered `m3test` and Return in the save prompt,
 returned to gameplay, opened Load and cancelled back to gameplay. The save
 created a 36,254-byte data fork containing that name and a thumbnail resource
 fork. This is an in-session save/Load-menu check; reset-and-load acceptance
-remains M3.6. Quit reaches Core+$1DCC driver selector 8, which remains a named
-stop. M3.2 remains open until that cleanup and the paired viewport audit pass.
+remains M3.6. Quit reaches Core+$1DCC driver selector 8 and then ExitToShell.
+The observer verifies preserved registers/stack, cleared audio DMA, released
+sample ownership, closed files, restored interrupt/DMA masks, restored OS View
+and removal of the Line-A hook.
+
+All four published ON/OFF feedback messages match the original Times glyphs,
+display RGB and horizontal centring. Captures contain different older queued
+messages, and the requested message can occupy different vertical slots;
+the checker pairs the same message rather than an equal-time queue snapshot.
+Every captured control/menu/feedback state preserves all pixels outside the
+320×200 viewport. DrawMenuBar remains a data-only no-op, and the display
+publisher validates and crops that viewport on every publication.
 
 The reached save path additionally needs PBCreate's standard version byte at
 offset 26 (27 is the open-permission byte), InsetRect, contained indexed
@@ -38,6 +48,31 @@ record with the native writer under address/undefined-behaviour sanitizers.
 The native keyboard fixture is `MENUPROBE=1 PROBES=1`; clean before changing
 these flags. It uses ordinary raw key events, including `m3test` plus Return,
 and never writes game flags or invokes original game functions directly.
+It waits for the requested game's feedback before advancing S/M actions;
+initial room setup can consume a key before the control loop is ready.
+
+The maintained keyboard pair is `tools/mac_menu_keyboard.lua` and
+`amiga/menu_keyboard.gdb`. Run the former with the documented headless Mac IIx
+command, debugger enabled, saving its output as `tmp/m3-menu/mac-keyboard.log`.
+It writes capture files in that directory. For the native run:
+
+```sh
+. amiga/env.sh
+mkdir -p tmp/m3-menu
+make -C amiga clean
+make -C amiga -j4 MENUPROBE=1 PROBES=1
+DIAG_AUDIO=1 EXTRA_ARGS=--warp_mode=0 GDBSCRIPT=menu_keyboard.gdb \
+  amiga/diag_run.sh 300 >tmp/m3-menu/native-final.log 2>&1
+```
+
+Preserve `amiga/.run/gdb-out.log` as `tmp/m3-menu/native-final-gdb.log`, then run
+`tools/check_menu_keyboard.py` with both logs and their actual exit statuses.
+The observer only succeeds after full restoration, and the checker rejects
+missing feedback captures, wrong menu results, changed pixels outside the
+viewport, incorrect glyphs/colours/centring or incomplete shutdown. Local
+accepted captures are `mac-keyboard.log`, `native-final-gdb.log` and
+`checked-final.log` in `tmp/m3-menu`. The fixture writes slot zero, named
+`m3test`, in its emulator test directory.
 
 ## Original contract
 

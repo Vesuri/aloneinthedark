@@ -1,7 +1,24 @@
 # Native SoundMusicSys driver
 
-**Status, 2026-10-02:** The native intro driver and complete reference song pass M2. All-song coverage,
-gameplay effect variants/toggles and perceived audio quality remain M4.
+**Status, 2026-10-04:** The native intro driver and complete reference song pass
+M2. M3.2 verifies first-room sound/music controls and driver shutdown. All-song
+coverage, gameplay effect variants and perceived audio quality remain M4.
+
+## Quit shutdown
+
+The normal original keyboard Quit route calls selector 8 at Core+$1DCC;
+Core+$1DC4:$1DD0 is `48780008206df9544e90588f`. Original driver+$54 dispatches
+to +$380 and +$3F8A, which closes playback, releases song/effect sample ownership
+and clears its storage pointers. Voice configuration remains unchanged. The
+game unlocks/disposes the driver entry handle itself after the call returns.
+
+The paired capture returns D0=0, D1=1 and CCR=4, preserving D2–D7/A0–A6 and SP.
+Native selector 8 stops the music timer, releases song allocations, stops/frees
+effect buffers, quiesces all Paula channels and marks the interface closed.
+The native observer checks every preserved register, unchanged configuration,
+zero audio DMA and no remaining native song/effect storage, then follows the
+original exit through complete OS restoration. Reproduce with the maintained
+[keyboard menu pair](menu-manager.md#gameplay-keyboard-route-m32).
 
 ## First-room music prerequisite — 2026-10-03
 

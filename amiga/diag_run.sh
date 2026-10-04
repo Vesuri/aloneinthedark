@@ -26,6 +26,12 @@ trap 'exit 130' INT
 trap 'exit 143' TERM
 # Extra diagnostic options, such as --warp_mode=1, precede pinned machine flags.
 EXTRA_ARGS="${EXTRA_ARGS:-}"
+audio_args=(--audio_driver=dummy)
+case "${DIAG_AUDIO:-0}" in
+  0) ;;
+  1) audio_args=() ;;
+  *) echo 'DIAG / INVALID AUDIO OPTION (use 0 or 1)' >&2; exit 2 ;;
+esac
 
 RUN=.run; DH0="$RUN/dh0"; DH1="$RUN/dh1"; GDBHOME="$RUN/gdbhome"
 mkdir -p "$DH0/s" "$DH1" "$RUN/state" "$RUN/logs" "$GDBHOME"
@@ -41,9 +47,10 @@ rm -f "$RUN"/state/*.uss
 : > "$RUN/gdb-out.log"
 
 fsuae_claim_port || exit 1
-# Silence host playback; emulated Paula/DMA remains active (as in Slicks).
+# Default to silent host playback; DIAG_AUDIO=1 keeps the normal audio driver.
+# Emulated Paula/DMA remains active in either mode.
 "$FSUAE" \
-  --audio_driver=dummy \
+  "${audio_args[@]}" \
   $EXTRA_ARGS "${AITD_MACHINE_ARGS[@]}" \
   --logs_dir="$PWD/$RUN/logs" --kickstart_file="$ROM" \
   --hard_drive_0="$DH0" --hard_drive_1="$DH1" \

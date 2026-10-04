@@ -1,8 +1,9 @@
 # Documentation
 
-Start with the [project README](../README.md). **M2 is complete; M3 is next.**
+Start with the [project README](../README.md). **M3.1 and M3.2 are complete;
+M3.3 is next.**
 Use [open work](open-work.md) for current status and the
-[M2 completion audit](development.md#m2-completion--2026-10-02) for evidence.
+[development checks](development.md) for evidence.
 Subsystem documents retain historical diagnostic checkpoints, explicitly
 separated from their current status. The M1.7b2 system-window rendered fixture
 remains deferred independently of M2.

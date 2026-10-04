@@ -1,5 +1,23 @@
 # Development
 
+## M3.2 keyboard menus — 2026-10-04
+
+Right-Amiga+S/O/Q returns the original game's Save/Load/Quit menu items. S/M
+reaches both sound/music choices; four published feedback messages match Mac
+glyphs, display colours and centring. The native 68030 run keeps audio on and
+warp off, saves `m3test`, opens/cancels Load and returns through Quit with files,
+interrupts, DMA, View and the Line-A hook restored. All captured states preserve
+pixels outside the viewport. The menu bar remains undrawn.
+
+Accepted paired logs are `tmp/m3-menu/mac-keyboard.log` and
+`native-final-gdb.log`, both with normal runner exit status zero;
+`checked-final.log` contains the maintained checker result. The [menu contract
+and reproduction](menu-manager.md#gameplay-keyboard-route-m32) describes the
+fixture, including its save slot and queued feedback snapshots. Gameplay
+restoration and reset durability remain M3.6. M3.3 dialogs are next.
+The full host suite, no-float/probe link audits and clean production `boot`
+also pass; the boot log is `tmp/m3-menu/production-boot.log`.
+
 ## M3.1 completion — 2026-10-04
 
 Carnby's first-room walk, Shift-run, Fight selection, kick and release pass
@@ -8,7 +26,7 @@ access is fixed; the keyboard handler now remains live through DOS windows.
 The native run uses audio and no warp. `window-core` verifies 27 keyboard
 checks plus the existing file/clock/Paula/display checks, and production `boot`
 passes after a clean build. Details and service-coverage boundaries are in
-[events.md](events.md). M3.2 menus are the next open milestone.
+[events.md](events.md).
 
 For the maintained gameplay fixture, create `tmp/m3-input`, clean-build with
 `GAMEINPUT=1`, and run `GDBSCRIPT=gameplay.gdb amiga/diag_run.sh 180`.

@@ -191,6 +191,7 @@ void aitdInputGameplay(uint32_t ticks)
 
 #ifdef AITD_MENU_PROBE
 extern "C" { volatile uint16_t g_menuProbeStage=0,g_menuProbeExitOK=0; volatile uint32_t g_menuProbeTick=0; }
+extern "C" { extern volatile uint16_t g_menuFeedbackStage; }
 extern "C" __attribute__((noinline)) void aitdMenuProbeCheckpoint()
 { __asm__ volatile("nop" ::: "memory"); }
 static const uint8_t s_menuProbeKeys[]={0,0x21,0x21,0x37,0x37,0x21,0x37,0x18,0x45,0x10};
@@ -214,12 +215,20 @@ void aitdInputMenuProbe(uint32_t ticks)
     if(!g_menuProbeStage) {
         if(elapsed<300)return;
     } else if(s_menuProbeHeld) {
-        if(elapsed>=8) {menuProbeKey(false);g_menuProbeTick=ticks;}
+        // S/M are polled as key levels by the game. Hold them across a
+        // complete slow scene frame; menu equivalents use queued key events.
+        if(elapsed>=(g_menuProbeStage<=4 ? 60 : 8)) {menuProbeKey(false);g_menuProbeTick=ticks;}
         return;
     } else if(g_menuProbeStage==6 && s_menuProbeTextIndex<6) {
         if(elapsed<8)return;
         ++s_menuProbeTextIndex;g_menuProbeTick=ticks;menuProbeKey(true);return;
     } else if(elapsed<90)return;
+    else if(g_menuProbeStage<=4 && g_menuFeedbackStage!=g_menuProbeStage) {
+        // Initial room setup can consume a key before its control loop is
+        // ready. Retry ordinary input until the game's own feedback confirms
+        // this action, instead of advancing into an unfinished previous call.
+        g_menuProbeTick=ticks;menuProbeKey(true);return;
+    }
     ++g_menuProbeStage;g_menuProbeTick=ticks;
     aitdMenuProbeCheckpoint();
     menuProbeKey(true);

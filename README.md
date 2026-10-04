@@ -11,10 +11,16 @@ and Toolbox layer are carried over from Vette!; see
 
 ## Current state
 
+**M3.2 (keyboard menus) is complete.** Right-Amiga+S/O/Q reaches Save, Load and
+Quit; S/M toggles sound effects and music. The save-name prompt accepts text,
+Quit restores the OS and audio hardware, and no menu bar is drawn. Paired Mac
+checks verify menu results, visible feedback and viewport bounds. Dialog
+replacement is the next milestone, M3.3.
+
 **M3.1 (first-room controls) is complete.** On the 68030, New Game reaches
 Carnby's attic; walking, Shift-running and fighting match the original Mac's
 animation states. Held keys survive disk access. `INGAME=1` skips boot scenes
-for testing; menus, dialogs and broader gameplay remain open.
+for testing; dialogs and broader gameplay remain open.
 
 **M2 (startup to intro) is complete.** On the baseline A1200/68020, the original
 startup, full intro, menu and automatic demo run successfully. All nine demo
