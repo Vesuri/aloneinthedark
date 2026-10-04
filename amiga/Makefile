@@ -336,6 +336,7 @@ PROBE_SYMS = g_macBookFrameActive g_macBookFramesBegun g_macBookFramesCompleted 
              g_blockMoveCount g_trapManager g_trapRoutine
 PROBE_SYMS += $(PROBE_SYMS_AGA) $(PROBE_SYMS_FILE) $(PROBE_SYMS_FILEWRITE) $(PROBE_SYMS_RESOURCEEXIT)
 PROBE_SYMS += $(PROBE_SYMS_AE) $(PROBE_SYMS_SONG) $(PROBE_SYMS_CLOCK) g_defaultPalette g_appleEventHandlers g_soundDriver g_soundDriverHandle g_soundDriverCalls g_song g_effects g_effectStarts g_effectStops g_effectStatusCalls
+PROBE_SYMS += g_appleLaunchState g_appleCallbackDepth g_appleLaunchTick g_appleLaunchDelivered
 PROBE_SYMS += g_overlayChainVerified g_overlaySourceReads g_overlaySourceBytes g_overlaySourceMax g_overlayRuntimeReads g_overlayRuntimeBytes g_overlaySourceOpen g_overlaySourceCloseErrors
 PROBE_SYMS += g_resourceSourceReads g_resourceSourceBytes g_resourceSourceMax g_resourceRuntimeReads g_resourceRuntimeBytes g_resourceSourceOpen g_resourceSourceCloseErrors
 PROBE_SYMS += g_systemWindows g_windowFields g_systemWindowActive $(PROBE_SYMS_WINDOW)

@@ -1,7 +1,7 @@
 # Documentation
 
 Start with the [project README](../README.md). **M3.1–M3.3 are complete for
-the verified routes; M3.4 is next.**
+the verified routes; M3.4 is in progress.**
 Use [open work](open-work.md) for current status and the
 [development checks](development.md) for evidence.
 Subsystem documents retain historical diagnostic checkpoints, explicitly
@@ -31,7 +31,7 @@ remains deferred independently of M2.
 - [Game interfaces](game-interfaces.md): reached new-game/save/load UI, hidden chooser and dialog coverage.
 - [Sound driver](sound-driver.md): original startup contract and native D8 seam.
 - [Font Manager](font-manager.md): measured font lookup contract and reference probes.
-- [Apple Events](apple-events.md): original registration and table-state contracts.
+- [Apple Events](apple-events.md): registration, table-state and user-mode launch delivery contracts.
 - [Colour table](color-table.md): Mac/native GetCTable bytes, ownership and seed contracts.
 - [Palette](palette.md): Mac/native NewPalette records, copying and disposal contracts.
 - [Window titles](window-title.md): hidden title ownership, measured advances and paired effects.

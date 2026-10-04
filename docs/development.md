@@ -1,5 +1,28 @@
 # Development
 
+## M3.4 launch delivery — 2026-10-04
+
+The native no-document launch event now calls the original `oapp` handler in
+user mode after the service bridge has consumed its frame. Paired Mac/native
+observers verify event identity, Pascal arguments/result, ten preserved
+registers, single delivery and descriptor cleanup. The integrated 68030 run,
+with audio on and warp off, also exercises all five integer SANE operations
+(30 calls) and passes the existing keyboard Save/Load/Quit checks. See
+[the contract and reproduction](apple-events.md#launch-delivery-m).
+M3.4 remains open for the ten-minute manual first-floor session and any new
+services it reaches; external Apple Events and document descriptors are not
+implemented.
+The full host suite and all six maintained regression cases pass on
+`a4000-030-reference` (`tmp/m3-toolbox/host-tests.log` and `regression.log`),
+including resource-exit fault/cleanup phases, file writes, window-core and
+production boot. Existing preferences and saves are isolated and restored by
+the regression runner. Both link audits pass.
+The manual observer's preflight also passes launch delivery, integrated SANE
+and shutdown checks using the guest menu fixture (`manual-preflight-gdb.log`,
+runner exit zero). Its 3,759 elapsed ticks are not ten-minute manual acceptance.
+The prepared live-play build uses `INGAME=1 PROBES=1` without menu/gameplay
+fixtures, so only boot navigation is automatic.
+
 ## M3.3 reached game interfaces — 2026-10-04
 
 The normal Mac route from new game through typed save, overwrite, cancellation

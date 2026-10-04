@@ -203,3 +203,20 @@ aitd_call_file_completion:
     jsr (a1)
     movem.l (sp)+,d2-d7/a2-a6
     rts
+
+| Registered Apple Event handlers use Pascal (event, reply, refCon) and pop
+| twelve argument bytes, leaving a reserved OSErr word. Run only in user mode.
+    .globl aitd_call_apple_handler
+aitd_call_apple_handler:
+    movem.l d2-d7/a2-a6,-(sp)
+    move.l 48(sp),a1
+    move.l 64(sp),a5
+    clr.w -(sp)
+    move.l 54(sp),-(sp)
+    move.l 62(sp),-(sp)
+    move.l 70(sp),-(sp)
+    jsr (a1)
+    move.w (sp)+,d0
+    ext.l d0
+    movem.l (sp)+,d2-d7/a2-a6
+    rts

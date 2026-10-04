@@ -1,8 +1,67 @@
-# Apple Event startup registration
+# Apple Event registration and launch delivery
 
 M2.1c3c2c5b2c2b3a measures the original four calls and a separate table fixture.
-Native registration and lookup pass M2.1c3c2c5b2c2b3b acceptance. Event delivery remains
-M3.4; callbacks must run at user-mode safe points, never from an interrupt.
+Native registration and lookup pass M2.1c3c2c5b2c2b3b acceptance. Native launch
+delivery now calls the original handler at a user-mode safe point. M3.4 still
+requires the ten-minute manual first-floor session.
+
+## Launch delivery [M]
+
+Finder supplies one high-level EventRecord: what 23, class `aevt`, ID `oapp`
+in the `where` field, modifiers zero. The timestamp is platform-specific.
+Engine+$21E8 calls AEProcessAppleEvent (`$A816`, selector `$021B`), consuming
+the four-byte EventRecord pointer and returning OSErr zero in the reserved
+word and D0. D3–D7/A2–A6 survive. The registered Engine+$04EA handler takes
+Pascal `(event, reply, refCon)`, with refCon zero and the original A5. It clears
+the result word and returns with `rtd #12`; including the return PC, SP advances
+16 bytes. The event descriptor has type `aevt` and an owned data handle; the
+reply is `null` with no handle.
+
+The port queues this no-document launch event on `oapp` registration and
+delivers it once through the high-level-event mask (`$0400`). AEProcess validates
+the queued packet and prepares owned descriptors. After the service bridge has
+consumed its parked frame and cleared its active flag, the Pascal bridge calls
+the original handler in user mode. Ordinary nested traps may use the service
+bridge; recursive event processing remains unsupported. The result reaches the
+original caller and the descriptor handle is disposed before returning.
+
+Descriptor data is manager-owned opaque storage. The native launch payload holds
+its class/ID; it does not reproduce the Mac's private transport packet. The
+measured launch handler never inspects that payload. Document-open parameters,
+external event transport, quit delivery and unmeasured descriptor selectors
+remain unsupported named stops; this is not general Apple Event support.
+
+`tools/mac_apple_delivery.lua` observes unchanged original code and input.
+`amiga/apple_delivery.gdb` checks the same original caller/handler on a clean
+`MENUPROBE=1 PROBES=1` build, with `DIAG_AUDIO=1 EXTRA_ARGS=--warp_mode=0`.
+It also observes all five implemented SANE selectors in the integrated route
+(30 calls), and normal Save/Load/Quit restoration. Accepted captures are
+`tmp/m3-toolbox/mac-apple-delivery.log` and `native-apple-gdb.log`, with both
+runner exit statuses zero. Reproduce the paired check with:
+
+```sh
+python3 tools/check_apple_delivery.py tmp/m3-toolbox/mac-apple-delivery.log \
+  tmp/m3-toolbox/native-apple-gdb.log --reference-status 0 --native-status 0
+```
+
+The observer and checker require single delivery, exact Pascal stack cleanup,
+ten preserved registers, safe callback context, result zero, descriptor
+ownership, shutdown reset and positive SANE coverage. Timeouts never pass.
+
+For the outstanding manual acceptance, clean and build `INGAME=1 PROBES=1`
+without menu/gameplay input fixtures. Run:
+
+```sh
+DIAG_AUDIO=1 EXTRA_ARGS=--warp_mode=0 GDBSCRIPT=manual_play.gdb \
+  amiga/diag_run.sh 900
+```
+
+The read-only observer records `MANUAL_READY` after boot input has stopped,
+and elapsed Mac ticks when the owner quits (36,000 ticks is ten minutes).
+It stops immediately on a named failure. Its duration record does not prove
+first-floor coverage or rendered stability: those still need the owner's manual
+observations. Normal quit must also pass OS restoration checks. A timeout or an
+unattended run cannot close M3.4.
 
 ## Original calls [M]
 

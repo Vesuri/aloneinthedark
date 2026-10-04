@@ -635,6 +635,22 @@ struct FontManagerState {
 };
 static FontManagerState s_fontManager;
 AppleEventHandlers g_appleEventHandlers;
+// Native launch supplies the one no-document event observed from Finder.
+// Its descriptors are opaque manager-owned objects; no Mac packet format is
+// exposed. Other event sources/descriptor operations remain unsupported.
+extern "C" {
+volatile uint16_t g_appleLaunchState=0,g_appleCallbackDepth=0;
+volatile uint32_t g_appleLaunchTick=0,g_appleLaunchDelivered=0;
+int16_t aitd_call_apple_handler(uint32_t handler,uint32_t event,uint32_t reply,
+                               uint32_t refCon,uint32_t a5);
+}
+struct AppleLaunchDelivery {
+    uint32_t handler,refCon,a5;
+    uint8_t* result;
+    MacHeap::Handle data;
+    uint8_t event[8],reply[8];
+};
+static AppleLaunchDelivery s_appleDelivery;
 
 struct WindowManagerState {
     bool initialized;
@@ -6567,6 +6583,12 @@ static bool nextEvent(uint16_t mask, uint8_t* event)
     write16(event + 10, (uint16_t)s_mouseY);
     write16(event + 12, (uint16_t)s_mouseX);
     write16(event + 14, modifiers);
+    if(!transition && (mask&0x0400) && g_appleLaunchState==1) {
+        write16(event,23);write32(event+2,0x61657674UL); // 'aevt'
+        write32(event+6,g_appleLaunchTick);
+        write32(event+10,0x6f617070UL);write16(event+14,0); // 'oapp'
+        g_appleLaunchState=2;transition=true;
+    }
     return transition;
 }
 
@@ -7401,7 +7423,8 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
 #endif
     // These queries only inspect owned state. Keep allocation, effect changes
     // and every other driver operation on the existing user-mode path.
-    if(isUserService(trap) && !inUserService && !directDriverQuery)
+    if((isUserService(trap) || (trap==0xa816 && (uint16_t)regs[0]==0x021b))
+       && !inUserService && !directDriverQuery)
         return deferUserService(trap,builtin,frame,userStack);
 #ifdef AITD_SERVICE_PROBE
     if(inUserService && ((trap&0xfeff)==0xa0fc || trap==0xabfb)) {
@@ -7785,12 +7808,35 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     }
     if(trap==0xa816) {
         uint16_t selector=(uint16_t)regs[0];int16_t error;
+        if(selector==0x021b) {
+            uint8_t* event=(uint8_t*)read32(userStack);
+            if(!inUserService || g_appleCallbackDepth || g_appleLaunchState!=2
+               || !event || ((uint32_t)event&1) || read16(event)!=23
+               || read32(event+2)!=0x61657674UL || read32(event+6)!=g_appleLaunchTick
+               || read32(event+10)!=0x6f617070UL || read16(event+14))goto unsupportedTrap;
+            uint32_t handler=0,refCon=0;
+            if(!g_appleEventHandlers.lookup(0x61657674UL,0x6f617070UL,0,handler,refCon,error)
+               || error || !handler)goto unsupportedTrap;
+            MacHeap::Handle data=s_applicationZone.newHandle(8,true);
+            if(!data || !*data)goto unsupportedTrap;
+            write32(*data,0x61657674UL);write32(*data+4,0x6f617070UL);
+            s_appleDelivery.handler=handler;s_appleDelivery.refCon=refCon;
+            s_appleDelivery.a5=regs[13];s_appleDelivery.result=userStack+4;
+            s_appleDelivery.data=data;
+            write32(s_appleDelivery.event,0x61657674UL);
+            write32(s_appleDelivery.event+4,(uint32_t)data);
+            write32(s_appleDelivery.reply,0x6e756c6cUL);write32(s_appleDelivery.reply+4,0);
+            write16(userStack+4,0);regs[0]=0;g_appleLaunchState=3;
+            return 5;
+        }
         if(selector!=0x091f && selector!=0x0921)goto unsupportedTrap;
         uint8_t system=userStack[0]; // The padding byte is unspecified.
         uint32_t eventClass=read32(userStack+14),eventID=read32(userStack+10);
         if(selector==0x091f) {
             if(!g_appleEventHandlers.install(eventClass,eventID,read32(userStack+6),
                                              read32(userStack+2),system,error))goto unsupportedTrap;
+            if(!error && !system && eventClass==0x61657674UL && eventID==0x6f617070UL
+               && !g_appleLaunchState) {g_appleLaunchTick=g_macTicks;g_appleLaunchState=1;}
         } else if(selector==0x0921) {
             uint8_t* outHandler=(uint8_t*)read32(userStack+6);
             uint8_t* outRef=(uint8_t*)read32(userStack+2);
@@ -9444,6 +9490,19 @@ extern "C" uint8_t* aitdUserServiceDispatch(uint8_t* parked)
     // A completion may submit another file service using its own parked frame.
     g_macServiceActive=0;
     ++g_macServiceCompleted;
+    if(trap==0xa816 && selector==0x021b) {
+        // The parked return and all service-frame data are already local.
+        // Nested ordinary traps from the handler may now use the bridge.
+        ++g_appleCallbackDepth;
+        int16_t error=aitd_call_apple_handler(s_appleDelivery.handler,
+            (uint32_t)s_appleDelivery.event,(uint32_t)s_appleDelivery.reply,
+            s_appleDelivery.refCon,s_appleDelivery.a5);
+        --g_appleCallbackDepth;
+        write16(s_appleDelivery.result,(uint16_t)error);
+        write32(parked,(uint32_t)(int32_t)error);
+        s_applicationZone.disposeHandle(s_appleDelivery.data);s_appleDelivery.data=0;
+        g_appleLaunchState=4;++g_appleLaunchDelivered;
+    }
     if(completion) {
         if(g_macFileCompletionDepth>=8) {
             loaderStop("FILE COMPLETION DEPTH",0);showLoaderStop();
@@ -9533,6 +9592,8 @@ bool MacLoader::prepareResourceForks(const ResourceForks::Source& application,co
     s_sceneFrameQueued=0;
 #endif
     g_appleEventHandlers.reset();
+    g_appleLaunchState=g_appleCallbackDepth=0;g_appleLaunchTick=g_appleLaunchDelivered=0;
+    s_appleDelivery.data=0;
     for(uint16_t i=0;i<ResourceForks::kMaximumResources;++i) { s_resourceHandles[i]=0;s_resourceChanges[i]=0; }
     for(auto& touched:s_resourceMapTouched)touched=false;
     resourceResult(0);
@@ -9606,6 +9667,10 @@ bool MacLoader::releaseResourceForks()
     }
     s_files.reset();g_applicationFileRef=0;
     g_appleEventHandlers.reset();
+    if(s_appleDelivery.data) {
+        s_applicationZone.disposeHandle(s_appleDelivery.data);s_appleDelivery.data=0;
+    }
+    g_appleLaunchState=g_appleCallbackDepth=0;
     releaseNativeSong();
     releaseRuntimeAllocations();
 #ifdef AITD_PROBE

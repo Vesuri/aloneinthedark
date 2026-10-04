@@ -11,11 +11,14 @@ and Toolbox layer are carried over from Vette!; see
 
 ## Current state
 
+**M3.4 is in progress.** Launch Apple Event delivery calls the original handler
+in user mode, and all five implemented SANE operations pass integrated checks.
+The ten-minute manual first-floor session remains open.
+
 **M3.3 (game interfaces) is complete for the reached routes.** New game and
 save/load use the original engine UI inside 320×200. New-game and character-story
 frames match the Mac exactly; save overwrite invokes no Mac warning. The size
 chooser stays hidden and no menu bar is drawn. [Coverage and evidence](docs/game-interfaces.md).
-M3.4 gameplay service coverage is next.
 
 **M3.2 (keyboard menus) is complete.** Right-Amiga+S/O/Q reaches Save, Load and
 Quit; S/M toggles sound effects and music. The save-name prompt accepts text,

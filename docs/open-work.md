@@ -25,10 +25,9 @@ required.
 ## M3 Playable
 
 - **M3.4 Apple Events and misc Toolbox.**
-  - Complete and verify Apple Event delivery at user-mode safe points.
-  - Exercise the five integer-only SANE ops implemented at Engine $47C2–$4852
-    in the integrated session; unimplemented operations/states remain loud stops.
-  - The remaining Window Manager calls.
+  - Exercise the remaining first-floor paths, measuring and implementing newly
+    reached Apple Event or Window Manager contracts. Unsupported operations and
+    states remain loud stops.
   - If a new Mac dialog is reached, measure its choices/results and provide an
     engine-style interface inside 320×200 under D5; unsupported paths stay loud.
 
