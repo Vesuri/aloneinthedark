@@ -58,7 +58,10 @@ extern "C" bool aitdFileAsyncProbe() {
         if(!call(aitdProbeAsyncCloseWD))return false;
         if(!call(aitdProbeAsyncCloseWD,-51))return false;
         l(18,0);w(22,0x1234);l(48,3);if(!call(aitdProbeAsyncOpenWD,-35))return false;
-        named(":Alone Saved Games:.async-probe");if(!call(aitdProbeAsyncCreate))return false;
+        named(":Alone Saved Games:.async-probe");
+        // OpenWD left its process ID in bytes 28..31. Async PBHCreate has
+        // the same version byte at 31 as its synchronous counterpart.
+        pb[31]=0;if(!call(aitdProbeAsyncCreate))return false;
         named(":Alone Saved Games:.async-probe");if(!call(aitdProbeAsyncCreate,-48))return false;
         named(":Alone Saved Games:.async-probe");if(!call(aitdProbeAsyncHInfo))return false;
         named(":Alone Saved Games:.async-probe");l(32,0x54455354);l(36,0x41495444);if(!call(aitdProbeAsyncSetInfo))return false;

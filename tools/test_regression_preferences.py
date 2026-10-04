@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Preference isolation must survive successful and failed native probes."""
+"""Preference/save isolation must preserve existing files and metadata on failure."""
 from pathlib import Path
 import tempfile
 import unittest
@@ -7,6 +7,27 @@ from regression_preferences import isolated_preferences
 
 
 class Preferences(unittest.TestCase):
+    def test_saves_and_directory_metadata_survive_failure(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp); saves = root/'Saved Games'; saves.mkdir()
+            data = saves/'SAVE0.ITD'; data.write_bytes(b'existing save')
+            fork = saves/'SAVE0.ITD.rsrc'; fork.write_bytes(b'thumbnail')
+            sidecar = root/'Saved Games.uaem'; sidecar.write_bytes(b'directory metadata')
+            inode = data.stat().st_ino
+            with self.assertRaisesRegex(RuntimeError, 'probe failed'):
+                with isolated_preferences(saves, root/'archives', label='saves') as archive:
+                    self.assertFalse(saves.exists())
+                    self.assertFalse(sidecar.exists())
+                    saves.mkdir(); (saves/'scratch').write_bytes(b'partial')
+                    sidecar.write_bytes(b'fixture metadata')
+                    raise RuntimeError('probe failed')
+            self.assertEqual(data.read_bytes(), b'existing save')
+            self.assertEqual(data.stat().st_ino, inode)
+            self.assertEqual(fork.read_bytes(), b'thumbnail')
+            self.assertEqual(sidecar.read_bytes(), b'directory metadata')
+            self.assertEqual((archive/'fixture/scratch').read_bytes(), b'partial')
+            self.assertEqual((archive/'fixture.uaem').read_bytes(), b'fixture metadata')
+
     def test_existing_preferences_and_metadata_survive(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp); prefs = root/'prefs'; prefs.mkdir()

@@ -73,7 +73,10 @@ extern "C" bool aitdFileForkProbe() {
     for(uint16_t i=0;i<16;++i)if(bytes[i]!=header[i])return false;
     if(!close(rf))return false;
     // Leave both complete fork files for independent host byte/durability checks.
-    g_fileForkProbeStep=10;named("fork-durable.bin");if(!result(aitdProbeHCreate(pb)))return false;
+    g_fileForkProbeStep=10;named("fork-durable.bin");
+    // GetEOF reused bytes 28..31 for the prior resource-fork length. PBHCreate
+    // takes its file version at 31; supply version zero explicitly.
+    pb[31]=0;if(!result(aitdProbeHCreate(pb)))return false;
     named("fork-durable.bin",6,3);if(!result(aitdProbeHOpen(pb)))return false;df=get(24)>>16;
     named("fork-durable.bin",6,3);if(!result(aitdProbeHOpenRF(pb)))return false;rf=get(24)>>16;
     if(!transfer(df,true,data,4) || !transfer(rf,true,resource,6) || !close(df) || !close(rf))return false;
