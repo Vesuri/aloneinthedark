@@ -1,7 +1,9 @@
 # Fixed screen-size selection
 
-**Status, 2026-10-02:** The fixed 320×200 startup path passes M2. Broader dialog replacements remain
-M3.3.
+**Status, 2026-10-04:** The fixed 320×200 startup path passes M2. M3.3 verifies
+that reached new-game/save/load interfaces are engine-drawn, with this chooser
+hidden. Newly reached Mac dialogs require D5 replacements during broader gameplay
+coverage; see [game interfaces](game-interfaces.md).
 
 The checkpoint sections below preserve service-level evidence. References to
 an intermediate startup stop or a then-pending M2 gate are historical; current

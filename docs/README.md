@@ -1,7 +1,7 @@
 # Documentation
 
-Start with the [project README](../README.md). **M3.1 and M3.2 are complete;
-M3.3 is next.**
+Start with the [project README](../README.md). **M3.1–M3.3 are complete for
+the verified routes; M3.4 is next.**
 Use [open work](open-work.md) for current status and the
 [development checks](development.md) for evidence.
 Subsystem documents retain historical diagnostic checkpoints, explicitly
@@ -28,6 +28,7 @@ remains deferred independently of M2.
 - [Screen choice](screen-choice.md): hidden fixed-size selection and original contracts.
 - [SANE positioning](sane.md): integer-only arithmetic, original inputs and verification.
 - [Menu records](menu-manager.md): original counts, labels and native mutations.
+- [Game interfaces](game-interfaces.md): reached new-game/save/load UI, hidden chooser and dialog coverage.
 - [Sound driver](sound-driver.md): original startup contract and native D8 seam.
 - [Font Manager](font-manager.md): measured font lookup contract and reference probes.
 - [Apple Events](apple-events.md): original registration and table-state contracts.

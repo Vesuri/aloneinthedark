@@ -11,16 +11,21 @@ and Toolbox layer are carried over from Vette!; see
 
 ## Current state
 
+**M3.3 (game interfaces) is complete for the reached routes.** New game and
+save/load use the original engine UI inside 320×200. New-game and character-story
+frames match the Mac exactly; save overwrite invokes no Mac warning. The size
+chooser stays hidden and no menu bar is drawn. [Coverage and evidence](docs/game-interfaces.md).
+M3.4 gameplay service coverage is next.
+
 **M3.2 (keyboard menus) is complete.** Right-Amiga+S/O/Q reaches Save, Load and
 Quit; S/M toggles sound effects and music. The save-name prompt accepts text,
 Quit restores the OS and audio hardware, and no menu bar is drawn. Paired Mac
-checks verify menu results, visible feedback and viewport bounds. Dialog
-replacement is the next milestone, M3.3.
+checks verify menu results, visible feedback and viewport bounds.
 
 **M3.1 (first-room controls) is complete.** On the 68030, New Game reaches
 Carnby's attic; walking, Shift-running and fighting match the original Mac's
 animation states. Held keys survive disk access. `INGAME=1` skips boot scenes
-for testing; dialogs and broader gameplay remain open.
+for testing; broader gameplay remains open.
 
 **M2 (startup to intro) is complete.** On the baseline A1200/68020, the original
 startup, full intro, menu and automatic demo run successfully. All nine demo
@@ -58,8 +63,9 @@ for the remaining scope and [development](docs/development.md) for evidence.
 The original code uses 68020 instructions and 256-color graphics, so the target
 is an AGA Amiga with a 68020 or better and, provisionally, 4 MB of fast RAM (the
 original asks for 3 MB). The port supports only the 320×200 low-resolution
-mode. Mac dialogs and the menu bar will not be drawn; game choices such as
-new-game and save/load use replacement in-game interfaces.
+mode. Mac dialogs and the menu bar are not drawn on the verified route;
+new-game and save/load reuse the original engine interfaces. Newly reached
+Mac dialogs must receive an in-game replacement.
 
 No original game code or data, Kickstart image or WHDLoad binary is
 distributed. You need your own copy of the original release.

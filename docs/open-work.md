@@ -24,23 +24,13 @@ required.
 
 ## M3 Playable
 
-- **M3.3 Replace Mac dialogs with in-game interfaces (D5).**
-  - Owner update 2026-09-29: replace all Mac dialog presentation, including
-    new-game and save/load. Do not shrink/reproduce Mac dialogs or controls.
-  - Reuse existing engine interfaces where available; otherwise provide an
-    in-game interface inside 320×200. Preserve choices, text input, cancellation
-    and resulting actions through measured item/service contracts.
-  - Retain hidden compatibility state where original callers need it. DLOG 1000
-    remains automatic and invisible under D4; no Mac menu bar under D7.
-
-  *Done when* new-game, save-warning, save/load and every reached Mac dialog
-  have replacements entirely inside 320×200, choices/results match the reference,
-  and frame pairs prove no Mac dialog presentation or menu bar is drawn.
 - **M3.4 Apple Events and misc Toolbox.**
   - Complete and verify Apple Event delivery at user-mode safe points.
   - Exercise the five integer-only SANE ops implemented at Engine $47C2–$4852
     in the integrated session; unimplemented operations/states remain loud stops.
   - The remaining Window Manager calls.
+  - If a new Mac dialog is reached, measure its choices/results and provide an
+    engine-style interface inside 320×200 under D5; unsupported paths stay loud.
 
   *Done when* no loud stop occurs in a 10-minute manual session covering the first
   floor.

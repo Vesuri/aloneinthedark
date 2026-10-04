@@ -16,7 +16,7 @@ asks for 3,145,728 bytes preferred and minimum (flags `$58C0`). The credits
 | `PICT` | 25 | Intro frames, MacPlay logo, pause and book arrows |
 | `clut` | 3 | 256-entry "Game CLUT", its older version and the MacPlay logo CLUT |
 | `WIND` / `wctb` | 6 / 7 | Main window, 2× window, hidden-background variants, about |
-| `DLOG` / `DITL` / `ALRT` | 7 / 10 / 2 | New game, load/save, screen-size dialog, "No good monitors" |
+| `DLOG` / `DITL` / `ALRT` | 7 / 10 / 2 | Screen-size/monitor/error dialogs plus unobserved new-game, save-warning and castle-design templates; reached new-game/save/load UI is engine-drawn ([verification](game-interfaces.md)) |
 | `MENU` | 4 | Apple, File, Edit, Options |
 | `snd ` | 51 | 897,891 bytes of sampled sound and instruments |
 | `MIDI` / `SONG` / `INST` / `MDRV` / `SMOD` | 8 / 8 / 20 / 1 / 4 | Halestorm SoundMusicSys: songs, instruments, the driver and sound modifiers (below) |

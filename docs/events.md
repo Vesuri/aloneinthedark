@@ -2,7 +2,8 @@
 
 **Status, 2026-10-04:** Startup/menu events pass M2. First-room walking,
 Shift-running, Fight selection and kicking are verified on the 68030.
-Broader menus, dialogs and gameplay service coverage remain subsequent work.
+Keyboard menus and the reached game interfaces pass M3.2/M3.3. Broader gameplay
+service coverage remains M3.4; newly reached Mac dialogs require D5 replacements.
 
 ## First-room controls
 

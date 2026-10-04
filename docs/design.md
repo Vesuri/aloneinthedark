@@ -75,7 +75,8 @@ Measured facts the design depends on. Details are in
   - `GetKeys` is called once per frame (Dan1 JT166) to read directions and actions.
   - `WaitNextEvent` drives the main loop, with menus, `MenuKey`, Apple Events and
     `SystemClick`.
-  - Load and save go through File-menu dialogs (DLOG 200/201/212).
+  - File-menu Save/Load reaches the engine's own interfaces. DLOG 200/201/212
+    exists in the resource inventory but is not called on the verified route.
 - **Timing.**
   - `TickCount` is called at 27 sites, and `Ticks` is read directly for the game
     clock.
@@ -598,6 +599,10 @@ Native trap probes, host fragmentation tests and paired heap captures verify it:
     Logical positioning or menu-height state does not authorize rendering.
   - Verify actions against the Mac reference. Visual differences replacing Mac
     presentation are intentional under D5, and must be documented in frame pairs.
+  - The verified new-game/save/load/overwrite route already supplies engine UI;
+    no replacement controls are needed there. Its only Dialog Manager chooser
+    is DLOG 1000, suppressed under D4. The resource-only save warning is not
+    shown on overwrite. See [reached interfaces and limits](game-interfaces.md).
   - StandardFile (`Pack3`) appears only in unreached code [M]. M0.2 observed
     zero direct calls through new game, ESC save, Command-S/Command-O and quit.
     Those paths use the engine UI; this does not prove error paths cannot call it.

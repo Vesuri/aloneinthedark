@@ -1,5 +1,21 @@
 # Development
 
+## M3.3 reached game interfaces — 2026-10-04
+
+The normal Mac route from new game through typed save, overwrite, cancellation
+and reload invokes only the startup size dialog. Native new-game and character
+story match all 64,000 viewport pixels; Save/Load retain engine artwork and
+input, with no Mac dialog presentation. The 68030 observer keeps audio on and
+warp off and requires complete OS restoration. Resource-only new-game and
+save-warning templates are not reached interfaces. [Contracts, reproduction
+and coverage limits](game-interfaces.md) distinguish this from M3.6 reload and
+durability acceptance. M3.4 is next.
+The full maintained regression suite passes on `a4000-030-reference` in
+`tmp/m3-dialog/regression-final.log`, including file-write, window-core and
+production boot. Five save/preference isolation checks and both link audits
+pass. The paired checker also rejects missing positive controls, nonzero runner
+status, an added alert and altered viewport pixels.
+
 ## M3.2 keyboard menus — 2026-10-04
 
 Right-Amiga+S/O/Q returns the original game's Save/Load/Quit menu items. S/M
@@ -14,7 +30,7 @@ Accepted paired logs are `tmp/m3-menu/mac-keyboard.log` and
 `checked-final.log` contains the maintained checker result. The [menu contract
 and reproduction](menu-manager.md#gameplay-keyboard-route-m32) describes the
 fixture, including its save slot and queued feedback snapshots. Gameplay
-restoration and reset durability remain M3.6. M3.3 dialogs are next.
+restoration and reset durability remain M3.6.
 The full host suite, no-float/probe link audits and clean production `boot`
 also pass; the boot log is `tmp/m3-menu/production-boot.log`.
 
@@ -126,13 +142,15 @@ Run it with `amiga/run.sh`. Clean-build without `INGAME=1` to restore full start
 release; the diagnostic runner's default audio is muted, so use the normal
 runner for listening.
 
-Each `amiga/regression.sh` case uses temporary preferences through
+Each `amiga/regression.sh` case uses temporary preferences and saves through
 `tools/regression_preferences.py`. Existing preferences are moved outside the
-emulated drive and restored when the case ends, including failure. Probe-created
-preferences are retained under `.run/regression-prefs-*/fixture` for diagnosis.
+emulated drive and restored when the case ends, including failure. Existing
+save data, resource forks and directory metadata are preserved too. Probe-created
+directories are retained under `.run/regression-{prefs,saves}-*/fixture` for diagnosis.
 This prevents an early boot checkpoint's incomplete resource fork from poisoning
 the next case, and lets the file-write fixture start with its required absent
-preferences directory without deleting existing files.
+preferences directory without deleting existing files. Save isolation also
+keeps gameplay saves from changing the file-index fixture's expected catalog.
 Always clean when changing build flags or shared headers. Every link runs two audits:
 `no-float-audit` (no libgcc floating-point helpers) and `probe-audit` (every
 debugger-read global survives `--gc-sections`). C/C++ uses
