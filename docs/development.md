@@ -1,5 +1,15 @@
 # Development
 
+## M3.4 FIGHT music — 2026-10-05
+
+The next reached music prerequisite passes its paired original/native contract
+and complete 1,206-event playback. The native natural attic request preserves
+all 13 registers, returns 0/12 and owns the expected 38 resources/24 samples.
+The full fixture proves interrupt progress without traps, effect priority and
+cleanup. All runners exit zero; the combined checker uses the FIGHT reference
+prefix (a preliminary check accidentally used MONSTER and was rejected).
+See [the contract and reproduction](sound-driver.md#fight-music--2026-10-05).
+
 ## M3.4 autonomous action navigation — 2026-10-05
 
 `ACTIONNAV=1` sends ordinary keyboard levels and VBI-owned pointer positions.
@@ -63,7 +73,7 @@ The preview speed fix does not establish navigation or first-floor acceptance.
 
 The latest owner stop remains SONG 132 (`FIGHT`), selector 0 at Core+$138C,
 10,280 ticks after in-game entry; its status-1 trace is preserved in
-`tmp/m3-action/manual-fight-gdb.log`. It remains an open prerequisite.
+`tmp/m3-action/manual-fight-gdb.log`. Its paired acceptance is recorded above.
 
 ## M3.4 death fade — 2026-10-04
 
@@ -79,14 +89,14 @@ passes playback toggles, Save/Load, Quit ABI and complete OS restoration with
 the gain change; both runners exit zero. Native implementation and the
 reproduction procedure are in [the audio contract](sound-driver.md#death-fade-gain--2026-10-04).
 Full manual death/restart and ten-minute first-floor coverage remain pending;
-FIGHT music remains a separate prerequisite in open work.
+FIGHT music acceptance is recorded above.
 
 ## M3.4 reached MONSTER music — 2026-10-04
 
 The follow-up owner session reaches the next unsupported music request: SONG
 132 (`FIGHT`), selector 0 at Core+$138C, 6,850 ticks after in-game entry. Its
 status-1 trace is preserved in `tmp/m3-toolbox/manual-owner-retry1-gdb.log`.
-This is now an M3.4 prerequisite; the session does not close manual acceptance.
+Its paired acceptance is recorded above; the session does not close first-floor acceptance.
 
 The first owner-operated session stops at Core+$138C with `SOUND DRIVER /
 SONG UNMEASURED`, 5,420 ticks (about 90 seconds) after automatic in-game entry.

@@ -13,8 +13,8 @@ and Toolbox layer are carried over from Vette!; see
 
 **M3.4 is in progress.** Launch Apple Event delivery calls the original handler
 in user mode, and all five implemented SANE operations pass integrated checks.
-The reached `MONSTER` music track now passes paired note-event and native
-playback checks.
+The reached `MONSTER` and `FIGHT` music tracks pass paired note-event, natural
+gameplay loading and complete native interrupt-playback checks.
 The ten-minute scripted first-floor route remains open.
 The action-menu preview now runs at 2.07 updates/sec on the reference 68030
 versus 1.65 on Mac; keyboard choices, hover and cancellation pass paired checks.

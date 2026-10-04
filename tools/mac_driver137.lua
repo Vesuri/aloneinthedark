@@ -3,7 +3,7 @@ local mac=dofile('tools/mame_mac_input.lua');local meta=dofile('tmp/mac-trap-map
 local cpu=manager.machine.devices[':maincpu'];local mem=cpu.spaces.program
 local dbg=assert(manager.machine.debugger,'DRIVER0 / DEBUGGER REQUIRED')
 local song=tonumber(os.getenv('AITD_GAMEPLAY_SONG') or '137')
-assert(song==136 or song==137,'DRIVER0 / UNMEASURED SONG')
+assert(song==132 or song==136 or song==137,'DRIVER0 / UNMEASURED SONG')
 local function ptr(a)return mem:read_u32(a)&0xffffff end
 local function driver_break(a,condition)
  cpu.debug:bpset(a&0xffffff,condition,'')
@@ -83,7 +83,13 @@ mac.run(function()
   assert(mac.wait_for('320x200',window320,1800));mac.mouse_to(620,470)
   mac.wait(3000);key('Space');mac.wait(120);key('Return');mac.wait(720)
   key('Right Arrow');key('Return');mac.wait(240);key('Return');mac.wait(180)
-  key('Esc');mac.wait(song==136 and 7200 or 3600);error('GAMEPLAY SONG / NO COMPLETION')
+  key('Esc')
+  if song==132 then
+   mac.wait(6000);mac.key_down('F');mac.wait(60);mac.key_up('F')
+   mac.key_down('Space');mac.key_down('Up Arrow');mac.wait(120);mac.key_up('Up Arrow');mac.key_up('Space')
+   mac.wait(30000)
+  else mac.wait(song==136 and 7200 or 3600)end
+  error('GAMEPLAY SONG / NO COMPLETION')
  end)
  if not ok and not done then print('FAIL '..tostring(err));manager.machine:exit()end
 end)

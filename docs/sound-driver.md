@@ -4,6 +4,33 @@
 M2. M3.2 verifies first-room sound/music controls and driver shutdown. All-song
 coverage, gameplay effect variants and perceived audio quality remain M4.
 
+## FIGHT music — 2026-10-05
+
+SONG 132 / MIDI 902 uses eight instruments and 24 samples. The original natural
+Core+$138C call makes 236 service pairs, acquiring 34 resources and retaining
+four SMOD resources from the preceding song. Native loading owns all 38.
+Both return D0=0, D1=12 and preserve D2–D7/A0–A6 and SP. The native natural
+attic transition passes with exactly those resources and no original MDRV.
+Other unmeasured song IDs remain loud stops.
+
+All 1,206 original preflight events match host decoding and complete native
+playback by note, instrument, velocity, channel and order. Pulse/step timing
+also matches; interrupt delivery is within one music tick. The fixture verifies
+180 ticks of progress without trap calls, effect priority, natural completion
+and complete resource/Paula cleanup. This is one song's acceptance, not all M4.
+
+Use `AITD_GAMEPLAY_SONG=132 tools/mac_driver137.lua` and
+`AITD_SONG_EVENTS=132 tools/mac_song_events.lua` as environment/script pairs
+with the documented headless Mac command. Build the host resource decoder from
+`tools/test_song_inputs.cpp` using local-only inputs in `tmp/m3-fight/inputs`.
+Clean-build `INTROSKIP=1 PROBES=1 SONGPROBE=1 SONGPROBEID=132`, then observe with
+`amiga/song132.gdb`. `tools/check_song132.py` requires all four actual runner
+statuses to be zero and checks complete reference, host, loading and native logs.
+For the natural gameplay ABI, clean-build `INGAME=1 PROBES=1` and run
+`amiga/gameplay_fight.gdb`. Accepted captures are in `tmp/m3-fight`:
+`mac-driver132.log`, `mac-song132-events.log`, `host-song-132.log`,
+`native-song132-gdb.log` and `natural-gdb.log`. Every runner exits zero.
+
 ## Death fade gain — 2026-10-04
 
 Death reaches selector 19 at Core+$1F0A with gain 248. The original driver
@@ -31,7 +58,7 @@ immediately after hardware volume writes, and observes seven later note starts
 inheriting silence before releasing all song resources and audio DMA. AUDxVOL
 is write-only; debugger register readback is not used as volume evidence.
 This covers the gain contract, not the complete death/restart
-route or remaining FIGHT music loading.
+route.
 
 ## Reached MONSTER music prerequisite — 2026-10-04
 

@@ -25,10 +25,6 @@ required.
 ## M3 Playable
 
 - **M3.4 Apple Events and misc Toolbox.**
-  - Measure and implement SONG 132 (`FIGHT`), reached at Core+$138C in the
-    follow-up manual session. Require paired original/native loading, note-event
-    and playback checks before repeating combat coverage; keep other unmeasured
-    audio paths loud.
   - **M3.4a Action-menu pointer clicks.** Measure clicks within the Actions
     view against the original Mac, verify event handling, resulting choices and
     cancellation, and fix any reached responsiveness or service gaps.
