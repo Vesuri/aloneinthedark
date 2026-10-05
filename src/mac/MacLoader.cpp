@@ -7440,7 +7440,14 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         const uint8_t* actor=world-0xb292+160;
 #ifdef AITD_ROOM5_COMBAT
         const uint16_t enemyObject=62,healthVariable=57;
+#ifdef AITD_ROOM5_RETURN
+        const bool inRoom=read16(actor+0x30)==5 || read16(actor+0x30)==1;
+        aitdInputMeasureActivity(g_macTicks,read16(actor+0x3e),read16(actor+0x30),
+            read16(actor)==1 && read16(actor+2)==12 && read16(actor+0x2e)==1 &&
+            read16(actor+0x52)==1 && read16(world-0xd864)==1);
+#else
         const bool inRoom=read16(actor+0x30)==5;
+#endif
 #else
         const uint16_t enemyObject=35,healthVariable=40;
         const bool inRoom=read16(actor+0x30)==1 || read16(actor+0x30)==2;
@@ -7474,6 +7481,10 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         }
         if(vars && int16_t(read16(vars+healthVariable*2))<=0)objects|=2048;
         if(slot<0 && vars && !read16(vars+40) && int16_t(read16(vars+healthVariable*2))<=0 && read16(enemy+28)==0xffff && read16(enemy+30)==0xffff)objects|=8;
+#ifdef AITD_ROOM5_RETURN
+        if(read16(actor+0x30)==1)objects|=8192;
+        if(vars && read16(vars+180)==64)objects|=16384;
+#endif
         if(vars && read16(vars+180)==128)objects|=64;
         if(read16(world-0xd864)==1)objects|=256;
         if(vars && read16(vars+180)==16)objects|=512;

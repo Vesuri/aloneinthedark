@@ -36,6 +36,28 @@ Arbitrary-angle steering was rejected: both original and native bounded
 observers miss the requested turn condition. Retain the measured controller
 until a replacement is verified against the actual original controls.
 
+## Native room 5 return — 2026-10-05
+
+Clean-build `ROOM5RETURN=1`, then use `amiga/room5_return.gdb` and
+`tools/check_room5_return.py` with the original `mac_room5_return.lua` observer.
+The flag enables the measured combat prefix and a 26-phase continuation through
+Open/Search, wardrobe Search, the northern exit and a newly published manual
+hallway frame. The doorway approach starts farther inside the original measured
+alignment range, allowing for walking drift. Ordinary O retries are bounded and
+cannot advance until the real action state is 64; they do not set game variables.
+
+The fast pilot and fixed-clock 68030 observer/checker exit zero:
+`tmp/m3-room5-return/{fast,030}-transitions-{run,gdb,checked}.log`. Their captures
+are preserved in the corresponding evidence folders. The fixed 68030 retains
+12 health, inventory and enemy removal, with zero dropped input transitions and
+one delivered Open/Search event. Its conservative activity total is 5,156 ticks
+(85.93 seconds): 1,740 movement, 905 turning and 2,511 kicking, from 4,156 samples.
+The same binary has clean no-float and 167 data-symbol audits.
+
+The 68020 return remains unaccepted: enemy knockback moves the living hero into
+room 4, and the strict observer ends instead of counting an unmeasured route.
+This is an optional diagnostic, not completion of the ten-minute M3 gate.
+
 ## Original room 5 return and activity timing — 2026-10-05
 
 `tools/mac_room5_return.lua` extends the measured room 5 combat route with

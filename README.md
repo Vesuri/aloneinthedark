@@ -26,7 +26,8 @@ and equips it. Book Take, first-page Read and Escape return also pass paired
 state and original artwork/text checks on both CPUs. Full book navigation and
 normal completion also pass on both CPUs. Natural room 5 combat, enemy removal
 and restored living manual control pass paired Mac/68020/68030 checks.
-The ten-minute scripted first-floor route remains open.
+Post-combat wardrobe Search and hallway return also pass on the fixed 68030;
+the 68020 knockback route and ten-minute scripted first-floor gate remain open.
 The action-menu preview now runs at 2.07 updates/sec on the reference 68030
 versus 1.65 on Mac; keyboard choices, hover, clicks and cancellation pass paired checks.
 

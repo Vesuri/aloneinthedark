@@ -42,6 +42,9 @@ extern "C" { extern volatile uint16_t g_combatRouteStage; }
 void aitdInputCombat(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_t beta,uint16_t animation,uint16_t track,uint16_t objects,int16_t enemyX,int16_t enemyZ,bool ready);
 void aitdInputCombatEvent(uint16_t what,uint32_t message);
 #endif
+#ifdef AITD_ROOM5_RETURN
+void aitdInputMeasureActivity(uint32_t ticks,uint16_t animation,uint16_t room,bool ready);
+#endif
 #ifdef AITD_BOOK_PAGES
 void aitdInputBookPages(bool reading,uint16_t page,bool last,uint32_t ticks,bool completed);
 #endif

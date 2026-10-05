@@ -19,6 +19,9 @@ struct KeyEvent {
 static volatile KeyEvent s_events[32];
 static volatile uint8_t s_head, s_tail;
 static volatile uint8_t s_keyDown[128];
+#ifdef AITD_ROOM5_RETURN
+extern "C" { volatile uint32_t g_returnDroppedKeys=0,g_returnOpenEvents=0; }
+#endif
 
 static uint16_t currentModifiers()
 {
@@ -39,6 +42,10 @@ static void recordKey(uint8_t raw, bool down)
         s_events[s_head].rawAndUp = (uint8_t)(raw | (down ? 0 : 0x80));
         s_events[s_head].modifiers = currentModifiers();
         s_head = next;
+#ifdef AITD_ROOM5_RETURN
+    } else {
+        ++g_returnDroppedKeys;
+#endif
     }
 }
 
@@ -650,7 +657,17 @@ void aitdInputExplore(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_
         const uint32_t elapsed=ticks-g_exploreRouteTick;
         if(stage==39) {if(animation!=4 || track!=1 || elapsed<30)return;aitdInputInjectProbeKey(0x4c,true);}
         else if(stage==40) {if(x>3400)return;aitdInputInjectProbeKey(0x4c,false);}
-        else if(stage==41) {if(elapsed<30 || !exploreAligned(x,2720,2900,false,animation))return;aitdInputInjectProbeKey(0x4e,true);}
+        else if(stage==41) {
+#ifdef AITD_ROOM5_RETURN
+            // Start inside the measured doorway range far enough east to
+            // retain alignment after the south-facing walking animation.
+            const int16_t approachLow=2860;
+#else
+            const int16_t approachLow=2720;
+#endif
+            if(elapsed<30 || !exploreAligned(x,approachLow,2900,false,animation))return;
+            aitdInputInjectProbeKey(0x4e,true);
+        }
         else if(stage==42) {if(beta<496 || beta>528)return;aitdInputInjectProbeKey(0x4e,false);}
         else if(stage==43) {if(animation!=4 || elapsed<30)return;aitdInputInjectProbeKey(0x4c,true);}
         else if(stage==44) {if(z<200)return;aitdInputInjectProbeKey(0x4c,false);}
@@ -807,6 +824,31 @@ void aitdInputExplore(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_
 }
 #endif
 
+#ifdef AITD_ROOM5_RETURN
+extern "C" { volatile uint32_t g_activeGameplayTicks=0,g_activeMoveTicks=0,g_activeTurnTicks=0,g_activeKickTicks=0,g_activeGameplaySamples=0; }
+void aitdInputMeasureActivity(uint32_t ticks,uint16_t animation,uint16_t room,bool ready)
+{
+    static uint32_t previousTick=0;
+    static uint16_t previousRoom=0;
+    static uint8_t previousKind=0;
+    uint8_t kind=0;
+    if(ready) {
+        if((animation==254 || animation==256) && (s_keyDown[0x4c] || s_keyDown[0x4d]))kind=1;
+        else if((animation==257 || animation==258) && (s_keyDown[0x4e] || s_keyDown[0x4f]))kind=2;
+        else if(animation==262 && s_keyDown[0x40] && s_keyDown[0x4c])kind=3;
+    }
+    const uint32_t delta=ticks-previousTick;
+    // Conservative tick coverage: no idle, key-release waits or unsampled gaps.
+    if(kind && kind==previousKind && room==previousRoom && delta && delta<=2) {
+        g_activeGameplayTicks+=delta;++g_activeGameplaySamples;
+        if(kind==1)g_activeMoveTicks+=delta;
+        else if(kind==2)g_activeTurnTicks+=delta;
+        else g_activeKickTicks+=delta;
+    }
+    previousTick=ticks;previousRoom=room;previousKind=kind;
+}
+#endif
+
 #ifdef AITD_COMBAT_ROUTE
 extern "C" { volatile uint16_t g_combatRouteStage=0,g_combatFightEvent=0,g_combatSawEnemy=0,g_combatAttempts=1,g_combatAimHeading=0,g_combatKicks=0;
 volatile uint32_t g_combatRouteTick=0; }
@@ -822,6 +864,9 @@ void aitdInputCombatEvent(uint16_t what,uint32_t message)
     const uint16_t stage=25;
 #endif
     if(g_combatRouteStage==stage && what==3 && (message&255)=='f')g_combatFightEvent=1;
+#ifdef AITD_ROOM5_RETURN
+    if(g_combatRouteStage>=23 && what==3 && (message&255)=='o')++g_returnOpenEvents;
+#endif
 }
 extern "C" __attribute__((noinline)) void aitdInputCombatAimCheckpoint()
 { __asm__ volatile("nop" ::: "memory"); }
@@ -838,9 +883,21 @@ static uint8_t s_combatAttackState=0;
 void aitdInputCombat(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_t beta,uint16_t animation,uint16_t track,uint16_t objects,int16_t enemyX,int16_t enemyZ,bool ready)
 {
 #ifdef AITD_ROOM5_COMBAT
-    const uint16_t prefix=52,attackStage=21,terminal=23;
+    const uint16_t prefix=52,attackStage=21,
+#ifdef AITD_ROOM5_RETURN
+        terminal=48;
+#else
+        terminal=23;
+#endif
 #else
     const uint16_t prefix=64,attackStage=34,terminal=36;
+#endif
+#ifdef AITD_ROOM5_RETURN
+    if(g_combatRouteStage && g_combatRouteStage<terminal && !ready) {
+        for(uint8_t key=0x4c;key<=0x4f;++key)aitdInputInjectProbeKey(key,false);
+        aitdInputInjectProbeKey(0x40,false);aitdInputInjectProbeKey(0x18,false);
+        g_combatRouteStage=0xffff;aitdInputCombatCheckpoint();return;
+    }
 #endif
     if(g_exploreRouteStage!=prefix || !ready || g_combatRouteStage>=terminal)return;
     const uint16_t stage=g_combatRouteStage;
@@ -851,6 +908,54 @@ void aitdInputCombat(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_t
         aitdInputInjectProbeKey(0x44,false);aitdInputInjectProbeKey(0x18,false);aitdInputInjectProbeKey(0x23,false);
         g_combatRouteStage=0xffff;aitdInputCombatCheckpoint();return;
     }
+#ifdef AITD_ROOM5_RETURN
+    if(stage>=23) {
+        if(stage==23) {if(animation!=4 || track!=1)return;aitdInputInjectProbeKey(0x18,true);}
+        else if(stage==24) {if(elapsed<120)return;aitdInputInjectProbeKey(0x18,false);}
+        else if(stage==25) {
+            if(!(objects&16384)) {
+                // A command can arrive while the original frame is still busy.
+                // Retry ordinary O presses, bounded by the phase deadline; only
+                // the real Open/Search state permits movement to continue.
+                if(elapsed>=300) {
+                    const bool down=elapsed%300<120;
+                    if(aitdInputKeyDown(0x18)!=down)aitdInputInjectProbeKey(0x18,down);
+                }
+                return;
+            }
+            if(aitdInputKeyDown(0x18))aitdInputInjectProbeKey(0x18,false);
+            if(animation!=4 || elapsed<30)return;
+            if(beta>16 && beta<1008)aitdInputInjectProbeKey(0x4e,true);
+        }
+        else if(stage==26) {if(beta>16 && beta<1008)return;aitdInputInjectProbeKey(0x4e,false);}
+        else if(stage==27) {if(animation!=4 || elapsed<30)return;aitdInputInjectProbeKey(0x4c,true);}
+        else if(stage==28) {if(z>0)return;aitdInputInjectProbeKey(0x4c,false);}
+        else if(stage==29) {if(elapsed<30 || !exploreAligned(z,-280,-100,false,animation))return;aitdInputInjectProbeKey(0x4e,true);}
+        else if(stage==30) {if(beta<752 || beta>784)return;aitdInputInjectProbeKey(0x4e,false);}
+        else if(stage==31) {if(animation!=4 || elapsed<30)return;aitdInputInjectProbeKey(0x40,true);}
+        else if(stage==32) {if(elapsed<120)return;aitdInputInjectProbeKey(0x40,false);}
+        else if(stage==33) {if(animation!=4 || elapsed<120)return;aitdInputInjectProbeKey(0x4e,true);}
+        else if(stage==34) {if(beta>16 && beta<1008)return;aitdInputInjectProbeKey(0x4e,false);}
+        else if(stage==35) {if(animation!=4 || elapsed<30)return;aitdInputInjectProbeKey(0x4c,true);}
+        else if(stage==36) {if(z>-1500)return;aitdInputInjectProbeKey(0x4c,false);}
+        else if(stage==37) {if(animation!=4 || elapsed<30)return;aitdInputInjectProbeKey(0x4e,true);}
+        else if(stage==38) {if(beta<752 || beta>784)return;aitdInputInjectProbeKey(0x4e,false);}
+        else if(stage==39) {if(animation!=4 || elapsed<30)return;aitdInputInjectProbeKey(0x4c,true);}
+        else if(stage==40) {if(x>-2240)return;aitdInputInjectProbeKey(0x4c,false);}
+        else if(stage==41) {if(elapsed<30 || !exploreAligned(x,-2400,-2200,false,animation))return;aitdInputInjectProbeKey(0x4e,true);}
+        else if(stage==42) {if(beta>16 && beta<1008)return;aitdInputInjectProbeKey(0x4e,false);}
+        else if(stage==43) {if(animation!=4 || elapsed<30)return;aitdInputInjectProbeKey(0x40,true);}
+        else if(stage==44) {if(elapsed<120)return;aitdInputInjectProbeKey(0x40,false);}
+        else if(stage==45) {if(animation!=4 || elapsed<120)return;aitdInputInjectProbeKey(0x4c,true);}
+        else if(stage==46) {
+            // MacLoader readiness covers room 5 and the hallway; object bit 8192
+            // records the real room 1 transition, not an x/z threshold.
+            if(!(objects&8192))return;aitdInputInjectProbeKey(0x4c,false);s_combatFrames=scenes;
+        }
+        else if(stage==47) {if(animation!=4 || track!=1 || elapsed<30 || scenes<=s_combatFrames)return;}
+        g_combatRouteStage=stage+1;g_combatRouteTick=ticks;aitdInputCombatCheckpoint();return;
+    }
+#endif
 #ifdef AITD_ROOM5_COMBAT
     if(!stage) {
         if(!(objects&1) || !(objects&256) || animation!=4 || track!=1)return;
@@ -958,7 +1063,12 @@ void aitdInputCombat(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_t
                     aitdInputCombatAimCheckpoint();return;
                 }
             }
-            if(g_combatAttempts>=32) {g_combatRouteStage=0xffff;aitdInputCombatCheckpoint();return;}
+#ifdef AITD_ROOM5_RETURN
+            const uint16_t attemptLimit=64;
+#else
+            const uint16_t attemptLimit=32;
+#endif
+            if(g_combatAttempts>=attemptLimit) {g_combatRouteStage=0xffff;aitdInputCombatCheckpoint();return;}
             ++g_combatAttempts;aitdInputCombatAttackCheckpoint();
             aitdInputInjectProbeKey(0x40,true);aitdInputInjectProbeKey(0x4c,true);s_combatAttackState=1;s_combatAttackTick=ticks;return;
         }

@@ -24,6 +24,10 @@
 # basename — KEEP BASENAMES UNIQUE across the source trees), sources located via vpath.
 
 # Diagnostic feature flags must enable probes before conditional symbol groups.
+ifeq ($(ROOM5RETURN),1)
+ROOM5COMBAT=1
+EXTRA_DEFINES += -DAITD_ROOM5_RETURN
+endif
 ifeq ($(ROOM5COMBAT),1)
 SOUTHROOMS=1
 EXTRA_DEFINES += -DAITD_COMBAT_ROUTE -DAITD_ROOM5_COMBAT
@@ -462,6 +466,9 @@ PROBE_SYMS += g_bookPageStage g_bookPageTick g_bookPageIndex g_bookPageLast
 endif
 ifneq ($(filter 1,$(COMBATROUTE) $(ROOM5COMBAT)),)
 PROBE_SYMS += g_combatRouteStage g_combatRouteTick g_combatFightEvent g_combatSawEnemy g_combatAttempts g_combatAimHeading g_combatKicks
+endif
+ifeq ($(ROOM5RETURN),1)
+PROBE_SYMS += g_activeGameplayTicks g_activeMoveTicks g_activeTurnTicks g_activeKickTicks g_activeGameplaySamples g_returnDroppedKeys g_returnOpenEvents
 endif
 ifeq ($(HALLWAY),1)
 PROBE_SYMS += g_exploreAlignment
