@@ -24,6 +24,10 @@
 # basename — KEEP BASENAMES UNIQUE across the source trees), sources located via vpath.
 
 # Diagnostic feature flags must enable probes before conditional symbol groups.
+ifeq ($(SOUTHROOMS),1)
+HALLWAY=1
+EXTRA_DEFINES += -DAITD_SOUTH_ROOMS
+endif
 ifeq ($(SABERBREAK),1)
 SABERROUTE=1
 EXTRA_DEFINES += -DAITD_SABER_BREAK

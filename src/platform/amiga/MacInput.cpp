@@ -492,7 +492,9 @@ void aitdInputExplore(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_
     // The measured equipped-lamp standing animation satisfies release waits.
     if(animation==287)animation=4;
 #endif
-#ifdef AITD_SABER_BREAK
+#ifdef AITD_SOUTH_ROOMS
+    const uint16_t terminal=52;
+#elif defined(AITD_SABER_BREAK)
     static uint32_t s_exploreAttackTick=0;
     const uint16_t terminal=115;
 #elif defined(AITD_SABER_ROUTE)
@@ -521,6 +523,25 @@ void aitdInputExplore(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_
         if(floor!=1 || track!=1 || animation!=4 || ticks-g_exploreRouteTick<30 || scenes<=s_exploreFrames)return;
         g_exploreRouteStage=19;g_exploreRouteTick=ticks;aitdInputExploreCheckpoint();return;
     }
+#ifdef AITD_SOUTH_ROOMS
+    if(stage>=39) {
+        const uint32_t elapsed=ticks-g_exploreRouteTick;
+        if(stage==39) {if(animation!=4 || track!=1 || elapsed<30)return;aitdInputInjectProbeKey(0x4c,true);}
+        else if(stage==40) {if(x>3400)return;aitdInputInjectProbeKey(0x4c,false);}
+        else if(stage==41) {if(elapsed<30 || !exploreAligned(x,2720,2900,false,animation))return;aitdInputInjectProbeKey(0x4e,true);}
+        else if(stage==42) {if(beta<496 || beta>528)return;aitdInputInjectProbeKey(0x4e,false);}
+        else if(stage==43) {if(animation!=4 || elapsed<30)return;aitdInputInjectProbeKey(0x4c,true);}
+        else if(stage==44) {if(z<200)return;aitdInputInjectProbeKey(0x4c,false);}
+        else if(stage==45) {if(animation!=4 || elapsed<30)return;aitdInputInjectProbeKey(0x18,true);}
+        else if(stage==46) {if(elapsed<120)return;aitdInputInjectProbeKey(0x18,false);}
+        else if(stage==47) {if(elapsed<30)return;aitdInputInjectProbeKey(0x40,true);}
+        else if(stage==48) {if(elapsed<120)return;aitdInputInjectProbeKey(0x40,false);}
+        else if(stage==49) {if(animation!=4 || track!=1 || elapsed<120)return;aitdInputInjectProbeKey(0x4c,true);}
+        else if(stage==50) {if(floor!=1 || room!=5)return;aitdInputInjectProbeKey(0x4c,false);s_exploreFrames=scenes;}
+        else if(stage==51) {if(animation!=4 || track!=1 || elapsed<30 || scenes<=s_exploreFrames)return;}
+        g_exploreRouteStage=stage+1;g_exploreRouteTick=ticks;aitdInputExploreCheckpoint();return;
+    }
+#endif
 #ifdef AITD_FIRSTFLOOR
     if(stage>=19) {
         const uint32_t elapsed=ticks-g_exploreRouteTick;

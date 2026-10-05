@@ -31,9 +31,9 @@ required.
   - If a new Mac dialog is reached, measure its choices/results and provide an
     engine-style interface inside 320×200 under D5; unsupported paths stay loud.
 
-  - Extend autonomous, state-keyed routes through additional first-floor rooms,
-    reading and combat/menu interactions. Verify each
-    route against the original Mac; do not count idle time as coverage.
+  - Extend autonomous, state-keyed sessions through reading and combat/menu
+    interactions and consolidate paired coverage timing. Verify each route
+    against the original Mac; do not count idle time as coverage.
 
   *Done when* scripted sessions cover those routes for at least ten minutes of
   emulated gameplay without a loud stop, with positive state checks and paired

@@ -101,6 +101,8 @@ without the option to restore the full startup. `SAVELOAD=1` automates save → 
 for first-floor manual control; paired Mac/68020/68030 checks pass.
 `SABERBREAK=1` extends the cabinet route through weapon attacks, actual breakage
 and blade recovery; its 115-phase paired regression passes on both CPUs.
+`SOUTHROOMS=1` exercises the hallway’s southern room entrance and released manual
+gameplay; its paired 52-phase regression also passes on both CPUs.
 `DEATHROUTE=1` runs ordinary
 controls, returns toward the starting area, follows death and starts a fresh
 Carnby game autonomously; its paired regression is documented in

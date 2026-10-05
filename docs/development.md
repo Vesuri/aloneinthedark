@@ -1,5 +1,25 @@
 # Development
 
+## Southern first-floor room entry — 2026-10-05
+
+Clean-build `SOUTHROOMS=1` (HALLWAY and its prerequisites), then run
+`amiga/south_rooms.gdb`. `tools/mac_south_rooms.lua` performs the original route.
+After lamp Use, stairs and the hallway, ordinary movement aligns x=2720–2900,
+faces south, approaches the opposite doorway and enters floor 1/room 5.
+The 52-phase route releases movement and waits for idle/manual control and a
+later completed scene. `tools/check_south_rooms.py` retains the full hallway
+prefix acceptance, verifies the actual room 1→5 transition, doorway alignment,
+original/native entrance coordinates, body 12/idle 4/manual 1 and unchanged
+Actions/lamp inventory and ownership. Both captured scene/palette extents and
+native scene population are checked; this is not an exact M6 frame comparison.
+
+Accepted local evidence is `tmp/m3-explore/{mac-south,south-020-gdb,
+south-020-checked,south-030-gdb,south-030-checked}.log`, all with actual zero
+observer and checker statuses. The same binary passes baseline 68020 and
+fixed-clock 68030. Clean-build no-float and 153 data-symbol audits pass.
+No production services or original instructions changed. Reading, combat/menu
+coverage and the ten-minute M3 gate remain open.
+
 ## Saber attacks, breakage and blade recovery — 2026-10-05
 
 Clean-build `SABERBREAK=1`, then run `amiga/saber_break.gdb` on `a1200-020`
