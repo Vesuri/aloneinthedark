@@ -7009,6 +7009,10 @@ static bool dispatchFileData(uint16_t trap,uint32_t* regs) {
         if(!fork)error=MacFiles::rfNumErr;
         else if(!slot)return false; // Buffered application/resource fork is not a data stream.
         else if(trap==0xa001) {
+#ifdef AITD_SAVE_LOAD
+            const MacFiles::Entry* saved=fork->modified && !fork->resource ? s_files.entry(fork->id) : 0;
+            const uint32_t savedBytes=saved && saved->parent==s_files.saves ? saved->dataSize : 0;
+#endif
             error=slot->source && fork->writable && fork->modified ? flushDataSource(*slot->source,slot->stream) : 0;
             if(!error) {
                 DataSource* source=slot->source;
@@ -7022,6 +7026,9 @@ static bool dispatchFileData(uint16_t trap,uint32_t* regs) {
                 error=FileAccess::closeStream(slot->stream);
                 if(slot->buffer)FreeMem(slot->buffer,FileReadCache::capacity);
                 slot->source=0;slot->buffer=0;slot->ref=0;s_files.close(ref);
+#ifdef AITD_SAVE_LOAD
+                if(!error && savedBytes)aitdInputSaveLoadClosed(savedBytes);
+#endif
             }
         } else if(trap==0xa012) {
             if(!fork->writable)error=-61;
@@ -7057,6 +7064,12 @@ static bool dispatchFileData(uint16_t trap,uint32_t* regs) {
                 int16_t resized=s_files.setSize(ref,slot->source->writes.size(),false);
                 if(!error)error=resized;
             }
+#ifdef AITD_SAVE_LOAD
+            if(!error && trap==0xa002 && actual && !fork->resource) {
+                const MacFiles::Entry* saved=s_files.entry(fork->id);
+                if(saved && saved->parent==s_files.saves)aitdInputSaveLoadRead(actual);
+            }
+#endif
             if(transfer)write32(pb+40,actual);
             write32(pb+46,fork->position);
         }
@@ -7330,6 +7343,15 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
             && read16(actor+0x1c)==3231 && int16_t(read16(actor+0x20))==-1548
             && read16(actor+0x3e)==4;
         aitdInputDeathRoute(gameMenu,g_macTicks,initialActor,int16_t(read16(actor+0x20)),read16(actor+0x3e));
+    }
+#endif
+#ifdef AITD_SAVE_LOAD
+    if(s_a5WorldStorage) {
+        const uint8_t* actor=s_a5WorldStorage+75616-0xb292+160;
+        const bool ready=g_ingameStage==5 && g_macFramesPresented && read16(actor)==1
+            && read16(actor+2)==12 && read16(actor+0x30)==0 && read16(actor+0x32)==0;
+        aitdInputSaveLoad(g_macTicks,g_macSceneFramesCompleted,int16_t(read16(actor+0x1c)),
+            int16_t(read16(actor+0x20)),read16(actor+0x3e),ready);
     }
 #endif
 #ifdef AITD_ACTION_PROBE

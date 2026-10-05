@@ -38,13 +38,6 @@ required.
   *Done when* scripted sessions cover those routes for at least ten minutes of
   emulated gameplay without a loud stop, with positive state checks and paired
   Mac evidence. Owner play-testing can supplement this acceptance.
-- **M3.5 `saveload` regression.**
-  - Scripted key input in the Amiga runner.
-  - PASS records keyed on game state: the room, and actor positions read from the
-    A5 world.
-
-  *Done when* save → move → load restores the captured actor/room state on
-  `a1200-020`.
 - **M3.6 Durable writes.**
   - Verify actual game save and reload, including reset immediately after
     reported save success.

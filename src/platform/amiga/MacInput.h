@@ -34,6 +34,11 @@ void aitdInputGameplayEvent(uint16_t what,uint32_t message);
 #ifdef AITD_DEATH_ROUTE
 void aitdInputDeathRoute(bool menu,uint32_t ticks,bool initialActor,int16_t z,uint16_t animation);
 #endif
+#ifdef AITD_SAVE_LOAD
+void aitdInputSaveLoad(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_t animation,bool ready);
+void aitdInputSaveLoadClosed(uint32_t bytes);
+void aitdInputSaveLoadRead(uint32_t bytes);
+#endif
 #ifdef AITD_INGAME
 extern "C" { extern volatile uint16_t g_ingameStage; extern volatile uint32_t g_ingameTick; }
 void aitdInputInGame(uint16_t trap, bool menu, bool portraits, bool story,

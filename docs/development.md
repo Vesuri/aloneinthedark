@@ -1,5 +1,31 @@
 # Development
 
+## Autonomous save → move → load — 2026-10-05
+
+Clean-build `SAVELOAD=1` and run `DIAG_RUN_DIR=.run-saveload
+AMIGA_CONFIG=a1200-020 GDBSCRIPT=saveload.gdb amiga/diag_run.sh 360`.
+SAVELOAD implies MENUPROBE/INGAME/PROBES. The diagnostic volume is isolated
+from the normal `.run` saves. Ordinary keys toggle sound/music, enter `m3test`
+in Save, walk Carnby at least 300 units, release movement, select Load and Quit.
+The controller waits for successful save close, completed gameplay publication,
+walk/idle animation and actual load reads before advancing. It observes file
+services and actor state without editing original game instructions or decisions.
+
+`tools/mac_saveload.lua` runs the same save/move/load route on a copied reference
+hard disk. Its IO observer preserves full ROM caller addresses and waits for an
+application A5 world with initialized Carnby. Earlier observers incorrectly
+masked ROM addresses and sampled an OS A5 world; those failed runs are rejected.
+`tools/check_saveload.py` requires zero runner statuses, ordered phases, positive
+write/close/read evidence, captured actor identity and restored position/room.
+Both machines close 36,254 save bytes, move from (3231,−1548), and restore that
+position with actor 1/body 12, floor/room 0 and idle animation 4. Native load
+reads 33,644 bytes; the reference also reads slot metadata (38,816 total).
+The native run additionally verifies driver 8 register preservation, cleared
+Paula/DMA resources, restored display/interrupt state and complete trap cleanup.
+Accepted logs: `tmp/m3-saveload/{mac,gdb,checked}.log`, all exit zero.
+This completes M3.5 on A1200/68020. Reset immediately after save success remains
+M3.6; normal Quit and reload are not evidence for that requirement.
+
 ## Autonomous death and new-game restart — 2026-10-05
 
 Clean-build `DEATHROUTE=1` and run `GDBSCRIPT=death_route.gdb

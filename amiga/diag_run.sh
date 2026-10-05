@@ -33,7 +33,9 @@ case "${DIAG_AUDIO:-0}" in
   *) echo 'DIAG / INVALID AUDIO OPTION (use 0 or 1)' >&2; exit 2 ;;
 esac
 
-RUN=.run; DH0="$RUN/dh0"; DH1="$RUN/dh1"; GDBHOME="$RUN/gdbhome"
+RUN="${DIAG_RUN_DIR:-.run}"
+[[ "$RUN" =~ ^\.run(-[a-z0-9][a-z0-9_-]*)?$ ]] || { echo 'DIAG / INVALID RUN DIRECTORY' >&2; exit 2; }
+DH0="$RUN/dh0"; DH1="$RUN/dh1"; GDBHOME="$RUN/gdbhome"
 mkdir -p "$DH0/s" "$DH1" "$RUN/state" "$RUN/logs" "$GDBHOME"
 printf 'cd dh1:\nAlone\n' > "$DH0/s/startup-sequence"
 cp -f out/Alone.exe "$DH1/Alone"

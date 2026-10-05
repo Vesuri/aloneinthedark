@@ -2,7 +2,7 @@
 
 **Status, 2026-10-04:** Original PAK reads and measured file services pass M2.
 M3.2 verifies an original-game save named `m3test`, opening Load and clean
-shutdown. Restored gameplay state and immediate-reset durability remain M3.6.
+shutdown. Paired save/move/load restores gameplay state on A1200/68020 (M3.5); immediate-reset durability remains M3.6.
 
 The checkpoint sections below preserve service-level evidence. References to
 an intermediate startup stop or a then-pending M2 gate are historical; current

@@ -255,7 +255,16 @@ extern "C" { volatile uint16_t g_menuProbeStage=0,g_menuProbeExitOK=0; volatile 
 extern "C" { extern volatile uint16_t g_menuFeedbackStage; }
 extern "C" __attribute__((noinline)) void aitdMenuProbeCheckpoint()
 { __asm__ volatile("nop" ::: "memory"); }
-static const uint8_t s_menuProbeKeys[]={0,0x21,0x21,0x37,0x37,0x21,0x37,0x18,0x45,0x10};
+static const uint8_t s_menuProbeKeys[]={0,0x21,0x21,0x37,0x37,0x21,0x37,0x18,
+#ifdef AITD_SAVE_LOAD
+0x44,
+#else
+0x45,
+#endif
+0x10};
+#ifdef AITD_SAVE_LOAD
+extern "C" { volatile uint16_t g_saveLoadStage=0; volatile uint32_t g_saveLoadTick=0,g_saveLoadClosedBytes=0,g_saveLoadReadBytes=0; volatile int16_t g_saveLoadSavedX=0,g_saveLoadSavedZ=0; }
+#endif
 static const uint8_t s_menuProbeText[]={0x37,0x03,0x14,0x12,0x21,0x14,0x44}; // m3test, Return
 static uint16_t s_menuProbeTextIndex=0;
 static bool s_menuProbeHeld=false;
@@ -290,6 +299,9 @@ void aitdInputMenuProbe(uint32_t ticks)
         // this action, instead of advancing into an unfinished previous call.
         g_menuProbeTick=ticks;menuProbeKey(true);return;
     }
+#ifdef AITD_SAVE_LOAD
+    if((g_menuProbeStage==6 && g_saveLoadStage<4) || (g_menuProbeStage==8 && g_saveLoadStage<6))return;
+#endif
     ++g_menuProbeStage;g_menuProbeTick=ticks;
     aitdMenuProbeCheckpoint();
     menuProbeKey(true);
@@ -302,6 +314,50 @@ void aitdInputMenuProbeQuit()
 void aitdInputMenuProbeFinished(bool ok)
 {
     g_menuProbeExitOK=ok;g_menuProbeStage=11;aitdMenuProbeCheckpoint();
+}
+#endif
+
+#ifdef AITD_SAVE_LOAD
+extern "C" __attribute__((noinline)) void aitdInputSaveLoadCheckpoint()
+{ __asm__ volatile("nop" ::: "memory"); }
+static uint32_t s_saveLoadFrames=0;
+void aitdInputSaveLoadClosed(uint32_t bytes)
+{
+    if(g_saveLoadStage==1)g_saveLoadClosedBytes=bytes;
+}
+void aitdInputSaveLoadRead(uint32_t bytes)
+{
+    if(g_saveLoadStage==5)g_saveLoadReadBytes+=bytes;
+}
+void aitdInputSaveLoad(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_t animation,bool ready)
+{
+    if(g_saveLoadStage>=6 || !ready)return;
+    if(!g_saveLoadStage) {
+        if(g_menuProbeStage!=6 || s_menuProbeTextIndex!=6)return;
+        g_saveLoadSavedX=x;g_saveLoadSavedZ=z;s_saveLoadFrames=scenes;
+        g_saveLoadStage=1;g_saveLoadTick=ticks;
+    } else if(ticks-g_saveLoadTick>2400) {
+        aitdInputInjectProbeKey(0x4c,false);g_saveLoadStage=0xffff;
+    } else if(g_saveLoadStage==1) {
+        if(g_saveLoadClosedBytes<10000 || s_menuProbeHeld || scenes<=s_saveLoadFrames)return;
+        if(x!=g_saveLoadSavedX || z!=g_saveLoadSavedZ)return;
+        aitdInputInjectProbeKey(0x4c,true);g_saveLoadStage=2;g_saveLoadTick=ticks;
+    } else if(g_saveLoadStage==2) {
+        int32_t distance=int32_t(z)-g_saveLoadSavedZ;if(distance<0)distance=-distance;
+        if(distance<300 || animation!=254)return;
+        aitdInputInjectProbeKey(0x4c,false);g_saveLoadStage=3;g_saveLoadTick=ticks;
+    } else if(g_saveLoadStage==3) {
+        if(animation!=4 || ticks-g_saveLoadTick<30)return;
+        g_saveLoadStage=4;g_saveLoadTick=ticks;
+    } else if(g_saveLoadStage==4) {
+        if(g_menuProbeStage!=8)return;
+        s_saveLoadFrames=scenes;g_saveLoadStage=5;g_saveLoadTick=ticks;
+    } else {
+        if(x!=g_saveLoadSavedX || z!=g_saveLoadSavedZ || animation!=4
+           || g_saveLoadReadBytes<10000 || scenes<=s_saveLoadFrames)return;
+        g_saveLoadStage=6;g_saveLoadTick=ticks;
+    }
+    aitdInputSaveLoadCheckpoint();
 }
 #endif
 

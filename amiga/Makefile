@@ -23,6 +23,11 @@
 # Structure: explicit/wildcarded source lists mapped to objects in a flat obj/ (keyed by
 # basename — KEEP BASENAMES UNIQUE across the source trees), sources located via vpath.
 
+# Diagnostic feature flags must enable probes before conditional symbol groups.
+ifeq ($(SAVELOAD),1)
+PROBES=1
+endif
+
 OUT      = out/Alone
 CC       = m68k-amiga-elf-gcc
 AS       = m68k-amiga-elf-as
@@ -453,6 +458,12 @@ PROBE_SYMS += g_paletteReadHigh g_paletteReadLow g_paletteReadBanks g_paletteRea
 endif
 
 # Opt-in direct-game testing route; input only, normal initialization retained.
+ifeq ($(SAVELOAD),1)
+MENUPROBE=1
+PROBES=1
+EXTRA_DEFINES += -DAITD_SAVE_LOAD
+PROBE_SYMS += g_saveLoadStage g_saveLoadTick g_saveLoadSavedX g_saveLoadSavedZ g_saveLoadClosedBytes g_saveLoadReadBytes
+endif
 ifeq ($(MENUPROBE),1)
 INGAME=1
 EXTRA_DEFINES += -DAITD_MENU_PROBE

@@ -122,3 +122,6 @@ __pycache__/
 /amiga/assets/
 *.planes
 *.palbin
+
+# Isolated diagnostic volumes, including disposable save-game fixtures.
+/amiga/.run-*/
