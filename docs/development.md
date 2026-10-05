@@ -1,10 +1,36 @@
 # Development
 
-Unattended `amiga/diag_run.sh` defaults to maximum-speed `a4000-030`.
+Unattended `amiga/diag_run.sh` defaults to maximum-speed `a4000-030` and warp.
+Use `EXTRA_ARGS=--warp_mode=0` explicitly for real-time diagnostics.
+The optional `a4000-060` configuration is an unlimited-speed development pilot,
+not full 68060 acceptance.
 Use explicit `AMIGA_CONFIG=a1200-020` for baseline acceptance or
 `AMIGA_CONFIG=a4000-030-reference` for same-clock Mac comparisons. Normal
 interactive launch and the baseline regression keep their existing settings.
 Warp and maximum CPU speed are diagnostic aids, not performance evidence.
+
+## Emulator speed pilots — 2026-10-06
+
+The identical bounded ordinary-input pilot reaches the first attic route
+checkpoint on unlimited-speed 68030 and 68060, both with warp, the same binary,
+2 MB chip/8 MB fast RAM and FPU/MMU/JIT disabled. Both observers exit zero.
+Elapsed host times are 62.85 and 64.15 seconds respectively: this short pilot
+shows no useful gain from selecting 68060, so keep 68030 as the default.
+This is startup-to-checkpoint elapsed time, not scene FPS or full CPU acceptance;
+the differing game ticks/frame counts prevent an instruction-throughput claim.
+Evidence: `tmp/cpu-speed/{030-paired,060}.log` and `.run-speed*/logs/`.
+The core reports 68060, while Kickstart reports AttnFlags=15 (68040 flags),
+so full CPU/OS compatibility remains open.
+
+The host reports arm64 but the installed FS-UAE executable is x86_64; it runs
+through host translation. A separate 68030 JIT pilot enables the actual 8192 KB
+translation cache, then fails during ROM boot with an illegal access at
+`40001000`, before the game/debugger connects. Its runner exits one after
+3.37 seconds (`tmp/cpu-speed/jit.log`, `.run-speedjit/logs/fs-uae.log.txt`).
+No working JIT configuration is retained. A native host build or alternative
+emulator with compatible observers is a larger potential improvement, still
+requiring a measured pilot; the current evidence does not quantify translation
+cost or establish it as the sole bottleneck.
 
 ## Unattended capture overhead — 2026-10-05
 
@@ -1067,7 +1093,8 @@ identical memory-system timing. `AMIGA_CONFIG=a1200-020` (or
 `AMIGA_MODEL=A1200`) retains the 14 MHz cycle-exact baseline. Explicit
 `AMIGA_CONFIG` takes precedence over the model selector. Unlimited-speed
 `a4000-030` and `a4000-020` remain available for diagnostics, not timing claims.
-68040/68060 configurations remain deferred to M5.0. The port still compiles
+Full 68040/68060 acceptance remains deferred to M5.0; the optional
+`a4000-060` speed pilot is available for development. The port still compiles
 for 68020 without an FPU. The fixed-clock default passes the original-code boot
 observer (`tmp/intro-030-clock-boot.log`, exit 0), and the effective core log
 reports 68030 with FPU/MMU/JIT disabled. This is boot evidence, not complete

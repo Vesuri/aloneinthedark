@@ -120,9 +120,12 @@ controls, returns toward the starting area, follows death and starts a fresh
 Carnby game autonomously; its paired regression is documented in
 [development.md](docs/development.md).
 
-Unattended `amiga/diag_run.sh` uses maximum-speed `a4000-030` by default.
+Unattended `amiga/diag_run.sh` uses maximum-speed `a4000-030` with warp by default.
+`AMIGA_CONFIG=a4000-060` selects an optional maximum-speed 68060 pilot;
+full 68060 compatibility remains unverified.
 Select `AMIGA_CONFIG=a1200-020` or `a4000-030-reference` explicitly for
-baseline acceptance or timed comparisons. Normal interactive launch retains
+baseline acceptance or timed comparisons, with `EXTRA_ARGS=--warp_mode=0`
+for real-time runs. Normal interactive launch retains
 the fixed-clock 68030 setup.
 
 This builds `amiga/out/Alone.exe` without original game data. Extracting your

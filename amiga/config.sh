@@ -18,6 +18,8 @@ case "$AMIGA_CONFIG" in
   a4000-020) AMIGA_MODEL=A4000; aitd_cpu=68EC020 ;;
   a4000-030) AMIGA_MODEL=A4000; aitd_cpu=68030 ;;
   a4000-030-reference) AMIGA_MODEL=A4000; aitd_cpu=68030; aitd_cpu_frequency=15667200 ;;
+  # Optional owner-requested speed pilot; full 68060 acceptance remains open.
+  a4000-060) AMIGA_MODEL=A4000; aitd_cpu=68060 ;;
   a1200-030|a4000-040|a1200-060)
     echo "CONFIG / DEFERRED CPU TARGET: $AMIGA_CONFIG; use a4000-030, a4000-020 or a1200-020" >&2; return 1 ;;
   *) echo "CONFIG / UNKNOWN AMIGA_CONFIG: $AMIGA_CONFIG" >&2; return 1 ;;

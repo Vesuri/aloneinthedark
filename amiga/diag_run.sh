@@ -27,8 +27,9 @@ cleanup() {
 trap cleanup EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
-# Extra diagnostic options, such as --warp_mode=1, precede pinned machine flags.
-EXTRA_ARGS="${EXTRA_ARGS:-}"
+# Unattended runs default to warp. Set EXTRA_ARGS=--warp_mode=0 for real-time
+# measurements; diagnostic options precede pinned machine flags.
+EXTRA_ARGS="${EXTRA_ARGS:---warp_mode=1}"
 audio_args=(--audio_driver=dummy)
 case "${DIAG_AUDIO:-0}" in
   0) ;;

@@ -777,7 +777,12 @@ Owner update 2026-10-05 asks for faster unattended execution. `diag_run.sh`
 defaults to maximum-speed `a4000-030`; normal interactive launch retains the
 fixed-clock reference, and regression retains the explicit `a1200-020` baseline.
 Timed comparison callers must name their fixed-clock setup.
-68040/68060 support remains deferred (M5.0).
+Owner update 2026-10-06 permits the fastest practical CPU for development.
+`a4000-060` provides an optional unlimited-speed 68060 pilot with the same
+memory and disabled FPU/MMU/JIT. Full 68040/68060 acceptance remains deferred
+(M5.0); this pilot does not change the executable target or timed comparisons.
+Unattended diagnostics default to warp; set `EXTRA_ARGS=--warp_mode=0`
+explicitly when measuring real-time behavior.
 `runtime_status.gdb` reports the emulator CPU tuple and Exec CPU flags.
 These settings establish a functional baseline, not a performance result.
 
