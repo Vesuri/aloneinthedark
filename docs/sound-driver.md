@@ -16,9 +16,11 @@ complete native interrupt playback. Delivery is within one music tick. The
 fixture verifies 180 ticks without traps, effect priority and full resource,
 heap and Paula cleanup. Original loading, original preflight, host and native
 runners all exit zero. Other unmeasured song IDs remain named stops.
-The natural Amiga death route currently reaches an unsupported combat Line
-variant before this track; the song fixture does not claim death/restart
-acceptance or the natural call's native register comparison.
+The natural combat/death route now also passes the 0/12 result, 13 preserved
+registers, 17 resources and nine samples on the reference 68030 and baseline
+020, then returns to the menu and restarts Carnby. See
+[the maintained route](development.md#autonomous-death-and-new-game-restart--2026-10-05).
+The full-song fixture remains separate from gameplay/exploration acceptance.
 
 Reproduce with `AITD_GAMEPLAY_SONG=131 tools/mac_driver137.lua` and
 `AITD_SONG_EVENTS=131 tools/mac_song_events.lua` environment/script pairs on

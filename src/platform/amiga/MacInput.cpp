@@ -210,6 +210,46 @@ void aitdInputGameplay(uint32_t ticks,bool ready,uint16_t animation)
 }
 #endif
 
+#ifdef AITD_DEATH_ROUTE
+extern "C" { volatile uint16_t g_deathRouteStage=0; volatile uint32_t g_deathRouteTick=0; }
+extern "C" __attribute__((noinline)) void aitdInputDeathRouteCheckpoint()
+{ __asm__ volatile("nop" ::: "memory"); }
+void aitdInputDeathRoute(bool menu,uint32_t ticks,bool initialActor,int16_t z,uint16_t animation)
+{
+    static uint32_t sampled=0;
+    if(g_deathRouteStage>=5)return;
+    if(!g_deathRouteStage) {
+        if(g_gameInputStage!=9)return;
+        // Return from the control test's far wall to the starting area using
+        // the ordinary backward key. Do not change actor/game state.
+        aitdInputInjectProbeKey(0x4d,true);
+        g_deathRouteStage=1;g_deathRouteTick=ticks;sampled=ticks;
+    } else if(ticks-g_deathRouteTick>(g_deathRouteStage<=2 ? 1200U : 36000U)) {
+        aitdInputInjectProbeKey(0x4d,false);g_deathRouteStage=0xffff;
+    } else if(g_deathRouteStage==1) {
+        if(z<-1548)return;
+        aitdInputInjectProbeKey(0x4d,false);
+        g_deathRouteStage=2;g_deathRouteTick=ticks;
+    } else if(g_deathRouteStage==2) {
+        if(animation!=4 || ticks-g_deathRouteTick<30)return;
+        g_deathRouteStage=3;g_deathRouteTick=ticks;sampled=ticks;
+    } else if(g_deathRouteStage==3) {
+        if(!menu) {
+            if(ticks-sampled>=600) {sampled=ticks;aitdInputDeathRouteCheckpoint();}
+            return;
+        }
+        // Re-arm only diagnostic startup bookkeeping. The original menu,
+        // portrait and story loops receive the same ordinary input as boot.
+        g_deathRouteStage=4;g_deathRouteTick=ticks;
+        g_ingameStage=0;g_ingameTick=0;
+    } else {
+        if(g_ingameStage!=5 || !initialActor)return;
+        g_deathRouteStage=5;g_deathRouteTick=ticks;
+    }
+    aitdInputDeathRouteCheckpoint();
+}
+#endif
+
 #ifdef AITD_MENU_PROBE
 extern "C" { volatile uint16_t g_menuProbeStage=0,g_menuProbeExitOK=0; volatile uint32_t g_menuProbeTick=0; }
 extern "C" { extern volatile uint16_t g_menuFeedbackStage; }

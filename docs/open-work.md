@@ -25,31 +25,26 @@ required.
 ## M3 Playable
 
 - **M3.4 Apple Events and misc Toolbox.**
-  - **M3.4c Reached combat Line variant.** Natural native attic combat stops at
-    QuickDraw `Line` before death music. Capture its caller, pen/pattern, clip
-    and raster result against the original Mac; implement the measured variant
-    with complete pixel, register and pen-state checks before continuing.
-    Reproduce the natural stop with a state-keyed route and establish its
-    attribution; its caller and pen attributes were not captured previously.
-  - Exercise death/restart and the remaining first-floor paths, measuring and
+  - Exercise the remaining first-floor paths, measuring and
     implementing newly reached Apple Event or Window Manager contracts.
     Unsupported operations and states remain loud stops.
   - If a new Mac dialog is reached, measure its choices/results and provide an
     engine-style interface inside 320×200 under D5; unsupported paths stay loud.
 
-  - Add autonomous, state-keyed input routes for combat, death/restart, object
-    and action menus, room transitions and first-floor exploration. Verify each
+  - Add autonomous, state-keyed input routes for object use, room transitions
+    and first-floor exploration; extend combat/menu routes through those rooms. Verify each
     route against the original Mac; do not count idle time as coverage.
 
   *Done when* scripted sessions cover those routes for at least ten minutes of
   emulated gameplay without a loud stop, with positive state checks and paired
   Mac evidence. Owner play-testing can supplement this acceptance.
-- **M3.5 `newgame` and `saveload` regressions.**
+- **M3.5 `saveload` regression.**
   - Scripted key input in the Amiga runner.
   - PASS records keyed on game state: the room, and actor positions read from the
     A5 world.
 
-  *Done when* both cases pass on `a1200-020`.
+  *Done when* save → move → load restores the captured actor/room state on
+  `a1200-020`.
 - **M3.6 Durable writes.**
   - Verify actual game save and reload, including reset immediately after
     reported save success.
@@ -114,6 +109,8 @@ required.
     FPS from a sample containing loading, or sum nested profile categories.
   - A PROBES build and a gameplay scene on `a1200-020`, run twice. Add a
     68030 comparison only after M5.0 validates its configuration.
+  - Include cold FIGHT/BDISK2 song preparation as a separate transition phase;
+    attribute its resource movement, decoding and PCM preparation costs.
   - Report ms/frame by phase: game code, drawing traps, CopyBits, C2P, palette,
     audio sequencer, system windows.
 
@@ -153,7 +150,8 @@ required.
 
   *Done when* the game can be finished on the Amiga with no loud stop.
 - **M6.2 State-keyed fidelity set.** Frame compares for representative rooms,
-  inventory, book/reading views, fights, death and the ending.
+  inventory, book/reading views, fights, death, new-game restart and the ending.
+  Pair idle animation frame and interpolation phase before exact restart pixels.
 
   *Done when* all of them pass.
 - **M6.3 Stairs check.**

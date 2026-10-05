@@ -1,5 +1,43 @@
 # Development
 
+## Autonomous death and new-game restart — 2026-10-05
+
+Clean-build `DEATHROUTE=1` and run `GDBSCRIPT=death_route.gdb
+amiga/diag_run.sh 600`; select `AMIGA_CONFIG=a1200-020` for baseline acceptance.
+The option implies GAMEINPUT/INGAME/PROBES. Ordinary controls first walk, run
+and kick, then Back returns Carnby toward the starting area. The route waits
+for real death, verifies natural BDISK2 loading, follows the corpse into room
+6, returns through the original menu and re-arms diagnostic startup input for
+a fresh Carnby game. It never writes game decisions or actor state.
+
+`tools/mac_death_route.lua` performs the corresponding original Mac route.
+`tools/check_death_route.py` requires actual zero statuses, real displacement,
+13 preserved registers and 0/12 from the death music call, menu/restart phase
+ordering, captured actor 1/body 12 at (3231,−1548), floor/room 0 and rendered
+attic publication. Both the reference 68030 and baseline A1200/68020 pass.
+Accepted local logs are `tmp/m3-death/death-back-mac2.log`,
+`death-back-gdb.log`, `death-back-functional-checked.log` and `020/{gdb,checked}.log`.
+Their corpse/menu/new-game routes complete without the earlier Line stop.
+This closes the reached combat/death prerequisite, not ten minutes of actual
+first-floor exploration. The old Line stop lacked pen/caller captures, so its
+exact attribution remains unknown; the supported point's independent contract
+is documented in [color-drawing.md](color-drawing.md).
+
+The first exploratory Mac observer printed its return twice; the first native
+death-only controller timed out when waiting from the control test's far-wall
+position. Both were rejected. Returning toward the starting area resolves that
+route failure on both selected native CPUs. The initial Mac restart capture
+also preceded publication and was black despite initialized actor state.
+The maintained capture now waits for the attic picture. Exact-pixel mode still
+fails: 494 pixels differ inside Carnby's (303,192)–(334,262) footprint, with
+Mac idle frame 1 versus native frame 2 and different interpolation timing.
+The checker reports differences and offers `--exact-pixels`; this is functional
+new-game acceptance, not a claim of exact restart-pose fidelity (M6.2).
+
+Natural BDISK2 loading takes 490 ticks on the reference 68030 and 542 on the
+020, versus 10 on the Mac. These whole-call measurements expose a substantial
+M5 preparation cost; they do not attribute it to conversion alone.
+
 ## State-keyed first-room controller — 2026-10-05
 
 The fixed-duration GAMEINPUT route missed Fight/kick on both the particle-point
@@ -21,15 +59,13 @@ all 1,338 preflight events agree with the host decoder; complete native
 interrupt playback, effect priority and cleanup also pass, with all four
 runners exiting zero. See [the contract](sound-driver.md#bdisk2-music--2026-10-05).
 
-The ordinary native attic reproduction reaches QuickDraw `Line` at tick 10,594
-before this song; its named stop is preserved in
-`tmp/m3-death/native-observe-gdb.log` with runner status 1. The measured 2×2 particle point now has full paired pixel/ABI acceptance
-(see [drawing contract](color-drawing.md#solid-22-particle-point--2026-10-05));
-attribution of this earlier natural stop remains the next open prerequisite. The idle original observation
-identifies the death/menu ordering only; it does not count as ten-minute
-first-floor acceptance. A fresh route must pin the application A5 world while
-system callbacks are active; reading temporary CurA5 values produced discarded
-mode/room readings in that exploratory trace.
+The older ordinary native attic reproduction stopped at QuickDraw Line at tick
+10,594 (`tmp/m3-death/native-observe-gdb.log`, status 1). The measured 2×2
+particle point has full paired pixel/ABI acceptance, and the maintained
+combat/death/restart route above now completes on both selected CPUs. The old
+stop's exact pen attribution is unknown. All observers pin the application A5
+world while system callbacks are active; discarded exploratory CurA5 readings
+were temporary system-world values. Idle duration is not exploration coverage.
 
 ## M3.4 action-menu clicks — 2026-10-05
 

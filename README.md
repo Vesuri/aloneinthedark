@@ -14,8 +14,9 @@ and Toolbox layer are carried over from Vette!; see
 **M3.4 is in progress.** Launch Apple Event delivery calls the original handler
 in user mode, and all five implemented SANE operations pass integrated checks.
 The reached `MONSTER`, `FIGHT` and `BDISK2` music tracks pass paired note-event
-and complete native interrupt-playback checks. Natural MONSTER/FIGHT calls
-also pass the gameplay ABI checks.
+and complete native interrupt-playback checks. Natural MONSTER/FIGHT/BDISK2 calls
+also pass the gameplay ABI checks. Scripted combat, death and a fresh Carnby
+restart pass on both the reference 68030 and baseline A1200/68020.
 The ten-minute scripted first-floor route remains open.
 The action-menu preview now runs at 2.07 updates/sec on the reference 68030
 versus 1.65 on Mac; keyboard choices, hover, clicks and cancellation pass paired checks.
@@ -90,7 +91,10 @@ make -C amiga
 For testing directly in Carnby's first room, use a clean build with
 `make -C amiga clean` followed by `make -C amiga INGAME=1`. This skips all boot
 scenes, menus and story; initialization and loading still run. Clean-build
-without the option to restore the full startup.
+without the option to restore the full startup. `DEATHROUTE=1` runs ordinary
+controls, returns toward the starting area, follows death and starts a fresh
+Carnby game autonomously; its paired regression is documented in
+[development.md](docs/development.md).
 
 This builds `amiga/out/Alone.exe` without original game data. Extracting your
 original archive, running under FS-UAE and debugging are covered in

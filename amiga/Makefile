@@ -458,6 +458,12 @@ INGAME=1
 EXTRA_DEFINES += -DAITD_MENU_PROBE
 PROBE_SYMS += g_menuProbeStage g_menuProbeTick g_menuProbeKey g_menuProbeResult g_menuProbeExitOK g_menuFeedbackStage g_menuFeedbackText g_menuFeedbackLength
 endif
+ifeq ($(DEATHROUTE),1)
+GAMEINPUT=1
+PROBES=1
+EXTRA_DEFINES += -DAITD_DEATH_ROUTE
+PROBE_SYMS += g_deathRouteStage g_deathRouteTick
+endif
 ifeq ($(GAMEINPUT),1)
 INGAME=1
 EXTRA_DEFINES += -DAITD_GAME_INPUT

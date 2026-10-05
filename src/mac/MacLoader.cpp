@@ -7309,8 +7309,9 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     // The original Dark+$5314 sets this byte only for the playable stage,
     // after the new-game narrative has returned. Read it; never force it.
     bool gameplay=s_a5WorldStorage && s_a5WorldStorage[75616-0x11b4c]!=0;
-    aitdInputInGame(trap,trap==0xa975 && s_segments[12].begin
-        && pc==(uint32_t)s_segments[12].begin+0x1376,
+    const bool gameMenu=trap==0xa975 && s_segments[12].begin
+        && pc==(uint32_t)s_segments[12].begin+0x1376;
+    aitdInputInGame(trap,gameMenu,
         atPortraits,atStory,gameplay,g_macTicks);
 #ifdef AITD_GAME_INPUT
     if(trap==0xa976 && s_a5WorldStorage) {
@@ -7319,6 +7320,16 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         const bool ready=g_macFramesPresented && read16(actor)==1 && read16(actor+2)==12
             && read16(actor+0x30)==0 && read16(actor+0x32)==0;
         aitdInputGameplay(g_macTicks,ready,read16(actor+0x3e));
+    }
+#endif
+#ifdef AITD_DEATH_ROUTE
+    if(s_a5WorldStorage) {
+        const uint8_t* actor=s_a5WorldStorage+75616-0xb292+160;
+        const bool initialActor=read16(actor)==1 && read16(actor+2)==12
+            && read16(actor+0x30)==0 && read16(actor+0x32)==0
+            && read16(actor+0x1c)==3231 && int16_t(read16(actor+0x20))==-1548
+            && read16(actor+0x3e)==4;
+        aitdInputDeathRoute(gameMenu,g_macTicks,initialActor,int16_t(read16(actor+0x20)),read16(actor+0x3e));
     }
 #endif
 #ifdef AITD_ACTION_PROBE
