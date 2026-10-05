@@ -352,14 +352,23 @@ void aitdInputLamp(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_t b
         aitdInputInjectProbeKey(stage==4 ? 0x4e : 0x4c,true);
     }
     else if(stage==3) {
-#ifdef AITD_COMBAT_ROUTE
+#if defined(AITD_COMBAT_ROUTE) && !defined(AITD_ROOM5_COMBAT)
         if(x<3800)return;
 #else
         if(x<3600)return;
 #endif
         aitdInputInjectProbeKey(0x4c,false);
     }
-    else if(stage==5) {if(beta>32 && beta<992)return;aitdInputInjectProbeKey(0x4e,false);}
+    else if(stage==5) {
+#ifdef AITD_ROOM5_COMBAT
+        // Match the southern-room Mac route. Releasing at beta 26 leaves all
+        // subsequent quarter-turns off-axis and outside the stairs tolerance.
+        if(beta>8 && beta<1016)return;
+#else
+        if(beta>32 && beta<992)return;
+#endif
+        aitdInputInjectProbeKey(0x4e,false);
+    }
     else if(stage==7) {if(z>-3800)return;aitdInputInjectProbeKey(0x4c,false);}
     else if(stage==8) {if(elapsed<30)return;aitdInputInjectProbeKey(0x18,true);}
     else if(stage==9) {if(elapsed<120)return;aitdInputInjectProbeKey(0x18,false);}
@@ -796,31 +805,75 @@ void aitdInputExplore(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_
 #endif
 
 #ifdef AITD_COMBAT_ROUTE
-extern "C" { volatile uint16_t g_combatRouteStage=0,g_combatFightEvent=0,g_combatSawEnemy=0,g_combatAttempts=1,g_combatAimHeading=0;
+extern "C" { volatile uint16_t g_combatRouteStage=0,g_combatFightEvent=0,g_combatSawEnemy=0,g_combatAttempts=1,g_combatAimHeading=0,g_combatKicks=0;
 volatile uint32_t g_combatRouteTick=0; }
 extern "C" __attribute__((noinline)) void aitdInputCombatCheckpoint()
 { __asm__ volatile("nop" ::: "memory"); }
 extern "C" __attribute__((noinline)) void aitdInputCombatAttackCheckpoint()
 { __asm__ volatile("nop" ::: "memory"); }
 void aitdInputCombatEvent(uint16_t what,uint32_t message)
-{ if(g_combatRouteStage==25 && what==3 && (message&255)=='f')g_combatFightEvent=1; }
+{
+#ifdef AITD_ROOM5_COMBAT
+    const uint16_t stage=1;
+#else
+    const uint16_t stage=25;
+#endif
+    if(g_combatRouteStage==stage && what==3 && (message&255)=='f')g_combatFightEvent=1;
+}
 extern "C" __attribute__((noinline)) void aitdInputCombatAimCheckpoint()
 { __asm__ volatile("nop" ::: "memory"); }
+extern "C" __attribute__((noinline)) void aitdInputCombatKickCheckpoint()
+{ __asm__ volatile("nop" ::: "memory"); }
 static uint8_t s_combatAimKey=0;
+#ifdef AITD_ROOM5_COMBAT
+static bool s_combatTurnTest=true;
+#else
 static bool s_combatTurnTest=false;
+#endif
 static uint32_t s_combatFrames=0,s_combatAttackTick=0;
 static uint8_t s_combatAttackState=0;
 void aitdInputCombat(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_t beta,uint16_t animation,uint16_t track,uint16_t objects,int16_t enemyX,int16_t enemyZ,bool ready)
 {
-    if(g_exploreRouteStage!=64 || !ready || g_combatRouteStage>=36)return;
+#ifdef AITD_ROOM5_COMBAT
+    const uint16_t prefix=52,attackStage=21,terminal=23;
+#else
+    const uint16_t prefix=64,attackStage=34,terminal=36;
+#endif
+    if(g_exploreRouteStage!=prefix || !ready || g_combatRouteStage>=terminal)return;
     const uint16_t stage=g_combatRouteStage;
     const uint32_t elapsed=ticks-g_combatRouteTick;
     beta&=1023;
-    if((stage && elapsed>(stage==34 ? 36000UL : 2400UL)) || !(objects&16)) {
+    if((stage && elapsed>(stage==attackStage ? 36000UL : 2400UL)) || !(objects&16)) {
         aitdInputInjectProbeKey(0x4e,false);aitdInputInjectProbeKey(0x4f,false);aitdInputInjectProbeKey(0x4c,false);aitdInputInjectProbeKey(0x4d,false);aitdInputInjectProbeKey(0x40,false);
         aitdInputInjectProbeKey(0x44,false);aitdInputInjectProbeKey(0x18,false);aitdInputInjectProbeKey(0x23,false);
         g_combatRouteStage=0xffff;aitdInputCombatCheckpoint();return;
     }
+#ifdef AITD_ROOM5_COMBAT
+    if(!stage) {
+        if(!(objects&1) || !(objects&256) || animation!=4 || track!=1)return;
+        g_combatSawEnemy=1;aitdInputInjectProbeKey(0x23,true);
+    }
+    else if(stage==1) {if(elapsed<120 || !g_combatFightEvent || !(objects&512))return;aitdInputInjectProbeKey(0x23,false);}
+    else if(stage==2) {if(animation!=4 || elapsed<30)return;aitdInputInjectProbeKey(0x4c,true);}
+    else if(stage==3) {if(z<-1200)return;aitdInputInjectProbeKey(0x4c,false);}
+    else if(stage==4) {if(animation!=4 || elapsed<30)return;aitdInputInjectProbeKey(0x4f,true);}
+    else if(stage==5) {if(beta<240 || beta>272)return;aitdInputInjectProbeKey(0x4f,false);}
+    else if(stage==6) {if(animation!=4 || elapsed<30)return;aitdInputInjectProbeKey(0x4c,true);}
+    else if(stage==7) {if(x<-1600)return;aitdInputInjectProbeKey(0x4c,false);}
+    else if(stage==8) {if(animation!=4 || elapsed<30)return;aitdInputInjectProbeKey(0x4e,true);}
+    else if(stage==9) {if(beta<496 || beta>528)return;aitdInputInjectProbeKey(0x4e,false);}
+    else if(stage==10) {if(animation!=4 || elapsed<30)return;aitdInputInjectProbeKey(0x4c,true);}
+    else if(stage==11) {if(z<-200)return;aitdInputInjectProbeKey(0x4c,false);}
+    else if(stage==12) {if(animation!=4 || elapsed<30)return;aitdInputInjectProbeKey(0x4e,true);}
+    else if(stage==13) {if(beta<752 || beta>784)return;aitdInputInjectProbeKey(0x4e,false);}
+    else if(stage==14) {if(animation!=4 || elapsed<30)return;aitdInputInjectProbeKey(0x4c,true);}
+    else if(stage==15) {if(!(objects&2) && x>-1650)return;aitdInputInjectProbeKey(0x4c,false);}
+    else if(stage==16) {if(animation!=4 || elapsed<30)return;aitdInputInjectProbeKey(0x4e,true);}
+    else if(stage==17) {if(beta>16 && beta<1008)return;aitdInputInjectProbeKey(0x4e,false);}
+    else if(stage==18) {if(animation!=4 || elapsed<30)return;aitdInputInjectProbeKey(0x4c,true);}
+    else if(stage==19) {if(z>-650 && !(objects&4096))return;aitdInputInjectProbeKey(0x4c,false);}
+    else if(stage==20) {if(animation!=4 || elapsed<30)return;}
+#else
     if(!stage) {if(!(objects&1))return;g_combatSawEnemy=1;aitdInputInjectProbeKey(0x4e,true);}
     else if(stage==1) {if(beta<240 || beta>272)return;aitdInputInjectProbeKey(0x4e,false);}
     else if(stage==2) {if(animation!=4 || elapsed<30)return;aitdInputInjectProbeKey(0x4c,true);}
@@ -853,14 +906,15 @@ void aitdInputCombat(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_t
     else if(stage==31) {if(animation!=262)return;}
     else if(stage==32) {if(elapsed<120)return;aitdInputInjectProbeKey(0x40,false);aitdInputInjectProbeKey(0x4c,false);}
     else if(stage==33) {if(animation!=4 || track!=1 || elapsed<30)return;}
-    else if(stage==34) {
+#endif
+    else if(stage==attackStage) {
         if((objects&8) && g_combatSawEnemy) {
             aitdInputInjectProbeKey(0x40,false);aitdInputInjectProbeKey(0x4c,false);
             aitdInputInjectProbeKey(0x4e,false);aitdInputInjectProbeKey(0x4f,false);s_combatFrames=scenes;
         } else {
             if(s_combatAttackState && ticks-s_combatAttackTick>1800) {g_combatRouteStage=0xffff;aitdInputCombatCheckpoint();return;}
             if(s_combatAttackState==1) {
-                if(animation==262)s_combatAttackState=2;
+                if(animation==262) {++g_combatKicks;aitdInputCombatKickCheckpoint();s_combatAttackState=2;}
                 else if(ticks-s_combatAttackTick<180)return;
                 // A hit can interrupt the queued kick. Release the input even
                 // when no kick began, so the original release wait can finish.
@@ -906,7 +960,7 @@ void aitdInputCombat(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_t
             aitdInputInjectProbeKey(0x40,true);aitdInputInjectProbeKey(0x4c,true);s_combatAttackState=1;s_combatAttackTick=ticks;return;
         }
     }
-    else if(stage==35) {if(!(objects&8) || animation!=4 || track!=1 || elapsed<30 || scenes<=s_combatFrames)return;}
+    else if(stage==attackStage+1) {if(!(objects&8) || animation!=4 || track!=1 || elapsed<30 || scenes<=s_combatFrames)return;}
     g_combatRouteStage=stage+1;g_combatRouteTick=ticks;aitdInputCombatCheckpoint();
 }
 #endif

@@ -5,6 +5,15 @@ Shift-running, Fight selection and kicking are verified on the 68030.
 Keyboard menus and the reached game interfaces pass M3.2/M3.3. Broader gameplay
 service coverage remains M3.4; newly reached Mac dialogs require D5 replacements.
 
+## Natural first-floor combat — 2026-10-05
+
+Bedroom enemy 35 and room 5 enemy 62 pass paired original Mac and baseline
+68020/fixed-clock 68030 routes. Ordinary Fight selection, turn/attack controls,
+actual damage, enemy removal and a later living manual gameplay publication
+are required. The observers never write original game state. See
+[the room 5 route](development.md#room-5-encounter--2026-10-05) and
+[the bedroom route](development.md#bedroom-encounter--2026-10-05).
+
 ## Mouse button sampling — 2026-10-05
 
 Button and StillDown consume the VBI-owned button state used by low-memory and

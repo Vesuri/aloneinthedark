@@ -24,8 +24,9 @@ and reaches the hallway. The 68020/68030 extension also enters the bedroom and
 takes its key. The paired 68020/68030 cabinet extension uses that key, takes the saber
 and equips it. Book Take, first-page Read and Escape return also pass paired
 state and original artwork/text checks on both CPUs. Full book navigation and
-normal completion also pass on both CPUs. The ten-minute scripted first-floor
-route remains open.
+normal completion also pass on both CPUs. Natural room 5 combat, enemy removal
+and restored living manual control pass paired Mac/68020/68030 checks.
+The ten-minute scripted first-floor route remains open.
 The action-menu preview now runs at 2.07 updates/sec on the reference 68030
 versus 1.65 on Mac; keyboard choices, hover, clicks and cancellation pass paired checks.
 
@@ -111,6 +112,8 @@ route through all four pages, previous-page navigation and normal completion.
 `COMBATROUTE=1` extends the bedroom key route through the naturally spawned
 enemy, Close/Fight selection, door reopening, turning, attacks and victory;
 its original Mac, baseline 68020 and fixed-clock 68030 checks pass.
+`ROOM5COMBAT=1` extends the southern-room route through natural enemy activation,
+Fight, aiming, kicks, damage and victory; its paired checks pass on both CPUs.
 `DEATHROUTE=1` runs ordinary
 controls, returns toward the starting area, follows death and starts a fresh
 Carnby game autonomously; its paired regression is documented in

@@ -6,6 +6,52 @@ Use explicit `AMIGA_CONFIG=a1200-020` for baseline acceptance or
 interactive launch and the baseline regression keep their existing settings.
 Warp and maximum CPU speed are diagnostic aids, not performance evidence.
 
+## Unattended capture overhead — 2026-10-05
+
+A paused, read-only A5-world capture on maximum-speed `a4000-030` with warp
+costs 0.93 seconds with GDB's default packet size. Forcing 8192-byte reads
+costs 1.96 seconds; both 75,616-byte files have identical SHA-256 digests.
+The observer exits zero (`tmp/m3-room5-combat/capture-benchmark-gdb.log`).
+Keep the default: larger packets do not accelerate this installed debugger.
+These are host capture costs, excluded from emulated gameplay timing, and
+cannot establish where the game's rendering time goes. Maximum CPU speed
+and warp are already enabled for functional pilots; fixed-clock acceptance
+still uses its explicit configuration.
+
+## Room 5 encounter — 2026-10-05
+
+Build `ROOM5COMBAT=1` (SOUTHROOMS and its prerequisites), then run
+`amiga/room5_combat.gdb`; `tools/mac_room5_combat.lua` supplies the original
+Mac route. Ordinary controls take/use the lamp, descend, enter room 5, select
+Fight and kick the naturally spawned enemy 62/body 73. Its initial counter
+VAR20 is 1, spawn variables 55/56 are 1 and health VAR57 is 10. Life 82/83
+leads to active life 84; the original death animation is 57. Removal clears
+VAR20/57 and the enemy's world slot/floor/room. Actions and the lamp remain
+in inventory, with Actions selected.
+
+The controller releases its approach when enemy damage begins, and each attack
+press ends after 180 ticks even when a hit interrupts the attempted kick.
+Between attacks it faces the enemy using ordinary turns. The lamp prerequisite
+uses the southern-room Mac route's 3600 x waypoint and north tolerance of
+8 angle units. Inheriting the bedroom route's 3800 waypoint and releasing at
+beta 26 left subsequent quarter-turns off-axis and stalled the baseline stairs
+turn; the corrected prefix passes both CPUs. Original game instructions and
+state are unchanged.
+
+Original Mac, baseline 68020 and fixed-clock 68030 observers and
+`tools/check_room5_combat.py` exit zero. Evidence is
+`tmp/m3-room5-combat/mac-reactive.log` and
+`{020,030}-aligned-{gdb,checked}.log`, with native captures preserved in the
+corresponding `{020,030}-evidence/` folders. The checker retains the complete
+lamp/stairs/southern-room prefix and its artwork checks, requires delivered
+Fight, actual kicks, damage and removal, then verifies a later published
+living manual gameplay frame. Hero health must stay positive and cannot
+increase; the enemy can already hit during the approach, so native initial
+health need not be exactly 20. Final health is 18 on Mac, 18 on the 68020 and
+17 on the 68030. The same binary passes both CPUs with clean no-float and
+160 data-symbol audits. This is functional coverage; it does not establish
+exact M6 combat pixels, real-time performance or the ten-minute M3 gate.
+
 ## Bedroom encounter — 2026-10-05
 
 Clean-build `COMBATROUTE=1` (BEDROOMKEY and its prerequisites), then run

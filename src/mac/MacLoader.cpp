@@ -7438,30 +7438,46 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     if(s_a5WorldStorage && g_ingameStage==5) {
         const uint8_t* world=s_a5WorldStorage+75616;
         const uint8_t* actor=world-0xb292+160;
-        const uint8_t* enemy=world-0x115f2+35*52;
+#ifdef AITD_ROOM5_COMBAT
+        const uint16_t enemyObject=62,healthVariable=57;
+        const bool inRoom=read16(actor+0x30)==5;
+#else
+        const uint16_t enemyObject=35,healthVariable=40;
+        const bool inRoom=read16(actor+0x30)==1 || read16(actor+0x30)==2;
+#endif
+        const uint8_t* enemy=world-0x115f2+enemyObject*52;
         const uint8_t* vars=(const uint8_t*)read32(world-0xcbcc);
         const bool ready=g_ingameStage==5 && g_macFramesPresented && read16(actor)==1 && read16(actor+2)==12
-            && read16(actor+0x2e)==1 && (read16(actor+0x30)==1 || read16(actor+0x30)==2);
+            && read16(actor+0x2e)==1 && inRoom;
         uint16_t objects=0;
         const int16_t slot=int16_t(read16(enemy));
         if(vars) {
+#ifdef AITD_ROOM5_COMBAT
+            if(read16(vars+110)==1 && read16(vars+112)==1 && slot>=0)objects|=1;
+            if(int16_t(read16(vars+42))<20)objects|=4096;
+#else
             if(!read16(vars+60) && read16(vars+62)==1 && slot>=0)objects|=1;
             if(read16(vars+60)==1)objects|=2;
+#endif
             if(int16_t(read16(vars+42))>0)objects|=16;
         }
         int16_t enemyX=0,enemyZ=0;
         if(slot>=0 && slot<50) {
             objects|=4;
             const uint8_t* npc=world-0xb292+slot*160;
+#ifdef AITD_ROOM5_COMBAT
+            if(read16(npc+0x34)==84)objects|=2;
+#endif
             if(read16(npc+0x2e)==read16(actor+0x2e) && read16(npc+0x30)==read16(actor+0x30)) {
                 objects|=1024;enemyX=int16_t(read16(npc+0x1c));enemyZ=int16_t(read16(npc+0x20));
             }
         }
-        if(vars && int16_t(read16(vars+80))<=0)objects|=2048;
-        if(slot<0 && vars && !read16(vars+40) && int16_t(read16(vars+80))<=0 && read16(enemy+28)==0xffff && read16(enemy+30)==0xffff)objects|=8;
+        if(vars && int16_t(read16(vars+healthVariable*2))<=0)objects|=2048;
+        if(slot<0 && vars && !read16(vars+40) && int16_t(read16(vars+healthVariable*2))<=0 && read16(enemy+28)==0xffff && read16(enemy+30)==0xffff)objects|=8;
         if(vars && read16(vars+180)==128)objects|=64;
         if(read16(world-0xd864)==1)objects|=256;
         if(vars && read16(vars+180)==16)objects|=512;
+#ifndef AITD_ROOM5_COMBAT
         if(ready && (g_combatRouteStage==19 || g_combatRouteStage==21)) {
             uint16_t white=0;
             const uint16_t low=g_combatRouteStage==19 ? 278 : 295,high=g_combatRouteStage==19 ? 292 : 309;
@@ -7471,6 +7487,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
             }
             if(white>10)objects|=g_combatRouteStage==19 ? 32 : 128;
         }
+#endif
         aitdInputCombat(g_macTicks,g_macSceneFramesCompleted,int16_t(read16(actor+0x1c)),int16_t(read16(actor+0x20)),read16(actor+0x2a),read16(actor+0x3e),read16(actor+0x52),objects,enemyX,enemyZ,ready);
     }
 #endif

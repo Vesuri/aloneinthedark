@@ -31,14 +31,16 @@ required.
   - If a new Mac dialog is reached, measure its choices/results and provide an
     engine-style interface inside 320×200 under D5; unsupported paths stay loud.
 
-  - Consolidate paired active coverage timing, excluding idle waits. Extend
-    autonomous, state-keyed first-floor sessions through further room and
-    interaction paths until the ten-minute gate is met. Verify each extension
-    against the original Mac.
+  - Measure paired active coverage from input and gameplay state, excluding
+    idle waits. Extend autonomous, state-keyed first-floor sessions through
+    further room and interaction paths until a continuous route meets the
+    ten-minute gate. Verify each extension against the original Mac.
+  - Bound steps by living hero identity; a death followed by the attract demo
+    must terminate the observer rather than be counted as gameplay.
 
-  *Done when* scripted sessions cover those routes for at least ten minutes of
-  emulated gameplay without a loud stop, with positive state checks and paired
-  Mac evidence. Owner play-testing can supplement this acceptance.
+  *Done when* a paired session includes at least ten minutes of active
+  first-floor gameplay without a loud stop, with positive state checks and Mac
+  evidence for the covered routes. Owner play-testing can supplement acceptance.
 ## M4 Audio
 
 - **M4.1 Remaining driver-interface coverage.**
