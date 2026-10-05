@@ -333,9 +333,17 @@ void aitdInputSaveLoad(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16
 {
     if(g_saveLoadStage>=6 || !ready)return;
     if(!g_saveLoadStage) {
+#ifdef AITD_LOAD_ONLY
+        // Fresh boot: move away before loading the preceding run's save.
+        // Only diagnostic controller state is initialized; the game sees keys.
+        g_menuProbeStage=6;g_menuProbeTick=ticks;s_menuProbeTextIndex=6;
+        g_saveLoadSavedX=x;g_saveLoadSavedZ=z;s_saveLoadFrames=scenes;
+        aitdInputInjectProbeKey(0x4c,true);g_saveLoadStage=2;g_saveLoadTick=ticks;
+#else
         if(g_menuProbeStage!=6 || s_menuProbeTextIndex!=6)return;
         g_saveLoadSavedX=x;g_saveLoadSavedZ=z;s_saveLoadFrames=scenes;
         g_saveLoadStage=1;g_saveLoadTick=ticks;
+#endif
     } else if(ticks-g_saveLoadTick>2400) {
         aitdInputInjectProbeKey(0x4c,false);g_saveLoadStage=0xffff;
     } else if(g_saveLoadStage==1) {

@@ -24,6 +24,10 @@
 # basename — KEEP BASENAMES UNIQUE across the source trees), sources located via vpath.
 
 # Diagnostic feature flags must enable probes before conditional symbol groups.
+ifeq ($(LOADONLY),1)
+SAVELOAD=1
+EXTRA_DEFINES += -DAITD_LOAD_ONLY
+endif
 ifeq ($(SAVELOAD),1)
 PROBES=1
 endif

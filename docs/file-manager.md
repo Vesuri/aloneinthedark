@@ -1,8 +1,10 @@
 # File Manager reference contract
 
-**Status, 2026-10-04:** Original PAK reads and measured file services pass M2.
+**Status, 2026-10-05:** Original PAK reads and measured file services pass M2.
 M3.2 verifies an original-game save named `m3test`, opening Load and clean
-shutdown. Paired save/move/load restores gameplay state on A1200/68020 (M3.5); immediate-reset durability remains M3.6.
+shutdown. Paired save/move/load restores gameplay state on A1200/68020 (M3.5). An abrupt
+emulator power cycle immediately after published save success preserves the
+file and fresh-run loaded actor/room state (M3.6).
 
 The checkpoint sections below preserve service-level evidence. References to
 an intermediate startup stop or a then-pending M2 gate are historical; current
@@ -11,8 +13,7 @@ is in [open-work.md](open-work.md). Unsupported contracts remain unsupported
 unless a later section explicitly verifies them.
 
 The M2 File Manager work is complete, including catalog identity, measured
-data/resource fork services and original PAK reads. Actual gameplay save/reset
-acceptance remains M3.6. The sections below preserve the measured contracts and
+data/resource fork services and original PAK reads. Actual gameplay save/move/load and abrupt-restart durability also pass M3.5/M3.6. The sections below preserve the measured contracts and
 implementation checkpoints, beginning with the 80-byte parameter-block logger.
 
 ## First call: application file control block

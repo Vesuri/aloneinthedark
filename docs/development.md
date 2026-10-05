@@ -1,5 +1,27 @@
 # Development
 
+## Save durability across abrupt restart — 2026-10-05
+
+`bash amiga/durable_run.sh` repeats the A1200/68020 durability acceptance in
+`.run-saveload`. The first SAVELOAD run stops at the first completed gameplay
+publication after successful save close. `durable_save.gdb` captures the actor
+and exits its observer; the runner kills only its recorded emulator, without
+normal game Quit or driver shutdown. This is an abrupt emulator power cycle,
+not a warm reset or a normal application restart. The surviving SAVE0.ITD is
+36,254 bytes. `LOADONLY=1` then fresh-boots the same volume, moves Carnby at
+least 300 units away, and selects Load through ordinary keys. It never saves.
+The actual load reads 33,644 bytes and restores actor 1/body 12, (3231,−1548),
+floor/room 0, idle animation 4; subsequent Quit cleanup passes.
+
+`tools/check_durable_save.py` requires zero statuses, the save-success/frame
+boundary, absence of normal Quit in the first run, real movement and reads in
+the second run, identical save bytes before/after Load and captured restored
+actor state. Accepted local logs are `tmp/m3-saveload/durable-{save-gdb,
+load-gdb,checked}.log`; both bounded runners exit zero. Build no-float/probe
+symbol audits also pass. This completes M3.6's immediate-save reset durability
+requirement using an abrupt cold restart. No changes to production write/close
+semantics were needed. M3's remaining gate is actual first-floor exploration.
+
 ## Autonomous save → move → load — 2026-10-05
 
 Clean-build `SAVELOAD=1` and run `DIAG_RUN_DIR=.run-saveload
@@ -23,8 +45,8 @@ reads 33,644 bytes; the reference also reads slot metadata (38,816 total).
 The native run additionally verifies driver 8 register preservation, cleared
 Paula/DMA resources, restored display/interrupt state and complete trap cleanup.
 Accepted logs: `tmp/m3-saveload/{mac,gdb,checked}.log`, all exit zero.
-This completes M3.5 on A1200/68020. Reset immediately after save success remains
-M3.6; normal Quit and reload are not evidence for that requirement.
+This completes M3.5 on A1200/68020. The separate abrupt-restart acceptance above closes M3.6; normal Quit and
+reload alone are not evidence for that requirement.
 
 ## Autonomous death and new-game restart — 2026-10-05
 

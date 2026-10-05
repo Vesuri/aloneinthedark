@@ -38,13 +38,6 @@ required.
   *Done when* scripted sessions cover those routes for at least ten minutes of
   emulated gameplay without a loud stop, with positive state checks and paired
   Mac evidence. Owner play-testing can supplement this acceptance.
-- **M3.6 Durable writes.**
-  - Verify actual game save and reload, including reset immediately after
-    reported save success.
-
-  *Done when* a save survives an emulator reset made immediately after the game
-  reports it saved.
-
 ## M4 Audio
 
 - **M4.1 Remaining driver-interface coverage.**
