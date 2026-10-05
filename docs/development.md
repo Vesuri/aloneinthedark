@@ -1,5 +1,36 @@
 # Development
 
+## Saber attacks, breakage and blade recovery — 2026-10-05
+
+Clean-build `SABERBREAK=1`, then run `amiga/saber_break.gdb` on `a1200-020`
+or fixed-clock `a4000-030-reference`. The option includes SABERROUTE and its
+prerequisites. `tools/mac_saber_break.lua` supplies the original reference;
+`tools/check_saber_break.py` verifies both observers' actual zero exit statuses,
+the entire cabinet prefix and all 115 native phases.
+
+Ordinary Space with Up/Left/Right produces animations 41/37/39. Breakage changes
+saber 38's found body/name from 40/208 to 43/580, retaining flags $8601, and
+changes Carnby from body 44 to body 45 while the saber remains equipped.
+The diagnostic recognises both bodies, releases held attack keys, uses O to
+restore body 12/in-hand Actions 2 and walks into the dropped-blade Find state.
+Take changes blade 41 from flags $4600 to $8600 and removes it from the room.
+Inventory count becomes five, with slots (2,41,38,37,13); a later completed
+scene must show idle manual bedroom gameplay. Exact original “You Find / A
+Saber Blade” white title pixels and placement are checked alongside the actual
+world/inventory changes and dismissal of the Find view.
+
+The original breaks by the third direction in this capture; the accepted 020
+needed one additional Up attack and the 030 needed two. The controller waits
+120 ticks after each attack animation begins and uses bounded ordinary retries
+from manual idle until actual breakage. It never infers success from an attack
+count or writes actors. These state-paired captures do not establish the cause
+of the differing break timing. All accepted runs and checks exit zero:
+`tmp/m3-explore/{mac-blade,saber-break-native-gdb,saber-break-checked,
+saber-break-030-gdb,saber-break-030-checked}.log`. Clean-build no-float and
+155 data-symbol audits pass. No production services or original game
+instructions changed. Further rooms, reading/combat coverage and the ten-minute
+M3 gate remain open.
+
 ## Cabinet key Use and saber pickup — 2026-10-05
 
 Clean-build `SABERROUTE=1` (BEDROOMKEY and its prerequisites), then run
@@ -35,13 +66,13 @@ Captured deadline failures also identified movable furniture, doorframe
 clearance and the final stair heading as distinct obstructions. Diagnostics use
 actual animation/position checks: the attic alignment range is z=3920–4070,
 room-0 west doorway z=2720–2900, hallway bedroom line x=2720–2900, cabinet
-z=1200–1380 and approach x=1640–1680. The stair exit corrects x into -350–0
+z=1200–1380 and approach x=1640–1680. The stair exit corrects x into -350–32
 and faces north before walking onward. Bounds account for measured unequal
 forward/backward steps; actors and positions are never written by the test.
 Failure observers preserve logical frame, palette and A5 state for diagnosis.
 
-Weapon attacks, broken-blade recovery and further first-floor rooms are still
-being measured. They are not accepted by this cabinet prerequisite.
+Further first-floor rooms are still being measured. The cabinet prerequisite
+does not establish the ten-minute M3 gate.
 
 ## First-floor bedroom key pickup — 2026-10-05
 

@@ -387,6 +387,34 @@ static uint32_t s_exploreFrames=0;
 extern "C" { volatile uint16_t g_saberOpenAttempts=0; }
 extern "C" __attribute__((noinline)) void aitdInputSaberActionCheckpoint()
 { __asm__ volatile("nop" ::: "memory"); }
+#ifdef AITD_SABER_BREAK
+extern "C" { volatile uint16_t g_saberBreakAttempts=3; }
+extern "C" __attribute__((noinline)) void aitdInputSaberBreakCheckpoint()
+{ __asm__ volatile("nop" ::: "memory"); }
+static uint8_t s_saberBreakState=0;
+static uint32_t s_saberBreakTick=0;
+static bool saberBrokenReady(uint32_t ticks,uint16_t objects,uint16_t animation,uint16_t track)
+{
+    if((objects&32) && (s_saberBreakState==1 || s_saberBreakState==2)) {
+        aitdInputInjectProbeKey(0x4c,false);aitdInputInjectProbeKey(0x40,false);
+        s_saberBreakState=3;s_saberBreakTick=ticks;return false;
+    }
+    if(s_saberBreakState==1) {
+        if(animation!=41)return false;
+        s_saberBreakState=2;s_saberBreakTick=ticks;return false;
+    }
+    if(s_saberBreakState==2) {
+        if(ticks-s_saberBreakTick<120)return false;
+        aitdInputInjectProbeKey(0x4c,false);aitdInputInjectProbeKey(0x40,false);
+        s_saberBreakState=3;s_saberBreakTick=ticks;return false;
+    }
+    if(animation!=4 || track!=1 || (s_saberBreakState==3 && ticks-s_saberBreakTick<30))return false;
+    if(objects&32)return true;
+    if(g_saberBreakAttempts>=16)return false;
+    aitdInputInjectProbeKey(0x40,true);aitdInputInjectProbeKey(0x4c,true);
+    s_saberBreakState=1;++g_saberBreakAttempts;aitdInputSaberBreakCheckpoint();return false;
+}
+#endif
 static uint8_t s_saberActionState=0;
 static uint32_t s_saberActionTick=0,s_saberFindTick=0;
 static bool saberFindReady(uint32_t ticks,uint16_t objects,uint16_t animation,uint16_t track)
@@ -433,7 +461,7 @@ static uint32_t s_stairExitTick=0;
 static bool exploreStairExit(uint32_t ticks,int16_t x,uint16_t beta,uint16_t animation)
 {
     if(!s_stairExitState) {
-        if(x>=-350 && x<=0)s_stairExitState=2;
+        if(x>=-350 && x<=32)s_stairExitState=2;
         else {aitdInputInjectProbeKey(0x4f,true);s_stairExitState=1;return false;}
     }
     if(s_stairExitState==1) {
@@ -441,7 +469,7 @@ static bool exploreStairExit(uint32_t ticks,int16_t x,uint16_t beta,uint16_t ani
         aitdInputInjectProbeKey(0x4f,false);s_stairExitState=2;return false;
     }
     if(s_stairExitState==2) {
-        if(animation!=4 || !exploreAligned(x,-350,0,true,animation))return false;
+        if(animation!=4 || !exploreAligned(x,-350,32,true,animation))return false;
         if(beta>16 && beta<1008) {aitdInputInjectProbeKey(0x4e,true);s_stairExitState=3;return false;}
         s_stairExitState=4;s_stairExitTick=ticks;return false;
     }
@@ -464,7 +492,10 @@ void aitdInputExplore(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_
     // The measured equipped-lamp standing animation satisfies release waits.
     if(animation==287)animation=4;
 #endif
-#ifdef AITD_SABER_ROUTE
+#ifdef AITD_SABER_BREAK
+    static uint32_t s_exploreAttackTick=0;
+    const uint16_t terminal=115;
+#elif defined(AITD_SABER_ROUTE)
     const uint16_t terminal=98;
 #elif defined(AITD_BEDROOM_KEY)
     const uint16_t terminal=64;
@@ -571,6 +602,25 @@ void aitdInputExplore(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_
         else if(stage==88) {if(!(objects&4) || animation!=4 || track!=1 || scenes<=s_exploreFrames)return;}
         else if(stage==89) {if(elapsed<60)return;aitdInputInjectProbeKey(0x44,true);}
         else if(stage==97) {if(!(objects&8) || animation!=4 || track!=1 || elapsed<30 || scenes<=s_exploreFrames)return;}
+#endif
+#ifdef AITD_SABER_BREAK
+        else if(stage==98) {if(animation!=4 || elapsed<30)return;aitdInputInjectProbeKey(0x40,true);aitdInputInjectProbeKey(0x4c,true);}
+        else if(stage==99) {if(!s_exploreAttackTick && animation==41)s_exploreAttackTick=ticks;if(!s_exploreAttackTick || ticks-s_exploreAttackTick<120)return;s_exploreAttackTick=0;aitdInputInjectProbeKey(0x4c,false);aitdInputInjectProbeKey(0x40,false);}
+        else if(stage==100) {if(animation!=4 || elapsed<30)return;aitdInputInjectProbeKey(0x40,true);aitdInputInjectProbeKey(0x4f,true);}
+        else if(stage==101) {if(!s_exploreAttackTick && animation==37)s_exploreAttackTick=ticks;if(!s_exploreAttackTick || ticks-s_exploreAttackTick<120)return;s_exploreAttackTick=0;aitdInputInjectProbeKey(0x4f,false);aitdInputInjectProbeKey(0x40,false);}
+        else if(stage==102) {if(animation!=4 || elapsed<30)return;aitdInputInjectProbeKey(0x40,true);aitdInputInjectProbeKey(0x4e,true);}
+        else if(stage==103) {if(!s_exploreAttackTick && animation==39)s_exploreAttackTick=ticks;if(!s_exploreAttackTick || ticks-s_exploreAttackTick<120)return;s_exploreAttackTick=0;aitdInputInjectProbeKey(0x4e,false);aitdInputInjectProbeKey(0x40,false);}
+        else if(stage==104) {if(elapsed<30 || !saberBrokenReady(ticks,objects,animation,track))return;aitdInputInjectProbeKey(0x18,true);}
+        else if(stage==105) {if(elapsed<120)return;aitdInputInjectProbeKey(0x18,false);}
+        else if(stage==106) {if(animation!=4 || track!=1 || elapsed<30 || !(objects&256))return;aitdInputInjectProbeKey(0x4e,true);}
+        else if(stage==107) {if(beta<496 || beta>528)return;aitdInputInjectProbeKey(0x4e,false);}
+        else if(stage==108) {if(animation!=4 || elapsed<30)return;aitdInputInjectProbeKey(0x4e,true);}
+        else if(stage==109) {if(beta<752 || beta>784)return;aitdInputInjectProbeKey(0x4e,false);}
+        else if(stage==110) {if(animation!=4 || elapsed<30)return;aitdInputInjectProbeKey(0x4c,true);}
+        else if(stage==111) {if(!(objects&64))return;aitdInputInjectProbeKey(0x4c,false);}
+        else if(stage==112) {if(elapsed<300 || !(objects&64))return;aitdInputInjectProbeKey(0x44,true);}
+        else if(stage==113) {if(elapsed<8)return;aitdInputInjectProbeKey(0x44,false);s_exploreFrames=scenes;}
+        else if(stage==114) {if(!(objects&128) || animation!=4 || track!=1 || elapsed<30 || scenes<=s_exploreFrames)return;}
 #endif
         g_exploreRouteStage=stage+1;g_exploreRouteTick=ticks;aitdInputExploreCheckpoint();return;
     }

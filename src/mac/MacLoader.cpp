@@ -7363,6 +7363,9 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         const bool ready=g_ingameStage==5 && g_macFramesPresented && read16(actor)==1 && (read16(actor+2)==12 || read16(actor+2)==11
 #ifdef AITD_SABER_ROUTE
             || read16(actor+2)==44
+#ifdef AITD_SABER_BREAK
+            || read16(actor+2)==45
+#endif
 #endif
             );
         const uint8_t* world=s_a5WorldStorage+75616;
@@ -7376,6 +7379,22 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         if(saberTaken)objects|=4;
         if(read16(world-0xd864)==0 && read16(actor+0x52)==0)objects|=16;
         if(saberTaken && read16(world-0xd8a8)==38 && read16(actor+2)==44)objects|=8;
+#ifdef AITD_SABER_BREAK
+        const uint8_t* saber=world-0x115f2+38*52;
+        const uint8_t* blade=world-0x115f2+41*52;
+        const bool broken=read16(saber+8)==43 && read16(saber+10)==580 && read16(saber+12)==0x8601;
+        if(broken)objects|=32;
+        if(broken && read16(blade+12)==0x4600 && s_colorScreen[185*640+195]==115
+            && s_colorScreen[190*640+200]==122 && s_colorScreen[310*640+440]==119
+            && read16(s_windowManagerColors+8+115*8+2)==0xc7c7
+            && read16(s_windowManagerColors+8+122*8+2)==0x6363
+            && read16(s_windowManagerColors+8+119*8+2)==0x8f8f)objects|=64;
+        if(broken && read16(blade+8)==37 && read16(blade+10)==234 && read16(blade+12)==0x8600
+            && read16(blade+28)==0xffff && read16(blade+30)==0xffff && read16(world-0xd8a6)==5
+            && read16(world-0xd8a4)==2 && read16(world-0xd8a2)==41 && read16(world-0xd8a0)==38
+            && read16(world-0xd89e)==37 && read16(world-0xd89c)==13)objects|=128;
+        if(read16(actor+2)==12 && read16(world-0xd8a8)==2)objects|=256;
+#endif
 #endif
         aitdInputExplore(g_macTicks,g_macSceneFramesCompleted,int16_t(read16(actor+0x1c)),int16_t(read16(actor+0x20)),
             read16(actor+0x2a),read16(actor+0x3e),read16(actor+0x2e),read16(actor+0x30),read16(actor+0x52),objects,ready);

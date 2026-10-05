@@ -32,7 +32,7 @@ required.
     engine-style interface inside 320×200 under D5; unsupported paths stay loud.
 
   - Extend autonomous, state-keyed routes through additional first-floor rooms,
-    weapon attacks/breakage, reading and combat/menu interactions. Verify each
+    reading and combat/menu interactions. Verify each
     route against the original Mac; do not count idle time as coverage.
 
   *Done when* scripted sessions cover those routes for at least ten minutes of

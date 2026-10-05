@@ -42,7 +42,7 @@ def check(mac,native,folder,mac_status,native_status,hallway=False,key=False):
             require(tuple(struct.unpack_from('>h',data,hero+i)[0] for i in (0,2,0x2e,0x30,0x3e,0x52))==(1,12,1,1,4,1),label+' published hallway/manual identity')
         print('PASS hallway: original door actor 22 rotated, actual room 0→1, released controls and manual idle')
     if key:
-        require(-350<=states[20][1]<=0 and (states[20][3]<=16 or states[20][3]>=1008),'native stair exit position/heading')
+        require(-350<=states[20][1]<=32 and (states[20][3]<=16 or states[20][3]>=1008),'native stair exit position/heading')
         require(3920<=states[11][2]<=4070 and 2720<=states[29][2]<=2900 and 2720<=states[42][1]<=2900,'native passage alignment margins')
         for phase,coordinate,low,high in [('east-opening',3,3920,4070),('room0-west',3,2720,2900),('hallway-north',2,2720,2900)]:
             row=re.search(r'^EXPLORE phase='+phase+r' tick=(\d+) x=(-?\d+) z=(-?\d+)',mac,re.M)

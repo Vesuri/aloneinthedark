@@ -24,6 +24,10 @@
 # basename — KEEP BASENAMES UNIQUE across the source trees), sources located via vpath.
 
 # Diagnostic feature flags must enable probes before conditional symbol groups.
+ifeq ($(SABERBREAK),1)
+SABERROUTE=1
+EXTRA_DEFINES += -DAITD_SABER_BREAK
+endif
 ifeq ($(SABERROUTE),1)
 BEDROOMKEY=1
 EXTRA_DEFINES += -DAITD_SABER_ROUTE
@@ -435,6 +439,9 @@ PROBE_SYMS += g_exploreAlignment
 endif
 ifeq ($(SABERROUTE),1)
 PROBE_SYMS += g_saberOpenAttempts
+ifeq ($(SABERBREAK),1)
+PROBE_SYMS += g_saberBreakAttempts
+endif
 endif
 ifeq ($(EXPLOREROUTE),1)
 PROBE_SYMS += g_exploreRouteStage g_exploreRouteTick
