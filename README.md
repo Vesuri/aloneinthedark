@@ -21,7 +21,9 @@ Autonomous attic descent, oil-lamp pickup and empty-lamp Use pass paired
 original/native state checks. A combined session reaches first-floor room 0
 through the stair entrance; the extended 68020/68030 session opens the west door
 and reaches the hallway. The 68020/68030 extension also enters the bedroom and
-takes its key. The ten-minute scripted first-floor route remains open.
+takes its key. The paired 68020 cabinet extension uses that key, takes the saber
+and equips it; its 68030 repeat is pending. The ten-minute scripted first-floor
+route remains open.
 The action-menu preview now runs at 2.07 updates/sec on the reference 68030
 versus 1.65 on Mac; keyboard choices, hover, clicks and cancellation pass paired checks.
 

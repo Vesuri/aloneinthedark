@@ -383,6 +383,27 @@ extern "C" { volatile uint16_t g_exploreRouteStage=0; volatile uint32_t g_explor
 extern "C" __attribute__((noinline)) void aitdInputExploreCheckpoint()
 { __asm__ volatile("nop" ::: "memory"); }
 static uint32_t s_exploreFrames=0;
+#ifdef AITD_SABER_ROUTE
+extern "C" { volatile uint16_t g_saberOpenAttempts=0; }
+extern "C" __attribute__((noinline)) void aitdInputSaberActionCheckpoint()
+{ __asm__ volatile("nop" ::: "memory"); }
+static uint8_t s_saberActionState=0;
+static uint32_t s_saberActionTick=0,s_saberFindTick=0;
+static bool saberFindReady(uint32_t ticks,uint16_t objects,uint16_t animation,uint16_t track)
+{
+    if(s_saberActionState==1) {
+        if(ticks-s_saberActionTick<120)return false;
+        aitdInputInjectProbeKey(0x40,false);s_saberActionState=2;s_saberActionTick=ticks;return false;
+    }
+    if(objects&16) {
+        if(!s_saberFindTick)s_saberFindTick=ticks;
+        return ticks-s_saberFindTick>=300;
+    }
+    if(animation!=4 || track!=1 || ticks-s_saberActionTick<300)return false;
+    aitdInputInjectProbeKey(0x40,true);s_saberActionState=1;s_saberActionTick=ticks;
+    ++g_saberOpenAttempts;aitdInputSaberActionCheckpoint();return false;
+}
+#endif
 #ifdef AITD_HALLWAY
 extern "C" { volatile uint16_t g_exploreAlignment=0; }
 extern "C" __attribute__((noinline)) void aitdInputExploreAlignCheckpoint()
@@ -407,8 +428,32 @@ static bool exploreAligned(int16_t position,int16_t low,int16_t high,bool backFo
     }
     return true;
 }
+static uint8_t s_stairExitState=0;
+static uint32_t s_stairExitTick=0;
+static bool exploreStairExit(uint32_t ticks,int16_t x,uint16_t beta,uint16_t animation)
+{
+    if(!s_stairExitState) {
+        if(x>=-350 && x<=0)s_stairExitState=2;
+        else {aitdInputInjectProbeKey(0x4f,true);s_stairExitState=1;return false;}
+    }
+    if(s_stairExitState==1) {
+        if(beta<240 || beta>272)return false;
+        aitdInputInjectProbeKey(0x4f,false);s_stairExitState=2;return false;
+    }
+    if(s_stairExitState==2) {
+        if(animation!=4 || !exploreAligned(x,-350,0,true,animation))return false;
+        if(beta>16 && beta<1008) {aitdInputInjectProbeKey(0x4e,true);s_stairExitState=3;return false;}
+        s_stairExitState=4;s_stairExitTick=ticks;return false;
+    }
+    if(s_stairExitState==3) {
+        if(beta>16 && beta<1008)return false;
+        aitdInputInjectProbeKey(0x4e,false);s_stairExitState=4;s_stairExitTick=ticks;return false;
+    }
+    return animation==4 && ticks-s_stairExitTick>=30;
+}
+
 #endif
-void aitdInputExplore(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_t beta,uint16_t animation,uint16_t floor,uint16_t room,uint16_t track,bool keyTaken,bool ready)
+void aitdInputExplore(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_t beta,uint16_t animation,uint16_t floor,uint16_t room,uint16_t track,uint16_t objects,bool ready)
 {
 #ifdef AITD_LAMP_STAIRS
 #ifdef AITD_HALLWAY
@@ -419,7 +464,9 @@ void aitdInputExplore(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_
     // The measured equipped-lamp standing animation satisfies release waits.
     if(animation==287)animation=4;
 #endif
-#ifdef AITD_BEDROOM_KEY
+#ifdef AITD_SABER_ROUTE
+    const uint16_t terminal=98;
+#elif defined(AITD_BEDROOM_KEY)
     const uint16_t terminal=64;
 #elif defined(AITD_HALLWAY)
     const uint16_t terminal=39;
@@ -430,7 +477,7 @@ void aitdInputExplore(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_
     (void)room;
 #endif
 #ifndef AITD_BEDROOM_KEY
-    (void)keyTaken;
+    (void)objects;
 #endif
     if(!ready || g_exploreRouteStage>=terminal)return;
     beta&=1023;
@@ -446,7 +493,11 @@ void aitdInputExplore(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_
 #ifdef AITD_FIRSTFLOOR
     if(stage>=19) {
         const uint32_t elapsed=ticks-g_exploreRouteTick;
-        if(stage==19) {if(elapsed<30)return;aitdInputInjectProbeKey(0x18,true);}
+        if(stage==19) {if(elapsed<30
+#ifdef AITD_HALLWAY
+            || !exploreStairExit(ticks,x,beta,animation)
+#endif
+            )return;aitdInputInjectProbeKey(0x18,true);}
         else if(stage==20) {if(elapsed<120)return;aitdInputInjectProbeKey(0x18,false);}
         else if(stage==21) {if(elapsed<30)return;aitdInputInjectProbeKey(0x40,true);}
         else if(stage==22) {if(elapsed<120)return;aitdInputInjectProbeKey(0x40,false);}
@@ -456,7 +507,7 @@ void aitdInputExplore(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_
 #ifdef AITD_HALLWAY
         else if(stage==26) {if(elapsed<30)return;aitdInputInjectProbeKey(0x4c,true);}
         else if(stage==27) {if(z>3200)return;aitdInputInjectProbeKey(0x4c,false);}
-        else if(stage==28) {if(animation!=4 || elapsed<30)return;aitdInputInjectProbeKey(0x4e,true);}
+        else if(stage==28) {if(elapsed<30 || !exploreAligned(z,2720,2900,false,animation))return;aitdInputInjectProbeKey(0x4e,true);}
         else if(stage==29) {if(beta<752 || beta>784)return;aitdInputInjectProbeKey(0x4e,false);}
         else if(stage==30) {if(animation!=4 || elapsed<30)return;aitdInputInjectProbeKey(0x4c,true);}
         else if(stage==31) {if(x>0)return;aitdInputInjectProbeKey(0x4c,false);}
@@ -493,7 +544,33 @@ void aitdInputExplore(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_
         else if(stage==60) {if(elapsed<120)return;aitdInputInjectProbeKey(0x40,false);}
         else if(stage==61) {if(elapsed<120)return;aitdInputInjectProbeKey(0x44,true);}
         else if(stage==62) {if(elapsed<8)return;aitdInputInjectProbeKey(0x44,false);s_exploreFrames=scenes;}
-        else if(stage==63) {if(!keyTaken || animation!=4 || track!=1 || scenes<=s_exploreFrames)return;}
+        else if(stage==63) {if(!(objects&1) || animation!=4 || track!=1 || scenes<=s_exploreFrames)return;}
+#endif
+#ifdef AITD_SABER_ROUTE
+        else if(stage==64) {if(animation!=4 || elapsed<30)return;aitdInputInjectProbeKey(0x4e,true);}
+        else if(stage==65) {if(beta<240 || beta>272)return;aitdInputInjectProbeKey(0x4e,false);}
+        else if(stage==66) {if(animation!=4 || elapsed<30)return;aitdInputInjectProbeKey(0x4c,true);}
+        else if(stage==67) {if(x<600)return;aitdInputInjectProbeKey(0x4c,false);}
+        else if(stage==68) {if(animation!=4 || elapsed<30)return;aitdInputInjectProbeKey(0x4f,true);}
+        else if(stage==69) {if(beta<496 || beta>528)return;aitdInputInjectProbeKey(0x4f,false);}
+        else if(stage==70) {if(animation!=4 || elapsed<30)return;aitdInputInjectProbeKey(0x4c,true);}
+        else if(stage==71) {if(z<900)return;aitdInputInjectProbeKey(0x4c,false);}
+        else if(stage==72) {if(elapsed<30 || !exploreAligned(z,1200,1380,true,animation))return;aitdInputInjectProbeKey(0x4e,true);}
+        else if(stage==73) {if(beta<240 || beta>272)return;aitdInputInjectProbeKey(0x4e,false);}
+        else if(stage==74) {if(animation!=4 || elapsed<30)return;aitdInputInjectProbeKey(0x4c,true);}
+        else if(stage==75) {if(x<1300)return;aitdInputInjectProbeKey(0x4c,false);}
+        else if(stage==76) {if(elapsed<30 || !exploreAligned(x,1640,1680,true,animation))return;aitdInputInjectProbeKey(0x44,true);}
+        else if(stage==77 || stage==81 || stage==83 || stage==90 || stage==94 || stage==96) {if(elapsed<8)return;aitdInputInjectProbeKey(0x44,false);if(stage==96)s_exploreFrames=scenes;}
+        else if(stage==78 || stage==91) {if(elapsed<180)return;aitdInputInjectProbeKey(0x4d,true);}
+        else if(stage==79 || stage==92) {if(elapsed<8)return;aitdInputInjectProbeKey(0x4d,false);}
+        else if(stage==80 || stage==82 || stage==93 || stage==95) {if(elapsed<120)return;aitdInputInjectProbeKey(0x44,true);}
+        else if(stage==84) {if(elapsed<180 || !(objects&2))return;aitdInputInjectProbeKey(0x40,true);g_saberOpenAttempts=1;}
+        else if(stage==85) {if(elapsed<120)return;aitdInputInjectProbeKey(0x40,false);s_saberActionTick=ticks;}
+        else if(stage==86) {if(elapsed<300 || !saberFindReady(ticks,objects,animation,track))return;aitdInputInjectProbeKey(0x44,true);}
+        else if(stage==87) {if(elapsed<120)return;aitdInputInjectProbeKey(0x44,false);s_exploreFrames=scenes;}
+        else if(stage==88) {if(!(objects&4) || animation!=4 || track!=1 || scenes<=s_exploreFrames)return;}
+        else if(stage==89) {if(elapsed<60)return;aitdInputInjectProbeKey(0x44,true);}
+        else if(stage==97) {if(!(objects&8) || animation!=4 || track!=1 || elapsed<30 || scenes<=s_exploreFrames)return;}
 #endif
         g_exploreRouteStage=stage+1;g_exploreRouteTick=ticks;aitdInputExploreCheckpoint();return;
     }
@@ -518,7 +595,7 @@ void aitdInputExplore(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_
     else {
 #ifdef AITD_HALLWAY
         if(stage==10) {
-            if(ticks-g_exploreRouteTick<30 || !exploreAligned(z,3920,3970,true,animation))return;
+            if(ticks-g_exploreRouteTick<30 || !exploreAligned(z,3920,4070,true,animation))return;
         }
 #endif
         if(animation!=4 || ticks-g_exploreRouteTick<30)return;

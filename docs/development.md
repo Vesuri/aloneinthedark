@@ -1,5 +1,46 @@
 # Development
 
+## Cabinet key Use and saber pickup — 2026-10-05
+
+Clean-build `SABERROUTE=1` (BEDROOMKEY and its prerequisites), then run
+`saber_route.gdb` on `a1200-020`. `tools/mac_saber_route.lua` performs the
+paired original session. The 98-phase route retains lamp Use, descent, hallway
+and key pickup, crosses east before heading south so movable furniture 32/body
+33 remains at (-800,-570), approaches the cabinet and uses inventory key 37.
+It waits for the actual Find state before Return, takes saber 38 and equips it.
+The original saber found body/name are 40/208; Take changes flags $0601→$8601,
+inventory count 3→4 and slots to (2,38,37,13). Use equips body 44/in-hand 38;
+a later completed native scene confirms manual bedroom gameplay.
+
+`tools/check_saber_route.py` retains all prefix checks and verifies the actual
+Find state, exact original “You Find / An Old Cavalry Saber” text and horizontal
+placement, original/native inventory changes, retained key/lamp and final
+body/manual state. Accepted local evidence is
+`tmp/m3-explore/{mac-saber,saber-native-gdb,saber-checked}.log`, with actual zero
+observer/checker statuses. No-float and 154 data-symbol audits pass. The selected
+fixed-clock 68030 repeat is still pending; this is not the ten-minute M3 gate.
+
+The cabinet script's primary ListLife 45 data requires contact with Carnby as
+well as relative position and key 37. A native first action stopped just short
+of contact. The diagnostic now retries ordinary Space only from manual idle
+and waits for the measured Find state (A5−$D864=0, track 0), allowing 300 ticks
+for painting before Take. The accepted native route needed one retry. Its
+attempt order and manual state are checked; an unopened cabinet cannot fall
+through to Return and accidentally open inventory. Original instructions and
+production services are unchanged.
+
+Captured deadline failures also identified movable furniture, doorframe
+clearance and the final stair heading as distinct obstructions. Diagnostics use
+actual animation/position checks: the attic alignment range is z=3920–4070,
+room-0 west doorway z=2720–2900, hallway bedroom line x=2720–2900, cabinet
+z=1200–1380 and approach x=1640–1680. The stair exit corrects x into -350–0
+and faces north before walking onward. Bounds account for measured unequal
+forward/backward steps; actors and positions are never written by the test.
+Failure observers preserve logical frame, palette and A5 state for diagnosis.
+
+Weapon attacks, broken-blade recovery and further first-floor rooms are still
+being measured. They are not accepted by this cabinet prerequisite.
+
 ## First-floor bedroom key pickup — 2026-10-05
 
 Clean-build `BEDROOMKEY=1` (HALLWAY/FIRSTFLOOR and their prerequisites),
@@ -28,7 +69,7 @@ consume more opening clearance. Captured named failures identify upper/lower
 attic walls and both bedroom doorframe edges. The diagnostic controller now
 uses ordinary single steps, waits for their walking/backward animation and
 subsequent idle state, then rechecks position before turning into the passage.
-The attic target is z=3920–3970, the hallway target x=2720–2900; actual source
+The current attic target is z=3920–4070, the hallway target x=2720–2900; actual source
 actors/positions are never written. The paired Mac uses the same correction.
 The checker verifies press/release/idle order, advancing ticks and actual
 movement direction for each native correction, plus both final alignment bounds.

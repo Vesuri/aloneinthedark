@@ -116,7 +116,7 @@ mac.run(function()
     print(string.format('ALIGN_MAC axis=%s tick=%d position=%d',axis,mem:read_u32(0x16a),mem:read_i16(actor+offset)))
    end
   end
-  align('z',3920,3970,true)
+  align('z',3920,4070,true)
   move('Right Arrow','east-opening',function()local b=mem:read_i16(actor+0x2a)&1023;return b>=240 and b<=272 end)
   move('Up Arrow','inside-stairs',function()return mem:read_i16(actor+0x1c)>=6650 end)
   move('Right Arrow','north-stairs',function()local b=mem:read_i16(actor+0x2a)&1023;return b<=32 or b>=992 end)
@@ -130,6 +130,16 @@ mac.run(function()
    stable=nil;return false
   end,3600));report('first-floor')
   print('EXPLORE_MANUAL track='..mem:read_i16(actor+0x52))
+  if mem:read_i16(actor+0x1c)<-350 or mem:read_i16(actor+0x1c)>0 then
+   mac.key_down('Left Arrow');assert(mac.wait_for('stair exit east alignment',function()local b=mem:read_i16(actor+0x2a)&1023;return b>=240 and b<=272 end,1200));mac.key_up('Left Arrow')
+   assert(mac.wait_for('stair alignment released',function()return mem:read_i16(actor+0x3e)==4 end,1200));align('x',-350,0,true)
+  end
+  local b=mem:read_i16(actor+0x2a)&1023
+  if b>16 and b<1008 then
+   mac.key_down('Right Arrow');assert(mac.wait_for('stair exit north heading',function()local h=mem:read_i16(actor+0x2a)&1023;return h<=16 or h>=1008 end,1200));mac.key_up('Right Arrow')
+   assert(mac.wait_for('stair north released',function()return mem:read_i16(actor+0x3e)==4 end,1200))
+  end
+  mac.wait(30)
   mac.key_down('o');mac.wait(120);mac.key_up('o');mac.wait(30)
   mac.key_down('Space');mac.wait(120);mac.key_up('Space');mac.wait(120);report('stair-door-open')
   mac.key_down('Up Arrow')
@@ -137,6 +147,7 @@ mac.run(function()
   mac.key_up('Up Arrow')
   assert(mac.wait_for('room 0 manual idle',function()return mem:read_i16(actor+0x3e)==4 and mem:read_i16(actor+0x52)==1 end,1200));mac.wait(30);report('first-floor-room0')
   move('Up Arrow','room0-door-line',function()return mem:read_i16(actor+0x20)<=3200 end)
+  align('z',2720,2900,false)
   move('Right Arrow','room0-west',function()local b=mem:read_i16(actor+0x2a)&1023;return b>=752 and b<=784 end)
   move('Up Arrow','room0-west-approach',function()return mem:read_i16(actor+0x1c)<=0 end)
   mac.key_down('o');mac.wait(120);mac.key_up('o');mac.wait(30)

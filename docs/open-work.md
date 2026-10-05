@@ -31,9 +31,10 @@ required.
   - If a new Mac dialog is reached, measure its choices/results and provide an
     engine-style interface inside 320×200 under D5; unsupported paths stay loud.
 
-  - Add autonomous, state-keyed input routes for object use, room transitions
-    and first-floor exploration; extend combat/menu routes through those rooms. Verify each
+  - Extend autonomous, state-keyed routes through additional first-floor rooms,
+    weapon attacks/breakage, reading and combat/menu interactions. Verify each
     route against the original Mac; do not count idle time as coverage.
+  - Complete the selected fixed-clock 68030 cabinet/saber repeat.
 
   *Done when* scripted sessions cover those routes for at least ten minutes of
   emulated gameplay without a loud stop, with positive state checks and paired

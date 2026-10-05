@@ -42,19 +42,20 @@ def check(mac,native,folder,mac_status,native_status,hallway=False,key=False):
             require(tuple(struct.unpack_from('>h',data,hero+i)[0] for i in (0,2,0x2e,0x30,0x3e,0x52))==(1,12,1,1,4,1),label+' published hallway/manual identity')
         print('PASS hallway: original door actor 22 rotated, actual room 0→1, released controls and manual idle')
     if key:
-        require(3920<=states[11][2]<=3970 and 2720<=states[42][1]<=2900,'native passage alignment margins')
-        for phase,coordinate,low,high in [('east-opening',3,3920,3970),('hallway-north',2,2720,2900)]:
+        require(-350<=states[20][1]<=0 and (states[20][3]<=16 or states[20][3]>=1008),'native stair exit position/heading')
+        require(3920<=states[11][2]<=4070 and 2720<=states[29][2]<=2900 and 2720<=states[42][1]<=2900,'native passage alignment margins')
+        for phase,coordinate,low,high in [('east-opening',3,3920,4070),('room0-west',3,2720,2900),('hallway-north',2,2720,2900)]:
             row=re.search(r'^EXPLORE phase='+phase+r' tick=(\d+) x=(-?\d+) z=(-?\d+)',mac,re.M)
             require(row is not None and low<=int(row[coordinate])<=high,'Mac aligned '+phase)
         aligns=re.findall(r'^ALIGN_NATIVE stage=(\d+) state=(\d+) tick=(\d+) x=(-?\d+) z=(-?\d+) anim=(-?\d+)$',native,re.M)
         require(len(aligns)%3==0,'complete native consumed alignment steps')
         for index in range(0,len(aligns),3):
             start,release,end=[tuple(map(int,row)) for row in aligns[index:index+3]]
-            require(start[0] in (10,41) and start[0]==release[0]==end[0],'same alignment waypoint')
+            require(start[0] in (10,19,28,41) and start[0]==release[0]==end[0],'same alignment waypoint')
             require((start[1],release[1],end[1]) in ((1,2,0),(3,4,0)) and start[5]==end[5]==4,'press/release/idle alignment states')
             require(release[5]==(256 if start[1]==1 else 254) and start[2]<release[2]<end[2],'actual consumed walking animation and time')
-            axis=4 if start[0]==10 else 3
-            increases=(start[1]==3)==(start[0]==10)
+            axis=4 if start[0] in (10,28) else 3
+            increases=(start[1]==3)==(start[0] in (10,19))
             require((end[axis]>start[axis]) if increases else (end[axis]<start[axis]),'actual correction movement direction')
         pub={int(s):int(f) for s,f in re.findall(r'^KEY_PUBLICATION stage=(\d+) frames=(\d+)$',native,re.M)}
         require(pub[64]>pub[63],'native scene publication after actual key Take')
