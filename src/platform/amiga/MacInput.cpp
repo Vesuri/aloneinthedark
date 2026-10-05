@@ -325,7 +325,11 @@ static uint32_t s_lampFrames=0;
 void aitdInputLamp(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_t beta,uint16_t animation,uint16_t track,bool taken,bool used,bool ready)
 {
 #ifdef AITD_LAMP_USE
+#ifdef AITD_HALLWAY
+    const uint16_t terminal=30;
+#else
     const uint16_t terminal=27;
+#endif
 #else
     const uint16_t terminal=15;
     (void)used;
@@ -364,6 +368,11 @@ void aitdInputLamp(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_t b
     else if(stage==24) {if(!used || animation!=287 || track!=1 || scenes<=s_lampFrames)return;aitdInputInjectProbeKey(0x4d,true);}
     else if(stage==25) {if(z<-3500)return;aitdInputInjectProbeKey(0x4d,false);s_lampFrames=scenes;}
     else if(stage==26) {if(!used || animation!=287 || track!=1 || elapsed<30 || scenes<=s_lampFrames)return;}
+#ifdef AITD_HALLWAY
+    else if(stage==27)aitdInputInjectProbeKey(0x18,true);
+    else if(stage==28) {if(elapsed<120)return;aitdInputInjectProbeKey(0x18,false);s_lampFrames=scenes;}
+    else if(stage==29) {if(animation!=4 || track!=1 || elapsed<30 || scenes<=s_lampFrames)return;}
+#endif
 #endif
     g_lampRouteStage=stage+1;g_lampRouteTick=ticks;aitdInputLampCheckpoint();
 }
@@ -377,11 +386,17 @@ static uint32_t s_exploreFrames=0;
 void aitdInputExplore(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_t beta,uint16_t animation,uint16_t floor,uint16_t room,uint16_t track,bool ready)
 {
 #ifdef AITD_LAMP_STAIRS
+#ifdef AITD_HALLWAY
+    if(g_lampRouteStage!=30)return;
+#else
     if(g_lampRouteStage!=27)return;
+#endif
     // The measured equipped-lamp standing animation satisfies release waits.
     if(animation==287)animation=4;
 #endif
-#ifdef AITD_FIRSTFLOOR
+#ifdef AITD_HALLWAY
+    const uint16_t terminal=39;
+#elif defined(AITD_FIRSTFLOOR)
     const uint16_t terminal=26;
 #else
     const uint16_t terminal=19;
@@ -408,6 +423,21 @@ void aitdInputExplore(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_
         else if(stage==23) {if(elapsed<120)return;aitdInputInjectProbeKey(0x4c,true);}
         else if(stage==24) {if(floor!=1 || room!=0)return;aitdInputInjectProbeKey(0x4c,false);s_exploreFrames=scenes;}
         else if(stage==25) {if(animation!=4 || track!=1 || elapsed<30 || scenes<=s_exploreFrames)return;}
+#ifdef AITD_HALLWAY
+        else if(stage==26) {if(elapsed<30)return;aitdInputInjectProbeKey(0x4c,true);}
+        else if(stage==27) {if(z>3200)return;aitdInputInjectProbeKey(0x4c,false);}
+        else if(stage==28) {if(animation!=4 || elapsed<30)return;aitdInputInjectProbeKey(0x4e,true);}
+        else if(stage==29) {if(beta<752 || beta>784)return;aitdInputInjectProbeKey(0x4e,false);}
+        else if(stage==30) {if(animation!=4 || elapsed<30)return;aitdInputInjectProbeKey(0x4c,true);}
+        else if(stage==31) {if(x>0)return;aitdInputInjectProbeKey(0x4c,false);}
+        else if(stage==32) {if(animation!=4 || elapsed<30)return;aitdInputInjectProbeKey(0x18,true);}
+        else if(stage==33) {if(elapsed<120)return;aitdInputInjectProbeKey(0x18,false);}
+        else if(stage==34) {if(elapsed<30)return;aitdInputInjectProbeKey(0x40,true);}
+        else if(stage==35) {if(elapsed<120)return;aitdInputInjectProbeKey(0x40,false);}
+        else if(stage==36) {if(elapsed<120 || track!=1 || animation!=4)return;aitdInputInjectProbeKey(0x4c,true);}
+        else if(stage==37) {if(floor!=1 || room!=1)return;aitdInputInjectProbeKey(0x4c,false);s_exploreFrames=scenes;}
+        else if(stage==38) {if(animation!=4 || track!=1 || elapsed<30 || scenes<=s_exploreFrames)return;}
+#endif
         g_exploreRouteStage=stage+1;g_exploreRouteTick=ticks;aitdInputExploreCheckpoint();return;
     }
 #endif

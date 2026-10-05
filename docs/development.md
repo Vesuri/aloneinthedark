@@ -1,5 +1,36 @@
 # Development
 
+## First-floor hallway and door interaction — 2026-10-05
+
+Clean-build `HALLWAY=1` (FIRSTFLOOR and its prerequisite routes), then run
+`hallway_session.gdb` with the diagnostic runner on `a1200-020`.
+`tools/mac_hallway_session.lua` performs the paired original session. After
+verified lamp pickup/Use/movement, ordinary O input restores Open/Search and
+body 12/idle animation 4 before descending. The lamp remains in inventory.
+The route enters floor 1/room 0, approaches its west doorway along z≈2800,
+executes O/Space, waits for manual control and crosses into room 1.
+
+`tools/check_firstfloor_session.py --hallway` retains exact lamp feedback and
+all prior route gates. It requires 30 lamp-control and 39 exploration phases,
+captured closed door actor 0 (world object 22/body 25, beta 256, floor 1/room 0),
+rotation to beta ≥480 after Open/Search, actual room 0→1 and released manual
+idle Carnby in the hallway. Accepted local evidence is
+`tmp/m3-explore/{mac-hallway-session,hallway-native-gdb,hallway-checked}.log`,
+all passing. The same binary passes fixed-clock `a4000-030-reference`,
+with `hallway-030-{gdb,checked}.log`, including original door rotation and
+exact lamp feedback. Build no-float and 152-symbol audits pass. No production service
+or game instruction changes were needed. Longer first-floor routes remain open.
+
+Two equipped-lamp attempts hit opposite sides of the attic opening. Captured
+positions and headings prove those wall collisions; the failures are retained
+in `hallway-native-{wall,lower-wall}-failure.log`. Moving a narrow waypoint
+alone did not reliably fit the lamp stance through the opening. The retained
+route uses the original Open/Search mode switch before the already verified
+unarmed descent, then verifies the first-floor door separately. The original
+Mac also failed when a west-door approach overshot below its usable opening;
+the retained northward release threshold is z=3200, leaving a wider margin.
+
+
 ## Combined lamp-to-first-floor session — 2026-10-05
 
 Clean-build `FIRSTFLOOR=1`, which implies LAMPSTAIRS/LAMPUSE,

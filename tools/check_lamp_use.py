@@ -9,21 +9,27 @@ from check_video_transfer import native as display_transfer
 
 
 def check(mac,native,folder,mac_status,native_status,session=False):
+    prefix='hallway-session-' if session=='hallway' else ('session-' if session else '')
     def capture(name):
-        if session:name='session-'+name.replace('-lamp-use-complete','-session-lamp-use-complete')
+        if prefix:name=prefix+name.replace('-lamp-use-complete','-'+prefix+'lamp-use-complete')
         return folder/name
     mac_marker='PASS original lamp Use, attic descent and first-floor room 0' if session else 'PASS original empty lamp Use returned gameplay'
     native_marker='PASS SESSION lamp Use and published first-floor room 0 through ordinary keys' if session else 'PASS LAMP USE selected empty lamp and returned gameplay publication'
+    if session=='hallway':
+        mac_marker='PASS original lamp Use, stairs and first-floor hallway'
+        native_marker='PASS HALLWAY SESSION lamp Use and published first-floor hallway through ordinary keys'
     for label,text,status,marker in [('Mac',mac,mac_status,mac_marker),('Amiga',native,native_status,native_marker)]:
         require(status==0 and text.count(marker)==1,label+' normal completion')
         require(not re.search(r'FAIL|TIMEOUT|LUA ERROR|Error in|Program received signal',text),label+' no diagnostic failure')
     require(mac.count('Exited via the debugger')==1 and native.count('[Inferior 1 (Remote target) detached]')==1,'observer completion')
     nr=re.findall(r'^LAMP_NATIVE stage=(\d+) .*anim=(-?\d+) .*frames=(\d+)$',native,re.M)
-    require([int(r[0]) for r in nr]==list(range(1,28)),'native complete pickup/use phases')
+    require([int(r[0]) for r in nr]==list(range(1,31 if session=="hallway" else 28)),'native complete pickup/use phases')
     require(int(nr[26][2])>int(nr[23][2]),'native publication after Use animation')
     phases=['initial','turned-left','lamp-x','facing-table','lamp-approach','open-mode','search-lamp','taken-lamp','inventory-open','lamp-selected','lamp-actions','lamp-first-action','lamp-feedback','lamp-use-complete']
-    if session:phases[-1]='session-lamp-use-complete'
+    if session:phases[-1]=prefix+'lamp-use-complete'
+    if session=='hallway':phases+=['walking-mode']
     if session:phases+=['back','east','partition-side','south','stair-opening','east-opening','inside-stairs','north-stairs','first-floor','stair-door-open','first-floor-room0']
+    if session=='hallway':phases+=['room0-door-line','room0-west','room0-west-approach','room0-open-action','first-floor-hallway']
     require(re.findall(r'^EXPLORE phase=(\S+)',mac,re.M)==phases,'Mac pickup/menu/Use phase order')
     for label,initial,animation,final in [('Mac','lamp-use-initial-a5.bin','lamp-use-lamp-first-action-a5.bin','lamp-use-lamp-use-complete-a5.bin'),('Amiga','lamp-use-native-2-a5.bin','lamp-use-native-24-a5.bin','lamp-use-native-27-a5.bin')]:
         for phase,name in [('initial',initial),('animation',animation),('final',final)]:

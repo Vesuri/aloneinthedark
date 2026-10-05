@@ -19,7 +19,8 @@ also pass the gameplay ABI checks. Scripted combat, death and a fresh Carnby
 restart pass on both the reference 68030 and baseline A1200/68020.
 Autonomous attic descent, oil-lamp pickup and empty-lamp Use pass paired
 original/native state checks. A combined session reaches first-floor room 0
-through the stair entrance. The ten-minute scripted first-floor route remains open.
+through the stair entrance; the extended 68020/68030 session opens the west door
+and reaches the hallway. The ten-minute scripted first-floor route remains open.
 The action-menu preview now runs at 2.07 updates/sec on the reference 68030
 versus 1.65 on Mac; keyboard choices, hover, clicks and cancellation pass paired checks.
 
