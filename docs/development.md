@@ -3,7 +3,7 @@
 ## Cabinet key Use and saber pickup — 2026-10-05
 
 Clean-build `SABERROUTE=1` (BEDROOMKEY and its prerequisites), then run
-`saber_route.gdb` on `a1200-020`. `tools/mac_saber_route.lua` performs the
+`saber_route.gdb` on `a1200-020` or fixed-clock `a4000-030-reference`. `tools/mac_saber_route.lua` performs the
 paired original session. The 98-phase route retains lamp Use, descent, hallway
 and key pickup, crosses east before heading south so movable furniture 32/body
 33 remains at (-800,-570), approaches the cabinet and uses inventory key 37.
@@ -17,14 +17,16 @@ Find state, exact original “You Find / An Old Cavalry Saber” text and horizo
 placement, original/native inventory changes, retained key/lamp and final
 body/manual state. Accepted local evidence is
 `tmp/m3-explore/{mac-saber,saber-native-gdb,saber-checked}.log`, with actual zero
-observer/checker statuses. No-float and 154 data-symbol audits pass. The selected
-fixed-clock 68030 repeat is still pending; this is not the ten-minute M3 gate.
+observer/checker statuses. The same binary also passes fixed-clock 68030 with
+`saber-030-{gdb,checked}.log`, including the complete prefix, exact Find text,
+actual pickup and equipped publication. No-float and 154 data-symbol audits pass.
+This remains a prerequisite, not the ten-minute M3 gate.
 
 The cabinet script's primary ListLife 45 data requires contact with Carnby as
 well as relative position and key 37. A native first action stopped just short
 of contact. The diagnostic now retries ordinary Space only from manual idle
 and waits for the measured Find state (A5−$D864=0, track 0), allowing 300 ticks
-for painting before Take. The accepted native route needed one retry. Its
+for painting before Take. The accepted 68020 route needed one retry. Its
 attempt order and manual state are checked; an unopened cabinet cannot fall
 through to Return and accidentally open inventory. Original instructions and
 production services are unchanged.

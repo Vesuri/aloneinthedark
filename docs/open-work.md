@@ -34,7 +34,6 @@ required.
   - Extend autonomous, state-keyed routes through additional first-floor rooms,
     weapon attacks/breakage, reading and combat/menu interactions. Verify each
     route against the original Mac; do not count idle time as coverage.
-  - Complete the selected fixed-clock 68030 cabinet/saber repeat.
 
   *Done when* scripted sessions cover those routes for at least ten minutes of
   emulated gameplay without a loud stop, with positive state checks and paired
