@@ -1,5 +1,11 @@
 # Development
 
+Unattended `amiga/diag_run.sh` defaults to maximum-speed `a4000-030`.
+Use explicit `AMIGA_CONFIG=a1200-020` for baseline acceptance or
+`AMIGA_CONFIG=a4000-030-reference` for same-clock Mac comparisons. Normal
+interactive launch and the baseline regression keep their existing settings.
+Warp and maximum CPU speed are diagnostic aids, not performance evidence.
+
 ## Book Take and reading — 2026-10-05
 
 Clean-build `BOOKROUTE=1` (LAMPROUTE/INGAME/PROBES only), then run

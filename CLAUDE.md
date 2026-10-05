@@ -47,6 +47,9 @@ solutions already paid for. Read [README.md](README.md),
   can otherwise resolve into instruction bytes.
 - Use `INTROSKIP=1` for routine service diagnostics (normal Enter input). Do not
   replay the full book unless the check specifically needs that animation.
+- Unattended functional diagnostics default to maximum-speed `a4000-030`.
+  Select `a1200-020` or `a4000-030-reference` explicitly for acceptance and
+  performance measurements; keep owner live runs at the requested settings.
 - Check timing in emulated fields/ticks, not host wall time or screenshots.
   Warp is useful for bounded regression runs, not a real-time speed measurement.
 

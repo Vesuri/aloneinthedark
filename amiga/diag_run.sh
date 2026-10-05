@@ -5,6 +5,9 @@ set -euo pipefail
 cd "$(dirname "$0")"
 . ./fsuae.sh || exit 1
 . ./stage_original_data.sh
+# Functional diagnostics use the fastest existing 68030 setup. Baseline and
+# performance callers must select their fixed-clock configuration explicitly.
+AMIGA_CONFIG="${AMIGA_CONFIG:-a4000-030}"
 . ./config.sh || exit 1
 FSUAE="${FSUAE:-fs-uae}"
 GDB="${GDB:-m68k-amiga-elf-gdb}"

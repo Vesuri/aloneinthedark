@@ -773,6 +773,10 @@ display standard without changing this reference CPU clock. Explicit
 `a1200-020` retains the 14 MHz cycle-exact baseline; `a4000-030` and
 `a4000-020` retain unlimited-speed diagnostic configurations.
 This is a test-emulator exception to D2; the executable remains 68020 code.
+Owner update 2026-10-05 asks for faster unattended execution. `diag_run.sh`
+defaults to maximum-speed `a4000-030`; normal interactive launch retains the
+fixed-clock reference, and regression retains the explicit `a1200-020` baseline.
+Timed comparison callers must name their fixed-clock setup.
 68040/68060 support remains deferred (M5.0).
 `runtime_status.gdb` reports the emulator CPU tuple and Exec CPU flags.
 These settings establish a functional baseline, not a performance result.
