@@ -378,6 +378,40 @@ void aitdInputLamp(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_t b
 }
 #endif
 
+#ifdef AITD_BOOK_PAGES
+extern "C" { volatile uint16_t g_bookPageStage=0,g_bookPageIndex=0xffff,g_bookPageLast=0;
+volatile uint32_t g_bookPageTick=0; }
+extern "C" __attribute__((noinline)) void aitdInputBookPageCheckpoint()
+{ __asm__ volatile("nop" ::: "memory"); }
+void aitdInputBookPages(bool reading,uint16_t page,bool last,uint32_t ticks,bool completed)
+{
+    if(g_bookRouteStage!=36 || g_bookPageStage>=19)return;
+    const uint16_t stage=g_bookPageStage;
+    const uint32_t elapsed=ticks-g_bookPageTick;
+    if(stage && elapsed>2400) {
+        aitdInputInjectProbeKey(0x4e,false);aitdInputInjectProbeKey(0x4f,false);aitdInputInjectProbeKey(0x44,false);
+        g_bookPageStage=0xffff;aitdInputBookPageCheckpoint();return;
+    }
+    if(!stage) {if(!reading || page!=0 || last)return;}
+    else if(stage==18) {if(!completed)return;}
+    else if(stage%3==1) {
+        if(!reading)return;
+        if(stage==16 && (page!=3 || !last))return;
+        aitdInputInjectProbeKey(stage==16 ? 0x44 : stage==4 ? 0x4f : 0x4e,true);
+    }
+    else if(stage%3==2) {
+        if(elapsed<8)return;
+        aitdInputInjectProbeKey(stage==17 ? 0x44 : stage==5 ? 0x4f : 0x4e,false);
+    }
+    else {
+        const uint16_t expected[]={1,0,1,2,3};
+        if(!reading || page!=expected[stage/3-1] || last!=(page==3) || elapsed<300)return;
+    }
+    if(reading) {g_bookPageIndex=page;g_bookPageLast=last;}
+    g_bookPageStage=stage+1;g_bookPageTick=ticks;aitdInputBookPageCheckpoint();
+}
+#endif
+
 #ifdef AITD_BOOK_ROUTE
 extern "C" { volatile uint16_t g_bookRouteStage=0; volatile uint32_t g_bookRouteTick=0; }
 extern "C" __attribute__((noinline)) void aitdInputBookCheckpoint()
@@ -390,7 +424,11 @@ void aitdInputBook(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_t b
     const uint16_t stage=g_bookRouteStage;
     const uint32_t elapsed=ticks-g_bookRouteTick;
     beta&=1023;
-    if(stage && elapsed>2400) {
+    uint32_t deadline=2400;
+#ifdef AITD_BOOK_PAGES
+    if(stage==36)deadline=24000; // Individual page waits remain bounded below.
+#endif
+    if(stage && elapsed>deadline) {
         for(uint8_t k=0x4c;k<=0x4f;++k)aitdInputInjectProbeKey(k,false);
         aitdInputInjectProbeKey(0x18,false);aitdInputInjectProbeKey(0x40,false);
         aitdInputInjectProbeKey(0x44,false);aitdInputInjectProbeKey(0x45,false);
@@ -423,7 +461,13 @@ void aitdInputBook(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_t b
     else if(stage==31 || stage==33) {if(elapsed<120)return;aitdInputInjectProbeKey(0x44,true);}
     else if(stage==32 || stage==34) {if(elapsed<8)return;aitdInputInjectProbeKey(0x44,false);}
     else if(stage==35) {if(!(objects&8) || elapsed<300)return;}
-    else if(stage==36)aitdInputInjectProbeKey(0x45,true);
+    else if(stage==36) {
+#ifdef AITD_BOOK_PAGES
+        if(g_bookPageStage!=19)return;
+#else
+        aitdInputInjectProbeKey(0x45,true);
+#endif
+    }
     else if(stage==37) {if(elapsed<8)return;aitdInputInjectProbeKey(0x45,false);s_bookFrames=scenes;}
     else if(stage==38) {if(!(objects&16) || animation!=4 || track!=1 || elapsed<180 || scenes<=s_bookFrames)return;}
     g_bookRouteStage=stage+1;g_bookRouteTick=ticks;aitdInputBookCheckpoint();

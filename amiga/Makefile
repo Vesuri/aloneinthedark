@@ -24,6 +24,10 @@
 # basename — KEEP BASENAMES UNIQUE across the source trees), sources located via vpath.
 
 # Diagnostic feature flags must enable probes before conditional symbol groups.
+ifeq ($(BOOKPAGES),1)
+BOOKROUTE=1
+EXTRA_DEFINES += -DAITD_BOOK_PAGES
+endif
 ifeq ($(BOOKROUTE),1)
 LAMPROUTE=1
 EXTRA_DEFINES += -DAITD_BOOK_ROUTE
@@ -444,6 +448,9 @@ PROBE_SYMS += g_lampRouteStage g_lampRouteTick
 endif
 ifeq ($(BOOKROUTE),1)
 PROBE_SYMS += g_bookRouteStage g_bookRouteTick
+endif
+ifeq ($(BOOKPAGES),1)
+PROBE_SYMS += g_bookPageStage g_bookPageTick g_bookPageIndex g_bookPageLast
 endif
 ifeq ($(HALLWAY),1)
 PROBE_SYMS += g_exploreAlignment

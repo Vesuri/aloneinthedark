@@ -37,6 +37,9 @@ void aitdInputDeathRoute(bool menu,uint32_t ticks,bool initialActor,int16_t z,ui
 #ifdef AITD_LAMP_ROUTE
 void aitdInputLamp(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_t beta,uint16_t animation,uint16_t track,bool taken,bool used,bool ready);
 #endif
+#ifdef AITD_BOOK_PAGES
+void aitdInputBookPages(bool reading,uint16_t page,bool last,uint32_t ticks,bool completed);
+#endif
 #ifdef AITD_BOOK_ROUTE
 extern "C" { extern volatile uint16_t g_lampRouteStage; extern volatile uint16_t g_bookRouteStage; }
 void aitdInputBook(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_t beta,uint16_t animation,uint16_t track,uint16_t objects,bool ready);

@@ -7444,6 +7444,14 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
 #else
     aitdInputStoryEnter(atPortraits,g_macTicks);
 #endif
+#ifdef AITD_BOOK_PAGES
+    if(s_a5WorldStorage) {
+        const uint8_t* world=s_a5WorldStorage+75616;
+        const bool completed=read16(world-0x115f2+12*52+10)==550 && !read16(world-0xd868);
+        // Same byte-checked Dan1+$4870 input wait measured for the letter and Book.
+        aitdInputBookPages(atStory && read16(world-0xd868)==4,uint16_t(regs[3]),uint16_t(regs[5])!=0,g_macTicks,completed);
+    }
+#endif
 #ifdef AITD_STORY_READ
     // Engine+$1F84 precedes changes to D3/D5: they still hold the reading
     // routine's page index and end-of-text flag at this specific caller.

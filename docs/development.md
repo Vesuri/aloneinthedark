@@ -1,6 +1,6 @@
 # Development
 
-## Book Take and first reading page — 2026-10-05
+## Book Take and reading — 2026-10-05
 
 Clean-build `BOOKROUTE=1` (LAMPROUTE/INGAME/PROBES only), then run
 `amiga/book_route.gdb`. `tools/mac_book_route.lua` performs the original route.
@@ -27,8 +27,26 @@ book-020-checked,book-030-gdb,book-030-checked}.log`, with actual zero observer
 and checker statuses. Per-CPU captures are retained in `book-020-evidence/`
 and `book-030-evidence/` alongside those logs. The same binary passes both
 CPUs; clean no-float and 152 data-symbol audits pass.
-The first-page check does not establish next/previous-page navigation or
-reading to the end; those and further combat/menu coverage remain open.
+`BOOKPAGES=1` additionally runs the original sequence 0→1→0→1→2→3 and
+Return on the final page. `tools/mac_book_pages.lua` observes the byte-checked
+Dan1+$4870 input wait: D3 is the page and D5 its last-page flag. The native
+controller reads those same registers at the validated Engine+$1F84 input
+trap/stack chain, adds 19 bounded page phases and uses ordinary arrow/Return
+keys. `tools/check_book_pages.py` retains all Take/Read state checks and
+compares the entire reading viewport on every visit, excluding only the two
+blinking arrow boxes (x=195–219 and 420–444/y=330–349). It verifies the four
+pages, the repeated previous page, original last-page flag and published
+manual gameplay after normal completion. No production services or original
+instructions changed.
+
+Full-reading evidence is `tmp/m3-explore/{mac-book-pages-maintained,
+book-pages-020-gdb,book-pages-020-checked,book-pages-030-gdb,
+book-pages-030-checked}.log`, all with actual zero observer/checker statuses.
+Per-CPU pairs are in `book-pages-020-evidence/` and `book-pages-030-evidence/`.
+The same binary passes both CPUs, with clean no-float and 156 data-symbol
+audits. These bounded warped runs establish functionality and pixels, not
+real-time page-transition performance. Further combat/menu coverage and the
+ten-minute M3 gate remain open.
 
 ## Southern first-floor room entry — 2026-10-05
 
