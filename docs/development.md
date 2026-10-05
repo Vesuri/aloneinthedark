@@ -1,5 +1,35 @@
 # Development
 
+## Book Take and first reading page — 2026-10-05
+
+Clean-build `BOOKROUTE=1` (LAMPROUTE/INGAME/PROBES only), then run
+`amiga/book_route.gdb`. `tools/mac_book_route.lua` performs the original route.
+After lamp Take, ordinary controls cross the attic and search the bookcase
+from its west side. The 39-phase continuation takes Book 12, waits for the
+Find screen to disappear and a later gameplay publication, selects the actual
+Book inventory highlight, executes Read and exits with Escape. It neither
+writes game state nor replaces original decisions.
+
+Book 12 is already unplaced: its Find flags are $0604, not $4604. Take changes
+flags to $8604 and inventory to (2,12,13); Read changes its name from 205 to
+550. The controller waits for the real Find canvas and Read action 4, then
+requires idle/manual control, in-hand Actions 2 and a later completed gameplay
+frame. `tools/check_book_route.py` verifies both observers' zero status, lamp
+ownership, every phase, bookcase contact, insertion and Read result. Exact
+original “You Find / A Book” title pixels are checked, along with the entire
+320×200 first reading page's artwork and text except its blinking arrow.
+The arrow exclusion is x=420–444/y=330–349 in the 640×480 logical captures.
+These logical comparisons do not substitute for the deferred system-window
+host-capture acceptance.
+
+Accepted evidence: `tmp/m3-explore/{mac-book-route,book-020-gdb,
+book-020-checked,book-030-gdb,book-030-checked}.log`, with actual zero observer
+and checker statuses. Per-CPU captures are retained in `book-020-evidence/`
+and `book-030-evidence/` alongside those logs. The same binary passes both
+CPUs; clean no-float and 152 data-symbol audits pass.
+The first-page check does not establish next/previous-page navigation or
+reading to the end; those and further combat/menu coverage remain open.
+
 ## Southern first-floor room entry — 2026-10-05
 
 Clean-build `SOUTHROOMS=1` (HALLWAY and its prerequisites), then run

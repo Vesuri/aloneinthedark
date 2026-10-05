@@ -7357,6 +7357,32 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
             read16(world-0xd8a8)==13 && read16(actor+2)==11,ready);
     }
 #endif
+#ifdef AITD_BOOK_ROUTE
+    if(s_a5WorldStorage && g_ingameStage==5 && g_lampRouteStage==15) {
+        const uint8_t* world=s_a5WorldStorage+75616;
+        const uint8_t* actor=world-0xb292+160;
+        const uint8_t* book=world-0x115f2+12*52;
+        const bool ready=g_ingameStage==5 && g_macFramesPresented && read16(actor)==1
+            && read16(actor+2)==12 && !read16(actor+0x2e) && !read16(actor+0x30);
+        const bool canvas=s_colorScreen[185*640+195]==115 && s_colorScreen[190*640+200]==122
+            && s_colorScreen[310*640+440]==119 && read16(s_windowManagerColors+8+115*8+2)==0xc7c7
+            && read16(s_windowManagerColors+8+122*8+2)==0x6363 && read16(s_windowManagerColors+8+119*8+2)==0x8f8f;
+        uint16_t objects=canvas && read16(book+8)==21 && read16(book+10)==205 && read16(book+12)==0x0604 ? 1 : 0;
+        const bool taken=read16(book+12)==0x8604 && read16(world-0xd8a6)==3
+            && read16(world-0xd8a4)==2 && read16(world-0xd8a2)==12 && read16(world-0xd8a0)==13;
+        if(taken && !canvas)objects|=2;
+        uint16_t white=0;
+        if(taken && g_bookRouteStage==30)for(uint16_t y=185;y<=203;++y)for(uint16_t x=280;x<=355;++x) {
+            const uint8_t* c=s_windowManagerColors+8+s_colorScreen[y*640+x]*8;
+            if(read16(c+2)==0xffff && read16(c+4)==0xffff && read16(c+6)==0xffff)++white;
+        }
+        if(taken && white>10)objects|=4;
+        if(taken && read16(world-0xd868)==4)objects|=8;
+        if(taken && read16(book+10)==550 && !read16(world-0xd868))objects|=16;
+        aitdInputBook(g_macTicks,g_macSceneFramesCompleted,int16_t(read16(actor+0x1c)),int16_t(read16(actor+0x20)),
+            read16(actor+0x2a),read16(actor+0x3e),read16(actor+0x52),objects,ready);
+    }
+#endif
 #ifdef AITD_EXPLORE_ROUTE
     if(s_a5WorldStorage) {
         const uint8_t* actor=s_a5WorldStorage+75616-0xb292+160;

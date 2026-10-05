@@ -378,6 +378,58 @@ void aitdInputLamp(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_t b
 }
 #endif
 
+#ifdef AITD_BOOK_ROUTE
+extern "C" { volatile uint16_t g_bookRouteStage=0; volatile uint32_t g_bookRouteTick=0; }
+extern "C" __attribute__((noinline)) void aitdInputBookCheckpoint()
+{ __asm__ volatile("nop" ::: "memory"); }
+static uint32_t s_bookFrames=0;
+void aitdInputBook(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_t beta,uint16_t animation,uint16_t track,uint16_t objects,bool ready)
+{
+    // Independent continuation of lamp Take, before its optional Use route.
+    if(g_lampRouteStage!=15 || !ready || g_bookRouteStage>=39)return;
+    const uint16_t stage=g_bookRouteStage;
+    const uint32_t elapsed=ticks-g_bookRouteTick;
+    beta&=1023;
+    if(stage && elapsed>2400) {
+        for(uint8_t k=0x4c;k<=0x4f;++k)aitdInputInjectProbeKey(k,false);
+        aitdInputInjectProbeKey(0x18,false);aitdInputInjectProbeKey(0x40,false);
+        aitdInputInjectProbeKey(0x44,false);aitdInputInjectProbeKey(0x45,false);
+        g_bookRouteStage=0xffff;aitdInputBookCheckpoint();return;
+    }
+    if(!stage)aitdInputInjectProbeKey(0x4d,true);
+    else if(stage==1) {if(z<-1800)return;aitdInputInjectProbeKey(0x4d,false);}
+    else if(stage>=2 && stage<=20 && stage%3==2) {
+        if(animation!=4 || track!=1 || elapsed<30)return;
+        const uint8_t keys[]={0x4e,0x4c,0x4f,0x4c,0x4f,0x4c,0x18};
+        aitdInputInjectProbeKey(keys[(stage-2)/3],true);
+    }
+    else if(stage==3) {if(beta<752 || beta>784)return;aitdInputInjectProbeKey(0x4e,false);}
+    else if(stage==6) {if(x>-1600)return;aitdInputInjectProbeKey(0x4c,false);}
+    else if(stage==9) {if(beta>16 && beta<1008)return;aitdInputInjectProbeKey(0x4f,false);}
+    else if(stage==12) {if(z>-3100)return;aitdInputInjectProbeKey(0x4c,false);}
+    else if(stage==15) {if(beta<240 || beta>272)return;aitdInputInjectProbeKey(0x4f,false);}
+    else if(stage==18) {if(x<-1650)return;aitdInputInjectProbeKey(0x4c,false);}
+    else if(stage>=4 && stage<=19 && stage%3==1) {if(animation!=4 || track!=1 || elapsed<30)return;}
+    else if(stage==21) {if(elapsed<120)return;aitdInputInjectProbeKey(0x18,false);}
+    else if(stage==22) {if(elapsed<30)return;aitdInputInjectProbeKey(0x40,true);}
+    else if(stage==23) {if(!(objects&1))return;aitdInputInjectProbeKey(0x40,false);}
+    else if(stage==24) {if(elapsed<300 || !(objects&1))return;aitdInputInjectProbeKey(0x44,true);}
+    else if(stage==25) {if(elapsed<8)return;aitdInputInjectProbeKey(0x44,false);s_bookFrames=scenes;}
+    else if(stage==26) {if(!(objects&2) || (objects&1) || animation!=4 || track!=1 || scenes<=s_bookFrames || elapsed<60)return;}
+    else if(stage==27)aitdInputInjectProbeKey(0x44,true);
+    else if(stage==28) {if(elapsed<8)return;aitdInputInjectProbeKey(0x44,false);}
+    else if(stage==29) {if(elapsed<180)return;aitdInputInjectProbeKey(0x4d,true);}
+    else if(stage==30) {if(!(objects&4))return;aitdInputInjectProbeKey(0x4d,false);}
+    else if(stage==31 || stage==33) {if(elapsed<120)return;aitdInputInjectProbeKey(0x44,true);}
+    else if(stage==32 || stage==34) {if(elapsed<8)return;aitdInputInjectProbeKey(0x44,false);}
+    else if(stage==35) {if(!(objects&8) || elapsed<300)return;}
+    else if(stage==36)aitdInputInjectProbeKey(0x45,true);
+    else if(stage==37) {if(elapsed<8)return;aitdInputInjectProbeKey(0x45,false);s_bookFrames=scenes;}
+    else if(stage==38) {if(!(objects&16) || animation!=4 || track!=1 || elapsed<180 || scenes<=s_bookFrames)return;}
+    g_bookRouteStage=stage+1;g_bookRouteTick=ticks;aitdInputBookCheckpoint();
+}
+#endif
+
 #ifdef AITD_EXPLORE_ROUTE
 extern "C" { volatile uint16_t g_exploreRouteStage=0; volatile uint32_t g_exploreRouteTick=0; }
 extern "C" __attribute__((noinline)) void aitdInputExploreCheckpoint()

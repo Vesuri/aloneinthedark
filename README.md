@@ -22,7 +22,8 @@ original/native state checks. A combined session reaches first-floor room 0
 through the stair entrance; the extended 68020/68030 session opens the west door
 and reaches the hallway. The 68020/68030 extension also enters the bedroom and
 takes its key. The paired 68020/68030 cabinet extension uses that key, takes the saber
-and equips it. The ten-minute scripted first-floor
+and equips it. Book Take, first-page Read and Escape return also pass paired
+state and original artwork/text checks on both CPUs. The ten-minute scripted first-floor
 route remains open.
 The action-menu preview now runs at 2.07 updates/sec on the reference 68030
 versus 1.65 on Mac; keyboard choices, hover, clicks and cancellation pass paired checks.
@@ -103,6 +104,8 @@ for first-floor manual control; paired Mac/68020/68030 checks pass.
 and blade recovery; its 115-phase paired regression passes on both CPUs.
 `SOUTHROOMS=1` exercises the hallway’s southern room entrance and released manual
 gameplay; its paired 52-phase regression also passes on both CPUs.
+`BOOKROUTE=1` continues lamp Take through bookcase Search, Book Take and the
+first reading page, then returns to manual gameplay.
 `DEATHROUTE=1` runs ordinary
 controls, returns toward the starting area, follows death and starts a fresh
 Carnby game autonomously; its paired regression is documented in
