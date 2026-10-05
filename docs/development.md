@@ -18,6 +18,25 @@ cannot establish where the game's rendering time goes. Maximum CPU speed
 and warp are already enabled for functional pilots; fixed-clock acceptance
 still uses its explicit configuration.
 
+## Original room 5 return and activity timing — 2026-10-05
+
+`tools/mac_room5_return.lua` extends the measured room 5 combat route with
+Open/Search, a wardrobe Search and the actual room 5 → hallway transition.
+Create `tmp/m3-room5-return/` before using the normal headless MAME command.
+The current source observer exits zero in `tmp/m3-room5-return/mac-mode.log`;
+Carnby retains 18 health, Actions/lamp inventory and the removed enemy, and
+returns to room 1 with animation 4/manual track 1. No Find/Take is invoked at
+the empty wardrobe. The mode change must actually reach VAR90=64 before movement.
+
+`tools/mame_active_gameplay.lua` supplies read-only activity timing. It credits
+only adjacent samples, at most two ticks apart, with the same first-floor room,
+living Carnby body 12, manual control, a held movement/turn/kick key and the
+corresponding animation. Idle, release waits, scene changes and unsampled gaps
+contribute zero. This route credits 4,942 ticks (82.37 seconds): 1,465 movement,
+919 turning and 2,558 kicking, from 4,727 credited samples across rooms 0/1/5/6.
+It establishes original-Mac coverage only; the native return extension still
+needs both CPU acceptance checks and the ten-minute M3 gate remains open.
+
 ## Room 5 encounter — 2026-10-05
 
 Build `ROOM5COMBAT=1` (SOUTHROOMS and its prerequisites), then run

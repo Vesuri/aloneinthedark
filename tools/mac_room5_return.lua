@@ -1,0 +1,261 @@
+local mac=dofile('tools/mame_mac_input.lua')
+local cpu=manager.machine.devices[':maincpu'];local mem=cpu.spaces.program
+local activity=dofile('tools/mame_active_gameplay.lua')(mac,mem,'room5-return')
+local dbg=assert(manager.machine.debugger);local screen;for _,v in pairs(manager.machine.screens)do screen=v end
+local function ptr(a)return mem:read_u32(a)&0xffffff end
+local function key(name,command)
+ if command then mac.key_down(mac.CMD)end
+ mac.wait(2);mac.key_down(name);mac.wait(8);mac.key_up(name)
+ if command then mac.key_up(mac.CMD)end
+ mac.wait(10)
+end
+local function pixels(points)
+ local raw,w,h=screen:pixels();assert(w==640 and h==480)
+ for _,p in ipairs(points)do
+  if(string.unpack('I4',raw,4*(p[2]*w+p[1])+1)&0xffffff)~=p[3]then return false end
+ end
+ return true
+end
+local function room()return pixels({{180,160,0x814530},{290,245,0x7d6154},{400,300,0x71584a}})end
+local function slot()return pixels({{190,180,0x84653b},{400,210,0x81a1a1},{200,345,0}})end
+local function capture(name)
+ local raw,w,h=screen:pixels();assert(w==640 and h==480)
+ local f=assert(io.open('tmp/m3-room5-return/hallway-session-lamp-use-mac-'..name..'-rgb.bin','wb'));f:write(raw);f:close()
+ print('DIALOG_STATE '..name..' ticks='..mem:read_u32(0x16a))
+end
+local function state(name,fn)
+ assert(mac.wait_for(name,fn,1800),'DIALOG STATE '..name);capture(name)
+end
+mac.run(function()
+ local ok,err=pcall(function()
+  assert(mac.launch());mac.wait(300)
+  local function window320()
+   local w=mem:read_u32(0x9d6)&0xffffff
+   for _=1,32 do
+    if w==0 or w>0x7fffff then return false end
+    if mem:read_i16(w+22)-mem:read_i16(w+18)==320 and mem:read_i16(w+20)-mem:read_i16(w+16)==200 then return true end
+    w=mem:read_u32(w+0x90)&0xffffff
+   end
+   return false
+  end
+  if not window320()then assert(mac.mouse_to(256,274));mac.click(1)end
+  assert(mac.wait_for('320x200',window320,1800));mac.mouse_to(620,470)
+  mac.wait(3000);key('Space');mac.wait(120);capture('main-menu')
+  key('Return');mac.wait(720);capture('new-game')
+  key('Right Arrow');key('Return');mac.wait(240);capture('character-story')
+  key('Return');mac.wait(180);key('Esc');state('attic',room)
+  local world,actor
+  assert(mac.wait_for('Carnby',function()
+   local w=ptr(0x904);local a=w-0xb292+160
+   if a>0 and mem:read_i16(a)==1 and mem:read_i16(a+2)==12 then world=w;actor=a;return true end
+  end,1200))
+  activity.start(world,actor)
+  local objects=world-0x115f2
+  local function lamp()return mem:read_u16(objects+13*52+12)end
+  assert(mem:read_i16(objects+13*52+8)==10 and mem:read_i16(objects+13*52+10)==201,'original lamp record')
+  assert(lamp()==0x609 and mem:read_i16(world-0xd8a6)==1 and mem:read_i16(world-0xd8a4)==2,'initial inventory before pickup')
+  local function report(label)
+   local vars=ptr(world-0xcbcc);local values={};for i=0,99 do values[#values+1]=tostring(mem:read_i16(vars+i*2))end
+   print('ROOM5_VARS phase='..label..' values='..table.concat(values,','))
+   print(string.format('EXPLORE phase=%s tick=%d x=%d z=%d beta=%d anim=%d room=%d floor=%d key=%d action=%d',label,mem:read_u32(0x16a),mem:read_i16(actor+0x1c),mem:read_i16(actor+0x20),mem:read_i16(actor+0x2a),mem:read_i16(actor+0x3e),mem:read_i16(actor+0x30),mem:read_i16(actor+0x2e),mem:read_i16(world-0x11af4),mem:read_i16(world-0xd868)))
+   capture(label)
+   print(string.format('LAMP_USE_STATE phase=%s body=%d selected=%d track=%d',label,mem:read_i16(actor+2),mem:read_i16(world-0xd8a8),mem:read_i16(actor+0x52)))
+   print(string.format('LAMP_STATE phase=%s flags=%X count=%d slot0=%d slot1=%d stage=%d room=%d',label,lamp(),mem:read_i16(world-0xd8a6),mem:read_i16(world-0xd8a4),mem:read_i16(world-0xd8a2),mem:read_i16(objects+13*52+28),mem:read_i16(objects+13*52+30)))
+   local f=assert(io.open('tmp/m3-room5-return/hallway-session-lamp-use-'..label..'-a5.bin','wb'));for i=0,75615 do f:write(string.char(mem:read_u8(world-75616+i)))end;f:close()
+  end
+  report('initial')
+  mac.key_down('Left Arrow');assert(mac.wait_for('turn toward lamp x',function()local b=mem:read_i16(actor+0x2a)&1023;return b>=240 and b<512 end,600));mac.key_up('Left Arrow');mac.wait(30);report('turned-left')
+  mac.key_down('Up Arrow');assert(mac.wait_for('lamp x',function()return mem:read_i16(actor+0x1c)>=3600 end,1200));mac.key_up('Up Arrow');mac.wait(30);report('lamp-x')
+  mac.key_down('Right Arrow');assert(mac.wait_for('face table',function()local b=mem:read_i16(actor+0x2a)&1023;return b<=8 or b>=1016 end,600));mac.key_up('Right Arrow');mac.wait(30);report('facing-table')
+  mac.key_down('Up Arrow')
+  local last=mem:read_u32(0x16a)
+  assert(mac.wait_for('approach lamp',function()
+   local t=mem:read_u32(0x16a)
+   if t-last>=120 then print(string.format('EXPLORE_WALK tick=%d x=%d z=%d anim=%d',t,mem:read_i16(actor+0x1c),mem:read_i16(actor+0x20),mem:read_i16(actor+0x3e)));last=t end
+   return mem:read_i16(actor+0x20)<=-3800
+  end,2400))
+  mac.key_up('Up Arrow');mac.wait(30);report('lamp-approach')
+  mac.key_down('o');mac.wait(120);mac.key_up('o');mac.wait(30);report('open-mode')
+  mac.key_down('Space');mac.wait(120);mac.key_up('Space');mac.wait(30);report('search-lamp')
+  key('Return')
+  assert(mac.wait_for('oil lamp taken',function()
+   return lamp()==0x8609 and mem:read_i16(world-0xd8a6)==2 and mem:read_i16(world-0xd8a4)==2 and mem:read_i16(world-0xd8a2)==13
+  end,1800))
+  state('returned-room',function()return pixels({{180,160,0x814530}}) and mem:read_i16(actor+0x3e)==4 and mem:read_i16(actor+0x52)==1 end);report('taken-lamp')
+  key('Return');mac.wait(180);report('inventory-open')
+  key('Down Arrow');mac.wait(120);report('lamp-selected')
+  key('Return');mac.wait(120);report('lamp-actions')
+  key('Return');mac.wait(180);report('lamp-first-action')
+  assert(mem:read_i16(actor+2)==11 and mem:read_i16(world-0xd8a8)==13 and mem:read_i16(actor+0x3e)==287,'lamp Use animation and selected object')
+  mac.wait(120)
+  assert(mem:read_i16(actor+0x3e)==287 and mem:read_i16(actor+0x52)==1,'empty lamp stance')
+  report('lamp-feedback')
+  mac.key_down('Down Arrow')
+  assert(mac.wait_for('move after lamp Use',function()return mem:read_i16(actor+0x20)>=-3500 end,1200))
+  mac.key_up('Down Arrow');mac.wait(90)
+  assert(mem:read_i16(actor+0x3e)==287 and mem:read_i16(actor+0x52)==1,'lamp stance after movement')
+  report('hallway-session-lamp-use-complete')
+  mac.key_down('o');mac.wait(120);mac.key_up('o')
+  assert(mac.wait_for('Open/Search walking stance',function()return mem:read_i16(actor+2)==12 and mem:read_i16(actor+0x3e)==4 and mem:read_i16(actor+0x52)==1 end,1200));mac.wait(30);report('walking-mode')
+    local function move(name,label,fn)
+   local function alive()return mem:read_i16(actor)==1 and mem:read_i16(actor+2)==12 and mem:read_i16(ptr(world-0xcbcc)+42)>0 end
+   mac.key_down(name);local reached=mac.wait_for(label,function()return fn() or not alive()end,3600);mac.key_up(name)
+   if not alive()then report(label..'-hero-lost');error('hero lost during '..label)end
+   if not reached then report(label..'-blocked')end;assert(reached,label)
+   assert(mac.wait_for('released '..label,function()return mem:read_i16(actor+0x3e)==4 or mem:read_i16(actor+0x3e)==287 end,1200));mac.wait(30);report(label)
+  end
+  move('Down Arrow','back',function()return mem:read_i16(actor+0x20)>=1000 end)
+  move('Left Arrow','east',function()local b=mem:read_i16(actor+0x2a)&1023;return b>=240 and b<512 end)
+  move('Up Arrow','partition-side',function()return mem:read_i16(actor+0x1c)>=4100 end)
+  move('Left Arrow','south',function()local b=mem:read_i16(actor+0x2a)&1023;return b>=496 and b<768 end)
+  move('Up Arrow','stair-opening',function()return mem:read_i16(actor+0x20)>=3600 end)
+  local function align(axis,low,high,backForHigh)
+   local offset=axis=='z' and 0x20 or 0x1c
+   local alignStart=mem:read_u32(0x16a)
+   while mem:read_i16(actor+offset)<low or mem:read_i16(actor+offset)>high do
+    assert(mem:read_u32(0x16a)-alignStart<1800,'alignment deadline')
+    local back=(mem:read_i16(actor+offset)>high)==backForHigh
+    local name=back and 'Down Arrow' or 'Up Arrow'
+    mac.key_down(name)
+    assert(mac.wait_for('alignment step begun',function()return mem:read_i16(actor+0x3e)==(back and 256 or 254) end,600))
+    mac.key_up(name)
+    assert(mac.wait_for('alignment step completed',function()return mem:read_i16(actor+0x3e)==4 end,1200))
+    print(string.format('ALIGN_MAC axis=%s tick=%d position=%d',axis,mem:read_u32(0x16a),mem:read_i16(actor+offset)))
+   end
+  end
+  align('z',3920,4070,true)
+  move('Right Arrow','east-opening',function()local b=mem:read_i16(actor+0x2a)&1023;return b>=240 and b<=272 end)
+  move('Up Arrow','inside-stairs',function()return mem:read_i16(actor+0x1c)>=6650 end)
+  move('Right Arrow','north-stairs',function()local b=mem:read_i16(actor+0x2a)&1023;return b<=32 or b>=992 end)
+  mac.key_down('Up Arrow');assert(mac.wait_for('floor transition',function()return mem:read_i16(actor+0x2e)==1 end,3600));mac.key_up('Up Arrow')
+  local stable
+  assert(mac.wait_for('first-floor manual control',function()
+   local t=mem:read_u32(0x16a)
+   if mem:read_i16(actor+0x2e)==1 and mem:read_i16(actor+0x30)==6 and (mem:read_i16(actor+0x3e)==4 or mem:read_i16(actor+0x3e)==287) and mem:read_i16(actor+0x52)==1 then
+    stable=stable or t;return t-stable>=30
+   end
+   stable=nil;return false
+  end,3600));report('first-floor')
+  print('EXPLORE_MANUAL track='..mem:read_i16(actor+0x52))
+  if mem:read_i16(actor+0x1c)<-350 or mem:read_i16(actor+0x1c)>0 then
+   mac.key_down('Left Arrow');assert(mac.wait_for('stair exit east alignment',function()local b=mem:read_i16(actor+0x2a)&1023;return b>=240 and b<=272 end,1200));mac.key_up('Left Arrow')
+   assert(mac.wait_for('stair alignment released',function()return mem:read_i16(actor+0x3e)==4 end,1200));align('x',-350,0,true)
+  end
+  local b=mem:read_i16(actor+0x2a)&1023
+  if b>16 and b<1008 then
+   mac.key_down('Right Arrow');assert(mac.wait_for('stair exit north heading',function()local h=mem:read_i16(actor+0x2a)&1023;return h<=16 or h>=1008 end,1200));mac.key_up('Right Arrow')
+   assert(mac.wait_for('stair north released',function()return mem:read_i16(actor+0x3e)==4 end,1200))
+  end
+  mac.wait(30)
+  mac.key_down('o');mac.wait(120);mac.key_up('o');mac.wait(30)
+  mac.key_down('Space');mac.wait(120);mac.key_up('Space');mac.wait(120);report('stair-door-open')
+  mac.key_down('Up Arrow')
+  assert(mac.wait_for('room 0 first floor',function()return mem:read_i16(actor+0x2e)==1 and mem:read_i16(actor+0x30)==0 end,2400))
+  mac.key_up('Up Arrow')
+  assert(mac.wait_for('room 0 manual idle',function()return mem:read_i16(actor+0x3e)==4 and mem:read_i16(actor+0x52)==1 end,1200));mac.wait(30);report('first-floor-room0')
+  move('Up Arrow','room0-door-line',function()return mem:read_i16(actor+0x20)<=3200 end)
+  align('z',2720,2900,false)
+  move('Right Arrow','room0-west',function()local b=mem:read_i16(actor+0x2a)&1023;return b>=752 and b<=784 end)
+  move('Up Arrow','room0-west-approach',function()return mem:read_i16(actor+0x1c)<=0 end)
+  mac.key_down('o');mac.wait(120);mac.key_up('o');mac.wait(30)
+  mac.key_down('Space');mac.wait(120);mac.key_up('Space');mac.wait(120);report('room0-open-action')
+  mac.key_down('Up Arrow')
+  local entered=mac.wait_for('room 1 hallway',function()return mem:read_i16(actor+0x2e)==1 and mem:read_i16(actor+0x30)==1 end,2400)
+  if not entered then mac.key_up('Up Arrow');report('FAIL-hallway');error('hallway not reached')end
+  mac.key_up('Up Arrow');assert(mac.wait_for('hallway manual idle',function()return mem:read_i16(actor+0x3e)==4 and mem:read_i16(actor+0x52)==1 end,1200));mac.wait(30);report('first-floor-hallway')
+  print('PASS original lamp Use, stairs and first-floor hallway')
+  move('Up Arrow','hallway-room5-line',function()return mem:read_i16(actor+0x1c)<=3400 end)
+  align('x',2720,2900,false)
+  move('Right Arrow','hallway-south',function()local b=mem:read_i16(actor+0x2a)&1023;return b>=496 and b<=528 end)
+  move('Up Arrow','room5-door-approach',function()return mem:read_i16(actor+0x20)>=200 end)
+  mac.key_down('o');mac.wait(120);mac.key_up('o');mac.wait(30)
+  mac.key_down('Space');mac.wait(120);mac.key_up('Space');mac.wait(120);report('room5-open')
+  mac.key_down('Up Arrow')
+  local entered=mac.wait_for('room5 entrance',function()return mem:read_i16(actor+0x30)==5 and mem:read_i16(actor+0x2e)==1 end,1800);mac.key_up('Up Arrow')
+  if not entered then report('FAIL-room5-entry')end;assert(entered,'room5 entry')
+  assert(mac.wait_for('room5 manual idle',function()return mem:read_i16(actor+0x3e)==4 and mem:read_i16(actor+0x52)==1 end,1200));mac.wait(30);report('first-floor-room5')
+  print('PASS original southern first-floor room5 manual gameplay')
+  report('room5-encounter-start')
+  local vars=ptr(world-0xcbcc)
+  assert(mac.wait_for('Fight input gate',function()return mem:read_i16(world-0xd864)==1 end,1200))
+  mac.key_down('f');mac.wait(120);mac.key_up('f');mac.wait(30)
+  assert(mem:read_i16(vars+180)==16,'room5 actual Fight choice');report('room5-fight-selected')
+  move('Up Arrow','room5-clear-door',function()return mem:read_i16(actor+0x20)>=-1200 end)
+  move('Left Arrow','room5-east',function()local b=mem:read_i16(actor+0x2a)&1023;return b>=240 and b<=272 end)
+  move('Up Arrow','room5-front-x',function()return mem:read_i16(actor+0x1c)>=-1600 end)
+  move('Right Arrow','room5-south',function()local b=mem:read_i16(actor+0x2a)&1023;return b>=496 and b<=528 end)
+  move('Up Arrow','room5-front-z',function()return mem:read_i16(actor+0x20)>=-200 end)
+  move('Right Arrow','room5-west',function()local b=mem:read_i16(actor+0x2a)&1023;return b>=752 and b<=784 end)
+  local npcSlot=mem:read_i16(objects+62*52);assert(npcSlot>=0,'natural room5 actor62');local npc=world-0xb292+npcSlot*160
+  mac.key_down('Up Arrow')
+  local active=mac.wait_for('room5 enemy activation or approach',function()return mem:read_i16(npc+0x34)==84 or mem:read_i16(actor+0x1c)<=-1650 end,1800)
+  mac.key_up('Up Arrow');assert(active,'bounded room5 approach')
+  assert(mac.wait_for('approach released',function()return mem:read_i16(actor+0x3e)==4 end,1800));mac.wait(30);report('room5-before-kicks')
+  move('Right Arrow','room5-north',function()local b=mem:read_i16(actor+0x2a)&1023;return b<=16 or b>=1008 end)
+  move('Up Arrow','room5-near-enemy',function()return mem:read_i16(actor+0x20)<=-650 or mem:read_i16(vars+42)<20 end)
+  local won=false
+  for attempt=1,32 do
+   if mem:read_i16(objects+62*52)<0 then won=true;break end
+   local dx=mem:read_i16(npc+0x1c)-mem:read_i16(actor+0x1c)
+   local dz=mem:read_i16(npc+0x20)-mem:read_i16(actor+0x20)
+   local target=math.abs(dx)>math.abs(dz) and (dx>0 and 256 or 768) or (dz>0 and 512 or 0)
+   local delta=(target-mem:read_i16(actor+0x2a))&1023
+   if delta>16 and delta<1008 then
+    local turn=delta>512 and 'Left Arrow' or 'Right Arrow'
+    mac.key_down(turn)
+    local aimed=mac.wait_for('room5 face enemy',function()local d=(target-mem:read_i16(actor+0x2a))&1023;return d<=16 or d>=1008 end,1800)
+    mac.key_up(turn);assert(aimed,'room5 enemy turn');mac.wait(30)
+    print(string.format('ROOM5_AIM tick=%d target=%d beta=%d',mem:read_u32(0x16a),target,mem:read_i16(actor+0x2a)))
+   end
+   assert(mem:read_i16(vars+42)>0,'living observer hero')
+   local kick=false
+   mac.key_down('Space');mac.key_down('Up Arrow')
+   for tick=1,180 do
+    if not kick and mem:read_i16(actor+0x3e)==262 then
+     kick=true;print(string.format('ROOM5_KICK attempt=%d tick=%d animation=262',attempt,mem:read_u32(0x16a)))
+    end
+    mac.wait(1)
+   end
+   mac.key_up('Space');mac.key_up('Up Arrow')
+   assert(mac.wait_for('room5 kick release',function()return mem:read_i16(actor+0x3e)==4 or mem:read_i16(vars+42)<=0 end,1800));mac.wait(30)
+   print(string.format('ROOM5_ENEMY attempt=%d object=%d body=%d life=%d animation=%d room=%d x=%d z=%d',attempt,mem:read_i16(npc),mem:read_i16(npc+2),mem:read_i16(npc+0x34),mem:read_i16(npc+0x3e),mem:read_i16(npc+0x30),mem:read_i16(npc+0x1c),mem:read_i16(npc+0x20)))
+   report('room5-kick-'..attempt)
+  end
+  assert(won and mem:read_i16(objects+62*52)<0 and mem:read_i16(vars+114)<=0 and mem:read_i16(vars+40)==0 and mem:read_i16(vars+42)>0,'room5 actual victory and living hero')
+  assert(mem:read_i16(actor+0x3e)==4 and mem:read_i16(actor+0x52)==1,'room5 restored manual gameplay')
+  report('room5-combat-result')
+  print('PASS original room5 encounter: natural enemy, Fight, aiming, damage, death/removal and living manual gameplay')
+  local function face(target,label)
+   local delta=(target-mem:read_i16(actor+0x2a))&1023
+   if delta>16 and delta<1008 then
+    move(delta>512 and 'Left Arrow' or 'Right Arrow',label,function()local d=(target-mem:read_i16(actor+0x2a))&1023;return d<=16 or d>=1008 end)
+   end
+  end
+  mac.key_down('o');mac.wait(120);mac.key_up('o')
+  assert(mac.wait_for('actual return Open/Search',function()return mem:read_i16(vars+180)==64 end,1200));mac.wait(30);report('return-open-mode')
+  face(0,'wardrobe-north')
+  move('Up Arrow','wardrobe-z',function()return mem:read_i16(actor+0x20)<=0 end)
+  align('z',-280,-100,false)
+  face(768,'wardrobe-west')
+  mac.key_down('Space');mac.wait(120);mac.key_up('Space');mac.wait(120);report('wardrobe-search-after-combat')
+  local count=mem:read_i16(world-0xd8a6)
+  report('wardrobe-return')
+  print('WARDROBE inventory-before='..count..' after='..mem:read_i16(world-0xd8a6))
+  face(0,'exit-north')
+  move('Up Arrow','exit-z',function()return mem:read_i16(actor+0x20)<=-1500 end)
+  face(768,'exit-west')
+  move('Up Arrow','exit-x',function()return mem:read_i16(actor+0x1c)<=-2240 end)
+  align('x',-2400,-2200,false)
+  face(0,'exit-door-north')
+  mac.key_down('Space');mac.wait(120);mac.key_up('Space');mac.wait(120);report('exit-door-open')
+  mac.key_down('Up Arrow')
+  local returned=mac.wait_for('return room1 hallway',function()return mem:read_i16(actor+0x30)==1 and mem:read_i16(actor+0x2e)==1 end,2400)
+  mac.key_up('Up Arrow');if not returned then report('return-hallway-blocked')end;assert(returned,'room5 return to hallway')
+  assert(mac.wait_for('returned hallway manual',function()return mem:read_i16(actor+0x3e)==4 and mem:read_i16(actor+0x52)==1 end,1200));mac.wait(30);report('returned-hallway')
+  activity.finish()
+  print('PASS original room5 return: wardrobe Search, retained inventory and manual hallway');dbg:command('quit')
+
+ end)
+ if not ok then print('FAIL '..tostring(err));activity.finish();manager.machine:exit()end
+end)
+dbg.execution_state='run'

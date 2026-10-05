@@ -35,6 +35,9 @@ required.
     idle waits. Extend autonomous, state-keyed first-floor sessions through
     further room and interaction paths until a continuous route meets the
     ten-minute gate. Verify each extension against the original Mac.
+  - Verify the post-combat room 5 Search and hallway return on both acceptance
+    CPUs. Resolve the missed Open/Search selection on the 68020 from measured
+    input delivery; require actual action state before continuing movement.
   - Bound steps by living hero identity; a death followed by the attract demo
     must terminate the observer rather than be counted as gameplay.
 
