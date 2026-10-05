@@ -1,5 +1,31 @@
 # Development
 
+## Combined lamp-to-first-floor session — 2026-10-05
+
+Clean-build `FIRSTFLOOR=1`, which implies LAMPSTAIRS/LAMPUSE,
+EXPLOREROUTE/INGAME/PROBES. Run `firstfloor_session.gdb` with the diagnostic
+runner on `a1200-020`; `tools/mac_firstfloor_session.lua` performs the paired
+original route. The same session takes the lamp, executes empty-lamp Use,
+proves movement afterward, follows the wide attic stair route, restores manual
+control in floor 1/room 6, sends O/Space Open/Search input and walks through the
+passage into first-floor room 0. Those inputs reset the equipped lamp stance
+to body 12/animation 4. No captured world-object change establishes a door
+opening, so this gate claims passage and input coverage, not a changed door.
+
+`tools/check_firstfloor_session.py` retains the complete lamp-use state and
+exact feedback checks, then requires all 26 exploration phases, actual attic
+waypoints, floor 0→1, room 6→0, captured Carnby body/room/floor/manual identity
+and populated first-floor scene/palette captures. The equipped idle animation
+287 satisfies diagnostic release waits; the original actor animation itself
+is never changed. The diagnostic controllers run consecutively, not concurrently.
+Accepted evidence is `tmp/m3-explore/{mac-session,session-native-gdb,
+session-checked}.log`, all passing. Clean-build no-float and 152-symbol audits
+pass. The same binary passes fixed-clock `a4000-030-reference`, including
+exact lamp feedback, with `session-030-{gdb,checked}.log`.
+This remains shorter than ten minutes; hallway, further room interactions
+and longer combat/exploration coverage remain open.
+
+
 ## Autonomous empty-lamp Use — 2026-10-05
 
 Clean-build `LAMPUSE=1` (LAMPROUTE/INGAME/PROBES), then use

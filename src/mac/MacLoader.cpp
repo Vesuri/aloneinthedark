@@ -7360,9 +7360,9 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
 #ifdef AITD_EXPLORE_ROUTE
     if(s_a5WorldStorage) {
         const uint8_t* actor=s_a5WorldStorage+75616-0xb292+160;
-        const bool ready=g_ingameStage==5 && g_macFramesPresented && read16(actor)==1 && read16(actor+2)==12;
+        const bool ready=g_ingameStage==5 && g_macFramesPresented && read16(actor)==1 && (read16(actor+2)==12 || read16(actor+2)==11);
         aitdInputExplore(g_macTicks,g_macSceneFramesCompleted,int16_t(read16(actor+0x1c)),int16_t(read16(actor+0x20)),
-            read16(actor+0x2a),read16(actor+0x3e),read16(actor+0x2e),read16(actor+0x52),ready);
+            read16(actor+0x2a),read16(actor+0x3e),read16(actor+0x2e),read16(actor+0x30),read16(actor+0x52),ready);
     }
 #endif
 #ifdef AITD_SAVE_LOAD
