@@ -7331,7 +7331,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         const uint8_t* appWorld=s_a5WorldStorage+75616;
         const uint8_t* actor=appWorld-0xb292+160;
         const bool ready=g_macFramesPresented && read16(actor)==1 && read16(actor+2)==12
-            && read16(actor+0x30)==0 && read16(actor+0x32)==0;
+            && read16(actor+0x30)==0 && read16(actor+0x2e)==0;
         aitdInputGameplay(g_macTicks,ready,read16(actor+0x3e));
     }
 #endif
@@ -7339,17 +7339,25 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     if(s_a5WorldStorage) {
         const uint8_t* actor=s_a5WorldStorage+75616-0xb292+160;
         const bool initialActor=read16(actor)==1 && read16(actor+2)==12
-            && read16(actor+0x30)==0 && read16(actor+0x32)==0
+            && read16(actor+0x30)==0 && read16(actor+0x2e)==0
             && read16(actor+0x1c)==3231 && int16_t(read16(actor+0x20))==-1548
             && read16(actor+0x3e)==4;
         aitdInputDeathRoute(gameMenu,g_macTicks,initialActor,int16_t(read16(actor+0x20)),read16(actor+0x3e));
+    }
+#endif
+#ifdef AITD_EXPLORE_ROUTE
+    if(s_a5WorldStorage) {
+        const uint8_t* actor=s_a5WorldStorage+75616-0xb292+160;
+        const bool ready=g_ingameStage==5 && g_macFramesPresented && read16(actor)==1 && read16(actor+2)==12;
+        aitdInputExplore(g_macTicks,g_macSceneFramesCompleted,int16_t(read16(actor+0x1c)),int16_t(read16(actor+0x20)),
+            read16(actor+0x2a),read16(actor+0x3e),read16(actor+0x2e),read16(actor+0x52),ready);
     }
 #endif
 #ifdef AITD_SAVE_LOAD
     if(s_a5WorldStorage) {
         const uint8_t* actor=s_a5WorldStorage+75616-0xb292+160;
         const bool ready=g_ingameStage==5 && g_macFramesPresented && read16(actor)==1
-            && read16(actor+2)==12 && read16(actor+0x30)==0 && read16(actor+0x32)==0;
+            && read16(actor+2)==12 && read16(actor+0x30)==0 && read16(actor+0x2e)==0;
         aitdInputSaveLoad(g_macTicks,g_macSceneFramesCompleted,int16_t(read16(actor+0x1c)),
             int16_t(read16(actor+0x20)),read16(actor+0x3e),ready);
     }

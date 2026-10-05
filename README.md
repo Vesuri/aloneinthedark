@@ -91,7 +91,9 @@ make -C amiga
 For testing directly in Carnby's first room, use a clean build with
 `make -C amiga clean` followed by `make -C amiga INGAME=1`. This skips all boot
 scenes, menus and story; initialization and loading still run. Clean-build
-without the option to restore the full startup. `SAVELOAD=1` automates save → move → load and Quit; paired Mac/A1200/68020 checks verify actual file IO and restored actor/room state. Use `DIAG_RUN_DIR=.run-saveload` to keep diagnostic saves separate. `DEATHROUTE=1` runs ordinary
+without the option to restore the full startup. `SAVELOAD=1` automates save → move → load and Quit; paired Mac/A1200/68020 checks verify actual file IO and restored actor/room state. Use `DIAG_RUN_DIR=.run-saveload` to keep diagnostic saves separate. `EXPLOREROUTE=1` descends the attic stairs through ordinary controls and waits
+for first-floor manual control; paired Mac/68020/68030 checks pass.
+`DEATHROUTE=1` runs ordinary
 controls, returns toward the starting area, follows death and starts a fresh
 Carnby game autonomously; its paired regression is documented in
 [development.md](docs/development.md).

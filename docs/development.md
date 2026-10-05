@@ -1,5 +1,44 @@
 # Development
 
+## Autonomous attic descent to first-floor manual control — 2026-10-05
+
+Clean-build `EXPLOREROUTE=1`; it implies INGAME/PROBES. Run
+`DIAG_RUN_DIR=.run-saveload AMIGA_CONFIG=a1200-020
+GDBSCRIPT=explore_route.gdb amiga/diag_run.sh 600`. The same binary also passes
+`a4000-030-reference` (fixed-clock 68030). `tools/mac_attic_stairs.lua` performs
+the original Mac route with ordinary arrows and state-based completion.
+The route backs into the open attic, turns around the stair partition, crosses
+its side opening, turns north and walks into the original floor-change zone.
+It releases movement at floor 1/room 6, then waits for original track mode 3,
+track 31 to finish, manual mode 1/idle animation 4 to return and another complete
+native scene publication. It changes only diagnostic controls, not game decisions,
+actor positions or original instructions. The captured scenes show the same
+first-floor stair entrance; position, beta, pose and Mac chrome differ.
+
+`tools/check_attic_stairs.py` requires both actual zero statuses, all ordinary
+move/release waypoints, floor 0→1, room 6, manual control, captured actor/log
+position identity and populated scene/palette captures. It rejects wrong floors
+and incomplete automatic tracks. Accepted local evidence is
+`tmp/m3-explore/mac-stairs.log`, `020/{native-gdb,stairs-checked}.log` and
+`030-{gdb,checked}.log`, all passing. Route elapsed time is 2,367 ticks/39.45 s
+on Mac, 3,203/53.38 s on 68020 and 3,092/51.53 s on fixed-clock 68030. These
+include movement, release waits, loading and scripted stairs; they are not steady
+FPS or an attributed loading profile.
+
+Earlier routes hit a stair wall or column. The retained route uses a wide path
+rather than a narrow stopping interval. Exact-heading waits also missed the
+quarter turn when its starting beta was slightly off-axis; the accepted route
+uses a bounded heading tolerance and verifies resulting room/floor state.
+A further observer error read actor +$32 (life mode) as floor. Descent exposed
+floor 1 at +$2E; all maintained gameplay/death/save observers and captured-state
+checkers now use that field. Previous raw attic/save/restart records have been
+revalidated there and still pass. Early captures before the automatic stair
+track completed are not manual-control acceptance.
+
+This is an M3 first-floor prerequisite, not ten minutes of actual exploration.
+Object use, further rooms and the ten-minute gate remain in open work. M6.3's
+all-configuration `stairs` regression is also still pending.
+
 ## Save durability across abrupt restart — 2026-10-05
 
 `bash amiga/durable_run.sh` repeats the A1200/68020 durability acceptance in
@@ -231,8 +270,9 @@ sanitizer checks and both link audits pass. The normal keyboard menu pair also
 passes playback toggles, Save/Load, Quit ABI and complete OS restoration with
 the gain change; both runners exit zero. Native implementation and the
 reproduction procedure are in [the audio contract](sound-driver.md#death-fade-gain--2026-10-04).
-Full manual death/restart and ten-minute first-floor coverage remain pending;
-FIGHT music acceptance is recorded above.
+The later autonomous death/restart acceptance above passes both selected CPUs.
+Ten-minute first-floor coverage remains pending; FIGHT music acceptance is
+recorded above.
 
 ## M3.4 reached MONSTER music — 2026-10-04
 

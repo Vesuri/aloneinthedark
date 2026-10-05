@@ -34,8 +34,8 @@ framebuffer captures are compared, while boot presentation is suppressed for
 testing. Save/Load captures are published gameplay frames. Full visible startup
 acceptance remains the separately verified M2 route.
 
-This establishes M3.3 for the reached gameplay interfaces. Native restored
-game state and reset durability remain M3.6. Error alerts, monitor-selection
+This establishes M3.3 for the reached gameplay interfaces. Paired native/reference save→move→load and native abrupt-restart durability
+now pass M3.5/M3.6; see [current acceptance](development.md). Error alerts, monitor-selection
 failures, About and other unreached paths are not accepted by this check;
 unsupported service calls retain named stops. Any newly reached dialog must
 be measured and given an in-game replacement under D5 before accepting that

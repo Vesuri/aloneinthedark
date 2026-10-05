@@ -54,7 +54,7 @@ mac.run(function()
   end,1800))
   appWorld=mem:read_u32(0x904)&0xffffff
   local actor=appWorld-0xb292+160
-  assert(mem:read_i16(actor)==1 and mem:read_i16(actor+2)==12 and mem:read_i16(actor+0x30)==0 and mem:read_i16(actor+0x32)==0,'Carnby attic identity')
+  assert(mem:read_i16(actor)==1 and mem:read_i16(actor+2)==12 and mem:read_i16(actor+0x30)==0 and mem:read_i16(actor+0x2e)==0,'Carnby attic identity')
   local meta=dofile('tmp/mac-trap-map.lua');local dark
   for i,j in ipairs(meta.jt)do if j[1]==4 then dark=(mem:read_u32(appWorld+36+(i-1)*8)&0xffffff)-j[2];break end end
   assert(dark and mem:read_u32(dark+0x58e8)==0x0c790066,'original Fight dispatch bytes')
@@ -68,7 +68,7 @@ mac.run(function()
     return (not animation or mem:read_i16(actor+0x3e)==animation)
        and (not fight or fightConsumed)
    end,1200))
-   print(string.format('INPUT_ACCEPT stage=%d tick=%d anim=%d actions=%d room=%d floor=%d',n,mem:read_u32(0x16a),mem:read_i16(actor+0x3e),mem:read_u16(appWorld-0xd868),mem:read_i16(actor+0x30),mem:read_i16(actor+0x32)))
+   print(string.format('INPUT_ACCEPT stage=%d tick=%d anim=%d actions=%d room=%d floor=%d',n,mem:read_u32(0x16a),mem:read_i16(actor+0x3e),mem:read_u16(appWorld-0xd868),mem:read_i16(actor+0x30),mem:read_i16(actor+0x2e)))
    snap(n)
   end
   observe();accept(1,300,4);mac.key_down('Up Arrow');accept(2,60,254);mac.key_up('Up Arrow')

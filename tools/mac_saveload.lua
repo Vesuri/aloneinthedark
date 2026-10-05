@@ -91,11 +91,11 @@ mac.run(function()
   local world;local actor
   assert(mac.wait_for('application Carnby world',function()
    local w=ptr(0x904);local a=w-0xb292+160
-   if a>0 and a<0x7fffff and mem:read_i16(a)==1 and mem:read_i16(a+2)==12 and mem:read_i16(a+0x30)==0 and mem:read_i16(a+0x32)==0 then world=w;actor=a;return true end
+   if a>0 and a<0x7fffff and mem:read_i16(a)==1 and mem:read_i16(a+2)==12 and mem:read_i16(a+0x30)==0 and mem:read_i16(a+0x2e)==0 then world=w;actor=a;return true end
    return false
   end,1200))
   local function snapshot(phase)
-   print(string.format('SAVELOAD_STATE phase=%s tick=%d x=%d z=%d anim=%d room=%d floor=%d closed=%d read=%d',phase,mem:read_u32(0x16a),mem:read_i16(actor+0x1c),mem:read_i16(actor+0x20),mem:read_i16(actor+0x3e),mem:read_i16(actor+0x30),mem:read_i16(actor+0x32),savedClosed,loadedRead))
+   print(string.format('SAVELOAD_STATE phase=%s tick=%d x=%d z=%d anim=%d room=%d floor=%d closed=%d read=%d',phase,mem:read_u32(0x16a),mem:read_i16(actor+0x1c),mem:read_i16(actor+0x20),mem:read_i16(actor+0x3e),mem:read_i16(actor+0x30),mem:read_i16(actor+0x2e),savedClosed,loadedRead))
    local f=assert(io.open('tmp/m3-saveload/mac-'..phase..'-actor.bin','wb'));for i=0,159 do f:write(string.char(mem:read_u8(actor+i)))end;f:close()
   end
   snapshot('before-save');local savedX=mem:read_i16(actor+0x1c);local savedZ=mem:read_i16(actor+0x20)

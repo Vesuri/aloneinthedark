@@ -139,7 +139,7 @@ commands
  silent
  set $world=(unsigned long)s_a5WorldStorage+75616
  set $actor=$world-0xb292+160
- printf "SAVELOAD_STATE stage=%u tick=%u x=%d z=%d anim=%d room=%d floor=%d saved=%d,%d closed=%u read=%u\n",g_saveLoadStage,g_macTicks,*(short*)($actor+0x1c),*(short*)($actor+0x20),*(short*)($actor+0x3e),*(short*)($actor+0x30),*(short*)($actor+0x32),g_saveLoadSavedX,g_saveLoadSavedZ,g_saveLoadClosedBytes,g_saveLoadReadBytes
+ printf "SAVELOAD_STATE stage=%u tick=%u x=%d z=%d anim=%d room=%d floor=%d saved=%d,%d closed=%u read=%u\n",g_saveLoadStage,g_macTicks,*(short*)($actor+0x1c),*(short*)($actor+0x20),*(short*)($actor+0x3e),*(short*)($actor+0x30),*(short*)($actor+0x2e),g_saveLoadSavedX,g_saveLoadSavedZ,g_saveLoadClosedBytes,g_saveLoadReadBytes
  eval "dump binary memory ../tmp/m3-saveload/durable-native-%u-actor.bin %u %u",g_saveLoadStage,$actor,$actor+160
  if g_saveLoadStage==65535
   echo FAIL SAVELOAD state deadline\n

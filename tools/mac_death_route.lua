@@ -74,7 +74,7 @@ mac.run(function()
   end,1800))
   appWorld=mem:read_u32(0x904)&0xffffff
   local actor=appWorld-0xb292+160
-  assert(mem:read_i16(actor)==1 and mem:read_i16(actor+2)==12 and mem:read_i16(actor+0x30)==0 and mem:read_i16(actor+0x32)==0,'Carnby attic identity')
+  assert(mem:read_i16(actor)==1 and mem:read_i16(actor+2)==12 and mem:read_i16(actor+0x30)==0 and mem:read_i16(actor+0x2e)==0,'Carnby attic identity')
   local meta=dofile('tmp/mac-trap-map.lua');local dark
   for i,j in ipairs(meta.jt)do if j[1]==4 then dark=(mem:read_u32(appWorld+36+(i-1)*8)&0xffffff)-j[2];break end end
   assert(dark and mem:read_u32(dark+0x58e8)==0x0c790066,'original Fight dispatch bytes')
@@ -88,7 +88,7 @@ mac.run(function()
     return (not animation or mem:read_i16(actor+0x3e)==animation)
        and (not fight or fightConsumed)
    end,1200))
-   print(string.format('INPUT_ACCEPT stage=%d tick=%d anim=%d actions=%d room=%d floor=%d',n,mem:read_u32(0x16a),mem:read_i16(actor+0x3e),mem:read_u16(appWorld-0xd868),mem:read_i16(actor+0x30),mem:read_i16(actor+0x32)))
+   print(string.format('INPUT_ACCEPT stage=%d tick=%d anim=%d actions=%d room=%d floor=%d',n,mem:read_u32(0x16a),mem:read_i16(actor+0x3e),mem:read_u16(appWorld-0xd868),mem:read_i16(actor+0x30),mem:read_i16(actor+0x2e)))
    snap(n)
   end
   observe();accept(1,300,4);mac.key_down('Up Arrow');accept(2,60,254);mac.key_up('Up Arrow')
@@ -112,7 +112,7 @@ mac.run(function()
    if deathReturned then break end
    local mode=mem:read_u8(appWorld-0x11b4c)
    if mode~=previous or i%10==0 then
-    print(string.format('DEATH_STATE tick=%d mode=%d room=%d floor=%d anim=%d x=%d z=%d word88=%d',mem:read_u32(0x16a),mode,mem:read_i16(appWorld-0xcd68),mem:read_i16(actor+0x32),mem:read_i16(actor+0x3e),mem:read_i16(actor+0x1c),mem:read_i16(actor+0x20),mem:read_i16(actor+88)));previous=mode
+    print(string.format('DEATH_STATE tick=%d mode=%d room=%d floor=%d anim=%d x=%d z=%d word88=%d',mem:read_u32(0x16a),mode,mem:read_i16(appWorld-0xcd68),mem:read_i16(actor+0x2e),mem:read_i16(actor+0x3e),mem:read_i16(actor+0x1c),mem:read_i16(actor+0x20),mem:read_i16(actor+88)));previous=mode
    end
   end
   assert(deathReturned,'natural death call deadline')
@@ -123,7 +123,7 @@ mac.run(function()
   assert(mac.wait_for('restarted Carnby attic',function()
    return mem:read_u8(appWorld-0x11b4c)==1 and mem:read_i16(actor)==1 and mem:read_i16(actor+2)==12
      and mem:read_i16(actor+0x1c)==3231 and mem:read_i16(actor+0x20)==-1548
-     and mem:read_i16(actor+0x30)==0 and mem:read_i16(actor+0x32)==0 and mem:read_i16(actor+0x3e)==4
+     and mem:read_i16(actor+0x30)==0 and mem:read_i16(actor+0x2e)==0 and mem:read_i16(actor+0x3e)==4
   end,1800))
   assert(mac.wait_for('restarted attic publication',function()
    local raw,w,h=screen:pixels();if w~=640 or h~=480 then return false end
@@ -131,7 +131,7 @@ mac.run(function()
   end,1800))
   dofile('tools/mame_mac_frame.lua').rgb('tmp/m3-death/death-restart-mac-rgb.bin')
   local f=assert(io.open('tmp/m3-death/death-restart-mac-actor.bin','wb'));for i=0,159 do f:write(string.char(mem:read_u8(actor+i)))end;f:close()
-  print(string.format('DEATH_RESTART tick=%d actor=%d body=%d x=%d z=%d anim=%d room=%d floor=%d',mem:read_u32(0x16a),mem:read_i16(actor),mem:read_i16(actor+2),mem:read_i16(actor+0x1c),mem:read_i16(actor+0x20),mem:read_i16(actor+0x3e),mem:read_i16(actor+0x30),mem:read_i16(actor+0x32)))
+  print(string.format('DEATH_RESTART tick=%d actor=%d body=%d x=%d z=%d anim=%d room=%d floor=%d',mem:read_u32(0x16a),mem:read_i16(actor),mem:read_i16(actor+2),mem:read_i16(actor+0x1c),mem:read_i16(actor+0x20),mem:read_i16(actor+0x3e),mem:read_i16(actor+0x30),mem:read_i16(actor+0x2e)))
   print('PASS original natural death music ABI and new-game restart');manager.machine:exit()
  end)
  if not ok then print('FAIL '..tostring(err));manager.machine:exit() end

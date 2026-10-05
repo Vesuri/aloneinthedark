@@ -29,7 +29,7 @@ def check(saved, loaded, folder, save_status, load_status):
     a = (folder/'durable-saved-actor.bin').read_bytes()
     b = (folder/'durable-native-6-actor.bin').read_bytes()
     require(len(a) == len(b) == 160, 'actor capture extents')
-    offsets = (0, 2, 0x1c, 0x20, 0x30, 0x32, 0x3e)
+    offsets = (0, 2, 0x1c, 0x20, 0x30, 0x2e, 0x3e)
     words = lambda data: tuple(struct.unpack_from('>h', data, offset)[0] for offset in offsets)
     require(words(a) == words(b) == (1, 12, 3231, -1548, 0, 0, 4), 'pre-restart saved actor/room restored')
     print('PASS durability: abrupt emulator restart after published Save success, unchanged file, real load and restored actor/room')

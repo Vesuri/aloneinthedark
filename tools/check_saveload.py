@@ -32,7 +32,7 @@ def check(mac, native, folder, mac_status, native_status):
         for phase in phases:
             data = (folder/f'{label}-{phase}-actor.bin').read_bytes()
             require(len(data) == 160, label+' actor capture extent')
-            words = tuple(struct.unpack_from('>h', data, offset)[0] for offset in (0, 2, 0x1c, 0x20, 0x30, 0x32, 0x3e))
+            words = tuple(struct.unpack_from('>h', data, offset)[0] for offset in (0, 2, 0x1c, 0x20, 0x30, 0x2e, 0x3e))
             require(words[:2] == (1, 12) and words[4:6] == (0, 0), label+' Carnby attic identity')
             captured.append(words)
         require(captured[0] == captured[-1], label+' captured save/load identity')

@@ -38,7 +38,7 @@ def check(original, native, folder, original_status, native_status, exact_pixels
         data = (folder/f'death-restart-{name}-actor.bin').read_bytes()
         require(len(data) == 160, label+' actor capture extent')
         word = lambda offset: struct.unpack_from('>h', data, offset)[0]
-        require(tuple(word(i) for i in (0, 2, 0x1c, 0x20, 0x30, 0x32, 0x3e)) == (1, 12, 3231, -1548, 0, 0, 4),
+        require(tuple(word(i) for i in (0, 2, 0x1c, 0x20, 0x30, 0x2e, 0x3e)) == (1, 12, 3231, -1548, 0, 0, 4),
                 label+' captured restart identity')
     mac = (folder/'death-restart-mac-rgb.bin').read_bytes()
     amiga = rgb((folder/'death-restart-native-screen.bin').read_bytes(),

@@ -39,12 +39,12 @@ commands
  set $a6_saved=$a6
  set $world=(unsigned long)s_a5WorldStorage+75616
  set $actor=$world-0xb292+160
- if *(short*)($actor+0x3e)!=261 || *(short*)($actor+0x30) || *(short*)($actor+0x32)
+ if *(short*)($actor+0x3e)!=261 || *(short*)($actor+0x30) || *(short*)($actor+0x2e)
   echo FAIL DEATH ROUTE natural death state\n
   detach
   quit 1
  end
- printf "DEATH_ENTER song=131 tick=%u anim=%d room=%d floor=%d\n",g_macTicks,*(short*)($actor+0x3e),*(short*)($actor+0x30),*(short*)($actor+0x32)
+ printf "DEATH_ENTER song=131 tick=%u anim=%d room=%d floor=%d\n",g_macTicks,*(short*)($actor+0x3e),*(short*)($actor+0x30),*(short*)($actor+0x2e)
  continue
 end
 break *($core+0x138e) if $deathSong131_seen
@@ -66,7 +66,7 @@ commands
  printf "DEATH_ROUTE_STAGE stage=%u tick=%u\n",g_deathRouteStage,g_macTicks
  set $world=(unsigned long)s_a5WorldStorage+75616
  set $actor=$world-0xb292+160
- printf "DEATH_STATE tick=%u mode=%u room=%d floor=%d anim=%d x=%d z=%d word88=%d\n",g_macTicks,*(unsigned char*)($world-0x11b4c),*(short*)($world-0xcd68),*(short*)($actor+0x32),*(short*)($actor+0x3e),*(short*)($actor+0x1c),*(short*)($actor+0x20),*(short*)($actor+88)
+ printf "DEATH_STATE tick=%u mode=%u room=%d floor=%d anim=%d x=%d z=%d word88=%d\n",g_macTicks,*(unsigned char*)($world-0x11b4c),*(short*)($world-0xcd68),*(short*)($actor+0x2e),*(short*)($actor+0x3e),*(short*)($actor+0x1c),*(short*)($actor+0x20),*(short*)($actor+88)
  dump binary memory ../tmp/m3-death/death-wait-native-actors.bin $world-0xb292 $world-0xb292+16000
  if g_deathRouteStage==65535
   echo FAIL DEATH ROUTE state deadline\n
@@ -99,12 +99,12 @@ tbreak *($dark+0x5658)
 continue
 set $world=(unsigned long)s_a5WorldStorage+75616
 set $actor=$world-0xb292+160
-if *(short*)$actor!=1 || *(short*)($actor+2)!=12 || *(short*)($actor+0x1c)!=3231 || *(short*)($actor+0x20)!=-1548 || *(short*)($actor+0x30) || *(short*)($actor+0x32) || *(short*)($actor+0x3e)!=4 || *(unsigned char*)($world-0x11b4c)!=1 || g_macFramesPresented<=$deathMenuFrames || s_keyDown[0x4d] || s_keyDown[0x4c] || s_keyDown[0x60] || s_keyDown[0x23] || s_keyDown[0x40] || s_keyDown[0x44] || s_keyDown[0x4e] || s_keyDown[0x45]
+if *(short*)$actor!=1 || *(short*)($actor+2)!=12 || *(short*)($actor+0x1c)!=3231 || *(short*)($actor+0x20)!=-1548 || *(short*)($actor+0x30) || *(short*)($actor+0x2e) || *(short*)($actor+0x3e)!=4 || *(unsigned char*)($world-0x11b4c)!=1 || g_macFramesPresented<=$deathMenuFrames || s_keyDown[0x4d] || s_keyDown[0x4c] || s_keyDown[0x60] || s_keyDown[0x23] || s_keyDown[0x40] || s_keyDown[0x44] || s_keyDown[0x4e] || s_keyDown[0x45]
  echo FAIL DEATH ROUTE restored actor/publication/input\n
  detach
  quit 1
 end
-printf "DEATH_RESTART tick=%u actor=%d body=%d x=%d z=%d anim=%d room=%d floor=%d frames=%u\n",g_macTicks,*(short*)$actor,*(short*)($actor+2),*(short*)($actor+0x1c),*(short*)($actor+0x20),*(short*)($actor+0x3e),*(short*)($actor+0x30),*(short*)($actor+0x32),g_macFramesPresented
+printf "DEATH_RESTART tick=%u actor=%d body=%d x=%d z=%d anim=%d room=%d floor=%d frames=%u\n",g_macTicks,*(short*)$actor,*(short*)($actor+2),*(short*)($actor+0x1c),*(short*)($actor+0x20),*(short*)($actor+0x3e),*(short*)($actor+0x30),*(short*)($actor+0x2e),g_macFramesPresented
 dump binary memory ../tmp/m3-death/death-restart-native-screen.bin s_colorScreen s_colorScreen+307200
 dump binary memory ../tmp/m3-death/death-restart-native-clut.bin s_windowManagerColors s_windowManagerColors+2056
 dump binary memory ../tmp/m3-death/death-restart-native-actor.bin $actor $actor+160

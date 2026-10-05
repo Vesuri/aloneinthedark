@@ -40,7 +40,7 @@ def check(reference, native, folder, reference_status, native_status):
             require(len(raw) == (160 if label == 'Mac' else 16000), label+' actor extent')
             actor = raw if label == 'Mac' else raw[160:320]
             word = lambda offset: struct.unpack_from('>h', actor, offset)[0]
-            require((word(0), word(2), word(0x30)) == (1, 12, 0), label+' Carnby/attic identity')
+            require((word(0), word(2), word(0x30), word(0x2e)) == (1, 12, 0, 0), label+' Carnby/attic identity')
             states[n] = (word(0x1c), word(0x20), word(0x3e))
             if label == 'Mac':
                 require(states[n] == tuple(map(int, rows[n-1][4:7])), 'original log/capture identity')

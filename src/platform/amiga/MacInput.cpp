@@ -317,6 +317,45 @@ void aitdInputMenuProbeFinished(bool ok)
 }
 #endif
 
+#ifdef AITD_EXPLORE_ROUTE
+extern "C" { volatile uint16_t g_exploreRouteStage=0; volatile uint32_t g_exploreRouteTick=0; }
+extern "C" __attribute__((noinline)) void aitdInputExploreCheckpoint()
+{ __asm__ volatile("nop" ::: "memory"); }
+static uint32_t s_exploreFrames=0;
+void aitdInputExplore(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_t beta,uint16_t animation,uint16_t floor,uint16_t track,bool ready)
+{
+    if(!ready || g_exploreRouteStage>=19)return;
+    beta&=1023;
+    uint16_t stage=g_exploreRouteStage;
+    if(stage && ticks-g_exploreRouteTick>3600) {
+        for(uint8_t key=0x4c;key<=0x4f;++key)aitdInputInjectProbeKey(key,false);
+        g_exploreRouteStage=0xffff;aitdInputExploreCheckpoint();return;
+    }
+    if(stage==18) {
+        if(floor!=1 || track!=1 || animation!=4 || ticks-g_exploreRouteTick<30 || scenes<=s_exploreFrames)return;
+        g_exploreRouteStage=19;aitdInputExploreCheckpoint();return;
+    }
+    if(!stage)aitdInputInjectProbeKey(0x4d,true);
+    else if(stage==1) {if(z<1000)return;aitdInputInjectProbeKey(0x4d,false);}
+    else if(stage==3) {if(beta<240 || beta>=512)return;aitdInputInjectProbeKey(0x4f,false);}
+    else if(stage==5) {if(x<4100)return;aitdInputInjectProbeKey(0x4c,false);}
+    else if(stage==7) {if(beta<496 || beta>=768)return;aitdInputInjectProbeKey(0x4f,false);}
+    else if(stage==9) {if(z<3600)return;aitdInputInjectProbeKey(0x4c,false);}
+    else if(stage==11) {if(beta<240 || beta>280)return;aitdInputInjectProbeKey(0x4e,false);}
+    else if(stage==13) {if(x<6650)return;aitdInputInjectProbeKey(0x4c,false);}
+    else if(stage==15) {if(beta>32 && beta<992)return;aitdInputInjectProbeKey(0x4e,false);}
+    else if(stage==17) {if(floor!=1)return;aitdInputInjectProbeKey(0x4c,false);}
+    else {
+        if(animation!=4 || ticks-g_exploreRouteTick<30)return;
+        const uint8_t key=stage==2 || stage==6 ? 0x4f : stage==10 || stage==14 ? 0x4e : 0x4c;
+        aitdInputInjectProbeKey(key,true);
+    }
+    g_exploreRouteStage=stage+1;g_exploreRouteTick=ticks;
+    if(g_exploreRouteStage==18)s_exploreFrames=scenes;
+    aitdInputExploreCheckpoint();
+}
+#endif
+
 #ifdef AITD_SAVE_LOAD
 extern "C" __attribute__((noinline)) void aitdInputSaveLoadCheckpoint()
 { __asm__ volatile("nop" ::: "memory"); }

@@ -14,6 +14,17 @@ The click route exercises Button; StillDown retains its existing Boolean ABI
 but broader caller coverage remains pending. See
 [the reproducible route](development.md#m34-action-menu-clicks--2026-10-05).
 
+## Actor state used by autonomous routes — 2026-10-05
+
+The original actor record is 160 bytes at A5−$B292 plus its slot offset.
+Carnby is actor slot 1 (world object 1/body 12). Room position is at +$1C/+$20,
+beta at +$2A, floor at +$2E, room at +$30, life mode at +$32, animation at +$3E
+and track mode at +$52. Manual movement uses track mode 1; attic descent uses
+track mode 3/track 31 before restoring mode 1. Earlier observers mislabeled
++$32 as floor. It happened to be zero in the accepted attic, save/load and
+restart captures; their raw actor records have been rechecked at +$2E and
+still pass. The floor-transition route exposed and corrected the error.
+
 ## First-room controls
 
 `GAMEINPUT=1` implies `INGAME=1` and supplies ordinary keyboard transitions:

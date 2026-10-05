@@ -24,7 +24,7 @@ commands
  silent
  set $world=(unsigned long)s_a5WorldStorage+75616
  set $actor=$world-0xb292+160
- printf "INPUT_ACCEPT stage=%u tick=%u anim=%d actions=%u room=%d floor=%d\n",g_gameInputStage,g_macTicks,*(short*)($actor+0x3e),*(unsigned short*)($world-0xd868),*(short*)($actor+0x30),*(short*)($actor+0x32)
+ printf "INPUT_ACCEPT stage=%u tick=%u anim=%d actions=%u room=%d floor=%d\n",g_gameInputStage,g_macTicks,*(short*)($actor+0x3e),*(unsigned short*)($world-0xd868),*(short*)($actor+0x30),*(short*)($actor+0x2e)
  if g_gameInputStage==65535
   echo FAIL GAMEPLAY command acceptance deadline\n
   detach
