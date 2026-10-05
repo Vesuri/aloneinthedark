@@ -64,3 +64,12 @@ and writes its captures to `tmp/m3-menu`. Accepted local logs are `mac-route.log
 statuses zero. A timeout, missing chooser, extra application dialog call,
 wrong startup order or changed frame fails acceptance. Clean-build normally
 after the diagnostic run so automated test input is absent from production.
+
+## Oil-lamp inventory actions
+
+The paired attic route takes the oil lamp, selects it through the engine
+inventory and executes Use. The original menu offers Use, Reload, Throw and
+Drop/Put. The measured Use result is “The lamp has no oil”; body 11/animation
+287 remains under manual control, and ordinary movement afterward passes.
+Published feedback matches the original glyphs, colour and horizontal placement.
+Other lamp actions remain unverified. See the [reproducible Use route](development.md#autonomous-empty-lamp-use--2026-10-05).

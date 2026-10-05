@@ -1,5 +1,38 @@
 # Development
 
+## Autonomous empty-lamp Use — 2026-10-05
+
+Clean-build `LAMPUSE=1` (LAMPROUTE/INGAME/PROBES), then use
+`lamp_use.gdb` with the diagnostic runner on `a1200-020`.
+`tools/mac_lamp_use.lua` runs the paired original route. After taking the lamp,
+Return opens inventory, Down selects the lamp, Return selects its actions and
+Return executes Use. The original displays “The lamp has no oil”, changes
+Carnby to body 11/animation 287 and keeps manual track mode 1. The native route
+waits for this measured state and a completed scene, then walks backward at
+least 400 units and releases movement into the same lamp stance. A5−$D8A8
+is observed as 13 after selection; no game state or instructions are changed.
+
+`tools/check_lamp_use.py` requires both zero statuses, all 27 native phases,
+paired pickup/menu/Use captures, retained inventory/world removal, manual
+control and actual movement after Use. It also checks the published message
+against the original Times/14 glyph mask, exact colour and horizontal position.
+Accepted local evidence is `tmp/m3-explore/{mac-lamp-use,lamp-use-native-gdb,
+lamp-use-checked}.log`. The clean build passes no-float and 150-symbol audits.
+The same binary passes `a4000-030-reference` with
+`lamp-use-030-{gdb,checked}.log`, including exact feedback.
+No production compatibility service needed a change. This is an attic
+object-use prerequisite; ten minutes of actual first-floor exploration remains
+open. The observer ends without claiming normal Quit cleanup.
+
+An initial diagnostic incorrectly waited for animation 4 after Use. The
+original and native both retain animation 287, so that acceptance failed.
+The corrected route positively verifies subsequent movement and return to
+the measured lamp stance. Native menu execution can lag the input release;
+the first attempt did execute Use, despite an early observation suggesting
+a missed key press. State completion, not that intermediate observation,
+is now the gate.
+
+
 ## Autonomous oil-lamp pickup — 2026-10-05
 
 Clean-build `LAMPROUTE=1` (INGAME/PROBES), then run

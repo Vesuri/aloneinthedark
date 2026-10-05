@@ -17,8 +17,8 @@ The reached `MONSTER`, `FIGHT` and `BDISK2` music tracks pass paired note-event
 and complete native interrupt-playback checks. Natural MONSTER/FIGHT/BDISK2 calls
 also pass the gameplay ABI checks. Scripted combat, death and a fresh Carnby
 restart pass on both the reference 68030 and baseline A1200/68020.
-Autonomous attic descent and oil-lamp pickup pass paired original/native state
-checks. The ten-minute scripted first-floor route remains open.
+Autonomous attic descent, oil-lamp pickup and empty-lamp Use pass paired
+original/native state checks. The ten-minute scripted first-floor route remains open.
 The action-menu preview now runs at 2.07 updates/sec on the reference 68030
 versus 1.65 on Mac; keyboard choices, hover, clicks and cancellation pass paired checks.
 

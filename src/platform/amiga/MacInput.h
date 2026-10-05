@@ -35,7 +35,7 @@ void aitdInputGameplayEvent(uint16_t what,uint32_t message);
 void aitdInputDeathRoute(bool menu,uint32_t ticks,bool initialActor,int16_t z,uint16_t animation);
 #endif
 #ifdef AITD_LAMP_ROUTE
-void aitdInputLamp(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_t beta,uint16_t animation,uint16_t track,bool taken,bool ready);
+void aitdInputLamp(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_t beta,uint16_t animation,uint16_t track,bool taken,bool used,bool ready);
 #endif
 #ifdef AITD_EXPLORE_ROUTE
 void aitdInputExplore(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_t beta,uint16_t animation,uint16_t floor,uint16_t track,bool ready);

@@ -322,9 +322,15 @@ extern "C" { volatile uint16_t g_lampRouteStage=0; volatile uint32_t g_lampRoute
 extern "C" __attribute__((noinline)) void aitdInputLampCheckpoint()
 { __asm__ volatile("nop" ::: "memory"); }
 static uint32_t s_lampFrames=0;
-void aitdInputLamp(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_t beta,uint16_t animation,uint16_t track,bool taken,bool ready)
+void aitdInputLamp(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_t beta,uint16_t animation,uint16_t track,bool taken,bool used,bool ready)
 {
-    if(!ready || g_lampRouteStage>=15)return;
+#ifdef AITD_LAMP_USE
+    const uint16_t terminal=27;
+#else
+    const uint16_t terminal=15;
+    (void)used;
+#endif
+    if(!ready || g_lampRouteStage>=terminal)return;
     beta&=1023;const uint16_t stage=g_lampRouteStage;
     const uint32_t elapsed=ticks-g_lampRouteTick;
     if(stage && elapsed>2400) {
@@ -348,6 +354,17 @@ void aitdInputLamp(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_t b
     else if(stage==12) {if(elapsed<30)return;aitdInputInjectProbeKey(0x44,true);}
     else if(stage==13) {if(elapsed<8)return;aitdInputInjectProbeKey(0x44,false);s_lampFrames=scenes;}
     else if(stage==14) {if(!taken || animation!=4 || track!=1 || scenes<=s_lampFrames)return;}
+#ifdef AITD_LAMP_USE
+    else if(stage==15)aitdInputInjectProbeKey(0x44,true);
+    else if(stage==16 || stage==20 || stage==22) {if(elapsed<8)return;aitdInputInjectProbeKey(0x44,false);}
+    else if(stage==17) {if(elapsed<180)return;aitdInputInjectProbeKey(0x4d,true);}
+    else if(stage==18) {if(elapsed<8)return;aitdInputInjectProbeKey(0x4d,false);}
+    else if(stage==19 || stage==21) {if(elapsed<120)return;aitdInputInjectProbeKey(0x44,true);}
+    else if(stage==23) {if(!used || animation!=287)return;s_lampFrames=scenes;}
+    else if(stage==24) {if(!used || animation!=287 || track!=1 || scenes<=s_lampFrames)return;aitdInputInjectProbeKey(0x4d,true);}
+    else if(stage==25) {if(z<-3500)return;aitdInputInjectProbeKey(0x4d,false);s_lampFrames=scenes;}
+    else if(stage==26) {if(!used || animation!=287 || track!=1 || elapsed<30 || scenes<=s_lampFrames)return;}
+#endif
     g_lampRouteStage=stage+1;g_lampRouteTick=ticks;aitdInputLampCheckpoint();
 }
 #endif
