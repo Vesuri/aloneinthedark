@@ -19,6 +19,15 @@ def check(reference, native, folder, reference_status, native_status):
         require(status == 0 and text.count(marker) == 1, label+' completion')
         require(not re.search(r'FAIL|TIMEOUT|LUA ERROR|Error in|Program received signal', text), label+' diagnostic failure')
     require('[Inferior 1 (Remote target) detached]' in native, 'native detach')
+    for label,text in (('Mac',reference),('Amiga',native)):
+        accepted=re.findall(r'^INPUT_ACCEPT stage=(\d+) tick=(\d+) anim=(-?\d+) actions=(\d+) room=(-?\d+) floor=(-?\d+)$',text,re.M)
+        require([int(row[0]) for row in accepted]==list(range(1,10)),label+' consumed command phase order')
+        for row in accepted:
+            stage,_,animation,actions,room,floor=map(int,row)
+            require((room,floor)==(0,0),label+' floor/room identity')
+            expected={1:4,2:254,3:4,4:255,5:4,8:262,9:4}.get(stage)
+            require(expected is None or animation==expected,label+' consumed animation')
+        require(len(re.findall(r'^INPUT_FIGHT_EVENT tick=\d+ delivered=1$',text,re.M))==1,label+' Fight character positive control')
     require(re.findall(r'^INPUT_STAGE stage=(\d+)', native, re.M) == list(map(str, range(1, 10))), 'native phase order')
     rows = re.findall(r'^CONTROL stage=(\d+) tick=(\d+) actor=(-?\d+) body=(-?\d+) x=(-?\d+) z=(-?\d+) anim=(-?\d+) frame=(-?\d+) key=(-?\d+) direction=(-?\d+) action=(-?\d+)$', reference, re.M)
     require([r[0] for r in rows] == list(map(str, range(1, 10))), 'original phase order')

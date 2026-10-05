@@ -6637,6 +6637,9 @@ static bool nextEvent(uint16_t mask, uint8_t* event)
             }
         }
     }
+#ifdef AITD_GAME_INPUT
+    if(transition)aitdInputGameplayEvent(what,message);
+#endif
     write16(event + 0, transition ? what : 0);
     write32(event + 2, message);
     write32(event + 6, g_macTicks);
@@ -7310,7 +7313,13 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         && pc==(uint32_t)s_segments[12].begin+0x1376,
         atPortraits,atStory,gameplay,g_macTicks);
 #ifdef AITD_GAME_INPUT
-    if(trap==0xa976)aitdInputGameplay(g_macTicks);
+    if(trap==0xa976 && s_a5WorldStorage) {
+        const uint8_t* appWorld=s_a5WorldStorage+75616;
+        const uint8_t* actor=appWorld-0xb292+160;
+        const bool ready=g_macFramesPresented && read16(actor)==1 && read16(actor+2)==12
+            && read16(actor+0x30)==0 && read16(actor+0x32)==0;
+        aitdInputGameplay(g_macTicks,ready,read16(actor+0x3e));
+    }
 #endif
 #ifdef AITD_ACTION_PROBE
     aitdInputActionProbe(trap,g_macTicks);

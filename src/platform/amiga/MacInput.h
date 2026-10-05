@@ -28,7 +28,8 @@ void aitdInputMenuProbeQuit();
 void aitdInputMenuProbeFinished(bool ok);
 #endif
 #ifdef AITD_GAME_INPUT
-void aitdInputGameplay(uint32_t ticks);
+void aitdInputGameplay(uint32_t ticks,bool ready,uint16_t animation);
+void aitdInputGameplayEvent(uint16_t what,uint32_t message);
 #endif
 #ifdef AITD_INGAME
 extern "C" { extern volatile uint16_t g_ingameStage; extern volatile uint32_t g_ingameTick; }

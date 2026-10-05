@@ -461,7 +461,7 @@ endif
 ifeq ($(GAMEINPUT),1)
 INGAME=1
 EXTRA_DEFINES += -DAITD_GAME_INPUT
-PROBE_SYMS += g_gameInputStage g_gameInputTick g_gameInputTraps
+PROBE_SYMS += g_gameInputStage g_gameInputTick g_gameInputTraps g_gameInputFightEvent
 endif
 ifeq ($(INGAME),1)
 STORYENTER=1

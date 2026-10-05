@@ -13,10 +13,23 @@ commands
  printf "BOOT_STAGE stage=%u tick=%u\n",g_ingameStage,g_macTicks
  continue
 end
+break aitdInputGameplayFightCheckpoint
+commands
+ silent
+ printf "INPUT_FIGHT_EVENT tick=%u delivered=%u\n",g_macTicks,g_gameInputFightEvent
+ continue
+end
 break aitdInputGameplayCheckpoint
 commands
  silent
  set $world=(unsigned long)s_a5WorldStorage+75616
+ set $actor=$world-0xb292+160
+ printf "INPUT_ACCEPT stage=%u tick=%u anim=%d actions=%u room=%d floor=%d\n",g_gameInputStage,g_macTicks,*(short*)($actor+0x3e),*(unsigned short*)($world-0xd868),*(short*)($actor+0x30),*(short*)($actor+0x32)
+ if g_gameInputStage==65535
+  echo FAIL GAMEPLAY command acceptance deadline\n
+  detach
+  quit 1
+ end
  printf "INPUT_STAGE stage=%u tick=%u key=%d direction=%d action=%d\n",g_gameInputStage,g_macTicks,*(short*)($world-0x11af4),*(short*)($world-0x11af8),*(short*)($world-0x11af0)
  if g_gameInputStage==1
   dump binary memory ../tmp/m3-input/input-1-actors.bin $world-0xb292 $world-0xb292+16000

@@ -1,5 +1,19 @@
 # Development
 
+## State-keyed first-room controller — 2026-10-05
+
+The fixed-duration GAMEINPUT route missed Fight/kick on both the particle-point
+implementation and its unchanged parent. A longer Fight hold passes; the
+maintained route now checks delivered Fight input, walking/running/kick/idle
+animations and floor/room identity before advancing. The paired Mac and native
+checker passes with actual zero runner statuses. See [events.md](events.md).
+Accepted logs are `tmp/m3-death/control-consumed-mac2.log`,
+`control-consumed-gdb.log`, and `control-consumed-run.log`. Earlier transient
+action-bit checks and a Mac debugger condition without explicit hex constants
+were rejected; they are not acceptance. Native event delivery and original
+Fight dispatch are different observation boundaries, so this is command and
+behavior acceptance, not a matched latency measurement.
+
 ## M3.4 BDISK2 prerequisite — 2026-10-05
 
 The original natural death sequence reaches SONG 131. Its original loading and

@@ -23,13 +23,24 @@ the manual's movement/action controls and its F shortcut for Fight mode.
 `tools/mac_gameplay.lua` performs the same sequence on the original Mac IIx.
 Create `tmp/m3-input` before running these fixtures.
 
-The original run `tmp/m3-input/mac-controls-traps.log` and native run
-`tmp/m3-input/gameplay5-run.log` exit zero. Both show Carnby (actor 1/body 12)
-in room 0 using animation 254 for walking, 255 for running, 262 for a kick,
-then animation 4 after release. Both move farther during the running interval
-than walking. Captures are keyed by control phase and animation, not identical
-positions: resource loading and polling cadence produce different intermediate
-positions. No game instructions, actor state or decisions are overridden.
+The controller begins after the first published room with actor 1/body 12 in
+floor/room 0. Each phase has a minimum hold/release interval and waits for
+the requested walking (254), running (255), kick (262) or idle (4) animation.
+Fight is a queued character: native acceptance observes its delivered keyDown
+event and then a subsequent GetKeys poll; the Mac observer verifies the
+original Dark+$58E8 Fight dispatcher with character $66/$46. The kick is the
+resulting behavioral positive control. Every phase has a 1,200-tick deadline;
+a missing command fails rather than counting idle time as progress.
+
+The paired runs `tmp/m3-death/control-consumed-mac2.log` and
+`control-consumed-gdb.log` exit zero and pass `check_gameplay.py`. Both move
+817 units during walk/release; run/release moves 1,014 on the Mac and 824 on
+the Amiga, then both kick and return to stationary idle with all keys released.
+These are phase displacements, not frame-rate measurements. The native Fight
+event arrives 80 ticks after injection versus two on the Mac. Its older
+fixed-duration controller could advance to Space before that queued command
+arrived; holding Fight longer also passes, independently of the point-drawing
+change. No game instructions, actor state or decisions are overridden.
 
 This exposed and fixed a real bug: the old DOS handback cleared held keys and
 their queue on every resource read. Keyboard interrupts now remain active

@@ -28,11 +28,9 @@ required.
   - **M3.4c Reached combat Line variant.** Natural native attic combat stops at
     QuickDraw `Line` before death music. Capture its caller, pen/pattern, clip
     and raster result against the original Mac; implement the measured variant
-    with complete pixel, register and pen-state checks before continuing. The
-    measured 2×2 zero-displacement particle dot is supported; reproduce the
-    natural stop with a state-keyed route to establish whether it is that case
-    or another variant. Restore the Fight/kick positive control, which the
-    current fixed-duration controller misses on the unchanged runtime too.
+    with complete pixel, register and pen-state checks before continuing.
+    Reproduce the natural stop with a state-keyed route and establish its
+    attribution; its caller and pen attributes were not captured previously.
   - Exercise death/restart and the remaining first-floor paths, measuring and
     implementing newly reached Apple Event or Window Manager contracts.
     Unsupported operations and states remain loud stops.

@@ -168,15 +168,36 @@ void aitdInputInGame(uint16_t trap,bool menu,bool portraits,bool story,
 #endif
 
 #ifdef AITD_GAME_INPUT
-extern "C" { volatile uint16_t g_gameInputStage=0; volatile uint32_t g_gameInputTick=0; }
+extern "C" { volatile uint16_t g_gameInputStage=0; volatile uint32_t g_gameInputTick=0; volatile uint16_t g_gameInputFightEvent=0; }
 extern "C" __attribute__((noinline)) void aitdInputGameplayCheckpoint()
 { __asm__ volatile("nop" ::: "memory"); }
-void aitdInputGameplay(uint32_t ticks)
+extern "C" __attribute__((noinline)) void aitdInputGameplayFightCheckpoint()
+{ __asm__ volatile("nop" ::: "memory"); }
+void aitdInputGameplayEvent(uint16_t what,uint32_t message)
 {
-    if(g_ingameStage!=5 || g_gameInputStage==9)return;
+    if(g_gameInputStage==5 && what==3 && (message&255)=='f' && !g_gameInputFightEvent) {
+        g_gameInputFightEvent=1;aitdInputGameplayFightCheckpoint();
+    }
+}
+void aitdInputGameplay(uint32_t ticks,bool ready,uint16_t animation)
+{
+    if(g_ingameStage!=5 || g_gameInputStage>=9 || !ready)return;
     static const uint16_t duration[]={300,60,30,60,30,20,30,90,60};
     if(!g_gameInputTick) {g_gameInputTick=ticks;return;}
-    if(ticks-g_gameInputTick<duration[g_gameInputStage])return;
+    const uint32_t elapsed=ticks-g_gameInputTick;
+    // Fail explicitly instead of turning a missed command into idle coverage.
+    if(elapsed>1200) {
+        g_gameInputStage=0xffff;aitdInputGameplayCheckpoint();return;
+    }
+    if(elapsed<duration[g_gameInputStage])return;
+    // Fight is a queued character, unlike level-polled movement. Wait until
+    // the game has selected it; slow frames must not outrun the event queue.
+    const uint16_t stageBefore=g_gameInputStage;
+    if((stageBefore==0 || stageBefore==2 || stageBefore==4 || stageBefore==8) && animation!=4)return;
+    if(stageBefore==1 && animation!=254)return;
+    if(stageBefore==3 && animation!=255)return;
+    if((stageBefore==5 || stageBefore==6) && !g_gameInputFightEvent)return;
+    if(stageBefore==7 && animation!=262)return;
     // Ordinary keyboard levels only: walk, release, Shift-run, release,
     // F for Fight, release, Space+Up action, release. Never write game state.
     ++g_gameInputStage;g_gameInputTick=ticks;
