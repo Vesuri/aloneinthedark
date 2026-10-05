@@ -5517,19 +5517,41 @@ static bool paintGWorldRect(GWorldSlot& w,const uint8_t* rectangle)
         rectangle,(uint8_t)read32(w.port+80),drawn);
 }
 
+#ifdef AITD_POINT_LINE_PROBE
+extern "C" {
+volatile uint32_t g_pointLineStage=0,g_pointLinePort=0,g_pointLinePixels=0,g_pointLineBytes=0,g_pointLineArguments=0;
+__attribute__((noinline)) void aitdPointLineBefore() {__asm__ volatile("" ::: "memory");}
+__attribute__((noinline)) void aitdPointLineAfter() {__asm__ volatile("" ::: "memory");}
+}
+#endif
+
 static bool lineGWorld(GWorldSlot& w,int16_t horizontal,int16_t vertical)
 {
     if(!w.locked || !w.pixels || read16(w.pixMap+32)!=8
-       || read16(w.port+52)!=1 || read16(w.port+54)!=1
        || read16(w.port+56)!=8 || read16(w.port+66)
        || read16(*w.handles[7])!=0 || read32(w.port+80)>255)return false;
     for(uint16_t i=0;i<8;++i)if((*w.handles[14])[i]!=255)return false;
     const uint8_t* vis=*w.handles[3];const uint8_t* clip=*w.handles[4];
     if(read16(vis)!=10 || read16(clip)!=10)return false;
-    if(!Line8::solid(w.pixels,w.owner->handleSize(w.handles[1]),
-        read16(w.pixMap+4)&0x3fff,w.pixMap+6,w.port+16,vis+2,clip+2,
-        int16_t(read16(w.port+50)),int16_t(read16(w.port+48)),
-        horizontal,vertical,uint8_t(read32(w.port+80))))return false;
+    const uint16_t penHeight=read16(w.port+52),penWidth=read16(w.port+54);
+    if(penHeight==2 && penWidth==2) {
+        // Measured Dan2+$3FEC particle dot: zero displacement, solid patCopy.
+        // General thick strokes and signed pen-rectangle overflow stay loud.
+        const int16_t x=int16_t(read16(w.port+50)),y=int16_t(read16(w.port+48));
+        if(horizontal!=x || vertical!=y || x>32765 || y>32765)return false;
+        uint8_t rectangle[8],drawn[8];
+        write16(rectangle,uint16_t(y));write16(rectangle+2,uint16_t(x));
+        write16(rectangle+4,uint16_t(y+2));write16(rectangle+6,uint16_t(x+2));
+        if(!FillRect8::solid(w.pixels,w.owner->handleSize(w.handles[1]),
+            read16(w.pixMap+4)&0x3fff,w.pixMap+6,w.port+16,vis+2,clip+2,
+            rectangle,uint8_t(read32(w.port+80)),drawn))return false;
+    } else {
+        if(penHeight!=1 || penWidth!=1)return false;
+        if(!Line8::solid(w.pixels,w.owner->handleSize(w.handles[1]),
+            read16(w.pixMap+4)&0x3fff,w.pixMap+6,w.port+16,vis+2,clip+2,
+            int16_t(read16(w.port+50)),int16_t(read16(w.port+48)),
+            horizontal,vertical,uint8_t(read32(w.port+80))))return false;
+    }
     write16(w.port+48,uint16_t(vertical));write16(w.port+50,uint16_t(horizontal));
     return true;
 }
@@ -9131,12 +9153,31 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     }
     if (trap == 0xa892) {                    // Line(dh, dv): signed 16-bit pen offset
         uint8_t* port=s_qdThePort ? (uint8_t*)read32(s_qdThePort) : 0;
+#ifdef AITD_POINT_LINE_PROBE
+        if(!g_pointLineStage && s_segments[6].begin && pc==(uint32_t)s_segments[6].begin+0x354a) {
+            if(read32((uint8_t*)pc-6)!=0x2f3c0001UL || read32((uint8_t*)pc-2)!=0x0001a892UL)
+                goto unsupportedTrap;
+            GWorldSlot* fixture=gWorldForPort(port);
+            if(!fixture || !fixture->locked || read16(fixture->pixMap+32)!=8)goto unsupportedTrap;
+            g_pointLineArguments=(uint32_t)userStack;
+            g_pointLinePort=(uint32_t)port;g_pointLinePixels=(uint32_t)fixture->pixels;
+            g_pointLineBytes=fixture->owner->handleSize(fixture->handles[1]);
+            for(uint32_t i=0;i<g_pointLineBytes;++i)fixture->pixels[i]=uint8_t(i*37+19);
+            write16(port+48,78);write16(port+50,161);write16(port+52,2);write16(port+54,2);
+            write32(port+80,85);write32(userStack,0);
+            for(uint16_t i=0;i<6;++i)port[36+i]=fixture->colorTable[10+85*8+i];
+            g_pointLineStage=1;aitdPointLineBefore();
+        }
+#endif
         if(!port || s_recordingPolygon)goto unsupportedTrap;
         int16_t x=int16_t(uint16_t(read16(port+50)+read16(userStack+2)));
         int16_t y=int16_t(uint16_t(read16(port+48)+read16(userStack)));
         GWorldSlot* world=gWorldForPort(port);
         if(world ? lineGWorld(*world,x,y) : lineWindow(x,y)) {
             regs[0]=0;
+#ifdef AITD_POINT_LINE_PROBE
+            if(g_pointLineStage==1) {g_pointLineStage=2;aitdPointLineAfter();}
+#endif
             return 5;
         }
     }

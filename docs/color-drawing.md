@@ -176,3 +176,31 @@ line queues and publishes frame 117: the complete 64,000 planar bytes decode
 to the exact line-return framebuffer, all 256 colours match, copper pointers
 and queued/active buffers agree, and publication occurs at VBI line zero.
 Rendered-video acceptance remains owner-deferred.
+
+
+## Solid 2×2 particle point — 2026-10-05
+
+The original Dan2+$3FEC calls Line(0,0) with a visible solid 2×2 patCopy
+pen in a locked eight-bit GWorld. At (v78,h161), foreground index 85, it
+changes exactly four pixels in the 648×401 map with stride 652. The complete
+108-byte port remains unchanged. D0 returns zero, four argument bytes are
+removed, and D1–D7/A1–A6 are preserved; A0 is scratch.
+
+The native adapter uses the existing clipped solid rectangle helper for this
+zero-displacement pen. Other thick strokes, pen sizes and signed rectangle
+overflow retain named stops. `POINTLINEPROBE=1` replays the measured port and
+pixel inputs through the real trap and original CPU return; it stops before
+the game continues with fixture state. No original instruction is modified.
+`tools/mac_point_line.lua` captures both the natural original call and a paired
+fixture. `tools/check_point_line.py` verifies the ABI, the four changed pixels,
+all 261,452 bytes of each paired buffer and the complete unchanged port.
+
+Accepted local logs under `tmp/m3-death` are `point-reference.log`,
+`point-paired.log`, `point-native-gdb.log`, and `point-host-tests.log`: the
+three emulator runners and host suite exit zero. The compiled line adapter
+uses 76 local bytes plus eight saved-register bytes; the complete interrupt
+stack audit remains open. The broader GAMEINPUT walk/run route misses Fight
+and kick in both this implementation and its unchanged parent, with identical
+actor states. That controller failure remains open and does not establish a
+new drawing regression. The earlier natural native Line stop had no captured
+pen attributes; attribution of that stop to this particle case is unproven.

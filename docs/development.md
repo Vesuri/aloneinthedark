@@ -9,8 +9,9 @@ runners exiting zero. See [the contract](sound-driver.md#bdisk2-music--2026-10-0
 
 The ordinary native attic reproduction reaches QuickDraw `Line` at tick 10,594
 before this song; its named stop is preserved in
-`tmp/m3-death/native-observe-gdb.log` with runner status 1. The newly reached
-Line variant is now the next open prerequisite. The idle original observation
+`tmp/m3-death/native-observe-gdb.log` with runner status 1. The measured 2×2 particle point now has full paired pixel/ABI acceptance
+(see [drawing contract](color-drawing.md#solid-22-particle-point--2026-10-05));
+attribution of this earlier natural stop remains the next open prerequisite. The idle original observation
 identifies the death/menu ordering only; it does not count as ten-minute
 first-floor acceptance. A fresh route must pin the application A5 world while
 system callbacks are active; reading temporary CurA5 values produced discarded
