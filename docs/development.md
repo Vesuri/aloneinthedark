@@ -6,6 +6,36 @@ Use explicit `AMIGA_CONFIG=a1200-020` for baseline acceptance or
 interactive launch and the baseline regression keep their existing settings.
 Warp and maximum CPU speed are diagnostic aids, not performance evidence.
 
+## Bedroom encounter — 2026-10-05
+
+Clean-build `COMBATROUTE=1` (BEDROOMKEY and its prerequisites), then run
+`amiga/combat_route.gdb`. `tools/mac_combat_route.lua` supplies the original
+Mac route. Ordinary controls take/use the lamp, descend the stairs and take
+the bedroom key. The naturally closed door and spawned enemy are required;
+the controller selects Close in the action menu, selects Fight before reopening
+the door, and kicks the enemy. Both scripts deliberately turn west once, then
+choose a cardinal heading toward the enemy between attacks. Each subsequent attack press ends after 180
+ticks even if a hit interrupts the attempted kick; holding input indefinitely
+while waiting for that kick stalled the diagnostic. No game state or original
+instructions are changed.
+
+`tools/check_combat_route.py` retains the complete lamp/stairs/key prefix,
+including its artwork checks. It requires the byte-checked original Fight
+branch (Dark+$599A), actual Close/Fight results, a consumed turn, kick animation
+262, damage, enemy death/removal, positive hero health and newly completed
+manual gameplay after victory. Inventory remains Actions/key/lamp, with Actions
+in hand. This is functional coverage, not an exact M6 combat-frame comparison.
+
+The original, baseline 68020 and fixed-clock 68030 observers and checkers
+exit zero: `tmp/m3-combat/mac-aim-release.log` and
+`tmp/m3-combat/{020,030}-aim-release-{gdb,checked}.log`. Accepted captures are
+preserved in `tmp/m3-combat/{020,030}-evidence/`; Carnby ends with 17 health on
+the Mac and 18/14 on the Amiga 68020/68030. The same binary passes both CPUs,
+with clean no-float and 159 data-symbol audits. The broader first-floor coverage
+and the ten-minute
+M3 gate remain open; do not count idle waits or these warped runs as real-time
+performance evidence.
+
 ## Book Take and reading — 2026-10-05
 
 Clean-build `BOOKROUTE=1` (LAMPROUTE/INGAME/PROBES only), then run

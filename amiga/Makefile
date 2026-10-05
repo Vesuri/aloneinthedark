@@ -24,6 +24,10 @@
 # basename — KEEP BASENAMES UNIQUE across the source trees), sources located via vpath.
 
 # Diagnostic feature flags must enable probes before conditional symbol groups.
+ifeq ($(COMBATROUTE),1)
+BEDROOMKEY=1
+EXTRA_DEFINES += -DAITD_COMBAT_ROUTE
+endif
 ifeq ($(BOOKPAGES),1)
 BOOKROUTE=1
 EXTRA_DEFINES += -DAITD_BOOK_PAGES
@@ -451,6 +455,9 @@ PROBE_SYMS += g_bookRouteStage g_bookRouteTick
 endif
 ifeq ($(BOOKPAGES),1)
 PROBE_SYMS += g_bookPageStage g_bookPageTick g_bookPageIndex g_bookPageLast
+endif
+ifeq ($(COMBATROUTE),1)
+PROBE_SYMS += g_combatRouteStage g_combatRouteTick g_combatFightEvent g_combatSawEnemy g_combatAttempts g_combatAimHeading
 endif
 ifeq ($(HALLWAY),1)
 PROBE_SYMS += g_exploreAlignment

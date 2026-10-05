@@ -6640,6 +6640,9 @@ static bool nextEvent(uint16_t mask, uint8_t* event)
 #ifdef AITD_GAME_INPUT
     if(transition)aitdInputGameplayEvent(what,message);
 #endif
+#ifdef AITD_COMBAT_ROUTE
+    if(transition)aitdInputCombatEvent(what,message);
+#endif
     write16(event + 0, transition ? what : 0);
     write32(event + 2, message);
     write32(event + 6, g_macTicks);
@@ -7352,8 +7355,13 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         const bool ready=g_ingameStage==5 && g_macFramesPresented && read16(actor)==1 && (read16(actor+2)==12 || read16(actor+2)==11) && !read16(actor+0x2e) && !read16(actor+0x30);
         const uint8_t* lamp=world-0x115f2+13*52;
         const bool taken=read16(lamp+12)==0x8609 && read16(lamp+28)==0xffff && read16(lamp+30)==0xffff && read16(world-0xd8a6)==2 && read16(world-0xd8a4)==2 && read16(world-0xd8a2)==13;
+        bool found=false;
+#ifdef AITD_COMBAT_ROUTE
+        found=read16(lamp+8)==10 && read16(lamp+10)==201 && read16(lamp+12)==0x0609
+            && s_colorScreen[185*640+195]==115 && s_colorScreen[190*640+200]==122 && s_colorScreen[310*640+440]==119;
+#endif
         aitdInputLamp(g_macTicks,g_macSceneFramesCompleted,int16_t(read16(actor+0x1c)),int16_t(read16(actor+0x20)),
-            read16(actor+0x2a),read16(actor+0x3e),read16(actor+0x52),taken,
+            read16(actor+0x2a),read16(actor+0x3e),read16(actor+0x52),found,taken,
             read16(world-0xd8a8)==13 && read16(actor+2)==11,ready);
     }
 #endif
@@ -7424,6 +7432,46 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
 #endif
         aitdInputExplore(g_macTicks,g_macSceneFramesCompleted,int16_t(read16(actor+0x1c)),int16_t(read16(actor+0x20)),
             read16(actor+0x2a),read16(actor+0x3e),read16(actor+0x2e),read16(actor+0x30),read16(actor+0x52),objects,ready);
+    }
+#endif
+#ifdef AITD_COMBAT_ROUTE
+    if(s_a5WorldStorage && g_ingameStage==5) {
+        const uint8_t* world=s_a5WorldStorage+75616;
+        const uint8_t* actor=world-0xb292+160;
+        const uint8_t* enemy=world-0x115f2+35*52;
+        const uint8_t* vars=(const uint8_t*)read32(world-0xcbcc);
+        const bool ready=g_ingameStage==5 && g_macFramesPresented && read16(actor)==1 && read16(actor+2)==12
+            && read16(actor+0x2e)==1 && (read16(actor+0x30)==1 || read16(actor+0x30)==2);
+        uint16_t objects=0;
+        const int16_t slot=int16_t(read16(enemy));
+        if(vars) {
+            if(!read16(vars+60) && read16(vars+62)==1 && slot>=0)objects|=1;
+            if(read16(vars+60)==1)objects|=2;
+            if(int16_t(read16(vars+42))>0)objects|=16;
+        }
+        int16_t enemyX=0,enemyZ=0;
+        if(slot>=0 && slot<50) {
+            objects|=4;
+            const uint8_t* npc=world-0xb292+slot*160;
+            if(read16(npc+0x2e)==read16(actor+0x2e) && read16(npc+0x30)==read16(actor+0x30)) {
+                objects|=1024;enemyX=int16_t(read16(npc+0x1c));enemyZ=int16_t(read16(npc+0x20));
+            }
+        }
+        if(vars && int16_t(read16(vars+80))<=0)objects|=2048;
+        if(slot<0 && vars && !read16(vars+40) && int16_t(read16(vars+80))<=0 && read16(enemy+28)==0xffff && read16(enemy+30)==0xffff)objects|=8;
+        if(vars && read16(vars+180)==128)objects|=64;
+        if(read16(world-0xd864)==1)objects|=256;
+        if(vars && read16(vars+180)==16)objects|=512;
+        if(ready && (g_combatRouteStage==19 || g_combatRouteStage==21)) {
+            uint16_t white=0;
+            const uint16_t low=g_combatRouteStage==19 ? 278 : 295,high=g_combatRouteStage==19 ? 292 : 309;
+            for(uint16_t y=low;y<=high;++y)for(uint16_t x=365;x<=445;++x) {
+                const uint8_t* c=s_windowManagerColors+8+s_colorScreen[y*640+x]*8;
+                if(read16(c+2)==0xffff && read16(c+4)==0xffff && read16(c+6)==0xffff)++white;
+            }
+            if(white>10)objects|=g_combatRouteStage==19 ? 32 : 128;
+        }
+        aitdInputCombat(g_macTicks,g_macSceneFramesCompleted,int16_t(read16(actor+0x1c)),int16_t(read16(actor+0x20)),read16(actor+0x2a),read16(actor+0x3e),read16(actor+0x52),objects,enemyX,enemyZ,ready);
     }
 #endif
 #ifdef AITD_SAVE_LOAD

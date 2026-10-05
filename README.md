@@ -108,6 +108,9 @@ gameplay; its paired 52-phase regression also passes on both CPUs.
 `BOOKROUTE=1` continues lamp Take through bookcase Search, Book Take and the
 first reading page, then returns to manual gameplay. `BOOKPAGES=1` extends that
 route through all four pages, previous-page navigation and normal completion.
+`COMBATROUTE=1` extends the bedroom key route through the naturally spawned
+enemy, Close/Fight selection, door reopening, turning, attacks and victory;
+its original Mac, baseline 68020 and fixed-clock 68030 checks pass.
 `DEATHROUTE=1` runs ordinary
 controls, returns toward the starting area, follows death and starts a fresh
 Carnby game autonomously; its paired regression is documented in

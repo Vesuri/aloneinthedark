@@ -322,7 +322,7 @@ extern "C" { volatile uint16_t g_lampRouteStage=0; volatile uint32_t g_lampRoute
 extern "C" __attribute__((noinline)) void aitdInputLampCheckpoint()
 { __asm__ volatile("nop" ::: "memory"); }
 static uint32_t s_lampFrames=0;
-void aitdInputLamp(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_t beta,uint16_t animation,uint16_t track,bool taken,bool used,bool ready)
+void aitdInputLamp(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_t beta,uint16_t animation,uint16_t track,bool found,bool taken,bool used,bool ready)
 {
 #ifdef AITD_LAMP_USE
 #ifdef AITD_HALLWAY
@@ -333,6 +333,9 @@ void aitdInputLamp(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_t b
 #else
     const uint16_t terminal=15;
     (void)used;
+#endif
+#ifndef AITD_COMBAT_ROUTE
+    (void)found;
 #endif
     if(!ready || g_lampRouteStage>=terminal)return;
     beta&=1023;const uint16_t stage=g_lampRouteStage;
@@ -348,13 +351,24 @@ void aitdInputLamp(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_t b
         if(animation!=4 || elapsed<30)return;
         aitdInputInjectProbeKey(stage==4 ? 0x4e : 0x4c,true);
     }
-    else if(stage==3) {if(x<3600)return;aitdInputInjectProbeKey(0x4c,false);}
+    else if(stage==3) {
+#ifdef AITD_COMBAT_ROUTE
+        if(x<3800)return;
+#else
+        if(x<3600)return;
+#endif
+        aitdInputInjectProbeKey(0x4c,false);
+    }
     else if(stage==5) {if(beta>32 && beta<992)return;aitdInputInjectProbeKey(0x4e,false);}
     else if(stage==7) {if(z>-3800)return;aitdInputInjectProbeKey(0x4c,false);}
     else if(stage==8) {if(elapsed<30)return;aitdInputInjectProbeKey(0x18,true);}
     else if(stage==9) {if(elapsed<120)return;aitdInputInjectProbeKey(0x18,false);}
     else if(stage==10) {if(elapsed<30)return;aitdInputInjectProbeKey(0x40,true);}
-    else if(stage==11) {if(elapsed<120)return;aitdInputInjectProbeKey(0x40,false);}
+    else if(stage==11) {if(elapsed<120
+#ifdef AITD_COMBAT_ROUTE
+        || !found
+#endif
+        )return;aitdInputInjectProbeKey(0x40,false);}
     else if(stage==12) {if(elapsed<30)return;aitdInputInjectProbeKey(0x44,true);}
     else if(stage==13) {if(elapsed<8)return;aitdInputInjectProbeKey(0x44,false);s_lampFrames=scenes;}
     else if(stage==14) {if(!taken || animation!=4 || track!=1 || scenes<=s_lampFrames)return;}
@@ -757,7 +771,13 @@ void aitdInputExplore(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_
         aitdInputInjectProbeKey(0x4e,false);
     }
     else if(stage==13) {if(x<6650)return;aitdInputInjectProbeKey(0x4c,false);}
-    else if(stage==15) {if(beta>32 && beta<992)return;aitdInputInjectProbeKey(0x4e,false);}
+    else if(stage==15) {
+#ifdef AITD_COMBAT_ROUTE
+        if(beta>16 && beta<1008)return;
+#else
+        if(beta>32 && beta<992)return;
+#endif
+        aitdInputInjectProbeKey(0x4e,false);}
     else if(stage==17) {if(floor!=1)return;aitdInputInjectProbeKey(0x4c,false);}
     else {
 #ifdef AITD_HALLWAY
@@ -772,6 +792,122 @@ void aitdInputExplore(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_
     g_exploreRouteStage=stage+1;g_exploreRouteTick=ticks;
     if(g_exploreRouteStage==18)s_exploreFrames=scenes;
     aitdInputExploreCheckpoint();
+}
+#endif
+
+#ifdef AITD_COMBAT_ROUTE
+extern "C" { volatile uint16_t g_combatRouteStage=0,g_combatFightEvent=0,g_combatSawEnemy=0,g_combatAttempts=1,g_combatAimHeading=0;
+volatile uint32_t g_combatRouteTick=0; }
+extern "C" __attribute__((noinline)) void aitdInputCombatCheckpoint()
+{ __asm__ volatile("nop" ::: "memory"); }
+extern "C" __attribute__((noinline)) void aitdInputCombatAttackCheckpoint()
+{ __asm__ volatile("nop" ::: "memory"); }
+void aitdInputCombatEvent(uint16_t what,uint32_t message)
+{ if(g_combatRouteStage==25 && what==3 && (message&255)=='f')g_combatFightEvent=1; }
+extern "C" __attribute__((noinline)) void aitdInputCombatAimCheckpoint()
+{ __asm__ volatile("nop" ::: "memory"); }
+static uint8_t s_combatAimKey=0;
+static bool s_combatTurnTest=false;
+static uint32_t s_combatFrames=0,s_combatAttackTick=0;
+static uint8_t s_combatAttackState=0;
+void aitdInputCombat(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_t beta,uint16_t animation,uint16_t track,uint16_t objects,int16_t enemyX,int16_t enemyZ,bool ready)
+{
+    if(g_exploreRouteStage!=64 || !ready || g_combatRouteStage>=36)return;
+    const uint16_t stage=g_combatRouteStage;
+    const uint32_t elapsed=ticks-g_combatRouteTick;
+    beta&=1023;
+    if((stage && elapsed>(stage==34 ? 36000UL : 2400UL)) || !(objects&16)) {
+        aitdInputInjectProbeKey(0x4e,false);aitdInputInjectProbeKey(0x4f,false);aitdInputInjectProbeKey(0x4c,false);aitdInputInjectProbeKey(0x4d,false);aitdInputInjectProbeKey(0x40,false);
+        aitdInputInjectProbeKey(0x44,false);aitdInputInjectProbeKey(0x18,false);aitdInputInjectProbeKey(0x23,false);
+        g_combatRouteStage=0xffff;aitdInputCombatCheckpoint();return;
+    }
+    if(!stage) {if(!(objects&1))return;g_combatSawEnemy=1;aitdInputInjectProbeKey(0x4e,true);}
+    else if(stage==1) {if(beta<240 || beta>272)return;aitdInputInjectProbeKey(0x4e,false);}
+    else if(stage==2) {if(animation!=4 || elapsed<30)return;aitdInputInjectProbeKey(0x4c,true);}
+    else if(stage==3) {if(x<600)return;aitdInputInjectProbeKey(0x4c,false);}
+    else if(stage==4) {if(animation!=4 || elapsed<30)return;aitdInputInjectProbeKey(0x4f,true);}
+    else if(stage==5) {if(beta<496 || beta>528)return;aitdInputInjectProbeKey(0x4f,false);}
+    else if(stage==6) {if(animation!=4 || elapsed<30)return;aitdInputInjectProbeKey(0x4c,true);}
+    else if(stage==7) {if(z<900)return;aitdInputInjectProbeKey(0x4c,false);}
+    else if(stage==8) {if(elapsed<30 || !exploreAligned(z,1200,1380,true,animation))return;aitdInputInjectProbeKey(0x4f,true);}
+    else if(stage==9) {if(beta<752 || beta>784)return;aitdInputInjectProbeKey(0x4f,false);}
+    else if(stage==10) {if(animation!=4 || elapsed<30)return;aitdInputInjectProbeKey(0x4c,true);}
+    else if(stage==11) {if(x>850)return;aitdInputInjectProbeKey(0x4c,false);}
+    else if(stage==12) {if(elapsed<30 || !exploreAligned(x,600,800,false,animation))return;aitdInputInjectProbeKey(0x4e,true);}
+    else if(stage==13) {if(beta<496 || beta>528)return;aitdInputInjectProbeKey(0x4e,false);}
+    else if(stage==14) {if(animation!=4 || track!=1 || elapsed<30)return;aitdInputInjectProbeKey(0x44,true);}
+    else if(stage==15 || stage==17 || stage==23) {if(elapsed<8)return;aitdInputInjectProbeKey(0x44,false);}
+    else if(stage==16) {if(elapsed<180)return;aitdInputInjectProbeKey(0x44,true);}
+    else if(stage==18) {if(elapsed<180)return;aitdInputInjectProbeKey(0x4d,true);}
+    else if(stage==19) {if(!(objects&32))return;aitdInputInjectProbeKey(0x4d,false);}
+    else if(stage==20) {if(elapsed<120)return;aitdInputInjectProbeKey(0x4d,true);}
+    else if(stage==21) {if(!(objects&128))return;aitdInputInjectProbeKey(0x4d,false);}
+    else if(stage==22) {if(elapsed<120)return;aitdInputInjectProbeKey(0x44,true);}
+    else if(stage==24) {if(!(objects&64) || !(objects&256) || animation!=4 || track!=1 || elapsed<120)return;aitdInputInjectProbeKey(0x23,true);}
+    else if(stage==25) {if(elapsed<120 || !g_combatFightEvent || !(objects&512))return;aitdInputInjectProbeKey(0x23,false);}
+    else if(stage==26) {if(elapsed<30)return;aitdInputInjectProbeKey(0x4c,true);}
+    else if(stage==27) {if(!(objects&2))return;aitdInputInjectProbeKey(0x4c,false);}
+    else if(stage==28) {if(animation!=4 || track!=1 || elapsed<30)return;}
+    else if(stage==29) {if(elapsed<30)return;}
+    else if(stage==30) {if(animation!=4 || track!=1 || elapsed<30)return;aitdInputInjectProbeKey(0x40,true);aitdInputInjectProbeKey(0x4c,true);}
+    else if(stage==31) {if(animation!=262)return;}
+    else if(stage==32) {if(elapsed<120)return;aitdInputInjectProbeKey(0x40,false);aitdInputInjectProbeKey(0x4c,false);}
+    else if(stage==33) {if(animation!=4 || track!=1 || elapsed<30)return;}
+    else if(stage==34) {
+        if((objects&8) && g_combatSawEnemy) {
+            aitdInputInjectProbeKey(0x40,false);aitdInputInjectProbeKey(0x4c,false);
+            aitdInputInjectProbeKey(0x4e,false);aitdInputInjectProbeKey(0x4f,false);s_combatFrames=scenes;
+        } else {
+            if(s_combatAttackState && ticks-s_combatAttackTick>1800) {g_combatRouteStage=0xffff;aitdInputCombatCheckpoint();return;}
+            if(s_combatAttackState==1) {
+                if(animation==262)s_combatAttackState=2;
+                else if(ticks-s_combatAttackTick<180)return;
+                // A hit can interrupt the queued kick. Release the input even
+                // when no kick began, so the original release wait can finish.
+                else s_combatAttackState=2;
+            }
+            if(s_combatAttackState==2) {
+                if(ticks-s_combatAttackTick<180)return;
+                aitdInputInjectProbeKey(0x40,false);aitdInputInjectProbeKey(0x4c,false);s_combatAttackState=3;s_combatAttackTick=ticks;return;
+            }
+            if(objects&2048) { // Let the original death animation remove its actor.
+                aitdInputInjectProbeKey(0x4e,false);aitdInputInjectProbeKey(0x4f,false);return;
+            }
+            if(s_combatAttackState==4 || s_combatAttackState==6) {
+                const uint16_t delta=(g_combatAimHeading-beta)&1023;
+                if(delta>16 && delta<1008)return;
+                aitdInputInjectProbeKey(s_combatAimKey,false);s_combatAttackState=s_combatAttackState==6 ? 3 : 5;s_combatAttackTick=ticks;
+                aitdInputCombatAimCheckpoint();return;
+            }
+            if(animation!=4 || track!=1 || (s_combatAttackState>=3 && ticks-s_combatAttackTick<30))return;
+            // Exercise a deliberate turn before re-aiming, on both references.
+            if(!s_combatTurnTest && (objects&1024)) {
+                s_combatTurnTest=true;g_combatAimHeading=768;
+                const uint16_t delta=(768-beta)&1023;
+                if(delta>16 && delta<1008) {
+                    s_combatAimKey=delta>512 ? 0x4f : 0x4e;
+                    aitdInputInjectProbeKey(s_combatAimKey,true);s_combatAttackState=6;s_combatAttackTick=ticks;
+                    aitdInputCombatAimCheckpoint();return;
+                }
+            }
+            if(s_combatAttackState!=5 && (objects&1024)) {
+                const int32_t dx=int32_t(enemyX)-x,dz=int32_t(enemyZ)-z;
+                const uint32_t ax=dx<0 ? -dx : dx,az=dz<0 ? -dz : dz;
+                g_combatAimHeading=ax>az ? (dx>0 ? 256 : 768) : (dz>0 ? 512 : 0);
+                const uint16_t delta=(g_combatAimHeading-beta)&1023;
+                if(delta>16 && delta<1008) {
+                    s_combatAimKey=delta>512 ? 0x4f : 0x4e;
+                    aitdInputInjectProbeKey(s_combatAimKey,true);s_combatAttackState=4;s_combatAttackTick=ticks;
+                    aitdInputCombatAimCheckpoint();return;
+                }
+            }
+            if(g_combatAttempts>=32) {g_combatRouteStage=0xffff;aitdInputCombatCheckpoint();return;}
+            ++g_combatAttempts;aitdInputCombatAttackCheckpoint();
+            aitdInputInjectProbeKey(0x40,true);aitdInputInjectProbeKey(0x4c,true);s_combatAttackState=1;s_combatAttackTick=ticks;return;
+        }
+    }
+    else if(stage==35) {if(!(objects&8) || animation!=4 || track!=1 || elapsed<30 || scenes<=s_combatFrames)return;}
+    g_combatRouteStage=stage+1;g_combatRouteTick=ticks;aitdInputCombatCheckpoint();
 }
 #endif
 
