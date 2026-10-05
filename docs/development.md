@@ -1,5 +1,27 @@
 # Development
 
+## Autonomous oil-lamp pickup — 2026-10-05
+
+Clean-build `LAMPROUTE=1` (INGAME/PROBES), then run
+`DIAG_RUN_DIR=.run-saveload AMIGA_CONFIG=a1200-020
+GDBSCRIPT=lamp_route.gdb amiga/diag_run.sh 600`. The route uses ordinary
+arrows to approach the table, O for Open/Search, Space to search and Return
+to accept Take. `tools/mac_lamp_pickup.lua` performs the same route on the
+original Mac. It changes diagnostic input only.
+
+`tools/check_lamp_pickup.py` requires actual zero statuses, the complete
+phase sequence, captured Carnby identity, real movement, inventory count
+1→2 with existing object 2 retained in slot 0 and lamp 13 inserted in slot 1,
+object removal from floor/room 0 and idle manual gameplay after Take. The
+native observer also requires a later completed scene publication. Accepted
+local evidence is `tmp/m3-explore/{mac-lamp,lamp-native-gdb,lamp-checked}.log`.
+The same binary also passes fixed-clock `a4000-030-reference`, with
+`lamp-030-{gdb,checked}.log`. Build no-float and 150-symbol audits pass.
+This verifies pickup; it does not yet verify using the lamp or ten minutes
+of first-floor exploration. The observer ends after acceptance without claiming
+normal Quit cleanup. No new production service was needed.
+
+
 ## Autonomous attic descent to first-floor manual control — 2026-10-05
 
 Clean-build `EXPLOREROUTE=1`; it implies INGAME/PROBES. Run

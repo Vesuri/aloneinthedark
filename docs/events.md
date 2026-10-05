@@ -14,6 +14,18 @@ The click route exercises Button; StillDown retains its existing Boolean ABI
 but broader caller coverage remains pending. See
 [the reproducible route](development.md#m34-action-menu-clicks--2026-10-05).
 
+## Inventory fields used by pickup observers — 2026-10-05
+
+Original Dan2/CODE 13 Take, +$23A2–$243C, uses world objects at
+A5−$115F2 with 52-byte records. It increments the inventory count at
+A5−$D8A6; slot 0 is −$D8A4 and slot 1 is −$D8A2. When already nonempty,
+it preserves slot 0, shifts later entries and inserts the taken object in slot 1.
+Carnby starts with count 1 and object 2 in slot 0. Both original/native lamp
+captures end with count 2, slots (2,13), lamp found flags $8609 and object
+floor/room −1. Take clears flag $4000 and sets $8000. Earlier exploratory
+labels incorrectly treated unrelated A5−$D536 as inventory count; acceptance
+now reads the actual fields and verifies captured bytes.
+
 ## Actor state used by autonomous routes — 2026-10-05
 
 The original actor record is 160 bytes at A5−$B292 plus its slot offset.

@@ -317,6 +317,41 @@ void aitdInputMenuProbeFinished(bool ok)
 }
 #endif
 
+#ifdef AITD_LAMP_ROUTE
+extern "C" { volatile uint16_t g_lampRouteStage=0; volatile uint32_t g_lampRouteTick=0; }
+extern "C" __attribute__((noinline)) void aitdInputLampCheckpoint()
+{ __asm__ volatile("nop" ::: "memory"); }
+static uint32_t s_lampFrames=0;
+void aitdInputLamp(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_t beta,uint16_t animation,uint16_t track,bool taken,bool ready)
+{
+    if(!ready || g_lampRouteStage>=15)return;
+    beta&=1023;const uint16_t stage=g_lampRouteStage;
+    const uint32_t elapsed=ticks-g_lampRouteTick;
+    if(stage && elapsed>2400) {
+        for(uint8_t key=0x4c;key<=0x4f;++key)aitdInputInjectProbeKey(key,false);
+        aitdInputInjectProbeKey(0x18,false);aitdInputInjectProbeKey(0x40,false);aitdInputInjectProbeKey(0x44,false);
+        g_lampRouteStage=0xffff;aitdInputLampCheckpoint();return;
+    }
+    if(!stage)aitdInputInjectProbeKey(0x4f,true);
+    else if(stage==1) {if(beta<240 || beta>=512)return;aitdInputInjectProbeKey(0x4f,false);}
+    else if(stage==2 || stage==4 || stage==6) {
+        if(animation!=4 || elapsed<30)return;
+        aitdInputInjectProbeKey(stage==4 ? 0x4e : 0x4c,true);
+    }
+    else if(stage==3) {if(x<3600)return;aitdInputInjectProbeKey(0x4c,false);}
+    else if(stage==5) {if(beta>32 && beta<992)return;aitdInputInjectProbeKey(0x4e,false);}
+    else if(stage==7) {if(z>-3800)return;aitdInputInjectProbeKey(0x4c,false);}
+    else if(stage==8) {if(elapsed<30)return;aitdInputInjectProbeKey(0x18,true);}
+    else if(stage==9) {if(elapsed<120)return;aitdInputInjectProbeKey(0x18,false);}
+    else if(stage==10) {if(elapsed<30)return;aitdInputInjectProbeKey(0x40,true);}
+    else if(stage==11) {if(elapsed<120)return;aitdInputInjectProbeKey(0x40,false);}
+    else if(stage==12) {if(elapsed<30)return;aitdInputInjectProbeKey(0x44,true);}
+    else if(stage==13) {if(elapsed<8)return;aitdInputInjectProbeKey(0x44,false);s_lampFrames=scenes;}
+    else if(stage==14) {if(!taken || animation!=4 || track!=1 || scenes<=s_lampFrames)return;}
+    g_lampRouteStage=stage+1;g_lampRouteTick=ticks;aitdInputLampCheckpoint();
+}
+#endif
+
 #ifdef AITD_EXPLORE_ROUTE
 extern "C" { volatile uint16_t g_exploreRouteStage=0; volatile uint32_t g_exploreRouteTick=0; }
 extern "C" __attribute__((noinline)) void aitdInputExploreCheckpoint()

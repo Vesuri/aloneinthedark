@@ -7345,6 +7345,17 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         aitdInputDeathRoute(gameMenu,g_macTicks,initialActor,int16_t(read16(actor+0x20)),read16(actor+0x3e));
     }
 #endif
+#ifdef AITD_LAMP_ROUTE
+    if(s_a5WorldStorage) {
+        const uint8_t* world=s_a5WorldStorage+75616;
+        const uint8_t* actor=world-0xb292+160;
+        const bool ready=g_ingameStage==5 && g_macFramesPresented && read16(actor)==1 && read16(actor+2)==12 && !read16(actor+0x2e) && !read16(actor+0x30);
+        const uint8_t* lamp=world-0x115f2+13*52;
+        const bool taken=read16(lamp+12)==0x8609 && read16(lamp+28)==0xffff && read16(lamp+30)==0xffff && read16(world-0xd8a6)==2 && read16(world-0xd8a4)==2 && read16(world-0xd8a2)==13;
+        aitdInputLamp(g_macTicks,g_macSceneFramesCompleted,int16_t(read16(actor+0x1c)),int16_t(read16(actor+0x20)),
+            read16(actor+0x2a),read16(actor+0x3e),read16(actor+0x52),taken,ready);
+    }
+#endif
 #ifdef AITD_EXPLORE_ROUTE
     if(s_a5WorldStorage) {
         const uint8_t* actor=s_a5WorldStorage+75616-0xb292+160;
