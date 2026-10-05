@@ -24,6 +24,10 @@
 # basename — KEEP BASENAMES UNIQUE across the source trees), sources located via vpath.
 
 # Diagnostic feature flags must enable probes before conditional symbol groups.
+ifeq ($(ROOM4ROUTE),1)
+ROOM5RETURN=1
+EXTRA_DEFINES += -DAITD_ROOM4_ROUTE
+endif
 ifeq ($(ROOM5RETURN),1)
 ROOM5COMBAT=1
 EXTRA_DEFINES += -DAITD_ROOM5_RETURN

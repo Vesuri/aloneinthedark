@@ -884,7 +884,9 @@ void aitdInputCombat(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_t
 {
 #ifdef AITD_ROOM5_COMBAT
     const uint16_t prefix=52,attackStage=21,
-#ifdef AITD_ROOM5_RETURN
+#ifdef AITD_ROOM4_ROUTE
+        terminal=53;
+#elif defined(AITD_ROOM5_RETURN)
         terminal=48;
 #else
         terminal=23;
@@ -934,6 +936,38 @@ void aitdInputCombat(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_t
         else if(stage==30) {if(beta<752 || beta>784)return;aitdInputInjectProbeKey(0x4e,false);}
         else if(stage==31) {if(animation!=4 || elapsed<30)return;aitdInputInjectProbeKey(0x40,true);}
         else if(stage==32) {if(elapsed<120)return;aitdInputInjectProbeKey(0x40,false);}
+#ifdef AITD_ROOM4_ROUTE
+        // The original crossing can complete during key release. Observe the
+        // actual destination before consulting coordinates in the new room.
+        else if(stage==33) {if(animation!=4 || elapsed<120)return;aitdInputInjectProbeKey(0x4f,true);}
+        else if(stage==34) {if(beta<496 || beta>528)return;aitdInputInjectProbeKey(0x4f,false);}
+        else if(stage==35) {if(animation!=4 || elapsed<30)return;aitdInputInjectProbeKey(0x4c,true);}
+        else if(stage==36) {if(z<600)return;aitdInputInjectProbeKey(0x4c,false);}
+        else if(stage==37) {if(elapsed<30 || !exploreAligned(z,650,850,true,animation))return;aitdInputInjectProbeKey(0x4e,true);}
+        else if(stage==38) {if(beta<752 || beta>784)return;aitdInputInjectProbeKey(0x4e,false);}
+        else if(stage==39) {if(animation!=4 || elapsed<30)return;aitdInputInjectProbeKey(0x4c,true);}
+        else if(stage==40) {if(!(objects&32768))return;aitdInputInjectProbeKey(0x4c,false);s_combatFrames=scenes;}
+        else if(stage==41) {if(animation!=4 || track!=1 || elapsed<30 || scenes<=s_combatFrames)return;}
+        else if(stage==42) {if(animation!=4 || elapsed<30)return;aitdInputInjectProbeKey(0x4c,true);}
+        else if(stage==43) {if(x>100)return;aitdInputInjectProbeKey(0x4c,false);}
+        else if(stage==44) {if(elapsed<30 || !exploreAligned(x,-200,100,false,animation))return;aitdInputInjectProbeKey(0x4e,true);}
+        else if(stage==45) {if(beta>16 && beta<1008)return;aitdInputInjectProbeKey(0x4e,false);}
+        else if(stage==46) {if(animation!=4 || elapsed<30)return;aitdInputInjectProbeKey(0x4c,true);}
+        else if(stage==47) {if(!(objects&8192) && z>-1600)return;aitdInputInjectProbeKey(0x4c,false);s_combatFrames=scenes;}
+        else if(stage==48) {
+            if(animation!=4 || track!=1 || elapsed<30)return;
+            if(objects&8192) {
+                if(scenes<=s_combatFrames)return;
+                g_combatRouteStage=53;g_combatRouteTick=ticks;aitdInputCombatCheckpoint();return;
+            }
+            aitdInputInjectProbeKey(0x40,true);
+        }
+        else if(stage==49) {if(elapsed<120)return;aitdInputInjectProbeKey(0x40,false);}
+        else if(stage==50) {if(animation!=4 || elapsed<120)return;aitdInputInjectProbeKey(0x4c,true);}
+        else if(stage==51) {if(!(objects&8192))return;aitdInputInjectProbeKey(0x4c,false);s_combatFrames=scenes;}
+        else if(stage==52) {if(animation!=4 || track!=1 || elapsed<30 || scenes<=s_combatFrames)return;}
+
+#else
         else if(stage==33) {if(animation!=4 || elapsed<120)return;aitdInputInjectProbeKey(0x4e,true);}
         else if(stage==34) {if(beta>16 && beta<1008)return;aitdInputInjectProbeKey(0x4e,false);}
         else if(stage==35) {if(animation!=4 || elapsed<30)return;aitdInputInjectProbeKey(0x4c,true);}
@@ -953,6 +987,7 @@ void aitdInputCombat(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_t
             if(!(objects&8192))return;aitdInputInjectProbeKey(0x4c,false);s_combatFrames=scenes;
         }
         else if(stage==47) {if(animation!=4 || track!=1 || elapsed<30 || scenes<=s_combatFrames)return;}
+#endif
         g_combatRouteStage=stage+1;g_combatRouteTick=ticks;aitdInputCombatCheckpoint();return;
     }
 #endif

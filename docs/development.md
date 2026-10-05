@@ -44,6 +44,40 @@ cannot establish where the game's rendering time goes. Maximum CPU speed
 and warp are already enabled for functional pilots; fixed-clock acceptance
 still uses its explicit configuration.
 
+## Room 4 bypass — 2026-10-06
+
+`tools/mac_room4_route.lua` and optional clean-build `ROOM4ROUTE=1` continue
+the room 5 victory/wardrobe Search through room 4 and into the hallway west
+of the fall zone. The route sends ordinary keys only; it observes real room
+changes before consulting coordinates after a crossing. Room 4 readiness is
+restricted to the continuation, preserving the combat guard on unmeasured
+knockback paths. The original Mac route exits zero with 18 health, retained
+Actions/lamp inventory, removed enemy 62 and manual room 1 at x=475/z=409.
+Its conservative active time is 5,433 ticks (90.55 seconds), not ten minutes.
+
+Use `amiga/room4_route.gdb` and `tools/check_room4_route.py`; prepare
+`tmp/m3-room4/` before launching. The native fast pilot and fixed-clock
+15.6672 MHz 68030 observer/checker all exit zero. Both use diagnostic warp
+and silent host playback with emulated Paula active; these are functional
+route checks, not audible real-time performance measurements. Final health
+is 18/19 respectively; all recorded phases have zero synthetic input drops.
+The checker independently verifies both real destinations, living manual
+identity, actual Open/Search, retained inventory/enemy removal, fresh completed
+scenes and populated logical buffers. Visual inspection confirms room 4 and
+the western hallway artwork. Clean no-float and 167-symbol link audits pass.
+
+Evidence: `tmp/m3-room4/mac-route.log`,
+`full-{fast,030}-{run,gdb,checked}.log` and `full-{fast,030}-evidence/`.
+The baseline 68020 combat-knockback recovery and continuous ten-minute paired
+first-floor gate remain open. An original-only extension also reaches room 3
+(the bathroom) through this bypass (`tmp/m3-room3/mac-route.log`, exit zero);
+it still needs native integration/verification.
+
+A separate retained-Mac debugger-stop prototype is rejected: its clock-freeze
+assertion fails at the original main-loop breakpoint even with both PC aliases.
+It is not route acceptance or a supported way to resume probes. No game-state
+writes or emulator-state restoration were used.
+
 ## Scripted keyboard transitions — 2026-10-05
 
 Probe input now enqueues only changed held levels. During the room 5 enemy's

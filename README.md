@@ -27,7 +27,9 @@ state and original artwork/text checks on both CPUs. Full book navigation and
 normal completion also pass on both CPUs. Natural room 5 combat, enemy removal
 and restored living manual control pass paired Mac/68020/68030 checks.
 Post-combat wardrobe Search and hallway return also pass on the fixed 68030;
-the 68020 knockback route and ten-minute scripted first-floor gate remain open.
+a room 5 → room 4 → western hallway bypass also passes paired Mac and fixed
+68030 checks. The 68020 knockback recovery and ten-minute scripted first-floor
+gate remain open.
 The action-menu preview now runs at 2.07 updates/sec on the reference 68030
 versus 1.65 on Mac; keyboard choices, hover, clicks and cancellation pass paired checks.
 
@@ -115,6 +117,9 @@ enemy, Close/Fight selection, door reopening, turning, attacks and victory;
 its original Mac, baseline 68020 and fixed-clock 68030 checks pass.
 `ROOM5COMBAT=1` extends the southern-room route through natural enemy activation,
 Fight, aiming, kicks, damage and victory; its paired checks pass on both CPUs.
+`ROOM4ROUTE=1` continues victory through room 4 into the western hallway;
+its Mac/fixed-68030 checks pass, while baseline combat-knockback recovery remains
+open.
 `DEATHROUTE=1` runs ordinary
 controls, returns toward the starting area, follows death and starts a fresh
 Carnby game autonomously; its paired regression is documented in
