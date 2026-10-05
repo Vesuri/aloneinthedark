@@ -48,7 +48,7 @@ def check(mac,native,folder,mac_status,native_status,session=False):
     foreground=max((original[(y*640+x)*3:(y*640+x)*3+3] for y in range(330,348) for x in range(260,380)),key=sum)
     expected=glyph_mask(b'The lamp has no oil')
     def bands(pixels):
-        points={(x,y) for y in range(310,350) for x in range(260,380) if pixels[(y*640+x)*3:(y*640+x)*3+3]==foreground}
+        points={(x,y) for y in range(285,350) for x in range(260,380) if pixels[(y*640+x)*3:(y*640+x)*3+3]==foreground}
         rows=[]
         for y in sorted({y for x,y in points}):
             if not rows or y>rows[-1][-1]+1:rows.append([y])

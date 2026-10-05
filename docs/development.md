@@ -20,10 +20,13 @@ and populated first-floor scene/palette captures. The equipped idle animation
 is never changed. The diagnostic controllers run consecutively, not concurrently.
 Accepted evidence is `tmp/m3-explore/{mac-session,session-native-gdb,
 session-checked}.log`, all passing. Clean-build no-float and 152-symbol audits
-pass. The fixed-clock `a4000-030-reference` run reaches room 0 and completes
-all state phases, but `session-030-checked.log` rejects its captured lamp
-feedback. That session is not accepted on 68030 until the publication/capture
-boundary is resolved; the standalone lamp Use route already passes there.
+pass. The fixed-clock `a4000-030-reference` session also passes, with
+`session-030-{gdb,checked}.log`. Its feedback initially failed a checker that
+searched only rows 310–349: an older Open/Search message occupied the bottom
+slot, placing the correct empty-lamp message above it. The checker now searches
+the complete measured message stack at rows 285–349, retaining exact glyphs,
+colour and horizontal position. It accepts variable stack placement, as the
+existing sound-toggle feedback checker does; the runtime needed no change.
 This remains shorter than ten minutes; hallway, further room interactions
 and longer combat/exploration coverage remain open.
 
