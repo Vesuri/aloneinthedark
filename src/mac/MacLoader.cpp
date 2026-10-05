@@ -7361,8 +7361,11 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     if(s_a5WorldStorage) {
         const uint8_t* actor=s_a5WorldStorage+75616-0xb292+160;
         const bool ready=g_ingameStage==5 && g_macFramesPresented && read16(actor)==1 && (read16(actor+2)==12 || read16(actor+2)==11);
+        const uint8_t* world=s_a5WorldStorage+75616;
+        const bool keyTaken=read16(world-0x115f2+37*52+12)==0x8601 && read16(world-0xd8a6)==3
+            && read16(world-0xd8a4)==2 && read16(world-0xd8a2)==37 && read16(world-0xd8a0)==13;
         aitdInputExplore(g_macTicks,g_macSceneFramesCompleted,int16_t(read16(actor+0x1c)),int16_t(read16(actor+0x20)),
-            read16(actor+0x2a),read16(actor+0x3e),read16(actor+0x2e),read16(actor+0x30),read16(actor+0x52),ready);
+            read16(actor+0x2a),read16(actor+0x3e),read16(actor+0x2e),read16(actor+0x30),read16(actor+0x52),keyTaken,ready);
     }
 #endif
 #ifdef AITD_SAVE_LOAD

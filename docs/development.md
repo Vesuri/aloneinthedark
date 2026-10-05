@@ -1,5 +1,40 @@
 # Development
 
+## First-floor bedroom key pickup — 2026-10-05
+
+Clean-build `BEDROOMKEY=1` (HALLWAY/FIRSTFLOOR and their prerequisites),
+then run `bedroom_key.gdb` on `a1200-020` or fixed-clock
+`a4000-030-reference`. `tools/mac_bedroom_key.lua`
+performs the paired original session. It retains lamp pickup/Use, mode switch,
+attic descent and the first-floor hallway; approaches the north bedroom doorway,
+executes Open/Search, enters floor 1/room 2, walks to the desk, searches and
+accepts Take for key 37. The original found body/name are 46/209.
+
+`tools/check_firstfloor_session.py --key` retains all prior route, exact lamp
+feedback and door-rotation gates, requires 64 exploration phases and verifies
+key flags $0601→$8601, inventory count 2→3 and slots (2,37,13): Actions stays
+first, the new key is inserted and the lamp is retained. Captured Carnby must
+finish in floor 1/room 2, body 12/idle 4/manual 1 at the desk. The native observer
+records a later completed scene after Take. Accepted local evidence is
+`tmp/m3-explore/{mac-key,key-native-gdb,key-checked,key-030-gdb,key-030-checked}.log`,
+all passing with zero observer exit statuses.
+Clean-build no-float and 153-symbol audits pass. No production service or original
+instruction changes were needed. This remains a shorter exploration prerequisite,
+not the ten-minute M3 gate. Cabinet/key Use and further rooms remain open.
+
+Fixed-coordinate release thresholds proved insufficient for autonomous passage
+alignment: movement can continue after release, and slightly diagonal headings
+consume more opening clearance. Captured named failures identify upper/lower
+attic walls and both bedroom doorframe edges. The diagnostic controller now
+uses ordinary single steps, waits for their walking/backward animation and
+subsequent idle state, then rechecks position before turning into the passage.
+The attic target is z=3920–3970, the hallway target x=2720–2900; actual source
+actors/positions are never written. The paired Mac uses the same correction.
+The checker verifies press/release/idle order, advancing ticks and actual
+movement direction for each native correction, plus both final alignment bounds.
+This bounded correction belongs to the scripted test, not game decisions.
+
+
 ## First-floor hallway and door interaction — 2026-10-05
 
 Clean-build `HALLWAY=1` (FIRSTFLOOR and its prerequisite routes), then run

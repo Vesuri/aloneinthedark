@@ -383,7 +383,32 @@ extern "C" { volatile uint16_t g_exploreRouteStage=0; volatile uint32_t g_explor
 extern "C" __attribute__((noinline)) void aitdInputExploreCheckpoint()
 { __asm__ volatile("nop" ::: "memory"); }
 static uint32_t s_exploreFrames=0;
-void aitdInputExplore(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_t beta,uint16_t animation,uint16_t floor,uint16_t room,uint16_t track,bool ready)
+#ifdef AITD_HALLWAY
+extern "C" { volatile uint16_t g_exploreAlignment=0; }
+extern "C" __attribute__((noinline)) void aitdInputExploreAlignCheckpoint()
+{ __asm__ volatile("nop" ::: "memory"); }
+static bool exploreAligned(int16_t position,int16_t low,int16_t high,bool backForHigh,uint16_t animation)
+{
+    if(g_exploreAlignment==1 || g_exploreAlignment==3) {
+        if(animation!=(g_exploreAlignment==1 ? 256 : 254))return false;
+        aitdInputInjectProbeKey(g_exploreAlignment==1 ? 0x4d : 0x4c,false);
+        ++g_exploreAlignment;aitdInputExploreAlignCheckpoint();return false;
+    }
+    if(g_exploreAlignment==2 || g_exploreAlignment==4) {
+        if(animation!=4)return false;
+        g_exploreAlignment=0;aitdInputExploreAlignCheckpoint();return false;
+    }
+    if(animation!=4)return false;
+    if(position<low || position>high) {
+        const bool back=(position>high)==backForHigh;
+        g_exploreAlignment=back ? 1 : 3;
+        aitdInputInjectProbeKey(back ? 0x4d : 0x4c,true);
+        aitdInputExploreAlignCheckpoint();return false;
+    }
+    return true;
+}
+#endif
+void aitdInputExplore(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_t beta,uint16_t animation,uint16_t floor,uint16_t room,uint16_t track,bool keyTaken,bool ready)
 {
 #ifdef AITD_LAMP_STAIRS
 #ifdef AITD_HALLWAY
@@ -394,13 +419,18 @@ void aitdInputExplore(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_
     // The measured equipped-lamp standing animation satisfies release waits.
     if(animation==287)animation=4;
 #endif
-#ifdef AITD_HALLWAY
+#ifdef AITD_BEDROOM_KEY
+    const uint16_t terminal=64;
+#elif defined(AITD_HALLWAY)
     const uint16_t terminal=39;
 #elif defined(AITD_FIRSTFLOOR)
     const uint16_t terminal=26;
 #else
     const uint16_t terminal=19;
     (void)room;
+#endif
+#ifndef AITD_BEDROOM_KEY
+    (void)keyTaken;
 #endif
     if(!ready || g_exploreRouteStage>=terminal)return;
     beta&=1023;
@@ -438,6 +468,33 @@ void aitdInputExplore(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_
         else if(stage==37) {if(floor!=1 || room!=1)return;aitdInputInjectProbeKey(0x4c,false);s_exploreFrames=scenes;}
         else if(stage==38) {if(animation!=4 || track!=1 || elapsed<30 || scenes<=s_exploreFrames)return;}
 #endif
+#ifdef AITD_BEDROOM_KEY
+        else if(stage==39) {if(elapsed<30)return;aitdInputInjectProbeKey(0x4c,true);}
+        else if(stage==40) {if(x>3400)return;aitdInputInjectProbeKey(0x4c,false);}
+        else if(stage==41) {if(elapsed<30 || !exploreAligned(x,2720,2900,false,animation))return;aitdInputInjectProbeKey(0x4f,true);}
+        else if(stage==42) {if(beta>16 && beta<1008)return;aitdInputInjectProbeKey(0x4f,false);}
+        else if(stage==43) {if(animation!=4 || elapsed<30)return;aitdInputInjectProbeKey(0x4c,true);}
+        else if(stage==44) {if(z>-850)return;aitdInputInjectProbeKey(0x4c,false);}
+        else if(stage==45) {if(animation!=4 || elapsed<30)return;aitdInputInjectProbeKey(0x18,true);}
+        else if(stage==46) {if(elapsed<120)return;aitdInputInjectProbeKey(0x18,false);}
+        else if(stage==47) {if(elapsed<30)return;aitdInputInjectProbeKey(0x40,true);}
+        else if(stage==48) {if(elapsed<120)return;aitdInputInjectProbeKey(0x40,false);}
+        else if(stage==49) {if(elapsed<120 || track!=1 || animation!=4)return;aitdInputInjectProbeKey(0x4c,true);}
+        else if(stage==50) {if(floor!=1 || room!=2)return;aitdInputInjectProbeKey(0x4c,false);s_exploreFrames=scenes;}
+        else if(stage==51) {if(animation!=4 || track!=1 || elapsed<30 || scenes<=s_exploreFrames)return;aitdInputInjectProbeKey(0x4c,true);}
+        else if(stage==52) {if(z>-1000)return;aitdInputInjectProbeKey(0x4c,false);}
+        else if(stage==53) {if(animation!=4 || elapsed<30)return;aitdInputInjectProbeKey(0x4e,true);}
+        else if(stage==54) {if(beta<752 || beta>784)return;aitdInputInjectProbeKey(0x4e,false);}
+        else if(stage==55) {if(animation!=4 || elapsed<30)return;aitdInputInjectProbeKey(0x4c,true);}
+        else if(stage==56) {if(x>-500)return;aitdInputInjectProbeKey(0x4c,false);}
+        else if(stage==57) {if(animation!=4 || elapsed<30)return;aitdInputInjectProbeKey(0x18,true);}
+        else if(stage==58) {if(elapsed<120)return;aitdInputInjectProbeKey(0x18,false);}
+        else if(stage==59) {if(elapsed<30)return;aitdInputInjectProbeKey(0x40,true);}
+        else if(stage==60) {if(elapsed<120)return;aitdInputInjectProbeKey(0x40,false);}
+        else if(stage==61) {if(elapsed<120)return;aitdInputInjectProbeKey(0x44,true);}
+        else if(stage==62) {if(elapsed<8)return;aitdInputInjectProbeKey(0x44,false);s_exploreFrames=scenes;}
+        else if(stage==63) {if(!keyTaken || animation!=4 || track!=1 || scenes<=s_exploreFrames)return;}
+#endif
         g_exploreRouteStage=stage+1;g_exploreRouteTick=ticks;aitdInputExploreCheckpoint();return;
     }
 #endif
@@ -447,11 +504,23 @@ void aitdInputExplore(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_
     else if(stage==5) {if(x<4100)return;aitdInputInjectProbeKey(0x4c,false);}
     else if(stage==7) {if(beta<496 || beta>=768)return;aitdInputInjectProbeKey(0x4f,false);}
     else if(stage==9) {if(z<3600)return;aitdInputInjectProbeKey(0x4c,false);}
-    else if(stage==11) {if(beta<240 || beta>280)return;aitdInputInjectProbeKey(0x4e,false);}
+    else if(stage==11) {
+#ifdef AITD_HALLWAY
+        if(beta<240 || beta>272)return;
+#else
+        if(beta<240 || beta>280)return;
+#endif
+        aitdInputInjectProbeKey(0x4e,false);
+    }
     else if(stage==13) {if(x<6650)return;aitdInputInjectProbeKey(0x4c,false);}
     else if(stage==15) {if(beta>32 && beta<992)return;aitdInputInjectProbeKey(0x4e,false);}
     else if(stage==17) {if(floor!=1)return;aitdInputInjectProbeKey(0x4c,false);}
     else {
+#ifdef AITD_HALLWAY
+        if(stage==10) {
+            if(ticks-g_exploreRouteTick<30 || !exploreAligned(z,3920,3970,true,animation))return;
+        }
+#endif
         if(animation!=4 || ticks-g_exploreRouteTick<30)return;
         const uint8_t key=stage==2 || stage==6 ? 0x4f : stage==10 || stage==14 ? 0x4e : 0x4c;
         aitdInputInjectProbeKey(key,true);

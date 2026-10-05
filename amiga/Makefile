@@ -24,6 +24,10 @@
 # basename — KEEP BASENAMES UNIQUE across the source trees), sources located via vpath.
 
 # Diagnostic feature flags must enable probes before conditional symbol groups.
+ifeq ($(BEDROOMKEY),1)
+HALLWAY=1
+EXTRA_DEFINES += -DAITD_BEDROOM_KEY
+endif
 ifeq ($(HALLWAY),1)
 FIRSTFLOOR=1
 EXTRA_DEFINES += -DAITD_HALLWAY
@@ -421,6 +425,9 @@ endif
 PROBE_SYMS += $(PROBE_SYMS_ACTION) $(PROBE_SYMS_ACTION_NAV) $(PROBE_SYMS_POINT_LINE)
 ifeq ($(LAMPROUTE),1)
 PROBE_SYMS += g_lampRouteStage g_lampRouteTick
+endif
+ifeq ($(HALLWAY),1)
+PROBE_SYMS += g_exploreAlignment
 endif
 ifeq ($(EXPLOREROUTE),1)
 PROBE_SYMS += g_exploreRouteStage g_exploreRouteTick
