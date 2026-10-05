@@ -36,8 +36,10 @@ required.
     further room and interaction paths until a continuous route meets the
     ten-minute gate. Verify each extension against the original Mac.
   - Verify the post-combat room 5 Search and hallway return on both acceptance
-    CPUs. Resolve the missed Open/Search selection on the 68020 from measured
-    input delivery; require actual action state before continuing movement.
+    CPUs, requiring actual action state before continuing movement and zero
+    dropped synthetic transitions. Cover the living room 4 transition caused
+    by enemy knockback on the 68020, rather than assuming every combat stays
+    in room 5. Measure any steering changes against the original controls.
   - Bound steps by living hero identity; a death followed by the attract demo
     must terminate the observer rather than be counted as gameplay.
 

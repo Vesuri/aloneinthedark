@@ -18,6 +18,24 @@ cannot establish where the game's rendering time goes. Maximum CPU speed
 and warp are already enabled for functional pilots; fixed-clock acceptance
 still uses its explicit configuration.
 
+## Scripted keyboard transitions — 2026-10-05
+
+Probe input now enqueues only changed held levels. During the room 5 enemy's
+original death animation, its controller repeatedly requested releases at
+trap boundaries; these generated 10,244 dropped transitions and could lose the
+subsequent O command. Duplicate releases no longer fill the 32-entry queue.
+Physical keyboard interrupt handling and ordinary game controls are unchanged.
+
+The bounded fast return pilot and full checker exit zero in
+`tmp/m3-room5-return/fast-transitions-{run,gdb,checked}.log`, with captures in
+`fast-transitions-evidence/`. Every phase has zero drops and the real
+Open/Search event is delivered. The 68020 also has zero drops through combat;
+its living hero is knocked into room 4, so that observer correctly ends with
+an unmet route condition (`020-transitions-gdb.log`), not return acceptance.
+Arbitrary-angle steering was rejected: both original and native bounded
+observers miss the requested turn condition. Retain the measured controller
+until a replacement is verified against the actual original controls.
+
 ## Original room 5 return and activity timing — 2026-10-05
 
 `tools/mac_room5_return.lua` extends the measured room 5 combat route with

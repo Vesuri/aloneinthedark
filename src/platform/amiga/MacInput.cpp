@@ -109,6 +109,9 @@ void aitdInputInjectProbeKey(uint8_t rawKey, bool down)
 {
     if (rawKey >= 128) return;
     Disable();
+    // Probe controllers describe held levels. Repeated requests to release a
+    // key are not additional keyboard transitions and must not fill the queue.
+    if ((s_keyDown[rawKey] != 0) == down) { Enable(); return; }
     recordKey(rawKey, down);
     Enable();
 }
