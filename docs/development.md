@@ -76,8 +76,8 @@ still uses its explicit configuration.
 
 `tools/mac_firstfloor_circuit.lua` uses ordinary Mac input to continue the
 bathroom route through room 4, room 5, the eastern hallway and bedroom, then
-returns through room 5/4 to the western hallway. It selects actual Open/Search
-to reopen the bedroom connecting door before Fight. The character finishes
+returns through room 5/4 to the western hallway. It selects actual Fight and walks toward
+the bedroom until the real connecting-door state changes before attacking. The character finishes
 alive with health 8, both enemies removed and Actions/lamp inventory retained.
 
 The original runner and `tools/check_firstfloor_circuit.py` exit zero against
@@ -108,6 +108,24 @@ independent checker pass in `tmp/m3-circuit-aligned/mac-route.log`: health 14,
 both enemies removed and 12,930 active ticks. This verifies the steering
 extension, not a new continuous native acceptance result.
 
+The connected Fight-doorway variant and independent continuous checker pass
+in `tmp/m3-checkpoint-fight-endurance/`: eight living circuits, 37,876 active
+ticks (631.27 seconds) and final health 17. Both enemies remain removed.
+It uses ordinary Load before the session; all loading time is excluded from
+activity. The earlier Open/Search doorway variant let the enemy approach from
+beyond kick range; both 600- and 800-unit walking-recovery experiments fail in
+the original bedroom and are rejected. The already measured Fight doorway
+approach gives the connected route a living encounter before return.
+
+The hallway return now clears north to z<=0 and aligns z at -150..0 before
+heading west. Its original single-circuit extension and raw actor/death checks
+pass in `tmp/m3-checkpoint-hall-clear/`, returning to room 3 at x=855/z=2275
+with health 17. The eight-cycle reference above used the prior 300..450 band;
+this farther clearance is separately verified, not a new continuous result.
+Native prototypes exposed room recrosses while aligning in the old band;
+held alignment keys must be released before a forward recovery. Native
+continuous and acceptance-CPU checks remain open.
+
 ## Ordinary first-floor checkpoint for focused tests — 2026-10-06
 
 `AITD_CIRCUIT_LOAD=1` makes `tools/mac_firstfloor_circuit.lua` load save slot
@@ -121,7 +139,7 @@ The original game save reloads after a fresh emulator boot, with 23,456 actual
 read bytes and the same captured actor fields: object/body 1/12, x=929,
 z=2266, beta=0, floor/room 1/3, animation/track 4/1. The unchanged data fork is
 36,254 bytes; the disposable disk/save remains local in
-`tmp/m3-firstfloor-save/`. The save observer's close counter was shadowed by a
+`tmp/m3-firstfloor-save/`. The save observer's activation flag was shadowed by a
 route-local variable and rejected that observation; the independent fresh
 Load proves durable contents. No emulator state is restored.
 
