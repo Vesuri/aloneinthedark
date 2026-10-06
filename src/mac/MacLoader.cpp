@@ -3241,7 +3241,10 @@ static bool drawIndexedPictureBits(const uint8_t* picture, uint32_t size, uint32
     const uint8_t* colorTable = picture + offset;
     uint16_t colorFlags = read16(colorTable + 4);
     uint16_t finalColor = read16(colorTable + 6);
-    if(destination8 && (finalColor!=255 || colorFlags!=0x8000))return false;
+    // Original saved-game previews use an indexed table with flags=0;
+    // resource PICTs use 0x8000. The entries below carry explicit pen numbers
+    // in the former layout. Both use the measured current-device RGB mapping.
+    if(destination8 && (finalColor!=255 || (colorFlags!=0 && colorFlags!=0x8000)))return false;
     if ((pixelSize == 4 && finalColor > 15) || (pixelSize == 8 && finalColor > 255))
         return false;
     uint32_t colorBytes = 8UL + ((uint32_t)finalColor + 1) * 8;
