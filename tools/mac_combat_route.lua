@@ -219,7 +219,7 @@ mac.run(function()
   assert(dark and mem:read_u32(dark+0x599a)==0x42272f0c,'original Fight accepted branch bytes')
   fightPC=dark+0x599a;fightSeenPC=dark+0x58e8;fightWorld=world
   assert(mem:read_u32(fightSeenPC)==0x0c790066,"Fight key compare bytes")
-  for _,alias in ipairs({0,0x80000000})do cpu.debug:bpset(fightPC|alias,'','');cpu.debug:bpset(fightSeenPC|alias,string.format('w@%x==0x66 || w@%x==0x46',world-0xd84c,world-0xd84c),'')end
+  for _,alias in ipairs({0,0x80000000})do cpu.debug:bpset(fightPC|alias,'','');cpu.debug:bpset(fightSeenPC|alias,string.format('w@0x%x==0x66 || w@0x%x==0x46',world-0xd84c,world-0xd84c),'')end
   assert(mac.wait_for('input gate enabled',function()return mem:read_i16(world-0xd864)==1 end,1800));mac.key_down('f');assert(mac.wait_for('Fight accepted',function()return fightAccepted end,1200));mac.key_up('f');mac.wait(30);enemy('fight-selected-before-door')
   assert(mem:read_i16(vars+180)==16,'Fight selected before encounter')
   print('DOOR_GATE var24='..mem:read_i16(vars+48)..' var90='..mem:read_i16(vars+180))

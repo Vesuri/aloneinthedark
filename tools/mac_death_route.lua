@@ -80,7 +80,7 @@ mac.run(function()
   assert(dark and mem:read_u32(dark+0x58e8)==0x0c790066,'original Fight dispatch bytes')
   fightPC=dark+0x58e8
   for _,alias in ipairs({0,0x80000000})do
-   cpu.debug:bpset(fightPC|alias,string.format('w@%x==0x66 || w@%x==0x46',appWorld-0xd84c,appWorld-0xd84c),'')
+   cpu.debug:bpset(fightPC|alias,string.format('w@0x%x==0x66 || w@0x%x==0x46',appWorld-0xd84c,appWorld-0xd84c),'')
   end
   local function accept(n,minimum,animation,fight)
    waitticks(minimum)
