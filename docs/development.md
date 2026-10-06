@@ -106,13 +106,14 @@ removal and the untouched bedroom encounter. Activity starts after Load;
 loading and the earlier approach do not count toward continuous gameplay.
 The default still starts a new game and performs the full approach.
 
-The original game save reloads after a fresh emulator boot, with 23,456 actual
-read bytes and the same captured actor fields: object/body 1/12, x=929,
+The original game save reloads after a fresh emulator boot with the same
+captured actor fields: object/body 1/12, x=929,
 z=2266, beta=0, floor/room 1/3, animation/track 4/1. The unchanged data fork is
 36,254 bytes; the disposable disk/save remains local in
-`tmp/m3-firstfloor-save/`. The save observer's activation flag was shadowed by a
-route-local variable and rejected that observation; the independent fresh
-Load proves durable contents. No emulator state is restored.
+`tmp/m3-firstfloor-save/`. The fresh original Load reaches a restored actor before its final block read.
+The complete I/O trace, after choosing the slot, reads 34,058 data bytes
+including a 414-byte partial EOF read, then closes the file. No emulator state
+is restored.
 
 Both new-game and ordinary-Load routes pass the independent complete-circuit
 checker in `tmp/m3-circuit-load-option-default/` and
@@ -120,6 +121,36 @@ checker in `tmp/m3-circuit-load-option-default/` and
 removed; activity is 12,930/6,823 ticks respectively. The observed runs span
 708/391 emulated seconds, with differing combat traces; this is a route shortcut,
 not an emulator-throughput measurement or the ten-minute native gate.
+
+## Native ordinary first-floor Load diagnostic — 2026-10-06
+
+Clean-build `FIRSTFLOORLOAD=1 INTROSKIP=1` and use
+`GDBSCRIPT=firstfloor_load.gdb`. Before launch, place the unmodified original
+checkpoint's data, resource and AFI1 metadata companions at
+`$DIAG_RUN_DIR/dh1/Saved Games/SAVE0.ITD{,.rsrc,.finfo}`. They remain local inputs.
+The optional controller uses normal Command-O and Return, checks the observed
+native chooser, then requires the saved living room-3 actor, Actions/lamp
+inventory, completed room-5 encounter and untouched bedroom enemy. It changes
+only diagnostic state and ordinary keys. Earlier route controllers are disabled
+when this option is selected; the default new-game route remains available.
+
+The standalone accelerated run and `tools/check_firstfloor_load.py` pass in
+`tmp/m3-circuit-native/load7-{run,checked}.log`, paired with the original fresh
+Load in `tmp/m3-firstfloor-save/mac-load.log`. Both complete 34,058 data bytes
+after slot selection, including the final 414-byte partial EOF read. The native
+observer requires a newly completed room scene before accepting Load; the
+original's earlier actor snapshot preceded its final 15,360-byte block read.
+Captured actor fields, inventory, health 18, Open/Search and encounter state
+match. The native Load phases span 486 emulated ticks; this is a functional
+shortcut, not a scene-FPS or acceptance-CPU measurement.
+
+The build passes no-float and 151-symbol audits. The Load helper's compiled
+frame uses 32 local bytes plus 8 saved-register bytes. Its preview uses PICT
+128, 55,492 bytes, a 327×200 indexed bitmap and explicit colour-table indices
+(flags zero). Drawing now accepts that measured table form. Through the
+verified Mac display transfer, the chooser agrees outside the thumbnail;
+4,309 thumbnail pixels still differ in the logical comparison. Scaled
+`ditherCopy` preview fidelity remains required in M3.4.
 
 ## Room 4 bypass — 2026-10-06
 

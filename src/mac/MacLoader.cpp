@@ -44,6 +44,7 @@ extern "C" void aitdDriverClockProbe();
 #include "platform/amiga/MusicTimer.h"
 #include "platform/amiga/AitdScreen.h"
 #include "platform/amiga/MacInput.h"
+#include "platform/amiga/FirstFloorLoad.h"
 #include "platform/amiga/PerfProbe.h"
 #include "platform/amiga/framework/AmigaHardware.h"
 #include "PaulaSample.h"
@@ -7070,10 +7071,17 @@ static bool dispatchFileData(uint16_t trap,uint32_t* regs) {
                 int16_t resized=s_files.setSize(ref,slot->source->writes.size(),false);
                 if(!error)error=resized;
             }
-#ifdef AITD_SAVE_LOAD
-            if(!error && trap==0xa002 && actual && !fork->resource) {
+#if defined(AITD_SAVE_LOAD) || defined(AITD_FIRSTFLOOR_LOAD)
+            if((!error || error==-39) && trap==0xa002 && actual && !fork->resource) {
                 const MacFiles::Entry* saved=s_files.entry(fork->id);
-                if(saved && saved->parent==s_files.saves)aitdInputSaveLoadRead(actual);
+                if(saved && saved->parent==s_files.saves) {
+#ifdef AITD_SAVE_LOAD
+                    if(!error)aitdInputSaveLoadRead(actual);
+#endif
+#ifdef AITD_FIRSTFLOOR_LOAD
+                    aitdInputFirstFloorLoadRead(actual);
+#endif
+                }
             }
 #endif
             if(transfer)write32(pb+40,actual);
@@ -7332,6 +7340,10 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         && pc==(uint32_t)s_segments[12].begin+0x1376;
     aitdInputInGame(trap,gameMenu,
         atPortraits,atStory,gameplay,g_macTicks);
+#ifdef AITD_FIRSTFLOOR_LOAD
+    if(s_a5WorldStorage && g_ingameStage==5)
+        aitdInputFirstFloorLoad(g_macTicks,g_macSceneFramesCompleted,s_a5WorldStorage+75616,s_colorScreen,s_windowManagerColors);
+#endif
 #ifdef AITD_GAME_INPUT
     if(trap==0xa976 && s_a5WorldStorage) {
         const uint8_t* appWorld=s_a5WorldStorage+75616;
@@ -7363,9 +7375,11 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         found=read16(lamp+8)==10 && read16(lamp+10)==201 && read16(lamp+12)==0x0609
             && s_colorScreen[185*640+195]==115 && s_colorScreen[190*640+200]==122 && s_colorScreen[310*640+440]==119;
 #endif
+#ifndef AITD_FIRSTFLOOR_LOAD
         aitdInputLamp(g_macTicks,g_macSceneFramesCompleted,int16_t(read16(actor+0x1c)),int16_t(read16(actor+0x20)),
             read16(actor+0x2a),read16(actor+0x3e),read16(actor+0x52),found,taken,
             read16(world-0xd8a8)==13 && read16(actor+2)==11,ready);
+#endif
     }
 #endif
 #ifdef AITD_BOOK_ROUTE
@@ -7433,8 +7447,10 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         if(read16(actor+2)==12 && read16(world-0xd8a8)==2)objects|=256;
 #endif
 #endif
+#ifndef AITD_FIRSTFLOOR_LOAD
         aitdInputExplore(g_macTicks,g_macSceneFramesCompleted,int16_t(read16(actor+0x1c)),int16_t(read16(actor+0x20)),
             read16(actor+0x2a),read16(actor+0x3e),read16(actor+0x2e),read16(actor+0x30),read16(actor+0x52),objects,ready);
+#endif
     }
 #endif
 #ifdef AITD_COMBAT_ROUTE
@@ -7515,7 +7531,9 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
             if(white>10)objects|=g_combatRouteStage==19 ? 32 : 128;
         }
 #endif
+#ifndef AITD_FIRSTFLOOR_LOAD
         aitdInputCombat(g_macTicks,g_macSceneFramesCompleted,int16_t(read16(actor+0x1c)),int16_t(read16(actor+0x20)),read16(actor+0x2a),read16(actor+0x3e),read16(actor+0x52),objects,enemyX,enemyZ,ready);
+#endif
     }
 #endif
 #ifdef AITD_SAVE_LOAD

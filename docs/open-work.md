@@ -47,6 +47,9 @@ required.
     continuous circuit through connected first-floor rooms with positive
     movement and destination checks. Measure steering changes against the
     original controls.
+  - Measure and reproduce the scaled `ditherCopy` saved-game thumbnail. Compare
+    the complete preview against the original through the verified display
+    transfer; successful Load and a populated picture do not prove pixel fidelity.
   - Bound steps by living hero identity; a death followed by the attract demo
     must terminate the observer rather than be counted as gameplay.
 

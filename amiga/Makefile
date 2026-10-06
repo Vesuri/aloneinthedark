@@ -24,6 +24,11 @@
 # basename — KEEP BASENAMES UNIQUE across the source trees), sources located via vpath.
 
 # Diagnostic feature flags must enable probes before conditional symbol groups.
+ifeq ($(FIRSTFLOORLOAD),1)
+INGAME=1
+PROBES=1
+EXTRA_DEFINES += -DAITD_FIRSTFLOOR_LOAD
+endif
 ifeq ($(ROOM3ROUTE),1)
 ROOM4ROUTE=1
 EXTRA_DEFINES += -DAITD_ROOM3_ROUTE
@@ -463,6 +468,9 @@ ifeq ($(LINEAPROBE),1)
 PROBE_SYMS += g_lineAProbe
 endif
 PROBE_SYMS += $(PROBE_SYMS_ACTION) $(PROBE_SYMS_ACTION_NAV) $(PROBE_SYMS_POINT_LINE)
+ifeq ($(FIRSTFLOORLOAD),1)
+PROBE_SYMS += g_firstFloorLoadStage g_firstFloorLoadTick g_firstFloorLoadReadBytes
+endif
 ifeq ($(LAMPROUTE),1)
 PROBE_SYMS += g_lampRouteStage g_lampRouteTick
 endif
