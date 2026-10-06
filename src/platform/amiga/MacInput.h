@@ -43,6 +43,7 @@ void aitdInputCombat(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_t
 void aitdInputCombatEvent(uint16_t what,uint32_t message);
 #endif
 #ifdef AITD_ROOM5_RETURN
+extern "C" { extern volatile uint32_t g_activeGameplayTicks; }
 void aitdInputMeasureActivity(uint32_t ticks,uint16_t animation,uint16_t room,bool ready);
 #endif
 #ifdef AITD_BOOK_PAGES

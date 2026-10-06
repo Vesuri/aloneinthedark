@@ -28,8 +28,8 @@ normal completion also pass on both CPUs. Natural room 5 combat, enemy removal
 and restored living manual control pass paired Mac/68020/68030 checks.
 Post-combat wardrobe Search and hallway return also pass on the fixed 68030;
 a room 5 → room 4 → western hallway bypass also passes paired Mac and fixed
-68030 checks. The 68020 knockback recovery and ten-minute scripted first-floor
-gate remain open.
+68030 checks. An ordinary-Load first-floor circuit passes over ten minutes of active gameplay
+on both acceptance CPUs. New-game knockback recovery remains open.
 The action-menu preview now runs at 2.07 updates/sec on the reference 68030
 versus 1.65 on Mac; keyboard choices, hover, clicks and cancellation pass paired checks.
 

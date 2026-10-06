@@ -29,6 +29,10 @@ INGAME=1
 PROBES=1
 EXTRA_DEFINES += -DAITD_FIRSTFLOOR_LOAD
 endif
+ifeq ($(FIRSTFLOORCIRCUIT),1)
+ROOM3ROUTE=1
+EXTRA_DEFINES += -DAITD_FIRSTFLOOR_CIRCUIT
+endif
 ifeq ($(ROOM3ROUTE),1)
 ROOM4ROUTE=1
 EXTRA_DEFINES += -DAITD_ROOM3_ROUTE
@@ -482,6 +486,9 @@ PROBE_SYMS += g_bookPageStage g_bookPageTick g_bookPageIndex g_bookPageLast
 endif
 ifneq ($(filter 1,$(COMBATROUTE) $(ROOM5COMBAT)),)
 PROBE_SYMS += g_combatRouteStage g_combatRouteTick g_combatFightEvent g_combatSawEnemy g_combatAttempts g_combatAimHeading g_combatKicks
+endif
+ifeq ($(FIRSTFLOORCIRCUIT),1)
+PROBE_SYMS += g_circuitStage g_circuitCycle g_circuitAttempts g_circuitTick
 endif
 ifeq ($(ROOM5RETURN),1)
 PROBE_SYMS += g_activeGameplayTicks g_activeMoveTicks g_activeTurnTicks g_activeKickTicks g_activeGameplaySamples g_returnDroppedKeys g_returnOpenEvents

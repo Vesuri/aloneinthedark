@@ -45,6 +45,7 @@ extern "C" void aitdDriverClockProbe();
 #include "platform/amiga/MusicTimer.h"
 #include "platform/amiga/AitdScreen.h"
 #include "platform/amiga/MacInput.h"
+#include "platform/amiga/FirstFloorCircuit.h"
 #include "platform/amiga/FirstFloorLoad.h"
 #include "platform/amiga/PerfProbe.h"
 #include "platform/amiga/framework/AmigaHardware.h"
@@ -7589,6 +7590,9 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
 #endif
 #ifndef AITD_FIRSTFLOOR_LOAD
         aitdInputCombat(g_macTicks,g_macSceneFramesCompleted,int16_t(read16(actor+0x1c)),int16_t(read16(actor+0x20)),read16(actor+0x2a),read16(actor+0x3e),read16(actor+0x52),objects,enemyX,enemyZ,ready);
+#endif
+#ifdef AITD_FIRSTFLOOR_CIRCUIT
+        aitdInputFirstFloorCircuit(g_macTicks,g_macSceneFramesCompleted,world);
 #endif
     }
 #endif

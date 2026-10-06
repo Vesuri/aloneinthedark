@@ -31,10 +31,9 @@ required.
   - If a new Mac dialog is reached, measure its choices/results and provide an
     engine-style interface inside 320×200 under D5; unsupported paths stay loud.
 
-  - Integrate the measured original continuous first-floor circuit into the
-    native controller. Verify at least ten minutes of active gameplay from
-    input and living gameplay state, excluding idle waits, on both acceptance
-    CPUs. Pair each native extension with the original Mac's actual routes.
+  - Verify the continuous first-floor circuit from a new game on both
+    acceptance CPUs, including the remaining combat-recovery paths below.
+    Pair each native extension with the original Mac's actual routes.
   - Verify the post-combat room 5 Search and hallway return on both acceptance
     CPUs, requiring actual action state before continuing movement and zero
     dropped synthetic transitions. Verify ordinary-input recovery from the

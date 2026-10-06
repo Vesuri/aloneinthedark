@@ -88,7 +88,8 @@ ticks (629.2 seconds), final health 17 and both enemies removed. Activity is
 are excluded. The checker reads every cycle's actor, inventory and ordered
 destinations. The run uses ordinary Load before the session and clears north
 to actual western-hallway z<=0, aligns at -150..0, then heads west to return
-to the bathroom. Native continuous and acceptance-CPU coverage remain open.
+to the bathroom. Native continuous acceptance is recorded below; new-game
+combat recovery remains open.
 
 Use `AITD_CIRCUIT_ENDURANCE=1` for continuous coverage and
 `AITD_CIRCUIT_DIR` for an existing local capture directory. The room-4 east
@@ -121,6 +122,36 @@ checker in `tmp/m3-circuit-load-option-default/` and
 removed; activity is 12,930/6,823 ticks respectively. The observed runs span
 708/391 emulated seconds, with differing combat traces; this is a route shortcut,
 not an emulator-throughput measurement or the ten-minute native gate.
+
+## Native continuous first-floor circuit — 2026-10-06
+
+The optional `FIRSTFLOORCIRCUIT=1` controller replays the measured route with
+ordinary keys, actual manual actor/room checks, released-key coasting checks,
+Fight before the connecting bedroom door, and bounded kick pulses. A death,
+lost hero identity, dropped transition or timed-out phase fails the observer.
+`amiga/firstfloor_circuit.gdb` captures each actual destination;
+`tools/check_native_firstfloor_circuit.py` pairs it with the original continuous
+circuit and reads actor, inventory, variables, pixels and palette for every lap.
+Prepare `tmp/firstfloor-circuit/` for the maintained observer.
+
+The fixed 15.6672 MHz 68030 prototype passes seven living circuits and 36,400
+active input ticks (606.7 seconds), health 16 and zero dropped transitions.
+Evidence is `tmp/m3-circuit-native/fromsave-030-run.log`,
+`amiga/.run-firstfloor-fromsave-030/gdb-out.log` and the `fromsave-030/` captures.
+The independent paired checker passes against the exact current original run
+in `tmp/m3-checkpoint-current-endurance/` (eight circuits, 37,752 active ticks).
+Both use ordinary Load of the original checkpoint: the room-5 enemy is already
+removed at the start; the circuit itself completes the bedroom encounter.
+These warped functional checks do not establish real-time FPS or audible
+output. The fixed 14.18758 MHz 68020 passes eight living circuits and 40,092
+active ticks (668.2 seconds), health 18 and zero dropped transitions. Its
+independent paired checker passes all ordered destinations, inventory, actual
+action/door states and both enemy removals. Evidence is
+`tmp/m3-circuit-native/fromsave-020-{run,checked}.log`,
+`amiga/.run-firstfloor-fromsave-020/gdb-out.log` and `fromsave-020/` captures.
+The clean build passes no-float and 174-symbol retention audits. New-game
+combat-recovery paths remain open; the imported checkpoint does not replace
+those checks.
 
 ## Native ordinary first-floor Load diagnostic — 2026-10-06
 
@@ -6678,3 +6709,19 @@ fixture passes all three stages (`m2-movehigh-heap-native-full.log`, exit 0),
 and both link audits pass. The compiled move routine uses 36 bytes for locals
 and saved registers, with no temporary buffer. Rendered confirmation of this
 heap change was pending until the owner recording above. Two narrower, ineffective heap trials were reverted.
+
+## Living room-4 recovery evidence — 2026-10-06
+
+The read-only original observer confirms that room 5 to room 4 translates
+local coordinates by +4500 X and +100 Z. Actor offsets 0x22/0x26 retain
+shared scene coordinates; local positions from different rooms cannot be
+compared directly. Ordinary Fight turns reach multiples of 128 angle units.
+The retained prototype in `tmp/m3-room4-live-recovery10/` walks toward the
+enemy using scene coordinates, then holds Space/Up through actual enemy
+death and removal. Carnby remains alive with health 4 at that checkpoint.
+The complete route fails during the exit: object 57 is also active in room 4
+and attacks after object 62 is removed. Both the northward detour and direct
+eastward walk fail (`live-recovery10/` and `live-recovery11/`); neither is
+accepted recovery or a service loud stop. Continuous held attacks improve
+the earlier pulse protocol, which died during repeated walking approaches.
+Native room-4 combat and the subsequent living exit remain unverified.
