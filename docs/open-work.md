@@ -40,7 +40,10 @@ required.
     dropped synthetic transitions. Verify ordinary-input recovery from the
     living room 4 transition caused by enemy knockback on the 68020; use
     measured connecting-door behavior rather than assuming every combat stays
-    in room 5. Integrate and pair the bathroom extension, then expand a
+    in room 5. Verify ordinary walking recovery when combat knockback leaves
+    the hero beyond kick range, including completed enemy death/removal.
+    Integrate the measured bedroom encounter into the connected return route.
+    Integrate and pair the bathroom extension, then expand a
     continuous circuit through connected first-floor rooms with positive
     movement and destination checks. Measure steering changes against the
     original controls.

@@ -32,6 +32,15 @@ emulator with compatible observers is a larger potential improvement, still
 requiring a measured pilot; the current evidence does not quantify translation
 cost or establish it as the sole bottleneck.
 
+The isolated ARM build candidate is `grahambates/fs-uae`, branch
+`remote_debugger_barto`, revision `b70b1180b44ab25b97cd66466c70879897d8a362`.
+It contains the three remote-debugger launch options used here and identifies
+its core as WinUAE 4.10.0, matching the installed core version; binary/build
+identity is not established. Its SDL2_ttf dependency has been built as arm64
+under `/tmp/aitd-arm-deps-20261006`. The candidate still requires a completed
+build, positive gameplay/debugger pilot and paired host-time measurement before
+changing any default. Evidence remains local in `tmp/cpu-speed/arm-*`.
+
 ## Unattended capture overhead — 2026-10-05
 
 A paused, read-only A5-world capture on maximum-speed `a4000-030` with warp
@@ -72,6 +81,24 @@ The baseline 68020 combat-knockback recovery and continuous ten-minute paired
 first-floor gate remain open. An original-only extension also reaches room 3
 (the bathroom) through this bypass (`tmp/m3-room3/mac-route.log`, exit zero);
 it still needs native integration/verification.
+
+The native bathroom pilots fail before this extension: the first at attic
+exploration stage 1, the second during room 5 combat. The second A5 capture
+shows the living hero at x=-1755/z=852 and the enemy at x=-1886/z=-991 in the
+same room. These are failures, not bathroom acceptance. The diagnostic combat
+approach is being verified against `tools/mac_room5_approach.lua`: its original
+Mac run deliberately retreats, walks toward the enemy between attacks, defeats
+it and waits for actual death/removal, returning to manual control with eight
+health (`tmp/m3-combat-approach/mac-route.log`, exit zero). The preceding pilot
+failed because its observer tried to approach a dying enemy; preserve that
+failure separately and do not count it as a completed route.
+
+The connected original circuit now passes room 5's west-door/wardrobe corridor
+using an x=-1700..-1550 alignment and reaches the bedroom. Its return attempt
+naturally spawns enemy 35; unhandled attacks knock the hero back and the route
+guard stops. It is not continuous-circuit acceptance. Integrate the already
+measured bedroom encounter before crediting this leg; failed or blocked walking
+samples do not satisfy the ten-minute gate (`tmp/m3-circuit/mac-route.log`).
 
 A separate retained-Mac debugger-stop prototype is rejected: its clock-freeze
 assertion fails at the original main-loop breakpoint even with both PC aliases.
