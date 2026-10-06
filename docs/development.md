@@ -74,57 +74,28 @@ still uses its explicit configuration.
 
 ## Connected original first-floor circuit — 2026-10-06
 
-`tools/mac_firstfloor_circuit.lua` uses ordinary Mac input to continue the
-bathroom route through room 4, room 5, the eastern hallway and bedroom, then
-returns through room 5/4 to the western hallway. It selects actual Fight and walks toward
-the bedroom until the real connecting-door state changes before attacking. The character finishes
-alive with health 8, both enemies removed and Actions/lamp inventory retained.
+`tools/mac_firstfloor_circuit.lua` uses ordinary input through the bathroom,
+room 4, room 5, eastern hallway and bedroom, then returns through room 5/4
+to the western hallway. It selects actual Fight before approaching the bedroom
+door, waits for the real door state, and uses measured kick pulses. The return
+centres eastern hallway x at 2800–2900 before entering room 5.
 
-The original runner and `tools/check_firstfloor_circuit.py` exit zero against
-`tmp/m3-circuit/{mac-route,checked}.log` and its logical captures. The checker
-independently reads actor/inventory records, door state, enemy removal and the
-ordered destinations. Active first-floor input totals 12,843 ticks (214.05 s);
-one circuit is not the continuous ten-minute gate.
+The exact maintained script passes the original runner and independent
+`tools/check_firstfloor_endurance.py` in
+`tmp/m3-checkpoint-current-endurance/`: eight living circuits, 37,752 active
+ticks (629.2 seconds), final health 17 and both enemies removed. Activity is
+23,201 movement, 12,618 turning and 1,933 kick ticks; loading and idle waits
+are excluded. The checker reads every cycle's actor, inventory and ordered
+destinations. The run uses ordinary Load before the session and clears north
+to actual western-hallway z<=0, aligns at -150..0, then heads west to return
+to the bathroom. Native continuous and acceptance-CPU coverage remain open.
 
-Set `AITD_CIRCUIT_ENDURANCE=1` and select an existing local capture directory
-with `AITD_CIRCUIT_DIR` for one continuous run. After every circuit the character
-clears the hallway doorway, returns to the bathroom and continues without a
-restart or state restoration. The room-4 east doorway uses a central z range
-900–1050; the former edge range eventually drifted into its north frame.
-
-The maintained script, original runner and `tools/check_firstfloor_endurance.py`
-all pass in `tmp/m3-endurance4/{mac-route,checked}.log`: seven living circuits,
-38,946 active ticks (649.1 s), final health 14 and both enemies removed. Activity
-comprises 23,091 movement, 10,747 turning and 5,108 kick ticks; idle/release waits
-are excluded. The checker independently reads each cycle's real room/actor,
-health and inventory captures and requires increasing destinations and activity.
-Native circuit integration and paired continuous coverage remain required.
-
-The return from the bedroom now faces east, centres hallway x at 2800–2900,
-then faces south before entering room 5. The accelerated native prototype's
-second circuit had drifted to x=2566 and stopped against the hallway wall;
-positive room checks rejected it. The updated original single circuit and
-independent checker pass in `tmp/m3-circuit-aligned/mac-route.log`: health 14,
-both enemies removed and 12,930 active ticks. This verifies the steering
-extension, not a new continuous native acceptance result.
-
-The connected Fight-doorway variant and independent continuous checker pass
-in `tmp/m3-checkpoint-fight-endurance/`: eight living circuits, 37,876 active
-ticks (631.27 seconds) and final health 17. Both enemies remain removed.
-It uses ordinary Load before the session; all loading time is excluded from
-activity. The earlier Open/Search doorway variant let the enemy approach from
-beyond kick range; both 600- and 800-unit walking-recovery experiments fail in
-the original bedroom and are rejected. The already measured Fight doorway
-approach gives the connected route a living encounter before return.
-
-The hallway return now clears north to z<=0 and aligns z at -150..0 before
-heading west. Its original single-circuit extension and raw actor/death checks
-pass in `tmp/m3-checkpoint-hall-clear/`, returning to room 3 at x=855/z=2275
-with health 17. The eight-cycle reference above used the prior 300..450 band;
-this farther clearance is separately verified, not a new continuous result.
-Native prototypes exposed room recrosses while aligning in the old band;
-held alignment keys must be released before a forward recovery. Native
-continuous and acceptance-CPU checks remain open.
+Use `AITD_CIRCUIT_ENDURANCE=1` for continuous coverage and
+`AITD_CIRCUIT_DIR` for an existing local capture directory. The room-4 east
+doorway centres z at 900–1050. Native prototypes expose hallway recrosses
+while aligning; cancel held alignment keys before recovering forward.
+The earlier Open/Search bedroom approach and its 600/800-unit walking
+recoveries fail in the original and are rejected.
 
 ## Ordinary first-floor checkpoint for focused tests — 2026-10-06
 
