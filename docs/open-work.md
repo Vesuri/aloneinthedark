@@ -95,10 +95,6 @@ required.
 ## M5 Performance
 
 - **M5.0 Deferred CPU compatibility configurations.**
-  - Evaluate faster unattended execution using a native ARM emulator/build
-    with compatible debugger observers. Require a bounded positive gameplay
-    pilot, effective CPU/settings evidence and measured host-time improvement
-    before changing the default; retain fixed-clock acceptance separately.
   - Finish broader regression acceptance of the selected fixed-clock 68030
     configuration; keep full 68040/68060 acceptance deferred until after functional
     milestones. The optional unlimited 68060 pilot is not full acceptance.

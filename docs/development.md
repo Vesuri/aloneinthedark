@@ -72,6 +72,21 @@ cannot establish where the game's rendering time goes. Maximum CPU speed
 and warp are already enabled for functional pilots; fixed-clock acceptance
 still uses its explicit configuration.
 
+## Connected original first-floor circuit — 2026-10-06
+
+`tools/mac_firstfloor_circuit.lua` uses ordinary Mac input to continue the
+bathroom route through room 4, room 5, the eastern hallway and bedroom, then
+returns through room 5/4 to the western hallway. It selects actual Open/Search
+to reopen the bedroom connecting door before Fight. The character finishes
+alive with health 8, both enemies removed and Actions/lamp inventory retained.
+
+The original runner and `tools/check_firstfloor_circuit.py` exit zero against
+`tmp/m3-circuit/{mac-route,checked}.log` and its logical captures. The checker
+independently reads actor/inventory records, door state, enemy removal and the
+ordered destinations. Active first-floor input totals 12,843 ticks (214.05 s);
+one circuit is not the continuous ten-minute gate. Repeated continuous Mac
+coverage and native circuit integration remain required.
+
 ## Room 4 bypass — 2026-10-06
 
 `tools/mac_room4_route.lua` and optional clean-build `ROOM4ROUTE=1` continue
@@ -111,9 +126,12 @@ Actions/lamp inventory. Final health is 18 on Mac and 3 on native; all native
 phases have zero dropped synthetic transitions and each destination has a fresh
 completed scene. Logical images confirm the same bathroom artwork. These are
 functional captures, not rendered host-window acceptance. The clean build
-passes no-float and 167-symbol audits. Fixed-clock 030 and baseline 020 checks
-remain required; this roughly 100-second original route is not the ten-minute
-gate.
+passes no-float and 167-symbol audits. The fixed-clock 030 run terminates with
+actual player death during combat: health 0, enemy health 8, 18 attempts and 12
+started kicks (`030-run.log`, observer exit one). This is a route failure, not
+a loud stop or bathroom acceptance. Its evidence is isolated in `030-evidence/`.
+Fixed-clock 030 and baseline 020 checks remain required; this roughly
+100-second original route is not the ten-minute gate.
 
 An earlier combat pilot stopped with the hero at x=-1755/z=852 and the enemy
 at x=-1886/z=-991 in the same room. The diagnostic controller now walks toward
