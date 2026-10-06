@@ -100,6 +100,14 @@ are excluded. The checker independently reads each cycle's real room/actor,
 health and inventory captures and requires increasing destinations and activity.
 Native circuit integration and paired continuous coverage remain required.
 
+The return from the bedroom now faces east, centres hallway x at 2800–2900,
+then faces south before entering room 5. The accelerated native prototype's
+second circuit had drifted to x=2566 and stopped against the hallway wall;
+positive room checks rejected it. The updated original single circuit and
+independent checker pass in `tmp/m3-circuit-aligned/mac-route.log`: health 14,
+both enemies removed and 12,930 active ticks. This verifies the steering
+extension, not a new continuous native acceptance result.
+
 ## Room 4 bypass — 2026-10-06
 
 `tools/mac_room4_route.lua` and optional clean-build `ROOM4ROUTE=1` continue
