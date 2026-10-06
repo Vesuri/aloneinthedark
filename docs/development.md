@@ -15,6 +15,42 @@ binary/ELF unchanged until every active observer has completed. The launcher
 setup regression checks private ownership, the default directory and early
 rejection of an invalid run path.
 
+## Gameplay frame profile and first optimisations — 2026-10-07
+
+A statistical PC sampler interrupts the gdb stub at random host intervals
+and records PC and backtrace; emulated time is frozen while stopped. The
+scene is the ordinary first-floor checkpoint Load (`FIRSTFLOORLOAD=1
+INTROSKIP=1`), Carnby idle in room 3, on fixed-clock `a1200-020` with warp.
+Frame rates count completed scene frames over 3,000 emulated fields after a
+200-field settle. These are probe builds (diagnostic hooks, inactive profile
+scopes); compare them only with each other.
+
+Baseline (1,500 samples): original 68k code 39% (Dark3 renderer 33%),
+per-trap dispatch overhead 26%, presentation 18% (more than half of it the
+chunky shadow compare, plus a full palette and copper rebuild every frame),
+CopyBits 7%, linear heap walks 3%. A frame issues about 132 traps; ordinary
+pen/zone traps cost roughly 4,500 cycles of dispatch each. The idle frame
+copies one 136×22 actor box background→work→window, so the game's own dirty
+rectangles already describe the change.
+
+Converting only the published dirty rectangles, with the palette converted
+only on a new table seed, raises the idle rate from 7.12 to 7.59 fps
+(commit "Present only published dirty rectangles...").
+
+Three further prototypes measured cumulatively 7.76 (constant-time handle
+validation), 8.83 (fast path for pen/colour/zone traps) and 9.19 fps
+(CopyBits row strides and 16-byte spans), and a GetGWorld/SetGWorld fast path
+with a constant-time scene-frame end 9.62 fps. With them, original code is
+54% of the idle frame and C2P 13%. Their combined build passes the continuous
+first-floor circuit (eight living laps, 39,814 active ticks, zero dropped
+transitions) but fails the `intro` regression's first frame-state check, so
+none is retained yet; see M5.2. Walking measured 3.0 fps before any change.
+
+Verification of the retained change: the Planar8 host check decodes every
+frame of 400 alternating-buffer updates, and the `intro` regression with
+full-frame C2P verify passes: 956 frames, 944 partial, zero mismatches.
+Evidence and the sampler stay local in `tmp/perf-sampler/`.
+
 ## Emulator speed pilots — 2026-10-06
 
 The identical bounded ordinary-input pilot reaches the first attic route
