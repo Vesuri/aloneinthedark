@@ -1,7 +1,9 @@
 -- Original connected first-floor circuit, with ordinary input and living-state guards.
 -- Set AITD_CIRCUIT_ENDURANCE=1 for continuous ten-minute active coverage.
 -- AITD_CIRCUIT_DIR selects the existing local capture directory.
+-- AITD_CIRCUIT_LOAD=1 loads slot zero through ordinary game input.
 local repeatCircuit=os.getenv('AITD_CIRCUIT_ENDURANCE')=='1'
+local loadCheckpoint=os.getenv('AITD_CIRCUIT_LOAD')=='1'
 local folder=os.getenv('AITD_CIRCUIT_DIR') or (repeatCircuit and 'tmp/m3-endurance' or 'tmp/m3-circuit')
 local mac=dofile('tools/mame_mac_input.lua')
 local cpu=manager.machine.devices[':maincpu'];local mem=cpu.spaces.program
@@ -54,11 +56,18 @@ mac.run(function()
    local w=ptr(0x904);local a=w-0xb292+160
    if a>0 and mem:read_i16(a)==1 and mem:read_i16(a+2)==12 then world=w;actor=a;return true end
   end,1200))
+  if loadCheckpoint then
+   key('o',true);state('checkpoint-load-choice',slot);key('Return')
+   assert(mac.wait_for('ordinary first-floor checkpoint Load',function()
+    local vars=ptr(world-0xcbcc)
+    return mem:read_i16(actor)==1 and mem:read_i16(actor+2)==12 and
+     mem:read_i16(actor+0x2e)==1 and mem:read_i16(actor+0x30)==3 and
+     mem:read_i16(actor+0x3e)==4 and mem:read_i16(actor+0x52)==1 and mem:read_i16(vars+42)>0
+   end,3600),'first-floor checkpoint')
+  end
   activity.start(world,actor)
   local objects=world-0x115f2
   local function lamp()return mem:read_u16(objects+13*52+12)end
-  assert(mem:read_i16(objects+13*52+8)==10 and mem:read_i16(objects+13*52+10)==201,'original lamp record')
-  assert(lamp()==0x609 and mem:read_i16(world-0xd8a6)==1 and mem:read_i16(world-0xd8a4)==2,'initial inventory before pickup')
   local function report(label)
    local vars=ptr(world-0xcbcc);local values={};for i=0,99 do values[#values+1]=tostring(mem:read_i16(vars+i*2))end
    print('ROOM5_VARS phase='..label..' values='..table.concat(values,','))
@@ -68,6 +77,37 @@ mac.run(function()
    print(string.format('LAMP_STATE phase=%s flags=%X count=%d slot0=%d slot1=%d stage=%d room=%d',label,lamp(),mem:read_i16(world-0xd8a6),mem:read_i16(world-0xd8a4),mem:read_i16(world-0xd8a2),mem:read_i16(objects+13*52+28),mem:read_i16(objects+13*52+30)))
    local f=assert(io.open(folder..'/hallway-session-lamp-use-'..label..'-a5.bin','wb'));for i=0,75615 do f:write(string.char(mem:read_u8(world-75616+i)))end;f:close()
   end
+  local function move(name,label,fn)
+   local function alive()return mem:read_i16(actor)==1 and mem:read_i16(actor+2)==12 and mem:read_i16(ptr(world-0xcbcc)+42)>0 end
+   mac.key_down(name);local reached=mac.wait_for(label,function()return fn() or not alive()end,3600);mac.key_up(name)
+   if not alive()then report(label..'-hero-lost');error('hero lost during '..label)end
+   if not reached then report(label..'-blocked')end;assert(reached,label)
+   assert(mac.wait_for('released '..label,function()return mem:read_i16(actor+0x3e)==4 or mem:read_i16(actor+0x3e)==287 end,1200));mac.wait(30);report(label)
+  end
+  local function align(axis,low,high,backForHigh)
+   local offset=axis=='z' and 0x20 or 0x1c
+   local alignStart=mem:read_u32(0x16a)
+   while mem:read_i16(actor+offset)<low or mem:read_i16(actor+offset)>high do
+    assert(mem:read_u32(0x16a)-alignStart<1800,'alignment deadline')
+    local back=(mem:read_i16(actor+offset)>high)==backForHigh
+    local name=back and 'Down Arrow' or 'Up Arrow'
+    mac.key_down(name)
+    assert(mac.wait_for('alignment step begun',function()return mem:read_i16(actor+0x3e)==(back and 256 or 254) end,600))
+    mac.key_up(name)
+    assert(mac.wait_for('alignment step completed',function()return mem:read_i16(actor+0x3e)==4 end,1200))
+    print(string.format('ALIGN_MAC axis=%s tick=%d position=%d',axis,mem:read_u32(0x16a),mem:read_i16(actor+offset)))
+   end
+  end
+  local function face(target,label)
+   local delta=(target-mem:read_i16(actor+0x2a))&1023
+   if delta>16 and delta<1008 then
+    move(delta>512 and 'Left Arrow' or 'Right Arrow',label,function()local d=(target-mem:read_i16(actor+0x2a))&1023;return d<=16 or d>=1008 end)
+   end
+  end
+  local vars=ptr(world-0xcbcc)
+  if not loadCheckpoint then
+  assert(mem:read_i16(objects+13*52+8)==10 and mem:read_i16(objects+13*52+10)==201,'original lamp record')
+  assert(lamp()==0x609 and mem:read_i16(world-0xd8a6)==1 and mem:read_i16(world-0xd8a4)==2,'initial inventory before pickup')
   report('initial')
   mac.key_down('Left Arrow');assert(mac.wait_for('turn toward lamp x',function()local b=mem:read_i16(actor+0x2a)&1023;return b>=240 and b<512 end,600));mac.key_up('Left Arrow');mac.wait(30);report('turned-left')
   mac.key_down('Up Arrow');assert(mac.wait_for('lamp x',function()return mem:read_i16(actor+0x1c)>=3600 end,1200));mac.key_up('Up Arrow');mac.wait(30);report('lamp-x')
@@ -102,32 +142,11 @@ mac.run(function()
   report('hallway-session-lamp-use-complete')
   mac.key_down('o');mac.wait(120);mac.key_up('o')
   assert(mac.wait_for('Open/Search walking stance',function()return mem:read_i16(actor+2)==12 and mem:read_i16(actor+0x3e)==4 and mem:read_i16(actor+0x52)==1 end,1200));mac.wait(30);report('walking-mode')
-    local function move(name,label,fn)
-   local function alive()return mem:read_i16(actor)==1 and mem:read_i16(actor+2)==12 and mem:read_i16(ptr(world-0xcbcc)+42)>0 end
-   mac.key_down(name);local reached=mac.wait_for(label,function()return fn() or not alive()end,3600);mac.key_up(name)
-   if not alive()then report(label..'-hero-lost');error('hero lost during '..label)end
-   if not reached then report(label..'-blocked')end;assert(reached,label)
-   assert(mac.wait_for('released '..label,function()return mem:read_i16(actor+0x3e)==4 or mem:read_i16(actor+0x3e)==287 end,1200));mac.wait(30);report(label)
-  end
   move('Down Arrow','back',function()return mem:read_i16(actor+0x20)>=1000 end)
   move('Left Arrow','east',function()local b=mem:read_i16(actor+0x2a)&1023;return b>=240 and b<512 end)
   move('Up Arrow','partition-side',function()return mem:read_i16(actor+0x1c)>=4100 end)
   move('Left Arrow','south',function()local b=mem:read_i16(actor+0x2a)&1023;return b>=496 and b<768 end)
   move('Up Arrow','stair-opening',function()return mem:read_i16(actor+0x20)>=3600 end)
-  local function align(axis,low,high,backForHigh)
-   local offset=axis=='z' and 0x20 or 0x1c
-   local alignStart=mem:read_u32(0x16a)
-   while mem:read_i16(actor+offset)<low or mem:read_i16(actor+offset)>high do
-    assert(mem:read_u32(0x16a)-alignStart<1800,'alignment deadline')
-    local back=(mem:read_i16(actor+offset)>high)==backForHigh
-    local name=back and 'Down Arrow' or 'Up Arrow'
-    mac.key_down(name)
-    assert(mac.wait_for('alignment step begun',function()return mem:read_i16(actor+0x3e)==(back and 256 or 254) end,600))
-    mac.key_up(name)
-    assert(mac.wait_for('alignment step completed',function()return mem:read_i16(actor+0x3e)==4 end,1200))
-    print(string.format('ALIGN_MAC axis=%s tick=%d position=%d',axis,mem:read_u32(0x16a),mem:read_i16(actor+offset)))
-   end
-  end
   align('z',3920,4070,true)
   move('Right Arrow','east-opening',function()local b=mem:read_i16(actor+0x2a)&1023;return b>=240 and b<=272 end)
   move('Up Arrow','inside-stairs',function()return mem:read_i16(actor+0x1c)>=6650 end)
@@ -181,7 +200,6 @@ mac.run(function()
   assert(mac.wait_for('room5 manual idle',function()return mem:read_i16(actor+0x3e)==4 and mem:read_i16(actor+0x52)==1 end,1200));mac.wait(30);report('first-floor-room5')
   print('PASS original southern first-floor room5 manual gameplay')
   report('room5-encounter-start')
-  local vars=ptr(world-0xcbcc)
   assert(mac.wait_for('Fight input gate',function()return mem:read_i16(world-0xd864)==1 end,1200))
   mac.key_down('f');mac.wait(120);mac.key_up('f');mac.wait(30)
   assert(mem:read_i16(vars+180)==16,'room5 actual Fight choice');report('room5-fight-selected')
@@ -230,12 +248,6 @@ mac.run(function()
   assert(mem:read_i16(actor+0x3e)==4 and mem:read_i16(actor+0x52)==1,'room5 restored manual gameplay')
   report('room5-combat-result')
   print('PASS original room5 encounter: natural enemy, Fight, aiming, damage, death/removal and living manual gameplay')
-  local function face(target,label)
-   local delta=(target-mem:read_i16(actor+0x2a))&1023
-   if delta>16 and delta<1008 then
-    move(delta>512 and 'Left Arrow' or 'Right Arrow',label,function()local d=(target-mem:read_i16(actor+0x2a))&1023;return d<=16 or d>=1008 end)
-   end
-  end
   mac.key_down('o');mac.wait(120);mac.key_up('o')
   assert(mac.wait_for('actual return Open/Search',function()return mem:read_i16(vars+180)==64 end,1200));mac.wait(30);report('return-open-mode')
   face(0,'wardrobe-north')
@@ -274,6 +286,16 @@ mac.run(function()
    move('Up Arrow','entered-room3',function()return mem:read_i16(actor+0x30)==3 end)
   end
   assert(mem:read_i16(actor+0x2e)==1 and mem:read_i16(actor+0x52)==1,'living manual room3')
+  else
+   assert(lamp()==0x8609 and mem:read_i16(world-0xd8a6)==2 and
+    mem:read_i16(world-0xd8a4)==2 and mem:read_i16(world-0xd8a2)==13 and mem:read_i16(world-0xd8a8)==2,
+    'checkpoint Actions/lamp inventory')
+   assert(mem:read_i16(objects+62*52)==-1 and mem:read_i16(vars+114)<=0 and mem:read_i16(vars+40)==0,
+    'checkpoint completed room5 death')
+   assert(mem:read_i16(objects+35*52)==-1 and mem:read_i16(vars+80)==10 and mem:read_i16(vars+180)==64,
+    'checkpoint before bedroom encounter in Open/Search')
+   report('loaded-checkpoint')
+  end
   report('room3-manual')
   local cycle=0;local originalReport=report
   if repeatCircuit then report=function(label)originalReport('cycle-'..cycle..'-'..label)end end

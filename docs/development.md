@@ -108,6 +108,30 @@ independent checker pass in `tmp/m3-circuit-aligned/mac-route.log`: health 14,
 both enemies removed and 12,930 active ticks. This verifies the steering
 extension, not a new continuous native acceptance result.
 
+## Ordinary first-floor checkpoint for focused tests — 2026-10-06
+
+`AITD_CIRCUIT_LOAD=1` makes `tools/mac_firstfloor_circuit.lua` load save slot
+zero through normal Cmd-O/Return input. It requires living Carnby in floor
+1/room 3, Actions/lamp inventory, actual Open/Search, completed room-5 enemy
+removal and the untouched bedroom encounter. Activity starts after Load;
+loading and the earlier approach do not count toward continuous gameplay.
+The default still starts a new game and performs the full approach.
+
+The original game save reloads after a fresh emulator boot, with 23,456 actual
+read bytes and the same captured actor fields: object/body 1/12, x=929,
+z=2266, beta=0, floor/room 1/3, animation/track 4/1. The unchanged data fork is
+36,254 bytes; the disposable disk/save remains local in
+`tmp/m3-firstfloor-save/`. The save observer's close counter was shadowed by a
+route-local variable and rejected that observation; the independent fresh
+Load proves durable contents. No emulator state is restored.
+
+Both new-game and ordinary-Load routes pass the independent complete-circuit
+checker in `tmp/m3-circuit-load-option-default/` and
+`tmp/m3-checkpoint-circuit/`. They finish one living circuit with both enemies
+removed; activity is 12,930/6,823 ticks respectively. The observed runs span
+708/391 emulated seconds, with differing combat traces; this is a route shortcut,
+not an emulator-throughput measurement or the ten-minute native gate.
+
 ## Room 4 bypass — 2026-10-06
 
 `tools/mac_room4_route.lua` and optional clean-build `ROOM4ROUTE=1` continue
