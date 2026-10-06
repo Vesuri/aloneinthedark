@@ -4,6 +4,25 @@
 M2. M3.2 verifies first-room sound/music controls and driver shutdown. All-song
 coverage, gameplay effect variants and perceived audio quality remain M4.
 
+## INTRO1 original polyphony — 2026-10-06
+
+The complete original live capture records six voice slots after each of its
+3,736 note events. The verified positive active-state words establish a peak
+of six simultaneously held notes, first reached at event 74. Note-off release
+tails are excluded from this count. The same checker still verifies every
+sample/pitch/loop plan, 1,868 note-off releases and the eight original note-ons
+that the full six-voice mixer drops. This measures INTRO1, not the other seven
+songs or an audible mixture during release tails.
+
+The native policy prefers a free Paula channel, otherwise replaces the oldest
+music voice; effects take priority. Four physical channels cannot retain the
+six held notes observed on Mac. Event identity remains exact, while this
+allocation policy is an explicit playback difference.
+
+Reproduce the existing complete original-input checker with `--voices tmp/m2-song-live-reference.log --voices-status 0` in addition to its reference,
+driver and clock arguments below. The sanitized rerun exits zero; output is
+retained in `tmp/m4-event-capacity/intro-polyphony-checked.log`.
+
 ## BDISK2 music — 2026-10-05
 
 The original natural death sequence requests SONG 131 / MIDI 901 (`BDISK2`).

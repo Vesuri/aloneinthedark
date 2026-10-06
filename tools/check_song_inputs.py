@@ -56,6 +56,10 @@ def check_voices(text,status,decoded):
         denominator=step*0x56ee8ba3
         if period!=((3546895<<33)+denominator//2)//denominator: raise ValueError('Paula integer period')
     if len(plans)!=1868 or played!=1860 or dropped!=[1813,1817,1821,1825,3683,3687,3691,3695]: raise ValueError('complete original note allocation')
+    held={n:sum(0<v['active']<0x8000 for v in rows) for n,rows in voices.items()}
+    peak=max(held.values());first=next(n for n,count in held.items() if count==peak)
+    if (peak,first)!=(6,74): raise ValueError('original peak held-note voice state')
+    print('PASS original INTRO1 polyphony: peak held notes=6 first event=74; release tails excluded')
     print('PASS song voices: 1860 original sample/pitch/loop plans, 8 measured full-voice drops, 1868 note-off releases')
 
 def main():
