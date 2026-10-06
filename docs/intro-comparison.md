@@ -37,13 +37,13 @@ captures and 1,411 Amiga loop captures overall).
 | Music clock and channel policy | Uninterrupted DMA timestamps and complete ownership replay | Established for intro; four-channel voice limits documented |
 | Actual output and note endings | SDL PCM, directly correlated queue starvation, four exposed release gaps, complete ownership lifetimes | Port timing, sample and ownership checks pass; exposed releases agree within 0.7 ms. Host queue starvation is an external limitation; masked tails have structural rather than isolated-waveform evidence |
 
-An isolated emulator rebuild has not been used as acceptance evidence. The
-retained SDL2 branch identifies its core as WinUAE 4.2.1, whereas the installed
-binary reports 4.10.0; the nearby current checkout uses SDL3 and core 6.0.1.
-The local native dependency set also lacks SDL2_ttf development metadata.
-Neither source is an established reproduction of the installed build. Avoid
-silently changing emulator cores or claiming an untested buffer setting fixes
-the issue. These emulator-source limitations do not block port acceptance.
+The intro acceptance above uses the installed emulator. A later native ARM
+build identifies its core as WinUAE 4.10.0 and accelerates unattended functional
+pilots; its measured execution gain and limited verification scope are in
+[development.md](development.md#emulator-speed-pilots--2026-10-06).
+It has not replaced the retained intro timing/audio evidence or established a
+fix for host output starvation. Matching core version does not establish binary
+or build identity with the installed emulator.
 The installed binary SHA-256 is
 `ffd5c960322f445e72a02bc47c84312dfb8b189ce8327b55e1211d7fa170148d`.
 Local source/build searches did not identify its provenance. The request for
