@@ -155,23 +155,18 @@ combat knockback (`clear-020-run.log`). Neither is a named service loud stop.
 Paired continuous coverage remains required; the short bathroom route is not
 the ten-minute gate.
 
-An earlier combat pilot stopped with the hero at x=-1755/z=852 and the enemy
-at x=-1886/z=-991 in the same room. The diagnostic controller now walks toward
-a distant enemy before resuming kicks, using ordinary inputs measured by
-`tools/mac_room5_approach.lua`. Its original retreat/approach run returns to
-manual control with eight health after actual enemy death/removal;
-`tools/check_room5_approach.py` independently passes movement, live identity,
-inventory and removal (`tmp/m3-combat-approach/{mac-route,checked}.log`). A
-preceding approach observer wrongly tried to approach a dying enemy; the corrected
-observer waits for removal. The separate earlier attic-stage-1 failure remains
-unexplained by these passes; preserve its evidence rather than claiming it fixed.
+The original retreat/approach observer `tools/mac_room5_approach.lua` returns
+with eight health after actual enemy death/removal. Its independent checker
+passes movement, live identity, inventory and removal in
+`tmp/m3-combat-approach/{mac-route,checked}.log`. This remains original evidence,
+not native distance-recovery acceptance.
 
-The connected original circuit now passes room 5's west-door/wardrobe corridor
-using an x=-1700..-1550 alignment and reaches the bedroom. Its return attempt
-naturally spawns enemy 35; unhandled attacks knock the hero back and the route
-guard stops. It is not continuous-circuit acceptance. Integrate the already
-measured bedroom encounter before crediting this leg; failed or blocked walking
-samples do not satisfy the ten-minute gate (`tmp/m3-circuit/mac-route.log`).
+The held-input reference in `tmp/m3-combat-held/mac-route.log` also exits zero
+and passes `tools/check_room5_approach.py`: after walking into range it holds
+Space/Up through the original attacks, then releases after actual enemy death.
+Final health is 16 and the enemy is removed. Native implementation and paired
+recovery remain open. The continuous original circuit is verified separately
+above; its earlier blocked attempts do not contribute to the accepted gate.
 
 A separate retained-Mac debugger-stop prototype is rejected: its clock-freeze
 assertion fails at the original main-loop breakpoint even with both PC aliases.
