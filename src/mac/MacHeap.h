@@ -46,11 +46,20 @@ private:
     uint16_t masters_ = 64;
     int16_t error_ = 0;
     Handle freeMasters_ = 0;
+    // Master blocks are pinned and never released before reset, so these
+    // offsets identify every master slot without walking the block chain.
+    enum { maxMasterBlocks=32 };
+    uint32_t masterBlocks_[maxMasterBlocks];
+    uint16_t masterBlockCount_ = 0;
+    bool masterBlocksOverflow_ = false;
     Block& block(uint32_t off) const { return *(Block*)(arena_+off); }
     static uint32_t physical(uint32_t logical);
     static void moveBytes(uint8_t* dst, const uint8_t* src, uint32_t bytes);
     static void reverseBytes(uint8_t* first, uint8_t* last);
     uint8_t* flags(Handle handle) const;
+    uint8_t* masterFlags(uint32_t off, uint32_t pos) const;
+    uint32_t findHandleBlock(const uint8_t* ptr) const;
+    uint32_t scanPtr(const uint8_t* ptr, uint32_t kind) const;
     uint32_t findPtr(const uint8_t* ptr, uint32_t kind) const;
     uint32_t findSpace(uint32_t bytes) const;
     uint32_t allocate(uint32_t bytes, uint32_t kind, uint32_t owner=0);

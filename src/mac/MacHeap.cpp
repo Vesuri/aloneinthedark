@@ -29,7 +29,11 @@ void MacHeap::reverseBytes(uint8_t* first, uint8_t* last)
 {
     while (first<last) { --last;if(first>=last)break;uint8_t v=*first;*first++=*last;*last=v; }
 }
-void MacHeap::reset() { arena_=0;bytes_=end_=freeBytes_=0;error_=0;freeMasters_=0; }
+void MacHeap::reset()
+{
+    arena_=0;bytes_=end_=freeBytes_=0;error_=0;freeMasters_=0;
+    masterBlockCount_=0;masterBlocksOverflow_=false;
+}
 bool MacHeap::init(uint8_t* arena, uint32_t bytes, uint16_t masters)
 {
     reset();
@@ -45,24 +49,54 @@ bool MacHeap::owns(const void* address) const
     unsigned long p=(unsigned long)address, a=(unsigned long)arena_;
     return arena_ && p>=a && p-a<bytes_;
 }
+uint8_t* MacHeap::masterFlags(uint32_t off, uint32_t pos) const
+{
+    const Block& b=block(off);
+    uint32_t count=b.owner, start=off+blockBytes, length=count*sizeof(uint8_t*);
+    if (pos>=start && pos-start<length && (pos-start)%sizeof(uint8_t*)==0)
+        return arena_+start+length+(pos-start)/sizeof(uint8_t*);
+    return 0;
+}
 uint8_t* MacHeap::flags(Handle handle) const
 {
     if (!owns(handle)) return 0;
     uint32_t pos=(uint8_t*)handle-arena_;
-    for (uint32_t off=headerBytes;off<end_;off+=block(off).span) {
-        const Block& b=block(off);
-        if (b.kind!=masterBlock) continue;
-        uint32_t count=b.owner, start=off+blockBytes, length=count*sizeof(uint8_t*);
-        if (pos>=start && pos-start<length && (pos-start)%sizeof(uint8_t*)==0)
-            return arena_+start+length+(pos-start)/sizeof(uint8_t*);
+    if (!masterBlocksOverflow_) {
+        for (uint16_t i=0;i<masterBlockCount_;++i)
+            if (uint8_t* f=masterFlags(masterBlocks_[i],pos)) return f;
+        return 0;
     }
+    for (uint32_t off=headerBytes;off<end_;off+=block(off).span)
+        if (block(off).kind==masterBlock)
+            if (uint8_t* f=masterFlags(off,pos)) return f;
     return 0;
 }
 bool MacHeap::isHandle(Handle handle) const { uint8_t* f=flags(handle);return f && (*f&1); }
 bool MacHeap::isFreeHandleSlot(Handle handle) const { uint8_t* f=flags(handle);return f && !(*f&1); }
+// A live handle block is identified by its own header: the block lies on an
+// aligned boundary inside the zone and its owner is a master slot that holds
+// exactly this data pointer. Stale headers inside free or coalesced space
+// cannot pass, because no master pointer refers to them.
+uint32_t MacHeap::findHandleBlock(const uint8_t* ptr) const
+{
+    uint32_t pos=ptr-arena_;
+    if (pos<headerBytes+blockBytes || (pos&7)) return 0;
+    uint32_t off=pos-blockBytes;
+    if (off>end_ || end_-off<minimumBlock) return 0;
+    const Block& b=block(off);
+    if (b.kind!=handleBlock || b.span<minimumBlock || (b.span&7) || b.span>end_-off) return 0;
+    if (b.owner>=end_ || !flags((Handle)(arena_+b.owner))) return 0;
+    return *(Handle)(arena_+b.owner)==ptr ? off : 0;
+}
 uint32_t MacHeap::findPtr(const uint8_t* ptr, uint32_t kind) const
 {
     AitdProfileScope profile(kProfileHeapLookup);
+    if (!owns(ptr)) return 0;
+    if (kind==handleBlock) return findHandleBlock(ptr);
+    return scanPtr(ptr,kind);
+}
+uint32_t MacHeap::scanPtr(const uint8_t* ptr, uint32_t kind) const
+{
     if (!owns(ptr)) return 0;
     uint32_t pos=ptr-arena_;
     for (uint32_t off=headerBytes;off<end_;off+=block(off).span)
@@ -206,6 +240,8 @@ int16_t MacHeap::moreMasters(uint16_t count)
     uint32_t off=allocate(bytes,ptrBlock);if(!off)return error_;
     for(uint32_t i=0;i<bytes;++i)arena_[off+blockBytes+i]=0;
     block(off).kind=masterBlock;block(off).owner=count;
+    if(masterBlockCount_<maxMasterBlocks)masterBlocks_[masterBlockCount_++]=off;
+    else masterBlocksOverflow_=true;
     // Splice the new, contiguous slots into the descending-address free
     // chain. Master blocks are pinned, so data moves never change these links.
     Handle handles=(Handle)(arena_+off+blockBytes);
@@ -399,6 +435,7 @@ bool MacHeap::check() const
 {
     if(!arena_ || end_+trailerBytes!=bytes_)return false;
     uint32_t off=headerBytes,freeBytes=0;
+    uint16_t masters=0;
     Handle previousFree=0;
     while(off<end_) {
         const Block& b=block(off);
@@ -408,10 +445,18 @@ bool MacHeap::check() const
             Handle h=(Handle)(arena_+b.owner);
             if(!isHandle(h) || *h!=arena_+off+blockBytes
                 || flags(h)!=arena_+b.stateOffset)return false;
+            // The direct lookup must agree with the authoritative chain walk.
+            if(findHandleBlock(*h)!=off || scanPtr(*h,handleBlock)!=off)return false;
         }
         if(b.kind==freeBlock)freeBytes+=b.span;
         if(b.kind==masterBlock) {
             if(b.logical!=b.owner*(sizeof(uint8_t*)+1))return false;
+            if(!masterBlocksOverflow_) {
+                bool listed=false;
+                for(uint16_t i=0;i<masterBlockCount_;++i)listed|=masterBlocks_[i]==off;
+                if(!listed)return false;
+            }
+            ++masters;
             Handle handles=(Handle)(arena_+off+blockBytes);
             const uint8_t* states=(uint8_t*)(handles+b.owner);
             for(uint32_t i=0;i<b.owner;++i)if(!(states[i]&1)) {
@@ -421,5 +466,6 @@ bool MacHeap::check() const
         }
         off+=b.span;
     }
+    if(!masterBlocksOverflow_ && masters!=masterBlockCount_)return false;
     return off==end_ && freeBytes==freeBytes_ && previousFree==freeMasters_;
 }

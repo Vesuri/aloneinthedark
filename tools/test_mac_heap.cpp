@@ -17,6 +17,38 @@ static void freeChain(MacHeap& heap,uint8_t* arena,std::vector<MacHeap::Handle> 
     uint32_t head=0;for(unsigned i=8;i<12;++i)head=(head<<8)|arena[i];
     CHECK(head==uint32_t((unsigned long)previous));CHECK(heap.check());
 }
+// Direct handle validation: interior, stale and forged data pointers fail
+// exactly as the block-chain walk did; master tables beyond the fixed list
+// fall back to walking the chain.
+static void checkDirectLookup() {
+    std::vector<uint8_t> storage(1<<20);
+    uint8_t* arena=storage.data()+(8-((unsigned long)storage.data()&7))%8;
+    MacHeap h;CHECK(h.init(arena,(1<<20)-8,4));
+    std::vector<MacHeap::Handle> live;
+    for(unsigned i=0;i<200;++i) {
+        auto x=h.newHandle(40+i*7);CHECK(x);live.push_back(x);
+        CHECK(h.handleSize(x)==40+i*7);
+    }
+    CHECK(h.check()); // 200 handles with 4 per master block: list overflow and chain fallback
+    auto victim=live[17];uint8_t* stale=*victim;
+    CHECK(h.disposeHandle(victim)==0);
+    // A fake master slot pointing at the old data must not validate it.
+    MacHeap::Handle fake=(MacHeap::Handle)(*live[20]);*fake=stale;
+    CHECK(h.handleSize(fake)==0);
+    auto y=live[30];uint8_t* real=*y;
+    *y=real+8;CHECK(h.handleSize(y)==0 && h.error()==MacHeap::memWZErr);
+    *y=real+1;CHECK(h.handleSize(y)==0);
+    // A forged header copied inside another block still lacks the back-link.
+    uint8_t* inner=*live[40]+48;std::memcpy(inner,real-24,24);
+    *y=real;CHECK(h.handleSize(y)==40+30*7);
+    auto w=live[50];uint8_t* wreal=*w;*w=inner+24;CHECK(h.handleSize(w)==0);*w=wreal;
+    for(unsigned i=0;i<200;++i)if(i!=17)CHECK(h.disposeHandle(live[i])==0);
+    CHECK(h.check());
+    MacHeap small;alignas(8) static uint8_t compactArena[65536];
+    CHECK(small.init(compactArena,sizeof(compactArena),2));
+    for(unsigned i=0;i<6;++i) {auto z=small.newHandle(64);CHECK(z && small.handleSize(z)==64);}
+    CHECK(small.check());
+}
 int main() {
     alignas(8) uint8_t arena[65536];MacHeap h;
     CHECK(h.init(arena,sizeof(arena)));CHECK(h.check());
@@ -157,5 +189,6 @@ int main() {
     for(unsigned i=0;i<120;++i)if(handles[i]){CHECK(h.moveHigh(handles[i])==0);CHECK(h.setHandleSize(handles[i],300)==0);CHECK(patternIs(*handles[i],200,i+1));}
     h.compact();CHECK(h.check());
     for(unsigned i=0;i<120;++i)if(handles[i])CHECK(patternIs(*handles[i],200,i+1));
-    std::puts("PASS mac-heap: allocation master-blocks lock purge compact resize move-high fragmentation=2500");
+    checkDirectLookup();
+    std::puts("PASS mac-heap: direct-lookup allocation master-blocks lock purge compact resize move-high fragmentation=2500");
 }
