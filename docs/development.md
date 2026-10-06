@@ -37,9 +37,14 @@ The isolated ARM build candidate is `grahambates/fs-uae`, branch
 It contains the three remote-debugger launch options used here and identifies
 its core as WinUAE 4.10.0, matching the installed core version; binary/build
 identity is not established. Its SDL2_ttf dependency has been built as arm64
-under `/tmp/aitd-arm-deps-20261006`. The candidate still requires a completed
-build, positive gameplay/debugger pilot and paired host-time measurement before
-changing any default. Evidence remains local in `tmp/cpu-speed/arm-*`.
+under `/tmp/aitd-arm-deps-20261006`; libmpeg2 is built there too, because the
+source's advertised `--without-libmpeg2` option does not compile. The complete
+emulator build is arm64. Its first ordinary-input/debugger pilot exits zero,
+reports 68030/FPU=0/MMU=0/JIT=0 with maximum speed/warp and reaches the attic
+checkpoint with OS CPU flags 7. Its 36.38-second host time is an uncontrolled
+pilot, not a paired speed result. Require the sequential identical-binary
+comparison before changing any default. Evidence remains local in
+`tmp/cpu-speed/arm-*`.
 
 ## Unattended capture overhead — 2026-10-05
 
@@ -89,7 +94,10 @@ same room. These are failures, not bathroom acceptance. The diagnostic combat
 approach is being verified against `tools/mac_room5_approach.lua`: its original
 Mac run deliberately retreats, walks toward the enemy between attacks, defeats
 it and waits for actual death/removal, returning to manual control with eight
-health (`tmp/m3-combat-approach/mac-route.log`, exit zero). The preceding pilot
+health (`tmp/m3-combat-approach/mac-route.log`, exit zero).
+`tools/check_room5_approach.py` independently passes its actual movement, live
+manual room, retained inventory and completed removal captures (`checked.log`).
+The preceding pilot
 failed because its observer tried to approach a dying enemy; preserve that
 failure separately and do not count it as a completed route.
 
