@@ -1,8 +1,11 @@
 -- Original connected first-floor circuit, with ordinary input and living-state guards.
--- Captures remain local in tmp/m3-circuit/; one circuit is not the ten-minute gate.
+-- Set AITD_CIRCUIT_ENDURANCE=1 for continuous ten-minute active coverage.
+-- AITD_CIRCUIT_DIR selects the existing local capture directory.
+local repeatCircuit=os.getenv('AITD_CIRCUIT_ENDURANCE')=='1'
+local folder=os.getenv('AITD_CIRCUIT_DIR') or (repeatCircuit and 'tmp/m3-endurance' or 'tmp/m3-circuit')
 local mac=dofile('tools/mame_mac_input.lua')
 local cpu=manager.machine.devices[':maincpu'];local mem=cpu.spaces.program
-local activity=dofile('tools/mame_active_gameplay.lua')(mac,mem,'firstfloor-circuit')
+local activity=dofile('tools/mame_active_gameplay.lua')(mac,mem,repeatCircuit and 'firstfloor-endurance' or 'firstfloor-circuit')
 local dbg=assert(manager.machine.debugger);local screen;for _,v in pairs(manager.machine.screens)do screen=v end
 local function ptr(a)return mem:read_u32(a)&0xffffff end
 local function key(name,command)
@@ -22,7 +25,7 @@ local function room()return pixels({{180,160,0x814530},{290,245,0x7d6154},{400,3
 local function slot()return pixels({{190,180,0x84653b},{400,210,0x81a1a1},{200,345,0}})end
 local function capture(name)
  local raw,w,h=screen:pixels();assert(w==640 and h==480)
- local f=assert(io.open('tmp/m3-circuit/hallway-session-lamp-use-mac-'..name..'-rgb.bin','wb'));f:write(raw);f:close()
+ local f=assert(io.open(folder..'/hallway-session-lamp-use-mac-'..name..'-rgb.bin','wb'));f:write(raw);f:close()
  print('DIALOG_STATE '..name..' ticks='..mem:read_u32(0x16a))
 end
 local function state(name,fn)
@@ -63,7 +66,7 @@ mac.run(function()
    capture(label)
    print(string.format('LAMP_USE_STATE phase=%s body=%d selected=%d track=%d',label,mem:read_i16(actor+2),mem:read_i16(world-0xd8a8),mem:read_i16(actor+0x52)))
    print(string.format('LAMP_STATE phase=%s flags=%X count=%d slot0=%d slot1=%d stage=%d room=%d',label,lamp(),mem:read_i16(world-0xd8a6),mem:read_i16(world-0xd8a4),mem:read_i16(world-0xd8a2),mem:read_i16(objects+13*52+28),mem:read_i16(objects+13*52+30)))
-   local f=assert(io.open('tmp/m3-circuit/hallway-session-lamp-use-'..label..'-a5.bin','wb'));for i=0,75615 do f:write(string.char(mem:read_u8(world-75616+i)))end;f:close()
+   local f=assert(io.open(folder..'/hallway-session-lamp-use-'..label..'-a5.bin','wb'));for i=0,75615 do f:write(string.char(mem:read_u8(world-75616+i)))end;f:close()
   end
   report('initial')
   mac.key_down('Left Arrow');assert(mac.wait_for('turn toward lamp x',function()local b=mem:read_i16(actor+0x2a)&1023;return b>=240 and b<512 end,600));mac.key_up('Left Arrow');mac.wait(30);report('turned-left')
@@ -272,6 +275,11 @@ mac.run(function()
   end
   assert(mem:read_i16(actor+0x2e)==1 and mem:read_i16(actor+0x52)==1,'living manual room3')
   report('room3-manual')
+  local cycle=0;local originalReport=report
+  if repeatCircuit then report=function(label)originalReport('cycle-'..cycle..'-'..label)end end
+  repeat
+   cycle=cycle+1;assert(cycle<=30,'bounded circuit count')
+   report('cycle-start')
   face(512,'circuit-bathroom-south')
   move('Up Arrow','circuit-bathroom-hallway',function()return mem:read_i16(actor+0x30)==1 end)
   move('Up Arrow','circuit-west-hall-z',function()return mem:read_i16(actor+0x20)>=0 end)
@@ -281,7 +289,8 @@ mac.run(function()
   face(512,'circuit-room4-south')
   move('Up Arrow','circuit-enter-room4',function()return mem:read_i16(actor+0x30)==4 end)
   move('Up Arrow','circuit-room4-z',function()return mem:read_i16(actor+0x20)>=650 end)
-  align('z',650,850,true)
+  -- Centre the real doorway: edge alignment can drift into its north frame.
+  align('z',900,1050,true)
   face(256,'circuit-room5-east')
   move('Up Arrow','circuit-enter-room5',function()return mem:read_i16(actor+0x30)==5 end)
   move('Up Arrow','circuit-clear-room5-west-door',function()return mem:read_i16(actor+0x1c)>=-1800 end)
@@ -299,6 +308,7 @@ mac.run(function()
    move('Up Arrow','circuit-bedroom',function()return mem:read_i16(actor+0x30)==2 end)
   end
   move('Up Arrow','circuit-bedroom-north',function()return mem:read_i16(actor+0x20)<=800 end)
+  if not repeatCircuit or mem:read_i16(vars+80)>0 then
   assert(mac.wait_for('bedroom natural enemy',function()return mem:read_i16(objects+35*52)>=0 end,1200),'bedroom actual enemy spawn')
   mac.key_down('f');local selectedFight=mac.wait_for('bedroom actual Fight',function()return mem:read_i16(vars+180)==16 end,1200);mac.key_up('f');assert(selectedFight,'bedroom Fight');mac.wait(30);report('circuit-bedroom-fight')
   face(512,'circuit-bedroom-south')
@@ -337,6 +347,10 @@ mac.run(function()
    assert(mem:read_i16(vars+42)>0 and mem:read_i16(actor)==1 and mem:read_i16(actor+2)==12,'living bedroom hero');mac.wait(30);report('circuit-bedroom-kick-'..attempt)
   end
   assert(bedroomWon and mem:read_i16(actor+0x3e)==4 and mem:read_i16(actor+0x52)==1,'bedroom actual victory/manual control');report('circuit-bedroom-victory')
+  else
+   assert(mem:read_i16(objects+35*52)<0 and mem:read_i16(vars+80)<=0 and mem:read_i16(vars+40)==0,'bedroom enemy remains removed')
+   report('circuit-bedroom-already-clear')
+  end
   mac.key_down('o');mac.wait(120);mac.key_up('o');assert(mac.wait_for('bedroom actual Open/Search',function()return mem:read_i16(vars+180)==64 end,1200),'bedroom return action')
   face(512,'circuit-bedroom-return-south')
   move('Up Arrow','circuit-bedroom-door-return',function()return mem:read_i16(actor+0x30)==1 or mem:read_i16(actor+0x20)>=1600 end)
@@ -364,8 +378,27 @@ mac.run(function()
   end
   assert(mem:read_i16(actor+0x1c)<1300 and mem:read_i16(actor+0x2e)==1,'completed real western hallway circuit')
   report('circuit-complete')
+  if repeatCircuit then
+  face(0,'circuit-repeat-hall-north')
+  move('Up Arrow','circuit-repeat-hall-clear-door',function()return mem:read_i16(actor+0x20)<=400 end)
+  align('z',300,450,false)
+  face(768,'circuit-repeat-bathroom-west')
+  move('Up Arrow','circuit-repeat-bathroom-x',function()return mem:read_i16(actor+0x1c)<=-650 end)
+  align('x',-900,-700,false)
+  face(0,'circuit-repeat-bathroom-north')
+  move('Up Arrow','circuit-repeat-bathroom-z',function()return mem:read_i16(actor+0x30)==3 or mem:read_i16(actor+0x20)<=-850 end)
+  if mem:read_i16(actor+0x30)==1 then
+   mac.key_down('Space');mac.wait(120);mac.key_up('Space');mac.wait(120)
+   move('Up Arrow','circuit-repeat-bathroom-entry',function()return mem:read_i16(actor+0x30)==3 end)
+  end
+  assert(mem:read_i16(actor+0x30)==3 and mem:read_i16(actor+0x2e)==1 and mem:read_i16(actor+0x3e)==4 and mem:read_i16(actor+0x52)==1 and mem:read_i16(vars+42)>0,'living bathroom cycle return')
+  report('circuit-repeat-bathroom-manual')
+   print(string.format('CIRCUIT_CYCLE cycle=%d tick=%d active=%d hp=%d',cycle,mem:read_u32(0x16a),activity.active_ticks(),mem:read_i16(vars+42)))
+  end
+  until not repeatCircuit or activity.active_ticks()>=36000
+  if repeatCircuit then assert(activity.active_ticks()>=36000,'continuous ten-minute active gate')end
   activity.finish()
-  print('PASS original connected firstfloor circuit');dbg:command('quit')
+  print(repeatCircuit and 'PASS original continuous firstfloor tenminute circuit' or 'PASS original connected firstfloor circuit');dbg:command('quit')
 
  end)
  if not ok then print('FAIL '..tostring(err));activity.finish();manager.machine:exit()end

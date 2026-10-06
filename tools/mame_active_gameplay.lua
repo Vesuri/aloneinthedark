@@ -37,6 +37,7 @@ return function(mac,mem,label)
   previousTick,previousKind,previousRoom=now,kind,room
  end)
  function result.start(w,a)world,actor=w,a end
+ function result.active_ticks()return ticks end
  function result.finish()
   local visited={};for room in pairs(rooms)do visited[#visited+1]=room end;table.sort(visited)
   print(string.format('ACTIVE_GAMEPLAY_FINAL route=%s ticks=%d move=%d turn=%d kick=%d samples=%d rooms=%s',label,ticks,moving,turning,attacking,samples,table.concat(visited,',')))

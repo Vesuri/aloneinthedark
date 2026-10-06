@@ -84,8 +84,21 @@ The original runner and `tools/check_firstfloor_circuit.py` exit zero against
 `tmp/m3-circuit/{mac-route,checked}.log` and its logical captures. The checker
 independently reads actor/inventory records, door state, enemy removal and the
 ordered destinations. Active first-floor input totals 12,843 ticks (214.05 s);
-one circuit is not the continuous ten-minute gate. Repeated continuous Mac
-coverage and native circuit integration remain required.
+one circuit is not the continuous ten-minute gate.
+
+Set `AITD_CIRCUIT_ENDURANCE=1` and select an existing local capture directory
+with `AITD_CIRCUIT_DIR` for one continuous run. After every circuit the character
+clears the hallway doorway, returns to the bathroom and continues without a
+restart or state restoration. The room-4 east doorway uses a central z range
+900–1050; the former edge range eventually drifted into its north frame.
+
+The maintained script, original runner and `tools/check_firstfloor_endurance.py`
+all pass in `tmp/m3-endurance4/{mac-route,checked}.log`: seven living circuits,
+38,946 active ticks (649.1 s), final health 14 and both enemies removed. Activity
+comprises 23,091 movement, 10,747 turning and 5,108 kick ticks; idle/release waits
+are excluded. The checker independently reads each cycle's real room/actor,
+health and inventory captures and requires increasing destinations and activity.
+Native circuit integration and paired continuous coverage remain required.
 
 ## Room 4 bypass — 2026-10-06
 
