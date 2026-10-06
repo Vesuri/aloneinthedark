@@ -56,10 +56,12 @@ and frame counts differ, so do not interpret the ratio as hardware performance.
 Evidence: `tmp/cpu-speed/{intel,arm}-new{,-core,-gdb}.log` and
 `paired-current-binary.sha256`.
 
-The relocated bundle in `tmp/fs-uae-arm-runtime/` includes its matching assets
-and private SDL2_ttf/libmpeg2 libraries; it passes the same debugger/gameplay
-pilot in 32.34 seconds (`arm-bundle.log`). Unattended maximum-speed 030 checks
-prefer this local runtime on arm64 when it exists. Explicit `FSUAE` overrides,
+The relocated bundle in `~/.local/share/amiga/fs-uae-arm/` (a shared host tool
+like `fsuae_common.sh`; override with `FSUAE_ARM`; its source tree is
+`fs-uae-arm-src/` beside it) includes its matching assets and private
+SDL2_ttf/libmpeg2 libraries; it passes the same debugger/gameplay pilot in
+32.34 seconds (`arm-bundle.log`). Unattended maximum-speed 030 checks prefer
+this runtime on arm64 when it exists. Explicit `FSUAE` overrides,
 fixed-clock acceptance and normal interactive launch retain their selected
 emulator. A checkout without the ignored local bundle falls back to installed
 FS-UAE. This is a development execution improvement, not full emulator or CPU

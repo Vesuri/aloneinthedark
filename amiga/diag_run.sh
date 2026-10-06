@@ -14,12 +14,14 @@ FSUAE_RUN="$RUN"
 # performance callers must select their fixed-clock configuration explicitly.
 AMIGA_CONFIG="${AMIGA_CONFIG:-a4000-030}"
 . ./config.sh || exit 1
-# The verified project-local ARM runtime accelerates only unattended maximum-
-# speed 030 checks. Fixed-clock acceptance and explicit FSUAE overrides retain
-# their selected emulator; normal interactive launch does not use this branch.
-if [[ -z "${FSUAE:-}" && "$AMIGA_CONFIG" == a4000-030 && "$(uname -m)" == arm64 && -x "$PWD/../tmp/fs-uae-arm-runtime/fs-uae" ]]; then
-  FSUAE="$PWD/../tmp/fs-uae-arm-runtime/fs-uae"
-  echo 'DIAG native ARM emulator (project-local verified pilot)'
+# The verified native ARM runtime (shared host tool, FSUAE_ARM) accelerates only
+# unattended maximum-speed 030 checks. Fixed-clock acceptance and explicit FSUAE
+# overrides retain their selected emulator; normal interactive launch does not
+# use this branch.
+FSUAE_ARM="${FSUAE_ARM:-$HOME/.local/share/amiga/fs-uae-arm/fs-uae}"
+if [[ -z "${FSUAE:-}" && "$AMIGA_CONFIG" == a4000-030 && "$(uname -m)" == arm64 && -x "$FSUAE_ARM" ]]; then
+  FSUAE="$FSUAE_ARM"
+  echo 'DIAG native ARM emulator (verified pilot)'
 fi
 FSUAE="${FSUAE:-fs-uae}"
 GDB="${GDB:-m68k-amiga-elf-gdb}"
