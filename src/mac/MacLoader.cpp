@@ -6239,23 +6239,19 @@ static void presentMacRuntime()
 // Dark+$3CCE constructs a scene using several screen copies. Keep its dirty
 // rectangles together until its original stack frame has returned. Callbacks
 // and other trap services continue normally while native presentation waits.
-static void sceneFrameBoundary(uint16_t trap,uint32_t pc,const uint32_t* regs)
+static uint32_t s_sceneFrameParent=0,s_sceneFrameReturn=0;
+static void sceneFrameBoundary(uint16_t trap,uint32_t pc,const uint32_t* regs,const uint8_t* userStack)
 {
     if(g_macVBLCallbackActive || g_macFileCompletionDepth)return;
     const uint32_t base=(uint32_t)g_macStackBase;
     if(g_macSceneFrameOwner) {
-        uint32_t frame=regs[14];uint16_t depth=0;
-        while(frame && frame<g_macSceneFrameOwner) {
-            if(!base || (frame&1) || frame<base || frame>base+65528 || ++depth>64) {
-                loaderStop("SCENE FRAME STACK",4);showLoaderStop();return;
-            }
-            uint32_t parent=read32((uint8_t*)frame);
-            if(parent && parent<=frame) {
-                loaderStop("SCENE FRAME CHAIN",4);showLoaderStop();return;
-            }
-            frame=parent;
-        }
-        if(frame!=g_macSceneFrameOwner) {
+        // The routine's LINK frame stays intact while it or its callees run:
+        // the user stack lies below it and its saved A6/return PC are
+        // unchanged. Its RTS lifts the stack above the frame, and any later
+        // call from the same level overwrites the return PC.
+        const uint8_t* owner=(const uint8_t*)g_macSceneFrameOwner;
+        if((uint32_t)userStack>g_macSceneFrameOwner
+           || read32(owner)!=s_sceneFrameParent || read32(owner+4)!=s_sceneFrameReturn) {
             if(g_macFramesQueued!=s_sceneFrameQueued) {
                 loaderStop("SCENE FRAME PARTIAL",4);showLoaderStop();return;
             }
@@ -6274,6 +6270,7 @@ static void sceneFrameBoundary(uint16_t trap,uint32_t pc,const uint32_t* regs)
     }
     presentMacRuntime();
     s_sceneFrameQueued=g_macFramesQueued;
+    s_sceneFrameParent=read32((uint8_t*)regs[14]);s_sceneFrameReturn=read32((uint8_t*)regs[14]+4);
     g_macSceneFrameOwner=regs[14];++g_macSceneFramesBegun;
 }
 #endif
@@ -7330,6 +7327,51 @@ extern "C" __attribute__((noinline)) void aitdFrameProfileCheckpoint() { __asm__
 extern "C" __attribute__((noinline)) void aitdBookProfileCheckpoint() { __asm__ volatile("nop" ::: "memory"); }
 #endif
 
+// GetGWorld(port*, device*) and SetGWorld for the measured screen-backed
+// ports, shared by the general and fast dispatch paths.
+static bool getGWorld(const uint8_t* userStack)
+{
+    uint8_t* deviceOut=(uint8_t*)read32(userStack);
+    uint8_t* portOut=(uint8_t*)read32(userStack+4);
+    if(!s_windowManager.initialized || !s_qdThePort || !read32(s_qdThePort)
+       || !deviceOut || !portOut)return false;
+    write32(portOut,read32(s_qdThePort));
+    GWorldSlot* world=gWorldForPort((uint8_t*)read32(s_qdThePort));
+    write32(deviceOut,world ? (uint32_t)world->handles[21] : (uint32_t)&s_mainDeviceMaster);
+    return true;
+}
+static bool setGWorld(uint32_t* regs,const uint8_t* userStack)
+{
+    uint8_t* device=(uint8_t*)read32(userStack);
+    uint8_t* port=(uint8_t*)read32(userStack+4);
+    if(s_windowManager.initialized && s_qdThePort
+       && device==(uint8_t*)&s_mainDeviceMaster && s_mainDeviceMaster==s_mainDevice
+       && port==s_windowManagerPort && read32(s_qdThePort)==(uint32_t)port) {
+        write32(s_qdThePort,(uint32_t)port);
+        regs[0]&=0xffff0000UL;regs[8]=(uint32_t)port;regs[9]=(uint32_t)device;
+        return true;
+    }
+    WindowSlot* slot=windowSlot(port);
+    WindowGeometry::Rect bounds;
+    if(s_windowManager.initialized && s_qdThePort && s_mainDeviceMaster==s_mainDevice
+       && (!device || device==(uint8_t*)&s_mainDeviceMaster) && slot && port[110]
+       && colorWindowFrame(*slot,bounds) && read16(port+6)==0xc000
+       && read32(slot->pixelMap)==(uint32_t)s_colorScreen && read16(slot->pixelMap+32)==8) {
+        write32(s_qdThePort,(uint32_t)port);
+        regs[0]=(regs[0]&0xffff0000UL)|read16(port+6);
+        regs[8]=(uint32_t)port;regs[9]=(uint32_t)&s_mainDeviceMaster;
+        return true;
+    }
+    GWorldSlot* world=gWorldForPort(port);
+    if(world && s_qdThePort && (!device || device==(uint8_t*)world->handles[21])) {
+        write32(s_qdThePort,(uint32_t)port);
+        regs[0]=(regs[0]&0xffff0000UL)|read16(port+6);
+        regs[8]=(uint32_t)*world->handles[5];regs[9]=(uint32_t)world->handles[21];
+        return true;
+    }
+    return false;
+}
+
 // Pen state and line traps shared by the general and fast dispatch paths.
 static void penMoveTo(const uint8_t* userStack)
 {
@@ -7791,7 +7833,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
 #ifdef AITD_SCENE_FRAME_BATCH
     {
         AitdProfileScope profileBoundary(kProfileSceneBoundary);
-        sceneFrameBoundary(trap,pc,regs);
+        sceneFrameBoundary(trap,pc,regs,userStack);
     }
 #endif
     {
@@ -8627,44 +8669,10 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         }
     }
     if(trap==0xab1d && (uint16_t)regs[0]==5) { // GetGWorld(port*, device*)
-        uint8_t* deviceOut=(uint8_t*)read32(userStack);
-        uint8_t* portOut=(uint8_t*)read32(userStack+4);
-        if(s_windowManager.initialized && s_qdThePort && read32(s_qdThePort)
-           && deviceOut && portOut) {
-            write32(portOut,read32(s_qdThePort));
-            GWorldSlot* world=gWorldForPort((uint8_t*)read32(s_qdThePort));
-            write32(deviceOut,world ? (uint32_t)world->handles[21] : (uint32_t)&s_mainDeviceMaster);
-            return 9;
-        }
+        if(getGWorld(userStack))return 9;
     }
     if(trap==0xab1d && (uint16_t)regs[0]==6) { // SetGWorld: measured screen-backed ports.
-        uint8_t* device=(uint8_t*)read32(userStack);
-        uint8_t* port=(uint8_t*)read32(userStack+4);
-        if(s_windowManager.initialized && s_qdThePort
-           && device==(uint8_t*)&s_mainDeviceMaster && s_mainDeviceMaster==s_mainDevice
-           && port==s_windowManagerPort && read32(s_qdThePort)==(uint32_t)port) {
-            write32(s_qdThePort,(uint32_t)port);
-            regs[0]&=0xffff0000UL;regs[8]=(uint32_t)port;regs[9]=(uint32_t)device;
-            return 9;
-        }
-        WindowSlot* slot=windowSlot(port);
-        WindowGeometry::Rect bounds;
-        if(s_windowManager.initialized && s_qdThePort && s_mainDeviceMaster==s_mainDevice
-           && (!device || device==(uint8_t*)&s_mainDeviceMaster) && slot && port[110]
-           && colorWindowFrame(*slot,bounds) && read16(port+6)==0xc000
-           && read32(slot->pixelMap)==(uint32_t)s_colorScreen && read16(slot->pixelMap+32)==8) {
-            write32(s_qdThePort,(uint32_t)port);
-            regs[0]=(regs[0]&0xffff0000UL)|read16(port+6);
-            regs[8]=(uint32_t)port;regs[9]=(uint32_t)&s_mainDeviceMaster;
-            return 9;
-        }
-        GWorldSlot* world=gWorldForPort(port);
-        if(world && s_qdThePort && (!device || device==(uint8_t*)world->handles[21])) {
-            write32(s_qdThePort,(uint32_t)port);
-            regs[0]=(regs[0]&0xffff0000UL)|read16(port+6);
-            regs[8]=(uint32_t)*world->handles[5];regs[9]=(uint32_t)world->handles[21];
-            return 9;
-        }
+        if(setGWorld(regs,userStack))return 9;
         unsupportedGraphics=true;goto unsupportedTrap;
     }
     if(trap==0xa9eb) { // FP68K: measured default-state positioning operations
@@ -9964,7 +9972,7 @@ extern "C" uint8_t* aitdUserServiceDispatch(uint8_t* parked)
 #if defined(AITD_INTRO_SKIP) && !defined(AITD_INGAME)
 extern "C" volatile uint16_t g_introSkipState;
 #endif
-// Pen, colour and zone-selection traps are most of a gameplay frame's calls,
+// Pen, colour, GWorld and zone-selection traps are most of a gameplay frame's calls,
 // each a few field updates. The general dispatcher would reach them only
 // after every other manager's checks. They run the same per-trap services
 // (scene-frame end, effects, VBL tasks, presentation) and handlers; patched
@@ -9975,6 +9983,9 @@ static uint32_t dispatchFastTrap(uint16_t trap,uint32_t pc,uint32_t* regs,uint8_
     switch(trap) {
     case 0xa893: case 0xa89b: case 0xa89c: case 0xa891: case 0xaa14:
     case 0xa01b: case 0xa11a:
+#ifndef AITD_MASK_PROFILE
+    case 0xab1d: // its profile brackets observe GWorld calls
+#endif
 #ifndef AITD_POINT_LINE_PROBE
     case 0xa892:
 #endif
@@ -9991,12 +10002,15 @@ static uint32_t dispatchFastTrap(uint16_t trap,uint32_t pc,uint32_t* regs,uint8_
     if(s_trapAddresses[index] && s_trapAddresses[index]!=s_trapBuiltins[index])return 0;
     if(s_recordingPolygon || !s_qdThePort)return 0;
     if(trap==0xaa14 && s_segments[13].begin && pc==(uint32_t)s_segments[13].begin+0xb46)return 0;
+    // QDExtensions: only GetGWorld/SetGWorld, with an 8-bit screen.
+    if(trap==0xab1d && ((uint16_t)regs[0]!=5 && (uint16_t)regs[0]!=6
+                        || read16(s_windowManagerPixMap+32)!=8))return 0;
 #ifdef AITD_PROFILE_FRAME
     AitdTrapProfileScope trapProfile(trap);
 #endif
 #ifdef AITD_SCENE_FRAME_BATCH
-    // A scene frame begins only at a GWorld call; here it can only end.
-    if(g_macSceneFrameOwner)sceneFrameBoundary(trap,pc,regs);
+    // A scene frame begins only at a GWorld call.
+    if(g_macSceneFrameOwner || trap==0xab1d)sceneFrameBoundary(trap,pc,regs,userStack);
 #endif
     if(s_songInterruptError) {
         if(const char* error=serviceNativeSong()) {
@@ -10014,6 +10028,9 @@ static uint32_t dispatchFastTrap(uint16_t trap,uint32_t pc,uint32_t* regs,uint8_
     case 0xa891: return penLineTo(regs,userStack) ? 5 : 0;
     case 0xa892: return read32(s_qdThePort) && penLine(regs,userStack) ? 5 : 0;
     case 0xaa14: return rgbColor(trap,regs,userStack) ? 5 : 0;
+    case 0xab1d:
+        if((uint16_t)regs[0]==5)return getGWorld(userStack) ? 9 : 0;
+        return setGWorld(regs,userStack) ? 9 : 0;
     }
     return 0;
 }
