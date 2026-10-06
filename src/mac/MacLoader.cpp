@@ -197,8 +197,9 @@ volatile uint32_t g_gainProbeD1=0;
 }
 #endif
 #ifdef AITD_SONG_PROBE
-volatile uint32_t g_songTraceCount=0,g_songTrace[4096][10]={};
-volatile uint32_t g_songDelivery[4096][2]={};
+// GDISK has 5,098 note events; retain each complete song in diagnostic builds.
+volatile uint32_t g_songTraceCount=0,g_songTrace[8192][10]={};
+volatile uint32_t g_songDelivery[8192][2]={};
 volatile uint32_t g_songProbeIRQTicks=0,g_songProbeIRQEvents=0;
 volatile uint32_t g_songTiming[4]={}; // Calls, total lines, longest update, its events.
 #endif
@@ -207,7 +208,7 @@ volatile uint32_t g_songHardwareCount=0,g_songHardwareOverflow=0;
 // Expected tick, delivery tick, DMA-enable bracket (field/raster), channel, period,
 // instrument and note. Captured in RAM without debugger stops during playback.
 volatile uint32_t g_songHardware[4096][8]={};
-volatile uint32_t g_songEventClocks[4096][2]={}; // Serviced tick and actual delivery.
+volatile uint32_t g_songEventClocks[8192][2]={}; // Serviced tick and actual delivery.
 volatile uint32_t g_songEffectCount=0,g_songEffectOverflow=0;
 // Completed MIDI events, last serviced music tick, operation (0 stop/1 start/
 // 2 already active at song start), Paula channel, effect slot/ID, game clock,
@@ -1907,7 +1908,7 @@ static const char* advanceNativeSong()
 #endif
                 if((error=playSongNote(event)))return error;
 #ifdef AITD_SONG_HARDWARE_PROBE
-                if(g_song.events<=4096) {
+                if(g_song.events<=sizeof(g_songEventClocks)/sizeof(g_songEventClocks[0])) {
                     g_songEventClocks[g_song.events-1][0]=g_song.lastTick;
                     g_songEventClocks[g_song.events-1][1]=nativeMusicClock();
                 } else ++g_songHardwareOverflow;
@@ -1923,7 +1924,7 @@ static const char* advanceNativeSong()
                 if(noteTicks>g_songCost[2])g_songCost[2]=noteTicks;
 #endif
 #ifdef AITD_SONG_PROBE
-                if(g_songTraceCount>=4096)return "SONG TRACE CAPACITY";
+                if(g_songTraceCount>=sizeof(g_songTrace)/sizeof(g_songTrace[0]))return "SONG TRACE CAPACITY";
                 g_songDelivery[g_songTraceCount][0]=g_song.started+g_song.timeline.pulses;
                 g_songDelivery[g_songTraceCount][1]=nativeMusicClock();
                 volatile uint32_t* trace=g_songTrace[g_songTraceCount++];

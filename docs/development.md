@@ -66,6 +66,19 @@ FS-UAE. This is a development execution improvement, not full emulator or CPU
 compatibility acceptance. The build/capture evidence remains local in
 `tmp/cpu-speed/arm-*`.
 
+## Complete-song diagnostic event capacity — 2026-10-06
+
+The original GDISK resource contains 5,098 note events, beyond the earlier
+4,096-entry trace. Diagnostic note-event and delivery-clock arrays now hold
+8,192 entries and derive their limits from the actual array size. Physical
+note-start and effect-operation traces retain their separate 4,096-entry
+limits. This does not enable the unmeasured songs or change production audio.
+Isolated m68020/soft-float compilations of both diagnostic and production
+MacLoader objects pass without replacing the executable used by live gameplay
+observers. Object symbols confirm 8,192 event rows and no song trace arrays in
+production. Evidence is in `tmp/m4-event-capacity/`; a full linked fixture
+regression remains pending until both fixed-clock gameplay sessions finish.
+
 ## Unattended capture overhead — 2026-10-05
 
 A paused, read-only A5-world capture on maximum-speed `a4000-030` with warp

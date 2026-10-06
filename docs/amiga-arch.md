@@ -439,15 +439,22 @@ The original driver loader now selects port-owned Jnth 11 from the overlay.
 Its four-byte `$A0F8; RTS` stub enters the user-mode service bridge, with the
 original C argument/return convention. MoveHHi flushes the instruction cache
 before the original caller executes it. The native driver implements measured
-initialization/quality, raw effects and their status/stop, the song control word,
-SONG 135 start/playback, track status and the full-width driver clock query. Other selectors and unmeasured song forms stop.
+initialization/quality, raw effects and their status/stop, song control and gain,
+SONG 131, 132, 135, 136 and 137 playback, track status and the full-width driver
+clock query. Other selectors and unmeasured songs retain named loud stops.
 Song resources are detached, locked and retained until release; original MDRV
-and SMOD code never executes. Due music work defers the current trap through
-the existing user-mode bridge before allocating or programming Paula. The VBI
-supplies ticks; no original callbacks run in an interrupt. Four physical voices
+and SMOD code never executes. Song loading prepares the pitch, DMA layout and
+immutable PCM variants before playback. The default sequencer runs from a
+resource-owned CIA-A timer at 60 Hz on a private 8 KiB stack; its interrupt
+performs no allocation, sample conversion or original-code callback. The VBI
+continues to drive the game clock and display, and original Mac VBL callbacks
+remain in user mode. Main-thread audio ownership changes defer an interrupt
+update until the outer ownership guard releases it. Four physical voices
 use free channels then the oldest music voice, with effects taking priority.
-See [sound-driver.md](sound-driver.md) for the measured seam, state/event checks
-and waveform adaptations; broader songs and toggles remain M4.
+See [sound-driver.md](sound-driver.md) for measured contracts and waveform
+adaptations, and [music-resource-coverage.md](music-resource-coverage.md) for
+all eight resource graphs. The remaining song/event and effect-variant
+acceptance is tracked in [open work](open-work.md).
 
 ## Lifecycle
 
