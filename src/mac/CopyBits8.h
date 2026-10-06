@@ -7,6 +7,19 @@ inline int32_t coord(const uint8_t* r,unsigned i) { return int16_t(RectBounds::w
 // Owned, distinct pixel buffers need no overlap handling. Permit arbitrary
 // byte alignment without violating aliasing rules; the target is 68020+.
 inline void copySpan(const uint8_t* in,uint8_t* out,uint32_t count) {
+    while(count>=16) {
+#ifdef AITD_PLATFORM_AMIGA
+        __asm__ volatile("move.l (%0)+,(%1)+\n\tmove.l (%0)+,(%1)+\n\t"
+                         "move.l (%0)+,(%1)+\n\tmove.l (%0)+,(%1)+"
+                         : "+a"(in), "+a"(out) : : "cc", "memory");
+#else
+        typedef uint32_t PixelWord __attribute__((__may_alias__,__aligned__(1)));
+        for(unsigned i=0;i<4;++i)
+            reinterpret_cast<PixelWord*>(out)[i]=reinterpret_cast<const PixelWord*>(in)[i];
+        in+=16;out+=16;
+#endif
+        count-=16;
+    }
     while(count>=4) {
 #ifdef AITD_PLATFORM_AMIGA
         // GCC expands an alignment-one integer load/store into byte shifts.
@@ -115,17 +128,26 @@ inline bool copy(const uint8_t* src,uint32_t srcBytes,uint16_t srcStride,const u
     if(!nonempty)return true;
     const int32_t sourceX=coord(from,1)-coord(to,1)-coord(srcMap,1);
     const int32_t destinationX=-coord(dstMap,1);
-    for(int32_t y=limits[0];y<limits[2];++y) {
-        const uint8_t* source=src+uint32_t(coord(from,0)+y-coord(to,0)-coord(srcMap,0))*srcStride;
-        uint8_t* target=dst+uint32_t(y-coord(dstMap,0))*dstStride;
-        if(mask && !rows.advance(int16_t(y)))return false;
-        const uint16_t spans=mask ? rows.edges.count : 2;
+    // Row addresses advance by stride; rectangle fields are read once.
+    const uint8_t* source=src+uint32_t(coord(from,0)+limits[0]-coord(to,0)-coord(srcMap,0))*srcStride;
+    uint8_t* target=dst+uint32_t(limits[0]-coord(dstMap,0))*dstStride;
+    if(!mask) {
+        const uint8_t* in=source+(sourceX+limits[1]);
+        uint8_t* out=target+(destinationX+limits[1]);
+        const uint32_t count=uint32_t(limits[3]-limits[1]);
+        for(int32_t y=limits[0];y<limits[2];++y,in+=srcStride,out+=dstStride) {
+            if(colors)for(uint32_t x=0;x<count;++x)out[x]=colors[in[x]];
+            else copySpan(in,out,count);
+        }
+        return true;
+    }
+    for(int32_t y=limits[0];y<limits[2];++y,source+=srcStride,target+=dstStride) {
+        if(!rows.advance(int16_t(y)))return false;
+        const uint16_t spans=rows.edges.count;
         for(uint16_t span=0;span<spans;span+=2) {
             int32_t left=limits[1],right=limits[3];
-            if(mask) {
-                if(left<rows.edges.x[span])left=rows.edges.x[span];
-                if(right>rows.edges.x[span+1])right=rows.edges.x[span+1];
-            }
+            if(left<rows.edges.x[span])left=rows.edges.x[span];
+            if(right>rows.edges.x[span+1])right=rows.edges.x[span+1];
             if(left>=right)continue;
             const uint8_t* in=source+(sourceX+left);
             uint8_t* out=target+(destinationX+left);
