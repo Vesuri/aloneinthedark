@@ -43,7 +43,7 @@ required.
     in room 5. Verify ordinary walking recovery when combat knockback leaves
     the hero beyond kick range, including completed enemy death/removal.
     Integrate the measured bedroom encounter into the connected return route.
-    Integrate and pair the bathroom extension, then expand a
+    Verify the bathroom continuation on the acceptance CPUs, then expand a
     continuous circuit through connected first-floor rooms with positive
     movement and destination checks. Measure steering changes against the
     original controls.

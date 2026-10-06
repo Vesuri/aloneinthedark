@@ -41,9 +41,23 @@ under `/tmp/aitd-arm-deps-20261006`; libmpeg2 is built there too, because the
 source's advertised `--without-libmpeg2` option does not compile. The complete
 emulator build is arm64. Its first ordinary-input/debugger pilot exits zero,
 reports 68030/FPU=0/MMU=0/JIT=0 with maximum speed/warp and reaches the attic
-checkpoint with OS CPU flags 7. Its 36.38-second host time is an uncontrolled
-pilot, not a paired speed result. Require the sequential identical-binary
-comparison before changing any default. Evidence remains local in
+checkpoint with OS CPU flags 7. The sequential identical-binary Intel/ARM pair
+also exits zero with the same effective CPU/RAM settings: 55.61 versus 32.18
+host seconds, about 42% less elapsed time (1.73x). A separate native bathroom
+route was running alongside both tests; these are development checkpoint times,
+not isolated instruction-throughput or scene-FPS measurements. The game ticks
+and frame counts differ, so do not interpret the ratio as hardware performance.
+Evidence: `tmp/cpu-speed/{intel,arm}-new{,-core,-gdb}.log` and
+`paired-current-binary.sha256`.
+
+The relocated bundle in `tmp/fs-uae-arm-runtime/` includes its matching assets
+and private SDL2_ttf/libmpeg2 libraries; it passes the same debugger/gameplay
+pilot in 32.34 seconds (`arm-bundle.log`). Unattended maximum-speed 030 checks
+prefer this local runtime on arm64 when it exists. Explicit `FSUAE` overrides,
+fixed-clock acceptance and normal interactive launch retain their selected
+emulator. A checkout without the ignored local bundle falls back to installed
+FS-UAE. This is a development execution improvement, not full emulator or CPU
+compatibility acceptance. The build/capture evidence remains local in
 `tmp/cpu-speed/arm-*`.
 
 ## Unattended capture overhead — 2026-10-05
@@ -83,23 +97,34 @@ the western hallway artwork. Clean no-float and 167-symbol link audits pass.
 Evidence: `tmp/m3-room4/mac-route.log`,
 `full-{fast,030}-{run,gdb,checked}.log` and `full-{fast,030}-evidence/`.
 The baseline 68020 combat-knockback recovery and continuous ten-minute paired
-first-floor gate remain open. An original-only extension also reaches room 3
-(the bathroom) through this bypass (`tmp/m3-room3/mac-route.log`, exit zero);
-it still needs native integration/verification.
+first-floor gate remain open.
 
-The native bathroom pilots fail before this extension: the first at attic
-exploration stage 1, the second during room 5 combat. The second A5 capture
-shows the living hero at x=-1755/z=852 and the enemy at x=-1886/z=-991 in the
-same room. These are failures, not bathroom acceptance. The diagnostic combat
-approach is being verified against `tools/mac_room5_approach.lua`: its original
-Mac run deliberately retreats, walks toward the enemy between attacks, defeats
-it and waits for actual death/removal, returning to manual control with eight
-health (`tmp/m3-combat-approach/mac-route.log`, exit zero).
-`tools/check_room5_approach.py` independently passes its actual movement, live
-manual room, retained inventory and completed removal captures (`checked.log`).
-The preceding pilot
-failed because its observer tried to approach a dying enemy; preserve that
-failure separately and do not count it as a completed route.
+## Bathroom continuation and combat distance recovery — 2026-10-06
+
+Clean-build `ROOM3ROUTE=1`; use `amiga/room3_route.gdb`,
+`tools/mac_room3_route.lua` and `tools/check_room3_route.py`. The maintained
+original route and native maximum-speed 030 observer/checker all exit zero
+(`tmp/m3-room3/{mac-route,approach-gdb,fast-checked}.log`). Captures are preserved
+in `fast-evidence/`. Both reach real room 4, the western hallway and room 3 with
+living manual control, actual Open/Search, removed enemy 62 and retained
+Actions/lamp inventory. Final health is 18 on Mac and 3 on native; all native
+phases have zero dropped synthetic transitions and each destination has a fresh
+completed scene. Logical images confirm the same bathroom artwork. These are
+functional captures, not rendered host-window acceptance. The clean build
+passes no-float and 167-symbol audits. Fixed-clock 030 and baseline 020 checks
+remain required; this roughly 100-second original route is not the ten-minute
+gate.
+
+An earlier combat pilot stopped with the hero at x=-1755/z=852 and the enemy
+at x=-1886/z=-991 in the same room. The diagnostic controller now walks toward
+a distant enemy before resuming kicks, using ordinary inputs measured by
+`tools/mac_room5_approach.lua`. Its original retreat/approach run returns to
+manual control with eight health after actual enemy death/removal;
+`tools/check_room5_approach.py` independently passes movement, live identity,
+inventory and removal (`tmp/m3-combat-approach/{mac-route,checked}.log`). A
+preceding approach observer wrongly tried to approach a dying enemy; the corrected
+observer waits for removal. The separate earlier attic-stage-1 failure remains
+unexplained by these passes; preserve its evidence rather than claiming it fixed.
 
 The connected original circuit now passes room 5's west-door/wardrobe corridor
 using an x=-1700..-1550 alignment and reaches the bedroom. Its return attempt

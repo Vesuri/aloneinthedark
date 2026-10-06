@@ -7444,6 +7444,9 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         const bool inRoom=read16(actor+0x30)==5 || read16(actor+0x30)==1
 #ifdef AITD_ROOM4_ROUTE
             || (g_combatRouteStage>=40 && read16(actor+0x30)==4)
+#ifdef AITD_ROOM3_ROUTE
+            || (g_combatRouteStage>=60 && read16(actor+0x30)==3)
+#endif
 #endif
             ;
         aitdInputMeasureActivity(g_macTicks,read16(actor+0x3e),read16(actor+0x30),
@@ -7489,6 +7492,9 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         if(read16(actor+0x30)==1)objects|=8192;
 #ifdef AITD_ROOM4_ROUTE
         if(read16(actor+0x30)==4)objects|=32768;
+#ifdef AITD_ROOM3_ROUTE
+        if(read16(actor+0x30)==3)objects|=128;
+#endif
 #endif
         if(vars && read16(vars+180)==64)objects|=16384;
 #endif
