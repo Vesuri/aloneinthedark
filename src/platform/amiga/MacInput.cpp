@@ -1080,7 +1080,7 @@ void aitdInputCombat(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_t
             aitdInputInjectProbeKey(0x40,false);aitdInputInjectProbeKey(0x4c,false);
             aitdInputInjectProbeKey(0x4e,false);aitdInputInjectProbeKey(0x4f,false);s_combatFrames=scenes;
         } else {
-            if(s_combatAttackState && ticks-s_combatAttackTick>(s_combatAttackState==7 ? 1200UL : 1800UL)) {g_combatRouteStage=0xffff;aitdInputCombatCheckpoint();return;}
+            if(s_combatAttackState && ticks-s_combatAttackTick>1800) {g_combatRouteStage=0xffff;aitdInputCombatCheckpoint();return;}
             if(s_combatAttackState==1) {
                 if(animation==262) {++g_combatKicks;aitdInputCombatKickCheckpoint();s_combatAttackState=2;}
                 else if(ticks-s_combatAttackTick<180)return;
@@ -1096,16 +1096,6 @@ void aitdInputCombat(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_t
                 aitdInputInjectProbeKey(0x4c,false);
                 aitdInputInjectProbeKey(0x4e,false);aitdInputInjectProbeKey(0x4f,false);return;
             }
-#ifdef AITD_ROOM5_COMBAT
-            if(s_combatAttackState==7) {
-                if(!(objects&1024))return;
-                const int32_t dx=int32_t(enemyX)-x,dz=int32_t(enemyZ)-z;
-                const uint32_t ax=dx<0 ? -dx : dx,az=dz<0 ? -dz : dz;
-                if(ax>800 || az>800)return;
-                aitdInputInjectProbeKey(0x4c,false);
-                s_combatAttackState=3;s_combatAttackTick=ticks;return;
-            }
-#endif
             if(s_combatAttackState==4 || s_combatAttackState==6) {
                 const uint16_t delta=(g_combatAimHeading-beta)&1023;
                 if(delta>16 && delta<1008)return;
@@ -1134,19 +1124,6 @@ void aitdInputCombat(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_t
                     aitdInputCombatAimCheckpoint();return;
                 }
             }
-#ifdef AITD_ROOM5_COMBAT
-            // The original measured retreat/approach route walks back into
-            // range before kicking. A knocked-back hero must not spend all
-            // attempts kicking while the enemy remains across the room.
-            if(objects&1024) {
-                const int32_t dx=int32_t(enemyX)-x,dz=int32_t(enemyZ)-z;
-                const uint32_t ax=dx<0 ? -dx : dx,az=dz<0 ? -dz : dz;
-                if(ax>900 || az>900) {
-                    aitdInputInjectProbeKey(0x4c,true);
-                    s_combatAttackState=7;s_combatAttackTick=ticks;return;
-                }
-            }
-#endif
 #ifdef AITD_ROOM5_RETURN
             const uint16_t attemptLimit=64;
 #else

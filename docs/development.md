@@ -143,8 +143,17 @@ passes no-float and 167-symbol audits. The fixed-clock 030 run terminates with
 actual player death during combat: health 0, enemy health 8, 18 attempts and 12
 started kicks (`030-run.log`, observer exit one). This is a route failure, not
 a loud stop or bathroom acceptance. Its evidence is isolated in `030-evidence/`.
-Fixed-clock 030 and baseline 020 checks remain required; this roughly
-100-second original route is not the ten-minute gate.
+Removing that diagnostic walking experiment restores the previously measured
+combat protocol. The fixed-clock 030 pilot and independent bathroom checker
+exit zero with final health 18 and zero dropped keys:
+`tmp/m3-room3/restored-030-{run,checked}.log`, with complete captures in
+`restored-030-evidence/`. The same binary passes no-float/167-symbol audits.
+Baseline 020 recovery still needs verification: one living victory stops in
+the connecting-door pocket during the following northward leg
+(`restored-020-run.log`); the next corridor experiment encounters living room-4
+combat knockback (`clear-020-run.log`). Neither is a named service loud stop.
+Paired continuous coverage remains required; the short bathroom route is not
+the ten-minute gate.
 
 An earlier combat pilot stopped with the hero at x=-1755/z=852 and the enemy
 at x=-1886/z=-991 in the same room. The diagnostic controller now walks toward
