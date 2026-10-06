@@ -18,6 +18,7 @@
 #include "CopyBits8.h"
 #include "ColorMap8Cache.h"
 #include "PictureRecord8.h"
+#include "PictureShrink8.h"
 #include "CursorVisibility.h"
 #include "RegionRows.h"
 #include "RegionExpand.h"
@@ -3350,6 +3351,61 @@ static bool drawIndexedPictureBits(const uint8_t* picture, uint32_t size, uint32
         || copyBottom <= copyTop || copyRight <= copyLeft) valid = false;
 
     bool usedPackedRows = false;
+    if(valid && destination8 && mode==64) {
+        // Saved previews retain the full source raster. QuickDraw scales the
+        // raster directly into DrawPicture's target, averaging before dithering.
+        // This measured branch requires the raster destination to be the frame.
+        if(rasterTop!=frameTop || rasterLeft!=frameLeft || rasterBottom!=frameBottom
+           || rasterRight!=frameRight || copyTop<sourceTop || copyLeft<sourceLeft
+           || copyBottom>sourceBottom || copyRight>sourceRight)valid=false;
+        const uint16_t width=uint16_t(targetRight-targetLeft),height=uint16_t(targetBottom-targetTop);
+        const uint16_t sourceWidth=uint16_t(copyRight-copyLeft),sourceHeight=uint16_t(copyBottom-copyTop);
+        if(width>640 || height>480 || sourceWidth>640 || sourceHeight>480)valid=false;
+        const uint32_t imageBytes=multiplyUnsigned16(width,height);
+        const uint32_t workspaceBytes=PictureShrink8::workspaceBytes(sourceWidth,width);
+        const uint32_t pictureBytes=((imageBytes+1)&~1UL)+workspaceBytes;
+        // QuickDraw's actual dither lookup uses the logical destination table,
+        // not the physical device's protected duplicate endpoint slots.
+        const uint32_t colorBytes=window ? 2056UL+4620UL+23328UL : 0;
+        uint8_t* storage=valid ? (uint8_t*)AllocMem(pictureBytes+colorBytes,0) : 0;
+        if(!storage)valid=false;
+        const uint8_t* ditherColors=colors8;const uint8_t* ditherInverse=inverse8;
+        if(valid && window) {
+            const uint8_t* palette=s_activePalette ? *s_activePalette : 0;
+            if(!Palette8::supported(palette,4112,0x800a))valid=false;
+            else {
+                uint8_t* logical=storage+pictureBytes;uint8_t* inverse=logical+2056;
+                uint16_t* workspace=(uint16_t*)(inverse+4620);
+                write32(logical,read32(s_windowManagerColors));write16(logical+4,0);write16(logical+6,255);
+                for(uint16_t i=0;i<256;++i) {
+                    write16(logical+8+uint32_t(i)*8,i);
+                    for(uint16_t c=0;c<3;++c)write16(logical+10+uint32_t(i)*8+c*2,read16(palette+16+uint32_t(i)*16+c*2));
+                }
+                valid=GWorld8::inverse(logical,4,inverse,workspace,workspace+5832);
+                ditherColors=logical;ditherInverse=inverse;
+            }
+        }
+        if(valid)valid=PictureShrink8::draw(pixels+multiplyUnsigned16(uint16_t(copyTop-sourceTop),rowBytes)
+            +uint16_t(copyLeft-sourceLeft),rowBytes,sourceWidth,sourceHeight,colorTable,
+            ditherColors,ditherInverse,storage,width,height,storage+((imageBytes+1)&~1UL));
+        if(valid) {
+            for(int16_t y=targetTop;y<targetBottom;++y) {
+                if(y<mapTop || y>=mapBottom || y<(int16_t)read16(port+16) || y>=(int16_t)read16(port+20)
+                   || y<(int16_t)read16(visible+2) || y>=(int16_t)read16(visible+6)
+                   || y<(int16_t)read16(clip+2) || y>=(int16_t)read16(clip+6))continue;
+                uint8_t* destination=destinationPixels+multiplyUnsigned16(uint16_t(y-mapTop),destinationRowBytes);
+                const uint8_t* source=storage+multiplyUnsigned16(uint16_t(y-targetTop),width);
+                for(int16_t x=targetLeft;x<targetRight;++x) {
+                    if(x<mapLeft || x>=mapRight || x<(int16_t)read16(port+18) || x>=(int16_t)read16(port+22)
+                       || x<(int16_t)read16(visible+4) || x>=(int16_t)read16(visible+8)
+                       || x<(int16_t)read16(clip+4) || x>=(int16_t)read16(clip+8))continue;
+                    destination[x-mapLeft]=source[x-targetLeft];
+                }
+            }
+            usedPackedRows=true;
+        }
+        if(storage)FreeMem(storage,pictureBytes+colorBytes);
+    }
     bool unscaledPacked = valid && !destination8
         && frameBottom - frameTop == targetBottom - targetTop
         && frameRight - frameLeft == targetRight - targetLeft

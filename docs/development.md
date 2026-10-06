@@ -148,9 +148,50 @@ The build passes no-float and 151-symbol audits. The Load helper's compiled
 frame uses 32 local bytes plus 8 saved-register bytes. Its preview uses PICT
 128, 55,492 bytes, a 327×200 indexed bitmap and explicit colour-table indices
 (flags zero). Drawing now accepts that measured table form. Through the
-verified Mac display transfer, the chooser agrees outside the thumbnail;
-4,309 thumbnail pixels still differ in the logical comparison. Scaled
-`ditherCopy` preview fidelity remains required in M3.4.
+verified Mac display transfer, the chooser agrees outside the thumbnail.
+The scaled preview is now verified separately below.
+
+## Saved-game preview shrinking — 2026-10-06
+
+`tools/mac_picture_preview.lua` opens the original Load chooser with ordinary
+keys. It observes the actual InitGraf current-port pointer and DrawPicture
+return, captures the unchanged saved PICT 128 and destination PixMap, and
+records each of the 54 filtered RGB8 scanlines plus the actual dither table and
+lookup cube. The visible choice is captured after the drawing return.
+Use an owned disk containing the first-floor checkpoint and set
+`AITD_PICTURE_PREVIEW_DIR` to an existing capture folder.
+
+The System 7 path averages integer vertical groups into RGB8, then averages
+horizontal groups using a 16-bit fractional step. Quantization uses the
+logical destination palette and its inverse cube, distinct from the physical
+device table's protected duplicate endpoint slots. Each pixel sends floor half
+of its colour error below and ceil half sideways, with alternating row
+traversal. These details come from the read-only original execution trace and
+intermediate buffers, not an assumed image filter. Apple's discussion of
+[System 7 shrinking](https://vintageapple.org/develop/pdf/develop-06_9104_Spring_1991.pdf)
+confirms the broader pixel-averaging behaviour.
+
+`PictureShrink8` reproduces all 4,752 original preview pixels. The maintained
+observer, compiler sanitizers, generated inverse-cube comparison and native
+visible-image check pass in `tmp/m3-preview-scale/current/{mac-route,checked-final}.log`.
+The native ordinary Load run `tmp/m3-preview-scale/native-run-final.log` and the paired
+Load checker also pass with 34,058 actual data-fork bytes and the restored
+first-floor actor, inventory and encounters. The build passes no-float and
+151-symbol audits. The indexed-picture frame uses 732 local plus 16 saved
+bytes; the shrink helper uses 112 plus 16, and the inverse builder 68 plus 44.
+Scanlines, palette, inverse work and colour errors use owned heap storage.
+
+The supported branch is the measured non-integral shrink with disjoint
+horizontal groups and a raster destination equal to the picture frame.
+Integral vertical and overlapping horizontal layouts remain loud stops.
+No original game data or pixel captures are committed. Recheck with:
+
+```sh
+python3 tools/check_picture_shrink.py CAPTURE/mac-route.log --folder CAPTURE \
+  --resource ORIGINAL/SAVE0.ITD.rsrc --status 0 \
+  --native-screen tmp/firstfloor-load-choice-screen.bin \
+  --native-clut tmp/firstfloor-load-choice-clut.bin
+```
 
 ## Room 4 bypass — 2026-10-06
 
