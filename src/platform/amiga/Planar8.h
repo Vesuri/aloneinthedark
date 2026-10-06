@@ -12,61 +12,51 @@ static const uint16_t width=320, height=200, planes=8, planeRow=40, rowBytes=320
 static const uint32_t bytes=uint32_t(rowBytes)*height;
 struct Rect { int16_t top,left,bottom,right; };
 
-// Exact comparison, not a hash: unchanged pixel indices require no conversion.
-// 68020+ accepts unaligned longwords (a moved viewport can start at odd x).
-inline uint32_t blockWord(const uint8_t* p) {
-#ifdef AITD_PLATFORM_AMIGA
-    uint32_t value;
-    __asm__ volatile("move.l (%1),%0" : "=d"(value) : "a"(p) : "memory");
-    return value;
-#else
-    return uint32_t(p[0])<<24 | uint32_t(p[1])<<16 | uint32_t(p[2])<<8 | p[3];
-#endif
-}
-inline bool refreshBlock(const uint8_t* source,uint8_t* cached,bool force) {
-    bool changed=force;
-    if(!changed)for(uint16_t x=0;x<32;x+=4)
-        if(blockWord(source+x)!=blockWord(cached+x)) {changed=true;break;}
-    if(changed)for(uint16_t x=0;x<32;x+=4) {
-        uint32_t value=blockWord(source+x);
-#ifdef AITD_PLATFORM_AMIGA
-        __asm__ volatile("move.l %0,(%1)" :: "d"(value),"a"(cached+x) : "memory");
-#else
-        cached[x]=uint8_t(value>>24);cached[x+1]=uint8_t(value>>16);
-        cached[x+2]=uint8_t(value>>8);cached[x+3]=uint8_t(value);
-#endif
-    }
-    return changed;
+inline bool contains(const Rect& outer,const Rect& inner) {
+    return outer.top<=inner.top && outer.left<=inner.left
+        && outer.bottom>=inner.bottom && outer.right>=inner.right;
 }
 
-inline void changedRows(const uint8_t* source,uint8_t* cached,const Rect& viewport,
-                        const Rect* candidates,uint16_t count,bool force,uint16_t* rows) {
-    for(uint16_t y=0;y<height;++y)rows[y]=force ? 1023 : 0;
-    if(!force)for(uint16_t i=0;i<count;++i) {
-        const Rect& r=candidates[i];
-        uint16_t mask=uint16_t((1u<<(r.right/32))-(1u<<(r.left/32)));
-        for(int16_t y=r.top;y<r.bottom;++y)rows[y]|=mask;
-    }
-    for(uint16_t y=0;y<height;++y)for(uint16_t b=0;rows[y] && b<10;++b) {
-        if(!(rows[y]&(1u<<b)))continue;
-        if(!refreshBlock(source+uint32_t(y+viewport.top)*640+viewport.left+b*32,
-                         cached+uint32_t(y)*320+b*32,force))rows[y]&=uint16_t(~(1u<<b));
-    }
+// Union only when it covers no additional pixels: containment, or an exact
+// shared edge/overlap in one axis. Partial overlaps stay separate.
+inline bool mergeLosslessly(const Rect& a,const Rect& b) {
+    if(contains(a,b) || contains(b,a))return true;
+    return (a.left==b.left && a.right==b.right && a.top<=b.bottom && a.bottom>=b.top)
+        || (a.top==b.top && a.bottom==b.bottom && a.left<=b.right && a.right>=b.left);
 }
 
-// All rectangles here have already been normalized to 32-pixel boundaries.
-// Each bit selects one four-byte span of a plane row. Pixels converted from
-// chunky this frame need no copy from the previous front buffer.
-inline uint16_t syncRowMask(const Rect& previous,int16_t y,
-                            const Rect* converted,uint16_t count) {
-    if(y<previous.top || y>=previous.bottom)return 0;
-    uint16_t mask=uint16_t((1u<<(previous.right/32))-(1u<<(previous.left/32)));
-    for(uint16_t i=0;i<count && mask;++i) {
-        const Rect& r=converted[i];
-        if(y>=r.top && y<r.bottom)
-            mask&=uint16_t(~((1u<<(r.right/32))-(1u<<(r.left/32))));
+// Add an already normalized, non-empty rectangle. 32-pixel alignment can make
+// distinct dirty rectangles coincide; fold those so no span converts twice.
+inline void append(Rect* rects,uint16_t& count,uint16_t capacity,Rect r) {
+    bool merged;
+    do {
+        merged=false;
+        for(uint16_t i=0;i<count;++i) {
+            if(!mergeLosslessly(r,rects[i]))continue;
+            if(rects[i].top<r.top)r.top=rects[i].top;
+            if(rects[i].left<r.left)r.left=rects[i].left;
+            if(rects[i].bottom>r.bottom)r.bottom=rects[i].bottom;
+            if(rects[i].right>r.right)r.right=rects[i].right;
+            rects[i]=rects[--count];merged=true;break;
+        }
+    } while(merged);
+    if(count<capacity) {rects[count++]=r;return;}
+    // Correctness fallback: one bounding rectangle retains every pixel.
+    for(uint16_t i=0;i<count;++i) {
+        if(rects[i].top<r.top)r.top=rects[i].top;
+        if(rects[i].left<r.left)r.left=rects[i].left;
+        if(rects[i].bottom>r.bottom)r.bottom=rects[i].bottom;
+        if(rects[i].right>r.right)r.right=rects[i].right;
     }
-    return mask;
+    rects[0]=r;count=1;
+}
+
+// The inactive buffer holds the frame from two publications ago. A rectangle
+// converted for the previous frame must be copied forward unless one rectangle
+// converted this frame replaces it completely; conversion follows the copy.
+inline bool syncNeeded(const Rect& previous,const Rect* converted,uint16_t count) {
+    for(uint16_t i=0;i<count;++i)if(contains(converted[i],previous))return false;
+    return true;
 }
 
 inline bool viewportValid(const Rect& viewport) {

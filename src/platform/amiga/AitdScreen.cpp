@@ -139,10 +139,8 @@ bool AitdScreen::initialize(const uint8_t* picture, const uint16_t* palette16)
         return false;
     }
 
-    m_chunkyCache = (uint8_t*)AllocMem(kPictureBytes, MEMF_FAST);
-    if (!m_chunkyCache) { shutdown(); return false; }
-    m_chunkyCacheValid = false;
-    for(uint16_t y=0;y<kHeight;++y)m_syncRows[y]=0;
+    m_syncCount = 0;
+    m_paletteValid = false;
 
     for (uint32_t i = 0; i < kPictureBytes; i++)
         m_chip[i] = m_back[i] = picture ? picture[i] : 0;
@@ -172,6 +170,11 @@ bool AitdScreen::initialize(const uint8_t* picture, const uint16_t* palette16)
     }
     AgaPalette::build(m_copper+VS_CL_COLORS,m_nextPalette);
     m_copper[VS_CL_END] = 0xfffffffe;
+    // Both lists start complete; queueFrame then patches only changed parts.
+    for(uint16_t i=0;i<VS_CL_LONGS;++i)m_copper[VS_CL_LONGS+i]=m_copper[i];
+    m_paletteVersion=0;
+    m_listPaletteVersion[0]=m_listPaletteVersion[1]=0;
+    m_listMouseAllowed[0]=m_listMouseAllowed[1]=false;
 
     // Publish valid bitplane pointers before enabling display DMA.
     vbiUpdate(false);
@@ -204,14 +207,20 @@ void AitdScreen::writeModeRegisters()
 
 void AitdScreen::queueFrame(uint16_t left,uint16_t top,bool mouseAllowed)
 {
-    uint32_t* next=m_copper==m_copperAllocation ? m_copperAllocation+VS_CL_LONGS : m_copperAllocation;
-    for(uint16_t i=0;i<VS_CL_LONGS;++i)next[i]=m_copper[i];
+    const uint16_t list=m_copper==m_copperAllocation ? 1 : 0;
+    uint32_t* next=m_copperAllocation+list*VS_CL_LONGS;
+    // Sprite pointers and the list end never change. The inactive list was
+    // last published two frames ago: refresh its bitplane pointers, and its
+    // 520 colour moves only when the palette or cursor mode differs.
     for(uint16_t plane=0;plane<kPlanes;++plane) {
         uint32_t p=(uint32_t)(m_back+plane*kBytesPerRow);
         next[VS_CL_PTRS+plane*2]=copperMove(bpl1pth+plane*4,p>>16);
         next[VS_CL_PTRS+plane*2+1]=copperMove(bpl1ptl+plane*4,p&65535);
     }
-    AgaPalette::build(next+VS_CL_COLORS,m_nextPalette,mouseAllowed ? AgaCursor::playfieldXor : 0);
+    if(m_listPaletteVersion[list]!=m_paletteVersion || m_listMouseAllowed[list]!=mouseAllowed) {
+        AgaPalette::build(next+VS_CL_COLORS,m_nextPalette,mouseAllowed ? AgaCursor::playfieldXor : 0);
+        m_listPaletteVersion[list]=m_paletteVersion;m_listMouseAllowed[list]=mouseAllowed;
+    }
     m_nextCopper=next;m_nextCropLeft=left;m_nextCropTop=top;m_nextMouseAllowed=mouseAllowed;
     ++g_macFramesQueued;
     __asm__ volatile("" ::: "memory");
@@ -427,60 +436,51 @@ int16_t AitdScreen::presentMacFrame(const uint8_t* chunky,const uint8_t* colorTa
     }
     Planar8::Rect normalized[kMaxDirtyRects];uint16_t count=0;
     if(!matchesViewport(cropLeft,cropTop)) {
-        normalized[count++]={0,0,200,320};
+        // A newly exposed viewport converts completely and supersedes any
+        // rectangles pending from the old one.
+        normalized[count++]={0,0,200,320};m_syncCount=0;
     } else for(uint16_t i=0;i<dirtyRectCount;++i) {
         const DirtyRect& d=dirtyRects[i];Planar8::Rect local;
         if(!Planar8::normalize(viewport,{d.top,d.left,d.bottom,d.right},local))return -1;
-        if(local.top<local.bottom && local.left<local.right)normalized[count++]=local;
+        if(local.top<local.bottom && local.left<local.right)
+            Planar8::append(normalized,count,kMaxDirtyRects,local);
     }
-    uint16_t changed[kHeight];
-    { AitdProfileScope profile(kProfileC2P);
-    Planar8::changedRows(chunky,m_chunkyCache,viewport,normalized,count,
-        !m_chunkyCacheValid || !matchesViewport(cropLeft,cropTop),changed);
-    }
-    // Vette's explicit synchronization: bring the previous frame's changed
-    // spans to the inactive bitmap, excluding pixels converted this frame.
+    // Vette's explicit synchronization: bring the previous frame's converted
+    // rectangles to the inactive bitmap unless this frame replaces them.
     { AitdProfileScope profile(kProfileSync);
-        for(int16_t y=0;y<kHeight;++y) {
-            uint16_t mask=m_syncRows[y]&uint16_t(~changed[y]);
-            for(int16_t block=0;mask && block<10;) {
-                if(!(mask&(1u<<block))) {++block;continue;}
-                int16_t left=block*32;
-                do {mask&=uint16_t(~(1u<<block));++block;} while(block<10 && (mask&(1u<<block)));
-                int16_t right=block*32;
+    for(uint16_t i=0;i<m_syncCount;++i) {
+        const Planar8::Rect& r=m_syncRects[i];
+        if(!Planar8::syncNeeded(r,normalized,count))continue;
+        const uint16_t firstLong=uint16_t(r.left)/32,longs=uint16_t(r.right-r.left)/32;
+        for(int16_t y=r.top;y<r.bottom;++y) {
+            const int16_t row=y-m_invertTop;
+            for(uint16_t plane=0;plane<kPlanes;++plane) {
                 // A VBI can move the cursor between spans. Copy and undo its
                 // current XOR atomically for one plane span (at most 40 bytes),
                 // preserving a clean inactive bitmap during conversion.
-                for(uint16_t plane=0;plane<kPlanes;++plane) {
-                    Disable();
-                    __asm__ volatile("" ::: "memory");
-                    uint32_t base=uint32_t(y)*kRowStride+plane*kBytesPerRow;
-                    for(int16_t x=left/8;x<right/8;++x)m_back[base+x]=m_chip[base+x];
-                    int16_t row=y-m_invertTop;
-                    if(m_invertActive && row>=0 && row<16)
-                        CursorInvert::row(m_back+base,left,right,m_invertLeft,m_invertRows[row]);
-                    __asm__ volatile("" ::: "memory");
-                    Enable();
-                }
+                uint32_t* out=(uint32_t*)(m_back+uint32_t(y)*kRowStride+plane*kBytesPerRow)+firstLong;
+                Disable();
+                __asm__ volatile("" ::: "memory");
+                const uint32_t* in=(const uint32_t*)(m_chip+uint32_t(y)*kRowStride+plane*kBytesPerRow)+firstLong;
+                for(uint16_t x=0;x<longs;++x)out[x]=in[x];
+                if(m_invertActive && row>=0 && row<16)
+                    CursorInvert::row(m_back+uint32_t(y)*kRowStride+plane*kBytesPerRow,
+                        r.left,r.right,m_invertLeft,m_invertRows[row]);
+                __asm__ volatile("" ::: "memory");
+                Enable();
             }
         }
     }
+    }
     { AitdProfileScope profile(kProfileC2P);
-    for(uint16_t y=0;y<kHeight;) {
-        uint16_t bottom=y+1,mask=changed[y];
-        while(bottom<kHeight && changed[bottom]==mask)++bottom;
-        for(uint16_t block=0;mask && block<10;) {
-            if(!(mask&(1u<<block))) {++block;continue;}
-            uint16_t left=block*32;
-            do {mask&=uint16_t(~(1u<<block));++block;} while(block<10 && (mask&(1u<<block)));
-            aitdKalmsC2PRect(chunky+uint32_t(y+cropTop)*640+cropLeft+left,
-                m_back+uint32_t(y)*kRowStride+left/8,block*32-left,bottom-y);
-        }
-        y=bottom;
+    for(uint16_t i=0;i<count;++i) {
+        const Planar8::Rect& r=normalized[i];
+        aitdKalmsC2PRect(chunky+uint32_t(r.top+cropTop)*640+cropLeft+r.left,
+            m_back+uint32_t(r.top)*kRowStride+r.left/8,r.right-r.left,r.bottom-r.top);
+        m_syncRects[i]=r;
     }
+    m_syncCount=count;
     }
-    for(uint16_t y=0;y<kHeight;++y)m_syncRows[y]=changed[y];
-    m_chunkyCacheValid=true;
 #ifdef AITD_C2P_VERIFY
     if(!Planar8::verify(chunky,m_back,viewport,g_c2pMismatch)) {
         ++g_c2pVerifyFailures;aitdC2PVerifyFailed();return -1;
@@ -494,9 +494,14 @@ int16_t AitdScreen::presentMacFrame(const uint8_t* chunky,const uint8_t* colorTa
     if(count && !full)++g_c2pPartialFrames;
 #endif
     { AitdProfileScope profile(kProfilePalette);
-    for(uint16_t i=0;i<256;++i) {
-        const uint8_t* c=colorTable+10+i*8;
-        m_nextPalette[i]=VideoColor::rgb(uint16_t(c[0])<<8|c[1],uint16_t(c[2])<<8|c[3],uint16_t(c[4])<<8|c[5]);
+    const uint32_t seed=uint32_t(colorTable[0])<<24|uint32_t(colorTable[1])<<16|uint32_t(colorTable[2])<<8|colorTable[3];
+    if(!m_paletteValid || seed!=m_paletteSeed) {
+        // Every Color Manager change installs a new table seed.
+        for(uint16_t i=0;i<256;++i) {
+            const uint8_t* c=colorTable+10+i*8;
+            m_nextPalette[i]=VideoColor::rgb(uint16_t(c[0])<<8|c[1],uint16_t(c[2])<<8|c[3],uint16_t(c[4])<<8|c[5]);
+        }
+        m_paletteSeed=seed;m_paletteValid=true;++m_paletteVersion;
     }
     queueFrame(cropLeft,cropTop,mouseAllowed);
     }
@@ -505,8 +510,6 @@ int16_t AitdScreen::presentMacFrame(const uint8_t* chunky,const uint8_t* colorTa
 
 void AitdScreen::shutdown()
 {
-    if (m_chunkyCache) { FreeMem(m_chunkyCache, kPictureBytes); m_chunkyCache = 0; }
-    m_chunkyCacheValid=false;
     if (m_copperAllocation) {
         FreeMem(m_copperAllocation, 2 * VS_CL_LONGS * sizeof(uint32_t));
         m_copperAllocation = 0;
@@ -603,8 +606,7 @@ void AitdScreen::showLoudStop(const char* manager, const char* routine, int32_t 
     drawLine(m_back, 24, 154, line);
     for(uint16_t i=0;i<256;++i)m_nextPalette[i]=0;
     m_nextPalette[255]=0xffffff;
-    for(uint16_t y=0;y<kHeight;++y)m_syncRows[y]=0;
-    m_chunkyCacheValid=false;
+    m_syncCount=0;m_paletteValid=false;++m_paletteVersion;
     queueFrame(m_cropLeft,m_cropTop,false);
 }
 

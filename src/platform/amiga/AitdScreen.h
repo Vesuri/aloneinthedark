@@ -14,6 +14,7 @@
 
 // ⚠ NO <stdint.h> -- SASCCompat.h is force-included and already typedefs these.  See
 // PlatformAmiga.h for the conflicting-declaration error the two together produce.
+#include "Planar8.h"
 
 class AitdScreen {
 public:
@@ -128,11 +129,18 @@ private:
 #ifdef AITD_AGA_CURSOR_PROBE
     uint16_t m_cursorProbeEndLine = 0;
 #endif
-    // Last submitted chunky viewport, solely for exact conversion suppression.
-    // Cursor pixels never enter this cache.
-    uint8_t* m_chunkyCache = 0;
-    bool m_chunkyCacheValid = false;
-    uint16_t m_syncRows[kHeight] = {};
+    // Rectangles converted for the front buffer, in 32-pixel aligned viewport
+    // coordinates. The next frame copies them forward to the inactive buffer.
+    Planar8::Rect m_syncRects[kMaxDirtyRects] = {};
+    uint16_t  m_syncCount = 0;
+    // Pixels are converted only from published dirty rectangles; the palette
+    // only when the device table seed changes. Each copper list records the
+    // palette version and cursor mode it was built with.
+    uint32_t  m_paletteSeed = 0;
+    bool      m_paletteValid = false;
+    uint16_t  m_paletteVersion = 0;
+    uint16_t  m_listPaletteVersion[2] = {0, 0};
+    bool      m_listMouseAllowed[2] = {false, false};
 };
 
 #endif

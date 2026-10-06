@@ -15,89 +15,69 @@ static bool same(const Planar8::Rect& a,const Planar8::Rect& b) {
 }
 static void checkBufferSync() {
     std::vector<uint8_t> source(640*480),front(Planar8::bytes),back(Planar8::bytes);
-    std::vector<Planar8::Rect> previous;
-    const Planar8::Rect viewport{0,0,200,320};
+    Planar8::Rect previous[32];uint16_t previousCount=0;
+    Planar8::Rect viewport{150,160,350,480};
     uint32_t seed=7;
     auto random=[&]() {seed=seed*1664525u+1013904223u;return seed;};
-    for(unsigned frame=0;frame<160;++frame) {
-        std::vector<Planar8::Rect> dirty,converted;
-        unsigned count=frame%13;
+    unsigned merged=0,skipped=0,copied=0;
+    for(unsigned frame=0;frame<400;++frame) {
+        // Up to 40 dirty rectangles exercises the bounding-box fallback.
+        std::vector<Planar8::Rect> dirty;
+        unsigned count=frame%41==40 ? 40 : frame%13;
         for(unsigned i=0;i<count;++i) {
             int16_t left=random()%320,top=random()%200;
             int16_t right=left+1+random()%(320-left),bottom=top+1+random()%(200-top);
-            dirty.push_back({top,left,bottom,right});
+            if(i&1) {right=left+1+random()%8;if(right>320)right=320;}
+            dirty.push_back({int16_t(top+viewport.top),int16_t(left+viewport.left),
+                             int16_t(bottom+viewport.top),int16_t(right+viewport.left)});
         }
         if(frame%17==0)dirty={viewport};
+        // Only dirty pixels change; everything else must survive from earlier frames.
+        for(const auto& r:dirty)for(int y=r.top;y<r.bottom;++y)for(int x=r.left;x<r.right;++x)
+            source[y*640+x]=uint8_t(frame*37+x*13+y*71);
+        Planar8::Rect converted[32];uint16_t convertedCount=0;
         for(const auto& r:dirty) {
-            for(int y=r.top;y<r.bottom;++y)for(int x=r.left;x<r.right;++x)
-                source[y*640+x]=uint8_t(frame*37+x*13+y*71);
             Planar8::Rect local;
-            assert(Planar8::normalize(viewport,r,local));converted.push_back(local);
+            assert(Planar8::normalize(viewport,r,local));
+            if(local.top<local.bottom && local.left<local.right)
+                Planar8::append(converted,convertedCount,32,local);
         }
-        for(const auto& r:previous)for(int16_t y=r.top;y<r.bottom;++y) {
-            uint16_t mask=Planar8::syncRowMask(r,y,converted.data(),converted.size());
-            // Compare selected bytes against geometric coverage, independently
-            // of the helper's bit arithmetic, then synchronize the old buffer.
-            for(int x=0;x<320;x+=8) {
-                bool needed=x>=r.left && x<r.right;
-                for(const auto& c:converted)
-                    if(y>=c.top && y<c.bottom && x>=c.left && x<c.right)needed=false;
-                assert(bool(mask&(1u<<(x/32)))==needed);
-                if(needed)for(unsigned p=0;p<8;++p)back[y*320+p*40+x/8]=front[y*320+p*40+x/8];
+        assert(convertedCount<=32);
+        merged+=dirty.size()-convertedCount;
+        // Converted rectangles cover every dirty pixel.
+        for(const auto& r:dirty)for(int y=r.top;y<r.bottom;++y)for(int x=r.left;x<r.right;++x) {
+            bool covered=false;
+            for(uint16_t i=0;i<convertedCount;++i) {
+                const auto& c=converted[i];
+                covered|=y-viewport.top>=c.top && y-viewport.top<c.bottom
+                    && x-viewport.left>=c.left && x-viewport.left<c.right;
             }
+            assert(covered);
         }
-        for(const auto& r:dirty) {
-            Planar8::Rect local;
-            assert(Planar8::convert(source.data(),back.data(),viewport,r,local));
+        for(uint16_t i=0;i<previousCount;++i) {
+            const auto& r=previous[i];
+            if(!Planar8::syncNeeded(r,converted,convertedCount)) {++skipped;continue;}
+            ++copied;
+            for(int y=r.top;y<r.bottom;++y)for(unsigned p=0;p<8;++p)
+                for(int x=r.left/8;x<r.right/8;++x)back[y*320+p*40+x]=front[y*320+p*40+x];
+        }
+        for(uint16_t i=0;i<convertedCount;++i) {
+            const auto& r=converted[i];
+            assert(!(r.left&31) && !(r.right&31));
+            Planar8::Rect global{int16_t(r.top+viewport.top),int16_t(r.left+viewport.left),
+                int16_t(r.bottom+viewport.top),int16_t(r.right+viewport.left)},out;
+            assert(Planar8::convert(source.data(),back.data(),viewport,global,out));
         }
         Planar8::Mismatch mismatch{};
         assert(Planar8::verify(source.data(),back.data(),viewport,mismatch));
-        front.swap(back);previous=converted;
+        front.swap(back);
+        for(uint16_t i=0;i<convertedCount;++i)previous[i]=converted[i];
+        previousCount=convertedCount;
     }
-    const Planar8::Rect full{0,0,200,320},split[]={{0,0,200,160},{0,160,200,320}};
-    for(int16_t y=0;y<200;++y)assert(Planar8::syncRowMask(full,y,split,2)==0);
-    puts("PASS Planar8 synchronization: 160 alternating-buffer frames, overlapping/disjoint/full/empty updates and exact copied-byte coverage");
-}
-static void checkChangedBlocks() {
-    std::vector<uint8_t> source(640*480),cache(64000,0xa5),front(64000),back(64000);
-    uint16_t previous[200]={},changed[200];
-    Planar8::Rect viewport{150,160,350,480},full{0,0,200,320};
-    for(unsigned frame=0;frame<240;++frame) {
-        bool force=frame==0 || frame%47==0;
-        if(force && frame) {
-            viewport.left^=1;viewport.right=viewport.left+320;
-            viewport.top^=1;viewport.bottom=viewport.top+200;
-        }
-        // Broad dirty rectangles with sparse actual changes, including frames
-        // with no changes and pixels reverting to their earlier values.
-        if(frame%5)for(unsigned n=0;n<79;++n) {
-            unsigned x=(n*37+frame*13)%320,y=(n*19+frame*7)%200;
-            source[(y+viewport.top)*640+x+viewport.left]^=uint8_t(1u<<(n%8));
-        }
-        auto oldCache=cache;
-        Planar8::changedRows(source.data(),cache.data(),viewport,&full,1,force,changed);
-        for(unsigned y=0;y<200;++y)for(unsigned b=0;b<10;++b) {
-            bool differs=force;
-            for(unsigned x=b*32;x<b*32+32;++x)
-                differs|=oldCache[y*320+x]!=source[(y+viewport.top)*640+x+viewport.left];
-            assert(bool(changed[y]&(1u<<b))==differs);
-            if((previous[y]&(1u<<b)) && !differs)
-                for(unsigned p=0;p<8;++p)for(unsigned byte=b*4;byte<b*4+4;++byte)
-                    back[y*320+p*40+byte]=front[y*320+p*40+byte];
-            if(differs) {
-                Planar8::Rect r{int16_t(y+viewport.top),int16_t(b*32+viewport.left),
-                    int16_t(y+viewport.top+1),int16_t(b*32+viewport.left+32)},converted;
-                assert(Planar8::convert(source.data(),back.data(),viewport,r,converted));
-            }
-        }
-        Planar8::Mismatch mismatch{};
-        assert(Planar8::verify(source.data(),back.data(),viewport,mismatch));
-        front.swap(back);std::copy(changed,changed+200,previous);
-    }
-    puts("PASS changed blocks: 240 alternating buffers, sparse/reverted/unchanged pixels and odd viewport moves");
+    assert(merged && skipped && copied);
+    puts("PASS Planar8 dirty-rectangle synchronization: 400 alternating-buffer frames, merged/overlapping/full/empty/overflowing updates, exact frame verification");
 }
 int main() {
-    checkChangedBlocks();
     checkBufferSync();
     std::vector<uint8_t> source(640*480),storage(Planar8::bytes+64,0xa5);
     uint8_t* output=storage.data()+32;
