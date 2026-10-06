@@ -8,6 +8,12 @@ Use explicit `AMIGA_CONFIG=a1200-020` for baseline acceptance or
 `AMIGA_CONFIG=a4000-030-reference` for same-clock Mac comparisons. Normal
 interactive launch and the baseline regression keep their existing settings.
 Warp and maximum CPU speed are diagnostic aids, not performance evidence.
+`DIAG_RUN_DIR` also scopes the shared launcher's emulator PID record. Use a
+separate run directory and debugger port for simultaneous diagnostics; one
+run's startup/cleanup must not stop another's live emulator. Keep the shared
+binary/ELF unchanged until every active observer has completed. The launcher
+setup regression checks private ownership, the default directory and early
+rejection of an invalid run path.
 
 ## Emulator speed pilots — 2026-10-06
 
