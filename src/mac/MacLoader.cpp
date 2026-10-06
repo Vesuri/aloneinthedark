@@ -7330,6 +7330,85 @@ extern "C" __attribute__((noinline)) void aitdFrameProfileCheckpoint() { __asm__
 extern "C" __attribute__((noinline)) void aitdBookProfileCheckpoint() { __asm__ volatile("nop" ::: "memory"); }
 #endif
 
+// Pen state and line traps shared by the general and fast dispatch paths.
+static void penMoveTo(const uint8_t* userStack)
+{
+    uint8_t* port = (uint8_t*)read32(s_qdThePort);
+    if (port) {
+        write16(port + 48, read16(userStack));
+        write16(port + 50, read16(userStack + 2));
+        if(read16(port+6)&0xc000)write16(port+14,0x8000);
+    }
+    if (g_stageCDepth < 97) g_stageCDepth = 97;
+}
+static void penSize(const uint8_t* userStack)
+{
+    uint8_t* port = (uint8_t*)read32(s_qdThePort);
+    if (port) {
+        write16(port + 52, read16(userStack));
+        write16(port + 54, read16(userStack + 2));
+    }
+    if (g_stageCDepth < 58) g_stageCDepth = 58;
+}
+static void penMode(const uint8_t* userStack)
+{
+    uint8_t* port = (uint8_t*)read32(s_qdThePort);
+    if (port) write16(port + 56, read16(userStack));
+    if (g_stageCDepth < 59) g_stageCDepth = 59;
+}
+static bool penLineTo(uint32_t* regs,const uint8_t* userStack)
+{
+    GWorldSlot* world=gWorldForPort((uint8_t*)read32(s_qdThePort));
+    if(!(world ? lineGWorld(*world,int16_t(read16(userStack+2)),int16_t(read16(userStack)))
+               : lineWindow(int16_t(read16(userStack+2)),int16_t(read16(userStack)))))return false;
+    regs[0]=0;return true;
+}
+// Line(dh, dv): signed 16-bit pen offset. The caller has a port.
+static bool penLine(uint32_t* regs,const uint8_t* userStack)
+{
+    uint8_t* port=(uint8_t*)read32(s_qdThePort);
+    int16_t x=int16_t(uint16_t(read16(port+50)+read16(userStack+2)));
+    int16_t y=int16_t(uint16_t(read16(port+48)+read16(userStack)));
+    GWorldSlot* world=gWorldForPort(port);
+    if(!(world ? lineGWorld(*world,x,y) : lineWindow(x,y)))return false;
+    regs[0]=0;return true;
+}
+// RGBForeColor / RGBBackColor: select the inverse-table index for the port.
+static bool rgbColor(uint16_t trap,uint32_t* regs,const uint8_t* userStack)
+{
+    AitdProfileScope profile(kProfileColorLookup);
+    uint8_t* port=s_qdThePort ? (uint8_t*)read32(s_qdThePort) : 0;
+    GWorldSlot* world=gWorldForPort(port);
+    const uint8_t* rgb=(const uint8_t*)read32(userStack);
+    uint16_t index=0;
+    uint8_t* inverse=0;const uint8_t* colors=0;
+    if(!rgb)return false;
+    if(world) {
+        if(read16(*world->handles[0]+32)!=8
+           || read16(*world->handles[trap==0xaa14 ? 7 : 6])!=0)return false;
+        colors=*world->handles[2];inverse=*world->handles[26];
+    } else {
+        WindowSlot* window=windowSlot(port);
+        if(!window || window->dialog || !port[110] || read16(port+6)!=0xc000
+           || read16(window->pixelMap+32)!=8
+           || read32(window->pixelMap)!=(uint32_t)s_colorScreen
+           || read32(window->pixelMap+42)!=(uint32_t)&s_windowManagerColorsMaster
+           || read32(port+32) || read32(port+58) || read32(port+62))return false;
+        colors=s_windowManagerColors;inverse=s_mainDeviceITable;
+        if((!s_mainDeviceITableValid || read32(inverse)!=read32(colors))
+           && !makeITable(0,0,4))return false;
+    }
+    if(!GWorld8::colorIndex(colors,inverse,rgb,index))return false;
+    // Copy via the established byte primitive (m68k compiler copy defect).
+    uint16_t colorOffset=trap==0xaa14 ? 36 : 42;
+    for(uint16_t i=0;i<6;++i)MenuRecords::copyByte(port+colorOffset+i,rgb+i);
+    uint16_t indexOffset=trap==0xaa14 ? 80 : 84;
+    write32(port+indexOffset,index);
+    regs[0]=regs[1]=index;regs[8]=(uint32_t)(port+indexOffset);
+    regs[9]=(uint32_t)(inverse+6+(1UL<<(3*read16(inverse+4))));
+    return true;
+}
+
 static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
                                uint8_t* frame, uint8_t* userStack, bool inUserService=false)
 {
@@ -8517,36 +8596,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         return 5;
     }
     if(trap==0xaa14 || trap==0xaa15) { // RGBForeColor / RGBBackColor
-        AitdProfileScope profile(kProfileColorLookup);
-        uint8_t* port=s_qdThePort ? (uint8_t*)read32(s_qdThePort) : 0;
-        GWorldSlot* world=gWorldForPort(port);
-        const uint8_t* rgb=(const uint8_t*)read32(userStack);
-        uint16_t index=0;
-        uint8_t* inverse=0;const uint8_t* colors=0;
-        if(!rgb)goto unsupportedTrap;
-        if(world) {
-            if(read16(*world->handles[0]+32)!=8
-               || read16(*world->handles[trap==0xaa14 ? 7 : 6])!=0)goto unsupportedTrap;
-            colors=*world->handles[2];inverse=*world->handles[26];
-        } else {
-            WindowSlot* window=windowSlot(port);
-            if(!window || window->dialog || !port[110] || read16(port+6)!=0xc000
-               || read16(window->pixelMap+32)!=8
-               || read32(window->pixelMap)!=(uint32_t)s_colorScreen
-               || read32(window->pixelMap+42)!=(uint32_t)&s_windowManagerColorsMaster
-               || read32(port+32) || read32(port+58) || read32(port+62))goto unsupportedTrap;
-            colors=s_windowManagerColors;inverse=s_mainDeviceITable;
-            if((!s_mainDeviceITableValid || read32(inverse)!=read32(colors))
-               && !makeITable(0,0,4))goto unsupportedTrap;
-        }
-        if(!GWorld8::colorIndex(colors,inverse,rgb,index))goto unsupportedTrap;
-        // Copy via the established byte primitive (m68k compiler copy defect).
-        uint16_t colorOffset=trap==0xaa14 ? 36 : 42;
-        for(uint16_t i=0;i<6;++i)MenuRecords::copyByte(port+colorOffset+i,rgb+i);
-        uint16_t indexOffset=trap==0xaa14 ? 80 : 84;
-        write32(port+indexOffset,index);
-        regs[0]=regs[1]=index;regs[8]=(uint32_t)(port+indexOffset);
-        regs[9]=(uint32_t)(inverse+6+(1UL<<(3*read16(inverse+4))));
+        if(!rgbColor(trap,regs,userStack))goto unsupportedTrap;
         return 5;
     }
     if(trap==0xa8aa) { // SectRect(src1, src2, destination) -> Boolean
@@ -9446,12 +9496,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
             regs[0]=0;regs[8]=(uint32_t)s_qdThePort;regs[9]=(uint32_t)s_recordingPolygon;
             return 5;
         }
-        GWorldSlot* world=gWorldForPort((uint8_t*)read32(s_qdThePort));
-        if(world ? lineGWorld(*world,int16_t(read16(userStack+2)),int16_t(read16(userStack)))
-                 : lineWindow(int16_t(read16(userStack+2)),int16_t(read16(userStack)))) {
-            regs[0]=0;
-            return 5;
-        }
+        if(penLineTo(regs,userStack))return 5;
     }
     if (trap == 0xa892) {                    // Line(dh, dv): signed 16-bit pen offset
         uint8_t* port=s_qdThePort ? (uint8_t*)read32(s_qdThePort) : 0;
@@ -9472,11 +9517,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         }
 #endif
         if(!port || s_recordingPolygon)goto unsupportedTrap;
-        int16_t x=int16_t(uint16_t(read16(port+50)+read16(userStack+2)));
-        int16_t y=int16_t(uint16_t(read16(port+48)+read16(userStack)));
-        GWorldSlot* world=gWorldForPort(port);
-        if(world ? lineGWorld(*world,x,y) : lineWindow(x,y)) {
-            regs[0]=0;
+        if(penLine(regs,userStack)) {
 #ifdef AITD_POINT_LINE_PROBE
             if(g_pointLineStage==1) {g_pointLineStage=2;aitdPointLineAfter();}
 #endif
@@ -9491,12 +9532,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
                || read16(*s_recordingPolygon)!=10)goto unsupportedTrap;
             regs[9]=(uint32_t)port;
         }
-        if (port) {
-            write16(port + 48, read16(userStack));
-            write16(port + 50, read16(userStack + 2));
-            if(read16(port+6)&0xc000)write16(port+14,0x8000);
-        }
-        if (g_stageCDepth < 97) g_stageCDepth = 97;
+        penMoveTo(userStack);
         return 5;
     }
     if (trap == 0xa885) {                    // DrawText(text, firstByte, byteCount)
@@ -9521,18 +9557,11 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         }
     }
     if (trap == 0xa89b) {                    // PenSize(horizontal, vertical)
-        uint8_t* port = (uint8_t*)read32(s_qdThePort);
-        if (port) {
-            write16(port + 52, read16(userStack));
-            write16(port + 54, read16(userStack + 2));
-        }
-        if (g_stageCDepth < 58) g_stageCDepth = 58;
+        penSize(userStack);
         return 5;
     }
     if (trap == 0xa89c) {                    // PenMode(mode)
-        uint8_t* port = (uint8_t*)read32(s_qdThePort);
-        if (port) write16(port + 56, read16(userStack));
-        if (g_stageCDepth < 59) g_stageCDepth = 59;
+        penMode(userStack);
         return 3;
     }
     if (trap == 0xa87b) {                    // ClipRect(Rect*)
@@ -9932,6 +9961,63 @@ extern "C" uint8_t* aitdUserServiceDispatch(uint8_t* parked)
     return parked+cleanup;
 }
 
+#if defined(AITD_INTRO_SKIP) && !defined(AITD_INGAME)
+extern "C" volatile uint16_t g_introSkipState;
+#endif
+// Pen, colour and zone-selection traps are most of a gameplay frame's calls,
+// each a few field updates. The general dispatcher would reach them only
+// after every other manager's checks. They run the same per-trap services
+// (scene-frame end, effects, VBL tasks, presentation) and handlers; patched
+// traps, polygon recording and the measured book line take the general path,
+// as does any unsupported case, which reports its named stop there.
+static uint32_t dispatchFastTrap(uint16_t trap,uint32_t pc,uint32_t* regs,uint8_t* userStack)
+{
+    switch(trap) {
+    case 0xa893: case 0xa89b: case 0xa89c: case 0xa891: case 0xaa14:
+    case 0xa01b: case 0xa11a:
+#ifndef AITD_POINT_LINE_PROBE
+    case 0xa892:
+#endif
+        break;
+    default: return 0;
+    }
+#if defined(AITD_INTRO_SKIP) && !defined(AITD_INGAME)
+    if(g_introSkipState<2)return 0; // its controller observes LineTo
+#endif
+#ifdef AITD_INGAME
+    if(g_ingameStage<5)return 0;    // likewise until gameplay is reached
+#endif
+    const uint16_t index=trapIndex(trap);
+    if(s_trapAddresses[index] && s_trapAddresses[index]!=s_trapBuiltins[index])return 0;
+    if(s_recordingPolygon || !s_qdThePort)return 0;
+    if(trap==0xaa14 && s_segments[13].begin && pc==(uint32_t)s_segments[13].begin+0xb46)return 0;
+#ifdef AITD_PROFILE_FRAME
+    AitdTrapProfileScope trapProfile(trap);
+#endif
+#ifdef AITD_SCENE_FRAME_BATCH
+    // A scene frame begins only at a GWorld call; here it can only end.
+    if(g_macSceneFrameOwner)sceneFrameBoundary(trap,pc,regs);
+#endif
+    if(s_songInterruptError) {
+        if(const char* error=serviceNativeSong()) {
+            loaderStop(error,3);showLoaderStop();
+        }
+    }
+    serviceNativeEffects();
+    scheduleVBLTask();
+    presentMacRuntime();
+    switch(trap) {
+    case 0xa01b: case 0xa11a: return dispatchMemoryTrap(trap,regs) ? 1 : 0;
+    case 0xa893: penMoveTo(userStack);return 5;
+    case 0xa89b: penSize(userStack);return 5;
+    case 0xa89c: penMode(userStack);return 3;
+    case 0xa891: return penLineTo(regs,userStack) ? 5 : 0;
+    case 0xa892: return read32(s_qdThePort) && penLine(regs,userStack) ? 5 : 0;
+    case 0xaa14: return rgbColor(trap,regs,userStack) ? 5 : 0;
+    }
+    return 0;
+}
+
 // Private callable originals are AFFE, trap word, RTS. Validate their exact
 // range/alignment so original game bytes cannot masquerade as a port stub.
 extern "C" uint32_t aitdLineADispatch(uint32_t* regs, uint8_t* frame, uint8_t* userStack)
@@ -9958,7 +10044,8 @@ extern "C" uint32_t aitdLineADispatch(uint32_t* regs, uint8_t* frame, uint8_t* u
             userStack += 4; // Pascal parameters lie beyond the native return PC
         }
     }
-    uint32_t result = dispatchMacTrap(trap, builtin, regs, frame, userStack);
+    uint32_t result = builtin ? 0 : dispatchFastTrap(trap, pc, regs, userStack);
+    if (!result) result = dispatchMacTrap(trap, builtin, regs, frame, userStack);
     if (builtin && (trap & 0x0800)) {
         if(result==0xffffffffUL)s_userService.toolboxReturn=returnPC;
         else write32(userStack - 4 + result - 1, returnPC);
