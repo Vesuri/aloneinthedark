@@ -9,6 +9,13 @@ cd "$(dirname "$0")"
 # performance callers must select their fixed-clock configuration explicitly.
 AMIGA_CONFIG="${AMIGA_CONFIG:-a4000-030}"
 . ./config.sh || exit 1
+# The verified project-local ARM runtime accelerates only unattended maximum-
+# speed 030 checks. Fixed-clock acceptance and explicit FSUAE overrides retain
+# their selected emulator; normal interactive launch does not use this branch.
+if [[ -z "${FSUAE:-}" && "$AMIGA_CONFIG" == a4000-030 && "$(uname -m)" == arm64 && -x "$PWD/../tmp/fs-uae-arm-runtime/fs-uae" ]]; then
+  FSUAE="$PWD/../tmp/fs-uae-arm-runtime/fs-uae"
+  echo 'DIAG native ARM emulator (project-local verified pilot)'
+fi
 FSUAE="${FSUAE:-fs-uae}"
 GDB="${GDB:-m68k-amiga-elf-gdb}"
 ROM="${KICKSTART:-$HOME/Documents/RetroPie/BIOS/kick31.rom}"

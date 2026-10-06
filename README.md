@@ -126,6 +126,11 @@ Carnby game autonomously; its paired regression is documented in
 [development.md](docs/development.md).
 
 Unattended `amiga/diag_run.sh` uses maximum-speed `a4000-030` with warp by default.
+On this ARM Mac it also prefers the verified local native emulator bundle when
+available: the identical-binary pilot takes 32 versus 56 host seconds.
+Explicit `FSUAE` overrides and fixed-clock acceptance retain their emulator.
+See [development evidence](docs/development.md#emulator-speed-pilots--2026-10-06).
+A checkout without that ignored bundle uses the installed emulator.
 `AMIGA_CONFIG=a4000-060` selects an optional maximum-speed 68060 pilot;
 full 68060 compatibility remains unverified.
 Select `AMIGA_CONFIG=a1200-020` or `a4000-030-reference` explicitly for
