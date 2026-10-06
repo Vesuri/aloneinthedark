@@ -1,5 +1,6 @@
 -- Original room5 retreat, ordinary walking approach, kicks and completed enemy removal.
 -- Original game memory is read only; captures remain in tmp/m3-combat-approach/.
+local output=os.getenv('AITD_COMBAT_APPROACH_DIR') or 'tmp/m3-combat-approach'
 local mac=dofile('tools/mame_mac_input.lua')
 local cpu=manager.machine.devices[':maincpu'];local mem=cpu.spaces.program
 local activity=dofile('tools/mame_active_gameplay.lua')(mac,mem,'room5-approach')
@@ -22,7 +23,7 @@ local function room()return pixels({{180,160,0x814530},{290,245,0x7d6154},{400,3
 local function slot()return pixels({{190,180,0x84653b},{400,210,0x81a1a1},{200,345,0}})end
 local function capture(name)
  local raw,w,h=screen:pixels();assert(w==640 and h==480)
- local f=assert(io.open('tmp/m3-combat-approach/hallway-session-lamp-use-mac-'..name..'-rgb.bin','wb'));f:write(raw);f:close()
+ local f=assert(io.open(output..'/hallway-session-lamp-use-mac-'..name..'-rgb.bin','wb'));f:write(raw);f:close()
  print('DIALOG_STATE '..name..' ticks='..mem:read_u32(0x16a))
 end
 local function state(name,fn)
@@ -63,7 +64,7 @@ mac.run(function()
    capture(label)
    print(string.format('LAMP_USE_STATE phase=%s body=%d selected=%d track=%d',label,mem:read_i16(actor+2),mem:read_i16(world-0xd8a8),mem:read_i16(actor+0x52)))
    print(string.format('LAMP_STATE phase=%s flags=%X count=%d slot0=%d slot1=%d stage=%d room=%d',label,lamp(),mem:read_i16(world-0xd8a6),mem:read_i16(world-0xd8a4),mem:read_i16(world-0xd8a2),mem:read_i16(objects+13*52+28),mem:read_i16(objects+13*52+30)))
-   local f=assert(io.open('tmp/m3-combat-approach/hallway-session-lamp-use-'..label..'-a5.bin','wb'));for i=0,75615 do f:write(string.char(mem:read_u8(world-75616+i)))end;f:close()
+   local f=assert(io.open(output..'/hallway-session-lamp-use-'..label..'-a5.bin','wb'));for i=0,75615 do f:write(string.char(mem:read_u8(world-75616+i)))end;f:close()
   end
   report('initial')
   mac.key_down('Left Arrow');assert(mac.wait_for('turn toward lamp x',function()local b=mem:read_i16(actor+0x2a)&1023;return b>=240 and b<512 end,600));mac.key_up('Left Arrow');mac.wait(30);report('turned-left')
@@ -114,14 +115,15 @@ mac.run(function()
   local function align(axis,low,high,backForHigh)
    local offset=axis=='z' and 0x20 or 0x1c
    local alignStart=mem:read_u32(0x16a)
+   local function alive()return mem:read_i16(actor)==1 and mem:read_i16(actor+2)==12 and mem:read_i16(ptr(world-0xcbcc)+42)>0 end
    while mem:read_i16(actor+offset)<low or mem:read_i16(actor+offset)>high do
-    assert(mem:read_u32(0x16a)-alignStart<1800,'alignment deadline')
+    assert(alive(),'living alignment');assert(mem:read_u32(0x16a)-alignStart<1800,'alignment deadline')
     local back=(mem:read_i16(actor+offset)>high)==backForHigh
     local name=back and 'Down Arrow' or 'Up Arrow'
     mac.key_down(name)
-    assert(mac.wait_for('alignment step begun',function()return mem:read_i16(actor+0x3e)==(back and 256 or 254) end,600))
-    mac.key_up(name)
-    assert(mac.wait_for('alignment step completed',function()return mem:read_i16(actor+0x3e)==4 end,1200))
+    assert(mac.wait_for('alignment step begun',function()return mem:read_i16(actor+0x3e)==(back and 256 or 254) or not alive() end,600))
+    mac.key_up(name);assert(alive(),'living alignment step')
+    assert(mac.wait_for('alignment step completed',function()return mem:read_i16(actor+0x3e)==4 or not alive() end,1200));assert(alive(),'living released alignment')
     print(string.format('ALIGN_MAC axis=%s tick=%d position=%d',axis,mem:read_u32(0x16a),mem:read_i16(actor+offset)))
    end
   end
@@ -198,6 +200,10 @@ mac.run(function()
   move('Left Arrow','combat-retreat-south',function()local b=mem:read_i16(actor+0x2a)&1023;return b>=496 and b<=528 end)
   move('Up Arrow','combat-retreat-gap',function()return mem:read_i16(actor+0x20)>=650 end)
   assert(mem:read_i16(actor+0x30)==5,'retreat remains real room5')
+  if os.getenv('AITD_ROOM4_RECOVERY')=='1' then
+   dofile('tools/mame_room4_recovery.lua')(mac,mem,world,actor,objects,vars,move,align,report)
+   print('PASS original living room4 connecting-door recovery and enemy removal');activity.finish();dbg:command('quit');return
+  end
   local won=false
   for attempt=1,64 do
    if mem:read_i16(vars+114)<=0 then

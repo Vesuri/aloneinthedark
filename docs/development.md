@@ -6712,16 +6712,24 @@ heap change was pending until the owner recording above. Two narrower, ineffecti
 
 ## Living room-4 recovery evidence — 2026-10-06
 
-The read-only original observer confirms that room 5 to room 4 translates
-local coordinates by +4500 X and +100 Z. Actor offsets 0x22/0x26 retain
-shared scene coordinates; local positions from different rooms cannot be
-compared directly. Ordinary Fight turns reach multiples of 128 angle units.
-The retained prototype in `tmp/m3-room4-live-recovery10/` walks toward the
-enemy using scene coordinates, then holds Space/Up through actual enemy
-death and removal. Carnby remains alive with health 4 at that checkpoint.
-The complete route fails during the exit: object 57 is also active in room 4
-and attacks after object 62 is removed. Both the northward detour and direct
-eastward walk fail (`live-recovery10/` and `live-recovery11/`); neither is
-accepted recovery or a service loud stop. Continuous held attacks improve
-the earlier pulse protocol, which died during repeated walking approaches.
-Native room-4 combat and the subsequent living exit remain unverified.
+`AITD_ROOM4_RECOVERY=1 AITD_COMBAT_APPROACH_DIR=<capture directory>` selects
+`tools/mame_room4_recovery.lua` from `tools/mac_room5_approach.lua`. The exact
+maintained observer and `tools/check_room4_recovery.py` both pass in
+`tmp/m3-room4-recovery-maintained/`. The original enters room 4 alive through
+ordinary controls, walks toward the adjacent-room enemy, holds Space/Up until
+actual object-62 death/removal, aligns with released walking steps, runs east
+through the connecting door and reaches actual Open/Search in room 5.
+
+The checker verifies actor, health, inventory, action, target removal and
+logical frames at every destination. Adjacent-room actor offsets 0x22/0x26
+retain shared scene coordinates; room 5 to room 4 translates local coordinates
+by +4500 X and +100 Z. The captured enemy/hero scene differences agree with
+the reported aim. Fight turns reach multiples of 128 angle units.
+
+The original keeps Fight selected after the first O request while another
+enemy (object 57) is active in room 4; the actual Search state is reached after
+exiting. Small released walking steps correct the doorway position; a long
+held walk overshoots it. Repeated walking approaches die during combat, while
+the measured 800-unit approach followed by continuous attack finishes with
+health 12 at enemy removal. Original game/system memory remains read only.
+Native room-4 recovery and the subsequent living exit remain unverified.
