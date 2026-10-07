@@ -37,19 +37,78 @@ Converting only the published dirty rectangles, with the palette converted
 only on a new table seed, raises the idle rate from 7.12 to 7.59 fps
 (commit "Present only published dirty rectangles...").
 
-Three further prototypes measured cumulatively 7.76 (constant-time handle
-validation), 8.83 (fast path for pen/colour/zone traps) and 9.19 fps
-(CopyBits row strides and 16-byte spans), and a GetGWorld/SetGWorld fast path
-with a constant-time scene-frame end 9.62 fps. With them, original code is
-54% of the idle frame and C2P 13%. Their combined build passes the continuous
-first-floor circuit (eight living laps, 39,814 active ticks, zero dropped
-transitions) but fails the `intro` regression's first frame-state check, so
-none is retained yet; see M5.2. Walking measured 3.0 fps before any change.
+Four further changes are now retained individually: constant-time handle
+validation (7.76 fps), pen/colour/zone fast traps (8.83), CopyBits row strides
+and 16-byte spans (9.19), and GWorld fast traps with constant-time scene-frame
+completion (9.62). The 1,500-sample profile at 9.19 fps assigns 54% to original
+code and 13% to C2P; it predates the GWorld change. These rates include inactive
+diagnostic timing scopes and are not shipping-build rates.
 
-Verification of the retained change: the Planar8 host check decodes every
-frame of 400 alternating-buffer updates, and the `intro` regression with
-full-frame C2P verify passes: 956 frames, 944 partial, zero mismatches.
-Evidence and the sampler stay local in `tmp/perf-sampler/`.
+The intro bisect found an observer assumption, not a rendering regression.
+Even the first heap change reaches CODE 5+$1C94 with a complete queued frame
+waiting for its normal VBI flip (queued=9, presented=8, no outstanding dirty
+pixels). `amiga/intro.gdb` now captures the original logical state before
+resuming, then waits for that exact queued generation to publish. It requires
+unchanged queue generation, the expected buffer/copper swap and actual display
+registers. All four prototypes complete the uninterrupted intro and pass exact
+Mac pixels, palettes and AGA publication at all four checkpoints. The final
+prototype verifies 954 frames/942 partial updates, all 840 book batches and
+zero full-frame C2P mismatches.
+
+`SCENEFRAMEVERIFY=1` adds an independent comparison with the previous A6-chain
+walk. Its first disagreement exposed a real alias in that old test: the
+renderer has returned, but a sibling routine reuses its stack address, leaving
+a different saved return PC. Read-only original disassembly confirms adjacent
+calls at the caller (saved return PCs $313154 and $31315C in the observed run).
+The constant-time test correctly recognizes the completed render. The audit
+separately records that proven reuse case and fails any other disagreement.
+`amiga/scene_frame_verify.gdb` completes nine living laps, 37,518 active ticks,
+1,747,892 decisions, 22,071 reused frames, zero unexplained mismatches and zero
+dropped input. The independent Mac/native circuit checker passes every actual
+destination, inventory, door/action state and enemy removal. The audit is absent
+from ordinary builds.
+
+PAL and NTSC cursor fixtures pass five frames each, every pixel and colour,
+DMA ownership, inversion, movement, clipping, hiding, disabling and cleanup.
+There are zero conversion errors and late flips; cursor work ends on line 17.
+The fixture's palette-only edit now advances ctSeed, matching Color Manager.
+Its previous unchanged seed made its palette expectation incompatible with the
+seed-based production cache.
+
+Walking is measured with the maintained ordinary-input circuit, using fields
+and completed scene frames over five straight coordinate-gated legs through
+rooms 1, 4 and 5 (stages 2→3, 4→5, 8→9, 12→13 and 15→16). Fixed 68020 baseline
+`2cbc552` gives 2.75 fps, versus 3.29 with all retained changes (weighted by
+emulated fields, +19%). Actor coordinates and living/manual endpoints are
+recorded for every leg. The fixed 68030 comparison gives 2.94→3.95 fps (+34%)
+over those same five legs. The 68020 baseline/final counts are 97/1,763 and
+101/1,537 scene frames/fields; the 68030 counts are 100/1,700 and 99/1,253.
+A held native-key-latch experiment remained stationary
+and was rejected; it is not a walking measurement. The older 3.0 fps sampler
+run lacks this explicit displacement gate and is not used for the comparison.
+
+The fixed-clock 68030 three-change diagnostic idle benchmark gives 10.273 fps
+with installed Intel FS-UAE and 10.258 with the native ARM host build (same
+binary and effective CPU/RAM, 3,000 emulated fields, difference below 0.2%).
+This bounded cross-check supports using an explicit native-host override for
+these fixed-clock measurements; it does not change the launcher's default or
+establish general emulator equivalence. A final build with `PROBES=` removes
+all timing scopes while retaining only the ordinary Load controller and scene
+counters: fixed-clock 68020/68030 idle is 10.01/11.29 fps (610 scenes/3,048
+fields and 684/3,029). These still contain the small ordinary-Load controller;
+they are scope-free diagnostic rates, not a claim of shipping-build timing.
+A fresh 750-PC-sample 68020 profile attributes 58% to original code (54% Dark3),
+17% to trap dispatch including the fast path, 12% to presentation, 4% to native
+line work and 2% to CopyBits work. Among identifiable general-dispatch samples,
+CopyBits, RGBBackColor and LocalToGlobal are the most frequent; remaining
+native costs still warrant measured candidates, particularly rectangle C2P
+and common general traps. Line-A entry/exit, FMODE and TickCount remain
+unmeasured candidates; M5.2 is not complete. The local sampler now uses the
+actual 32-entry segment-array bound instead of reading past it. Clean builds
+pass no-float and symbol-retention audits.
+
+Evidence, prototype bisect captures, paired checker logs, cursor captures,
+walking routes and the sampler remain local in `tmp/perf-sampler/`.
 
 ## Emulator speed pilots — 2026-10-06
 

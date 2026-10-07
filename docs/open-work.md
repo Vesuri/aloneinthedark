@@ -122,20 +122,14 @@ required.
   - Candidates, from the 2026-10-07 idle-room profile (development.md):
     - C2P granularity: 32-pixel alignment converts 64 columns for the idle
       actor's 22-column box, and the Kalms wrapper restarts per row; C2P is
-      about 13% of the frame with the prototypes below;
-    - the measured prototypes in development.md (constant-time handle
-      validation, pen/colour/zone and GWorld trap fast paths, CopyBits strides,
-      constant-time scene-frame end): find which fails the `intro` frame-state
-      check, fix it, and retain each with its own measurement;
+      presentation is about 12% of the refreshed scope-free frame profile;
     - the Line-A entry/exit and the remaining general-path traps (CopyBits,
-      LocalToGlobal, EmptyRgn, ObscureCursor, SectRect, device-list queries);
+      RGBBackColor, LocalToGlobal, EmptyRgn, ObscureCursor, SectRect,
+      device-list queries), together with fast dispatch about 17% of the frame;
     - FMODE;
     - a TickCount fast path.
-  - Rerun the PAL/NTSC cursor fixtures after the rectangle synchronization
-    change, and the fixed-clock 68030 benchmark.
 
-  *Done when* the profile shows no remaining optimisation worth its risk, and the
-  frame rates on both configs are recorded in README.
+  *Done when* the profile shows no remaining optimisation worth its risk.
 - **M5.3 Interrupt budget and safe-point gap audit.**
   - Measure native music interrupt duration, delivery lateness and interrupt
     stack headroom during gameplay, including simultaneous note/effect changes.
