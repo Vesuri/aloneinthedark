@@ -1095,7 +1095,7 @@ alone does not authorize silently accepting them. Original MDRV code remains
 absent from the native runtime.
 
 
-## SysBeep call sites awaiting acceptance — 2026-10-07
+## SysBeep duration-1 contract — 2026-10-07
 
 The original trap census contains two SysBeep ($A9C8) instructions:
 
@@ -1105,9 +1105,26 @@ The original trap census contains two SysBeep ($A9C8) instructions:
   GetNewDialog. Only a null dialog result takes the beep branch, which pushes
   duration 1 before SysBeep and then returns zero. Successful creation skips it.
 
-These unchanged instruction bytes establish the argument layout and branch
-condition, not the original trap's complete register/stack contract or native
-Paula ownership. Existing S/M feedback captures do not exercise either site.
-A successful dialog route therefore cannot close this M4 requirement. Obtain
-an authorized original-call observation before enabling the native short-click
-handler; retain the unsupported-trap stop until that contract is verified.
+The owner-authorized `tools/mac_sysbeep_fixture.lua` redirects one original
+indirect call through guest RAM to the unchanged Engine wrapper. It changes no
+instructions, resources or CPU registers. This isolated contract fixture is not
+ordinary gameplay evidence. Live wrapper bytes match the original resource.
+Duration 1 consumes one stack word, returns D0=0 after three Mac ticks and
+preserves D1–D7/A1–A6; A0 is volatile.
+
+The native handler implements that duration as a short decaying Paula click,
+independent of game sound/music gain. It uses a free channel or steals the oldest
+music voice, retains game effect slots and buffers, and reserves its channel
+until the three-tick synchronous call returns. Interrupts remain enabled. It
+then disables DMA and frees the click; other durations retain `SYSBEEP DURATION`.
+The original system alert waveform is not reproduced.
+
+`amiga/sysbeep.gdb` with `BEEPPROBE=1 M5AUDIT=1 SONGPROBEID=135 PROBES=`
+exercises the actual Line-A trap on the fixed 68030 with music and a genuine
+active game effect. All measured preserved registers and stack consumption
+pass. Music advances, one music voice is stolen, the game effect survives, and
+Chip memory returns from its temporary 136-byte rounded allocation to exactly
+599,704 bytes with zero accounting errors. `tools/check_sysbeep.py` pairs the
+original and native captures, validates the click data and silence tail, and
+requires normal exits plus all ownership/cleanup checks. Evidence is under
+`tmp/m4/sysbeep/`; this establishes the contract, not listening acceptance.

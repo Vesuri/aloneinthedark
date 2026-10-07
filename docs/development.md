@@ -7063,3 +7063,22 @@ now admits all eight songs. See [music coverage](music-resource-coverage.md)
 for exact peaks, drops, steals and reproduction. Ordinary gameplay routes were
 not fabricated, and these isolated captures are not claimed as such. Audible
 all-song acceptance remains explicit in open work.
+
+
+## M4 SysBeep contract and Paula ownership — 2026-10-07
+
+The authorized RAM-only original fixture now invokes the unchanged Engine
+wrapper with duration 1, checks its live instruction bytes, and records the
+actual OS trap return: D0=0, stack +2, D1–D7/A1–A6 preserved, three Mac ticks.
+The native short click uses its own bounded channel owner, keeps game effect
+buffers intact, allows music interrupts during the wait, and disables DMA
+before freeing its Chip buffer. Unsupported durations remain named stops.
+
+The fixed-68030 actual-trap probe passes with music and a long genuine effect
+active. Its ledger returns to 599,704 live Chip bytes, zero accounting errors;
+all measured preserved registers pass, music ticks advance and the effect
+ownership snapshots remain identical. The paired checker also validates the
+bipolar decaying click and silent reload word. Original and native runs exit 0.
+The initial short-effect positive control and a launch without the toolchain
+PATH failed and are excluded; the final instrumented run passes. These are
+isolated contract fixtures, not ordinary gameplay or listening acceptance.

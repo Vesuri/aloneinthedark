@@ -915,6 +915,7 @@ static const TrapName s_trapNames[] = {
     {0xa1ad,"OS","GESTALT"},
     {0xa860,"EVENT MANAGER","WAITNEXTEVENT"},
     {0xa976,"EVENT MANAGER","GETKEYS"},
+    {0xa9c8,"SOUND MANAGER","SYSBEEP"},
     {0xa207,"FILE MANAGER","HGETVINFO"},
     {0xa40c,"FILE MANAGER","GETFINFO ASYNC"},
     {0xa608,"FILE MANAGER","HCREATE ASYNC"},
@@ -1464,7 +1465,7 @@ static void quiescePaulaChannel(uint16_t channel)
 // Shared restart protocol for intro and gameplay. The reload contains only
 // the defined loop, or a silent word for one-shot samples.
 static void startPaulaSample(uint8_t* data, const PaulaSample::Layout& layout,
-                             uint16_t channel, uint16_t period, uint16_t volume)
+                             uint16_t channel, uint16_t period, uint16_t volume, bool useGameGain=true)
 {
     uint16_t dma = (uint16_t)(DMAF_AUD0 << channel);
     volatile uint8_t* audio = (volatile uint8_t*)(0xdff0a0UL + channel * 16);
@@ -1472,7 +1473,7 @@ static void startPaulaSample(uint8_t* data, const PaulaSample::Layout& layout,
     *(volatile uint32_t*)(audio + 0) = (uint32_t)data;
     *(volatile uint16_t*)(audio + 4) = (uint16_t)(layout.attackBytes >> 1);
     setPaulaPeriod(channel, period);
-    volume=g_soundDriver.paulaVolume(volume);
+    if(useGameGain)volume=g_soundDriver.paulaVolume(volume);
     *(volatile uint16_t*)(audio + 8) = volume;
 #ifdef AITD_GAIN_PROBE
     g_gainProbeVolumes[channel]=volume;
@@ -1611,6 +1612,61 @@ static const char* playNativeEffect(uint8_t* packet,uint32_t& scratch)
     recordSongEffect(1,(uint16_t)channel,index);
 #endif
     scratch=(scratch&0xffff0000UL)|age; // Original +$3524 / +$3536.
+    return 0;
+}
+
+#ifdef AITD_BEEP_PROBE
+extern "C" uint32_t aitdSysBeepProbe();
+extern "C" __attribute__((noinline)) void aitdSysBeepStarted(uint8_t* chip,uint16_t channel,uint32_t allocated,uint16_t period)
+{__asm__ volatile("nop" :: "r"(chip),"r"(channel),"r"(allocated),"r"(period) : "memory");}
+#endif
+
+static const char* playSystemBeep(uint16_t duration)
+{
+    // The measured original caller requests duration 1. This system alert is
+    // a short click, independent of the game's S/M controls and mixer gain.
+    if(duration!=1)return "SYSBEEP DURATION";
+    static const uint8_t pcm[128]={
+        188,187,187,186,70,71,71,72,184,183,183,182,74,75,75,76,
+        180,179,179,179,78,78,79,79,176,176,175,175,82,82,83,83,
+        172,172,171,171,86,86,86,87,169,168,168,167,89,90,90,91,
+        165,164,164,163,93,94,94,94,161,161,160,160,97,97,98,98,
+        157,157,156,156,101,101,102,102,153,153,153,152,104,105,105,106,
+        150,149,149,148,108,109,109,110,146,145,145,145,112,112,113,113,
+        142,142,141,141,116,116,117,117,138,138,137,137,120,120,120,121,
+        135,134,134,133,123,124,124,125,131,130,130,129,127,128,128,128
+    };
+    PaulaSample::Layout layout;uint16_t period;uint32_t ticks;
+    const char* error=SoundEffect::describe(pcm,sizeof(pcm),8000UL<<16,0,0,
+                                           layout,period,ticks,g_paulaClock);
+    if(error)return error;
+    uint8_t* chip=(uint8_t*)M5_ALLOC_MEM(layout.allocated,MEMF_CHIP);
+    if(!chip)return "SYSBEEP CHIP MEMORY";
+    PaulaSample::convert(layout,chip);
+    int16_t channel=-1;
+    {
+        NativeAudioGuard guard;
+        for(uint16_t i=0;i<4;++i)if(g_soundDriver.channels[i]<0) {channel=i;break;}
+        if(channel<0)channel=stealSongChannel();
+        if(channel<0) {M5_FREE_MEM(chip,layout.allocated);return "SYSBEEP CHANNEL";}
+        // Neither song allocation nor effect allocation steals this temporary
+        // system owner. Game effect slots and sample identities stay intact.
+        g_soundDriver.channels[channel]=8;
+        startPaulaSample(chip,layout,channel,period,32,false);
+    }
+#ifdef AITD_BEEP_PROBE
+    aitdSysBeepStarted(chip,(uint16_t)channel,layout.allocated,period);
+#endif
+    const uint32_t began=g_macTicks;
+    // Original duration-1 SysBeep returned after three ticks. Keep interrupts
+    // enabled during this bounded wait so music deadlines continue normally.
+    while(g_macTicks-began<3) {__asm__ volatile("nop" ::: "memory");}
+    {
+        NativeAudioGuard guard;
+        quiescePaulaChannel((uint16_t)channel);
+        g_soundDriver.channels[channel]=-1;
+        M5_FREE_MEM(chip,layout.allocated);
+    }
     return 0;
 }
 
@@ -2157,7 +2213,13 @@ static const char* runNativeSongProbe()
                 uint8_t* packet=s_applicationZone.newPtr(26,true);
                 if(!packet)return "SONG PROBE PACKET";
                 auto& sample=g_song.samples[0].description;
-                write32(packet,(uint32_t)sample.pcm);write32(packet+4,199);
+                write32(packet,(uint32_t)sample.pcm);
+#ifdef AITD_BEEP_PROBE
+                if(sample.size<8000) {s_applicationZone.disposePtr(packet);return "SYSBEEP PROBE SAMPLE";}
+                write32(packet+4,8000);
+#else
+                write32(packet+4,199);
+#endif
                 write32(packet+8,8000UL<<16);write16(packet+24,0x8000);
                 uint32_t scratch=0,stolen=g_song.steals;
                 error=playNativeEffect(packet,scratch);s_applicationZone.disposePtr(packet);
@@ -2166,8 +2228,15 @@ static const char* runNativeSongProbe()
                    || g_soundDriver.effects[0].channel<0
                    || g_soundDriver.channels[g_soundDriver.effects[0].channel]!=6)return "SONG PROBE EFFECT PRIORITY";
                 effectStarted=true;g_songProbeEffects=1;
+
             }
         }
+#ifdef AITD_BEEP_PROBE
+        if(effectStarted) {
+            if(aitdSysBeepProbe()!=0)return "SYSBEEP PROBE RESULT";
+            return "SYSBEEP PROBE END"; // The observer stops before this boundary.
+        }
+#endif
         bool active=g_song.timeline.active;
         for(uint16_t i=0;i<6;++i)if(g_song.voices[i].chip)active=true;
         if(!active)break;
@@ -8407,6 +8476,12 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         if (exitChordPressed()) requestExitAfterTrap(frame);
         return 15;
     }
+    if(trap==0xa9c8) {                      // SysBeep(duration), Pascal word
+        driverStop=playSystemBeep(read16(userStack));
+        if(driverStop)goto unsupportedTrap;
+        regs[0]=0;
+        return 3;
+    }
     if(trap==0xa976) {                      // GetKeys(KeyMap*)
         if(!aitdMacGetKeys((uint8_t*)read32(userStack)))goto unsupportedTrap;
         regs[0]&=0xffff0000UL;              // Measured original D0.w result.
@@ -9999,6 +10074,7 @@ unsupportedTrap:
     if(trap==0xab1d && (uint16_t)regs[0]==15)routine="GETPIXBASEADDR";
     if(trap==0xab1d && (uint16_t)regs[0]==5)routine="GETGWORLD";
     if(trap==0xab1d && (uint16_t)regs[0]==6)routine="SETGWORLD";
+    if(trap==0xa9c8 && driverStop)routine=driverStop;
     if(trap==0xa0f8) { manager="SOUND DRIVER";routine=driverStop ? driverStop : "SELECTOR";g_trapSelector=read32(userStack+4); }
     if(trap==0xa0f7) { manager="DIALOG MANAGER";routine="HIDDEN DEFINITION DRAWING"; }
     if(trap==0xa9eb) { manager="SANE";routine="FP68K";g_trapSelector=read16(userStack); }

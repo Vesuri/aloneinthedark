@@ -51,3 +51,17 @@ aitdProbeGainSong:
     jsr (a0)
     lea 8(sp),sp
     rts
+
+    .section .text.aitdSysBeepProbe,"ax"
+    .even
+    .globl aitdSysBeepProbe
+aitdSysBeepProbe:
+    move.l #0x13572468,d0
+    move.l #0x2468ace0,d1
+    move.w #1,-(sp)
+    .globl aitdSysBeepProbeTrap
+aitdSysBeepProbeTrap:
+    .word 0xa9c8
+    .globl aitdSysBeepProbeReturn
+aitdSysBeepProbeReturn:
+    rts

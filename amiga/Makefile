@@ -356,6 +356,11 @@ EXTRA_DEFINES += -DAITD_HEAP_PROBE
 PROBE_SYMS_HEAP = g_heapProbeStage g_heapProbeDone
 endif
 
+ifeq ($(BEEPPROBE),1)
+SONGPROBE=1
+EXTRA_DEFINES += -DAITD_BEEP_PROBE
+endif
+
 ifeq ($(GAINPROBE),1)
 EXTRA_DEFINES += -DAITD_GAIN_PROBE
 PROBE_SYMS_CLOCK += g_gainProbeCCR g_gainProbeD1 g_gainProbeCount g_gainProbeVolumes
