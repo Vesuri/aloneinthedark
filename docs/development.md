@@ -7364,3 +7364,17 @@ See [the driver contract](sound-driver.md#selector-6-contract-investigation--202
 and `tools/check_driver6.py`; accepted captures are `tmp/m4/driver6/active`,
 `empty` and `native`. The host suite and MAME literal audit pass. Natural fade
 completion was not captured, so its timed-out recording is not acceptance.
+
+
+## M4 first-room sound triggers — 2026-10-07
+
+Read-only original/native observers now retain all 50 actors at each effect
+request. The repeated fixed-68030 route and complete lamp/door/stair/room-5
+checks pass. The maintained first-room audio checker pairs exact packets with
+original animation/object triggers, including both doors and all ten stair
+events. Extra total footsteps correspond to additional animation steps near
+controller stopping points; every captured native trigger matches an original
+one. The differing ambient samples are identified in the original archive and
+in active original life scripts' random(300) branches. Actual paired ambient
+playback remains open, separately from the accepted movement/door events.
+See [first-room evidence](audio-firstrooms.md) for captures and precise scope.

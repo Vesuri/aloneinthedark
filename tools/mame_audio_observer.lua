@@ -30,6 +30,12 @@ emu.register_periodic(function()
    assert(sample==0 or (size>0 and size<0x800000 and sample+size<=0x800000),'AUDIO / PCM EXTENT')
    if sample~=0 then for i=0,size-1 do hash=((hash~mem:read_u8(sample+i))*16777619)&0xffffffff end end
    effects=effects+1
+   local folder=os.getenv('AITD_CIRCUIT_DIR')
+   if folder then
+    local f=assert(io.open(folder..'/audio-effect-'..effects..'-actors.bin','wb'))
+    for i=0,50*160-1 do f:write(string.char(mem:read_u8(world-0xb292+i)))end
+    f:close()
+   end
    print(string.format('AUDIO_EFFECT seq=%u event=%u id=%X bytes=%u rate=%X loop=%u/%u pcm=%08X',sequence,effects,mem:read_u16(packet+24),size,mem:read_u32(packet+8),mem:read_u32(packet+12),mem:read_u32(packet+16),hash))
   end
   dbg.execution_state='run'

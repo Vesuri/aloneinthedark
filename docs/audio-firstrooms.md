@@ -31,15 +31,38 @@ lamp, stairs and hallway checks. Accepted local captures are
 `tmp/m4/gameplay/paired/check.log`. Earlier menu/partial-frame and combat-failed
 captures are diagnostic only.
 
-Audio parity is **not yet accepted**. From the original initial-attic checkpoint,
-seven packet identities also appear on native: source checksums `171F8B11`,
-`53D73494`, `4873D55C`, `B3655384`, `2C00645F`, `8767831D`, `1A9EDE1F`.
-Their sizes, rates and loop bounds match. Counts are respectively
-4/4, 11/11, 15/14, 2/2, 5/5, 5/5 and 2/2 (original/native).
-The native interval also includes two `235E2009` requests and one `E237BE27`;
-the latest original interval includes `F09B4483`. Original runs themselves
-vary around this startup interval. Align their startup state, timing and sound
-triggers before interpreting these differences or changing playback.
+The follow-up captures `tmp/m4/gameplay/mac-trigger` and `native-trigger`
+include all 50 actors at each sound request. The paired route passes again in
+`trigger-paired/check.log`. `tools/check_firstroom_audio.py` verifies the exact
+PCM checksum, size, rate, loops and packet ID against the original animation or
+door-object trigger. Its acceptance is **movement and door events**, not the
+remaining random ambient playback.
+
+Both sides produce the same ten stair events in order and the same two door
+sounds from object/life pairs 24/27 and 31/38. Every native footstep has the
+original life/animation/frame trigger with END_FRAME set. The Mac records 42
+steps; native records 45. The three extra native steps occur at `(4116,-3917)`
+near the lamp approach stop, `(7200,4040)` before turning toward the stairs, and
+`(2647,-376)` at the hallway approach stop. These are additional completed
+animation steps along the controllers' slightly different routes, not
+extra requests at an identical trigger. The earlier native one-step deficit
+does not recur. Whole-route counts are therefore not a playback parity test.
+
+The earlier native-only PCM checksums map exactly to original LISTSAMP entries
+58 (`E237BE27`, 27,115 bytes) and 59 (`235E2009`, 21,157 bytes); the original-only
+`F09B4483` maps to entry 61 (10,806 bytes). The local original archive decoder
+and byte-identical captures establish these identities; no original samples
+are committed. Original life scripts 528/529 contain a `random(300)` switch
+whose cases 0, 1 and 2 select those three samples. Both sides' captured actor
+arrays contain the corresponding bodyless ambient objects 278/279 with life
+528/529. Different random selections explain the unmatched ambient requests.
+The reference script interpretation is corroborated by the local FITD life
+interpreter; fresh captures must still pair actual playback of these ambient
+events before accepting the entire first-room sound requirement.
+
+The sample and script analysis is retained under `tmp/m4/gameplay/analysis`.
+The maintained checker validates complete actor captures and rejects unknown
+sound identities. Ambient events remain explicitly outside its parity claim.
 
 This route reaches no new unsupported driver selector. It is bounded coverage,
 not proof that the remaining static wrappers are unreachable in the whole game.
