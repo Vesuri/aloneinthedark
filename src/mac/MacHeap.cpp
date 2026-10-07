@@ -1,4 +1,4 @@
-#include "platform/amiga/M5Audit.h"
+#include "../platform/amiga/M5Audit.h"
 #ifndef __AMIGA__
 // The cross build force-includes SASCCompat, whose typedefs are the native ABI.
 #ifndef __mc68000__
