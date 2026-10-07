@@ -7348,3 +7348,19 @@ The full host suite, shell syntax and MAME literal audit also pass. Earlier
 failed gate captures remain diagnostic evidence and are not acceptance runs.
 Audible all-song acceptance, remaining driver reachability and first-room
 sound-event parity remain open.
+
+
+## M4 selector 6 music-only stop — 2026-10-07
+
+Implemented the original driver's music-voice stop after active and empty
+original fixtures established its exact full-state contract. The native
+fixed-68030 fixture verifies physical music DMA shutdown while a simultaneous
+effect keeps playing, unchanged sequencer/resource/effect state, exact voice
+ownership changes and the full return ABI. The original caller and all original
+instructions remain unchanged; isolated fixtures replace only the selector in
+guest RAM. `DRIVER6PROBE=1` is excluded from production. The emulator debugger's
+acknowledged-but-unapplied RAM writes cannot be used for these fixtures.
+See [the driver contract](sound-driver.md#selector-6-contract-investigation--2026-10-07)
+and `tools/check_driver6.py`; accepted captures are `tmp/m4/driver6/active`,
+`empty` and `native`. The host suite and MAME literal audit pass. Natural fade
+completion was not captured, so its timed-out recording is not acceptance.

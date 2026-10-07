@@ -56,7 +56,7 @@ required.
 
 - **M4.1 Remaining driver-interface coverage.**
   - Complete ordinary-game reachability for the [direct-call inventory](sound-driver.md#remaining-direct-call-inventory--2026-10-07),
-    especially selectors 1, 2, 6, 9–12, 14, 16, 23 and 25; implement each reached
+    especially selectors 1, 2, 9–12, 14, 16, 23 and 25; implement each reached
     contract against the original driver.
     Unimplemented selectors remain loud stops; original MDRV never runs.
 

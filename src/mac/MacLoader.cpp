@@ -124,6 +124,12 @@ SoundDriver g_soundDriver;
 MacHeap::Handle g_soundDriverHandle=0;
 MacHeap::Handle g_defaultPalette=0;
 volatile uint32_t g_soundDriverCalls=0;
+#ifdef AITD_DRIVER6_PROBE
+volatile uint16_t g_driver6ProbeStage=0;
+__attribute__((noinline)) void aitdDriver6Ready(uint32_t* regs,uint8_t* userStack)
+{ asm volatile("" : : "r"(regs),"r"(userStack) : "memory"); }
+#endif
+
 struct NativeEffect {
     EffectDma::Stream* stream;
     uint8_t* chip;
@@ -8110,7 +8116,14 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     bool sizeSelection=false;
     uint16_t fileTrap=0;
     const uint32_t querySelector=trap==0xa0f8 ? read32(userStack+4) : 0xffffffffUL;
-    const bool directDriverQuery=querySelector==4 || querySelector==15 || querySelector==20;
+    const bool directDriverQuery=
+#ifdef AITD_DRIVER6_PROBE
+        // Permit the isolated selector replacement on the normal user service.
+        (querySelector==4 && g_driver6ProbeStage) ||
+#else
+        querySelector==4 ||
+#endif
+        querySelector==15 || querySelector==20;
 #ifdef AITD_PROBE
 #ifdef AITD_PROFILE_FRAME
     extern volatile uint16_t g_profileState;
@@ -8303,6 +8316,22 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
                 aitdEffectLoopActionReady(regs,userStack);
             }
 #endif
+#ifdef AITD_DRIVER6_PROBE
+            if(inUserService && !g_driver6ProbeStage && read32(userStack+4)==4) {
+                bool music=false,effect=false;
+                for(uint16_t i=0;i<6;++i)
+                    if(g_soundDriver.songs[i].channel>=0 && g_song.voices[i].chip
+                       && (!g_song.voices[i].ends || (int32_t)(g_song.voices[i].ends-g_musicTicks)>2))music=true;
+                for(uint16_t i=0;i<2;++i)
+                    if(g_soundDriver.effects[i].active && g_effects[i].chip
+                       && (int32_t)(g_effects[i].ends-g_macTicks)>2)effect=true;
+                if(music && effect) {
+                    // Authorized isolated selector change in guest RAM only.
+                    write32(userStack+4,6);g_driver6ProbeStage=1;
+                    aitdDriver6Ready(regs,userStack);
+                }
+            }
+#endif
             uint32_t selector=read32(userStack+4),argument=read32(userStack+8);
             uint32_t scratch=argument,clockResult=0;uint16_t driverResult=0;
             if(selector==0)driverStop=startNativeSong(argument);
@@ -8409,6 +8438,15 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
                     scratch=0xffff;
                 }
             }
+            else if(selector==6) {
+                if(!g_soundDriver.initialized)driverStop="NOT INITIALIZED";
+                else {
+                    // Original +$30C4 stops only music voices. The sequencer,
+                    // song ownership and simultaneous effects remain intact.
+                    NativeAudioGuard guard;
+                    for(uint16_t i=0;i<g_soundDriver.songLimit;++i)stopNativeSongVoice(i);
+                }
+            }
             else if(selector==7) {
                 if(!g_soundDriver.initialized)driverStop="NOT INITIALIZED";
                 else releaseNativeSong(); // Original +$3F18: song ownership only.
@@ -8439,7 +8477,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
             }
             else driverStop="SELECTOR";
             if(!driverStop) {
-                ++g_soundDriverCalls;regs[0]=selector==15 ? clockResult : driverResult;regs[1]=selector==0 ? 12 : selector==24 ? 1 : (selector==19 || selector==22 || selector==17 || selector==18 || selector==20 || selector==13 || selector==15 || selector==4 || selector==5 || selector==7 || selector==8) ? scratch : 0;
+                ++g_soundDriverCalls;regs[0]=selector==15 ? clockResult : driverResult;regs[1]=selector==0 ? 12 : selector==24 ? 1 : (selector==19 || selector==22 || selector==17 || selector==18 || selector==20 || selector==13 || selector==15 || selector==4 || selector==5 || selector==6 || selector==7 || selector==8) ? scratch : 0;
                 if(!inUserService && directDriverQuery) {
                     uint16_t ccr=read16(frame);
                     if(selector==15)ccr=(ccr&0xffe0)|SoundDriver::clockCCR(clockResult);
@@ -10324,7 +10362,7 @@ extern "C" uint8_t* aitdUserServiceDispatch(uint8_t* parked)
     }
     if(driverSelector==15) {
         ccr=(ccr&0xffe0)|SoundDriver::clockCCR(read32(parked));
-    } else if(driverSelector==19 || driverSelector==4 || driverSelector==5 || driverSelector==7 || driverSelector==8) {
+    } else if(driverSelector==19 || driverSelector==4 || driverSelector==5 || driverSelector==6 || driverSelector==7 || driverSelector==8) {
         ccr=(ccr&0xffe0)|SoundDriver::songStatusCCR(read16(parked+2));
     } else if(!(trap&0x0800)) {
         ccr&=0xfff0;

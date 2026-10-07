@@ -642,6 +642,10 @@ INGAME=1
 EXTRA_DEFINES += -DAITD_GAME_INPUT
 PROBE_SYMS += g_gameInputStage g_gameInputTick g_gameInputTraps g_gameInputFightEvent
 endif
+ifeq ($(DRIVER6PROBE),1)
+EXTRA_DEFINES += -DAITD_DRIVER6_PROBE
+PROBE_SYMS += g_driver6ProbeStage
+endif
 ifeq ($(AUDIOSTOPPROBE),1)
 INGAME=1
 EXTRA_DEFINES += -DAITD_AUDIO_STOP_PROBE

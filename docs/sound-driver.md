@@ -1065,7 +1065,7 @@ and unsupported arguments to otherwise implemented selectors.
 | 2 | 3+$1352 | Unmeasured; loud stop |
 | 4 | 3+$145C, 3+$1FC8 | Measured subset implemented |
 | 5 | 3+$1400 | Measured subset implemented |
-| 6 | 3+$18CC, 3+$1ED2 | Unmeasured; loud stop |
+| 6 | 3+$18CC, 3+$1ED2 | Measured music-only stop implemented |
 | 7 | 3+$1292, 3+$140C | Measured subset implemented |
 | 8 | 3+$1DCC | Measured subset implemented |
 | 9 | 3+$1886 | Unmeasured; loud stop |
@@ -1088,7 +1088,7 @@ and unsupported arguments to otherwise implemented selectors.
 45 direct wrappers, 25 selector values; static presence is not gameplay reachability.
 
 
-The remaining unmeasured wrapper contracts are 1, 2, 6, 9, 10, 11, 12, 14,
+The remaining unmeasured wrapper contracts are 1, 2, 9, 10, 11, 12, 14,
 16, 23 and 25. Determine their ordinary-game reachability and measure any
 reached contract before enabling it. Selector 24 also has several static
 quality arguments beyond the measured $010B configuration; their presence
@@ -1206,3 +1206,34 @@ period, preserved ABI and all runtime-buffer cleanup. See
 The caller retains ownership of its source. Null-counter/zero-start loops and
 unsupported very old effect ages remain named stops; the former 131,070-byte
 packet restriction has been removed.
+
+
+### Selector 6 contract investigation — 2026-10-07
+
+The original driver’s music-only stop is now measured with isolated, authorized
+RAM fixtures (`tools/mac_driver6.lua`, `tools/check_driver6.py`). At a genuine
+selector 4 call, the fixture replaces only the selector stack word with 6.
+The original caller, driver instructions and CPU registers remain unchanged.
+Active and empty captures are in `tmp/m4/driver6/{active,empty}`. Both exit zero
+and pass complete 12,360-byte state comparisons and preserved-register checks.
+The active case stops three music voices while retaining one playing effect.
+Only the six music age/start longs at state+$24D2 become $FFFFFFFF, in addition
+to ordinary call bookkeeping. Sequencer, samples, effects and configuration
+remain unchanged. Return is D0=0, D1=the following stack argument, CCR=$04;
+D2–A6 and the caller-owned stack arguments are preserved.
+
+Selector 6 also appears in an ordinary fade path: Dark2 CODE 5+$3C62 and +$3F66
+invoke Core command 10, which starts Core+$1750’s fade-down. The callback at
+Core+$1E8A calls command 2 (driver 5 and 7), then driver 6 at +$1ED2 when gain
+becomes negative. Static presence does not establish that this exact branch
+was taken in a particular recording: the natural-input capture timed out and
+is excluded from acceptance. The isolated fixtures establish the contract.
+
+The paired native fixture passes on `a4000-030-reference`, using
+`DRIVER6PROBE=1` and `GDBSCRIPT=driver6.gdb`. `tmp/m4/driver6/native` contains
+the zero-exit capture. The checker verifies exact driver/song/effect snapshots,
+retained sequencer and resource state, stopped music DMA, continuing effect
+DMA, and the preserved ABI. The native fixture changes RAM inside a diagnostic build: this FS-UAE debugger
+acknowledges memory writes without applying them. Debugger-write attempts are
+excluded, as with the earlier fractional-effect fixture. Production builds
+must exclude the isolated fixture code.
