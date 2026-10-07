@@ -102,8 +102,10 @@ See the current [scene timings and comparison limits](docs/intro-comparison.md).
 
 **M4 audio is in progress.** All eight songs pass complete original/native
 event, timing and allocation comparisons. SysBeep, fractional effect rates and
-two-effect allocation/replacement have paired contract checks. Audible all-song
-acceptance, remaining driver paths, loops and long effect samples remain open.
+two-effect allocation/replacement, interrupt-driven loops and long effect
+samples have paired contract checks. The [audio regression](docs/audio-regression.md)
+collects these checks in one command. Audible all-song acceptance, remaining
+driver paths and ordinary first-room effect comparisons remain open.
 The deferred M1 system-window fixture still needs its specific rendered
 acceptance; M2 screenshots do not substitute for it. See [open work](docs/open-work.md)
 for the remaining scope and [development](docs/development.md) for evidence.

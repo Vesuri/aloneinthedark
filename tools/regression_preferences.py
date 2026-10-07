@@ -45,8 +45,12 @@ def isolated_preferences(prefs, archive_parent, label='prefs'):
 def main():
     env = os.environ.copy()
     env['AITD_REGRESSION_PREFS_ISOLATED'] = '1'
-    prefs = ROOT/'amiga/.run/dh1/prefs'
-    saves = ROOT/'amiga/.run/dh1/Saved Games'
+    run = os.environ.get('DIAG_RUN_DIR', '.run')
+    import re
+    if not re.fullmatch(r'\.run(?:-[a-z0-9][a-z0-9_-]*)?', run):
+        raise ValueError('invalid diagnostic directory')
+    prefs = ROOT/'amiga'/run/'dh1/prefs'
+    saves = ROOT/'amiga'/run/'dh1/Saved Games'
     with isolated_preferences(prefs, ROOT/'amiga/.run') as archive, \
             isolated_preferences(saves, ROOT/'amiga/.run', label='saves') as save_archive:
         print(f'Regression preferences isolated; fixture archive: {archive}', flush=True)

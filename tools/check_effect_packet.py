@@ -78,7 +78,15 @@ def check(folder,status,native=None,native_status=None):
         if native_packet[4:20]!=packet[4:20] or native_packet[24:]!=packet[24:]:raise ValueError('native packet')
         if (folder/'native-sample.bin').read_bytes()!=pcm or (folder/'native-chip.bin').read_bytes()!=bytes(v^128 for v in pcm)+b'\0\0':raise ValueError('native PCM and silence tail')
         period,duration,elapsed=map(int,one(n,r'^EFFECT_FRACTION period=(\d+) duration=(\d+) elapsed=(\d+)$'))
-        if period!=443 or duration!=31 or not 31<=elapsed<=33 or abs(elapsed-finish['elapsed'])>3:raise ValueError('paired pitch/duration')
+        if period!=443 or duration!=31:raise ValueError('paired pitch/duration')
+        if 'EFFECT_DMA_IRQ' in n:
+            # The sample ends when Paula reloads the silent word. Main-loop
+            # cleanup is later and must not stand in for audible duration.
+            from check_effect_dma import check as check_dma
+            check_dma(n,native_status)
+            if not 32<=elapsed<=36:raise ValueError('bounded effect cleanup')
+        elif not 31<=elapsed<=33 or abs(elapsed-finish['elapsed'])>3:
+            raise ValueError('paired pitch/duration')
     print(f'PASS isolated {mode}: original full state/ABI, counter progression and sample-tail completion'+('; paired native PCM, pitch, duration and cleanup' if native else ''))
 
 if __name__=='__main__':

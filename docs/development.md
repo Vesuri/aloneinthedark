@@ -7270,3 +7270,81 @@ ratio is about 60.12. Raw tick subtraction is unsuitable over this interval.
 Full host tests pass. This is an isolated long-packet contract, not evidence
 that an ordinary room uses such a sample or a listening sign-off. Remaining
 unmeasured loop/age variants retain explicit stops if reached.
+
+
+## M4 integrated audio observer corrections — 2026-10-07
+
+The new `amiga/regression.sh audio` runner is documented in
+[audio-regression.md](audio-regression.md). It isolates the selected diagnostic
+run directory's preferences and saves, records actual process statuses, and
+revalidates retained original evidence before comparing fresh native captures.
+The original song captures may be reused explicitly; native PASS records may not.
+
+Four issues found while integrating the previously separate fixtures concern
+observation, not changes to production playback:
+
+- SysBeep spans at least three Macintosh ticks, but PAL game ticks and the
+  independent CIA music timer have different phases. Three game ticks can span
+  two PAL fields. The observer now accepts two to four CIA ticks while retaining
+  duration, ABI, exact stealing, effect isolation and cleanup checks. The first
+  combined assertion failure did not identify its failing subcondition; focused
+  repeats measured three/three. The revised bound follows the clock sources.
+- The original S-toggle fixture previously triggered on an effect alone, which
+  sometimes stopped during a gap between held music notes. It now waits for a
+  real effect and at least three held notes before pressing S, then checks both
+  kinds of ownership again at the actual call. If the chord has ended by then,
+  it re-enables sound using S and retries ordinary input (at most 12 attempts).
+  Its checker still requires actual simultaneous music/effect ownership at
+  the call and unchanged music after stopping the effect. The focused
+  `tmp/m4/driver22/call-guard` capture passed with one effect and four held notes.
+- The fractional-rate checker previously treated main-loop cleanup as sample
+  completion. A run returned from cleanup at tick 34, outside its 31–33 bound.
+  The gate now uses the existing Paula IRQ probe: startup, completion of the
+  entire 4,096-byte attack, and two silent-word reloads. The focused rerun
+  measured offsets 82, 362898, 363080 and 363261 E-clocks at 709379 Hz; cleanup
+  began and ended at tick 35, against a tick-32 deadline. The sample itself
+  ended at the expected hardware time. Cleanup retains the gate's separate
+  32–36 tick bound; the old non-DMA checker remains strict. Corrupting attack
+  timing, dropping a silent reload, or extending cleanup to tick 50 is rejected.
+
+The focused fractional run and paired PCM/state/ABI checks pass in
+`tmp/m4/fraction-dma-{run.log,status}`. These headless observations do not
+establish audible all-song acceptance or first-room event parity.
+
+The active-loop replacement run in `tmp/m4/audio-vvQXJT` passed its actual ABI,
+PCM, ownership, live counter and complete cleanup checks but returned after two
+Mac ticks. The standalone checker had capped this at one. PAL emits a two-tick
+update every fifth field, so that cap depended on clock phase. Stop/replacement
+now permit at most two Mac ticks; this is a quantized return-latency bound, not
+an exact physical-time claim. The original contract still returns in its same
+observed tick, and every native state/PCM/cleanup check remains exact.
+
+
+The native active-stop controller needed the same call-time guard. Logical music
+voices can remain active without a Paula channel, and a real chord/effect can
+end while S waits for the next game input poll. Under `AUDIOSTOPPROBE` only, the
+controller now checks actual assigned sample/DMA ownership at the stop call,
+releases S, and either exposes the acceptance checkpoint or re-enables sound
+and retries ordinary keys. It does not alter original game state or registers;
+production builds exclude these helpers. `driver22_active.gdb` captures at the
+accepted call, retaining its exact music-state, ABI and cleanup checks.
+
+Both focused native runs in `tmp/m4/driver22/native-call-guard{,-repeat}` pass
+against the unchanged original checker. The repeat rejected four unsuitable
+calls before accepting a genuine simultaneous effect/music stop. The earlier
+`audio-LPYzTY` integrated run is excluded: its original retry succeeded, but
+its native call had no sounding music and the full checker correctly failed.
+
+
+The final integrated gate passes on `a4000-030-reference` in
+`tmp/m4/audio-yG0Dfm` (runner status 0). All eight native songs match 19,542
+original events, with interrupt-only progress, independently checked allocation
+and cleanup. The seven loop/long/action cases, two effect slots, fractional
+Paula timing, SysBeep and original/native active sound-off all pass. Original
+song captures were explicitly retained from `audio-AwOOII` and fully revalidated;
+all native cases and the original active-stop route were captured anew. The
+runner completed its clean production build and restored preferences/saves.
+The full host suite, shell syntax and MAME literal audit also pass. Earlier
+failed gate captures remain diagnostic evidence and are not acceptance runs.
+Audible all-song acceptance, remaining driver reachability and first-room
+sound-event parity remain open.

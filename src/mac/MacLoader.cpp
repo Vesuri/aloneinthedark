@@ -1539,22 +1539,52 @@ static void stopNativeEffect(uint16_t index)
 
 #ifdef AITD_AUDIO_STOP_PROBE
 extern "C" { volatile uint16_t g_audioStopProbeStage=0;volatile uint32_t g_audioStopProbeTick=0; }
+static uint16_t s_audioStopProbeAttempts=0;
 extern "C" __attribute__((noinline)) void aitdAudioStopProbeCheckpoint() {__asm__ volatile("nop" ::: "memory");}
+extern "C" __attribute__((noinline)) void aitdAudioStopProbeAccepted(uint32_t* regs,uint8_t* userStack)
+{__asm__ volatile("nop" :: "r"(regs),"r"(userStack) : "memory");}
+static bool audioStopProbeMusic()
+{
+    const uint32_t now=nativeMusicClock();
+    for(uint16_t i=0;i<6;++i) {
+        const auto& voice=g_song.voices[i];
+        const int16_t channel=g_soundDriver.songs[i].channel;
+        if(channel>=0 && channel<4 && voice.chip && voice.allocated
+           && (!voice.ends || (int32_t)(voice.ends-now)>2)
+           && (*(volatile uint16_t*)0xdff002&(1U<<channel)))return true;
+    }
+    return false;
+}
 static void audioStopProbeInput()
 {
-    // Ordinary input only: toggle sound during a genuine active gameplay effect.
-    // No original state or CPU registers are edited by this controller.
+    // Ordinary keys only. A chord can finish between S and its actual call;
+    // release, re-enable sound, and retry instead of accepting an empty mixer.
     if(!g_audioStopProbeStage && g_ingameStage==5 && g_macSceneFramesCompleted>=2) {
-        bool effect=false,music=false;
+        bool effect=false;
         for(uint16_t i=0;i<2;++i)effect=effect || (g_soundDriver.effects[i].active && g_macTicks-g_effects[i].started>=30 && (int32_t)(g_effects[i].ends-g_macTicks)>0);
-        for(uint16_t i=0;i<6;++i)music=music || g_soundDriver.songs[i].active;
-        if(effect && music) {
+        if(effect && audioStopProbeMusic()) {
+            if(++s_audioStopProbeAttempts>12) {g_audioStopProbeStage=0xffff;aitdAudioStopProbeCheckpoint();return;}
             aitdInputInjectProbeKey(0x21,true);g_audioStopProbeTick=g_macTicks;
             g_audioStopProbeStage=1;aitdAudioStopProbeCheckpoint();
         }
-    } else if(g_audioStopProbeStage==1 && g_macTicks-g_audioStopProbeTick>=120) {
-        aitdInputInjectProbeKey(0x21,false);g_audioStopProbeStage=2;
+    } else if(g_audioStopProbeStage==2 && g_macTicks-g_audioStopProbeTick>=120) {
+        aitdInputInjectProbeKey(0x21,true);g_audioStopProbeStage=3;g_audioStopProbeTick=g_macTicks;
+    } else if(g_audioStopProbeStage==3 && g_macTicks-g_audioStopProbeTick>=120) {
+        aitdInputInjectProbeKey(0x21,false);g_audioStopProbeStage=4;g_audioStopProbeTick=g_macTicks;
+    } else if(g_audioStopProbeStage==4 && g_macTicks-g_audioStopProbeTick>=120) {
+        g_audioStopProbeStage=0;
     }
+}
+static void audioStopProbeCall(uint32_t* regs,uint8_t* userStack)
+{
+    if(g_audioStopProbeStage!=1)return;
+    bool effect=false;
+    for(uint16_t i=0;i<2;++i)effect=effect || (g_soundDriver.effects[i].active && g_effects[i].chip
+        && (int32_t)(g_effects[i].ends-g_macTicks)>0);
+    aitdInputInjectProbeKey(0x21,false);g_audioStopProbeTick=g_macTicks;
+    if(effect && audioStopProbeMusic()) {
+        g_audioStopProbeStage=5;aitdAudioStopProbeAccepted(regs,userStack);
+    } else {g_audioStopProbeStage=2;aitdAudioStopProbeCheckpoint();}
 }
 #endif
 
@@ -8359,6 +8389,9 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
                 }
             }
             else if(selector==22) {
+#ifdef AITD_AUDIO_STOP_PROBE
+                audioStopProbeCall(regs,userStack);
+#endif
                 if(g_soundDriver.initialized)for(uint16_t i=0;i<2;++i)stopNativeEffect(i);
                 driverStop=g_soundDriver.stopEffects();
             }

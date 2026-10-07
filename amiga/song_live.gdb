@@ -39,6 +39,11 @@ if $song_id==134
  set $song_owned=28
  set $song_samples=14
 end
+if $song_id==135
+ set $song_events=3736
+ set $song_owned=41
+ set $song_samples=28
+end
 if $song_id==136
  set $song_events=602
  set $song_owned=33

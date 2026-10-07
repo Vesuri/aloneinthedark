@@ -71,8 +71,7 @@ required.
 - **M4.3 Sound effects and toggles.**
   - Effects through the driver's selectors take priority on the channels.
 
-  *Done when* the `audio` regression passes and effects in the first rooms match
-  MAME by event.
+  *Done when* effects in the first rooms match MAME by event.
 
 - **M4.3a Remaining effect packet/allocation variants.**
   - Resolve effect ages beyond $7FFE callbacks if reached. Keep unsupported

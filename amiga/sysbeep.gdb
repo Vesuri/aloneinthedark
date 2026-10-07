@@ -49,7 +49,11 @@ dump binary memory ../tmp/m4/sysbeep/native-chip.bin chip chip+allocated
 printf "SYSBEEP_NATIVE_STARTED channel=%u chip=%X allocated=%u period=%u dma=%X\n",channel,chip,allocated,period,*(unsigned short*)0xdff002
 tbreak aitdSysBeepProbeReturn
 continue
-if $sp!=$beep_sp+2 || $d0 || $d1!=$beep_d1 || $d2!=$beep_d2 || $d3!=$beep_d3 || $d4!=$beep_d4 || $d5!=$beep_d5 || $d6!=$beep_d6 || $d7!=$beep_d7 || $a1!=$beep_a1 || $a2!=$beep_a2 || $a3!=$beep_a3 || $a4!=$beep_a4 || $a5!=$beep_a5 || $a6!=$beep_a6 || g_macTicks-$beep_tick<3 || g_musicTicks-$beep_music<3 || g_song.steals!=$beep_steals+1
+printf "SYSBEEP_RESULT spDelta=%d d0=%X ticks=%u music=%u steals=%u expectedSteals=%u\n",$sp-$beep_sp,$d0,g_macTicks-$beep_tick,g_musicTicks-$beep_music,g_song.steals,$beep_steals+1
+# PAL game Ticks advance 1/1/1/1/2 per VBI. Three game ticks can
+# span two fields (~40ms), so the independent 60Hz CIA advances 2 or 3
+# times, not necessarily three. Preserve the complete ABI checks.
+if $sp!=$beep_sp+2 || $d0 || $d1!=$beep_d1 || $d2!=$beep_d2 || $d3!=$beep_d3 || $d4!=$beep_d4 || $d5!=$beep_d5 || $d6!=$beep_d6 || $d7!=$beep_d7 || $a1!=$beep_a1 || $a2!=$beep_a2 || $a3!=$beep_a3 || $a4!=$beep_a4 || $a5!=$beep_a5 || $a6!=$beep_a6 || g_macTicks-$beep_tick<3 || g_musicTicks-$beep_music<2 || g_musicTicks-$beep_music>4 || g_song.steals!=$beep_steals+1
  echo FAIL SYSBEEP ABI or interrupt progress\n
  detach
  quit 1

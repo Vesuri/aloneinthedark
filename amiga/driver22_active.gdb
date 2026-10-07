@@ -8,12 +8,20 @@ commands
  detach
  quit 1
 end
-tbreak aitdAudioStopProbeCheckpoint
+break aitdAudioStopProbeCheckpoint
+commands
+ silent
+ printf "AUDIO_STOP_KEY stage=%u tick=%u end=%u\n",g_audioStopProbeStage,g_macTicks,g_effects[0].ends
+ if g_audioStopProbeStage==65535
+  echo FAIL active stop retry limit\n
+  detach
+  quit 1
+ end
+ continue
+end
+tbreak aitdAudioStopProbeAccepted
 continue
-printf "AUDIO_STOP_KEY stage=%u tick=%u end=%u\n",g_audioStopProbeStage,g_macTicks,g_effects[0].ends
-tbreak dispatchMacTrap if trap==0xa0f8 && inUserService && *(unsigned long*)(userStack+4)==22
-continue
-if !g_audioStopProbeStage || g_ingameStage!=5
+if g_audioStopProbeStage!=5 || g_ingameStage!=5
  echo FAIL active stop ordinary gameplay input\n
  detach
  quit 1

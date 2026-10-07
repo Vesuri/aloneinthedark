@@ -9,6 +9,7 @@ fi
 deadline=60
 case "${1:-boot}" in
   resource-exit) exec bash ./resource_exit.sh ;;
+  audio) exec bash ./audio.sh ;;
   boot) flags=(); observer=boot.gdb ;;
   intro)
     flags=(C2PVERIFY=1 FIXEDRNG=1); observer=intro.gdb; deadline=1800

@@ -17,12 +17,22 @@ local function save(name,a,n)
 end
 local entry,state,call,ret,sp
 local armed,done=false,false;local phase='arm';local ignored=0
+local requested,rejected=false,false
 local function effects()
  if not state then return 0 end
  local count=0
  for i=6,7 do
   local active=mem:read_u16(state+0x24d2+i*4)
   if active>0 and active<0x8000 and ptr(state+0x22d2+i*4)~=0 then count=count+1 end
+ end
+ return count
+end
+local function held_music()
+ if not state then return 0 end
+ local count=0
+ for i=0,5 do
+  local active=mem:read_u16(state+0x24d2+i*4)
+  if active>0 and active<0x8000 then count=count+1 end
  end
  return count
 end
@@ -46,8 +56,10 @@ emu.register_periodic(function()
    dbg:command('bpclear');cpu.debug:bpset(call,'1','');phase='entry'
   elseif phase=='entry' then
    assert(cpu.state.PC.value==call);entry=ptr(cpu.state.A5.value-0x6ac);state=entry+0x4200
-   if effects()==0 then
-    ignored=ignored+1;print('DRIVER22_ACTIVE_SKIP inactive='..ignored)
+   if not requested or effects()==0 or held_music()==0 then
+    ignored=ignored+1
+    print(string.format('DRIVER22_ACTIVE_SKIP count=%u requested=%s effects=%u heldMusic=%u',ignored,tostring(requested),effects(),held_music()))
+    if requested then rejected=true end
    else
     sp=cpu.state.A7.value;ret=call+2
     print('DRIVER22_ACTIVE_BYTES '..bytes(call-8,12));print('DRIVER22_ACTIVE_ENTRY_BYTES '..bytes(entry,12))
@@ -69,8 +81,18 @@ mac.run(function()
   assert(mac.wait_for('genuine intro effect',function()return effects()>0 end,6000),'ACTIVE DRIVER22 / NO INTRO EFFECT')
   print('DRIVER22_ACTIVE_INPUT Space intro-effect');key('Space');mac.wait(120)
   key('Return');mac.wait(720);key('Right Arrow');key('Return');mac.wait(240);key('Return');mac.wait(180);key('Esc')
-  assert(mac.wait_for('genuine gameplay effect',function()return effects()>0 end,7200),'ACTIVE DRIVER22 / NO GAMEPLAY EFFECT')
-  print('DRIVER22_ACTIVE_INPUT S gameplay-effect');key('s');mac.wait(3600)
+  for attempt=1,12 do
+   assert(mac.wait_for('genuine gameplay effect and held chord',function()return effects()>0 and held_music()>=3 end,7200),'ACTIVE DRIVER22 / NO SIMULTANEOUS GAMEPLAY AUDIO')
+   requested=true;rejected=false
+   print(string.format('DRIVER22_ACTIVE_TRIGGER attempt=%u tick=%u effects=%u heldMusic=%u',attempt,mem:read_u32(0x16a),effects(),held_music()))
+   print('DRIVER22_ACTIVE_INPUT S gameplay-effect');key('s')
+   assert(mac.wait_for('actual sound-off call',function()return done or rejected end,1200),'ACTIVE DRIVER22 / S NOT CONSUMED')
+   if done then return end
+   requested=false
+   -- S was consumed after the chord ended. Re-enable sound through ordinary
+   -- input, then seek another real effect/chord; never manufacture voice state.
+   mac.wait(120);key('s');mac.wait(120)
+  end
   error('ACTIVE DRIVER22 / NO ACTIVE STOP')
  end)
  if not ok and not done then print('FAIL '..tostring(err));manager.machine:exit()end

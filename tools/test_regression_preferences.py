@@ -3,10 +3,37 @@
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
+from types import SimpleNamespace
+import regression_preferences
 from regression_preferences import isolated_preferences
 
 
 class Preferences(unittest.TestCase):
+    def test_selected_diagnostic_directory_is_restored_on_failed_run(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp); disk = root/'amiga/.run-audio/dh1'
+            for name in ('prefs', 'Saved Games'):
+                (disk/name).mkdir(parents=True)
+                (disk/name/'kept').write_bytes(name.encode())
+            ordinary = root/'amiga/.run/dh1/prefs'
+            ordinary.mkdir(parents=True); (ordinary/'kept').write_bytes(b'ordinary')
+            def run(args, env):
+                self.assertEqual(env['DIAG_RUN_DIR'], '.run-audio')
+                self.assertEqual(env['AITD_REGRESSION_PREFS_ISOLATED'], '1')
+                self.assertFalse((disk/'prefs').exists())
+                self.assertFalse((disk/'Saved Games').exists())
+                self.assertEqual((ordinary/'kept').read_bytes(), b'ordinary')
+                (disk/'prefs').mkdir(); (disk/'prefs/partial').write_bytes(b'fixture')
+                return SimpleNamespace(returncode=17)
+            with patch.object(regression_preferences, 'ROOT', root), \
+                    patch.dict('os.environ', {'DIAG_RUN_DIR': '.run-audio'}), \
+                    patch.object(regression_preferences.subprocess, 'run', side_effect=run):
+                self.assertEqual(regression_preferences.main(), 17)
+            for name in ('prefs', 'Saved Games'):
+                self.assertEqual((disk/name/'kept').read_bytes(), name.encode())
+            self.assertEqual((ordinary/'kept').read_bytes(), b'ordinary')
+
     def test_saves_and_directory_metadata_survive_failure(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp); saves = root/'Saved Games'; saves.mkdir()

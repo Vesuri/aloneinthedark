@@ -34,6 +34,8 @@ if g_macTicks<$fraction_end
  detach
  quit 1
 end
+set $fraction_stop_tick=g_macTicks
+printf "EFFECT_FRACTION_STOP elapsed=%u deadline=%u\n",$fraction_stop_tick-$fraction_tick,$fraction_end-$fraction_tick
 finish
 if g_soundDriver.effects[0].active || g_effects[0].chip || g_effects[0].allocated || g_effectStops!=1 || (*(unsigned short*)0xdff002&1)
  echo FAIL fractional sample/DMA cleanup\n
@@ -51,6 +53,7 @@ while $i<4
  printf "EFFECT_DMA_IRQ n=%u clocks=%u hz=%u\n",$i,g_effectDmaProbeIRQ[$i]-g_effectDmaProbeStarted,g_m5Audit.clockHz
  set $i=$i+1
 end
+echo PASS native fractional effect packet, playback and cleanup\n
 echo PASS native effect DMA interrupt observation and vector restoration\n
 detach
 quit 0

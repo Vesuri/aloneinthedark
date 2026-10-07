@@ -36,11 +36,13 @@ def check(folder,status,native=None,native_status=None):
         n=native.read_text()
         if native_status or re.search(r'FAIL|TIMEOUT|Error in|Program received signal',n) or n.count('PASS native active loop action ABI, counter, interrupt restoration and DMA/memory cleanup')!=1 or n.count('[Inferior 1 (Remote target) detached]')!=1:raise ValueError('native normal completion')
         values=tuple(map(int,one(n,r'^EFFECT_LOOP_ACTION action=(\d+) elapsed=(\d+) counter=(\d+) starts=(\d+) stops=(\d+)$')))
-        if values[0]!=action or values[1]>1 or values[2:]!=(65535,2 if action==17 else 1,1):raise ValueError('native immediate action/counter/ownership')
+        # One PAL field can advance the Mac tick counter by two. A one-tick
+        # cap rejects the same bounded operation solely because of clock phase.
+        if values[0]!=action or values[1]>2 or values[2:]!=(65535,2 if action==17 else 1,1):raise ValueError('native bounded action/counter/ownership')
         if action==17:
             expected_pcm=bytes(v^128 for v in (folder/'sample.bin').read_bytes())+b'\0\0'
             if (folder/'native-pcm.bin').read_bytes()!=expected_pcm:raise ValueError('replacement exact converted PCM and silent tail')
-        print(f'PASS native paired loop action {action}: immediate return, preserved counter/ABI, restored interrupt and complete DMA/memory cleanup')
+        print(f'PASS native paired loop action {action}: bounded return ({values[1]} Mac ticks), preserved counter/ABI, restored interrupt and complete DMA/memory cleanup')
     print(f'PASS original active loop action {action}: immediate return, preserved ABI/counter, exact full-state transition')
 if __name__=='__main__':
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('folder',type=Path);p.add_argument('--status',type=int,required=True);p.add_argument('--native',type=Path);p.add_argument('--native-status',type=int);a=p.parse_args()
