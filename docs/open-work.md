@@ -69,6 +69,9 @@ required.
   *Done when* all eight songs play recognizably within the documented
   four-channel voice-stealing policy.
 - **M4.3 Sound effects and toggles.**
+  - Compare the [paired first-room audio captures](audio-firstrooms.md) by
+    trigger: resolve startup/RNG timing differences and the differing footstep
+    count before accepting event parity. The underlying paired room route passes.
   - Effects through the driver's selectors take priority on the channels.
 
   *Done when* effects in the first rooms match MAME by event.

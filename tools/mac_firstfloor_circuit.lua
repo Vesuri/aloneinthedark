@@ -2,6 +2,7 @@
 -- Set AITD_CIRCUIT_ENDURANCE=1 for continuous ten-minute active coverage.
 -- AITD_CIRCUIT_DIR selects the existing local capture directory.
 -- AITD_CIRCUIT_LOAD=1 loads slot zero through ordinary game input.
+-- AITD_CIRCUIT_STOP_AT_ROOM5=1 ends at the first published room5 entrance.
 local repeatCircuit=os.getenv('AITD_CIRCUIT_ENDURANCE')=='1'
 local loadCheckpoint=os.getenv('AITD_CIRCUIT_LOAD')=='1'
 local folder=os.getenv('AITD_CIRCUIT_DIR') or (repeatCircuit and 'tmp/m3-endurance' or 'tmp/m3-circuit')
@@ -127,10 +128,35 @@ mac.run(function()
    return lamp()==0x8609 and mem:read_i16(world-0xd8a6)==2 and mem:read_i16(world-0xd8a4)==2 and mem:read_i16(world-0xd8a2)==13
   end,1800))
   state('returned-room',function()return pixels({{180,160,0x814530}}) and mem:read_i16(actor+0x3e)==4 and mem:read_i16(actor+0x52)==1 end);report('taken-lamp')
-  key('Return');mac.wait(180);report('inventory-open')
-  key('Down Arrow');mac.wait(120);report('lamp-selected')
-  key('Return');mac.wait(120);report('lamp-actions')
-  key('Return');mac.wait(180);report('lamp-first-action')
+  -- Hold ordinary keys until the published menu/selection acknowledges them.
+  -- Short frame-count pulses can fall entirely between original game polls.
+  local function key_until(name,label,ready,published)
+   mac.wait(2);mac.key_down(name)
+   local ok=mac.wait_for(label,ready,1800)
+   mac.key_up(name);if not ok then report(label.."-timeout")end;assert(ok,label);mac.wait(30)
+   if published then assert(mac.wait_for(label.." published",published,1800),label.." publication")end
+   report(label)
+  end
+  key_until('Return','inventory-open',function()
+   return pixels({{165,160,0xcaa169},{200,160,0},{320,245,0xc1c1b4}})
+  end)
+  key_until('Down Arrow','lamp-selected',function()return pixels({{287,186,0xffffff},{307,186,0xffffff}})end)
+  local function action_pane()
+   local raw,w,h=screen:pixels();assert(w==640 and h==480)
+   local rows={};for y=258,338 do rows[#rows+1]=raw:sub(4*(y*w+330)+1,4*(y*w+468))end
+   return table.concat(rows)
+  end
+  local beforeActions=action_pane()
+  key_until('Return','lamp-actions',function()return action_pane()~=beforeActions end)
+  key_until('Return','lamp-first-action',function()
+   return mem:read_i16(actor+2)==11 and mem:read_i16(world-0xd8a8)==13 and mem:read_i16(actor+0x3e)==287
+  end,function()
+   -- The original paints the restored scene progressively. Require the bottom
+   -- of the room and the actual message ink, not only its first restored row.
+   return pixels({{400,300,0x71584a}}) and
+    (pixels({{266,316,0xe2c7ae},{374,324,0xe2c7ae},{313,326,0xe2c7ae}}) or
+     pixels({{266,332,0xe2c7ae},{374,340,0xe2c7ae},{313,342,0xe2c7ae}}))
+  end)
   assert(mem:read_i16(actor+2)==11 and mem:read_i16(world-0xd8a8)==13 and mem:read_i16(actor+0x3e)==287,'lamp Use animation and selected object')
   mac.wait(120)
   assert(mem:read_i16(actor+0x3e)==287 and mem:read_i16(actor+0x52)==1,'empty lamp stance')
@@ -199,6 +225,9 @@ mac.run(function()
   if not entered then report('FAIL-room5-entry')end;assert(entered,'room5 entry')
   assert(mac.wait_for('room5 manual idle',function()return mem:read_i16(actor+0x3e)==4 and mem:read_i16(actor+0x52)==1 end,1200));mac.wait(30);report('first-floor-room5')
   print('PASS original southern first-floor room5 manual gameplay')
+  if os.getenv('AITD_CIRCUIT_STOP_AT_ROOM5')=='1' then
+   activity.finish();print('PASS original first-room audio route');dbg:command('quit');return
+  end
   report('room5-encounter-start')
   assert(mac.wait_for('Fight input gate',function()return mem:read_i16(world-0xd864)==1 end,1200))
   mac.key_down('f');mac.wait(120);mac.key_up('f');mac.wait(30)
