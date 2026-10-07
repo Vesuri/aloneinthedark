@@ -464,3 +464,101 @@ belong after OS restoration, as Vette's score file established.
 
 Framework modifications and upstream provenance are documented in
 [`framework/UPSTREAM.md`](../src/platform/amiga/framework/UPSTREAM.md).
+
+
+## M5 full-accounting profile — 2026-10-07
+
+Steady gameplay and resource/scene preparation are separate workloads. The
+steady sample starts after **ordinary Load completes (stage 5)**, settles for
+200 PAL fields, and reads the actor in the pinned application A5 world. Each
+run contains 2,000 randomly spaced debugger PC samples, all in room 3/camera 2.
+Every sample belongs to exactly one category; original segment ranges take
+precedence over native backtraces. These are statistical estimates, not sums
+of overlapping `AitdProfileScope` timers.
+
+| Exclusive phase, ms/completed frame | 68020 run A | 68020 run B | 68030 |
+| --- | ---: | ---: | ---: |
+| Original game code | 59.30 | 60.83 | 51.66 |
+| Drawing traps / geometry | 4.04 | 4.09 | 4.55 |
+| CopyBits | 0.00 | 0.00 | 3.03 |
+| C2P | 7.08 | 5.53 | 12.09 |
+| Palette | 0.00 | 0.00 | 0.00 |
+| Audio sequencer / interrupt | 0.00 | 0.00 | 0.00 |
+| System windows / file I/O | 0.00 | 0.00 | 0.00 |
+| Display / input interrupt | 0.00 | 0.00 | 0.00 |
+| Other presentation / synchronization | 0.20 | 0.20 | 0.30 |
+| Other native / trap services | 27.96 | 28.00 | 14.78 |
+| Unresolved / OS | 1.10 | 1.00 | 0.26 |
+| **Total** | **99.67** | **99.65** | **86.67** |
+
+Build: `FIRSTFLOORLOAD=1 INTROSKIP=1 PROBES=1`, without `M5AUDIT`.
+The 68020 uses fixed 14.18758 MHz; the accepted 68030 uses 15.6672 MHz.
+The latter uses the verified ARM FS-UAE build, the former the Intel build.
+The scope-free rates in README are the performance benchmark; this table
+includes instrumentation. Zero means **no sampled PC attributed**, not zero
+execution cost. In particular, the absence of 68020 CopyBits samples despite
+its known calls shows a sampling/backend limitation; do not infer that copying
+is free or that C2P is slower on 68030 from this table. Native callers and
+inlined/unresolved work remain in their stated categories. Rare interrupts
+need the separate direct E-clock audit below. Host-time sampling can be biased
+by emulator throughput; two repeats establish repeatability, not cycle accuracy.
+
+`tools/sample_gameplay.py` is the read-only PC sampler; use
+`amiga/gameplay_sample.gdb` after connecting at `MacLoader::run` in a matching
+build with the original first-floor save installed. Pass `--gdb`, `--elf`,
+`--connect`, `--setup`, `--out` and `--samples 2000`; run from `amiga/`.
+`tools/summarize_gameplay_profile.py <folder>` verifies the room and assigns
+all samples. Evidence: `tmp/m5/acceptance/gameplay020-{a,b}` and `gameplay030`.
+Earlier samples that read the stale `s_currentA5` were excluded and repeated.
+
+### Complete transitions and the owner's recording
+
+The historical intro measurements above bracket complete preparation calls,
+not an arbitrary loading sample presented as FPS. They identify three distinct
+costs: repeated OS/file-window traffic at room entry; region construction and
+heap bookkeeping during cold frog-mask preparation; and drawing/compatibility
+work in the first hallway frame. In the measured room-entry interval, 152
+opens, 152 closes and 460 reads account for about 36% of the instrumented span;
+drawing is small there. The original game performs packed-data decompression
+itself, so that CPU work belongs to original game code, not the port's file
+read time. No separate measured decompressor subtotal is available; the
+unattributed remainder must not be labelled decompression by subtraction.
+The cold-mask and first-frame inclusive subtotals above overlap and are not
+added to make a false 100% total.
+
+The owner's 2026-10-02 recording has a 7.95-second menu-to-landscape black
+interval (48.467–56.417), and a nearly static 14.7-second pre-stair span
+(334.2–348.9). It predates the fixes and uses a different CPU configuration.
+The later same-clock 68030 comparison records mansion entry at 8.82 seconds
+versus 8.05 on Mac, with no 15-second camera transition; it supersedes that
+recording for current timing. The unrelated white cache window and missing
+recorded audio provide no game-performance or audio evidence. See
+[intro-comparison.md](intro-comparison.md) and the rendered-acceptance section
+in development.md for checkpoint definitions and recording provenance.
+
+### Cold song preparation: the remaining large pause
+
+A fixed-68020 natural combat/death/restart route measures disjoint E-clock
+intervals around resource ownership/loading, MoveHHi, locking/code-view
+refresh, MIDI preflight, and PCM conversion. The rest is explicit residual
+preparation overhead. `M5AUDIT=1 DEATHROUTE=1 INTROSKIP=1 SONGCOST=1` and
+`amiga/m5_song_prepare.gdb` retain the measured diagnostic configuration;
+these are not scope-free shipping timings. Identical resource/note/sample
+counts before and after establish the same cold-song workload.
+
+| Song | Before total, s | After total, s | After MoveHHi, s | Resource, s | Lock/views, s | Decode, s | PCM, s | Other, s |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| MONSTER (136) | 12.658 | 3.869 | 3.102 | 0.186 | 0.019 | 0.165 | 0.183 | 0.215 |
+| FIGHT (132) | 24.467 | 7.134 | 6.003 | 0.213 | 0.019 | 0.295 | 0.244 | 0.360 |
+| BDISK2 (131) | 9.477 | 3.106 | 2.184 | 0.092 | 0.010 | 0.332 | 0.154 | 0.334 |
+
+MoveHHi originally rotated entire physical spans with three byte reversals,
+including two needless reversals when the target already occupied the final
+position. It now rotates aligned longwords and skips that no-op. Final handle
+addresses, neighbouring order, locked barriers and free-space accounting stay
+unchanged. This removes about 71% of cold FIGHT preparation and 67% of BDISK2
+preparation. Resource conversion was already performed once before playback;
+it was not the dominant source of these pauses. The remaining movement cost
+is documented; further algorithm changes are not required for this performance
+pass. Heap integrity/fragmentation tests under ASan/UBSan, native Memory Manager
+traps, and the independently checked natural death/restart route pass.
