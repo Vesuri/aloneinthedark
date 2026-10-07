@@ -7082,3 +7082,27 @@ bipolar decaying click and silent reload word. Original and native runs exit 0.
 The initial short-effect positive control and a launch without the toolchain
 PATH failed and are excluded; the final instrumented run passes. These are
 isolated contract fixtures, not ordinary gameplay or listening acceptance.
+
+
+## M4 fractional-rate effect packets — 2026-10-07
+
+The authorized original packet fixture truncates the first owned effect to
+4,096 bytes and requests 8,000.5 Hz. The unchanged Mac driver accepts it,
+returns the measured selector-17 ABI and completes at the sample end after
+30 ticks. The full 12,360-byte driver transition matches the resampling step.
+
+The native descriptor now rounds 16.16 rates to Paula periods exactly at load
+time using 32-bit integer arithmetic. Integer-rate behavior is unchanged; no
+conversion or division was added to the interrupt. The fixed-68030 paired
+fixture uses identical PCM, period 443 and a 31-tick DMA duration, releasing the
+sample/channel at elapsed tick 32. Original and native exits are zero;
+`check_effect_packet.py` validates exact PCM, silence tail, ABI and cleanup.
+Host checks compare fractional-rate arithmetic against a 64-bit oracle across
+PAL/NTSC periods, including rejected period boundaries. The native link's
+no-float and symbol audits pass.
+
+The emulator debugger acknowledged RAM writes without applying them, including
+with binary downloads disabled. Those attempts fail and are excluded. The
+maintained `EFFECTFRACTIONPROBE=1` fixture edits only the first packet in guest RAM
+inside the native test build; it never changes original code/resources and is
+absent from production. `amiga/effect_fraction.gdb` observes the actual call.

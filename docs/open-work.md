@@ -75,7 +75,7 @@ required.
   MAME by event.
 
 - **M4.3a Remaining effect packet/allocation variants.**
-  - Measure and implement loop boundaries/counter updates, fractional rates,
+  - Measure and implement loop boundaries/counter updates,
     samples beyond one DMA segment and occupied effect/Paula voice selection.
     A free second effect slot must also reproduce D1.W from the preceding active
     slot; resolve the `EFFECT SECOND SLOT` loud stop against the original.

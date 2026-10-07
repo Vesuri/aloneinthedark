@@ -15,10 +15,24 @@ inline const char* describe(const uint8_t* pcm,uint32_t bytes,uint32_t rate,
                             uint32_t& ticks,uint32_t paulaClock) {
     if(!pcm || !bytes || bytes>131070)return "EFFECT SAMPLE SIZE";
     if(loopStart || loopEnd)return "EFFECT LOOP";
-    if(!rate || (rate&0xffff))return "EFFECT RATE";
+    if(rate<65536)return "EFFECT RATE";
     if(paulaClock!=3546895 && paulaClock!=3579545)return "EFFECT CLOCK";
     uint32_t hz=rate>>16;
-    uint32_t clocks=(paulaClock+hz/2)/hz;
+    uint32_t clocks;
+    if(!(rate&65535))clocks=(paulaClock+hz/2)/hz;
+    else {
+        // Round (clock << 16) / 16.16 rate exactly, once at load time.
+        // Long division keeps the 38-bit numerator out of runtime 64-bit
+        // helpers; no division or conversion occurs in the audio interrupt.
+        uint32_t remainder=paulaClock>>16,low=paulaClock<<16;
+        clocks=0;
+        for(uint16_t i=0;i<32;++i) {
+            bool carry=(remainder&0x80000000UL)!=0;
+            remainder=(remainder<<1)|(low>>31);low<<=1;clocks<<=1;
+            if(carry || remainder>=rate) {remainder-=rate;clocks|=1;}
+        }
+        if(remainder>=((rate>>1)+(rate&1)))++clocks;
+    }
     if(clocks<124 || clocks>65535)return "EFFECT PERIOD";
     layout={};layout.pcm=pcm;layout.size=bytes;layout.rate=(uint16_t)hz;
     layout.attackBytes=(bytes+1)&~1UL;layout.reloadOffset=layout.attackBytes;

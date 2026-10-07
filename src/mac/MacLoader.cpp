@@ -1560,6 +1560,11 @@ static bool effectRange(uint8_t* pointer,uint32_t bytes)
 
 static int16_t stealSongChannel();
 
+#ifdef AITD_EFFECT_FRACTION_PROBE
+extern "C" __attribute__((noinline)) void aitdEffectFractionReady(uint32_t* regs,uint8_t* userStack)
+{__asm__ volatile("nop" :: "r"(regs),"r"(userStack) : "memory");}
+#endif
+
 static const char* playNativeEffect(uint8_t* packet,uint32_t& scratch)
 {
     AitdProfileScope profile(kProfileAudio);
@@ -8182,7 +8187,21 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
                 uint8_t* packet=(uint8_t*)argument;
                 if(!packet || (argument&1))driverStop="VOICE PACKET";
                 else driverStop=g_soundDriver.initialize(read16(packet),read16(packet+2),read16(packet+4),g_macTicks);
-            } else if(selector==17)driverStop=playNativeEffect((uint8_t*)argument,scratch);
+            } else if(selector==17) {
+#ifdef AITD_EFFECT_FRACTION_PROBE
+                // Authorized isolated RAM fixture. Original code/resources stay
+                // unchanged; the production build never edits this packet.
+                uint8_t* packet=(uint8_t*)argument;
+                if(g_effectStarts || !effectRange(packet,26) || read32(packet+4)<4096)driverStop="FRACTION PROBE PACKET";
+                else {
+                    write32(packet+4,4096);write32(packet+8,0x1f408000UL);
+                    aitdEffectFractionReady(regs,userStack);
+                    driverStop=playNativeEffect(packet,scratch);
+                }
+#else
+                driverStop=playNativeEffect((uint8_t*)argument,scratch);
+#endif
+            }
             else if(selector==18) {
                 uint8_t* packet=(uint8_t*)argument;
                 if(!g_soundDriver.initialized)driverStop="NOT INITIALIZED";

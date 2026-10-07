@@ -68,7 +68,7 @@ int main() {
     assert(!converted[30783] && !converted[30784] && !converted[30785]);
     assert(SoundEffect::describe(pcm.data(),0,8000u<<16,0,0,layout,period,ticks,3546895));
     assert(SoundEffect::describe(pcm.data(),131071,8000u<<16,0,0,layout,period,ticks,3546895));
-    assert(SoundEffect::describe(pcm.data(),4,(8000u<<16)|1,0,0,layout,period,ticks,3546895));
+    assert(!SoundEffect::describe(pcm.data(),4,(8000u<<16)|1,0,0,layout,period,ticks,3546895));
     assert(SoundEffect::describe(pcm.data(),4,1u<<16,0,0,layout,period,ticks,3546895));
     assert(SoundEffect::describe(pcm.data(),4,65535u<<16,0,0,layout,period,ticks,3546895));
     assert(SoundEffect::describe(pcm.data(),4,8000u<<16,1,3,layout,period,ticks,3546895));
@@ -83,6 +83,13 @@ int main() {
         assert(VideoTiming::startLine(pal)==(pal ? 72 : 44));
         assert(VideoTiming::stopLine(pal)==(pal ? 272 : 244));
         assert(VideoTiming::diwHigh(pal)==(pal ? 0x2100 : 0x2000));
+        for(uint32_t hz=54;hz<=30000;hz+=37) for(uint32_t fraction: {1u,32768u,65535u}) {
+            uint32_t rate=(hz<<16)|fraction;
+            uint64_t exact=((uint64_t(clock)<<16)+rate/2)/rate;
+            const char* error=SoundEffect::describe(pcm.data(),4096,rate,0,0,layout,period,ticks,clock);
+            assert(bool(error)==(exact<124 || exact>65535));
+            if(!error)assert(period==exact && ticks==(uint64_t(4096)*period*60+clock-1)/clock);
+        }
         for(unsigned hz: {55u,8000u,11025u,22050u,28000u}) {
             assert(!SoundEffect::describe(pcm.data(),131070,hz<<16,0,0,layout,period,ticks,clock));
             assert(period==(clock+hz/2)/hz);

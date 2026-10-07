@@ -1128,3 +1128,18 @@ Chip memory returns from its temporary 136-byte rounded allocation to exactly
 original and native captures, validates the click data and silence tail, and
 requires normal exits plus all ownership/cleanup checks. Evidence is under
 `tmp/m4/sysbeep/`; this establishes the contract, not listening acceptance.
+
+
+## Fractional raw-effect rates — 2026-10-07
+
+Selector 17 accepts a 16.16 sample rate. The authorized original 8,000.5 Hz
+packet fixture returns the same ABI and initializes the full voice state with
+step `((rate >> 5) / 11127) << 5`. Its 4,096-byte sample completes in 30 Mac
+ticks. Native Paula uses the nearest hardware period at the requested pitch,
+consistent with the existing integer-rate policy: period 443 PAL, 31 ticks of
+DMA, cleanup at tick 32. The paired fixture compares the entire original state,
+identical PCM conversion, natural sample end, native call ABI and freed DMA.
+The fixture sources and checker are `tools/mac_effect_fixture.lua`,
+`tools/check_effect_packet.py` and `amiga/effect_fraction.gdb`; native builds use
+`EFFECTFRACTIONPROBE=1 PROBES=`. Evidence is `tmp/m4/effects/fraction/`.
+Unsupported loop/segment/allocation variants remain named stops.
