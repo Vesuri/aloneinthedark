@@ -17,10 +17,14 @@ struct M5Audit {
     uint32_t allocations,failures,accountingErrors,zonePeak[2];
     uint32_t traps,maxGap,gapFrom,gapTo,gapTrap,gapMusicTicks;
     uint32_t irqCalls,irqClocks,irqMaxClocks,irqMinInterval,irqMaxInterval,irqMaxLateEClocks;
+    uint32_t noteCount,noteLateCount,noteMaxLate;
+    uint32_t activeGap,activeGapTicks,activeGapSong;
 } g_m5Audit={};
+uint32_t g_m5NoteLog[1024][5]={};
 }
 static uint32_t s_lastTrap,s_lastPC,s_lastMusic,s_irqBegan,s_lastIRQ;
 static bool s_initialized;
+static uint16_t s_lastSong;
 struct Device* TimerBase=0;
 static struct timerequest s_request;
 static struct MsgPort* s_port;
@@ -84,14 +88,29 @@ void aitdM5Zone(const void* base,unsigned long used) {
     if(base==g_applicationZoneBase && used>g_m5Audit.zonePeak[0])g_m5Audit.zonePeak[0]=used;
     if(base==g_systemZoneBase && used>g_m5Audit.zonePeak[1])g_m5Audit.zonePeak[1]=used;
 }
-void aitdM5Trap(unsigned long pc,unsigned short trap) {
+void aitdM5Trap(unsigned long pc,unsigned short trap,unsigned short song) {
     uint32_t now=aitdM5Clock();
     if(s_lastTrap && now-s_lastTrap>g_m5Audit.maxGap) {
         g_m5Audit.maxGap=now-s_lastTrap;g_m5Audit.gapFrom=s_lastPC;
         g_m5Audit.gapTo=pc;g_m5Audit.gapTrap=trap;
         g_m5Audit.gapMusicTicks=g_musicTicks-s_lastMusic;
     }
+    if(s_lastTrap && song && song==s_lastSong && now-s_lastTrap>g_m5Audit.activeGap) {
+        g_m5Audit.activeGap=now-s_lastTrap;g_m5Audit.activeGapTicks=g_musicTicks-s_lastMusic;
+        g_m5Audit.activeGapSong=song;
+    }
+    s_lastSong=song;
     s_lastTrap=now;s_lastPC=pc;s_lastMusic=g_musicTicks;++g_m5Audit.traps;
+}
+// Called after actual note delivery. Aggregate every song; retain the last
+// 1024 events as a ring, so a long session cannot overflow the diagnostic.
+void aitdM5Note(unsigned short song,unsigned short note,unsigned long due,unsigned long actual,unsigned long effects) {
+    uint32_t* row=g_m5NoteLog[g_m5Audit.noteCount&1023];
+    row[0]=song;row[1]=note;row[2]=due;row[3]=actual;row[4]=effects;
+    ++g_m5Audit.noteCount;
+    uint32_t late=actual-due;
+    if(late)++g_m5Audit.noteLateCount;
+    if(late>g_m5Audit.noteMaxLate)g_m5Audit.noteMaxLate=late;
 }
 void aitdM5TimerStart() {s_lastIRQ=0;}
 void aitdM5IRQBegin(unsigned short remaining,unsigned short period) {

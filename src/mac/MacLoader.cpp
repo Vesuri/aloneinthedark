@@ -1960,6 +1960,9 @@ static const char* advanceNativeSong()
                     g_songEventClocks[g_song.events-1][1]=nativeMusicClock();
                 } else ++g_songHardwareOverflow;
 #endif
+#ifdef AITD_M5_AUDIT
+                aitdM5Note(g_song.id,event.note,g_song.started+g_song.timeline.pulses,nativeMusicClock(),g_effectStarts);
+#endif
                 uint32_t lateness=nativeMusicClock()-(g_song.started+g_song.timeline.pulses);
                 if(lateness>g_song.maxDeliveryLateness) {
                     g_song.maxDeliveryLateness=lateness;g_song.lateTick=g_macTicks;
@@ -10139,7 +10142,7 @@ extern "C" uint32_t aitdLineADispatch(uint32_t* regs, uint8_t* frame, uint8_t* u
     uint32_t pc = read32(frame + 2);
     uint16_t trap = read16((const uint8_t*)pc);
 #ifdef AITD_M5_AUDIT
-    aitdM5Trap(pc,trap);
+    aitdM5Trap(trap==0xa0f8 ? read32(userStack)-2 : pc,trap,g_song.playing ? g_song.id : 0);
 #endif
 #ifdef AITD_SERVICE_PROBE
     if(g_macServiceActive && trap==0xa055) {

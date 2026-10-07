@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Validate bounded M5 memory/interrupt evidence; never infer a full play-through."""
-import argparse,json,re
+import argparse,json,re,struct
 from pathlib import Path
 
 def require(ok,why):
@@ -14,7 +14,7 @@ def check(log,folder,status,cpu,fast_kb,completion):
     for line in log.splitlines():
         if line.startswith('M5_'):
             rows[line.split()[0]]={k:int(v,16 if k in ('from','to','trap') else 10) for k,v in re.findall(r'(\w+)=([0-9A-F]+)',line)}
-    require(set(rows)=={'M5_MACHINE','M5_MEMORY','M5_IRQ','M5_GAP'},'complete audit categories')
+    require(set(rows)=={'M5_MACHINE','M5_MEMORY','M5_IRQ','M5_GAP','M5_NOTES'},'complete audit categories')
     machine=rows['M5_MACHINE'];memory=rows['M5_MEMORY'];irq=rows['M5_IRQ'];gap=rows['M5_GAP']
     require(machine['clockHz']==709379,'PAL E-clock frequency')
     require(machine['cpuFlags']&(7 if cpu=='68030' else 3)==(7 if cpu=='68030' else 3),'OS-visible CPU flags')
@@ -28,6 +28,14 @@ def check(log,folder,status,cpu,fast_kb,completion):
     require(machine['clockHz']//120<irq['minInterval']<=irq['maxInterval']<machine['clockHz']//30,'no lost or doubled music periods')
     require(irq['maxLateEClocks']<machine['clockHz']//120,'interrupt lateness below half a period')
     require(0<gap['maxClocks']<machine['clockHz']*120,'bounded trap gap, no clock underflow')
+    notes=rows['M5_NOTES']
+    require(notes['count']>100 and notes['late']==0 and notes['maxLate']==0,'all-song note deadlines')
+    raw=(folder/'note-log.bin').read_bytes()
+    require(len(raw)==1024*20,'note ring extent')
+    events=list(struct.iter_unpack('>5I',raw))[:min(notes['count'],1024)]
+    require(all(due==actual for song,note,due,actual,effects in events),'recorded event deadlines')
+    require(any(effects>0 for song,note,due,actual,effects in events),'note/effect session coverage')
+    require(notes['activeGap']>0 and notes['activeTicks']>0,'music advances across active-song trap gap')
     margins={}
     for name in ('music','deferred'):
         data=(folder/(name+'-stack.bin')).read_bytes()
@@ -35,7 +43,7 @@ def check(log,folder,status,cpu,fast_kb,completion):
         margin=next((i for i,v in enumerate(data) if v!=0xa5),len(data))
         require(margin>=1024,name+' stack guard/headroom')
         margins[name]=margin
-    result={'machine':machine,'memory':memory,'irq':irq,'gap':gap,'stack_headroom_bytes':margins,
+    result={'machine':machine,'memory':memory,'irq':irq,'gap':gap,'notes':notes,'stack_headroom_bytes':margins,
             'irq_max_ms':irq['maxClocks']*1000/machine['clockHz'],
             'irq_lateness_max_ms':irq['maxLateEClocks']*1000/machine['clockHz'],
             'trap_gap_max_seconds':gap['maxClocks']/machine['clockHz']}
