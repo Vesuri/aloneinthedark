@@ -23,10 +23,9 @@ MIDI ticks are file time units, not milliseconds or emulated clock ticks.
 Instrument/sample counts are unique referenced resources; they are not the
 number of simultaneous voices.
 
-The native runtime currently admits SONG 131, 132, 135, 136 and 137. BDISK1
-(130), GDISK (133) and H_END (134) remain `SONG UNMEASURED` until their actual
-original driver paths are measured and native event comparisons pass.
-The successful host survey does not relax that guard.
+The native runtime admits all eight original SONG IDs after complete paired
+original/native event and allocation checks. IDs outside 130–137 remain loud
+stops. Host format coverage alone did not remove any song guard.
 
 Reproduce from an extracted, unchanged original resource fork:
 
@@ -74,8 +73,36 @@ before testing the next song. `tools/check_song_live.py` combines the complete
 original voice check, paired native events and allocation replay. It accepts
 only normal observer completion and complete, uncorrupted captures.
 
-Evidence is retained under `tmp/m4/song{132,136,137}`. BDISK2's natural death
-route switched to INTRO1 after 748 of 1338 events; that attempt is excluded
-from complete-song polyphony acceptance. Early SUSPENSE attempts interrupted
-by MONSTER are likewise excluded. SONG 130, 131, 133 and 134 still need complete
-original live-voice measurements; no unsupported song guard was relaxed.
+Evidence is retained under `tmp/m4/song{130,131,132,133,134,136,137}`. The earlier
+BDISK2 death-route and interrupted SUSPENSE attempts remain excluded.
+
+## Authorized remaining-song fixtures — 2026-10-07
+
+The owner authorized guest-RAM writes for isolated M4 contract tests.
+`mac_audio_song.lua` changes only the first selector-zero song-ID argument on
+the guest stack; original instructions and resources remain unchanged. These
+are original-driver contract fixtures, not ordinary-gameplay acceptance.
+Full original playback and paired fixed 68030 native fixtures establish:
+
+| Song | Live events | Peak held notes | First peak event | Original drops | Native predicted steals |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| BDISK1 (130) | 3364 | 6 | 340 | 0 | 1172 |
+| BDISK2 (131) | 1338 | 5 | 1331 | 0 | 288 |
+| GDISK (133) | 5098 | 6 | 148 | 1 | 1660 |
+| H_END (134) | 1948 | 6 | 102 | 8 | 334 |
+
+All 11,748 paired events match note/instrument/order and sequencer deadlines.
+The checker also verifies the actual original driver's song ID, every sample
+plan and note-off, every native channel allocation and note lifetime, priority
+effect behavior, three seconds of trapless interrupt progress and complete
+resource/heap/DMA cleanup. All runners exit zero. BDISK1 owns 24 resources/15
+samples, GDISK 25/16 and H_END 28/14; no new format or allocation policy was
+needed. All eight songs now have complete original live polyphony evidence.
+Headless event/ownership acceptance does not claim a new listening session.
+
+Use `AITD_LIVE_SONG=<id> AITD_LIVE_FOLDER=<folder>` with
+`tools/mac_audio_song.lua`, then the same native `song_live.gdb` and
+`check_song_live.py` path above. Keep the original fixture's output in a
+separate folder from ordinary-input attempts. The actual exit status must be
+passed to the checker, and all native captures must be saved before the next
+song overwrites the shared diagnostic directory.

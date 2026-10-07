@@ -60,20 +60,14 @@ required.
     contract against the original driver.
     Unimplemented selectors remain loud stops; original MDRV never runs.
 
-- **M4.2 Music on Paula voices.**
-  - A native SONG/MIDI sequencer and INST→`snd ` mapping on the four channels.
-  - Tempo and note delivery from the native interrupt clock; resource and
-    sample preparation outside the interrupt.
-  - Measure original-driver playback for BDISK1 (130), GDISK (133) and
-    H_END (134), then enable them with paired native event acceptance.
-    Use the [resource inventory](music-resource-coverage.md) to prepare the
-    routes; host format coverage does not satisfy playback acceptance.
-  - Measure original-driver maximum simultaneous notes for SONG 130, 131,
-    133 and 134, and verify the documented voice-allocation policy for these songs.
+- **M4.2 Audible all-song acceptance.**
+  - Verify recognizable audio-enabled playback for all eight songs on the
+    fixed 68030 setup. Complete original/native event, timing and allocation
+    acceptance is recorded in [music coverage](music-resource-coverage.md).
+    Keep listening evidence distinct from the completed headless fixtures.
 
-  *Done when* all 8 songs play recognisably, and their event logs (note, instrument
-  and order) match the MAME reference within the documented voice-stealing
-  differences.
+  *Done when* all eight songs play recognizably within the documented
+  four-channel voice-stealing policy.
 - **M4.3 Sound effects and toggles.**
   - Effects through the driver's selectors take priority on the channels.
   - Measure the [original SysBeep contract](sound-driver.md#sysbeep-call-sites-awaiting-acceptance--2026-10-07)

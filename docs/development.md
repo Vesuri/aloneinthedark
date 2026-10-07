@@ -7026,8 +7026,8 @@ The BDISK2 death route changes songs before its MIDI finishes, so its partial
 trace is not accepted as a complete voice survey. Original songs 130/133/134
 remain unmeasured. A proposed isolated original-driver fixture that changes
 only a song argument was rejected by automatic approval review under the
-no-guest-RAM-writes rule; it was not created or executed. Owner approval is
-pending. Natural-input tests remain available independently.
+no-guest-RAM-writes rule; it was not created or executed. The owner subsequently authorized guest-RAM writes for isolated M4 tests;
+the resulting complete captures are recorded below.
 
 FIGHT first exposed a missing $0400 retrigger case in the independent allocation
 checker; the native runtime already implements the measured original rule.
@@ -7050,3 +7050,16 @@ new active selector-22 capture, sound-off now has genuine active-effect
 ownership evidence as well. This revalidates existing evidence; it is not a
 new emulator run or SysBeep coverage. The completed toggle item is removed
 from open work; the integrated audio regression remains open.
+
+
+## M4 remaining song contracts — 2026-10-07
+
+Following the owner's guest-RAM exception, isolated original-driver fixtures
+complete BDISK1, BDISK2, GDISK and H_END playback. Every one of their 11,748
+note events matches its paired fixed 68030 native fixture; full polyphony,
+original sample plans, native channel assignment/retrigger/stealing, deadlines,
+priority effects, trapless interrupt progress and cleanup pass. The runtime
+now admits all eight songs. See [music coverage](music-resource-coverage.md)
+for exact peaks, drops, steals and reproduction. Ordinary gameplay routes were
+not fabricated, and these isolated captures are not claimed as such. Audible
+all-song acceptance remains explicit in open work.

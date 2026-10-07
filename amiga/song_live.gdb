@@ -14,10 +14,30 @@ set $song_id=g_song.id
 set $song_events=0
 set $song_owned=0
 set $song_samples=0
+if $song_id==130
+ set $song_events=3364
+ set $song_owned=24
+ set $song_samples=15
+end
+if $song_id==131
+ set $song_events=1338
+ set $song_owned=17
+ set $song_samples=9
+end
 if $song_id==132
  set $song_events=1206
  set $song_owned=38
  set $song_samples=24
+end
+if $song_id==133
+ set $song_events=5098
+ set $song_owned=25
+ set $song_samples=16
+end
+if $song_id==134
+ set $song_events=1948
+ set $song_owned=28
+ set $song_samples=14
 end
 if $song_id==136
  set $song_events=602

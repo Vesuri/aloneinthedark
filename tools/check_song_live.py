@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate complete ordinary-input original music and optional native playback."""
+"""Validate complete original music (natural or isolated fixture) and native playback."""
 import argparse
 from pathlib import Path
 import re
@@ -7,7 +7,7 @@ import struct
 from check_song_inputs import check_voices
 from check_driver22 import one
 
-TOTALS = {131: 1338, 132: 1206, 135: 3736, 136: 602, 137: 2250}
+TOTALS = {130: 3364, 133: 5098, 134: 1948, 131: 1338, 132: 1206, 135: 3736, 136: 602, 137: 2250}
 
 
 def check_native(text, folder, status, song, decoded, original_state):
@@ -66,6 +66,13 @@ def main():
     original=a.original.read_text();decoded=a.decoded.read_text()
     if f'SONG_LIVE_BEGIN song={a.song} midi={a.song+770} ' not in original:
         raise ValueError('original song identity')
+    if int.from_bytes(a.state.read_bytes()[0x2f74:0x2f76], 'big') != a.song:
+        raise ValueError('actual original driver song ID')
+    if 'AUDIO_SONG_FIXTURE' in original:
+        fixture=one(original,r'^AUDIO_SONG_FIXTURE argument=([0-9A-F]+) original=135 requested=(\d+)$')
+        if not int(fixture[0],16) or int(fixture[1])!=a.song:
+            raise ValueError('isolated original fixture argument identity')
+        print('Original evidence: isolated driver fixture, not ordinary gameplay acceptance')
     check_voices(original,a.status,decoded,song_id=a.song,total=TOTALS[a.song],state_path=a.state)
     if a.native:
         if a.native_folder is None or a.native_status is None:

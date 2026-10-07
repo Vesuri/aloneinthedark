@@ -368,8 +368,8 @@ endif
 
 ifeq ($(SONGPROBE),1)
 SONGPROBEID ?= 135
-ifeq ($(filter $(SONGPROBEID),131 132 135 136 137),)
-$(error SONGPROBEID must be 131, 132, 135, 136 or 137)
+ifeq ($(filter $(SONGPROBEID),130 131 132 133 134 135 136 137),)
+$(error SONGPROBEID must be 130 through 137)
 endif
 EXTRA_DEFINES += -DAITD_SONG_PROBE -DAITD_SONG_PROBE_ID=$(SONGPROBEID)
 PROBE_SYMS_SONG = g_songTraceCount g_songTrace g_songDelivery g_songProbeIRQTicks g_songProbeIRQEvents g_songTiming g_songProbeEffects g_songProbeHeapOK g_songLastVoice
