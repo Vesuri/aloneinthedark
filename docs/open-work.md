@@ -63,8 +63,8 @@ required.
   - A native SONG/MIDI sequencer and INST→`snd ` mapping on the four channels.
   - Tempo and note delivery from the native interrupt clock; resource and
     sample preparation outside the interrupt.
-  - Measure original-driver maximum simultaneous notes for SONG 130–134 and
-    136–137, and verify the documented voice-allocation policy for these songs.
+  - Measure original-driver maximum simultaneous notes for SONG 130, 131,
+    133 and 134, and verify the documented voice-allocation policy for these songs.
 
   *Done when* all 8 songs play recognisably, and their event logs (note, instrument
   and order) match the MAME reference within the documented voice-stealing

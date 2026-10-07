@@ -7006,3 +7006,31 @@ Validate actual zero exit statuses and all raw captures with
 The early broad-breakpoint and short-key-hold attempts did not complete and
 are excluded. This closes active selector-22 ownership acceptance only; M4
 still requires remaining songs, packet variants and the integrated audio case.
+
+
+## M4 complete gameplay-song voices — 2026-10-07
+
+Full original live captures now measure FIGHT, MONSTER and SUSPENSE through
+ordinary ADB controls, with no guest writes. All three reach six held notes;
+only SUSPENSE drops incoming notes (13). Their fixed 68030 native fixtures pass
+complete event/timing, priority-effect, trapless-interrupt and cleanup checks.
+The independent four-channel policy checker replays each allocation and every
+note lifetime from original resource data and captured effect timing.
+See [music resource coverage](music-resource-coverage.md) for counts, scope and
+reproduction. The host suite passes after sharing the existing sample-duration
+oracle and extending the original six-voice checker without weakening INTRO1's
+known allocation expectations. This is event/ownership acceptance, not a new
+claim about listening quality.
+
+The BDISK2 death route changes songs before its MIDI finishes, so its partial
+trace is not accepted as a complete voice survey. Original songs 130/133/134
+remain unmeasured. A proposed isolated original-driver fixture that changes
+only a song argument was rejected by automatic approval review under the
+no-guest-RAM-writes rule; it was not created or executed. Owner approval is
+pending. Natural-input tests remain available independently.
+
+FIGHT first exposed a missing $0400 retrigger case in the independent allocation
+checker; the native runtime already implements the measured original rule.
+The checker now tracks logical voice slots and reuses the matching instrument,
+note and MIDI channel before considering a free channel. Rechecking all three
+captures passes; this changed the oracle, not the playback policy.

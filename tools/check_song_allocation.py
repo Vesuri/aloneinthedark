@@ -20,7 +20,7 @@ def require(ok, message):
         raise ValueError(message)
 
 
-def replay(events, notes, clocks, effects, started, duration):
+def replay(events, notes, clocks, effects, started, duration, retrigger=None):
     voices = [None]*4
     changes = defaultdict(list)
     previous = (-1, -1)
@@ -108,13 +108,19 @@ def replay(events, notes, clocks, effects, started, duration):
         row = notes[starts]
         require((row[0], row[1], row[6], row[7]) ==
                 (started+pulse, actual, instrument, note), f'note identity at {starts}')
-        channel = choose()
+        matching = [(v['slot'], c) for c,v in enumerate(voices)
+                    if v and v['kind']=='song' and retrigger and retrigger(instrument)
+                    and (v['instrument'],v['note'],v['midi'])==(instrument,note,midi)]
+        channel = min(matching)[1] if matching else choose()
         require(channel == row[4], f'note {starts}: expected channel {channel}, captured {row[4]}')
         length = duration(instrument, note, row[5])
         old = voices[channel]
         if old and old['kind'] == 'song':
-            retire(old, 'note steals active note' if old['active'] else 'note steals release tail')
-        voices[channel] = dict(kind='song', serial=starts, note=note, midi=midi,
+            retire(old, 'instrument retrigger' if matching else
+                   'note steals active note' if old['active'] else 'note steals release tail')
+        occupied = {v['slot'] for c,v in enumerate(voices) if c!=channel and v and v['kind']=='song'}
+        slot = next(i for i in range(6) if i not in occupied)
+        voices[channel] = dict(kind='song', serial=starts, slot=slot, instrument=instrument, note=note, midi=midi,
                                active=True, end=actual+length+1 if length else 0)
         starts += 1
     require(starts == len(notes), 'complete note allocation')
@@ -124,6 +130,36 @@ def replay(events, notes, clocks, effects, started, duration):
     require(retired == set(range(starts)) and sum(endings.values()) == starts,
             'all note lifetimes accounted for')
     return starts, steals, endings
+
+
+def sample_duration(resources, pitches):
+    def duration(iid, note, period):
+        ins = resources[b'INST', iid]
+        root = int.from_bytes(ins[2:4], 'big')
+        adjusted = note-root+60 if root else note
+        sid = int.from_bytes(ins[:2], 'big')
+        for i in range(int.from_bytes(ins[12:14], 'big')):
+            row = ins[14+i*8:22+i*8]
+            if (not row[0] or adjusted >= row[0]) and (row[1] >= 127 or adjusted <= row[1]):
+                sid = int.from_bytes(row[2:4], 'big') or sid
+                break
+        sample = resources[b'snd ', sid]
+        size, rate, start, end = struct.unpack_from('>4I', sample, 18)
+        require(rate == 11025 << 16, 'reference sample rate')
+        pitch = pitches[adjusted+60-sample[35]]
+        if pitch & 65535 < 4:
+            pitch &= 0xffff0000
+        denominator = pitch*0x56ee8ba3
+        stride = 1
+        while ((3546895*stride << 33)+denominator//2)//denominator < 124:
+            stride *= 2
+            require(stride <= 16, 'sample stride')
+        require(period == ((3546895*stride << 33)+denominator//2)//denominator, 'original pitch')
+        if start and end and end != 0xffffffff and ((end-start) & 65535) >= 100:
+            return 0
+        attack = ((size+stride-1)//stride+1) & ~1
+        return (attack*period*60+3546894)//3546895
+    return duration
 
 
 def main():
@@ -158,32 +194,7 @@ def main():
     resources = {(r.kind, r.rid): r.body for r in
                  read_resource_fork(ROOT/'tmp/runtime-data/Alone In The Dark')}
     pitches = struct.unpack_from('>128I', (ROOT/'tmp/song-live-initial-state.bin').read_bytes(), 0x29bc)
-    def duration(iid, note, period):
-        ins = resources[b'INST', iid]
-        root = int.from_bytes(ins[2:4], 'big')
-        adjusted = note-root+60 if root else note
-        sid = int.from_bytes(ins[:2], 'big')
-        for i in range(int.from_bytes(ins[12:14], 'big')):
-            row = ins[14+i*8:22+i*8]
-            if (not row[0] or adjusted >= row[0]) and (row[1] >= 127 or adjusted <= row[1]):
-                sid = int.from_bytes(row[2:4], 'big') or sid
-                break
-        sample = resources[b'snd ', sid]
-        size, rate, start, end = struct.unpack_from('>4I', sample, 18)
-        require(rate == 11025 << 16, 'reference sample rate')
-        pitch = pitches[adjusted+60-sample[35]]
-        if pitch & 65535 < 4:
-            pitch &= 0xffff0000
-        denominator = pitch*0x56ee8ba3
-        stride = 1
-        while ((3546895*stride << 33)+denominator//2)//denominator < 124:
-            stride *= 2
-            require(stride <= 16, 'sample stride')
-        require(period == ((3546895*stride << 33)+denominator//2)//denominator, 'original pitch')
-        if start and end and end != 0xffffffff and ((end-start) & 65535) >= 100:
-            return 0
-        attack = ((size+stride-1)//stride+1) & ~1
-        return (attack*period*60+3546894)//3546895
+    duration = sample_duration(resources, pitches)
     observed_starts, predicted_steals, endings = replay(events, notes, clocks, effects, started, duration)
     require(predicted_steals == steals, 'complete oldest-note stealing count')
     print(f'PASS allocation: {observed_starts} original notes, {effect_count} effect transitions, '

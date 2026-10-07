@@ -13,14 +13,15 @@ def check_clock(text,status,decoded):
         raise ValueError('complete timed note stream')
     print('PASS song clock: 3736 exact live notes at original sequencer steps through pulse 8785')
 
-def check_voices(text,status,decoded):
-    if status!=0 or any(x in text for x in ('FAIL','LUA ERROR','timeout','Error in')) or text.count('PASS original song live events=3736')!=1 or text.count('Exited via the debugger')!=1:
+def check_voices(text,status,decoded,*,song_id=135,total=3736,state_path=None):
+    if status!=0 or any(x in text for x in ('FAIL','LUA ERROR','timeout','Error in')) or text.count(f'PASS original song live events={total}')!=1 or text.count('Exited via the debugger')!=1:
         raise ValueError('original voice completion')
     import struct
-    state=(ROOT/'tmp/song-live-initial-state.bin').read_bytes()
+    state=(state_path or ROOT/'tmp/song-live-initial-state.bin').read_bytes()
     if len(state)!=0x3048 or int.from_bytes(state[0x60:0x62],'big')!=185 or state[0x68:0x6a]!=b'\0\0': raise ValueError('original mixer rate')
     if state[0x11ee:0x11fa].hex()!='000100080000000156ee8ba3': raise ValueError('original output sample clock')
-    samples={struct.unpack_from('>H',state,0xd7c+2*i)[0]:struct.unpack_from('>I',state,0x57c+4*i)[0]+36 for i in range(28)}
+    sample_count=len(re.findall(r'^SONG_SAMPLE id=',decoded,re.M))
+    samples={struct.unpack_from('>H',state,0xd7c+2*i)[0]:struct.unpack_from('>I',state,0x57c+4*i)[0]+36 for i in range(sample_count)}
     voices={}
     for line in re.findall(r'^SONG_VOICE .*$',text,re.M):
         fields=dict(re.findall(r'(\w+)=([0-9A-F]+)',line));n=int(fields.pop('n'))
@@ -28,10 +29,10 @@ def check_voices(text,status,decoded):
         loop=re.search(r' loop=(\w+)/(\w+)',line)
         row['loopStart'],row['loopEnd']=(int(x,16) for x in loop.groups())
         voices.setdefault(n,[]).append(row)
-    if set(voices)!=set(range(1,3737)) or any([v['slot'] for v in rows]!=list(range(6)) for rows in voices.values()): raise ValueError('complete six-voice snapshots')
+    if set(voices)!=set(range(1,total+1)) or any([v['slot'] for v in rows]!=list(range(6)) for rows in voices.values()): raise ValueError('complete six-voice snapshots')
     events=re.findall(r'^SONG_LIVE_EVENT (n=\d+ on=\w+ offset=\w+ instrument=\w+ note=\w+ velocity=\w+ channel=\w+) ',text,re.M)
     original=re.findall(r'^SONG_EVENT (.*)$',decoded,re.M)
-    if events!=original or len(events)!=3736: raise ValueError('complete live event identity')
+    if events!=original or len(events)!=total: raise ValueError('complete live event identity')
     plans={}
     for n,sample,step,size,start,end,period in re.findall(r'^SONG_PLAN n=(\d+) sample=(\d+) step=(\w+) bytes=(\d+) loop=(\d+)/(\d+) period=(\d+)$',decoded,re.M):
         plans[int(n)]=(int(sample),int(step,16),int(size),int(start),int(end),int(period))
@@ -55,12 +56,13 @@ def check_voices(text,status,decoded):
             if (v['step'],v['start'],v['loopStart'],v['loopEnd'],v['volume'])!=(step,base+size-1,base+start if end else 0,base+end if end else 0,0): raise ValueError('sample pitch/extent/loop/amplitude')
         denominator=step*0x56ee8ba3
         if period!=((3546895<<33)+denominator//2)//denominator: raise ValueError('Paula integer period')
-    if len(plans)!=1868 or played!=1860 or dropped!=[1813,1817,1821,1825,3683,3687,3691,3695]: raise ValueError('complete original note allocation')
+    if song_id==135 and (len(plans)!=1868 or played!=1860 or dropped!=[1813,1817,1821,1825,3683,3687,3691,3695]): raise ValueError('complete original note allocation')
+    if played+len(dropped)!=len(plans): raise ValueError('complete note allocation accounting')
     held={n:sum(0<v['active']<0x8000 for v in rows) for n,rows in voices.items()}
     peak=max(held.values());first=next(n for n,count in held.items() if count==peak)
-    if (peak,first)!=(6,74): raise ValueError('original peak held-note voice state')
-    print('PASS original INTRO1 polyphony: peak held notes=6 first event=74; release tails excluded')
-    print('PASS song voices: 1860 original sample/pitch/loop plans, 8 measured full-voice drops, 1868 note-off releases')
+    if song_id==135 and (peak,first)!=(6,74): raise ValueError('original peak held-note voice state')
+    print(f'PASS original SONG {song_id} polyphony: peak held notes={peak} first event={first}; release tails excluded')
+    print(f'PASS song voices: {played} original sample/pitch/loop plans, {len(dropped)} measured full-voice drops, {total-len(plans)} note-off releases')
 
 def main():
     p=argparse.ArgumentParser(description=__doc__)

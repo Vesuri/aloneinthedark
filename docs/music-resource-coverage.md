@@ -38,3 +38,44 @@ Use `--resource` for another extraction and `--output` for a separate private
 evidence directory. No original music resources or captures are committed.
 The remaining playback and voice-allocation acceptance is tracked in
 [open work](open-work.md).
+
+
+## Original live voices and native allocation — 2026-10-07
+
+Ordinary ADB input starts the natural attic songs and leaves the action menu
+open. The observer reads every original note handler and all six voice slots;
+it never writes guest memory or registers. Complete captures establish:
+
+| Song | Live events | Peak held notes | First peak event | Original full-voice drops |
+| --- | ---: | ---: | ---: | ---: |
+| FIGHT (132) | 1206 | 6 | 526 | 0 |
+| MONSTER (136) | 602 | 6 | 6 | 0 |
+| SUSPENSE (137) | 2250 | 6 | 56 | 13 |
+
+Held-note counts exclude release tails. All note identities and sample pitch,
+extent, loop and note-off states match the original resources. These counts
+come from full live original playback, not merely MIDI overlap analysis.
+
+Fixed 68030 native fixtures match every original note identity/order and
+verified sequencer deadline, including three seconds without a main-thread
+trap, a priority effect interrupting four occupied music channels, and complete
+sample/resource/heap/DMA cleanup. Independent channel-policy replay predicts
+all 148 FIGHT, 183 MONSTER and 427 SUSPENSE steals, including the priority effect.
+The policy starts every note, first reusing a matching voice when INST $0400
+requests retrigger, otherwise taking a free channel or stealing the oldest
+music voice; original six-voice drops are therefore documented differences.
+These headless tests do not establish analog output or listening quality.
+
+Use `tools/mac_song_live_gameplay.lua` with `AITD_LIVE_SONG` and
+`AITD_LIVE_FOLDER` on the documented headless Mac reference. Clean-build
+`SONGPROBE=1 SONGPROBEID=<id> SONGHARDWARE=1 PROBES=` and run
+`amiga/song_live.gdb`; create `tmp/m4/native-song` first and retain its captures
+before testing the next song. `tools/check_song_live.py` combines the complete
+original voice check, paired native events and allocation replay. It accepts
+only normal observer completion and complete, uncorrupted captures.
+
+Evidence is retained under `tmp/m4/song{132,136,137}`. BDISK2's natural death
+route switched to INTRO1 after 748 of 1338 events; that attempt is excluded
+from complete-song polyphony acceptance. Early SUSPENSE attempts interrupted
+by MONSTER are likewise excluded. SONG 130, 131, 133 and 134 still need complete
+original live-voice measurements; no unsupported song guard was relaxed.
