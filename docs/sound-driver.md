@@ -1093,3 +1093,21 @@ reached contract before enabling it. Selector 24 also has several static
 quality arguments beyond the measured $010B configuration; their presence
 alone does not authorize silently accepting them. Original MDRV code remains
 absent from the native runtime.
+
+
+## SysBeep call sites awaiting acceptance — 2026-10-07
+
+The original trap census contains two SysBeep ($A9C8) instructions:
+
+- CODE 7 (Engine)+$4F48: a wrapper entered at +$4F40 pushes its caller's
+  word argument with `move.w 8(a6),-(sp)`, calls SysBeep, then returns.
+- CODE 13 (Dan2)+$3428: the routine at +$340A requests dialog 1000 through
+  GetNewDialog. Only a null dialog result takes the beep branch, which pushes
+  duration 1 before SysBeep and then returns zero. Successful creation skips it.
+
+These unchanged instruction bytes establish the argument layout and branch
+condition, not the original trap's complete register/stack contract or native
+Paula ownership. Existing S/M feedback captures do not exercise either site.
+A successful dialog route therefore cannot close this M4 requirement. Obtain
+an authorized original-call observation before enabling the native short-click
+handler; retain the unsupported-trap stop until that contract is verified.

@@ -77,7 +77,8 @@ required.
 - **M4.3 Sound effects and toggles.**
   - Effects through the driver's selectors take priority on the channels.
   - The S/M keys and the game's toggles work.
-  - `SysBeep` becomes a short Paula click.
+  - Measure the [original SysBeep contract](sound-driver.md#sysbeep-call-sites-awaiting-acceptance--2026-10-07)
+    and implement a short Paula click with verified channel ownership and cleanup.
 
   *Done when* the `audio` regression passes and effects in the first rooms match
   MAME by event.
