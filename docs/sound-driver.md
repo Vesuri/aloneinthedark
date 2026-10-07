@@ -1046,3 +1046,50 @@ Four corrupt/incomplete reference logs and four corrupt/incomplete native logs
 are rejected. This verifies targeted effect cleanup, not perceived audio quality
 or perceived quality of the complete intro; sequence completion itself now
 passes M2.
+
+
+## Remaining direct-call inventory — 2026-10-07
+
+`tools/survey_driver_calls.py` scans every original CODE resource for the
+unchanged A5-$6AC indirect-call wrapper and decodes its immediate selector
+push. It finds 45 wrappers, all in CODE 3, using 25 selectors (0–25 except 3).
+This is a static inventory, not a claim that every wrapper is reached during
+ordinary gameplay. The selected runtime still rejects unsupported selectors
+and unsupported arguments to otherwise implemented selectors.
+
+| Selector | Direct CODE calls (JSR offsets) | Native contract |
+| ---: | --- | --- |
+| 0 | 3+$138C | Measured subset implemented |
+| 1 | 3+$123E | Unmeasured; loud stop |
+| 2 | 3+$1352 | Unmeasured; loud stop |
+| 4 | 3+$145C, 3+$1FC8 | Measured subset implemented |
+| 5 | 3+$1400 | Measured subset implemented |
+| 6 | 3+$18CC, 3+$1ED2 | Unmeasured; loud stop |
+| 7 | 3+$1292, 3+$140C | Measured subset implemented |
+| 8 | 3+$1DCC | Measured subset implemented |
+| 9 | 3+$1886 | Unmeasured; loud stop |
+| 10 | 3+$1E0C | Unmeasured; loud stop |
+| 11 | 3+$1E6E | Unmeasured; loud stop |
+| 12 | 3+$18B8 | Unmeasured; loud stop |
+| 13 | 3+$1346, 3+$137E, 3+$19CA | Measured subset implemented |
+| 14 | 3+$149A | Unmeasured; loud stop |
+| 15 | 3+$0FC8 | Measured subset implemented |
+| 16 | 3+$0FE0 | Unmeasured; loud stop |
+| 17 | 3+$17FC | Measured subset implemented |
+| 18 | 3+$1828 | Measured subset implemented |
+| 19 | 3+$13A8, 3+$16C2, 3+$16FE, 3+$1EE0, 3+$1F0A, 3+$1F22, 3+$1F72, 3+$1F88 | Measured subset implemented |
+| 20 | 3+$17C8 | Measured subset implemented |
+| 21 | 3+$1B98, 3+$1D46 | Measured subset implemented |
+| 22 | 3+$1A74 | Measured subset implemented |
+| 23 | 3+$1854 | Unmeasured; loud stop |
+| 24 | 3+$15F4, 3+$1606, 3+$1618, 3+$162A, 3+$163C, 3+$164E, 3+$1660, 3+$1D60 | Measured subset implemented |
+| 25 | 3+$1594 | Unmeasured; loud stop |
+45 direct wrappers, 25 selector values; static presence is not gameplay reachability.
+
+
+The remaining unmeasured wrapper contracts are 1, 2, 6, 9, 10, 11, 12, 14,
+16, 23 and 25. Determine their ordinary-game reachability and measure any
+reached contract before enabling it. Selector 24 also has several static
+quality arguments beyond the measured $010B configuration; their presence
+alone does not authorize silently accepting them. Original MDRV code remains
+absent from the native runtime.
