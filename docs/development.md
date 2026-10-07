@@ -7419,3 +7419,13 @@ Full recordings and a two-minute review are in `tmp/m4/listening`; see
 [music coverage](music-resource-coverage.md#audio-enabled-fixed-68030-recordings--2026-10-07).
 The production build is restored and passes its audits. M4.2 remains open
 for actual listening acceptance; captured output is not a claim of listening.
+
+
+## M4 completion — 2026-10-07
+
+The owner accepted the eight-song listening review: “The songs sound very good
+to me.” This closes the remaining M4.2 criterion alongside the retained paired
+event/allocation checks and audio-enabled, no-warp fixed-68030 recordings.
+Selector reachability, reached effect variants, toggles and bounded first-room
+event parity are already verified as documented above. M4 is complete and
+removed from open work; full-game exploration remains M6.

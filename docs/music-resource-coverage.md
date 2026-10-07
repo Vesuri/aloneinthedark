@@ -137,5 +137,9 @@ SDL output: all 63,488 bytes from 31 callbacks survived forced termination and
 matched the producer. It captures only the emulator's SDL callback, with no
 microphone or other application audio. Callback spacing is not itself an
 underrun measurement. Nonzero PCM and event agreement establish output, not
-recognizable music or physical speaker quality; listening acceptance remains
-open. The clean production build passed after these fixture runs.
+recognizable music or physical speaker quality. The clean production build
+passed after these fixture runs.
+
+The owner accepted the listening review on 2026-10-07: “The songs sound very
+good to me.” This supplies the separate listening evidence and completes M4.2
+within the documented four-channel voice-stealing policy.

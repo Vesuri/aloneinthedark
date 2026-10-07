@@ -52,18 +52,6 @@ required.
   *Done when* a paired session includes at least ten minutes of active
   first-floor gameplay without a loud stop, with positive state checks and Mac
   evidence for the covered routes. Owner play-testing can supplement acceptance.
-## M4 Audio
-
-- **M4.2 Audible all-song acceptance.**
-  - Verify recognizable audio-enabled playback for all eight songs on the
-    fixed 68030 setup. Complete original/native event, timing and allocation
-    acceptance is recorded in [music coverage](music-resource-coverage.md).
-    Full audio-enabled, no-warp recordings and a two-minute sampler are ready
-    in `tmp/m4/listening/index.html`. All eight repeated event/allocation checks
-    and PCM capture checks pass. Actual listening acceptance remains pending.
-
-  *Done when* all eight songs play recognizably within the documented
-  four-channel voice-stealing policy.
 ## M6 Completion
 
 - **M6.1 Full manual play-through,** in MAME and on `a1200-020`, with the runtime

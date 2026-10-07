@@ -1,8 +1,12 @@
 # Native SoundMusicSys driver
 
-**Status, 2026-10-04:** The native intro driver and complete reference song pass
-M2. M3.2 verifies first-room sound/music controls and driver shutdown. All-song
-coverage, gameplay effect variants and perceived audio quality remain M4.
+**Status, 2026-10-07:** M4 is complete. All eight songs have paired original/native
+event and allocation acceptance, audio-enabled no-warp fixed-68030 recordings,
+and owner listening acceptance. Reached effect variants, toggles, first-room
+events and shipped-image selector reachability are verified in the evidence
+below. Unreached variants remain explicit guards for M6 exploration. Earlier
+dated sections retain the limitations of their individual measurements; current
+all-song acceptance is recorded in [music coverage](music-resource-coverage.md).
 
 ## INTRO1 original polyphony — 2026-10-06
 
