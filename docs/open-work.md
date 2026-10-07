@@ -62,14 +62,6 @@ required.
 
   *Done when* all eight songs play recognizably within the documented
   four-channel voice-stealing policy.
-- **M4.3a Remaining effect packet/allocation variants.**
-  - Resolve effect ages beyond $7FFE callbacks if reached. Keep unsupported
-    ages and loop variants as named stops until paired evidence exists.
-
-  *Done when* each reached variant has paired original/native playback events,
-  exact loop/sample ownership checks and verified stop/replacement cleanup;
-  unsupported variants retain named stops.
-
 ## M6 Completion
 
 - **M6.1 Full manual play-through,** in MAME and on `a1200-020`, with the runtime

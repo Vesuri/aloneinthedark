@@ -1265,3 +1265,17 @@ for this shipped game's ordinary command paths. These conclusions are tied to
 the checked resource image and entry references, not a claim that every computed
 transfer in the global trap census has been resolved. A newly reached selector
 in later full-game exploration still requires its original contract.
+
+## Reached effect-variant audit — 2026-10-07
+
+The retained ordinary intro, room-route, toggle/death and all-song captures have
+not reached an unsupported very-old effect age. All reached packet/allocation
+variants have paired checks: one-shot sample/rate/odd tail; two slots and
+replacement; zero, positive and negative loop counters; active stop/replacement;
+long streamed samples; and the three first-room ambient samples. The integrated
+`audio-yG0Dfm` gate and later `ambient/mac-*` / `ambient/native-dma-*` captures
+retain actual runner statuses and positive checks. These satisfy the conditional
+M4 requirement for reached variants. Very-old ages beyond $7FFE callbacks and
+other unmeasured future variants remain named stops, to be measured if full-game
+M6 exploration reaches them. Their hypothetical existence is not a pending
+implementation item for already-covered M4 paths.
