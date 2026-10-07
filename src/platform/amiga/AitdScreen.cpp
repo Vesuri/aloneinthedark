@@ -451,17 +451,17 @@ int16_t AitdScreen::presentMacFrame(const uint8_t* chunky,const uint8_t* colorTa
     for(uint16_t i=0;i<m_syncCount;++i) {
         const Planar8::Rect& r=m_syncRects[i];
         if(!Planar8::syncNeeded(r,normalized,count))continue;
-        const uint16_t firstLong=uint16_t(r.left)/32,longs=uint16_t(r.right-r.left)/32;
+        const uint16_t firstByte=uint16_t(r.left)/8,longs=uint16_t(r.right-r.left)/32;
         for(int16_t y=r.top;y<r.bottom;++y) {
             const int16_t row=y-m_invertTop;
             for(uint16_t plane=0;plane<kPlanes;++plane) {
                 // A VBI can move the cursor between spans. Copy and undo its
                 // current XOR atomically for one plane span (at most 40 bytes),
                 // preserving a clean inactive bitmap during conversion.
-                uint32_t* out=(uint32_t*)(m_back+uint32_t(y)*kRowStride+plane*kBytesPerRow)+firstLong;
+                uint32_t* out=(uint32_t*)(m_back+uint32_t(y)*kRowStride+plane*kBytesPerRow+firstByte);
                 Disable();
                 __asm__ volatile("" ::: "memory");
-                const uint32_t* in=(const uint32_t*)(m_chip+uint32_t(y)*kRowStride+plane*kBytesPerRow)+firstLong;
+                const uint32_t* in=(const uint32_t*)(m_chip+uint32_t(y)*kRowStride+plane*kBytesPerRow+firstByte);
                 for(uint16_t x=0;x<longs;++x)out[x]=in[x];
                 if(m_invertActive && row>=0 && row<16)
                     CursorInvert::row(m_back+uint32_t(y)*kRowStride+plane*kBytesPerRow,

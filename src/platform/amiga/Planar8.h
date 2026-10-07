@@ -17,16 +17,28 @@ inline bool contains(const Rect& outer,const Rect& inner) {
         && outer.bottom>=inner.bottom && outer.right>=inner.right;
 }
 
+// Kalms needs a width divisible by 32, but its output may start on any word.
+// Anchoring the block at a 16-pixel boundary avoids expanding a narrow actor
+// across two fixed 32-pixel columns. Keep the final block inside the viewport.
+inline void alignSpan(Rect& r) {
+    r.left=int16_t(r.left&~15);
+    r.right=int16_t(r.left+((r.right-r.left+31)&~31));
+    if(r.right>width) {r.left-=r.right-width;r.right=width;}
+}
+
 // Union only when it covers no additional pixels: containment, or an exact
 // shared edge/overlap in one axis. Partial overlaps stay separate.
 inline bool mergeLosslessly(const Rect& a,const Rect& b) {
     if(contains(a,b) || contains(b,a))return true;
+    const int16_t left=a.left<b.left ? a.left : b.left;
+    const int16_t right=a.right>b.right ? a.right : b.right;
     return (a.left==b.left && a.right==b.right && a.top<=b.bottom && a.bottom>=b.top)
-        || (a.top==b.top && a.bottom==b.bottom && a.left<=b.right && a.right>=b.left);
+        || (a.top==b.top && a.bottom==b.bottom && a.left<=b.right && a.right>=b.left
+            && !((right-left)&31));
 }
 
-// Add an already normalized, non-empty rectangle. 32-pixel alignment can make
-// distinct dirty rectangles coincide; fold those so no span converts twice.
+// Add an already normalized, non-empty rectangle. Merge only if the resulting
+// width still satisfies Kalms; differently anchored overlaps may stay separate.
 inline void append(Rect* rects,uint16_t& count,uint16_t capacity,Rect r) {
     bool merged;
     do {
@@ -48,7 +60,7 @@ inline void append(Rect* rects,uint16_t& count,uint16_t capacity,Rect r) {
         if(rects[i].bottom>r.bottom)r.bottom=rects[i].bottom;
         if(rects[i].right>r.right)r.right=rects[i].right;
     }
-    rects[0]=r;count=1;
+    alignSpan(r);rects[0]=r;count=1;
 }
 
 // The inactive buffer holds the frame from two publications ago. A rectangle
@@ -93,8 +105,9 @@ inline bool normalize(const Rect& viewport,const Rect& dirty,Rect& local) {
     int32_t right=dirty.right<viewport.right ? dirty.right : viewport.right;
     if(top>=bottom || left>=right)return true;
     local.top=int16_t(top-viewport.top);local.bottom=int16_t(bottom-viewport.top);
-    local.left=int16_t((left-viewport.left)&~31);
-    local.right=int16_t((right-viewport.left+31)&~31);
+    local.left=int16_t(left-viewport.left);
+    local.right=int16_t(right-viewport.left);
+    alignSpan(local);
     return true;
 }
 

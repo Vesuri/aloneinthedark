@@ -2,7 +2,8 @@
 ; void aitdKalmsC2PRect(const uint8_t *source, uint8_t *destination,
 ;                      uint32_t width, uint32_t rows);
 ; Source stride 640, output stride 320, planes separated by 40 bytes.
-; Caller supplies a nonempty 32-pixel-aligned width <=320 and rows <=200.
+; Caller supplies a word-aligned destination, nonempty width divisible by 32
+; (<=320) and rows <=200. Source may be unaligned on 68020+.
         section code,code
         xdef aitdKalmsC2PRect
 aitdKalmsC2PRect:

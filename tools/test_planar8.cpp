@@ -63,7 +63,7 @@ static void checkBufferSync() {
         }
         for(uint16_t i=0;i<convertedCount;++i) {
             const auto& r=converted[i];
-            assert(!(r.left&31) && !(r.right&31));
+            assert(!(r.left&15) && !((r.right-r.left)&31));
             Planar8::Rect global{int16_t(r.top+viewport.top),int16_t(r.left+viewport.left),
                 int16_t(r.bottom+viewport.top),int16_t(r.right+viewport.left)},out;
             assert(Planar8::convert(source.data(),back.data(),viewport,global,out));
@@ -117,6 +117,22 @@ int main() {
         assert(decode(output,x,y)==(y>=3 && y<5 && x>=32 && x<96 ? 0x69 : decode(previous.data()+32,x,y)));
     for(unsigned i=0;i<32;++i)assert(storage[i]==0xa5 && storage[storage.size()-32+i]==0xa5);
     // Clipping at all viewport edges, including an unaligned source origin.
+    // Every clipped span must cover its dirty input, stay within one row,
+    // and obey the assembly width/word-start contract, including right edges.
+    for(int left=0;left<320;++left)for(int right=left+1;right<=320;++right) {
+        Planar8::Rect r;
+        assert(Planar8::normalize(viewport,{150,int16_t(160+left),151,int16_t(160+right)},r));
+        assert(r.left>=0 && r.left<=left && r.right>=right && r.right<=320);
+        assert(!(r.left&15) && !((r.right-r.left)&31));
+    }
+    assert(Planar8::normalize(viewport,{150,338,286,360},partial));
+    assert(same(partial,{0,176,136,208}));
+    Planar8::Rect overlapping[2];uint16_t overlapCount=0;
+    Planar8::append(overlapping,overlapCount,2,{0,16,1,48});
+    Planar8::append(overlapping,overlapCount,2,{0,32,1,64});
+    assert(overlapCount==2); // A 48-pixel union would violate Kalms' contract.
+    Planar8::append(overlapping,overlapCount,1,{0,32,1,64});
+    assert(overlapCount==1 && same(overlapping[0],{0,16,1,80}));
     assert(Planar8::normalize(viewport,{-32768,-32768,32767,32767},partial));
     assert(same(partial,full));
     assert(Planar8::normalize({151,161,351,481},{150,160,153,162},partial));
@@ -149,5 +165,5 @@ int main() {
     assert(!Planar8::verify(immutable.data(),output,{0,0,1,1},mismatch));
     for(unsigned y=0;y<200;++y)for(unsigned x=0;x<320;++x)
         assert(decode(output,x,y)==immutable[(y+151)*640+x+161]);
-    puts("PASS Planar8: all pens/planes, full viewport, partial preservation, 32-pixel alignment, edge clipping and invalid-input atomicity");
+    puts("PASS Planar8: all pens/planes, full viewport, partial preservation, word-aligned 32-pixel spans, edge clipping and invalid-input atomicity");
 }
