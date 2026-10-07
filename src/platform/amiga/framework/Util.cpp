@@ -1,3 +1,4 @@
+#include "platform/amiga/M5Audit.h"
 #include <limits.h>
 #include <proto/exec.h>
 #include <exec/memory.h>
@@ -192,11 +193,11 @@ uint32_t Util::memoryPoolSize = 0;
 uint8_t* Util::memoryPoolFreeSegment = 0;
 
 // CHIP-RAM arena. DanceDiverse3 used SAS/C's `_MemType` + `new` to get chip RAM;
-// AllocMem(MEMF_CHIP) does the same on both compilers (GCC's operator new is
+// M5_ALLOC_MEM(MEMF_CHIP) does the same on both compilers (GCC's operator new is
 // MEMF_ANY, so it could not back this).
 uint8_t* Util::allocateMemoryPool(uint32_t bytes)
 {
-    memoryPool = (uint8_t*)AllocMem(bytes, MEMF_CHIP | MEMF_CLEAR);
+    memoryPool = (uint8_t*)M5_ALLOC_MEM(bytes, MEMF_CHIP | MEMF_CLEAR);
     if (memoryPool) {
         memoryPoolSize = bytes;
         memoryPoolFreeSegment = memoryPool;
@@ -207,7 +208,7 @@ uint8_t* Util::allocateMemoryPool(uint32_t bytes)
 void Util::freeMemoryPool()
 {
     if (memoryPool) {
-        FreeMem(memoryPool, memoryPoolSize);
+        M5_FREE_MEM(memoryPool, memoryPoolSize);
         memoryPool = 0;
         memoryPoolSize = 0;
         memoryPoolFreeSegment = 0;

@@ -1,3 +1,4 @@
+#include "platform/amiga/M5Audit.h"
 #define ECS_SPECIFIC
 #include <hardware/custom.h>
 #include <graphics/display.h>
@@ -39,7 +40,7 @@ CopperList::CopperList(uint32_t* data, uint32_t length, bool takeOwnership) :
 CopperList::~CopperList()
 {
     if (owner) {
-        FreeMem(data_, length << 2);
+        M5_FREE_MEM(data_, length << 2);
     }
 }
 
@@ -50,7 +51,7 @@ uint32_t* CopperList::data() const
 
 CopperList* CopperList::allocate(uint32_t length)
 {
-    uint32_t* data = (uint32_t*)AllocMem(length << 2, MEMF_CHIP | MEMF_CLEAR);
+    uint32_t* data = (uint32_t*)M5_ALLOC_MEM(length << 2, MEMF_CHIP | MEMF_CLEAR);
     return data ? new CopperList(data, length, true) : 0;
 }
 

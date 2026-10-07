@@ -1,3 +1,4 @@
+#include "platform/amiga/M5Audit.h"
 #ifndef __AMIGA__
 // The cross build force-includes SASCCompat, whose typedefs are the native ABI.
 #ifndef __mc68000__
@@ -152,6 +153,9 @@ void MacHeap::publish()
 {
     AitdProfileScope profile(kProfileHeapPublish);
     if(!arena_)return;
+#ifdef AITD_M5_AUDIT
+    aitdM5Zone(arena_,bytes_-freeBytes_);
+#endif
     heapWrite32(arena_+8,heapAddress(freeMasters_));
     heapWrite32(arena_,heapAddress(arena_+end_));
     heapWrite32(arena_+12,freeBytes());

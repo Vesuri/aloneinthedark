@@ -1,3 +1,4 @@
+#include "platform/amiga/M5Audit.h"
 // Runtime shims for building the port with m68k-amiga-elf-gcc (-nostdlib).
 // Derived from dA JoRMaS Template/C++/GCCRuntime.cpp, modified:
 //   - No ProductionRunner dependency (VBI via exec AddIntServer instead).
@@ -16,9 +17,9 @@ struct GfxBase* GfxBase = 0;
 struct DosLibrary* DOSBase = 0;
 
 // ---- C++ heap via AllocMem --------------------------------------------------
-void* operator new(unsigned long n)   { unsigned long* p = (unsigned long*)AllocMem(n + sizeof(unsigned long), MEMF_ANY | MEMF_CLEAR); if (!p) return 0; *p = n + sizeof(unsigned long); return p + 1; }
+void* operator new(unsigned long n)   { unsigned long* p = (unsigned long*)M5_ALLOC_MEM(n + sizeof(unsigned long), MEMF_ANY | MEMF_CLEAR); if (!p) return 0; *p = n + sizeof(unsigned long); return p + 1; }
 void* operator new[](unsigned long n) { return operator new(n); }
-void  operator delete(void* p)             { if (!p) return; unsigned long* q = (unsigned long*)p - 1; FreeMem(q, *q); }
+void  operator delete(void* p)             { if (!p) return; unsigned long* q = (unsigned long*)p - 1; M5_FREE_MEM(q, *q); }
 void  operator delete[](void* p)           { operator delete(p); }
 void  operator delete(void* p, unsigned long)   { operator delete(p); }
 void  operator delete[](void* p, unsigned long) { operator delete(p); }

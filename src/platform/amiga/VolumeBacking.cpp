@@ -1,3 +1,4 @@
+#include "platform/amiga/M5Audit.h"
 #include <proto/dos.h>
 #include <proto/exec.h>
 #include <dos/dosextens.h>
@@ -18,7 +19,7 @@ static int32_t queryBacking(void* context) {
     MacVolumeBacking result={};int32_t error=0;
     BPTR lock=Lock((CONST_STRPTR)"PROGDIR:",ACCESS_READ);
     if(!lock)return -36;
-    InfoData* info=(InfoData*)AllocMem(sizeof(InfoData),MEMF_PUBLIC|MEMF_CLEAR);
+    InfoData* info=(InfoData*)M5_ALLOC_MEM(sizeof(InfoData),MEMF_PUBLIC|MEMF_CLEAR);
     FileInfoBlock* folder=(FileInfoBlock*)AllocDosObject(DOS_FIB,0);
     if(!info || !folder)error=-108;
     else if(!Info(lock,info) || !Examine(lock,folder))error=-36;
@@ -38,7 +39,7 @@ static int32_t queryBacking(void* context) {
         result.blockBytes=info->id_BytesPerBlock;result.locked=info->id_DiskState==ID_WRITE_PROTECTED;
     }
     if(folder)FreeDosObject(DOS_FIB,folder);
-    if(info)FreeMem(info,sizeof(InfoData));UnLock(lock);
+    if(info)M5_FREE_MEM(info,sizeof(InfoData));UnLock(lock);
     if(!error) {
         *(MacVolumeBacking*)context=result;
 #ifdef AITD_FILE_WRITE_PROBE

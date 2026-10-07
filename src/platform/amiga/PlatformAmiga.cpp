@@ -1,3 +1,4 @@
+#include "M5Audit.h"
 /* PlatformAmiga — the machine takeover.  See PlatformAmiga.h for the scope.
  *
  * The shape is inherited from the Revs port (same toolchain, same target, and its
@@ -278,6 +279,9 @@ bool PlatformAmiga::run()
     g_videoPAL=(GfxBase->DisplayFlags&PAL)!=0;
     g_paulaClock=VideoTiming::paulaClock(g_videoPAL!=0);
     s_macTickRemainder=0;
+#ifdef AITD_M5_AUDIT
+    M5AuditSession auditSession;
+#endif
     // Use the OS chipset report: OCS has no reliable DENISEID register.
     AmigaHardware::hasAGAChipSet = GfxBase->LibNode.lib_Version >= 39
         && (GfxBase->ChipRevBits0 & GFXF_AA_LISA) != 0;

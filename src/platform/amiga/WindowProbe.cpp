@@ -1,3 +1,4 @@
+#include "platform/amiga/M5Audit.h"
 #ifdef AITD_WINDOW_PROBE
 #include <proto/dos.h>
 #include <proto/exec.h>
@@ -48,7 +49,7 @@ static uint32_t audioInterrupt()
 struct AudioProbe {
     void* sample;
     IntVector saved;
-    AudioProbe(): sample(AllocMem(1024,MEMF_CHIP|MEMF_CLEAR)) {
+    AudioProbe(): sample(M5_ALLOC_MEM(1024,MEMF_CHIP|MEMF_CLEAR)) {
         if(!sample)return;
         Disable();
         saved=SysBase->IntVects[INTB_AUD0];
@@ -71,7 +72,7 @@ struct AudioProbe {
         custom->intreq=INTF_AUD0;
         SysBase->IntVects[INTB_AUD0]=saved;
         Enable();
-        FreeMem(sample,1024);
+        M5_FREE_MEM(sample,1024);
     }
 };
 static bool probeKeyMap()

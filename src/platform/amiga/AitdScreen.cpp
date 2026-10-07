@@ -1,3 +1,4 @@
+#include "platform/amiga/M5Audit.h"
 /* AitdScreen — the Amiga display for Target 1 (the intro screen).  See AitdScreen.h
  * for why this file, and not the framework, owns the mode registers.
  *
@@ -110,32 +111,32 @@ bool AitdScreen::initialize(const uint8_t* picture, const uint16_t* palette16)
     // a linked-in blob lands in fast RAM, which the display DMA cannot reach.  The failure is
     // not a crash -- the copper happily fetches whatever chip address the truncated pointer
     // lands on -- so allocate explicitly and copy.
-    m_chip = (uint8_t*)AllocMem(kPictureBytes, MEMF_CHIP);
+    m_chip = (uint8_t*)M5_ALLOC_MEM(kPictureBytes, MEMF_CHIP);
     if (!m_chip) return false;
-    m_back = (uint8_t*)AllocMem(kPictureBytes, MEMF_CHIP);
-    if (!m_back) { FreeMem(m_chip, kPictureBytes); m_chip = 0; return false; }
+    m_back = (uint8_t*)M5_ALLOC_MEM(kPictureBytes, MEMF_CHIP);
+    if (!m_back) { M5_FREE_MEM(m_chip, kPictureBytes); m_chip = 0; return false; }
 
-    m_mouseSprite = (uint16_t*)AllocMem(2*kMouseSpriteBytes, MEMF_CHIP | MEMF_CLEAR);
+    m_mouseSprite = (uint16_t*)M5_ALLOC_MEM(2*kMouseSpriteBytes, MEMF_CHIP | MEMF_CLEAR);
     if (!m_mouseSprite) {
-        FreeMem(m_back, kPictureBytes); m_back = 0;
-        FreeMem(m_chip, kPictureBytes); m_chip = 0;
+        M5_FREE_MEM(m_back, kPictureBytes); m_back = 0;
+        M5_FREE_MEM(m_chip, kPictureBytes); m_chip = 0;
         return false;
     }
-    m_emptySprite = (uint16_t*)AllocMem(kEmptySpriteBytes, MEMF_CHIP | MEMF_CLEAR);
+    m_emptySprite = (uint16_t*)M5_ALLOC_MEM(kEmptySpriteBytes, MEMF_CHIP | MEMF_CLEAR);
     if (!m_emptySprite) {
-        FreeMem(m_mouseSprite, 2*kMouseSpriteBytes); m_mouseSprite = 0;
-        FreeMem(m_back, kPictureBytes); m_back = 0;
-        FreeMem(m_chip, kPictureBytes); m_chip = 0;
+        M5_FREE_MEM(m_mouseSprite, 2*kMouseSpriteBytes); m_mouseSprite = 0;
+        M5_FREE_MEM(m_back, kPictureBytes); m_back = 0;
+        M5_FREE_MEM(m_chip, kPictureBytes); m_chip = 0;
         return false;
     }
 
-    m_copperAllocation = (uint32_t*)AllocMem(2 * VS_CL_LONGS * sizeof(uint32_t), MEMF_CHIP | MEMF_CLEAR);
+    m_copperAllocation = (uint32_t*)M5_ALLOC_MEM(2 * VS_CL_LONGS * sizeof(uint32_t), MEMF_CHIP | MEMF_CLEAR);
     m_copper = m_copperAllocation;
     if (!m_copper) {
-        FreeMem(m_emptySprite, kEmptySpriteBytes); m_emptySprite = 0;
-        FreeMem(m_mouseSprite, 2*kMouseSpriteBytes); m_mouseSprite = 0;
-        FreeMem(m_back, kPictureBytes); m_back = 0;
-        FreeMem(m_chip, kPictureBytes); m_chip = 0;
+        M5_FREE_MEM(m_emptySprite, kEmptySpriteBytes); m_emptySprite = 0;
+        M5_FREE_MEM(m_mouseSprite, 2*kMouseSpriteBytes); m_mouseSprite = 0;
+        M5_FREE_MEM(m_back, kPictureBytes); m_back = 0;
+        M5_FREE_MEM(m_chip, kPictureBytes); m_chip = 0;
         return false;
     }
 
@@ -511,14 +512,14 @@ int16_t AitdScreen::presentMacFrame(const uint8_t* chunky,const uint8_t* colorTa
 void AitdScreen::shutdown()
 {
     if (m_copperAllocation) {
-        FreeMem(m_copperAllocation, 2 * VS_CL_LONGS * sizeof(uint32_t));
+        M5_FREE_MEM(m_copperAllocation, 2 * VS_CL_LONGS * sizeof(uint32_t));
         m_copperAllocation = 0;
         m_copper = 0;
     }
-    if (m_emptySprite) { FreeMem(m_emptySprite, kEmptySpriteBytes); m_emptySprite = 0; }
-    if (m_mouseSprite) { FreeMem(m_mouseSprite, 2*kMouseSpriteBytes); m_mouseSprite = 0; }
-    if (m_back)   { FreeMem(m_back, kPictureBytes); m_back = 0; }
-    if (m_chip)   { FreeMem(m_chip, kPictureBytes); m_chip = 0; }
+    if (m_emptySprite) { M5_FREE_MEM(m_emptySprite, kEmptySpriteBytes); m_emptySprite = 0; }
+    if (m_mouseSprite) { M5_FREE_MEM(m_mouseSprite, 2*kMouseSpriteBytes); m_mouseSprite = 0; }
+    if (m_back)   { M5_FREE_MEM(m_back, kPictureBytes); m_back = 0; }
+    if (m_chip)   { M5_FREE_MEM(m_chip, kPictureBytes); m_chip = 0; }
 }
 
 // Compact 5x7 capitals.  Rows are five low bits, left to right.  The Stage B stop uses

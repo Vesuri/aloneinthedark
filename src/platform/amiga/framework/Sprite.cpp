@@ -1,3 +1,4 @@
+#include "platform/amiga/M5Audit.h"
 #include <proto/exec.h>
 #include <exec/memory.h>
 #include "Sprite.h"
@@ -15,7 +16,7 @@ Sprite::~Sprite()
 {
     if (owner) {
         uint32_t spriteSize = (height + 2) << 2;
-        FreeMem(data_, spriteSize);
+        M5_FREE_MEM(data_, spriteSize);
     }
 }
 
@@ -75,7 +76,7 @@ uint16_t* Sprite::data() const
 Sprite* Sprite::allocate(uint16_t height)
 {
     uint32_t spriteSize = (height + 2) << 2;
-    uint16_t* data = (uint16_t*)AllocMem(spriteSize, MEMF_CHIP | MEMF_CLEAR);
+    uint16_t* data = (uint16_t*)M5_ALLOC_MEM(spriteSize, MEMF_CHIP | MEMF_CLEAR);
     return data ? new Sprite(data, height, false, true) : 0;
 }
 
@@ -91,18 +92,18 @@ static uint32_t chainBytes(uint16_t heightA, uint16_t heightB)
 uint16_t* Sprite::allocateChain(uint16_t heightA, uint16_t heightB, Sprite*& a, Sprite*& b)
 {
     a = 0; b = 0;
-    uint16_t* buffer = (uint16_t*)AllocMem(chainBytes(heightA, heightB), MEMF_CHIP | MEMF_CLEAR);
+    uint16_t* buffer = (uint16_t*)M5_ALLOC_MEM(chainBytes(heightA, heightB), MEMF_CHIP | MEMF_CLEAR);
     if (!buffer) return 0;
     a = new Sprite(buffer, heightA, false, false);
     b = new Sprite(buffer + 2 + (heightA << 1), heightB, false, false);
     if (a && b) return buffer;
     delete a; a = 0;
     delete b; b = 0;
-    FreeMem(buffer, chainBytes(heightA, heightB));
+    M5_FREE_MEM(buffer, chainBytes(heightA, heightB));
     return 0;
 }
 
 void Sprite::freeChain(uint16_t* buffer, uint16_t heightA, uint16_t heightB)
 {
-    if (buffer) FreeMem(buffer, chainBytes(heightA, heightB));
+    if (buffer) M5_FREE_MEM(buffer, chainBytes(heightA, heightB));
 }

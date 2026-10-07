@@ -22,10 +22,12 @@ aitd_song_deferred:
 	rts
 	.bss
 	.balign 4
+	.globl aitd_song_stack
 aitd_song_stack:
 	.space 8192
 aitd_song_stack_end:
 	.balign 4
+	.globl aitd_song_deferred_stack
 aitd_song_deferred_stack:
 	.space 8192
 aitd_song_deferred_stack_end:

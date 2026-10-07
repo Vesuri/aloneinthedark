@@ -1,3 +1,4 @@
+#include "platform/amiga/M5Audit.h"
 #include <proto/exec.h>
 #include <exec/memory.h>
 #include "AmigaHardware.h"
@@ -21,7 +22,7 @@ Bitmap::Bitmap(void* data, uint16_t width, uint16_t height, uint16_t bitplanes, 
 Bitmap::~Bitmap()
 {
     if (owner) {
-        FreeMem(data, dataSize());
+        M5_FREE_MEM(data, dataSize());
     }
 }
 
@@ -55,7 +56,7 @@ Bitmap* Bitmap::allocate(uint16_t width, uint16_t height, uint16_t bitplanes, ui
 
     uint16_t planeBytes = (uint16_t)((uint32_t)(dataWidth >> 3) * height);
     uint32_t bitmapSize = (uint32_t)planeBytes * bitplanes;
-    void* data = AllocMem(bitmapSize, MEMF_CHIP | MEMF_CLEAR);
+    void* data = M5_ALLOC_MEM(bitmapSize, MEMF_CHIP | MEMF_CLEAR);
     return data ? new Bitmap(data, width, height, bitplanes, true, dataWidth) : 0;
 }
 

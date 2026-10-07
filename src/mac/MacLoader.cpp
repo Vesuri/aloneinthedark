@@ -1,3 +1,4 @@
+#include "platform/amiga/M5Audit.h"
 #include <proto/exec.h>
 #include <exec/memory.h>
 #include <hardware/dmabits.h>
@@ -722,16 +723,16 @@ static void releaseZones()
         s_createdPalettes[i].handle=0;s_createdPalettes[i].privateHandle=0;
     }
     s_applicationZone.reset();s_systemZone.reset();
-    if(s_applicationArena)FreeMem(s_applicationArena,kApplicationZoneBytes);
-    if(s_systemArena)FreeMem(s_systemArena,kSystemZoneBytes);
+    if(s_applicationArena)M5_FREE_MEM(s_applicationArena,kApplicationZoneBytes);
+    if(s_systemArena)M5_FREE_MEM(s_systemArena,kSystemZoneBytes);
     s_applicationArena=s_systemArena=s_applicationLimit=0;
     g_applicationZoneBase=g_systemZoneBase=0;
 }
 static bool prepareZones()
 {
     releaseZones();
-    s_applicationArena=(uint8_t*)AllocMem(kApplicationZoneBytes,MEMF_FAST|MEMF_CLEAR);
-    s_systemArena=(uint8_t*)AllocMem(kSystemZoneBytes,MEMF_FAST|MEMF_CLEAR);
+    s_applicationArena=(uint8_t*)M5_ALLOC_MEM(kApplicationZoneBytes,MEMF_FAST|MEMF_CLEAR);
+    s_systemArena=(uint8_t*)M5_ALLOC_MEM(kSystemZoneBytes,MEMF_FAST|MEMF_CLEAR);
     if(!s_applicationArena || !s_systemArena
         || !s_applicationZone.init(s_applicationArena,kApplicationZoneBytes)
         || !s_systemZone.init(s_systemArena,kSystemZoneBytes,32)) {
@@ -1051,7 +1052,7 @@ static bool loaderStop(const char* reason, uint16_t segment)
 
 static void releaseA5World()
 {
-    if (s_a5WorldStorage) FreeMem(s_a5WorldStorage, s_a5WorldBytes);
+    if (s_a5WorldStorage) M5_FREE_MEM(s_a5WorldStorage, s_a5WorldBytes);
     s_a5WorldStorage = 0;
     s_a5WorldBytes = 0;
     s_portLowMemory = s_initialLowMemory;
@@ -1073,7 +1074,7 @@ static bool buildA5World(uint8_t*& a5)
 
     releaseA5World();
     s_a5WorldBytes = below + above + MacLowMemory::size;
-    s_a5WorldStorage = (uint8_t*)AllocMem(s_a5WorldBytes, MEMF_ANY | MEMF_CLEAR);
+    s_a5WorldStorage = (uint8_t*)M5_ALLOC_MEM(s_a5WorldBytes, MEMF_ANY | MEMF_CLEAR);
     if (!s_a5WorldStorage) {
         s_a5WorldBytes = 0;
         return loaderStop("A5 WORLD MEMORY", 0);
@@ -1517,7 +1518,7 @@ static void stopNativeEffect(uint16_t index)
         ++g_effectStops;
     }
     voice.active=0;
-    if(effect.chip)FreeMem(effect.chip,effect.allocated);
+    if(effect.chip)M5_FREE_MEM(effect.chip,effect.allocated);
     effect.chip=0;effect.allocated=0;
 }
 
@@ -1563,18 +1564,18 @@ static const char* playNativeEffect(uint8_t* packet,uint32_t& scratch)
             age=uint16_t(0x7ffeUL - elapsed);replacing=true;
         } else return "EFFECT VOICE STEAL"; // Multiple occupied slots remain unmeasured.
     }
-    uint8_t* chip=(uint8_t*)AllocMem(layout.allocated,MEMF_CHIP);
+    uint8_t* chip=(uint8_t*)M5_ALLOC_MEM(layout.allocated,MEMF_CHIP);
     if(!chip)return "EFFECT CHIP MEMORY";
     PaulaSample::convert(layout,chip);
     NativeAudioGuard guard;
     // A replacement retains its Paula channel; music ownership is untouched.
     int16_t channel=replacing ? g_soundDriver.effects[index].channel : -1;
     if(replacing && (channel<0 || channel>3 || g_soundDriver.channels[channel]!=6+index)) {
-        FreeMem(chip,layout.allocated);return "EFFECT REPLACEMENT CHANNEL";
+        M5_FREE_MEM(chip,layout.allocated);return "EFFECT REPLACEMENT CHANNEL";
     }
     if(!replacing)for(uint16_t i=0;i<4;++i)if(g_soundDriver.channels[i]<0) {channel=i;break;}
     if(channel<0)channel=stealSongChannel();
-    if(channel<0) {FreeMem(chip,layout.allocated);return "EFFECT CHANNEL STEAL";}
+    if(channel<0) {M5_FREE_MEM(chip,layout.allocated);return "EFFECT CHANNEL STEAL";}
     if(replacing)stopNativeEffect(index); // DMA off before releasing the old sample.
     NativeEffect& effect=g_effects[index];
     effect.chip=chip;effect.allocated=layout.allocated;effect.size=bytes;effect.rate=rate;
@@ -1656,7 +1657,7 @@ static void releaseNativeSong()
     for(uint16_t i=0;i<6;++i)stopNativeSongVoice(i);
     for(uint16_t i=0;i<g_song.sampleCount;++i)for(uint16_t v=0;v<5;++v) {
         auto& sample=g_song.samples[i];
-        if(sample.chip[v])FreeMem(sample.chip[v],sample.allocated[v]);
+        if(sample.chip[v])M5_FREE_MEM(sample.chip[v],sample.allocated[v]);
         sample.chip[v]=0;sample.allocated[v]=0;
     }
     for(uint16_t i=0;i<g_song.ownedCount;++i) {
@@ -1669,7 +1670,7 @@ static void releaseNativeSong()
     g_song.description.data=0;
     for(uint16_t i=0;i<128;++i) {g_song.instruments[i].data=0;g_song.samples[i].handle=0;g_song.samples[i].description.pcm=0;}
     for(auto& voice:g_soundDriver.songs)voice.sample=0;
-    if(g_song.prepared)FreeMem(g_song.prepared,g_song.preparedCount*sizeof(NativeSong::PreparedNote));
+    if(g_song.prepared)M5_FREE_MEM(g_song.prepared,g_song.preparedCount*sizeof(NativeSong::PreparedNote));
     g_song.prepared=0;g_song.preparedCount=0;s_songInterruptError=0;
 }
 static const char* loadSongSample(uint16_t id)
@@ -1708,7 +1709,7 @@ static const char* prepareSongNote(const SongInputs::Event& event)
     for(uint16_t stride=dma.stride;stride>1;stride>>=1)++variant;
     if(variant>=5)return "SONG PCM STRIDE";
     if(!sample.chip[variant]) {
-        uint8_t* chip=(uint8_t*)AllocMem(prepared.allocated,MEMF_CHIP);
+        uint8_t* chip=(uint8_t*)M5_ALLOC_MEM(prepared.allocated,MEMF_CHIP);
         if(!chip)return "SONG CHIP MEMORY";
 #ifdef AITD_SONG_COST_PROBE
         uint32_t convertBegin=g_macTicks;
@@ -1777,7 +1778,7 @@ static const char* startNativeSong(uint32_t argument)
         for(uint16_t r=0;r<spec.ranges;++r)if((error=loadSongSample(spec.rangeSample(r))))return error;
     }
     if(g_song.preparedCount) {
-        g_song.prepared=(NativeSong::PreparedNote*)AllocMem(
+        g_song.prepared=(NativeSong::PreparedNote*)M5_ALLOC_MEM(
             g_song.preparedCount*sizeof(NativeSong::PreparedNote),MEMF_FAST|MEMF_CLEAR);
         if(!g_song.prepared)return "SONG PREPARED MEMORY";
     }
@@ -3297,7 +3298,7 @@ static bool drawIndexedPictureBits(const uint8_t* picture, uint32_t size, uint32
     uint32_t pixelBytes = multiplyUnsigned16(rowBytes, height);
     bool allocatedPixels = pixelBytes > sizeof(s_indexedPictureScratch);
     uint8_t* pixels = allocatedPixels
-        ? (uint8_t*)AllocMem(pixelBytes, 0) : s_indexedPictureScratch;
+        ? (uint8_t*)M5_ALLOC_MEM(pixelBytes, 0) : s_indexedPictureScratch;
     if (!pixels) return false;
     bool valid = true;
     bool pixelsMapped = packed && pixelSize == 4;
@@ -3369,7 +3370,7 @@ static bool drawIndexedPictureBits(const uint8_t* picture, uint32_t size, uint32
         // QuickDraw's actual dither lookup uses the logical destination table,
         // not the physical device's protected duplicate endpoint slots.
         const uint32_t colorBytes=window ? 2056UL+4620UL+23328UL : 0;
-        uint8_t* storage=valid ? (uint8_t*)AllocMem(pictureBytes+colorBytes,0) : 0;
+        uint8_t* storage=valid ? (uint8_t*)M5_ALLOC_MEM(pictureBytes+colorBytes,0) : 0;
         if(!storage)valid=false;
         const uint8_t* ditherColors=colors8;const uint8_t* ditherInverse=inverse8;
         if(valid && window) {
@@ -3406,7 +3407,7 @@ static bool drawIndexedPictureBits(const uint8_t* picture, uint32_t size, uint32
             }
             usedPackedRows=true;
         }
-        if(storage)FreeMem(storage,pictureBytes+colorBytes);
+        if(storage)M5_FREE_MEM(storage,pictureBytes+colorBytes);
     }
     bool unscaledPacked = valid && !destination8
         && frameBottom - frameTop == targetBottom - targetTop
@@ -3604,7 +3605,7 @@ static bool drawIndexedPictureBits(const uint8_t* picture, uint32_t size, uint32
         }
         markDirtyBounds(dirtyTop-mapTop,dirtyLeft-mapLeft,dirtyBottom-mapTop,dirtyRight-mapLeft);
     }
-    if (allocatedPixels) FreeMem(pixels, pixelBytes);
+    if (allocatedPixels) M5_FREE_MEM(pixels, pixelBytes);
     return valid;
 }
 
@@ -3633,7 +3634,7 @@ static bool drawPackedMonochromePictureBits(const uint8_t* picture, uint32_t siz
 
     uint16_t height = (uint16_t)(sourceBottom - sourceTop);
     uint32_t pixelBytes = multiplyUnsigned16(rowBytes, height);
-    uint8_t* pixels = (uint8_t*)AllocMem(pixelBytes, 0);
+    uint8_t* pixels = (uint8_t*)M5_ALLOC_MEM(pixelBytes, 0);
     if (!pixels) return false;
     bool valid = true;
     for (uint16_t row = 0; row < height && valid; ++row) {
@@ -3776,7 +3777,7 @@ static bool drawPackedMonochromePictureBits(const uint8_t* picture, uint32_t siz
             }
         }
     }
-    FreeMem(pixels, pixelBytes);
+    M5_FREE_MEM(pixels, pixelBytes);
     return valid;
 }
 
@@ -3808,7 +3809,7 @@ static bool drawDirectPictureBits(const uint8_t* picture, uint32_t size, uint32_
 
     uint16_t height = (uint16_t)(sourceBottom - sourceTop);
     uint32_t pixelBytes = multiplyUnsigned16(componentRowBytes, height);
-    uint8_t* pixels = (uint8_t*)AllocMem(pixelBytes, 0);
+    uint8_t* pixels = (uint8_t*)M5_ALLOC_MEM(pixelBytes, 0);
     if (!pixels) return false;
     bool valid = true;
     for (uint16_t row = 0; row < height && valid; ++row) {
@@ -3928,7 +3929,7 @@ static bool drawDirectPictureBits(const uint8_t* picture, uint32_t size, uint32_
             }
         }
     }
-    FreeMem(pixels, pixelBytes);
+    M5_FREE_MEM(pixels, pixelBytes);
     return valid;
 }
 
@@ -5296,7 +5297,7 @@ static bool copyBits(const uint8_t* sourceBitmap, const uint8_t* destinationBitm
     }
 
     uint32_t temporaryBytes = multiplyUnsigned16(width, height);
-    uint8_t* temporary = (uint8_t*)AllocMem(temporaryBytes, 0);
+    uint8_t* temporary = (uint8_t*)M5_ALLOC_MEM(temporaryBytes, 0);
     if (!temporary) return false;
     for (uint16_t y = 0; y < height; ++y) {
         uint8_t* temporaryRow = temporary + multiplyUnsigned16(y, width);
@@ -5360,7 +5361,7 @@ static bool copyBits(const uint8_t* sourceBitmap, const uint8_t* destinationBitm
             else byte = (uint8_t)((byte & 0x0f) | (value << 4));
         }
     }
-    FreeMem(temporary, temporaryBytes);
+    M5_FREE_MEM(temporary, temporaryBytes);
     return true;
 }
 
@@ -5533,10 +5534,10 @@ static uint8_t* newGWorld(const uint8_t* bounds,uint16_t depth,MacHeap::Handle c
         write32(ct,1);write16(ct+6,1);write16(ct+10,0xffff);write16(ct+12,0xffff);write16(ct+14,0xffff);write16(ct+16,1);
     }
     // Temporary colour-search workspace, never a shadow framebuffer.
-    uint16_t* workspace=(uint16_t*)AllocMem((5832UL+4096)*2,MEMF_FAST);
+    uint16_t* workspace=(uint16_t*)M5_ALLOC_MEM((5832UL+4096)*2,MEMF_FAST);
     if(!workspace) { releaseGWorld(*slot);return 0; }
     bool built=GWorld8::inverse(*h[2],4,*h[26],workspace,workspace+5832);
-    FreeMem(workspace,(5832UL+4096)*2);
+    M5_FREE_MEM(workspace,(5832UL+4096)*2);
     if(!built) { releaseGWorld(*slot);return 0; }
     GWorld8::port(slot->port,(uint32_t)h[0],(uint32_t)h[5],(uint32_t)h[3],(uint32_t)h[4],
         (uint32_t)h[6],(uint32_t)h[7],(uint32_t)h[8],r);
@@ -6904,8 +6905,8 @@ struct UserService {
     uint32_t toolboxReturn;
 };
 static UserService s_userService;
-static uint8_t* allocateFilePage(uint32_t size) { return (uint8_t*)AllocMem(size,MEMF_FAST); }
-static void releaseFilePage(uint8_t* bytes,uint32_t size) { FreeMem(bytes,size); }
+static uint8_t* allocateFilePage(uint32_t size) { return (uint8_t*)M5_ALLOC_MEM(size,MEMF_FAST); }
+static void releaseFilePage(uint8_t* bytes,uint32_t size) { M5_FREE_MEM(bytes,size); }
 static int16_t flushDataSource(DataSource& source,FileAccess::ReadStream& stream,bool restored=false) {
     bool changed=source.writes.dirty();
     int16_t error=restored ? FileAccess::flushRestoredStream(stream,source.writes) : FileAccess::flushStream(stream,source.writes);
@@ -7087,7 +7088,7 @@ static bool dispatchFileData(uint16_t trap,uint32_t* regs) {
                             DataFork& other=s_dataForks[i];
                             if(s_files.fork(other.ref)->id==id && s_files.fork(other.ref)->resource==resource) {
                                 other.source=source;
-                                if(other.buffer)FreeMem(other.buffer,FileReadCache::capacity);other.buffer=0;
+                                if(other.buffer)M5_FREE_MEM(other.buffer,FileReadCache::capacity);other.buffer=0;
                             }
                         }
                         write16(pb+24,ref);
@@ -7118,7 +7119,7 @@ static bool dispatchFileData(uint16_t trap,uint32_t* regs) {
                     if(!source->backing) { source->writes.clear();source->id=0; }
                 }
                 error=FileAccess::closeStream(slot->stream);
-                if(slot->buffer)FreeMem(slot->buffer,FileReadCache::capacity);
+                if(slot->buffer)M5_FREE_MEM(slot->buffer,FileReadCache::capacity);
                 slot->source=0;slot->buffer=0;slot->ref=0;s_files.close(ref);
 #ifdef AITD_SAVE_LOAD
                 if(!error && savedBytes)aitdInputSaveLoadClosed(savedBytes);
@@ -10091,6 +10092,9 @@ extern "C" uint32_t aitdLineADispatch(uint32_t* regs, uint8_t* frame, uint8_t* u
 {
     uint32_t pc = read32(frame + 2);
     uint16_t trap = read16((const uint8_t*)pc);
+#ifdef AITD_M5_AUDIT
+    aitdM5Trap(pc,trap);
+#endif
 #ifdef AITD_SERVICE_PROBE
     if(g_macServiceActive && trap==0xa055) {
         ++g_serviceProbe[0];g_serviceProbe[1]|=read16(frame)&0x2000;
@@ -10217,7 +10221,7 @@ bool MacLoader::releaseResourceForks()
         DataFork& f=s_dataForks[i];
         if(FileAccess::closeRestoredStream(f.stream))closed=false;
         f.source=0;
-        if(f.buffer)FreeMem(f.buffer,FileReadCache::capacity);f.buffer=0;f.ref=0;
+        if(f.buffer)M5_FREE_MEM(f.buffer,FileReadCache::capacity);f.buffer=0;f.ref=0;
     }
     s_files.reset();g_applicationFileRef=0;
     g_appleEventHandlers.reset();
@@ -10234,7 +10238,7 @@ bool MacLoader::releaseResourceForks()
     clearResidentSegments();
     releaseZones();
     releaseA5World();
-    if (g_macStackBase) FreeMem(g_macStackBase, 65536);
+    if (g_macStackBase) M5_FREE_MEM(g_macStackBase, 65536);
     g_macStackBase = 0;
     g_macTicksAddress = 0;
     g_macRndSeedAddress = 0;
@@ -10288,7 +10292,7 @@ bool MacLoader::run(AitdScreen* screen)
     s_loudStopScreen = screen;
     if (!s_resourceForks.resourceCount()) return false;
 
-    if (!g_macStackBase) g_macStackBase = (uint8_t*)AllocMem(65536, MEMF_ANY);
+    if (!g_macStackBase) g_macStackBase = (uint8_t*)M5_ALLOC_MEM(65536, MEMF_ANY);
     if (!g_macStackBase) {
         loaderStop("MAC STACK MEMORY", 0);
         showLoaderStop();

@@ -1,3 +1,4 @@
+#include "platform/amiga/M5Audit.h"
 #ifdef AITD_FILE_WRITE_PROBE
 #include <proto/exec.h>
 #include <proto/dos.h>
@@ -9,8 +10,8 @@
 extern "C" { volatile uint32_t g_fileWriteProbeStep=0; }
 static uint8_t payload[131089],readback[200003];
 static uint8_t pattern(uint32_t i) { return (i*37+(i>>8))&255; }
-static uint8_t* allocate(uint32_t size) { return (uint8_t*)AllocMem(size,MEMF_FAST); }
-static void release(uint8_t* p,uint32_t size) { FreeMem(p,size); }
+static uint8_t* allocate(uint32_t size) { return (uint8_t*)M5_ALLOC_MEM(size,MEMF_FAST); }
+static void release(uint8_t* p,uint32_t size) { M5_FREE_MEM(p,size); }
 static int32_t protectFixture(void*) {
     return SetProtection((CONST_STRPTR)"PROGDIR:locked-probe.bin",FIBF_WRITE) ? 0 : -36;
 }

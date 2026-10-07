@@ -730,3 +730,8 @@ clean:
 -include $(wildcard obj/*.d)
 
 obj/KalmsC2P.o: $(AMIGA_SRC)/kalms/c2p1x1_8_c5_gen.s
+
+ifeq ($(M5AUDIT),1)
+EXTRA_DEFINES += -DAITD_M5_AUDIT
+PROBE_SYMS += g_m5Audit
+endif

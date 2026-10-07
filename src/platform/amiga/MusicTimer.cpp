@@ -1,3 +1,4 @@
+#include "M5Audit.h"
 #include "MusicTimer.h"
 #ifdef AITD_CIA_MUSIC
 #include <proto/exec.h>
@@ -36,8 +37,16 @@ static uint32_t musicInterrupt()
     if(s_running) {
         // Continuous counting reloads in hardware; ISR work does not move
         // the next deadline. Fractional reloads preserve the average 60 Hz.
+#ifdef AITD_M5_AUDIT
+        uint8_t hi,lo,again;
+        do {hi=*s_high;lo=*s_low;again=*s_high;}while(hi!=again);
+        aitdM5IRQBegin(uint16_t(hi)<<8|lo,s_period);
+#endif
         writeLatch();++g_musicTicks;
         aitd_song_vbi();
+#ifdef AITD_M5_AUDIT
+        aitdM5IRQEnd();
+#endif
     }
     return 0;
 }
@@ -70,6 +79,9 @@ const char* aitdMusicTimerStart(uint32_t initialTick)
         g_musicTicks=initialTick;g_musicTimerSource=bit+1;
         writeLatch();
         SetICR(resource,mask);
+#ifdef AITD_M5_AUDIT
+        aitdM5TimerStart();
+#endif
         s_running=true;
         AbleICR(resource,uint16_t(CIAICRF_SETCLR|mask));
         *s_control |= CIACRAF_START;
