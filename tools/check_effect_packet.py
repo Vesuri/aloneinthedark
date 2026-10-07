@@ -12,7 +12,7 @@ def check(folder,status,native=None,native_status=None):
     text=(folder/'mac.log').read_text()
     if status or re.search(r'FAIL|TIMEOUT|LUA ERROR|Error in',text) or text.count('PASS original isolated effect packet and completion')!=1 or text.count('Exited via the debugger')!=1:
         raise ValueError('original completion')
-    mode=one(text,r'^EFFECT_FIXTURE_CASE (loop3|fraction)$')
+    mode=one(text,r'^EFFECT_FIXTURE_CASE (loop0|loop1|loop3|loopnegative|fraction)$')
     code=next(r.body for r in read_resource_fork(ROOT/'tmp/runtime-data/Alone In The Dark') if r.kind==b'CODE' and r.rid==3)
     if one(text,r'^DRIVER17_BYTES (\w+)$')!=code[0x17ea:0x1800].hex().upper():raise ValueError('original caller')
     driver=(folder/'driver.bin').read_bytes(); original=(ROOT/'tmp/plan/MDRV_11.bin').read_bytes()
@@ -23,7 +23,7 @@ def check(folder,status,native=None,native_status=None):
         if e[reg]!=r[reg]:raise ValueError('original preserved '+reg)
     packet=(folder/'packet.bin').read_bytes()
     sample,size,rate,start,end,counter,ident=struct.unpack('>6IH',packet)
-    if (size,rate,start,end,ident)!=(4096,(8000<<16)+(32768 if mode=='fraction' else 0),512 if mode=='loop3' else 0,1024 if mode=='loop3' else 0,0x8000):raise ValueError('fixture packet')
+    if (size,rate,start,end,ident)!=(4096,(8000<<16)+(32768 if mode=='fraction' else 0),512 if mode.startswith('loop') else 0,1024 if mode.startswith('loop') else 0,0x8000):raise ValueError('fixture packet')
     if one(text,r'^DRIVER17_PACKET (\w+)$')!=packet.hex().upper():raise ValueError('packet capture')
     before=(folder/'enter-state.bin').read_bytes(); after=(folder/'return-state.bin').read_bytes()
     if len(before)!=0x3048 or len(after)!=len(before):raise ValueError('complete state')
@@ -39,8 +39,25 @@ def check(folder,status,native=None,native_status=None):
     if len(complete)!=len(before) or finish['cursor']!=sample+size or finish['loopword'] or struct.unpack_from('>H',complete,voice+0x200)[0]!=0xffff:raise ValueError('sample tail completion')
     observed=re.findall(r'^EFFECT_FIXTURE_TICK elapsed=(\d+) cursor=(\w+) end=(\w+) active=(\w+) counter=(-?\d+)$',text,re.M)
     counters=[int(row[4]) for row in observed]
-    if not observed or set(counters)!=({0,1,2,3} if mode=='loop3' else {0}) or counters!=sorted(counters,reverse=True):raise ValueError('loop counter progression')
-    if not 28<=finish['elapsed']<=(43 if mode=='loop3' else 34):raise ValueError('bounded original duration')
+    expected_counters={'loop0':{0},'loop1':{0,1},'loop3':{0,1,2,3},'loopnegative':{-1,0},'fraction':{0}}[mode]
+    if not observed or set(counters)!=expected_counters:raise ValueError('loop counter progression')
+    initial=fields(one(text,r'^DRIVER17_LOOP (.*)$'))
+    if initial['word']!={'loop0':0,'loop1':1,'loop3':3,'loopnegative':65535,'fraction':0}[mode]:raise ValueError('initial loop counter')
+    positions=[int(row[1],16) for row in observed]
+    if mode=='loopnegative':
+        release=int(one(text,r'^EFFECT_FIXTURE_RELEASE elapsed=(\d+) counter=0$'))
+        if not 60<=release<=62 or not 22<=finish['elapsed']-release<=28:raise ValueError('negative loop release and complete tail')
+        for row in observed:
+            tick,cursor,_,active,count=row;tick=int(tick);cursor=int(cursor,16)
+            if tick<release and (int(count)!=-1 or int(active,16)==65535):raise ValueError('negative loop remains active')
+            if 10<=tick<release and not sample+start<=cursor<sample+end:raise ValueError('negative loop stays within sample boundaries')
+            if tick>=release and int(count)!=0:raise ValueError('released counter remains zero')
+        if sum(b<a for a,b in zip(positions,positions[1:]))<5:raise ValueError('negative loop actually repeats')
+    else:
+        if counters!=sorted(counters,reverse=True):raise ValueError('counter never increases')
+        if not 28<=finish['elapsed']<=(43 if mode=='loop3' else 34):raise ValueError('bounded original duration')
+        if mode in ('loop0','loop1','fraction') and positions!=sorted(positions):raise ValueError('no unexpected sample repeat')
+        if mode=='loop3' and sum(b<a for a,b in zip(positions,positions[1:]))!=2:raise ValueError('exactly two original sample repeats')
     pcm=(folder/'sample.bin').read_bytes()
     if len(pcm)!=size:raise ValueError('owned sample extent')
     if native is not None:

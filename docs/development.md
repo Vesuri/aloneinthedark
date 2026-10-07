@@ -7131,3 +7131,41 @@ effect priority, natural completion and complete song/resource/channel cleanup.
 The CPU-only 180-tick interval advances 28 events; all 3,736 note deliveries
 have zero tick lateness. Evidence is `tmp/m4/effects/slots/song-capture.log` with
 `check_song_playback.py --interrupt` against the retained original clock log.
+
+
+## M4 loop counters and DMA stream boundary evidence — 2026-10-07
+
+The authorized RAM-only original effect fixtures now cover counts 0, 1, 3 and
+-1. All use an owned 4,096-byte sample, loop offsets 512/1,024 and the unchanged
+selector-17 call. Counts 0 and 1 both complete without repeating in 30 ticks;
+count 3 performs two extra repeats. A negative counter remains unchanged and
+repeats indefinitely: clearing the shared word at elapsed tick 60 releases it
+through the complete sample tail, finishing at tick 85. Full original driver
+state and ABI checks pass, as do cursor/counter progression and natural end.
+Evidence is `tmp/m4/effects/{loop0,loop1,loop3,loopnegative}`; emulator statuses
+are zero. These are isolated contracts, not ordinary gameplay runs.
+
+`EffectStream.h` supplies the sample-order planner for the upcoming native
+streaming path. Sanitizer-backed host tests cover those measured counter rules,
+changing the live negative counter to zero, fragment sizes 1–128 and odd loop
+boundaries without inserting padding or losing bytes. The planner takes
+already-converted PCM and neither allocates nor converts in `fill`. It is not
+yet connected to production playback: `EFFECT LOOP` remains explicit.
+
+The `EFFECTDMAPROBE=1 PROBES=` diagnostic observes actual Paula interrupts while
+the real effect path plays the fractional 4,096-byte fixture. On fixed 68030 PAL,
+the four E-clock offsets are 83, 362,895, 363,076 and 363,258 at 709,379 Hz.
+The first IRQ is at startup, the next follows the full attack, and the last two
+are silent-word reloads. Normal effect DMA/sample cleanup passes and the exact
+saved interrupt vector and mask are restored. `check_effect_dma.py` requires
+all four timestamps, their periods, normal exit and cleanup. Native status is
+zero; evidence is `tmp/m4/effects/dma/`.
+
+This agrees with the Commodore hardware manual's
+[joining-tones description](https://www.theflatnet.de/pub/cbm/amiga/AmigaDevDocs/hard_5.html):
+the DMA channel latches the current segment before the interrupt schedules its
+successor. Streaming must account for that queued segment, rather than treating
+the initial interrupt as completed playback. The next implementation step is
+bounded PCM publication through alternating Chip buffers, with conversion and
+allocation completed before enabling playback. Counter release and cleanup
+need paired native acceptance before removing the loop stop.

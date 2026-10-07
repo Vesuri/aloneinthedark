@@ -5,7 +5,9 @@ local cpu=manager.machine.devices[':maincpu'];local mem=cpu.spaces.program
 local dbg=assert(manager.machine.debugger,'DRIVER17 / DEBUGGER REQUIRED')
 local mode=assert(os.getenv('AITD_EFFECT_CASE'))
 local folder=assert(os.getenv('AITD_EFFECT_FOLDER'))
-assert(mode=='loop3' or mode=='fraction','EFFECT FIXTURE / CASE')
+local counts={loop0=0,loop1=1,loop3=3,loopnegative=65535}
+assert(counts[mode]~=nil or mode=='fraction','EFFECT FIXTURE / CASE')
+local counterReleased=false
 local function ptr(a)return mem:read_u32(a)&0xffffff end
 local function base(seg)
  local a5=ptr(0x904)
@@ -32,6 +34,10 @@ emu.register_periodic(function()
  if done or not armed then return end
  if phase=='playing' then
   local tick=mem:read_u32(0x16a)
+  if mode=='loopnegative' and not counterReleased and tick-startTick>=60 then
+   mem:write_u16(loopCounter,0);counterReleased=true
+   print(string.format('EFFECT_FIXTURE_RELEASE elapsed=%d counter=0',tick-startTick))
+  end
   if tick~=observedTick then
    observedTick=tick
    local v=entry+0x4200+0x22d2+6*4
@@ -55,10 +61,10 @@ emu.register_periodic(function()
    local packet=ptr(originalSP+4)
    assert(mem:read_u32(packet+4)>=4096,'EFFECT FIXTURE / OWNED SAMPLE EXTENT')
    mem:write_u32(packet+4,4096)
-   if mode=='loop3' then
+   if counts[mode]~=nil then
     mem:write_u32(packet+12,512);mem:write_u32(packet+16,1024)
     local counter=ptr(packet+20);assert(counter~=0 and counter<0x800000,'EFFECT FIXTURE / COUNTER')
-    mem:write_u16(counter,3)
+    mem:write_u16(counter,counts[mode])
    else mem:write_u32(packet+8,(8000<<16)+32768)end
    print('EFFECT_FIXTURE_CASE '..mode)
    print('DRIVER17_PACKET '..bytes(packet,26));save('packet',packet,26)

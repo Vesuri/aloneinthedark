@@ -1174,5 +1174,6 @@ and is not acceptance. Existing song fixtures cover effect priority there.
 The original loop-count-3 fixture also completes: its shared counter advances
 3→2→1→0. Driver+$2264–$226E decrements before deciding to repeat, so count 3
 means two extra repeats, followed by the sample tail. This is measured original
-behavior only; native looping, zero/negative counter fixtures and long DMA
-segments remain open.
+behavior only. The subsequent zero/one/negative fixtures also pass (see the
+[stream-boundary evidence](development.md#m4-loop-counters-and-dma-stream-boundary-evidence--2026-10-07));
+native looping and long DMA segments remain open.

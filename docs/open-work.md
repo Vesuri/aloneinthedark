@@ -75,11 +75,12 @@ required.
   MAME by event.
 
 - **M4.3a Remaining effect packet/allocation variants.**
-  - Complete loop-boundary/counter variants and samples beyond one DMA segment.
-    The positive-counter original fixture is retained under
-    `tmp/m4/effects/loop3/`; native looping is still a named stop.
-    Measure zero/negative counters and stop/replacement during loops before
-    implementing those paths.
+  - Implement interrupt-driven loop playback with live counter updates and
+    complete sample tails. Pair native output with the measured zero, one,
+    three and negative original counter cases; verify stop/replacement during
+    active loops against the original driver.
+  - Measure and support effects larger than one DMA segment, with bounded
+    interrupt work, conversion before playback and verified buffer cleanup.
   - Resolve effect ages beyond $7FFE callbacks if reached. Keep unsupported
     ages and DMA segment variants as named stops until paired evidence exists.
 

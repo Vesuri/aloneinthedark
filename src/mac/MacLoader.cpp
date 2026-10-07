@@ -1464,6 +1464,10 @@ static void quiescePaulaChannel(uint16_t channel)
 
 // Shared restart protocol for intro and gameplay. The reload contains only
 // the defined loop, or a silent word for one-shot samples.
+#ifdef AITD_EFFECT_DMA_PROBE
+extern void aitdEffectDmaProbeBegin(unsigned short channel);
+extern void aitdEffectDmaProbeEnd();
+#endif
 static void startPaulaSample(uint8_t* data, const PaulaSample::Layout& layout,
                              uint16_t channel, uint16_t period, uint16_t volume, bool useGameGain=true)
 {
@@ -1483,6 +1487,9 @@ static void startPaulaSample(uint8_t* data, const PaulaSample::Layout& layout,
 #endif
 #ifdef AITD_SONG_HARDWARE_PROBE
     uint32_t before=s_songHardwareNote ? songHardwareClock() : 0;
+#endif
+#ifdef AITD_EFFECT_DMA_PROBE
+    if(g_effectStarts==1 && g_soundDriver.channels[channel]>=6)aitdEffectDmaProbeBegin(channel);
 #endif
     *dmaconPointer = (uint16_t)(DMAF_SETCLR | DMAF_MASTER | dma);
 #ifdef AITD_SONG_HARDWARE_PROBE
@@ -1511,6 +1518,9 @@ static void stopNativeEffect(uint16_t index)
     NativeEffect& effect=g_effects[index];
     if(voice.channel>=0) {
         quiescePaulaChannel((uint16_t)voice.channel);
+#ifdef AITD_EFFECT_DMA_PROBE
+        aitdEffectDmaProbeEnd();
+#endif
 #ifdef AITD_SONG_HARDWARE_PROBE
         recordSongEffect(0,(uint16_t)voice.channel,index);
 #endif
