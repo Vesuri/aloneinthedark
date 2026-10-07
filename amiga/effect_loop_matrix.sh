@@ -8,12 +8,13 @@ export FSUAE="${FSUAE:-$HOME/.local/share/amiga/fs-uae-arm/fs-uae}"
 export DEBUG_PORT="${DEBUG_PORT:-24391}"
 export DIAG_RUN_DIR="${DIAG_RUN_DIR:-.run-m4-fraction}"
 export GDBSCRIPT=effect_loop.gdb
-for fixture_case in "${@:-loop3 loop0 loop1 loopnegative action18 action17}"; do
+for fixture_case in "${@:-loop3 loop0 loop1 loopnegative action18 action17 long}"; do
  # Default expansion is split explicitly below; positional cases stay intact.
  for mode in $fixture_case; do
   action=0
+  long=0
   export GDBSCRIPT=effect_loop.gdb
-  case "$mode" in loop3) count=3;; loop0) count=0;; loop1) count=1;; loopnegative) count=-1;; action17|action18) count=-1; action=${mode#action}; export GDBSCRIPT=effect_loop_action.gdb;; *) echo "Unknown loop fixture: $mode" >&2; exit 2;; esac
+  case "$mode" in loop3) count=3;; loop0) count=0;; loop1) count=1;; loopnegative) count=-1;; long) count=0; long=1;; action17|action18) count=-1; action=${mode#action}; export GDBSCRIPT=effect_loop_action.gdb;; *) echo "Unknown loop fixture: $mode" >&2; exit 2;; esac
   original="tmp/m4/effects/$mode"
   capture="$original/native"
   mkdir -p "$capture" tmp/m4/effects/stream
@@ -24,7 +25,7 @@ for fixture_case in "${@:-loop3 loop0 loop1 loopnegative action18 action17}"; do
    python3 tools/check_effect_loop_action.py "$original" --status "$original_status"
   fi
   make -C amiga clean >"$capture/build.log" 2>&1
-  make -C amiga -j8 EFFECTLOOPPROBE=1 EFFECTLOOPCOUNT="$count" EFFECTLOOPACTION="$action" PROBES= >>"$capture/build.log" 2>&1
+  make -C amiga -j8 EFFECTLONGPROBE="$long" EFFECTLOOPPROBE=1 EFFECTLOOPCOUNT="$count" EFFECTLOOPACTION="$action" PROBES= >>"$capture/build.log" 2>&1
   if amiga/diag_run.sh 180 >"$capture/run.log" 2>&1; then result=0; else result=$?; fi
   printf '%s\n' "$result" >"$capture/exit-status"
   cp "amiga/$DIAG_RUN_DIR/gdb-out.log" "$capture/native-capture.log"

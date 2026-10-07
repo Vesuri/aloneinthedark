@@ -6,8 +6,11 @@ local dbg=assert(manager.machine.debugger,'DRIVER17 / DEBUGGER REQUIRED')
 local mode=assert(os.getenv('AITD_EFFECT_CASE'))
 local folder=assert(os.getenv('AITD_EFFECT_FOLDER'))
 local counts={loop0=0,loop1=1,loop3=3,loopnegative=65535}
-assert(counts[mode]~=nil or mode=='fraction','EFFECT FIXTURE / CASE')
+assert(counts[mode]~=nil or mode=='fraction' or mode=='long','EFFECT FIXTURE / CASE')
 local counterReleased=false
+local startSeconds
+local allocPC,allocReturn,owner,ownerSize,ownerArg
+local longBytes=131073
 local function ptr(a)return mem:read_u32(a)&0xffffff end
 local function base(seg)
  local a5=ptr(0x904)
@@ -33,6 +36,7 @@ end)
 emu.register_periodic(function()
  if done or not armed then return end
  if phase=='playing' then
+  if mode=='long' and dbg.execution_state=='stop' then done=true;print('FAIL LONG / OWNER DISPOSED');manager.machine:exit();return end
   local tick=mem:read_u32(0x16a)
   if mode=='loopnegative' and not counterReleased and tick-startTick>=60 then
    mem:write_u16(loopCounter,0);counterReleased=true
@@ -43,10 +47,11 @@ emu.register_periodic(function()
    local v=entry+0x4200+0x22d2+6*4
    print(string.format('EFFECT_FIXTURE_TICK elapsed=%d cursor=%X end=%X active=%X counter=%d',tick-startTick,ptr(v),ptr(v+0x280),mem:read_u16(v+0x200),mem:read_i16(loopCounter)))
   end
-  if tick-startTick>600 then done=true;print('FAIL effect fixture did not finish');manager.machine:exit();return end
+  if tick-startTick>(mode=='long' and 1800 or 600) then done=true;print('FAIL effect fixture did not finish');manager.machine:exit();return end
   if mem:read_u16(entry+0x4200+0x24d2+6*4)==0xffff then
    save('complete-state',entry+0x4200,0x3048)
    print(string.format('DRIVER17_COMPLETE ticks=%X elapsed=%X cursor=%X loopword=%X',mem:read_u32(0x16a),mem:read_u32(0x16a)-startTick,mem:read_u32(entry+0x4200+0x22d2+6*4),mem:read_u16(loopCounter)))
+   if mode=='long' then print(string.format('EFFECT_LONG_TIME seconds=%.9f',manager.machine.time:as_double()-startSeconds))end
    done=true;print('PASS original isolated effect packet and completion');dbg:command('quit')
   end
   return
@@ -54,25 +59,54 @@ emu.register_periodic(function()
  if dbg.execution_state~='stop' then return end
  local ok,err=pcall(function()
   if phase=='arm' then
-   call=base(3)+0x17fc;dbg:command('bpclear');cpu.debug:bpset(call,'1','');phase='entry';dbg.execution_state='run'
+   call=base(3)+0x17fc;dbg:command('bpclear');cpu.debug:bpset(call,'1','');phase='entry'
+   if mode=='long' then
+    allocPC=base(7)+0xa;allocReturn=base(7)+0x10
+    cpu.debug:bpset(allocPC,'1','');cpu.debug:bpset(allocReturn,'1','')
+   end
+   dbg.execution_state='run'
+  elseif mode=='long' and cpu.state.PC.value==allocPC then
+   assert(not owner,'LONG / DUPLICATE ALLOCATION')
+   ownerArg=cpu.state.A6.value+8;ownerSize=mem:read_u32(ownerArg)
+   assert(ownerSize==16,'LONG / ORIGINAL OWNER SIZE')
+   mem:write_u32(ownerArg,ownerSize+longBytes)
+   print('LONG_ALLOCATOR_BYTES '..bytes(allocPC-6,32))
+   dbg:command('bpclear');cpu.debug:bpset(allocReturn,'1','');dbg.execution_state='run'
+  elseif mode=='long' and cpu.state.PC.value==allocReturn then
+   owner=cpu.state.A0.value&0xffffff
+   assert(owner>0 and cpu.state.D0.value==0,'LONG / REAL NEWPTR FAILED')
+   mem:write_u32(ownerArg,ownerSize)
+   print(string.format('LONG_ALLOCATION owner=%X prefix=%u bytes=%u',owner,ownerSize,longBytes))
+   dbg:command('bpclear');cpu.debug:bpset(call,'1','')
+   cpu.debug:bpset(0xdd60,string.format('w@(d@(sp+2))==0xa01f && (a0&0xffffff)==0x%x',owner),'')
+   dbg.execution_state='run'
+  elseif mode=='long' and cpu.state.PC.value==0xdd60 then
+   error('LONG / OWNER DISPOSED')
   elseif phase=='entry' then
    assert(cpu.state.PC.value==call);entry=ptr(cpu.state.A5.value-0x6ac);ret=call+2;originalSP=cpu.state.A7.value
    print('DRIVER17_BYTES '..bytes(call-18,22));print('DRIVER17_ENTRY_BYTES '..bytes(entry,12));save('driver',entry,0x7248)
    local packet=ptr(originalSP+4)
    assert(mem:read_u32(packet+4)>=4096,'EFFECT FIXTURE / OWNED SAMPLE EXTENT')
-   mem:write_u32(packet+4,4096)
+   if mode=='long' then
+    assert(owner,'LONG / OWNED ALLOCATION')
+    local original=ptr(packet);local originalBytes=mem:read_u32(packet+4)
+    assert(originalBytes==30783,'LONG / ORIGINAL PCM EXTENT')
+    save('source',original,originalBytes)
+    for i=0,longBytes-1 do mem:write_u8(owner+ownerSize+i,mem:read_u8(original+(i%originalBytes)))end
+    mem:write_u32(packet,owner+ownerSize);mem:write_u32(packet+4,longBytes)
+   else mem:write_u32(packet+4,4096)end
    if counts[mode]~=nil then
     mem:write_u32(packet+12,512);mem:write_u32(packet+16,1024)
     local counter=ptr(packet+20);assert(counter~=0 and counter<0x800000,'EFFECT FIXTURE / COUNTER')
     mem:write_u16(counter,counts[mode])
-   else mem:write_u32(packet+8,(8000<<16)+32768)end
+   elseif mode=='fraction' then mem:write_u32(packet+8,(8000<<16)+32768)end
    print('EFFECT_FIXTURE_CASE '..mode)
    print('DRIVER17_PACKET '..bytes(packet,26));save('packet',packet,26)
    local sample=ptr(packet);local size=mem:read_u32(packet+4);assert(size>0 and size<1048576,'DRIVER17 / SAMPLE SIZE');save('sample',sample,size)
-   loopCounter=ptr(packet+20);startTick=mem:read_u32(0x16a);print(string.format('DRIVER17_LOOP word=%X tick=%X',mem:read_u16(loopCounter),startTick));capture('ENTER');dbg:command('bpclear');cpu.debug:bpset(ret,'1','');phase='return';dbg.execution_state='run'
+   loopCounter=ptr(packet+20);startTick=mem:read_u32(0x16a);if mode=='long' then startSeconds=manager.machine.time:as_double()end;print(string.format('DRIVER17_LOOP word=%X tick=%X',mem:read_u16(loopCounter),startTick));capture('ENTER');dbg:command('bpclear');cpu.debug:bpset(ret,'1','');phase='return';dbg.execution_state='run'
   elseif phase=='return' then
    assert(cpu.state.PC.value==ret and cpu.state.A7.value==originalSP);capture('RETURN')
-   phase='playing';dbg:command('bpclear');dbg.execution_state='run'
+   phase='playing';dbg:command('bpclear');if mode=='long' then cpu.debug:bpset(0xdd60,string.format('w@(d@(sp+2))==0xa01f && (a0&0xffffff)==0x%x',owner),'')end;dbg.execution_state='run'
   end
  end)
  if not ok then done=true;print('FAIL '..tostring(err));manager.machine:exit()end

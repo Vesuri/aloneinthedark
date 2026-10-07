@@ -30,7 +30,7 @@ continue
 set $loop_fast=g_m5Audit.liveFast
 set $loop_chip=g_m5Audit.liveChip
 set $loop_alloc_fast=(sizeof(EffectDma::Stream)+7)&~7
-set $loop_alloc_fast=$loop_alloc_fast+4096
+set $loop_alloc_fast=$loop_alloc_fast+((g_effects[0].size+7)&~7)
 set $loop_release=0
 if g_effectLoopProbeReleaseTick
  set $loop_release=g_effectLoopProbeReleaseTick-$loop_started

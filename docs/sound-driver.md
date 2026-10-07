@@ -1197,3 +1197,12 @@ for timing, captures and isolated-fixture limits. Null-counter/zero-start loops,
 samples over 131,070 bytes, and unsupported very old effect ages remain explicit
 stops pending original measurements. This does not establish listening or
 ordinary-gameplay acceptance for those isolated fixtures.
+
+
+Long nonlooping packets now share bounded DMA streaming. The paired
+131,073-byte fixture verifies complete PCM, the odd tail, exact hardware
+period, preserved ABI and all runtime-buffer cleanup. See
+[long-sample evidence](development.md#m4-long-effect-samples--2026-10-07).
+The caller retains ownership of its source. Null-counter/zero-start loops and
+unsupported very old effect ages remain named stops; the former 131,070-byte
+packet restriction has been removed.

@@ -75,10 +75,8 @@ required.
   MAME by event.
 
 - **M4.3a Remaining effect packet/allocation variants.**
-  - Measure and support effects larger than one DMA segment, with bounded
-    interrupt work, conversion before playback and verified buffer cleanup.
   - Resolve effect ages beyond $7FFE callbacks if reached. Keep unsupported
-    ages and DMA segment variants as named stops until paired evidence exists.
+    ages and loop variants as named stops until paired evidence exists.
 
   *Done when* each reached variant has paired original/native playback events,
   exact loop/sample ownership checks and verified stop/replacement cleanup;

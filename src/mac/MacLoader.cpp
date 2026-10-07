@@ -1609,10 +1609,10 @@ static const char* playNativeEffect(uint8_t* packet,uint32_t& scratch)
     if(!effectRange(sample,bytes))return "EFFECT SAMPLE RANGE";
     PaulaSample::Layout layout={};uint16_t period;uint32_t ticks=0;
     uint32_t loopStart=read32(packet+12),loopEnd=read32(packet+16);
-    bool streamed=loopStart || loopEnd;
-    if(bytes>131070)return "EFFECT SAMPLE SIZE"; // Long original packets still await measurement.
-    uint8_t* counter=streamed ? (uint8_t*)read32(packet+20) : 0;
-    if(streamed && (!loopStart || loopEnd<=loopStart || loopEnd>bytes
+    bool looped=loopStart || loopEnd;
+    bool streamed=looped || bytes>131070;
+    uint8_t* counter=looped ? (uint8_t*)read32(packet+20) : 0;
+    if(looped && (!loopStart || loopEnd<=loopStart || loopEnd>bytes
         || !counter || ((uint32_t)counter&1) || !effectRange(counter,2)))return "EFFECT LOOP BOUNDS";
     const char* error=streamed ? SoundEffect::samplePeriod(rate,g_paulaClock,period)
         : SoundEffect::describe(sample,bytes,rate,0,0,layout,period,ticks,g_paulaClock);
@@ -8289,11 +8289,27 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
                     uint8_t* counter=(uint8_t*)read32(packet+20);
                     if(!counter || !effectRange(counter,2))driverStop="LOOP PROBE COUNTER";
                     else {
+#ifdef AITD_EFFECT_LONG_PROBE
+                        // Caller-owned isolated source; playback must not free it.
+                        const uint32_t size=131073,originalSize=read32(packet+4);
+                        if(originalSize!=30783)driverStop="LONG PROBE SOURCE";
+                        uint8_t* original=(uint8_t*)read32(packet);
+                        uint8_t* owned=driverStop ? 0 : s_applicationZone.newPtr(size);
+                        if(!owned)driverStop="LONG PROBE ALLOCATION";
+                        else {
+                            for(uint32_t i=0;i<size;++i)owned[i]=original[i%originalSize];
+                            write32(packet,(uint32_t)owned);write32(packet+4,size);
+                            write32(packet+12,0);write32(packet+16,0);
+                        }
+#else
                         write32(packet+4,4096);write32(packet+12,512);write32(packet+16,1024);
-                        write16(counter,(uint16_t)AITD_EFFECT_LOOP_COUNT);g_effectLoopProbeCounter=counter;
-                        g_effectLoopProbePacket=packet;
-                        aitdEffectLoopReady(regs,userStack);
-                        driverStop=playNativeEffect(packet,scratch);
+#endif
+                        if(!driverStop) {
+                            write16(counter,(uint16_t)AITD_EFFECT_LOOP_COUNT);g_effectLoopProbeCounter=counter;
+                            g_effectLoopProbePacket=packet;
+                            aitdEffectLoopReady(regs,userStack);
+                            driverStop=playNativeEffect(packet,scratch);
+                        }
                     }
                 }
 #elif defined(AITD_EFFECT_SLOTS_PROBE)

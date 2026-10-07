@@ -7226,3 +7226,47 @@ effect priority, natural completion and complete voice/resource cleanup. During
 lateness. Capture and raw song data are retained under
 `tmp/m4/effects/stream/song-{capture.log,data/}`. This remains headless timing
 and ownership evidence, not an audible sign-off.
+
+
+## M4 long effect samples — 2026-10-07
+
+Effects over 131,070 bytes now use the same interrupt-driven streaming path as
+loops. A nonlooping stream has no counter dependency and retains the original
+linear voice-age behavior. Conversion still runs once before playback; the
+interrupt copies at most 128 bytes and user-mode service frees the converted
+Fast buffer, 256-byte Chip buffers and stream state after the complete tail.
+
+The original long fixture uses a real original `NewPtrClear` call in
+Engine+$000A/$000E. It enlarges the first 16-byte allocation's RAM argument to
+131,089 bytes, restores the argument after allocation, and uses the owned tail
+for the isolated sample. A DisposePtr watch rejects early release. Original
+instructions and CPU registers are untouched. At the unchanged selector-17
+call, the fixture fills that tail by repeating the first genuine 30,783-byte
+source and supplies a 131,073-byte nonlooping packet. The odd size exercises the
+final PCM byte and DMA padding. Native `EFFECTLONGPROBE=1` uses an equivalent
+caller-owned MacHeap allocation, distinct from the playback buffers being
+checked for leaks. The caller's source remains allocated in both fixtures.
+
+Both captures pass exact original full-state/ABI and PCM checks. The native
+trace contains all 131,073 bytes in 1,026 records, with no skipped or repeated
+fragment; worst measured fragment-interval deviation is 7.3%. Natural cleanup
+restores the audio interrupt vector and enable bit, releases DMA ownership,
+and returns exactly the stream's Fast and Chip allocations with zero ledger
+errors. Evidence: `tmp/m4/effects/long/`; reproduction is
+`amiga/effect_loop_matrix.sh long` after the original long fixture capture.
+
+The first comparison incorrectly treated the two tick counters as identical:
+Mac reports 986 ticks and native 980. Direct clocks resolve the discrepancy.
+Mac emulated elapsed time is 16.400600736 seconds; native E-clock time is
+16.370825750 seconds; 131,074 padded bytes at Paula period 443 predict
+16.370877063 seconds. Native hardware duration differs from that prediction by
+51 microseconds and from the observed Mac completion by 29.8 milliseconds.
+The long checker requires native duration within 2 ms of the exact period and
+within 50 ms of the Mac capture, alongside every byte and interrupt interval.
+It does not relax the short fixtures' four-tick bound. The PAL-derived native
+Ticks observed here advance about 59.86 times per second; the captured Mac
+ratio is about 60.12. Raw tick subtraction is unsuitable over this interval.
+
+Full host tests pass. This is an isolated long-packet contract, not evidence
+that an ordinary room uses such a sample or a listening sign-off. Remaining
+unmeasured loop/age variants retain explicit stops if reached.

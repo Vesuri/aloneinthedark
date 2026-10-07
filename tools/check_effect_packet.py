@@ -12,7 +12,7 @@ def check(folder,status,native=None,native_status=None):
     text=(folder/'mac.log').read_text()
     if status or re.search(r'FAIL|TIMEOUT|LUA ERROR|Error in',text) or text.count('PASS original isolated effect packet and completion')!=1 or text.count('Exited via the debugger')!=1:
         raise ValueError('original completion')
-    mode=one(text,r'^EFFECT_FIXTURE_CASE (loop0|loop1|loop3|loopnegative|fraction)$')
+    mode=one(text,r'^EFFECT_FIXTURE_CASE (loop0|loop1|loop3|loopnegative|fraction|long)$')
     code=next(r.body for r in read_resource_fork(ROOT/'tmp/runtime-data/Alone In The Dark') if r.kind==b'CODE' and r.rid==3)
     if one(text,r'^DRIVER17_BYTES (\w+)$')!=code[0x17ea:0x1800].hex().upper():raise ValueError('original caller')
     driver=(folder/'driver.bin').read_bytes(); original=(ROOT/'tmp/plan/MDRV_11.bin').read_bytes()
@@ -23,7 +23,7 @@ def check(folder,status,native=None,native_status=None):
         if e[reg]!=r[reg]:raise ValueError('original preserved '+reg)
     packet=(folder/'packet.bin').read_bytes()
     sample,size,rate,start,end,counter,ident=struct.unpack('>6IH',packet)
-    if (size,rate,start,end,ident)!=(4096,(8000<<16)+(32768 if mode=='fraction' else 0),512 if mode.startswith('loop') else 0,1024 if mode.startswith('loop') else 0,0x8000):raise ValueError('fixture packet')
+    if (size,rate,start,end,ident)!=(131073 if mode=='long' else 4096,(8000<<16)+(32768 if mode=='fraction' else 0),512 if mode.startswith('loop') else 0,1024 if mode.startswith('loop') else 0,0x8000):raise ValueError('fixture packet')
     if one(text,r'^DRIVER17_PACKET (\w+)$')!=packet.hex().upper():raise ValueError('packet capture')
     before=(folder/'enter-state.bin').read_bytes(); after=(folder/'return-state.bin').read_bytes()
     if len(before)!=0x3048 or len(after)!=len(before):raise ValueError('complete state')
@@ -39,10 +39,10 @@ def check(folder,status,native=None,native_status=None):
     if len(complete)!=len(before) or finish['cursor']!=sample+size or finish['loopword'] or struct.unpack_from('>H',complete,voice+0x200)[0]!=0xffff:raise ValueError('sample tail completion')
     observed=re.findall(r'^EFFECT_FIXTURE_TICK elapsed=(\d+) cursor=(\w+) end=(\w+) active=(\w+) counter=(-?\d+)$',text,re.M)
     counters=[int(row[4]) for row in observed]
-    expected_counters={'loop0':{0},'loop1':{0,1},'loop3':{0,1,2,3},'loopnegative':{-1,0},'fraction':{0}}[mode]
+    expected_counters={'loop0':{0},'loop1':{0,1},'loop3':{0,1,2,3},'loopnegative':{-1,0},'fraction':{0},'long':{0}}[mode]
     if not observed or set(counters)!=expected_counters:raise ValueError('loop counter progression')
     initial=fields(one(text,r'^DRIVER17_LOOP (.*)$'))
-    if initial['word']!={'loop0':0,'loop1':1,'loop3':3,'loopnegative':65535,'fraction':0}[mode]:raise ValueError('initial loop counter')
+    if initial['word']!={'loop0':0,'loop1':1,'loop3':3,'loopnegative':65535,'fraction':0,'long':0}[mode]:raise ValueError('initial loop counter')
     positions=[int(row[1],16) for row in observed]
     if mode=='loopnegative':
         release=int(one(text,r'^EFFECT_FIXTURE_RELEASE elapsed=(\d+) counter=0$'))
@@ -55,11 +55,22 @@ def check(folder,status,native=None,native_status=None):
         if sum(b<a for a,b in zip(positions,positions[1:]))<5:raise ValueError('negative loop actually repeats')
     else:
         if counters!=sorted(counters,reverse=True):raise ValueError('counter never increases')
-        if not 28<=finish['elapsed']<=(43 if mode=='loop3' else 34):raise ValueError('bounded original duration')
-        if mode in ('loop0','loop1','fraction') and positions!=sorted(positions):raise ValueError('no unexpected sample repeat')
+        if mode=='long':
+            if not 980<=finish['elapsed']<=1000:raise ValueError('bounded long original duration')
+        elif not 28<=finish['elapsed']<=(43 if mode=='loop3' else 34):raise ValueError('bounded original duration')
+        if mode in ('loop0','loop1','fraction','long') and positions!=sorted(positions):raise ValueError('no unexpected sample repeat')
         if mode=='loop3' and sum(b<a for a,b in zip(positions,positions[1:]))!=2:raise ValueError('exactly two original sample repeats')
     pcm=(folder/'sample.bin').read_bytes()
     if len(pcm)!=size:raise ValueError('owned sample extent')
+    if mode=='long':
+        owner,prefix,extent=one(text,r'^LONG_ALLOCATION owner=(\w+) prefix=(\d+) bytes=(\d+)$')
+        if int(owner,16)+int(prefix)!=sample or int(prefix)!=16 or int(extent)!=size:raise ValueError('real original allocation ownership')
+        engine=next(r.body for r in read_resource_fork(ROOT/'tmp/runtime-data/Alone In The Dark') if r.kind==b'CODE' and r.rid==7)
+        if one(text,r'^LONG_ALLOCATOR_BYTES (\w+)$')!=engine[4:36].hex().upper():raise ValueError('unchanged original allocator')
+        seconds=float(one(text,r'^EFFECT_LONG_TIME seconds=([0-9.]+)$'))
+        if abs(seconds-size/8000)>.05:raise ValueError('original physical long-sample duration')
+        source=(folder/'source.bin').read_bytes()
+        if len(source)!=30783 or pcm!=(source*((size+len(source)-1)//len(source)))[:size]:raise ValueError('complete owned long PCM fixture')
     if native is not None:
         n=native.read_text()
         if mode!='fraction' or native_status or re.search(r'FAIL|TIMEOUT|Error in|Program received signal',n) or n.count('PASS native fractional effect packet, playback and cleanup')!=1:raise ValueError('native completion')
