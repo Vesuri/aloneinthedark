@@ -7483,6 +7483,74 @@ static bool rgbColor(uint16_t trap,uint32_t* regs,const uint8_t* userStack)
     return true;
 }
 
+// Shared measured query handlers. Both dispatch paths preserve the same
+// Pascal result slots, scratch registers, validation and unsupported fallback.
+static uint32_t graphicsQuery(uint16_t trap,uint32_t pc,uint32_t* regs,uint8_t* userStack)
+{
+    if(trap==0xaa29) { // GetDeviceList: actual single-device chain
+        if(s_windowManager.initialized) { write32(userStack,(uint32_t)&s_mainDeviceMaster);return 1; }
+    }
+    if(trap==0xaa2c) { // TestDeviceAttribute: actual main-device flag word.
+        uint16_t attribute=read16(userStack);
+        if(!s_windowManager.initialized || attribute>15
+           || (uint8_t**)read32(userStack+2)!=&s_mainDeviceMaster
+           || s_mainDeviceMaster!=s_mainDevice)return 0;
+        uint16_t flags=read16(s_mainDevice+20);
+        userStack[6]=(uint8_t)((flags>>attribute)&1); // Leave Pascal padding intact.
+        regs[0]=(regs[0]&0xffff0000UL)|attribute;
+        regs[1]=(regs[1]&0xffff0000UL)|flags;
+        return 7;
+    }
+    if(trap==0xaa2b) { // GetNextDevice
+        if((uint8_t**)read32(userStack)==&s_mainDeviceMaster) {
+            write32(userStack+4,read32(s_mainDevice+30));return 5;
+        }
+    }
+    if(trap==0xa8aa) { // SectRect(src1, src2, destination) -> Boolean
+        bool nonempty;
+        if(!RectBounds::intersect((uint8_t*)read32(userStack),
+             (const uint8_t*)read32(userStack+8),(const uint8_t*)read32(userStack+4),nonempty))return 0;
+        userStack[12]=nonempty ? 1 : 0; // Preserve the result slot's padding byte.
+        regs[0]=(regs[0]&0xffff0000UL)|14;
+        return 13;
+    }
+    if(trap==0xa870 || trap==0xa871) {       // LocalToGlobal / GlobalToLocal(Point*)
+        uint8_t* point=(uint8_t*)read32(userStack);
+        uint8_t* port=s_qdThePort ? (uint8_t*)read32(s_qdThePort) : 0;
+        WindowSlot* window=windowSlot(port);WindowGeometry::Rect bounds;
+        if(!point || !window || !colorWindowFrame(*window,bounds)
+           || read16(window->pixelMap+32)!=8
+           || read32(window->pixelMap)!=(uint32_t)s_colorScreen)return 0;
+        // The screen-backed PixMap carries the selected port's live origin.
+        // QuickDraw point components wrap as words in both directions.
+        uint16_t v=read16(point),h=read16(point+2);
+        if(trap==0xa870) {
+            v-=read16(window->pixelMap+6);h-=read16(window->pixelMap+8);
+        } else {
+            v+=read16(window->pixelMap+6);h+=read16(window->pixelMap+8);
+        }
+        write16(point,v);write16(point+2,h);return 5;
+    }
+    if(trap==0xa8e2) {                       // EmptyRgn(RgnHandle) -> Boolean
+        MacHeap::Handle region=(MacHeap::Handle)read32(userStack);
+        MacHeap* owner=handleZone(region);
+        if(!owner || !*region || owner->handleSize(region)<10)return 0;
+        uint16_t size=read16(*region);
+        if(size<10 || (size&1) || size>owner->handleSize(region))return 0;
+        int16_t top=(int16_t)read16(*region+2),left=(int16_t)read16(*region+4);
+        bool verticalEmpty=top>=(int16_t)read16(*region+6);
+        userStack[4]=verticalEmpty || left>=(int16_t)read16(*region+8);
+        // Original QuickDraw reads only the bounding rectangle, including
+        // complex regions; MOVE.W preserves each data register's high word.
+        regs[0]=(regs[0]&0xffff0000UL)|(uint16_t)top;
+        regs[1]=(regs[1]&0xffff0000UL)|(uint16_t)left;
+        regs[8]=(uint32_t)*region+(verticalEmpty ? 8 : 10);
+        regs[9]=pc+2;
+        return 5;
+    }
+    return 0;
+}
+
 static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
                                uint8_t* frame, uint8_t* userStack, bool inUserService=false)
 {
@@ -8617,24 +8685,11 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         if (g_stageCDepth < 17) g_stageCDepth = 17;
         return 1;
     }
-    if(trap==0xaa29) { // GetDeviceList: actual single-device chain
-        if(s_windowManager.initialized) { write32(userStack,(uint32_t)&s_mainDeviceMaster);return 1; }
-    }
-    if(trap==0xaa2c) { // TestDeviceAttribute: actual main-device flag word.
-        uint16_t attribute=read16(userStack);
-        if(!s_windowManager.initialized || attribute>15
-           || (uint8_t**)read32(userStack+2)!=&s_mainDeviceMaster
-           || s_mainDeviceMaster!=s_mainDevice)goto unsupportedTrap;
-        uint16_t flags=read16(s_mainDevice+20);
-        userStack[6]=(uint8_t)((flags>>attribute)&1); // Leave Pascal padding intact.
-        regs[0]=(regs[0]&0xffff0000UL)|attribute;
-        regs[1]=(regs[1]&0xffff0000UL)|flags;
-        return 7;
-    }
-    if(trap==0xaa2b) { // GetNextDevice
-        if((uint8_t**)read32(userStack)==&s_mainDeviceMaster) {
-            write32(userStack+4,read32(s_mainDevice+30));return 5;
-        }
+    if(trap==0xaa29 || trap==0xaa2b || trap==0xaa2c || trap==0xa8aa
+       || trap==0xa870 || trap==0xa871 || trap==0xa8e2) {
+        uint32_t result=graphicsQuery(trap,pc,regs,userStack);
+        if(result)return result;
+        goto unsupportedTrap;
     }
     if(trap==0xaaa2 && (uint16_t)regs[0]==0x0a14) { // HasDepth
         if((uint8_t**)read32(userStack+6)==&s_mainDeviceMaster
@@ -8672,14 +8727,6 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     if(trap==0xaa14 || trap==0xaa15) { // RGBForeColor / RGBBackColor
         if(!rgbColor(trap,regs,userStack))goto unsupportedTrap;
         return 5;
-    }
-    if(trap==0xa8aa) { // SectRect(src1, src2, destination) -> Boolean
-        bool nonempty;
-        if(!RectBounds::intersect((uint8_t*)read32(userStack),
-             (const uint8_t*)read32(userStack+8),(const uint8_t*)read32(userStack+4),nonempty))goto unsupportedTrap;
-        userStack[12]=nonempty ? 1 : 0; // Preserve the result slot's padding byte.
-        regs[0]=(regs[0]&0xffff0000UL)|14;
-        return 13;
     }
     if(trap==0xa8ab) { // UnionRect(src1, src2, destination)
         uint8_t* out=(uint8_t*)read32(userStack);
@@ -8897,23 +8944,6 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         if (g_stageCDepth < 26) g_stageCDepth = 26;
         return 5;
     }
-    if(trap==0xa870 || trap==0xa871) {       // LocalToGlobal / GlobalToLocal(Point*)
-        uint8_t* point=(uint8_t*)read32(userStack);
-        uint8_t* port=s_qdThePort ? (uint8_t*)read32(s_qdThePort) : 0;
-        WindowSlot* window=windowSlot(port);WindowGeometry::Rect bounds;
-        if(!point || !window || !colorWindowFrame(*window,bounds)
-           || read16(window->pixelMap+32)!=8
-           || read32(window->pixelMap)!=(uint32_t)s_colorScreen)goto unsupportedTrap;
-        // The screen-backed PixMap carries the selected port's live origin.
-        // QuickDraw point components wrap as words in both directions.
-        uint16_t v=read16(point),h=read16(point+2);
-        if(trap==0xa870) {
-            v-=read16(window->pixelMap+6);h-=read16(window->pixelMap+8);
-        } else {
-            v+=read16(window->pixelMap+6);h+=read16(window->pixelMap+8);
-        }
-        write16(point,v);write16(point+2,h);return 5;
-    }
     if(trap==0xa8f3) {                       // OpenPicture(Rect*) -> PicHandle
         uint8_t* port=s_qdThePort ? (uint8_t*)read32(s_qdThePort) : 0;
         const uint8_t* frame=(const uint8_t*)read32(userStack);
@@ -9095,23 +9125,6 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         regs[0]=(uint16_t)(top<bottom && left>=right ? left : top);
         regs[8]=(uint32_t)region;regs[9]=(uint32_t)*region;
         return 9;
-    }
-    if(trap==0xa8e2) {                       // EmptyRgn(RgnHandle) -> Boolean
-        MacHeap::Handle region=(MacHeap::Handle)read32(userStack);
-        MacHeap* owner=handleZone(region);
-        if(!owner || !*region || owner->handleSize(region)<10)goto unsupportedTrap;
-        uint16_t size=read16(*region);
-        if(size<10 || (size&1) || size>owner->handleSize(region))goto unsupportedTrap;
-        int16_t top=(int16_t)read16(*region+2),left=(int16_t)read16(*region+4);
-        bool verticalEmpty=top>=(int16_t)read16(*region+6);
-        userStack[4]=verticalEmpty || left>=(int16_t)read16(*region+8);
-        // Original QuickDraw reads only the bounding rectangle, including
-        // complex regions; MOVE.W preserves each data register's high word.
-        regs[0]=(regs[0]&0xffff0000UL)|(uint16_t)top;
-        regs[1]=(regs[1]&0xffff0000UL)|(uint16_t)left;
-        regs[8]=(uint32_t)*region+(verticalEmpty ? 8 : 10);
-        regs[9]=read32(frame+2)+2;
-        return 5;
     }
     if(trap==0xa880) {                       // SetPt(Point*, h, v)
         uint8_t* point=(uint8_t*)read32(userStack+4);
@@ -10014,7 +10027,9 @@ static uint32_t dispatchFastTrap(uint16_t trap,uint32_t pc,uint32_t* regs,uint8_
 {
     switch(trap) {
     case 0xa893: case 0xa89b: case 0xa89c: case 0xa891: case 0xaa14:
-    case 0xa01b: case 0xa11a:
+    case 0xa01b: case 0xa11a: case 0xaa15:
+    case 0xaa29: case 0xaa2b: case 0xaa2c: case 0xa8aa:
+    case 0xa870: case 0xa871: case 0xa8e2:
 #ifndef AITD_MASK_PROFILE
     case 0xab1d: // its profile brackets observe GWorld calls
 #endif
@@ -10059,7 +10074,10 @@ static uint32_t dispatchFastTrap(uint16_t trap,uint32_t pc,uint32_t* regs,uint8_
     case 0xa89c: penMode(userStack);return 3;
     case 0xa891: return penLineTo(regs,userStack) ? 5 : 0;
     case 0xa892: return read32(s_qdThePort) && penLine(regs,userStack) ? 5 : 0;
-    case 0xaa14: return rgbColor(trap,regs,userStack) ? 5 : 0;
+    case 0xaa14: case 0xaa15: return rgbColor(trap,regs,userStack) ? 5 : 0;
+    case 0xaa29: case 0xaa2b: case 0xaa2c: case 0xa8aa:
+    case 0xa870: case 0xa871: case 0xa8e2:
+        return graphicsQuery(trap,pc,regs,userStack);
     case 0xab1d:
         if((uint16_t)regs[0]==5)return getGWorld(userStack) ? 9 : 0;
         return setGWorld(regs,userStack) ? 9 : 0;
