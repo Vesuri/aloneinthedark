@@ -55,7 +55,7 @@ private:
     Block& block(uint32_t off) const { return *(Block*)(arena_+off); }
     static uint32_t physical(uint32_t logical);
     static void moveBytes(uint8_t* dst, const uint8_t* src, uint32_t bytes);
-    static void reverseBytes(uint8_t* first, uint8_t* last);
+    static void reverseWords(uint8_t* first, uint8_t* last);
     uint8_t* flags(Handle handle) const;
     uint8_t* masterFlags(uint32_t off, uint32_t pos) const;
     uint32_t findHandleBlock(const uint8_t* ptr) const;

@@ -26,9 +26,15 @@ void MacHeap::moveBytes(uint8_t* dst, const uint8_t* src, uint32_t bytes)
     if (dst<src) for (uint32_t i=0;i<bytes;++i) dst[i]=src[i];
     else if (dst>src) while (bytes) { --bytes;dst[bytes]=src[bytes]; }
 }
-void MacHeap::reverseBytes(uint8_t* first, uint8_t* last)
+void MacHeap::reverseWords(uint8_t* first, uint8_t* last)
 {
-    while (first<last) { --last;if(first>=last)break;uint8_t v=*first;*first++=*last;*last=v; }
+    // MoveHHi rotates whole physical blocks (eight-byte aligned spans). Three
+    // reversals of longword order produce the same rotation without reversing
+    // bytes within each word. may_alias permits access to arbitrary payloads.
+    typedef uint32_t HeapWord __attribute__((__may_alias__));
+    HeapWord* lo=(HeapWord*)first;
+    HeapWord* hi=(HeapWord*)last;
+    while(lo<hi) { --hi;if(lo>=hi)break;HeapWord v=*lo;*lo++=*hi;*hi=v; }
 }
 void MacHeap::reset()
 {
@@ -401,10 +407,13 @@ int16_t MacHeap::moveHigh(Handle h)
         block(off)={gap,0,0,freeBlock,0,0};
         off+=gap;
     }
+    // Nothing follows the target after a free-gap swap: only publish its new
+    // master pointer; avoid reversing a potentially large sample twice.
+    if(off+span==limit) { *h=arena_+off+blockBytes;coalesce();return result(0); }
     // Rotate blocks without allocating scratch memory; immovable barriers remain fixed.
-    reverseBytes(arena_+off,arena_+off+span);
-    reverseBytes(arena_+off+span,arena_+limit);
-    reverseBytes(arena_+off,arena_+limit);
+    reverseWords(arena_+off,arena_+off+span);
+    reverseWords(arena_+off+span,arena_+limit);
+    reverseWords(arena_+off,arena_+limit);
     for(uint32_t at=off;at<limit;at+=block(at).span)
         if(block(at).kind==handleBlock)*(Handle)(arena_+block(at).owner)=arena_+at+blockBytes;
     coalesce();return result(0);
