@@ -35,11 +35,17 @@ for aitd_arg in ${EXTRA_ARGS:-}; do
       echo "CONFIG / machine override in EXTRA_ARGS: $aitd_arg" >&2; return 1 ;;
   esac
 done
+# Explicit RAM acceptance variants; CPU/timing identity remains pinned above.
+AMIGA_FAST_KB="${AMIGA_FAST_KB:-8192}"
+case "$AMIGA_FAST_KB" in
+  2048|4096|8192) ;;
+  *) echo "CONFIG / UNSUPPORTED AMIGA_FAST_KB: $AMIGA_FAST_KB" >&2; return 1 ;;
+esac
 AITD_MACHINE_ARGS=(
   --amiga_model="$AMIGA_MODEL" --cpu="$aitd_cpu" --uae_chipset=aga
   --ntsc_mode="$aitd_ntsc"
   --uae_ntsc="$aitd_core_ntsc"
-  --chip_memory=2048 --slow_memory=0 --fast_memory=8192
+  --chip_memory=2048 --slow_memory=0 --fast_memory="$AMIGA_FAST_KB"
   --zorro_iii_memory=0 --uae_mbresmem_size=0 --uae_a3000mem_size=0
   --uae_mmu_model=0 --uae_fpu_model=0 --jit_compiler=0
 )
@@ -56,4 +62,4 @@ else
     --uae_blitter_cycle_exact=false --uae_cpu_multiplier=0 --uae_cpu_frequency=0
   )
 fi
-echo "CONFIG $AMIGA_CONFIG model=$AMIGA_MODEL cpu=$aitd_cpu frequency_hz=$aitd_cpu_frequency chipset=AGA chip_kb=2048 fast_kb=8192 mmu=0 jit=0 video=$AMIGA_VIDEO"
+echo "CONFIG $AMIGA_CONFIG model=$AMIGA_MODEL cpu=$aitd_cpu frequency_hz=$aitd_cpu_frequency chipset=AGA chip_kb=2048 fast_kb=$AMIGA_FAST_KB mmu=0 jit=0 video=$AMIGA_VIDEO"

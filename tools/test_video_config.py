@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 class Checks(unittest.TestCase):
     def config(self, **values):
         env = os.environ.copy()
-        for name in ('AMIGA_CONFIG', 'AMIGA_MODEL', 'AMIGA_VIDEO', 'EXTRA_ARGS', 'CHIP_MEMORY', 'FAST_MEMORY'):
+        for name in ('AMIGA_CONFIG', 'AMIGA_MODEL', 'AMIGA_VIDEO', 'EXTRA_ARGS', 'CHIP_MEMORY', 'FAST_MEMORY', 'AMIGA_FAST_KB'):
             env.pop(name, None)
         env.update(values)
         return subprocess.run(['bash', '-c', 'set -e\n. amiga/config.sh\nprintf "%s\\n" "${AITD_MACHINE_ARGS[@]}"'],
@@ -32,6 +32,16 @@ class Checks(unittest.TestCase):
                     self.assertIn('--cpu='+('68030' if model.startswith('a4000-030') else '68EC020'), args)
                     self.assertIn('--uae_cpu_speed='+('real' if frequency else 'max'), args)
                     self.assertIn('--uae_cpu_cycle_exact='+('true' if frequency else 'false'), args)
+
+    def test_explicit_memory_variants(self):
+        for size in ('2048','4096','8192'):
+            result=self.config(AMIGA_FAST_KB=size)
+            self.assertEqual(result.returncode,0,result.stderr)
+            self.assertIn('--fast_memory='+size,result.stdout.splitlines())
+            self.assertIn('--cpu=68030',result.stdout.splitlines())
+            self.assertIn('--uae_cpu_frequency=15667200',result.stdout.splitlines())
+        for size in ('0','6144','-1','garbage'):
+            self.assertNotEqual(self.config(AMIGA_FAST_KB=size).returncode,0)
 
     def test_default_and_invalid_video(self):
         self.assertIn('--ntsc_mode=0', self.config().stdout.splitlines())
