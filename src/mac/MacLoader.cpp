@@ -6240,6 +6240,10 @@ static void presentMacRuntime()
 // rectangles together until its original stack frame has returned. Callbacks
 // and other trap services continue normally while native presentation waits.
 static uint32_t s_sceneFrameParent=0,s_sceneFrameReturn=0;
+#ifdef AITD_SCENE_FRAME_VERIFY
+// Read-only comparison with the earlier A6-chain walk, including frame reuse.
+volatile uint32_t g_sceneFrameEndChecks=0,g_sceneFrameEndFailures=0,g_sceneFrameEndReused=0;
+#endif
 static void sceneFrameBoundary(uint16_t trap,uint32_t pc,const uint32_t* regs,const uint8_t* userStack)
 {
     if(g_macVBLCallbackActive || g_macFileCompletionDepth)return;
@@ -6250,8 +6254,36 @@ static void sceneFrameBoundary(uint16_t trap,uint32_t pc,const uint32_t* regs,co
         // unchanged. Its RTS lifts the stack above the frame, and any later
         // call from the same level overwrites the return PC.
         const uint8_t* owner=(const uint8_t*)g_macSceneFrameOwner;
-        if((uint32_t)userStack>g_macSceneFrameOwner
-           || read32(owner)!=s_sceneFrameParent || read32(owner+4)!=s_sceneFrameReturn) {
+        const bool ended=(uint32_t)userStack>g_macSceneFrameOwner
+           || read32(owner)!=s_sceneFrameParent || read32(owner+4)!=s_sceneFrameReturn;
+#ifdef AITD_SCENE_FRAME_VERIFY
+        uint32_t frame=regs[14];uint16_t depth=0;
+        while(frame && frame<g_macSceneFrameOwner) {
+            if(!base || (frame&1) || frame<base || frame>base+65528 || ++depth>64) {
+                loaderStop("SCENE FRAME VERIFY STACK",4);showLoaderStop();return;
+            }
+            uint32_t parent=read32((uint8_t*)frame);
+            if(parent && parent<=frame) {
+                loaderStop("SCENE FRAME VERIFY CHAIN",4);showLoaderStop();return;
+            }
+            frame=parent;
+        }
+        ++g_sceneFrameEndChecks;
+        if(ended!=(frame!=g_macSceneFrameOwner)) {
+            // The previous walker aliases a different LINK frame at the same
+            // address. A changed return PC proves the original call returned;
+            // record this separately rather than treating the old walk as truth.
+            if(ended && frame==g_macSceneFrameOwner
+               && read32(owner)==s_sceneFrameParent
+               && read32(owner+4)!=s_sceneFrameReturn)
+                ++g_sceneFrameEndReused;
+            else {
+                ++g_sceneFrameEndFailures;
+                loaderStop("SCENE FRAME VERIFY END",4);showLoaderStop();return;
+            }
+        }
+#endif
+        if(ended) {
             if(g_macFramesQueued!=s_sceneFrameQueued) {
                 loaderStop("SCENE FRAME PARTIAL",4);showLoaderStop();return;
             }

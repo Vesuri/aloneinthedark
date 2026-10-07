@@ -24,6 +24,10 @@
 # basename — KEEP BASENAMES UNIQUE across the source trees), sources located via vpath.
 
 # Diagnostic feature flags must enable probes before conditional symbol groups.
+ifeq ($(SCENEFRAMEVERIFY),1)
+PROBES=1
+EXTRA_DEFINES += -DAITD_SCENE_FRAME_VERIFY
+endif
 ifeq ($(FIRSTFLOORLOAD),1)
 INGAME=1
 PROBES=1
@@ -515,6 +519,9 @@ PROBE_SYMS += $(PROBE_SYMS_PAK)
 PROBE_SYMS += $(PROBE_SYMS_C2P)
 PROBE_SYMS += g_macFramesQueued g_macFramesPresented
 # Present completed original scene renders; 0 retains the diagnostic baseline.
+ifeq ($(SCENEFRAMEVERIFY),1)
+PROBE_SYMS += g_sceneFrameEndChecks g_sceneFrameEndFailures g_sceneFrameEndReused
+endif
 SCENEFRAMEBATCH ?= 1
 ifeq ($(SCENEFRAMEBATCH),1)
 EXTRA_DEFINES += -DAITD_SCENE_FRAME_BATCH
