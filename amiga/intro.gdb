@@ -20,24 +20,50 @@ end
 tbreak dispatchMacTrap if trap==0xa8ec
 continue
 define intro_frame
- if $pc!=$intro_target || g_stageBState==3 || s_loudStopScreen->m_framePending || s_pixelsDirty || s_dirtyRectCount || g_macFramesQueued!=g_macFramesPresented
+ if $pc!=$intro_target || g_stageBState==3 || s_pixelsDirty || s_dirtyRectCount
   echo FAIL intro frame state/publication\n
   detach
   quit 1
  end
  set $intro_screen=s_loudStopScreen
+ set $intro_checkpoint_d0=$d0
+ set $intro_queued=g_macFramesQueued
+ printf "INTRO_FRAME n=%u segment=%u offset=%X d0=%X\n",$intro_n,$intro_segment,$intro_offset,$intro_checkpoint_d0
+ # Freeze instruction-matched logical pixels before resuming for the queued VBI.
+ eval "dump binary memory ../tmp/intro-native-%u-screen.bin %u %u",$intro_n,s_colorScreen,s_colorScreen+307200
+ eval "dump binary memory ../tmp/intro-native-%u-clut.bin %u %u",$intro_n,s_windowManagerColors,s_windowManagerColors+2056
+ if $intro_screen->m_framePending
+  if g_macFramesQueued!=g_macFramesPresented+1
+   echo FAIL intro pending queue generation\n
+   detach
+   quit 1
+  end
+  set $intro_expected_front=$intro_screen->m_back
+  set $intro_expected_copper=$intro_screen->m_nextCopper
+  printf "INTRO_WAIT n=%u queued=%u presented=%u expectedFront=%X\n",$intro_n,$intro_queued,g_macFramesPresented,$intro_expected_front
+  tbreak AitdScreen::vbiUpdate if this==$intro_screen && m_framePending
+  continue
+  finish
+  if g_macFramesQueued!=$intro_queued || g_macFramesPresented!=$intro_queued || $intro_screen->m_framePending || $intro_screen->m_chip!=$intro_expected_front || $intro_screen->m_copper!=$intro_expected_copper
+   echo FAIL intro expected queued frame publication\n
+   detach
+   quit 1
+  end
+ end
+ if g_macFramesQueued!=g_macFramesPresented
+  echo FAIL intro queue without pending publication\n
+  detach
+  quit 1
+ end
  if !$intro_screen->m_mouseAllowed || *(unsigned short*)0xdff10c!=0x010f
   echo FAIL intro pointer palette publication\n
   detach
   quit 1
  end
- printf "INTRO_FRAME n=%u segment=%u offset=%X d0=%X\n",$intro_n,$intro_segment,$intro_offset,$d0
  printf "INTRO_CURSOR n=%u enabled=%u control=%04X\n",$intro_n,$intro_screen->m_mouseAllowed,*(unsigned short*)0xdff10c
  printf "INTRO_INVERSION n=%u active=%u left=%d top=%d\n",$intro_n,$intro_screen->m_invertActive,$intro_screen->m_invertLeft,$intro_screen->m_invertTop
  eval "dump binary memory ../tmp/intro-native-%u-inversion.bin %u %u",$intro_n,$intro_screen->m_invertRows,(char*)$intro_screen->m_invertRows+32
  printf "INTRO_PUBLICATION n=%u front=%X queued=%u presented=%u randomCalls=%u\n",$intro_n,$intro_screen->m_chip,g_macFramesQueued,g_macFramesPresented,g_fixedRandomCalls
- eval "dump binary memory ../tmp/intro-native-%u-screen.bin %u %u",$intro_n,s_colorScreen,s_colorScreen+307200
- eval "dump binary memory ../tmp/intro-native-%u-clut.bin %u %u",$intro_n,s_windowManagerColors,s_windowManagerColors+2056
  eval "dump binary memory ../tmp/intro-native-%u-planes.bin %u %u",$intro_n,$intro_screen->m_chip,$intro_screen->m_chip+64000
  eval "dump binary memory ../tmp/intro-native-%u-copper.bin %u %u",$intro_n,$intro_screen->m_copper,(char*)$intro_screen->m_copper+2248
 end
@@ -89,7 +115,7 @@ set $intro_segment=4
 set $intro_offset=0x5220
 set $intro_target=$intro_return
 intro_frame
-if $pc!=$intro_return || $d0!=0 || g_stageBState==3
+if $intro_checkpoint_d0!=0 || g_stageBState==3
  echo FAIL uninterrupted original intro completion\n
  detach
  quit 1
