@@ -2091,7 +2091,7 @@ mismatches across 75,616 bytes, with the paired heap check reporting zero
 unaccounted bytes (Mac 2,821,316; native 3,096,720 free).
 
 
-### Rendered-capture limitation (M1.7b2, owner-deferred)
+### Rendered-capture limitation (M1.7b2, historical deferral)
 
 After the host restart, the committed tree and build were intact. The recovery
 observer completed with explicit PASS and byte-identical before/during/after
@@ -7429,3 +7429,15 @@ event/allocation checks and audio-enabled, no-warp fixed-68030 recordings.
 Selector reachability, reached effect variants, toggles and bounded first-room
 event parity are already verified as documented above. M4 is complete and
 removed from open work; full-game exploration remains M6.
+
+
+## M1.7b2 owner acceptance — 2026-10-07
+
+The owner reports no observed display artifacts and explicitly accepts closure:
+“I haven't seen any artifacts. Consider this done.” This closes M1.7b2 and
+M1.7b, supplementing the recorded passing window-core/production-boot checks
+and window entry/exit measurements. The owner accepts observed gameplay in
+place of the previously requested before/during/after probe screenshots; no
+new rendered probe capture is claimed. The historical capture restriction
+does not grant additional host capture or input permissions. The completed
+item is removed from open work.

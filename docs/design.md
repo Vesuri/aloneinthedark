@@ -176,8 +176,8 @@ subsystem with its design decision and the queue tasks that implement it.
     Nested ordinary traps are allowed; recursive services and unsupported
     exception frames stop explicitly. Pending VBL callbacks wait until the
     service is complete. HFSDispatch is routed through the bridge; its file
-    operations pass M2.1 acceptance. OS handback is implemented (M1.7b1); actual rendered
-    picture acceptance remains M1.7b2.
+    operations pass M2.1 acceptance. OS handback is implemented (M1.7b1); rendered-picture
+    acceptance was closed by the owner on 2026-10-07 (M1.7b2).
   - **Measure it.** The window's entry/exit cost and the display and audio
     continuity across a window must be measured (probe counters and a
     snapshot), not assumed.
@@ -815,7 +815,7 @@ no unexpected loud stop. The cases are added as their milestone lands:
   direct read, exact bytes/CCR/EOF/errors, window counts and restored-OS cleanup.
 - `window-core`: 1 MB chunk reads, DOS errors/save, clock, Paula interrupts,
   keyboard flush, resload ABI and bitplane snapshots. Rendered-picture acceptance
-  remains a separate M1.7b2 requirement.
+  was separately accepted by the owner on 2026-10-07 (M1.7b2).
 - `intro`: logo and intro complete.
 - `newgame`: first room playable.
 - `saveload`: save, reload, same state.
@@ -829,8 +829,8 @@ no unexpected loud stop. The cases are added as their milestone lands:
 Every phase ends with a tagged checkpoint commit that updates README "Current
 state". Task-level detail and acceptance checks are in
 [open-work.md](open-work.md). M2 completed on 2026-10-02; M3 is the next
-implementation milestone. The separately deferred M1.7b2 rendered window
-fixture remains open. See development.md for the M2 completion audit.
+implementation milestone. M1.7b2 rendered window acceptance was closed by the owner
+on 2026-10-07 based on observed gameplay without artifacts. See development.md for the M2 completion audit.
 
 | Phase | Goal | Exit criterion |
 | --- | --- | --- |
@@ -847,8 +847,8 @@ Owner update 2026-10-05 authorizes autonomous completion of M3, M4 and M5.
 Use scripted ordinary game controls and positive game-state checks for M3
 acceptance, including a ten-minute first-floor route. Compare reached states,
 frames and audio events with the original Mac. Owner play-testing supplements
-this coverage and does not block development. The separate owner-deferred
-M1.7b2 rendered-system-window acceptance remains unchanged.
+this coverage and does not block development. The separate M1.7b2 rendered-system-window acceptance was subsequently
+closed by the owner on 2026-10-07; see development.md for the acceptance basis.
 
 ## 8. Workflow (strict, quick)
 

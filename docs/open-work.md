@@ -9,19 +9,6 @@ design.md §5.
 Each item gives the **goal**, then the scope, then *done when*: the evidence
 required.
 
-## Pending verification (owner-deferred)
-
-- **M1.7b2 Rendered-picture acceptance for system windows — pending.**
-  - Obtain owner-provided live emulator captures before, during and after the
-    1 MB/64 KB system-window probe. Debugger-paused frames and logical
-    bitplane dumps do not establish rendered stability.
-  - Autonomous host-window capture/input remains restricted. Do not substitute
-    host event injection for owner-provided captures.
-  - If OS handback changes the display, instrument and fix it.
-  *Done when* actual rendered snapshots are stable through the 1 MB/64 KB probe,
-  `window-core` and production `boot` pass, and the window entry/exit cost is
-  recorded with the full acceptance result. Only then is M1.7b complete.
-
 ## M3 Playable
 
 - **M3.4 Apple Events and misc Toolbox.**
