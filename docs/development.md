@@ -7106,3 +7106,28 @@ with binary downloads disabled. Those attempts fail and are excluded. The
 maintained `EFFECTFRACTIONPROBE=1` fixture edits only the first packet in guest RAM
 inside the native test build; it never changes original code/resources and is
 absent from production. `amiga/effect_fraction.gdb` observes the actual call.
+
+
+## M4 two-effect allocation — 2026-10-07
+
+Original and fixed-68030 native fixtures now agree on the first free slot,
+second free slot's retained D1.W, oldest occupied slot and later-slot tie rule.
+All original state bytes and preserved registers pass; four native PCM buffers
+match the original sample. Replacements retain their Paula channel, preserve
+the other buffer and release the old allocation. Final DMA/Chip cleanup returns
+to the exact baseline with zero accounting errors. The native fixture uses
+explicit test-only packet/age changes, not ordinary gameplay acceptance.
+
+The configuration is the measured effects-only 6/2/2 setup. Song startup selects
+6/3/1; the two-slot music experiment failed the positive control and was removed
+rather than changing the game's configuration. The original loop-count fixture
+is also retained, but native looping and long samples remain unresolved. See
+[sound-driver.md](sound-driver.md#two-effect-slot-allocation--2026-10-07).
+
+
+The post-change full INTRO regression on the fixed 68030 also exits zero:
+3,736 exact original timed events, all 25 retained PCM variants (458,974 bytes),
+effect priority, natural completion and complete song/resource/channel cleanup.
+The CPU-only 180-tick interval advances 28 events; all 3,736 note deliveries
+have zero tick lateness. Evidence is `tmp/m4/effects/slots/song-capture.log` with
+`check_song_playback.py --interrupt` against the retained original clock log.

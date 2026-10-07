@@ -1581,15 +1581,16 @@ static const char* playNativeEffect(uint8_t* packet,uint32_t& scratch)
     serviceNativeEffects();
     uint16_t index=0,age=0x7fff;
     bool replacing=false;
-    if(g_soundDriver.effects[0].active) {
-        if(g_soundDriver.effectLimit>1 && !g_soundDriver.effects[1].active)return "EFFECT SECOND SLOT";
-        else if(g_soundDriver.effectLimit==1) {
-            // Original +$3528 selects its sole occupied slot and returns its
-            // age in D1.W. +$1FE8 decrements that age once per callback clock.
-            uint32_t elapsed=g_macTicks-g_effects[0].started;
-            if(elapsed>0x7ffe)return "EFFECT VOICE AGE";
-            age=uint16_t(0x7ffeUL - elapsed);replacing=true;
-        } else return "EFFECT VOICE STEAL"; // Multiple occupied slots remain unmeasured.
+    // Original +$3524: stop at the first free slot; D1.W retains the
+    // smallest preceding active age. If all are occupied, the minimum age
+    // wins, with the later slot winning a tie.
+    for(uint16_t i=0;i<g_soundDriver.effectLimit;++i) {
+        if(!g_soundDriver.effects[i].active) {index=i;replacing=false;break;}
+        uint32_t elapsed=g_macTicks-g_effects[i].started;
+        if(elapsed>0x7ffe)return "EFFECT VOICE AGE";
+        uint16_t candidate=uint16_t(0x7ffeUL-elapsed);
+        if(candidate<=age) {age=candidate;index=i;}
+        replacing=true;
     }
     uint8_t* chip=(uint8_t*)M5_ALLOC_MEM(layout.allocated,MEMF_CHIP);
     if(!chip)return "EFFECT CHIP MEMORY";
@@ -1619,6 +1620,32 @@ static const char* playNativeEffect(uint8_t* packet,uint32_t& scratch)
     scratch=(scratch&0xffff0000UL)|age; // Original +$3524 / +$3536.
     return 0;
 }
+
+#ifdef AITD_EFFECT_SLOTS_PROBE
+extern "C" __attribute__((noinline)) void aitdEffectSlotsCheckpoint(uint16_t stage,uint32_t scratch)
+{__asm__ volatile("nop" :: "r"(stage),"r"(scratch) : "memory");}
+static const char* runEffectSlotsFixture(uint8_t* packet,uint32_t& scratch)
+{
+    if(g_effectStarts || !effectRange(packet,26) || read32(packet+4)<4096)return "SLOTS PROBE PACKET";
+    write32(packet+4,4096);
+    aitdEffectSlotsCheckpoint(0,scratch);
+    for(uint16_t stage=1;stage<=4;++stage) {
+        if(stage>=2) {
+            // Match the explicit original age fixtures, independently of
+            // time spent paused in the observer or converting the sample.
+            g_effects[0].started=g_macTicks-(stage>=3 ? 14 : 0);
+            if(stage>=3)g_effects[1].started=g_macTicks-(stage==3 ? 9 : 14);
+        }
+        write16(packet+24,0x8000+stage);
+        const char* error=playNativeEffect(packet,scratch);
+        if(error)return error;
+        aitdEffectSlotsCheckpoint(stage,scratch);
+    }
+    stopNativeEffect(0);stopNativeEffect(1);
+    aitdEffectSlotsCheckpoint(9,scratch);
+    return "SLOTS PROBE END";
+}
+#endif
 
 #ifdef AITD_BEEP_PROBE
 extern "C" uint32_t aitdSysBeepProbe();
@@ -8188,7 +8215,9 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
                 if(!packet || (argument&1))driverStop="VOICE PACKET";
                 else driverStop=g_soundDriver.initialize(read16(packet),read16(packet+2),read16(packet+4),g_macTicks);
             } else if(selector==17) {
-#ifdef AITD_EFFECT_FRACTION_PROBE
+#ifdef AITD_EFFECT_SLOTS_PROBE
+                driverStop=runEffectSlotsFixture((uint8_t*)argument,scratch);
+#elif defined(AITD_EFFECT_FRACTION_PROBE)
                 // Authorized isolated RAM fixture. Original code/resources stay
                 // unchanged; the production build never edits this packet.
                 uint8_t* packet=(uint8_t*)argument;

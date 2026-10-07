@@ -75,12 +75,13 @@ required.
   MAME by event.
 
 - **M4.3a Remaining effect packet/allocation variants.**
-  - Measure and implement loop boundaries/counter updates,
-    samples beyond one DMA segment and occupied effect/Paula voice selection.
-    A free second effect slot must also reproduce D1.W from the preceding active
-    slot; resolve the `EFFECT SECOND SLOT` loud stop against the original.
-  - Bring any reached prerequisite forward. Measure the original driver before
-    implementing looping, aging/stealing and interaction with music.
+  - Complete loop-boundary/counter variants and samples beyond one DMA segment.
+    The positive-counter original fixture is retained under
+    `tmp/m4/effects/loop3/`; native looping is still a named stop.
+    Measure zero/negative counters and stop/replacement during loops before
+    implementing those paths.
+  - Resolve effect ages beyond $7FFE callbacks if reached. Keep unsupported
+    ages and DMA segment variants as named stops until paired evidence exists.
 
   *Done when* each reached variant has paired original/native playback events,
   exact loop/sample ownership checks and verified stop/replacement cleanup;

@@ -100,8 +100,11 @@ below 1 ms. Occasional captured audio gaps are FS-UAE host-buffer underruns;
 four-channel voice stealing remains a documented Paula limitation.
 See the current [scene timings and comparison limits](docs/intro-comparison.md).
 
-Gameplay, save/load and broader music support remain later milestones. The
-separately deferred M1 system-window fixture still needs its specific rendered
+**M4 audio is in progress.** All eight songs pass complete original/native
+event, timing and allocation comparisons. SysBeep, fractional effect rates and
+two-effect allocation/replacement have paired contract checks. Audible all-song
+acceptance, remaining driver paths, loops and long effect samples remain open.
+The deferred M1 system-window fixture still needs its specific rendered
 acceptance; M2 screenshots do not substitute for it. See [open work](docs/open-work.md)
 for the remaining scope and [development](docs/development.md) for evidence.
 

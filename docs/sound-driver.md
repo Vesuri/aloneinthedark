@@ -422,9 +422,10 @@ cleanup. The logical sample identity is retained on stop, as on the Mac;
 no borrowed source pointer is used by DMA. Sample and packet reads are bounded
 within the owning Mac zone before copying.
 
-Loops, fractional rates, oversized samples and unmeasured multi-effect
-voice/channel allocation remain named stops; the reached single-slot
-replacement is covered below. They are not replaced by one-shot playback or silently dropped.
+At this checkpoint, loops, fractional rates, oversized samples and multi-effect
+allocation remained named stops. The later fractional-rate and two-effect
+acceptance sections below supersede those two restrictions. Loops and oversized
+samples still stop explicitly rather than becoming one-shot playback or being dropped.
 `check_driver17.py` compares the full original transition, request, sample,
 converted DMA bytes, native ABI, start event and natural cleanup. The existing
 host driver test also covers raw-header ambiguity, odd alignment, silent
@@ -987,11 +988,11 @@ replacement model, with unrelated music state unchanged.
 
 The Amiga path allocates/converts the new sample, quiesces the old effect's
 Paula channel before freeing its buffer, then reuses that channel. It derives
-age from the same native 60 Hz clock used by selector 15. Multiple occupied
-slots, a free second slot's return convention and ages beyond the measured
-counter range remain named stops. The previous second-slot path returned a
-guessed $7FFF despite scanning an active slot; that unverified case now stops
-as `EFFECT SECOND SLOT` and remains M4.3a work.
+age from the same native 60 Hz clock used by selector 15. At this checkpoint,
+multiple occupied slots and a free second slot remained named stops. The later
+[two-effect acceptance](#two-effect-slot-allocation--2026-10-07) replaces those
+stops with measured behavior, including the second slot's retained D1.W.
+Ages beyond the measured counter range still stop explicitly.
 
 The first complete native capture (`tmp/m2-effectreplace-native-full.log`)
 returns past the former stop, with D0=0, original stack/register preservation,
@@ -1143,3 +1144,35 @@ The fixture sources and checker are `tools/mac_effect_fixture.lua`,
 `tools/check_effect_packet.py` and `amiga/effect_fraction.gdb`; native builds use
 `EFFECTFRACTIONPROBE=1 PROBES=`. Evidence is `tmp/m4/effects/fraction/`.
 Unsupported loop/segment/allocation variants remain named stops.
+
+
+## Two-effect slot allocation — 2026-10-07
+
+The authorized RAM-only `mac_effect_slots.lua` invokes the unchanged selector-17
+call four times, changes only its packet ID and explicit age words, and uses
+owned sample memory throughout. Original instructions/resources and CPU
+registers remain untouched. The full original state and preserved ABI confirm:
+
+- First free slot 6: D1.W=$7FFF.
+- Free slot 7 after active slot 6: D1.W retains the earlier slot's age $7FFE.
+- Both occupied, ages $7FF0/$7FF5: replace slot 6, return $7FF0.
+- Both occupied with age $7FF0: replace the later slot 7, return $7FF0.
+
+Native selection now follows those rules. On the fixed 68030, all four sample
+buffers exactly match the original fixture PCM plus a silent word. Two active
+effects use separate channels; replacements retain their channel and preserve
+the unselected buffer. DMA is stopped before old buffers are freed. The ledger
+holds exactly two 4,104-byte rounded allocations, then returns from 140,856 to
+132,648 Chip bytes with zero errors after both effects stop.
+`EFFECTSLOTSPROBE=1 M5AUDIT=1 PROBES=`, `amiga/effect_slots.gdb` and
+`tools/check_effect_slots.py` reproduce this isolated acceptance. Evidence is
+`tmp/m4/effects/slots/`. One emulator startup stall is excluded. Starting a song
+uses the existing measured 6/3/1 configuration (one effect slot); the attempted
+two-effect music fixture correctly failed its configuration positive control
+and is not acceptance. Existing song fixtures cover effect priority there.
+
+The original loop-count-3 fixture also completes: its shared counter advances
+3→2→1→0. Driver+$2264–$226E decrements before deciding to repeat, so count 3
+means two extra repeats, followed by the sample tail. This is measured original
+behavior only; native looping, zero/negative counter fixtures and long DMA
+segments remain open.
