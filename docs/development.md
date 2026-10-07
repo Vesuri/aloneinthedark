@@ -100,15 +100,68 @@ they are scope-free diagnostic rates, not a claim of shipping-build timing.
 A fresh 750-PC-sample 68020 profile attributes 58% to original code (54% Dark3),
 17% to trap dispatch including the fast path, 12% to presentation, 4% to native
 line work and 2% to CopyBits work. Among identifiable general-dispatch samples,
-CopyBits, RGBBackColor and LocalToGlobal are the most frequent; remaining
-native costs still warrant measured candidates, particularly rectangle C2P
-and common general traps. Line-A entry/exit, FMODE and TickCount remain
-unmeasured candidates; M5.2 is not complete. The local sampler now uses the
-actual 32-entry segment-array bound instead of reading past it. Clean builds
-pass no-float and symbol-retention audits.
+CopyBits, RGBBackColor and LocalToGlobal are the most frequent. The local
+sampler now uses the actual 32-entry segment-array bound instead of reading
+past it. Clean builds pass no-float and symbol-retention audits.
+
+The follow-up graphics-query fast path shares the existing Pascal result,
+scratch-register and validation handlers, including RGBBackColor and common
+geometry/device queries. Scope-free fixed 68020 idle moves 10.01→10.21 fps
+(624 scenes/3,056 fields). Word-anchored dirty spans then give 10.42 fps
+(629/3,018): Kalms still converts widths divisible by 32, but can start on a
+16-pixel boundary. The idle actor now converts 32 columns instead of 64.
+Horizontal rectangle merges preserve the converter's width contract, and
+inactive-buffer synchronization uses the exact byte offset. No chunky shadow
+comparison is introduced. Together these changes give 12.23 fps on fixed
+68030 (739/3,021), versus 11.29 before this follow-up.
+
+ASan/UBSan tests cover every horizontal span and 400 alternating-buffer frames.
+PAL and NTSC cursor fixtures again pass every pixel, colour, inversion and DMA
+check, with zero late flips and cursor work ending on line 17. The uninterrupted
+68030 intro completes 951 verified frames, 939 partial updates and all 840 book
+batches without a mismatch. All four checkpoint frames match the original Mac's
+pixels, palettes and publication state. Production and diagnostic clean builds
+pass the no-float and retained-symbol audits.
+
+The repeated five-leg walking route gives 3.47 fps on 68020 (88/1,268) and
+3.84 on 68030 (101/1,316), with actual displacement, living/manual endpoints and
+zero dropped input. These are respectively +26% and +30% over the original
+2.75/2.94 baselines. The previous 68030 result was 3.95, so the latest changes
+do not establish a universal walking improvement. In particular, room 4 fell
+from 7.60 to 5.23 fps while the other four 68030 legs improved. The ordinary-input
+route reaches slightly different coordinates/headings (room-4 heading 503 versus
+512); it measures useful route throughput, not identical frame workloads.
+Do not attribute the whole difference to either optimisation or pose alone.
+
+A fresh 750-sample fixed-68030 scope-free profile attributes 67.9% to original
+game code (66.8% Dark3), 17.1% to presentation (16.9% in the Kalms converter),
+7.2% to trap dispatch including its fast path, 2.8% to native line work and 1.6%
+to CopyBits. Sampling itself reports 12.21 fps, consistent with the independent
+12.23 idle interval. This is a 68030 profile, unlike the earlier 68020 profile;
+the shares are not a controlled before/after comparison.
+
+A separate FMODE=3/DDFSTOP=$B8 timing pilot gives 12.77 fps (768/3,006), +4.4%.
+The [AGA register reference](https://www.ikod.se/references/amiga-aga-guide/registers-by-name/#FMODE)
+describes the wider bitplane fetch and independent sprite fetch bits. The pilot
+is deliberately not retained: its small gain does not justify changing the
+established display timing and rendered-output acceptance surface in this pass.
+It has no rendered-video acceptance. Rejected experiment commit `d42a148` records
+that decision and its numbers; its patch and logs are archived locally.
+
+M5.2 is complete for this performance pass. Line-A entry/exit accounts for only
+8/750 samples (1.1%), the remaining general dispatcher for 1/750; no TickCount
+sample identifies a worthwhile target. A new assembly trap path or removal of
+per-trap services is not justified. Row batching would change the verified Kalms
+integration to save its per-row setup; the profile's 17% includes the necessary
+conversion work, not just that setup. Leave it intact under the owner's rule to
+avoid micro-optimisations. Most remaining execution is original renderer code;
+there is no further measured native change worth its risk in this pass. This
+does not close M5.1's phase table, M5.3's interrupt audit or M5.4's memory audit.
 
 Evidence, prototype bisect captures, paired checker logs, cursor captures,
-walking routes and the sampler remain local in `tmp/perf-sampler/`.
+walking routes and the sampler remain local in `tmp/perf-sampler/`. Follow-up
+proof is in `query-wordspan-proof/`, `cursor-wordspan-{pal,ntsc}/`,
+`wordspan030-profile/`, `walk-wordspan{020,030}.json` and `fmode-pilot/` below it.
 
 ## Emulator speed pilots — 2026-10-06
 

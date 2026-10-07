@@ -116,20 +116,6 @@ required.
     audio sequencer, system windows.
 
   *Done when* the table is in amiga-arch.md.
-- **M5.2 Optimise by the profile.**
-  - One measured optimisation per commit, with before and after numbers. Record
-    rejected attempts in their commit message.
-  - Candidates, from the 2026-10-07 idle-room profile (development.md):
-    - C2P granularity: 32-pixel alignment converts 64 columns for the idle
-      actor's 22-column box, and the Kalms wrapper restarts per row; C2P is
-      presentation is about 12% of the refreshed scope-free frame profile;
-    - the Line-A entry/exit and the remaining general-path traps (CopyBits,
-      RGBBackColor, LocalToGlobal, EmptyRgn, ObscureCursor, SectRect,
-      device-list queries), together with fast dispatch about 17% of the frame;
-    - FMODE;
-    - a TickCount fast path.
-
-  *Done when* the profile shows no remaining optimisation worth its risk.
 - **M5.3 Interrupt budget and safe-point gap audit.**
   - Measure native music interrupt duration, delivery lateness and interrupt
     stack headroom during gameplay, including simultaneous note/effect changes.

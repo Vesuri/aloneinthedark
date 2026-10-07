@@ -11,18 +11,21 @@ and Toolbox layer are carried over from Vette!; see
 
 ## Current state
 
-**M5.2 gameplay performance is in progress.** Retained optimisations raise the
-fixed-clock 68020 idle diagnostic from 7.12 to 9.62 FPS (+35%). Matched straight
-walking legs improve 2.75→3.29 FPS on 68020 and 2.94→3.95 on 68030.
+**M5.2 gameplay performance pass is complete.** The latest retained changes
+raise fixed-clock idle rates from 10.01→10.42 FPS on 68020 and 11.29→12.23 on
+68030, with timing scopes disabled. Across the full performance pass, the
+five-leg walking route improves 2.75→3.47 FPS on 68020 and 2.94→3.84 on 68030.
 
 | PAL configuration | Idle, timing scopes disabled | Walking, route diagnostic |
 | --- | ---: | ---: |
-| A1200, 68020 at 14.18758 MHz | 10.01 FPS | 3.29 FPS |
-| A4000, 68030 at 15.6672 MHz | 11.29 FPS | 3.95 FPS |
+| A1200, 68020 at 14.18758 MHz | 10.42 FPS | 3.47 FPS |
+| A4000, 68030 at 15.6672 MHz | 12.23 FPS | 3.84 FPS |
 
 Idle counts cover 3,000 emulated fields after ordinary Load; walking counts
 cover five coordinate-gated legs in rooms 1, 4 and 5. These are different
-diagnostic builds, not shipping-build rates. Warp accelerates the host run;
+diagnostic builds, not shipping-build rates. Walking poses vary slightly between
+runs; the preceding 68030 route measured 3.95 FPS, so the latest changes do not
+establish a gain on every walking leg. Warp accelerates the host run;
 all results use fixed emulated CPU clocks. Intro frames match the Mac exactly,
 and PAL/NTSC cursor checks and the independent scene-end audit pass.
 [Methods, profile and evidence](docs/development.md#gameplay-frame-profile-and-first-optimisations--2026-10-07).
