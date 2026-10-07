@@ -1,5 +1,10 @@
 # Development
 
+M3.4 is complete as of 2026-10-08; see “M3.4 completed: continuous new-game
+circuit” below for acceptance evidence. Earlier dated entries describe the
+state at the time and do not reopen the milestone. Current work is listed
+only in [open-work.md](open-work.md).
+
 Unattended `amiga/diag_run.sh` defaults to maximum-speed `a4000-030` and warp.
 Use `EXTRA_ARGS=--warp_mode=0` explicitly for real-time diagnostics.
 The optional `a4000-060` configuration is an unlimited-speed development pilot,
@@ -11,7 +16,9 @@ Warp and maximum CPU speed are diagnostic aids, not performance evidence.
 `DIAG_RUN_DIR` also scopes the shared launcher's emulator PID record. Use a
 separate run directory and debugger port for simultaneous diagnostics; one
 run's startup/cleanup must not stop another's live emulator. Keep the shared
-binary/ELF unchanged until every active observer has completed. The launcher
+binary/ELF unchanged until every active observer has completed. Do not edit an
+active shell launcher in place; wait for it to finish or replace it atomically.
+The launcher
 setup regression checks private ownership, the default directory and early
 rejection of an invalid run path.
 
@@ -392,6 +399,101 @@ python3 tools/check_picture_shrink.py CAPTURE/mac-route.log --folder CAPTURE \
   --native-screen tmp/firstfloor-load-choice-screen.bin \
   --native-clut tmp/firstfloor-load-choice-clut.bin
 ```
+
+## Living room 4 recovery diagnostic — in progress
+
+The maintained original recovery observer also passes with cardinal enemy
+headings in `tmp/m3-room4-recovery-cardinal-mac/`; its independent checker
+verifies ordinary walking, target removal and the connecting-door return.
+The native `ROOM4RECOVERY=1` diagnostic remains unaccepted. A pulse-based
+fixed-clock 68020 run killed the target while staying in room 5; a second run
+on the ARM emulator died in room 5. Neither exercised the required recovery.
+These rejected captures are in `tmp/m3-room4-recovery-native/cardinal{,-arm}-020/`.
+
+The current controller follows the original retreat using ordinary keys,
+waits for actual living room 4 and Fight, then aims, walks into range and
+holds the kick through enemy removal. It must exit through the measured door
+and establish real room 5 Search. `amiga/room4_recovery.gdb` captures into
+`tmp/m3-room4-recovery-native/current/` (create the directory before running).
+`tools/check_native_room4_recovery.py` requires the full route and raw actor,
+variable and scene captures; `--require-walk` additionally requires positive
+walking from beyond kick range. Same-tick diagnostic checkpoints are allowed,
+but reversed clocks and missing actual room transitions cannot pass. Build
+no-float and 169 retained-symbol audits pass; native route acceptance is still
+pending. The first retreat pilot was displaced outside the doorway during
+its final turn and died; the revised controller aligns nearer the corridor
+centre and rechecks displacement after turning. A subsequent unlimited-speed
+run failed the earlier lamp prerequisite, before exercising recovery. The
+maintained observer now captures that failure's pose and logical frame.
+The fixed-clock 68020 ordinary doorway route now passes the paired raw-capture
+checker in `tmp/m3-room4-recovery-native/door-020/`, with 12 health and zero
+dropped transitions. It reaches room 4 during running animation 255, resumes
+Fight, removes the target and returns to actual room 5 Search. This establishes
+the ordinary doorway/fight/return controller, not the stricter hit-animation
+knockback or out-of-range walking recovery. To check that additional experiment,
+use `--require-knockback --require-walk`; it is not a milestone gate. The current target
+approached during the turn, so no out-of-range walking was exercised.
+The same-binary fixed-clock 68030 attempt is rejected: the target remained in
+room 5 while the controller aimed north from room 4, walked into a wall and
+started no kicks before its deadline. Evidence is archived in
+`tmp/m3-room4-recovery-native/door-030/`. Straight-line aiming across different
+rooms was insufficient for this experimental state. It is not a milestone
+completion gate; see the M3.4 acceptance below.
+Maximum-speed pilots do not replace either fixed-clock CPU gate.
+
+## M3.4 completed: continuous new-game circuit — 2026-10-08
+
+`FIRSTFLOORCIRCUIT=1 INTROSKIP=1` with `amiga/newgame_circuit.gdb` joins the
+existing direct room-5 fight, room-4/western-hall/bathroom return and living
+first-floor circuit in one native session. Create
+`tmp/m3-newgame-direct/current/{prefix,circuit}` before running.
+`tools/check_newgame_circuit.py` pairs its captures with a maintained original
+new-game circuit, verifies the initial attic/inventory, living target removal,
+actual return destinations/actions, continuous clock and ten-minute activity.
+The earliest native capture has empty inventory and selected item -1; the
+original idle-view capture has Actions alone. The verifier accepts either fresh
+native form and requires Actions plus lamp at every later paired destination.
+It rejects ordinary-Load evidence; it does not claim knockback or out-of-range recovery coverage. The clean build passes no-float and
+171 retained-symbol audits. The maintained original new-game observer and
+independent checker now exit zero in `tmp/m3-newgame-direct/mac/`: seven living
+circuits, 39,934 active first-floor ticks (665.6 seconds), final health 15.
+This uses ordinary New Game, not checkpoint Load. The first maximum-speed
+native attempt was rejected after target removal and the room-4/hallway return:
+its alignment key stayed held because the caller waited for idle before
+letting the alignment helper observe and release the moving animation.
+That diagnostic condition is corrected. The current maximum-speed rerun
+positively captures repeated backward press/moving-release/idle transitions,
+finishes the hallway alignment at z=-132, and reaches manual room 3 with health
+18, actual Search and zero dropped inputs before starting the continuous
+circuit. The full maximum-speed observer and paired checker exit zero in
+`tmp/m3-newgame-direct/alignment-fast/`: six living circuits, 39,301 active
+first-floor ticks, both encounters removed, final health 18 and zero drops.
+The checker validates the held-key trace against actual animation and movement.
+This is new-game functional evidence, not fixed-clock or real-time performance
+acceptance. The final fixed-clock checks now pass on both acceptance CPUs in
+`tmp/m3-final-circuit/{020,030}` with actual zero runner/checker statuses.
+The 68020 completes 17 living cycles and 36,921 active ticks (615.35 seconds),
+finishing with 15 health; the fixed-clock 68030 completes 16 cycles and 36,124
+active ticks (602.07 seconds), finishing with 12 health. Both start a new game,
+remove both encountered enemies, retain the lamp/inventory, reach actual Search,
+return through room 4 and the western hallway to the bathroom, and have zero
+dropped inputs. Full raw world/variable/frame captures agree with the original
+seven-cycle session. Build provenance is retained in `build-manifest.json` and
+`source.patch`; host tests pass. In-memory negative checks reject a failed
+runner, dead hero, insufficient activity and dropped input. These functional
+runs use warp with the CPU clock pinned; they are not real-time performance
+measurements. This satisfies M3.4's paired ten-minute first-floor acceptance.
+Acceptance was reviewed on 2026-10-08. The additional knockback/walking
+scenario was an unnecessarily expanded acceptance gate, not a demonstrated
+missing Toolbox contract; it does not block M3.4. Full-game coverage remains M6.
+
+The separate combined recovery experiment uses `amiga/newgame_firstfloor.gdb`
+and `tools/check_newgame_firstfloor.py`, with captures under
+`tmp/m3-newgame-circuit/current/{recovery,circuit}`. The original route selects
+`AITD_CIRCUIT_ROOM4_RECOVERY=1`; this excludes ordinary checkpoint Load.
+Its first original attempt is rejected at a blocked room-5 alignment before
+recovery (`tmp/m3-newgame-circuit/mac/mac-route.log`); it supplies no endurance
+acceptance. Neither experiment changes original game instructions or actors.
 
 ## Room 4 bypass — 2026-10-06
 
@@ -6893,7 +6995,8 @@ The checker verifies actor, health, inventory, action, target removal and
 logical frames at every destination. Adjacent-room actor offsets 0x22/0x26
 retain shared scene coordinates; room 5 to room 4 translates local coordinates
 by +4500 X and +100 Z. The captured enemy/hero scene differences agree with
-the reported aim. Fight turns reach multiples of 128 angle units.
+the reported aim. Fight turns advance in 128-unit steps; the recovery uses cardinal
+headings with a 16-unit tolerance.
 
 The original keeps Fight selected after the first O request while another
 enemy (object 57) is active in room 4; the actual Search state is reached after
@@ -6901,7 +7004,14 @@ exiting. Small released walking steps correct the doorway position; a long
 held walk overshoots it. Repeated walking approaches die during combat, while
 the measured 800-unit approach followed by continuous attack finishes with
 health 12 at enemy removal. Original game/system memory remains read only.
-Native room-4 recovery and the subsequent living exit remain unverified.
+Native pilots subsequently captured actual hit-animation knockback, positive
+out-of-range walking and enemy removal. A full living return for that strict
+combination remains unverified. Those experiments are not M3.4 acceptance
+and no passing result is claimed. The ordinary-input continuous new-game
+circuits above provide the completed milestone evidence. Optional
+`ROOM4RECOVERY=1` and combined-recovery observers are experimental diagnostics;
+their failures are not production loud stops. Latest pilot sources and rejected
+route variants are retained in `tmp/m3-closure-experiments/`.
 
 
 ## M5 CPU, full profile, interrupt and memory acceptance — 2026-10-07

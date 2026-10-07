@@ -47,6 +47,7 @@ extern "C" void aitdDriverClockProbe();
 #include "platform/amiga/AitdScreen.h"
 #include "platform/amiga/MacInput.h"
 #include "platform/amiga/FirstFloorCircuit.h"
+#include "platform/amiga/FirstFloorRecovery.h"
 #include "platform/amiga/FirstFloorLoad.h"
 #include "platform/amiga/PerfProbe.h"
 #include "platform/amiga/framework/AmigaHardware.h"
@@ -8007,7 +8008,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
 #ifdef AITD_ROOM5_RETURN
         const bool inRoom=read16(actor+0x30)==5 || read16(actor+0x30)==1
 #ifdef AITD_ROOM4_ROUTE
-            || (g_combatRouteStage>=40 && read16(actor+0x30)==4)
+            || read16(actor+0x30)==4
 #ifdef AITD_ROOM3_ROUTE
             || (g_combatRouteStage>=60 && read16(actor+0x30)==3)
 #endif
@@ -8046,12 +8047,31 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
 #ifdef AITD_ROOM5_COMBAT
             if(read16(npc+0x34)==84)objects|=2;
 #endif
+#ifdef AITD_ROOM5_RETURN
+            if(read16(npc+0x2e)==read16(actor+0x2e)) {
+                // Compare local positions directly in the same room. Use
+                // the measured origin translation for the connecting rooms.
+                const uint16_t heroRoom=read16(actor+0x30),npcRoom=read16(npc+0x30);
+                int32_t dx=int16_t(read16(npc+0x1c))-int32_t(int16_t(read16(actor+0x1c)));
+                int32_t dz=int16_t(read16(npc+0x20))-int32_t(int16_t(read16(actor+0x20)));
+                if(heroRoom==4 && npcRoom==5) {dx+=4500;dz+=100;}
+                else if(heroRoom==5 && npcRoom==4) {dx-=4500;dz-=100;}
+                else if(heroRoom!=npcRoom) {
+                    dx=int16_t(read16(npc+0x22))-int32_t(int16_t(read16(actor+0x22)));
+                    dz=int16_t(read16(npc+0x26))-int32_t(int16_t(read16(actor+0x26)));
+                }
+                if(dx>=-32768 && dx<=32767 && dz>=-32768 && dz<=32767) {
+                    objects|=1024;enemyX=int16_t(dx);enemyZ=int16_t(dz);
+                }
+            }
+#else
             if(read16(npc+0x2e)==read16(actor+0x2e) && read16(npc+0x30)==read16(actor+0x30)) {
                 objects|=1024;enemyX=int16_t(read16(npc+0x1c));enemyZ=int16_t(read16(npc+0x20));
             }
+#endif
         }
         if(vars && int16_t(read16(vars+healthVariable*2))<=0)objects|=2048;
-        if(slot<0 && vars && !read16(vars+40) && int16_t(read16(vars+healthVariable*2))<=0 && read16(enemy+28)==0xffff && read16(enemy+30)==0xffff)objects|=8;
+        if(slot<0 && vars && int16_t(read16(vars+healthVariable*2))<=0 && read16(enemy+28)==0xffff && read16(enemy+30)==0xffff)objects|=8;
 #ifdef AITD_ROOM5_RETURN
         if(read16(actor+0x30)==1)objects|=8192;
 #ifdef AITD_ROOM4_ROUTE
@@ -8077,6 +8097,9 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         }
 #endif
 #ifndef AITD_FIRSTFLOOR_LOAD
+#ifdef AITD_ROOM4_RECOVERY
+        if(aitdInputRoom4Recovery(g_macTicks,g_macSceneFramesCompleted,world))
+#endif
         aitdInputCombat(g_macTicks,g_macSceneFramesCompleted,int16_t(read16(actor+0x1c)),int16_t(read16(actor+0x20)),read16(actor+0x2a),read16(actor+0x3e),read16(actor+0x52),objects,enemyX,enemyZ,ready);
 #endif
 #ifdef AITD_FIRSTFLOOR_CIRCUIT

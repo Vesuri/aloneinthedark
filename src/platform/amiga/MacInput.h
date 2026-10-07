@@ -38,9 +38,12 @@ void aitdInputDeathRoute(bool menu,uint32_t ticks,bool initialActor,int16_t z,ui
 void aitdInputLamp(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_t beta,uint16_t animation,uint16_t track,bool found,bool taken,bool used,bool ready);
 #endif
 #ifdef AITD_COMBAT_ROUTE
-extern "C" { extern volatile uint16_t g_combatRouteStage; }
+extern "C" { extern volatile uint16_t g_combatRouteStage; extern volatile uint32_t g_combatRouteTick; }
 void aitdInputCombat(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_t beta,uint16_t animation,uint16_t track,uint16_t objects,int16_t enemyX,int16_t enemyZ,bool ready);
 void aitdInputCombatEvent(uint16_t what,uint32_t message);
+#ifdef AITD_ROOM4_RECOVERY
+void aitdInputCombatRecoveryBegin(uint32_t ticks);
+#endif
 #endif
 #ifdef AITD_ROOM5_RETURN
 extern "C" { extern volatile uint32_t g_activeGameplayTicks; }

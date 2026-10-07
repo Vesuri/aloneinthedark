@@ -9,36 +9,6 @@ design.md §5.
 Each item gives the **goal**, then the scope, then *done when*: the evidence
 required.
 
-## M3 Playable
-
-- **M3.4 Apple Events and misc Toolbox.**
-  - Exercise the remaining first-floor paths, measuring and
-    implementing newly reached Apple Event or Window Manager contracts.
-    Unsupported operations and states remain loud stops.
-  - If a new Mac dialog is reached, measure its choices/results and provide an
-    engine-style interface inside 320×200 under D5; unsupported paths stay loud.
-
-  - Verify the continuous first-floor circuit from a new game on both
-    acceptance CPUs, including the remaining combat-recovery paths below.
-    Pair each native extension with the original Mac's actual routes.
-  - Verify the post-combat room 5 Search and hallway return on both acceptance
-    CPUs, requiring actual action state before continuing movement and zero
-    dropped synthetic transitions. Verify ordinary-input recovery from the
-    living room 4 transition caused by enemy knockback on the 68020; use
-    measured connecting-door behavior rather than assuming every combat stays
-    in room 5. Verify ordinary walking recovery when combat knockback leaves
-    the hero beyond kick range, including completed enemy death/removal.
-    Integrate the measured bedroom encounter into the connected return route.
-    Verify the bathroom continuation on the acceptance CPUs, then expand a
-    continuous circuit through connected first-floor rooms with positive
-    movement and destination checks. Measure steering changes against the
-    original controls.
-  - Bound steps by living hero identity; a death followed by the attract demo
-    must terminate the observer rather than be counted as gameplay.
-
-  *Done when* a paired session includes at least ten minutes of active
-  first-floor gameplay without a loud stop, with positive state checks and Mac
-  evidence for the covered routes. Owner play-testing can supplement acceptance.
 ## M6 Completion
 
 - **M6.1 Full manual play-through,** in MAME and on `a1200-020`, with the runtime

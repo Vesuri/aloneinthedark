@@ -36,8 +36,7 @@ return function(mac,mem,world,actor,objects,vars,move,align,report)
    local dx=mem:read_i16(npc+0x22)-mem:read_i16(actor+0x22)
    local dz=mem:read_i16(npc+0x26)-mem:read_i16(actor+0x26)
    assert(mem:read_i16(npc+0x2e)==1 and mem:read_i16(actor+0x2e)==1,'same actual floor')
-   local angle=math.floor(math.atan(dx,-dz)*1024/(2*math.pi)+0.5)&1023
-   local target=(math.floor((angle+64)/128)*128)&1023
+   local target=math.abs(dx)>math.abs(dz) and (dx>0 and 256 or 768) or (dz>0 and 512 or 0)
    print(string.format('RECOVERY_AIM attempt=%d room=%d enemyRoom=%d dx=%d dz=%d target=%d hp=%d enemyHp=%d',attempt,heroRoom,enemyRoom,dx,dz,target,mem:read_i16(vars+42),mem:read_i16(vars+114)))
    faceLive(target,'live-recovery-aim-'..attempt)
    if math.max(math.abs(dx),math.abs(dz))>700 then

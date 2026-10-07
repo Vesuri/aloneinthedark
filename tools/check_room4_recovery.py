@@ -53,7 +53,7 @@ def check(log, folder, status):
                 'complete logical original frame ' + phase)
     require(positions[phases[2]] != positions[phases[3]], 'ordinary walking after living room4 transition')
     aim = re.search(r'RECOVERY_AIM attempt=1 room=4 enemyRoom=5 dx=(-?\d+) dz=(-?\d+) target=(\d+)', log)
-    require(aim and max(abs(int(aim[1])), abs(int(aim[2]))) > 800 and int(aim[3]) % 128 == 0,
+    require(aim and max(abs(int(aim[1])), abs(int(aim[2]))) > 800 and int(aim[3]) in (0, 256, 512, 768),
             'actual out-of-range adjacent-room enemy and reachable heading')
     data = captures['live-recovery-resumed-fight']
     word = lambda offset: struct.unpack_from('>h', data, 75616 + offset)[0]

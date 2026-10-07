@@ -1,3 +1,6 @@
+#ifdef AITD_ROOM4_RECOVERY
+#include "FirstFloorRecovery.h"
+#endif
 #include <proto/exec.h>
 #include <exec/interrupts.h>
 #include <exec/nodes.h>
@@ -878,8 +881,24 @@ static bool s_combatTurnTest=true;
 #else
 static bool s_combatTurnTest=false;
 #endif
+#ifdef AITD_ROOM5_RETURN
+static uint8_t s_returnRecoveryPhase=0,s_returnRecoveryTurnKey=0;
+static uint32_t s_returnRecoveryTick=0;
+#ifdef AITD_ROOM3_ROUTE
+static uint8_t s_bathroomRetryPhase=0,s_bathroomHallPhase=0;
+static uint32_t s_bathroomRetryTick=0,s_bathroomHallTick=0;
+#endif
+#endif
 static uint32_t s_combatFrames=0,s_combatAttackTick=0;
 static uint8_t s_combatAttackState=0;
+#ifdef AITD_ROOM4_RECOVERY
+void aitdInputCombatRecoveryBegin(uint32_t ticks)
+{
+    for(uint8_t k=0x4c;k<=0x4f;++k)aitdInputInjectProbeKey(k,false);
+    aitdInputInjectProbeKey(0x40,false);aitdInputInjectProbeKey(0x18,false);aitdInputInjectProbeKey(0x23,false);
+    s_combatAttackState=0;s_combatAttackTick=ticks;
+}
+#endif
 void aitdInputCombat(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_t beta,uint16_t animation,uint16_t track,uint16_t objects,int16_t enemyX,int16_t enemyZ,bool ready)
 {
 #ifdef AITD_ROOM5_COMBAT
@@ -928,6 +947,40 @@ void aitdInputCombat(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_t
                 return;
             }
             if(aitdInputKeyDown(0x18))aitdInputInjectProbeKey(0x18,false);
+            // Combat can leave Carnby in the connecting-door pocket. Clear
+            // east into the measured corridor before the northward Search leg.
+            if(!s_returnRecoveryPhase) {
+                if(animation!=4 || track!=1 || elapsed<30)return;
+                const uint16_t delta=(256-beta)&1023;
+                if(delta>16 && delta<1008) {
+                    s_returnRecoveryTurnKey=delta>512 ? 0x4f : 0x4e;
+                    aitdInputInjectProbeKey(s_returnRecoveryTurnKey,true);
+                    s_returnRecoveryPhase=1;
+                } else s_returnRecoveryPhase=2;
+                s_returnRecoveryTick=ticks;return;
+            }
+            if(s_returnRecoveryPhase==1) {
+                const uint16_t delta=(256-beta)&1023;
+                if(delta>16 && delta<1008)return;
+                aitdInputInjectProbeKey(s_returnRecoveryTurnKey,false);
+                s_returnRecoveryPhase=2;s_returnRecoveryTick=ticks;return;
+            }
+            if(s_returnRecoveryPhase==2) {
+                if(animation!=4 || track!=1 || ticks-s_returnRecoveryTick<30)return;
+                if(x<-1800) {
+                    aitdInputInjectProbeKey(0x4c,true);s_returnRecoveryPhase=3;
+                } else s_returnRecoveryPhase=4;
+                s_returnRecoveryTick=ticks;return;
+            }
+            if(s_returnRecoveryPhase==3) {
+                if(x<-1800)return;
+                aitdInputInjectProbeKey(0x4c,false);
+                s_returnRecoveryPhase=4;s_returnRecoveryTick=ticks;return;
+            }
+            if(s_returnRecoveryPhase==4) {
+                if(ticks-s_returnRecoveryTick<30 || !exploreAligned(x,-1700,-1550,true,animation))return;
+                s_returnRecoveryPhase=5;
+            }
             if(animation!=4 || elapsed<30)return;
             if(beta>16 && beta<1008)aitdInputInjectProbeKey(0x4e,true);
         }
@@ -969,7 +1022,37 @@ void aitdInputCombat(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_t
         else if(stage==51) {if(!(objects&8192))return;aitdInputInjectProbeKey(0x4c,false);s_combatFrames=scenes;}
         else if(stage==52) {if(animation!=4 || track!=1 || elapsed<30 || scenes<=s_combatFrames)return;}
 #ifdef AITD_ROOM3_ROUTE
-        else if(stage==53) {if(animation!=4 || elapsed<30)return;aitdInputInjectProbeKey(0x4f,true);}
+        else if(stage==53) {
+            // Clear the room-4 doorway before going west to the bathroom,
+            // as in the verified original continuous first-floor circuit.
+            if(!s_bathroomHallPhase) {
+                if(animation!=4 || elapsed<30 || !(objects&8192))return;
+                s_bathroomHallPhase=z>0 ? 1 : 2;s_bathroomHallTick=ticks;
+                if(s_bathroomHallPhase==1)aitdInputInjectProbeKey(0x4c,true);
+                return;
+            }
+            if(s_bathroomHallPhase==1) {
+                // Room flags can cross back during the doorway's release step.
+                // Keep walking; inspect hallway coordinates only in room 1.
+                if(!(objects&8192) || z>0)return;
+                aitdInputInjectProbeKey(0x4c,false);s_bathroomHallPhase=2;s_bathroomHallTick=ticks;return;
+            }
+            if(s_bathroomHallPhase==3) {
+                if(animation!=4 || ticks-s_bathroomHallTick<30)return;
+                aitdInputInjectProbeKey(0x4c,true);s_bathroomHallPhase=1;return;
+            }
+            if(!(objects&8192)) {
+                // Cancel a held alignment step before recovering forward.
+                // Opposed held arrows otherwise keep moving back into room 4.
+                aitdInputInjectProbeKey(0x4c,false);aitdInputInjectProbeKey(0x4d,false);
+                g_exploreAlignment=0;s_bathroomHallPhase=3;s_bathroomHallTick=ticks;return;
+            }
+            if(ticks-s_bathroomHallTick<30)return;
+            // The alignment helper must see the moving animation to release
+            // its held key; waiting for idle here prevents that release.
+            if(!exploreAligned(z,-150,0,false,animation))return;
+            aitdInputInjectProbeKey(0x4f,true);
+        }
         else if(stage==54) {if(beta<752 || beta>784)return;aitdInputInjectProbeKey(0x4f,false);}
         else if(stage==55) {if(animation!=4 || elapsed<30)return;aitdInputInjectProbeKey(0x4c,true);}
         else if(stage==56) {if(x>-650)return;aitdInputInjectProbeKey(0x4c,false);}
@@ -987,7 +1070,31 @@ void aitdInputCombat(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_t
         }
         else if(stage==62) {if(elapsed<120)return;aitdInputInjectProbeKey(0x40,false);}
         else if(stage==63) {if(animation!=4 || elapsed<120)return;aitdInputInjectProbeKey(0x4c,true);}
-        else if(stage==64) {if(!(objects&128))return;aitdInputInjectProbeKey(0x4c,false);s_combatFrames=scenes;}
+        else if(stage==64) {
+            if(!(objects&128)) {
+                // An early Open/Search can move closer without crossing. Retry
+                // only after releasing the blocked walk and returning to idle.
+                const uint32_t retryElapsed=ticks-s_bathroomRetryTick;
+                if(!s_bathroomRetryPhase) {
+                    if(elapsed<300)return;
+                    aitdInputInjectProbeKey(0x4c,false);s_bathroomRetryPhase=1;s_bathroomRetryTick=ticks;
+                } else if(s_bathroomRetryPhase==1) {
+                    if(animation!=4 || retryElapsed<30)return;
+                    aitdInputInjectProbeKey(0x40,true);s_bathroomRetryPhase=2;s_bathroomRetryTick=ticks;
+                } else if(s_bathroomRetryPhase==2) {
+                    if(retryElapsed<120)return;
+                    aitdInputInjectProbeKey(0x40,false);s_bathroomRetryPhase=3;s_bathroomRetryTick=ticks;
+                } else if(s_bathroomRetryPhase==3) {
+                    if(animation!=4 || retryElapsed<120)return;
+                    aitdInputInjectProbeKey(0x4c,true);s_bathroomRetryPhase=4;s_bathroomRetryTick=ticks;
+                } else {
+                    if(retryElapsed<300)return;
+                    aitdInputInjectProbeKey(0x4c,false);s_bathroomRetryPhase=1;s_bathroomRetryTick=ticks;
+                }
+                return;
+            }
+            aitdInputInjectProbeKey(0x4c,false);aitdInputInjectProbeKey(0x40,false);s_combatFrames=scenes;
+        }
         else if(stage==65) {if(animation!=4 || track!=1 || elapsed<30 || scenes<=s_combatFrames)return;}
 #endif
 
@@ -1080,6 +1187,67 @@ void aitdInputCombat(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_t
             aitdInputInjectProbeKey(0x40,false);aitdInputInjectProbeKey(0x4c,false);
             aitdInputInjectProbeKey(0x4e,false);aitdInputInjectProbeKey(0x4f,false);s_combatFrames=scenes;
         } else {
+#ifdef AITD_ROOM5_RETURN
+#ifdef AITD_ROOM4_RECOVERY
+            if(g_room4RecoveryStage>=12) {
+#endif
+            // The measured recovery walks once to the enemy, then keeps the
+            // kick held until actual death. Releasing and walking repeatedly
+            // let the original enemy knock Carnby too far away to survive.
+            if(objects&2048) {
+                aitdInputInjectProbeKey(0x40,false);aitdInputInjectProbeKey(0x4c,false);
+                aitdInputInjectProbeKey(0x4e,false);aitdInputInjectProbeKey(0x4f,false);return;
+            }
+            if(s_combatAttackState && ticks-s_combatAttackTick>12000) {
+                aitdInputInjectProbeKey(0x40,false);aitdInputInjectProbeKey(0x4c,false);
+                aitdInputInjectProbeKey(0x4e,false);aitdInputInjectProbeKey(0x4f,false);
+                g_combatRouteStage=0xffff;aitdInputCombatCheckpoint();return;
+            }
+            const int32_t dx=enemyX,dz=enemyZ;
+            const uint32_t ax=dx<0 ? -dx : dx,az=dz<0 ? -dz : dz;
+            if(s_combatAttackState==4) {
+                const uint16_t delta=(g_combatAimHeading-beta)&1023;
+                if(delta>16 && delta<1008)return;
+                aitdInputInjectProbeKey(s_combatAimKey,false);
+                s_combatAttackState=5;s_combatAttackTick=ticks;aitdInputCombatAimCheckpoint();return;
+            }
+            if(s_combatAttackState==7) {
+                if(!(objects&1024) || (ax>800 || az>800))return;
+                aitdInputInjectProbeKey(0x4c,false);s_combatAttackState=8;s_combatAttackTick=ticks;
+                aitdInputCombatAimCheckpoint();return;
+            }
+            if(s_combatAttackState==1) {
+                if(animation==262) {
+                    ++g_combatKicks;aitdInputCombatKickCheckpoint();s_combatAttackState=2;
+                }
+                return;
+            }
+            if(s_combatAttackState==2)return;
+            if(animation!=4 || track!=1 || !(objects&256) || !(objects&512) ||
+                (s_combatAttackState && ticks-s_combatAttackTick<30) || !(objects&1024))return;
+            if(!s_combatAttackState) {
+                // The measured cardinal aiming also works when low frame
+                // rates skip the intermediate angles of an original turn.
+                g_combatAimHeading=ax>az ? (dx>0 ? 256 : 768) : (dz>0 ? 512 : 0);
+                const uint16_t delta=(g_combatAimHeading-beta)&1023;
+                if(delta>16 && delta<1008) {
+                    s_combatAimKey=delta>512 ? 0x4f : 0x4e;
+                    aitdInputInjectProbeKey(s_combatAimKey,true);s_combatAttackState=4;s_combatAttackTick=ticks;
+                    aitdInputCombatAimCheckpoint();return;
+                }
+                s_combatAttackState=5;
+            }
+            if(s_combatAttackState==5 && (ax>800 || az>800)) {
+                aitdInputInjectProbeKey(0x4c,true);s_combatAttackState=7;s_combatAttackTick=ticks;
+                aitdInputCombatAimCheckpoint();return;
+            }
+            ++g_combatAttempts;aitdInputCombatAttackCheckpoint();
+            aitdInputInjectProbeKey(0x40,true);aitdInputInjectProbeKey(0x4c,true);
+            s_combatAttackState=1;s_combatAttackTick=ticks;return;
+#ifdef AITD_ROOM4_RECOVERY
+            }
+#endif
+#endif
             if(s_combatAttackState && ticks-s_combatAttackTick>1800) {g_combatRouteStage=0xffff;aitdInputCombatCheckpoint();return;}
             if(s_combatAttackState==1) {
                 if(animation==262) {++g_combatKicks;aitdInputCombatKickCheckpoint();s_combatAttackState=2;}
@@ -1114,7 +1282,11 @@ void aitdInputCombat(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_t
                 }
             }
             if(s_combatAttackState!=5 && (objects&1024)) {
+#ifdef AITD_ROOM5_RETURN
+                const int32_t dx=enemyX,dz=enemyZ;
+#else
                 const int32_t dx=int32_t(enemyX)-x,dz=int32_t(enemyZ)-z;
+#endif
                 const uint32_t ax=dx<0 ? -dx : dx,az=dz<0 ? -dz : dz;
                 g_combatAimHeading=ax>az ? (dx>0 ? 256 : 768) : (dz>0 ? 512 : 0);
                 const uint16_t delta=(g_combatAimHeading-beta)&1023;

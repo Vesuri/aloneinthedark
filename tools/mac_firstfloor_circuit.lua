@@ -5,6 +5,8 @@
 -- AITD_CIRCUIT_STOP_AT_ROOM5=1 ends at the first published room5 entrance.
 local repeatCircuit=os.getenv('AITD_CIRCUIT_ENDURANCE')=='1'
 local loadCheckpoint=os.getenv('AITD_CIRCUIT_LOAD')=='1'
+local room4Recovery=os.getenv('AITD_CIRCUIT_ROOM4_RECOVERY')=='1'
+assert(not (loadCheckpoint and room4Recovery),'room4 recovery requires the new-game route')
 local folder=os.getenv('AITD_CIRCUIT_DIR') or (repeatCircuit and 'tmp/m3-endurance' or 'tmp/m3-circuit')
 local mac=dofile('tools/mame_mac_input.lua')
 local cpu=manager.machine.devices[':maincpu'];local mem=cpu.spaces.program
@@ -249,6 +251,13 @@ mac.run(function()
   move('Right Arrow','room5-north',function()local b=mem:read_i16(actor+0x2a)&1023;return b<=16 or b>=1008 end)
   move('Up Arrow','room5-near-enemy',function()return mem:read_i16(actor+0x20)<=-650 or mem:read_i16(vars+42)<20 end)
   local won=false
+  if room4Recovery then
+   face(512,'combat-retreat-south')
+   move('Up Arrow','combat-retreat-gap',function()return mem:read_i16(actor+0x20)>=650 end)
+   dofile('tools/mame_room4_recovery.lua')(mac,mem,world,actor,objects,vars,move,align,report)
+   print('PASS original living room4 connecting-door recovery and enemy removal')
+   won=true
+  else
   for attempt=1,32 do
    if mem:read_i16(objects+62*52)<0 then won=true;break end
    local dx=mem:read_i16(npc+0x1c)-mem:read_i16(actor+0x1c)
@@ -276,6 +285,7 @@ mac.run(function()
    print(string.format('ROOM5_ENEMY attempt=%d object=%d body=%d life=%d animation=%d room=%d x=%d z=%d',attempt,mem:read_i16(npc),mem:read_i16(npc+2),mem:read_i16(npc+0x34),mem:read_i16(npc+0x3e),mem:read_i16(npc+0x30),mem:read_i16(npc+0x1c),mem:read_i16(npc+0x20)))
    report('room5-kick-'..attempt)
   end
+  end -- ordinary pulse combat / room4 recovery branch
   assert(won and mem:read_i16(objects+62*52)<0 and mem:read_i16(vars+114)<=0 and mem:read_i16(vars+40)==0 and mem:read_i16(vars+42)>0,'room5 actual victory and living hero')
   assert(mem:read_i16(actor+0x3e)==4 and mem:read_i16(actor+0x52)==1,'room5 restored manual gameplay')
   report('room5-combat-result')
