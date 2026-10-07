@@ -348,11 +348,21 @@ the dispatch record's selector/ignored argument/status fields.
 
 `SoundDriver::stopEffects` marks its two logical effect voices inactive,
 retaining sample state, music and configuration. Host tests cover active
-logical effects, idempotence and music isolation. No physical channel has been
-assigned on the reached route. The runtime now quiesces/frees assigned Paula channels before changing the
-logical state, using the same path verified by selector 17 natural completion.
-The model rejects callers that bypass hardware cleanup. An actual active
-selector-22 call and music isolation remain part of M4.3 acceptance. This call produces no audio event on the measured route.
+logical effects, idempotence and music isolation. Ordinary-input active playback
+acceptance now covers the hardware path too: `mac_driver22_active.lua` presses
+S while a genuine effect is playing with four held music voices. The complete
+original state differs only in dispatch fields and the configured effect stop
+words; sample pointers and all music state remain unchanged.
+
+`AUDIOSTOPPROBE=1 INTROSKIP=1` queues the same ordinary S key during a genuine
+native effect. `driver22_active.gdb` checks the original caller and preserved
+ABI, one stop, disabled effect DMA, freed Chip buffer and released channel.
+`check_driver22_active.py` independently compares the complete logical driver
+state and both music ownership arrays. The accepted fixed 68030 run stops
+channel 2 at music tick 6342 while music state is unchanged. Two music release tails retain their DMA channels through the stop. The fixed
+68020 capture also passes with held music notes. No original
+instructions, registers or guest state are modified by these observers.
+
 
 `driver22_call.gdb` observes the actual native call read-only, checking D0/D1,
 all thirteen preserved registers, stack, the third completed native driver call

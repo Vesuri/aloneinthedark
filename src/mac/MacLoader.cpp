@@ -1522,6 +1522,27 @@ static void stopNativeEffect(uint16_t index)
     effect.chip=0;effect.allocated=0;
 }
 
+#ifdef AITD_AUDIO_STOP_PROBE
+extern "C" { volatile uint16_t g_audioStopProbeStage=0;volatile uint32_t g_audioStopProbeTick=0; }
+extern "C" __attribute__((noinline)) void aitdAudioStopProbeCheckpoint() {__asm__ volatile("nop" ::: "memory");}
+static void audioStopProbeInput()
+{
+    // Ordinary input only: toggle sound during a genuine active gameplay effect.
+    // No original state or CPU registers are edited by this controller.
+    if(!g_audioStopProbeStage && g_ingameStage==5 && g_macSceneFramesCompleted>=2) {
+        bool effect=false,music=false;
+        for(uint16_t i=0;i<2;++i)effect=effect || (g_soundDriver.effects[i].active && g_macTicks-g_effects[i].started>=30 && (int32_t)(g_effects[i].ends-g_macTicks)>0);
+        for(uint16_t i=0;i<6;++i)music=music || g_soundDriver.songs[i].active;
+        if(effect && music) {
+            aitdInputInjectProbeKey(0x21,true);g_audioStopProbeTick=g_macTicks;
+            g_audioStopProbeStage=1;aitdAudioStopProbeCheckpoint();
+        }
+    } else if(g_audioStopProbeStage==1 && g_macTicks-g_audioStopProbeTick>=120) {
+        aitdInputInjectProbeKey(0x21,false);g_audioStopProbeStage=2;
+    }
+}
+#endif
+
 static void serviceNativeEffects()
 {
     for(uint16_t i=0;i<2;++i)
@@ -7667,6 +7688,9 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     bool gameplay=s_a5WorldStorage && s_a5WorldStorage[75616-0x11b4c]!=0;
     const bool gameMenu=trap==0xa975 && s_segments[12].begin
         && pc==(uint32_t)s_segments[12].begin+0x1376;
+#ifdef AITD_AUDIO_STOP_PROBE
+    if(trap==0xa976)audioStopProbeInput();
+#endif
     aitdInputInGame(trap,gameMenu,
         atPortraits,atStory,gameplay,g_macTicks);
 #ifdef AITD_FIRSTFLOOR_LOAD

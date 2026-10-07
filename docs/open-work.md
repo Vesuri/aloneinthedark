@@ -71,8 +71,6 @@ required.
   differences.
 - **M4.3 Sound effects and toggles.**
   - Effects through the driver's selectors take priority on the channels.
-  - Verify active-effect stop through selector 22, including music-channel
-    isolation and sample ownership.
   - The S/M keys and the game's toggles work.
   - `SysBeep` becomes a short Paula click.
 

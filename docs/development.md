@@ -6982,3 +6982,27 @@ Final memory peaks match the earlier session; free-memory minima are 1,482,536
 Chip and 3,840,016 Fast bytes, with zero failures/accounting errors. This closes
 M5.0, M5.1, M5.3 and M5.4; M5.2 was completed separately. Only unresolved work
 remains in open-work.md.
+
+
+## M4 ordinary-input active effect stop — 2026-10-07
+
+Selector 22 now has paired actual-playback acceptance. On the original Mac,
+ordinary S input stops one active effect while four music voices are held;
+complete driver-state comparison verifies exact stop words, unchanged music
+and retained sample pointers. MAME 0.289 uses the MacIIx/8 MB/System 7.5.5
+reference and a private copy of its disk. On fixed 68030 PAL, ordinary S stops
+channel 2 at tick 6342, frees its Chip sample and releases DMA ownership without
+changing logical music voices or sequencer voice state. Original caller bytes,
+return values, stack and all thirteen preserved registers agree. This validates
+the existing runtime cleanup; no new playback behavior was necessary.
+
+Reproduce the original with `tools/mac_driver22_active.lua` and
+`AITD_DRIVER22_ACTIVE_DIR=tmp/m4/driver22/mac`. Clean-build the native runtime
+with `AUDIOSTOPPROBE=1 INTROSKIP=1 PROBES=` and run `amiga/driver22_active.gdb`.
+The probe queues ordinary S input only, holding it across slow game frames.
+Validate actual zero exit statuses and all raw captures with
+`tools/check_driver22_active.py --native ... --native-folder ...
+--native-status 0`. Evidence lives in `tmp/m4/driver22/{mac,native}`.
+The early broad-breakpoint and short-key-hold attempts did not complete and
+are excluded. This closes active selector-22 ownership acceptance only; M4
+still requires remaining songs, packet variants and the integrated audio case.
