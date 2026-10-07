@@ -9,7 +9,7 @@ from pathlib import Path
 from resource_fork import read_resource_fork
 
 ROOT=Path(__file__).resolve().parents[1]
-SUPPORTED={0,4,5,7,8,13,15,17,18,19,20,21,22,24}
+SUPPORTED={0,4,5,6,7,8,13,15,17,18,19,20,21,22,24}
 
 
 def main():

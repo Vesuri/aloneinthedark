@@ -7392,3 +7392,16 @@ DMA attack and subsequent silence. See [the ambient evidence](audio-firstrooms.m
 Combined with ordinary-route footsteps and doors, this completes M4.3's bounded
 first-room event parity. All-song listening and other remaining M4 items stay
 open. The host suite and MAME literal audit pass.
+
+
+## M4 selector reachability audit — 2026-10-07
+
+The explicit sound-entry audit completes remaining ordinary-game selector
+reachability for the shipped resource image. It checks all 22 generic command
+calls, DATA/CREL/DREL references and prepared/MIDI state gates. It corrects two
+misleading missing-walker-edge assumptions: Gloss's pause/resume and Core's
+selector-23 setter have internal callers, but their actual outer roots have no
+entry references. Selector 6 remains the reachable exception already implemented.
+The driver-call inventory now reports selector 6 correctly. Unused library APIs
+remain named stops.
+See [the scoped audit](sound-driver.md#shipped-game-selector-reachability-audit--2026-10-07).

@@ -54,12 +54,6 @@ required.
   evidence for the covered routes. Owner play-testing can supplement acceptance.
 ## M4 Audio
 
-- **M4.1 Remaining driver-interface coverage.**
-  - Complete ordinary-game reachability for the [direct-call inventory](sound-driver.md#remaining-direct-call-inventory--2026-10-07),
-    especially selectors 1, 2, 9–12, 14, 16, 23 and 25; implement each reached
-    contract against the original driver.
-    Unimplemented selectors remain loud stops; original MDRV never runs.
-
 - **M4.2 Audible all-song acceptance.**
   - Verify recognizable audio-enabled playback for all eight songs on the
     fixed 68030 setup. Complete original/native event, timing and allocation

@@ -1237,3 +1237,31 @@ DMA, and the preserved ABI. The native fixture changes RAM inside a diagnostic b
 acknowledges memory writes without applying them. Debugger-write attempts are
 excluded, as with the earlier fractional-effect fixture. Production builds
 must exclude the isolated fixture code.
+
+
+## Shipped-game selector reachability audit — 2026-10-07
+
+`tools/survey_sound_reachability.py` audits original aligned instruction operands,
+CREL, expanded DATA/ZERO and DREL. It does not use absence from the conservative
+trap walk as proof: that walk missed real internal callers in the Gloss updater
+and a Core setter. The audit finds exactly ten cross-segment and twelve local
+calls to Core+$18D4, with literal commands 0, 1, 2, 3, 10 and 100–104. Every
+aligned long referring to its A5+$10A entry is one of those JSR operands; there
+are no DATA pointers or A5-relative calls/address-taking for that entry.
+
+| Remaining library selector | Shipped-game entry gate |
+| --- | --- |
+| 1, 2 | Command 15 is absent. It is the only caller of the prepare routine that sets A5-$68A; that byte starts zero and all other direct writes clear it. Selector 2 requires this prepared-song flag. |
+| 14 | Its wrapper is entered only by absent command 17. |
+| 9, 12, 16, 25 | MIDI setup is entered only by absent command 203. It is the sole write of mode 100; ordinary initialization writes modes 0–7. Its callback installation and queue initialization contain the internal 9/12/16 paths. Commands 200/201 are also absent. |
+| 10, 11 | Real calls exist in Gloss+$36E/+$394, reached locally from Gloss+$1E2. That private updater has no entry references or jump-table entry. No DATA or other relocated entry pointer supplies these calls. |
+| 23 | Command 104 exists inside Core+$31B2. Its two callers are Core+$3930/+$393E inside private setter +$3918, which has no entry references or jump-table entry. The setter must not be mistaken for adjacent exported initialization. |
+
+Selector 6 was the exception: ordinary command 10's fade-completion path can
+call it, so it was measured and implemented. The supported-selector inventory
+now includes it. The remaining unused library selectors keep explicit loud
+stops; silently implementing unmeasured generic library APIs is unnecessary
+for this shipped game's ordinary command paths. These conclusions are tied to
+the checked resource image and entry references, not a claim that every computed
+transfer in the global trap census has been resolved. A newly reached selector
+in later full-game exploration still requires its original contract.
