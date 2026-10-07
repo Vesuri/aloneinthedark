@@ -562,3 +562,95 @@ it was not the dominant source of these pauses. The remaining movement cost
 is documented; further algorithm changes are not required for this performance
 pass. Heap integrity/fragmentation tests under ASan/UBSan, native Memory Manager
 traps, and the independently checked natural death/restart route pass.
+
+
+### CPU acceptance and memory requirement
+
+The fixed `a4000-030-reference` passes `boot`, `resource-read`, `file-read`,
+`file-write`, `window-core`, all eight `resource-exit` phases, and uninterrupted
+`intro`. AmigaOS reports AttnFlags 7 (68030), 2,096,128 Chip bytes and 8,388,608
+Fast bytes; the pinned clock is 15.6672 MHz. The 68020 baseline reports flags 3.
+The new heap also passes native Memory Manager traps, all resource-exit phases,
+and the full 68030 intro (956 frames, 944 partial, 840 book updates), with exact
+four-state Mac pixel/palette/publication comparisons. Full 68040/68060 acceptance
+remains deferred; the unlimited functional pilot is not a hardware-performance
+reference.
+
+Use `AMIGA_FAST_KB=2048|4096|8192` for explicit RAM variants; CPU, clock, MMU,
+FPU and JIT remain pinned. The default is 8192. The emulator's Zorro II memory
+configuration does not support 6 MB, so it was not presented as a tested
+configuration. With 4096, both the audit and the **production** executable
+stop at `MEMORY MANAGER / FAST RAM ZONES` and release both partially allocated
+arenas. With 8192, ordinary Load and the complete gameplay session pass.
+Thus **8 MB Fast RAM is the smallest verified standard configuration**, not
+an assertion that every intermediate hardware layout would fail. The machine
+also has 2 MB Chip RAM; smaller Chip configurations were not accepted.
+
+`M5AUDIT=1` records aligned port AllocMem/FreeMem balances, zone occupancy and
+OS free-memory low-water marks. Dynamic allocation peaks exclude executable
+storage and unrelated OS allocations; the AvailMem minima include those.
+The diagnostic itself adds static counters, a 20 KiB note ring and a timer-device
+request, so its free-memory minimum is conservative for the production build.
+The full intro's deterministic pixel fixture did not start a song (zero IRQ
+and note counts); it supplies graphics/zone evidence, not audio acceptance.
+The gameplay run supplies song/effect memory and timing coverage instead.
+
+| Measured allocation | Peak bytes |
+| --- | ---: |
+| Application-zone occupied space (including heap metadata) | 2,373,856 |
+| System-zone occupied space | 304 |
+| Port dynamic Chip allocations | 591,696 |
+| Port dynamic Fast allocations | 3,596,256 |
+| Full-intro application-zone occupied space | 1,660,664 |
+| Full-intro port dynamic Chip / Fast | 132,648 / 3,530,816 |
+
+The zones reserve more than their occupied peak. Do not add zone occupancy to
+port Fast allocation totals: the zones are already contained in those totals.
+No port allocation failure or accounting imbalance occurs in the successful
+sessions. This is measured intro/first-floor acceptance, not an endgame memory
+claim; the full play-through remains M6 work.
+
+
+### Interrupt budget and safe points
+
+The final fixed-68020 scope-free audit completes **11 living laps**, 36,656
+active gameplay ticks (610.9 seconds), 10,385 completed scene frames and zero
+dropped input transitions. The independent checker pairs actual destinations,
+combat removal, inventory and action/door state with the original Mac route.
+This is distinct from the earlier pre-optimization 12-lap run.
+
+| Interrupt / safe-point observation | Final value |
+| --- | ---: |
+| Native music IRQ calls | 158,137 |
+| Mean / maximum measured IRQ duration | 0.143 / 6.337 ms |
+| Minimum / maximum IRQ entry interval | 16.046 / 17.350 ms |
+| Maximum CIA entry lateness | 0.715 ms |
+| Note events across all songs / late logical deadlines | 8,358 / 0 |
+| Effect starts during the session | 660 |
+| Untouched music / deferred stack headroom, of 8,192 bytes | 7,848 / 8,096 bytes |
+| Maximum trap-entry gap, before / after heap fix | 26.261 / 7.492 s |
+| Maximum gap within one continuously active song | 1.619 s (97 music ticks) |
+
+The audit aggregates **every** note deadline across song changes and retains
+the last 1,024 actual due/delivery pairs in a bounded ring. Both aggregate and
+ring show zero logical lateness; sub-tick interrupt lateness is reported
+separately above. Measured interrupt duration includes diagnostic E-clock and
+note-recording overhead. The worst interrupt stays below the 16.667 ms period,
+and private-stack high-water marks have ample headroom.
+
+The longest general gap is a synchronous native sound-driver operation
+(A0F8, original callers `$2EAFC4`→`$2EAC00`). Music-clock progress across that
+gap is 447 ticks, but it includes song replacement/preparation and therefore
+does **not** establish uninterrupted notes from a single song. The separate
+same-song maximum establishes that the interrupt clock advances for 97 ticks
+while no trap safe point is available. Note deadlines remain met throughout
+the session, including effect changes. Original Mac VBL callbacks and remaining
+user-mode cleanup still wait for trap boundaries; no measured additional
+callback/cleanup requirement justifies a new original-code hook.
+
+Low-water OS free memory in this final run is 1,482,536 Chip bytes and 3,840,016
+Fast bytes, with 1,419 port allocations, zero failures and zero accounting
+errors. `amiga/m5_circuit.gdb`, `amiga/m5_snapshot.gdb` and
+`tools/check_m5_audit.py` provide the bounded observer and independent acceptance
+checks. A timeout, missing positive completion, late note, stalled interval or
+damaged stack guard is rejected by the checker and its host rejection tests.

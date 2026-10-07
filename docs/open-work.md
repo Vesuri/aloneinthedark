@@ -91,46 +91,6 @@ required.
   exact loop/sample ownership checks and verified stop/replacement cleanup;
   unsupported variants retain named stops.
 
-## M5 Performance
-
-- **M5.0 Deferred CPU compatibility configurations.**
-  - Finish broader regression acceptance of the selected fixed-clock 68030
-    configuration; keep full 68040/68060 acceptance deferred until after functional
-    milestones. The optional unlimited 68060 pilot is not full acceptance.
-    Add explicit configurations and verify ROM compatibility, actual CPU and
-    OS-visible RAM before using them for later profiling/stairs checks.
-
-  *Done when* each added configuration reports its intended CPU and available
-  memory, and passes all regression cases implemented so far in bounded runs.
-- **M5.1 Full-accounting profile.**
-  - Separate steady 3D rendering from complete scene-transition preparation.
-    Attribute the reported long intro pauses across file/cache reads, original
-    decompression, region construction, drawing and compatibility services;
-    correlate emulated timing with the owner recording. Do not infer a steady
-    FPS from a sample containing loading, or sum nested profile categories.
-  - A PROBES build and a gameplay scene on `a1200-020`, run twice. Add a
-    68030 comparison only after M5.0 validates its configuration.
-  - Include cold FIGHT/BDISK2 song preparation as a separate transition phase;
-    attribute its resource movement, decoding and PCM preparation costs.
-  - Report ms/frame by phase: game code, drawing traps, CopyBits, C2P, palette,
-    audio sequencer, system windows.
-
-  *Done when* the table is in amiga-arch.md.
-- **M5.3 Interrupt budget and safe-point gap audit.**
-  - Measure native music interrupt duration, delivery lateness and interrupt
-    stack headroom during gameplay, including simultaneous note/effect changes.
-  - Measure the worst interval between trap boundaries for original Mac VBL
-    callbacks and remaining user-mode cleanup. Native music must keep playing
-    during those intervals; add a verified hook only for a measured remaining
-    callback or cleanup requirement.
-
-  *Done when* the gap is recorded, and music timing is steady by event log.
-- **M5.4 Memory minimum.**
-  - Measure the peak zone use and the port's fast/chip use through a full session.
-  - Find the smallest fast RAM that plays.
-
-  *Done when* README states the measured requirement.
-
 ## M6 Completion
 
 - **M6.1 Full manual play-through,** in MAME and on `a1200-020`, with the runtime

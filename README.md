@@ -11,7 +11,14 @@ and Toolbox layer are carried over from Vette!; see
 
 ## Current state
 
-**M5.2 gameplay performance pass is complete.** The latest retained changes
+**M5 performance acceptance is complete.** Fixed-clock 68020/68030 checks,
+phase profiling, interrupt timing and measured memory requirements are recorded
+in [the M5 acceptance notes](docs/development.md#m5-cpu-full-profile-interrupt-and-memory-acceptance--2026-10-07).
+A heap resource-movement fix reduces cold fight-music preparation from
+24.47 to 7.13 seconds on the fixed-68020 diagnostic route; death music falls
+9.48 to 3.11 seconds. This addresses loading pauses separately from frame rates.
+
+The M5.2 rendering changes
 raise fixed-clock idle rates from 10.01→10.42 FPS on 68020 and 11.29→12.23 on
 68030, with timing scopes disabled. Across the full performance pass, the
 five-leg walking route improves 2.75→3.47 FPS on 68020 and 2.94→3.84 on 68030.
@@ -98,12 +105,17 @@ separately deferred M1 system-window fixture still needs its specific rendered
 acceptance; M2 screenshots do not substitute for it. See [open work](docs/open-work.md)
 for the remaining scope and [development](docs/development.md) for evidence.
 
-## Requirements (provisional)
+## Measured requirements
 
-The original code uses 68020 instructions and 256-color graphics, so the target
-is an AGA Amiga with a 68020 or better and, provisionally, 4 MB of fast RAM (the
-original asks for 3 MB). The port supports only the 320×200 low-resolution
-mode. Mac dialogs and the menu bar are not drawn on the verified route;
+The verified configuration is an **AGA Amiga with a 68020 or better, 2 MB
+Chip RAM and 8 MB Fast RAM**. Both fixed-clock 68020 and 68030 configurations
+pass; 4 MB Fast RAM fails during startup even without diagnostic instrumentation.
+Eight megabytes is the smallest verified standard expansion, based on a full
+intro and first-floor endurance session, rather than an endgame guarantee.
+Peak port allocations are 591,696 Chip bytes and 3,596,256 Fast bytes, excluding
+the executable and OS; the game zones are already included in the Fast total.
+[Memory measurements and limits](docs/amiga-arch.md#cpu-acceptance-and-memory-requirement).
+The port supports only the 320×200 low-resolution mode. Mac dialogs and the menu bar are not drawn on the verified route;
 new-game and save/load reuse the original engine interfaces. Newly reached
 Mac dialogs must receive an in-game replacement.
 

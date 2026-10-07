@@ -6902,3 +6902,83 @@ held walk overshoots it. Repeated walking approaches die during combat, while
 the measured 800-unit approach followed by continuous attack finishes with
 health 12 at enemy removal. Original game/system memory remains read only.
 Native room-4 recovery and the subsequent living exit remain unverified.
+
+
+## M5 CPU, full profile, interrupt and memory acceptance — 2026-10-07
+
+M5's remaining work separates CPU compatibility, phase accounting, interrupt
+budgets and memory requirements from the completed M5.2 frame optimizations.
+The fixed 68030 matrix passes boot, resource read, file read/write, system-window
+core, all eight resource-exit subphases and the complete intro. OS-visible
+identity is AttnFlags 7, 2,096,128 Chip bytes and 8,388,608 Fast bytes, with the
+configuration pinned at 15.6672 MHz. Native Memory Manager traps and repeated
+resource-exit checks also pass after the heap change. Full 040/060 acceptance
+remains outside this milestone.
+
+The exclusive gameplay table and measurement limits are in
+[amiga-arch.md](amiga-arch.md#m5-full-accounting-profile--2026-10-07).
+Two 2,000-sample 68020 runs and one accepted-68030 run start after ordinary Load
+and settle in room 3/camera 2. They assign every sampled PC exactly once;
+nested scope totals are never added. The table explicitly retains unresolved
+work and warns that zero sampled PCs, especially CopyBits on the Intel emulator,
+are not proof of zero cost. Existing complete intro transition attribution is
+correlated with the owner's recording without pretending that its older A1200
+configuration is the later 68030 reference.
+
+The cold-song phase probe found the large remaining problem: repeated byte
+rotation in MoveHHi. Whole physical blocks are aligned to eight bytes, so three
+longword-order reversals preserve exactly the same final bytes and addresses.
+An already-final target no longer undergoes two pointless reversals. On the
+same fixed-68020 diagnostic route, FIGHT preparation falls 24.467→7.134 seconds,
+BDISK2 9.477→3.106, and MONSTER 12.658→3.869. The resource, preflight-note and
+PCM-variant counts match. Conversion remains outside the interrupt and happens
+once before playback. The independent Mac/native death-route checker passes
+ordinary movement, natural death ABI, menu and fresh Carnby restart; the idle
+restart pose differs in 1,451 color components, so this is not claimed as a
+pose-matched exact-pixel comparison.
+
+The modified heap passes the existing deterministic fragmentation, ownership,
+barrier and payload tests, including ASan/UBSan. The combined production build
+passes the no-float and retained-symbol audits, and fixed-68030 boot. The full
+host suite passes with the existing Python 3.12.8 environment (Capstone is not
+installed in the default Python). The suite now includes audit rejection and
+exclusive-profile tests. The initial audit include path failed standalone heap
+compilation; its relative include is corrected and the complete suite rerun.
+
+The 68030 full intro after the heap change verifies all 956 presentations,
+944 partial conversions and 840 book batches, with zero conversion errors.
+All four instruction-matched captures agree with the Mac in pixels, palette
+and actual AGA publication. The deterministic intro fixture starts no song;
+its audit supplies graphics memory evidence only. Gameplay and the natural
+cold-song route provide audio evidence.
+
+RAM acceptance explicitly tests 4 and 8 MB Fast RAM. The 4 MB audit and normal
+production build both fail cleanly at `MEMORY MANAGER / FAST RAM ZONES`, with
+both arenas released. Eight megabytes passes intro and first-floor endurance.
+The emulator has no 6 MB Zorro II setting. README therefore specifies the
+smallest verified standard configuration, 2 MB Chip + 8 MB Fast, rather than
+claiming an exact byte minimum or untested endgame coverage. Zone occupancy is
+contained in the port's allocation totals, not added to them.
+
+Evidence is retained locally under `tmp/m5/{acceptance,profile,audit}`. Original
+game bytes, saves, frame captures and recordings remain uncommitted. Excluded
+runs include the raster-clock prototype (non-monotonic wrap), initial samples
+using stale A5 room labels, a death attempt with no song preparation, and a
+scope-enabled circuit attempt stopped before its first gameplay checkpoint.
+These runs do not contribute acceptance or timing numbers.
+
+
+The final timing/memory run completes 11 living laps and 36,656 active gameplay
+ticks (610.9 seconds), with zero dropped input. The independent original/native
+route checker and M5 audit checker both pass. It records 158,137 music IRQs,
+8,358 note events across songs, 660 effect starts and zero late logical note
+deadlines. Maximum IRQ duration is 6.337 ms; CIA entry lateness is 0.715 ms.
+Music/deferred stack headroom is 7,848/8,096 bytes. The maximum trap gap falls
+26.261→7.492 seconds after the heap fix; the longest continuously active-song
+gap is 1.619 seconds with 97 music ticks. These two gaps are explicitly
+separated: song loading is not claimed to provide uninterrupted old-song notes.
+No measured need remains for an additional original-code safe-point hook.
+Final memory peaks match the earlier session; free-memory minima are 1,482,536
+Chip and 3,840,016 Fast bytes, with zero failures/accounting errors. This closes
+M5.0, M5.1, M5.3 and M5.4; M5.2 was completed separately. Only unresolved work
+remains in open-work.md.
