@@ -7034,3 +7034,19 @@ checker; the native runtime already implements the measured original rule.
 The checker now tracks logical voice slots and reuses the matching instrument,
 note and MIDI channel before considering a free channel. Rechecking all three
 captures passes; this changed the oracle, not the playback policy.
+
+
+## M4 toggle evidence reconciled — 2026-10-07
+
+The retained paired M3 keyboard/menu captures also satisfy M4's S/M-toggle
+item. Re-running `check_menu_keyboard.py` against
+`tmp/m3-menu/mac-keyboard.log` and `tmp/m3-action/click-menu-gdb.log`, with the
+retained `tmp/m3-menu` raw captures and recorded zero statuses, passes all four
+sound/music feedback messages, exact published glyph/color/centering checks,
+and original/native command results. Native MONSTER is playing at stage 3,
+stopped at stage 4 and resumed with the same ID at stage 5. Quit verifies the
+measured selector-8 ABI and complete DMA/OS restoration. Combined with the
+new active selector-22 capture, sound-off now has genuine active-effect
+ownership evidence as well. This revalidates existing evidence; it is not a
+new emulator run or SysBeep coverage. The completed toggle item is removed
+from open work; the integrated audio regression remains open.
