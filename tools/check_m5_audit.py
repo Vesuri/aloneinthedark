@@ -12,7 +12,7 @@ def check(log,folder,status,cpu,fast_kb,completion):
     require(completion in log and '[Inferior 1 (Remote target) detached]' in log,'positive completion and detach')
     rows={}
     for line in log.splitlines():
-        if line.startswith('M5_'):
+        if line.split(' ',1)[0] in ('M5_MACHINE','M5_MEMORY','M5_IRQ','M5_GAP','M5_NOTES'):
             rows[line.split()[0]]={k:int(v,16 if k in ('from','to','trap') else 10) for k,v in re.findall(r'(\w+)=([0-9A-F]+)',line)}
     require(set(rows)=={'M5_MACHINE','M5_MEMORY','M5_IRQ','M5_GAP','M5_NOTES'},'complete audit categories')
     machine=rows['M5_MACHINE'];memory=rows['M5_MEMORY'];irq=rows['M5_IRQ'];gap=rows['M5_GAP']

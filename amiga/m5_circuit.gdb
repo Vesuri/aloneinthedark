@@ -8,6 +8,23 @@ commands
  detach
  quit 1
 end
+break aitdInputInGameCheckpoint
+commands
+ silent
+ printf "M5_STARTUP stage=%u tick=%u\n",g_ingameStage,g_macTicks
+ continue
+end
+break aitdInputFirstFloorLoadCheckpoint
+commands
+ silent
+ printf "M5_LOAD stage=%u tick=%u\n",g_firstFloorLoadStage,g_macTicks
+ if g_firstFloorLoadStage==65535
+  echo FAIL M5 ordinary Load\n
+  detach
+  quit 1
+ end
+ continue
+end
 break aitdInputLampCheckpoint
 commands
  silent
