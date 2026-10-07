@@ -1595,10 +1595,33 @@ static const char* playNativeEffect(uint8_t* packet,uint32_t& scratch)
 
 static int32_t resourceHandleIndex(uint8_t** handle);
 static bool dirtyResourceHandle(uint8_t** handle);
+#ifdef AITD_M5_AUDIT
+extern "C" {
+// Song ID, total clocks, resource/ownership, MoveHHi, lock/views, MIDI decode,
+// PCM conversion, resource count. Phases are disjoint; remainder is explicit.
+volatile uint32_t g_m5SongPrepare[8]={};
+__attribute__((noinline)) void aitdM5SongPrepared() {__asm__ volatile("nop" ::: "memory");}
+}
+static uint32_t s_m5SongBegin;
+#endif
+static inline const char* songPrepareNext(SongInputs::Midi& midi,SongInputs::Event& event)
+{
+#ifdef AITD_M5_AUDIT
+    uint32_t begin=aitdM5Clock();
+#endif
+    const char* error=midi.next(event);
+#ifdef AITD_M5_AUDIT
+    g_m5SongPrepare[5]+=aitdM5Clock()-begin;
+#endif
+    return error;
+}
 static const char* ownSongResource(uint32_t type,uint16_t id,MacHeap::Handle& result)
 {
 #ifdef AITD_SONG_COST_PROBE
     uint32_t loadBegin=g_macTicks;
+#endif
+#ifdef AITD_M5_AUDIT
+    uint32_t m5Begin=aitdM5Clock();
 #endif
     if(g_song.ownedCount>=160)return "SONG RESOURCE CAPACITY";
     result=getResource(type,(int16_t)id);
@@ -1614,7 +1637,14 @@ static const char* ownSongResource(uint32_t type,uint16_t id,MacHeap::Handle& re
     uint32_t moveBegin=g_macTicks;
     ++g_songCost[8];g_songCost[9]+=moveBegin-loadBegin;
 #endif
+#ifdef AITD_M5_AUDIT
+    uint32_t m5Move=aitdM5Clock();g_m5SongPrepare[2]+=m5Move-m5Begin;
+    ++g_m5SongPrepare[7];
+#endif
     if(zone->moveHigh(result))return "SONG RESOURCE MOVE";
+#ifdef AITD_M5_AUDIT
+    uint32_t m5Lock=aitdM5Clock();g_m5SongPrepare[3]+=m5Lock-m5Move;
+#endif
 #ifdef AITD_SONG_COST_PROBE
     uint32_t lockBegin=g_macTicks;
     g_songCost[10]+=lockBegin-moveBegin;
@@ -1623,6 +1653,9 @@ static const char* ownSongResource(uint32_t type,uint16_t id,MacHeap::Handle& re
     refreshCodeViews();
 #ifdef AITD_SONG_COST_PROBE
     g_songCost[11]+=g_macTicks-lockBegin;
+#endif
+#ifdef AITD_M5_AUDIT
+    g_m5SongPrepare[4]+=aitdM5Clock()-m5Lock;
 #endif
     return 0;
 }
@@ -1714,7 +1747,13 @@ static const char* prepareSongNote(const SongInputs::Event& event)
 #ifdef AITD_SONG_COST_PROBE
         uint32_t convertBegin=g_macTicks;
 #endif
+#ifdef AITD_M5_AUDIT
+        uint32_t m5Convert=aitdM5Clock();
+#endif
         SongVoice::convert(dma,chip);
+#ifdef AITD_M5_AUDIT
+        g_m5SongPrepare[6]+=aitdM5Clock()-m5Convert;
+#endif
 #ifdef AITD_SONG_COST_PROBE
         uint32_t convertTicks=g_macTicks-convertBegin;
         g_songCost[6]+=convertTicks;
@@ -1733,6 +1772,10 @@ static const char* prepareSongNote(const SongInputs::Event& event)
 }
 static const char* startNativeSong(uint32_t argument)
 {
+#ifdef AITD_M5_AUDIT
+    for(auto& value:g_m5SongPrepare)value=0;
+    g_m5SongPrepare[0]=argument;s_m5SongBegin=aitdM5Clock();
+#endif
     AitdProfileScope profile(kProfileAudio);
     if(!g_soundDriver.initialized)return "NOT INITIALIZED";
     if(g_song.ownedCount)return "SONG REPLACEMENT";
@@ -1758,7 +1801,7 @@ static const char* startNativeSong(uint32_t argument)
     uint32_t midiBytes=handleZone(midi)->handleSize(midi);
     if((error=preflight.begin(*midi,midiBytes,g_song.description)))return error;
     while(!preflight.ended) {
-        if((error=preflight.next(event)))return error;
+        if((error=songPrepareNext(preflight,event)))return error;
         if(event.kind==SongInputs::Event::NoteOn || event.kind==SongInputs::Event::NoteOff) {
             if(event.instrument>=128)return "SONG INSTRUMENT RANGE";
             used[event.instrument]=true;
@@ -1784,7 +1827,7 @@ static const char* startNativeSong(uint32_t argument)
     }
     if((error=preflight.begin(*midi,midiBytes,g_song.description)))return error;
     while(!preflight.ended) {
-        if((error=preflight.next(event)))return error;
+        if((error=songPrepareNext(preflight,event)))return error;
         if(event.kind==SongInputs::Event::NoteOn && (error=prepareSongNote(event)))return error;
     }
     if((error=g_song.timeline.start(*midi,midiBytes,g_song.description)))return error;
@@ -1802,6 +1845,9 @@ static const char* startNativeSong(uint32_t argument)
 #endif
     g_song.busyFields=g_song.lastBusyTick=g_song.lateTick=g_song.lateBusyTick=0;
     __asm__ volatile("" ::: "memory");
+#ifdef AITD_M5_AUDIT
+    g_m5SongPrepare[1]=aitdM5Clock()-s_m5SongBegin;aitdM5SongPrepared();
+#endif
     g_song.playing=1;
 #ifdef AITD_CIA_MUSIC
     if((error=aitdMusicTimerStart(g_song.started))) {g_song.playing=0;return error;}
