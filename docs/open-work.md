@@ -75,10 +75,6 @@ required.
   MAME by event.
 
 - **M4.3a Remaining effect packet/allocation variants.**
-  - Implement interrupt-driven loop playback with live counter updates and
-    complete sample tails. Pair native output with the measured zero, one,
-    three and negative original counter cases; verify stop/replacement during
-    active loops against the original driver.
   - Measure and support effects larger than one DMA segment, with bounded
     interrupt work, conversion before playback and verified buffer cleanup.
   - Resolve effect ages beyond $7FFE callbacks if reached. Keep unsupported

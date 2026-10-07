@@ -7169,3 +7169,60 @@ the initial interrupt as completed playback. The next implementation step is
 bounded PCM publication through alternating Chip buffers, with conversion and
 allocation completed before enabling playback. Counter release and cleanup
 need paired native acceptance before removing the loop stop.
+
+
+## M4 interrupt-driven effect loops — 2026-10-07
+
+Loop packets now use `EffectDmaStream`: the source converts once to signed PCM
+in Fast RAM before playback (`move.l` / XOR long where aligned). Two 128-byte
+Chip buffers feed Paula. Each audio interrupt copies at most 128 already
+converted bytes and queues the successor; it performs no conversion, allocation,
+resource lookup or division. User-mode service releases memory after the final
+PCM and silent word, or synchronously when the original stop/replacement call
+arrives. Both paths restore the saved audio interrupt vector and enable bit.
+One-shots retain their existing DMA path; samples over 131,070 bytes and
+unmeasured null-counter or zero-start loops still fail explicitly.
+
+`amiga/effect_loop_matrix.sh` pairs fixed `a4000-030-reference` captures with the
+retained original RAM fixtures. All six cases pass: counts 0/1 output exactly
+4,096 bytes, count 3 outputs 5,120 bytes with two repeats, and a negative counter
+cleared at tick 60 outputs 11,264 bytes with 14 repeats and the complete tail.
+The final matrix completes within one to three Mac ticks. E-clock fragment
+interval deviations are at most 8.7% (the check rejects a missed full fragment).
+Those percentages describe interval deviation, not CPU utilization. Each case
+checks the actual selector-17 ABI, live counters, exact converted PCM order,
+DMA ownership, restoration of the saved interrupt state, and exact Fast/Chip
+allocation recovery. Evidence: `tmp/m4/effects/stream/matrix-actions.log` and
+`tmp/m4/effects/{loop0,loop1,loop3,loopnegative}/native/`.
+
+`mac_effect_loop_action.lua` measures stop 18 and replacement 17 while the
+original loop is repeating. It changes only authorized guest RAM at an actual
+original call; original instructions and registers remain untouched. The
+replacement fixture limits allocation to the occupied slot and supplies a
+one-shot packet with a new ID. The exact 12,360-byte original driver state and
+preserved ABI are checked by `check_effect_loop_action.py`. Native action
+fixtures retain the negative counter, release the stream buffers, and restore
+the interrupt state. Replacement keeps its channel and publishes the exact
+4,096 converted bytes plus silent tail before complete cleanup. Calls return in
+zero or one tick. Evidence: `tmp/m4/effects/{action17,action18}/native/`.
+
+The initial replacement observer incorrectly required the Mac boundary age
+while the native call landed three age ticks later. The fixture now waits for
+the same naturally occurring $7FFF playback age before dispatch; it does not
+write the age or weaken the ABI assertion. That failed observer run is excluded.
+These are isolated contract tests, not gameplay or listening acceptance.
+
+Full host tests and the build's no-float/probe-symbol audits pass. Probe globals
+are explicitly retained: a diagnostic with a garbage-collected release-tick
+symbol resolved into code bytes and was excluded before the accepted matrix.
+Long sample packets, remaining selector reachability, event-based room audio
+regression and all-song listening acceptance remain open in M4.
+
+
+With the production loop path enabled, the full song-135 regression still
+passes: 3,736 exact timed events, 25 retained PCM variants (458,974 bytes),
+effect priority, natural completion and complete voice/resource cleanup. During
+180 CPU-only ticks, 28 music events arrive; all 3,736 deliveries have zero tick
+lateness. Capture and raw song data are retained under
+`tmp/m4/effects/stream/song-{capture.log,data/}`. This remains headless timing
+and ownership evidence, not an audible sign-off.

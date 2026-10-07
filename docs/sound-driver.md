@@ -1177,3 +1177,23 @@ means two extra repeats, followed by the sample tail. This is measured original
 behavior only. The subsequent zero/one/negative fixtures also pass (see the
 [stream-boundary evidence](development.md#m4-loop-counters-and-dma-stream-boundary-evidence--2026-10-07));
 native looping and long DMA segments remain open.
+
+
+## Interrupt-driven effect loop playback — 2026-10-07
+
+Selector 17 now accepts the measured live-counter loop contract through
+`EffectDmaStream`. Conversion and allocation happen before DMA starts. The
+Paula audio interrupt copies at most 128 converted bytes into alternating Chip
+buffers and schedules the next fragment; user-mode service owns cleanup.
+Counts zero/one consume the attack and complete tail, positive counts decrement
+at boundaries, and negative counts repeat until the shared word is cleared.
+Stop 18 and occupied-slot replacement 17 preserve that shared counter and
+restore the previous interrupt vector/enable state when disposing the stream.
+
+The paired six-case fixed-68030 suite checks exact PCM, counter progression,
+original ABI, same-channel replacement, and zero Fast/Chip buffer leaks. See
+[development evidence](development.md#m4-interrupt-driven-effect-loops--2026-10-07)
+for timing, captures and isolated-fixture limits. Null-counter/zero-start loops,
+samples over 131,070 bytes, and unsupported very old effect ages remain explicit
+stops pending original measurements. This does not establish listening or
+ordinary-gameplay acceptance for those isolated fixtures.

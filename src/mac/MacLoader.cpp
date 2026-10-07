@@ -52,6 +52,7 @@ extern "C" void aitdDriverClockProbe();
 #include "platform/amiga/framework/AmigaHardware.h"
 #include "PaulaSample.h"
 #include "SoundEffect.h"
+#include "platform/amiga/EffectDmaStream.h"
 
 extern "C" {
 #ifdef AITD_MENU_PROBE
@@ -124,6 +125,7 @@ MacHeap::Handle g_soundDriverHandle=0;
 MacHeap::Handle g_defaultPalette=0;
 volatile uint32_t g_soundDriverCalls=0;
 struct NativeEffect {
+    EffectDma::Stream* stream;
     uint8_t* chip;
     uint32_t allocated,size,rate,started,ends,serial;
     uint16_t period,id;
@@ -1517,6 +1519,7 @@ static void stopNativeEffect(uint16_t index)
     SoundDriver::Voice& voice=g_soundDriver.effects[index];
     NativeEffect& effect=g_effects[index];
     if(voice.channel>=0) {
+        if(effect.stream)EffectDma::suspend(effect.stream);
         quiescePaulaChannel((uint16_t)voice.channel);
 #ifdef AITD_EFFECT_DMA_PROBE
         aitdEffectDmaProbeEnd();
@@ -1529,7 +1532,8 @@ static void stopNativeEffect(uint16_t index)
         ++g_effectStops;
     }
     voice.active=0;
-    if(effect.chip)M5_FREE_MEM(effect.chip,effect.allocated);
+    if(effect.stream) {EffectDma::dispose(effect.stream);effect.stream=0;}
+    else if(effect.chip)M5_FREE_MEM(effect.chip,effect.allocated);
     effect.chip=0;effect.allocated=0;
 }
 
@@ -1554,11 +1558,30 @@ static void audioStopProbeInput()
 }
 #endif
 
+#ifdef AITD_EFFECT_LOOP_PROBE
+extern "C" {
+uint8_t* g_effectLoopProbeCounter=0;
+uint8_t* g_effectLoopProbePacket=0;
+volatile uint32_t g_effectLoopProbeAction=0;
+__attribute__((noinline)) void aitdEffectLoopActionReady(uint32_t* regs,uint8_t* userStack)
+{__asm__ volatile("nop" :: "r"(regs),"r"(userStack) : "memory");}
+volatile uint32_t g_effectLoopProbeReleaseTick=0;
+__attribute__((noinline)) void aitdEffectLoopReady(uint32_t* regs,uint8_t* userStack)
+{__asm__ volatile("nop" :: "r"(regs),"r"(userStack) : "memory");}
+}
+#endif
 static void serviceNativeEffects()
 {
+#if defined(AITD_EFFECT_LOOP_PROBE) && AITD_EFFECT_LOOP_COUNT<0 && AITD_EFFECT_LOOP_ACTION==0
+    if(g_effectLoopProbeCounter && g_effectStarts && g_soundDriver.effects[0].active && !g_effectLoopProbeReleaseTick
+       && g_macTicks-g_effects[0].started>=60) {
+        write16(g_effectLoopProbeCounter,0);g_effectLoopProbeReleaseTick=g_macTicks;
+    }
+#endif
     for(uint16_t i=0;i<2;++i)
         if(g_soundDriver.effects[i].active
-            && (int32_t)(g_macTicks-g_effects[i].ends)>=0)stopNativeEffect(i);
+            && (g_effects[i].stream ? EffectDma::done(g_effects[i].stream)
+                : (int32_t)(g_macTicks-g_effects[i].ends)>=0))stopNativeEffect(i);
 }
 
 static bool effectRange(uint8_t* pointer,uint32_t bytes)
@@ -1584,9 +1607,15 @@ static const char* playNativeEffect(uint8_t* packet,uint32_t& scratch)
     if(!sample)return 0; // Original +$3506 returns without touching voices.
     uint32_t bytes=read32(packet+4),rate=read32(packet+8);
     if(!effectRange(sample,bytes))return "EFFECT SAMPLE RANGE";
-    PaulaSample::Layout layout;uint16_t period;uint32_t ticks;
-    const char* error=SoundEffect::describe(sample,bytes,rate,read32(packet+12),
-                                           read32(packet+16),layout,period,ticks,g_paulaClock);
+    PaulaSample::Layout layout={};uint16_t period;uint32_t ticks=0;
+    uint32_t loopStart=read32(packet+12),loopEnd=read32(packet+16);
+    bool streamed=loopStart || loopEnd;
+    if(bytes>131070)return "EFFECT SAMPLE SIZE"; // Long original packets still await measurement.
+    uint8_t* counter=streamed ? (uint8_t*)read32(packet+20) : 0;
+    if(streamed && (!loopStart || loopEnd<=loopStart || loopEnd>bytes
+        || !counter || ((uint32_t)counter&1) || !effectRange(counter,2)))return "EFFECT LOOP BOUNDS";
+    const char* error=streamed ? SoundEffect::samplePeriod(rate,g_paulaClock,period)
+        : SoundEffect::describe(sample,bytes,rate,0,0,layout,period,ticks,g_paulaClock);
     if(error)return error;
     serviceNativeEffects();
     uint16_t index=0,age=0x7fff;
@@ -1597,32 +1626,43 @@ static const char* playNativeEffect(uint8_t* packet,uint32_t& scratch)
     for(uint16_t i=0;i<g_soundDriver.effectLimit;++i) {
         if(!g_soundDriver.effects[i].active) {index=i;replacing=false;break;}
         uint32_t elapsed=g_macTicks-g_effects[i].started;
-        if(elapsed>0x7ffe)return "EFFECT VOICE AGE";
-        uint16_t candidate=uint16_t(0x7ffeUL-elapsed);
+        uint16_t candidate=g_effects[i].stream ? EffectDma::age(g_effects[i].stream,g_macTicks)
+            : elapsed>0x7ffe ? 0xffff : uint16_t(0x7ffeUL-elapsed);
+        if(candidate==0xffff)return "EFFECT VOICE AGE";
         if(candidate<=age) {age=candidate;index=i;}
         replacing=true;
     }
-    uint8_t* chip=(uint8_t*)M5_ALLOC_MEM(layout.allocated,MEMF_CHIP);
+    EffectDma::Stream* stream=streamed ? EffectDma::prepare(sample,bytes,loopStart,loopEnd,counter,error) : 0;
+    if(streamed && !stream)return error;
+    uint8_t* chip=streamed ? EffectDma::chip(stream) : (uint8_t*)M5_ALLOC_MEM(layout.allocated,MEMF_CHIP);
     if(!chip)return "EFFECT CHIP MEMORY";
-    PaulaSample::convert(layout,chip);
+    if(!streamed)PaulaSample::convert(layout,chip);
     NativeAudioGuard guard;
     // A replacement retains its Paula channel; music ownership is untouched.
     int16_t channel=replacing ? g_soundDriver.effects[index].channel : -1;
     if(replacing && (channel<0 || channel>3 || g_soundDriver.channels[channel]!=6+index)) {
-        M5_FREE_MEM(chip,layout.allocated);return "EFFECT REPLACEMENT CHANNEL";
+        if(stream)EffectDma::dispose(stream);else M5_FREE_MEM(chip,layout.allocated);
+        return "EFFECT REPLACEMENT CHANNEL";
     }
     if(!replacing)for(uint16_t i=0;i<4;++i)if(g_soundDriver.channels[i]<0) {channel=i;break;}
     if(channel<0)channel=stealSongChannel();
-    if(channel<0) {M5_FREE_MEM(chip,layout.allocated);return "EFFECT CHANNEL STEAL";}
+    if(channel<0) {
+        if(stream)EffectDma::dispose(stream);else M5_FREE_MEM(chip,layout.allocated);
+        return "EFFECT CHANNEL STEAL";
+    }
     if(replacing)stopNativeEffect(index); // DMA off before releasing the old sample.
     NativeEffect& effect=g_effects[index];
-    effect.chip=chip;effect.allocated=layout.allocated;effect.size=bytes;effect.rate=rate;
+    effect.stream=stream;effect.chip=chip;effect.allocated=streamed ? 256 : layout.allocated;
+    effect.size=bytes;effect.rate=rate;
     effect.period=period;effect.id=read16(packet+24);effect.serial=++g_effectStarts;
     g_soundDriver.effectIds[index]=effect.id;
     SoundDriver::Voice& voice=g_soundDriver.effects[index];
     voice.sample=(uint32_t)sample;voice.channel=channel;voice.active=1;
     g_soundDriver.channels[channel]=6+index;
-    startPaulaSample(chip,layout,channel,period,64);
+    if(stream) {
+        disablePaulaChannel(channel);
+        EffectDma::start(stream,channel,period,g_soundDriver.paulaVolume(64));
+    } else startPaulaSample(chip,layout,channel,period,64);
     effect.started=g_macTicks;effect.ends=effect.started+ticks+1; // Full duration after DMA latches.
 #ifdef AITD_SONG_HARDWARE_PROBE
     recordSongEffect(1,(uint16_t)channel,index);
@@ -8217,6 +8257,22 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
             || pc!=(uint32_t)*g_soundDriverHandle || read32(*g_soundDriverHandle)!=0xa0f84e75UL) {
             driverStop="ENTRY";
         } else {
+#if defined(AITD_EFFECT_LOOP_PROBE) && AITD_EFFECT_LOOP_ACTION!=0
+            // Authorized isolated RAM-only fixture, at an actual original call.
+            if(g_effectLoopProbePacket && !g_effectLoopProbeAction
+               && g_soundDriver.effects[0].active && g_macTicks-g_effects[0].started>=30
+               && g_effects[0].stream && EffectDma::age(g_effects[0].stream,g_macTicks)==0x7fff) {
+                g_effectLoopProbeAction=AITD_EFFECT_LOOP_ACTION;
+                if(AITD_EFFECT_LOOP_ACTION==17) {
+                    g_soundDriver.effectLimit=1;
+                    write32(g_effectLoopProbePacket+12,0);write32(g_effectLoopProbePacket+16,0);
+                    write16(g_effectLoopProbePacket+24,0x8001);
+                }
+                write32(userStack+4,AITD_EFFECT_LOOP_ACTION);
+                write32(userStack+8,(uint32_t)g_effectLoopProbePacket);
+                aitdEffectLoopActionReady(regs,userStack);
+            }
+#endif
             uint32_t selector=read32(userStack+4),argument=read32(userStack+8);
             uint32_t scratch=argument,clockResult=0;uint16_t driverResult=0;
             if(selector==0)driverStop=startNativeSong(argument);
@@ -8225,7 +8281,22 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
                 if(!packet || (argument&1))driverStop="VOICE PACKET";
                 else driverStop=g_soundDriver.initialize(read16(packet),read16(packet+2),read16(packet+4),g_macTicks);
             } else if(selector==17) {
-#ifdef AITD_EFFECT_SLOTS_PROBE
+#ifdef AITD_EFFECT_LOOP_PROBE
+                uint8_t* packet=(uint8_t*)argument;
+                if(g_effectLoopProbeAction==17)driverStop=playNativeEffect(packet,scratch);
+                else if(g_effectStarts || !effectRange(packet,26) || read32(packet+4)<4096)driverStop="LOOP PROBE PACKET";
+                else {
+                    uint8_t* counter=(uint8_t*)read32(packet+20);
+                    if(!counter || !effectRange(counter,2))driverStop="LOOP PROBE COUNTER";
+                    else {
+                        write32(packet+4,4096);write32(packet+12,512);write32(packet+16,1024);
+                        write16(counter,(uint16_t)AITD_EFFECT_LOOP_COUNT);g_effectLoopProbeCounter=counter;
+                        g_effectLoopProbePacket=packet;
+                        aitdEffectLoopReady(regs,userStack);
+                        driverStop=playNativeEffect(packet,scratch);
+                    }
+                }
+#elif defined(AITD_EFFECT_SLOTS_PROBE)
                 driverStop=runEffectSlotsFixture((uint8_t*)argument,scratch);
 #elif defined(AITD_EFFECT_FRACTION_PROBE)
                 // Authorized isolated RAM fixture. Original code/resources stay
