@@ -7378,3 +7378,17 @@ one. The differing ambient samples are identified in the original archive and
 in active original life scripts' random(300) branches. Actual paired ambient
 playback remains open, separately from the accepted movement/door events.
 See [first-room evidence](audio-firstrooms.md) for captures and precise scope.
+
+
+## M4 ambient playback and selector 17 return flags — 2026-10-07
+
+Completed paired playback of first-room ambient samples 58, 59 and 61 through
+the original life interpreter and loader, using explicitly isolated entropy
+in guest RAM. All original/native cases pass full PCM, allocation, return ABI,
+physical DMA timing and cleanup checks. The stronger test exposed selector 17
+preserving X on native return; production now clears it as the original does.
+Sample 61's late main-thread cleanup is separate from its measured 1.200-second
+DMA attack and subsequent silence. See [the ambient evidence](audio-firstrooms.md#paired-ambient-playback).
+Combined with ordinary-route footsteps and doors, this completes M4.3's bounded
+first-room event parity. All-song listening and other remaining M4 items stay
+open. The host suite and MAME literal audit pass.

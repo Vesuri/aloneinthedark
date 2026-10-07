@@ -124,6 +124,11 @@ SoundDriver g_soundDriver;
 MacHeap::Handle g_soundDriverHandle=0;
 MacHeap::Handle g_defaultPalette=0;
 volatile uint32_t g_soundDriverCalls=0;
+#ifdef AITD_AMBIENT_CASE
+volatile uint16_t g_ambientProbeSelected=0;
+__attribute__((noinline)) void aitdAmbientEffectReady(uint32_t* regs,uint8_t* userStack)
+{ asm volatile("" : : "r"(regs),"r"(userStack) : "memory"); }
+#endif
 #ifdef AITD_DRIVER6_PROBE
 volatile uint16_t g_driver6ProbeStage=0;
 __attribute__((noinline)) void aitdDriver6Ready(uint32_t* regs,uint8_t* userStack)
@@ -8340,6 +8345,13 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
                 if(!packet || (argument&1))driverStop="VOICE PACKET";
                 else driverStop=g_soundDriver.initialize(read16(packet),read16(packet+2),read16(packet+4),g_macTicks);
             } else if(selector==17) {
+#ifdef AITD_AMBIENT_CASE
+                static const uint32_t ambientSizes[]={27115,21157,10806};
+                if(g_ambientProbeSelected==1 && effectRange((uint8_t*)argument,26)
+                   && read32((uint8_t*)argument+4)==ambientSizes[AITD_AMBIENT_CASE]) {
+                    g_ambientProbeSelected=2;aitdAmbientEffectReady(regs,userStack);
+                }
+#endif
 #ifdef AITD_EFFECT_LOOP_PROBE
                 uint8_t* packet=(uint8_t*)argument;
                 if(g_effectLoopProbeAction==17)driverStop=playNativeEffect(packet,scratch);
@@ -8636,6 +8648,19 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         uint16_t inputMixed=g_fixedRandomMixed;
         write32(s_qdThePort-126,inputSeed);
         write16(mixed,inputMixed);
+#endif
+#ifdef AITD_AMBIENT_CASE
+        // Authorized isolated entropy fixture: the original wrapper, modulo,
+        // life script and sample loading still execute. No code/register edits.
+        if(s_qdThePort && s_segments[7].begin && s_segments[5].begin
+           && pc==(uint32_t)s_segments[7].begin+0x4a32
+           && read32((uint8_t*)regs[14]+4)==(uint32_t)s_segments[5].begin+0x25f6
+           && read16((uint8_t*)read32((uint8_t*)regs[13]-0xb29c))==300) {
+            const uint16_t choice=g_ambientProbeSelected ? 299 : AITD_AMBIENT_CASE;
+            write32(s_qdThePort-126,1);
+            write16((uint8_t*)regs[13]-0x1078,16807^choice);
+            if(!g_ambientProbeSelected)g_ambientProbeSelected=1;
+        }
 #endif
         uint16_t randomResult=(uint16_t)quickDrawRandom();
         write16(userStack,randomResult);
@@ -10362,7 +10387,7 @@ extern "C" uint8_t* aitdUserServiceDispatch(uint8_t* parked)
     }
     if(driverSelector==15) {
         ccr=(ccr&0xffe0)|SoundDriver::clockCCR(read32(parked));
-    } else if(driverSelector==19 || driverSelector==4 || driverSelector==5 || driverSelector==6 || driverSelector==7 || driverSelector==8) {
+    } else if(driverSelector==17 || driverSelector==19 || driverSelector==4 || driverSelector==5 || driverSelector==6 || driverSelector==7 || driverSelector==8) {
         ccr=(ccr&0xffe0)|SoundDriver::songStatusCCR(read16(parked+2));
     } else if(!(trap&0x0800)) {
         ccr&=0xfff0;

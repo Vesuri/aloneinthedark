@@ -47,3 +47,10 @@ The runner's final PASS is evidence for these headless contracts. It does not
 prove recognizable speaker output, remaining driver-call reachability, or
 matching sound-effect events across an ordinary first-floor route. Those
 requirements remain tracked in [open work](open-work.md).
+
+
+The additional first-room ambient contracts are run separately with
+`AMBIENTCASE=<0|1|2> EFFECTDMAPROBE=1` and `amiga/ambient.gdb`; see
+[first-room audio](audio-firstrooms.md#paired-ambient-playback). With AMBIENTCASE
+set, EFFECTDMAPROBE observes the unchanged ambient packet rather than enabling
+the fractional-packet fixture. The default audio regression behavior is unchanged.

@@ -374,7 +374,9 @@ EXTRA_DEFINES += -DAITD_EFFECT_SLOTS_PROBE
 endif
 
 ifeq ($(EFFECTDMAPROBE),1)
+ifeq ($(AMBIENTCASE),)
 EFFECTFRACTIONPROBE=1
+endif
 M5AUDIT=1
 EXTRA_DEFINES += -DAITD_EFFECT_DMA_PROBE
 endif
@@ -641,6 +643,15 @@ ifeq ($(GAMEINPUT),1)
 INGAME=1
 EXTRA_DEFINES += -DAITD_GAME_INPUT
 PROBE_SYMS += g_gameInputStage g_gameInputTick g_gameInputTraps g_gameInputFightEvent
+endif
+ifneq ($(AMBIENTCASE),)
+ifeq ($(filter $(AMBIENTCASE),0 1 2),)
+$(error AMBIENTCASE must be 0, 1 or 2)
+endif
+INGAME=1
+INTROSKIP=1
+EXTRA_DEFINES += -DAITD_AMBIENT_CASE=$(AMBIENTCASE)
+PROBE_SYMS += g_ambientProbeSelected
 endif
 ifeq ($(DRIVER6PROBE),1)
 EXTRA_DEFINES += -DAITD_DRIVER6_PROBE

@@ -68,16 +68,6 @@ required.
 
   *Done when* all eight songs play recognizably within the documented
   four-channel voice-stealing policy.
-- **M4.3 Sound effects and toggles.**
-  - Pair actual playback of ambient samples 58, 59 and 61 in the
-    [first-room audio captures](audio-firstrooms.md). Their differing requests
-    come from original life scripts 528/529's random selection; capture their
-    actual triggering state and validate sample/rate/ownership on both sides.
-    Movement and door event parity and the paired room route already pass.
-  - Effects through the driver's selectors take priority on the channels.
-
-  *Done when* effects in the first rooms match MAME by event.
-
 - **M4.3a Remaining effect packet/allocation variants.**
   - Resolve effect ages beyond $7FFE callbacks if reached. Keep unsupported
     ages and loop variants as named stops until paired evidence exists.
