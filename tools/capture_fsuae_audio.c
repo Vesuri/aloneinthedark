@@ -1,5 +1,5 @@
-/* macOS/x86-64 SDL2 callback capture for the installed FS-UAE.
- * Build: clang -arch x86_64 -O2 -dynamiclib -undefined dynamic_lookup
+/* macOS arm64/x86-64 SDL2 callback capture for the installed FS-UAE.
+ * Build (use the emulator architecture): clang -arch arm64 -O2 -dynamiclib -undefined dynamic_lookup
  *        tools/capture_fsuae_audio.c -o tmp/capture-fsuae-audio.dylib
  * Set DYLD_INSERT_LIBRARIES to that absolute library path only for FS-UAE,
  * and AITD_AUDIO_CAPTURE to a new absolute output path. Existing files are

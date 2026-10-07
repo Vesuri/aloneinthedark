@@ -58,7 +58,9 @@ required.
   - Verify recognizable audio-enabled playback for all eight songs on the
     fixed 68030 setup. Complete original/native event, timing and allocation
     acceptance is recorded in [music coverage](music-resource-coverage.md).
-    Keep listening evidence distinct from the completed headless fixtures.
+    Full audio-enabled, no-warp recordings and a two-minute sampler are ready
+    in `tmp/m4/listening/index.html`. All eight repeated event/allocation checks
+    and PCM capture checks pass. Actual listening acceptance remains pending.
 
   *Done when* all eight songs play recognizably within the documented
   four-channel voice-stealing policy.

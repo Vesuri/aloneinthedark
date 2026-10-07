@@ -106,3 +106,36 @@ Use `AITD_LIVE_SONG=<id> AITD_LIVE_FOLDER=<folder>` with
 separate folder from ordinary-input attempts. The actual exit status must be
 passed to the checker, and all native captures must be saved before the next
 song overwrites the shared diagnostic directory.
+
+## Audio-enabled fixed-68030 recordings — 2026-10-07
+
+All eight songs were rerun with audio enabled and warp disabled on
+`a4000-030-reference`. Every runner exited zero; the complete original/native
+event, allocation, trapless IRQ and cleanup checks passed again. SDL output
+captures contain contiguous stereo 16-bit 44100 Hz PCM with zero capture
+overflow and zero clipped samples. These are isolated song fixtures.
+
+| Song | Captured seconds |
+| --- | ---: |
+| BDISK1 | 213.531 |
+| BDISK2 | 117.354 |
+| FIGHT | 69.927 |
+| GDISK | 208.968 |
+| H_END | 82.048 |
+| INTRO1 | 154.796 |
+| MONSTER | 32.612 |
+| SUSPENSE | 126.700 |
+
+Evidence is in `tmp/m4/listening/song130` through `song137`: actual exit
+status, observer captures, checker output and full WAVs. `index.html` provides
+all recordings; `review.wav` contains fifteen seconds from each song in ID
+order, separated by one second of silence. `review.json` records source offsets
+and signal statistics. Excerpts preserve the recorded PCM without processing.
+
+The capture interposer was additionally verified on arm64 against deterministic
+SDL output: all 63,488 bytes from 31 callbacks survived forced termination and
+matched the producer. It captures only the emulator's SDL callback, with no
+microphone or other application audio. Callback spacing is not itself an
+underrun measurement. Nonzero PCM and event agreement establish output, not
+recognizable music or physical speaker quality; listening acceptance remains
+open. The clean production build passed after these fixture runs.

@@ -7407,3 +7407,15 @@ remain named stops. All reached effect packet/allocation variants have paired
 acceptance; unobserved very-old ages remain guarded for future full-game work.
 See [the scoped audit](sound-driver.md#shipped-game-selector-reachability-audit--2026-10-07).
 M4's remaining acceptance is audio-enabled all-song output/listening.
+
+
+## M4 audio-enabled recordings — 2026-10-07
+
+All eight full-song fixtures now pass with audio enabled and warp off on the
+fixed 68030. Complete original/native event, allocation, interrupt and cleanup
+checks pass; retained SDL PCM has no capture overflow or clipped samples.
+The arm64 capture ABI also passed a byte-exact deterministic producer test.
+Full recordings and a two-minute review are in `tmp/m4/listening`; see
+[music coverage](music-resource-coverage.md#audio-enabled-fixed-68030-recordings--2026-10-07).
+The production build is restored and passes its audits. M4.2 remains open
+for actual listening acceptance; captured output is not a claim of listening.
