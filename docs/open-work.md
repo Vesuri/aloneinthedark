@@ -64,6 +64,10 @@ required.
   - A native SONG/MIDI sequencer and INST→`snd ` mapping on the four channels.
   - Tempo and note delivery from the native interrupt clock; resource and
     sample preparation outside the interrupt.
+  - Measure original-driver playback for BDISK1 (130), GDISK (133) and
+    H_END (134), then enable them with paired native event acceptance.
+    Use the [resource inventory](music-resource-coverage.md) to prepare the
+    routes; host format coverage does not satisfy playback acceptance.
   - Measure original-driver maximum simultaneous notes for SONG 130, 131,
     133 and 134, and verify the documented voice-allocation policy for these songs.
 
