@@ -659,7 +659,11 @@ bool aitdRunAgaProbe(AitdScreen* screen)
             for(int16_t y=dirty.top;y<dirty.bottom;++y)for(int16_t x=dirty.left;x<dirty.right;++x)
                 source[uint32_t(y)*640+x]=frame==1 ? 0x69 : 0xc3;
         }
-        if(frame==3) {count=0;colors[10+42*8]=colors[11+42*8]=17;}
+        if(frame==3) {
+            count=0;colors[10+42*8]=colors[11+42*8]=17;
+            // Palette contents change through Color Manager with a new ctSeed.
+            ++colors[3];
+        }
         if(frame==4) {left=161;top=151;count=0;}
         g_agaProbeViewport[0]=top;g_agaProbeViewport[1]=left;
         g_agaProbeViewport[2]=top+200;g_agaProbeViewport[3]=left+320;

@@ -47,6 +47,7 @@ def check(log, status, folder, video, require_inversion=False, visual=False):
             for row in range(t,b):
                 source[row*640+l:row*640+r] = bytes([color])*(r-l)
         if stage == 4:
+            clut[3] = 1  # Color Manager advances ctSeed for the palette edit.
             clut[10+42*8:12+42*8] = bytes([17,17])
         prefix = f'cursor-fixture-{stage}'
         require(read(folder,prefix+'-source.bin',307200) == source, 'complete fixture pixels')
