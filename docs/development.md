@@ -8328,3 +8328,52 @@ combat-native,combat-native-fixed}` and `combat-checked.log`; native runs are
 `waypoints-020aq` and `waypoints-020ar` (historical names; both logs specify
 fixed 68030). Original files and captures remain untracked. Representative
 mansion-room coverage remains open under M6.2.
+
+
+## M6.2 remaining representative rooms — 2026-10-08
+
+The ballroom and lit library complete the representative state-keyed fidelity
+set. Both fixtures are saves made by the original Mac through Command-S;
+their unchanged data/resource forks are loaded normally on both platforms.
+No actor, animation, timer or game-instruction edits are used for these cases.
+The native build is `FULLPLAY=1 INTROSKIP=1 PROBES=` at d1c9c0e, fixed
+`a4000-030-reference`, with audio logic enabled. Original Mac IIx capture reads
+live VRAM at the same byte-checked `(Dark, $5658)` frame boundary.
+
+| Scene | Matched hero state | Coverage |
+| --- | --- | --- |
+| Ballroom, floor 3 / room 3 / camera 4 | body 12, (-52,0,-641), beta 0, idle 4/frame 0 | Hero and all nine other active room actors, including three dancers; 64,000 exact pixels |
+| Lit library, floor 2 / room 0 / camera 3 | body 11, (-2140,0,453), beta 256, walking 288/frame 3 | Hero and all nine other active room actors; 64,000 exact pixels |
+| Same library, following frame | Same location/body/heading, idle 287/frame 0 | Same complete room actor set; 64,000 exact pixels |
+
+The first ballroom save produced a different hero idle keyframe after loading,
+although the dancers matched. That pair is excluded. A later ordinary save
+produces the exact accepted pair; there is no tolerance for differing poses.
+The early library-entry state is dark and is excluded from rendered acceptance.
+Returning through the normal doorway from the later play-through state with
+the lit lamp supplies the accepted library fixture (112 reference colours).
+Later library frames with matching coarse actor fields but different animation
+interpolation/particle pixels are not accepted as exact frame pairs.
+
+The ballroom uses `ballroom2-native/world-1.bin` and
+`ballroom2-mac-vram/frame-1-*`; the library uses
+`library-visible-native/world-{1,2}.bin` and
+`library-visible-mac-vram/frame-{1,2}-*`, under `tmp/m6/fidelity/`.
+`ballroom-checked.log` and `library-checked.log` record maintained checker
+results. Explicit additional actor slots are 21–24, 26–30 for the ballroom
+and 0, 2–6, 18, 19, 23 for the library (hero slot 1 is always checked).
+Native runs `waypoints-020at` and `waypoints-020av` each reach a normal
+checkpoint after 600 released-control ticks without a loud stop. These are
+bounded visual acceptance runs, not a claim of equal later combat outcomes.
+
+M6.2 coverage now includes attic restart, lower-lobby idle phases, ballroom,
+visible library, lamp maze, pirate combat, all reading pages, inventory and
+item actions, death tableau, post-death menu, and ending. Prior per-case
+sections and their checked evidence retain exact scope and fixture limits.
+This closes representative frame fidelity, not exhaustive pixel comparison
+of every room or every animation frame. Stairs, cleanup and remaining font
+faces retain their separate acceptance requirements.
+
+Shared `ballroom-save2` data fork SHA-256: `1632fb1f677b2b6656dd04ca4db710e93666d5844ec30776dcd1083ac0ed9f21`.
+
+Shared `library-visible-save` data fork SHA-256: `947f241efb47d1ccfcb1037bbd7924d2869261c3da855a531641a5ad29881405`.
