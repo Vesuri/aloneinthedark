@@ -7916,8 +7916,8 @@ A later recheck of the retained native 640x480 angle-zero captures finds
 186 differing index bytes, all inside the game viewport (x294–410, y186–273);
 the complete 2,056-byte CLUTs match. The earlier claim of identical screens
 is withdrawn. The helper overwrites each capture on repeated angle-zero
-visits; angle alone does not establish equal complete drawing state. Whether
-these differences reflect capture phase or rendering remains unresolved.
+visits; angle alone does not establish equal complete drawing state. The
+follow-up below resolves these differences as menu focus.
 The timing counts above reproduce from the retained logs.
 The optimized profile has 265 samples:
 CopyBits now accounts for 20.0%, C2P 10.6%, and original Dan2 code 16.2%.
@@ -8485,3 +8485,33 @@ The six preference-isolation tests and shell syntax checks pass. A clean
 normal build with the diagnostic disabled passes the no-float and probe
 link audits (`tmp/m6/quit-normal-build.log`). No production cleanup defect
 was found; the added runtime hooks are diagnostic-only.
+
+
+## Item-preview capture focus follow-up — 2026-10-08
+
+The 186 differing bytes in the earlier preview captures are exactly the
+selected `A Record` and `Use` glyph pixels changing between indices 0 and 100.
+The optimized capture file was overwritten at 14:04:20, after its timing log
+at 14:01:09 and the ordinary Right-key command at 14:02:35. The previously
+recorded breakpoint-cleanup mistake left the capture breakpoint active during
+that later navigation. Thus the two archived full screens have different focus;
+they were never evidence of identical complete menu state.
+
+A fresh `FULLPLAY=1 INTROSKIP=1 PROBES=` build on fixed 68030 captures the
+original preview routine after drawing, at (Dan1, $10EA), once per requested
+angle. Ordinary Right input changes focus from the record to Use. The complete
+pixel-difference map between these two same-angle captures is identical to
+the old 186-byte difference map, including every old/new index value. A
+completed angle-zero capture also matches every pixel of the baseline's
+160x100 record-preview pane; all three 2,056-byte palettes are identical.
+
+This follow-up loads the pirate combat save, with diagnostic health 30,000.
+Its fourth inventory item is an oil lamp rather than the old fixture's dagger;
+the remaining 243 full-screen differences at matching focus/angle are confined
+to that fourth item's label (x283–356, y228–240). An attempted inventory-list
+RAM adjustment was rebuilt by the original menu and did not change the list;
+it is not claimed as a successful state match. No renderer change is needed.
+Evidence and an asserting comparison script are in
+`tmp/menu-enemy-profile/focus-check/`; the bounded native run is
+`tmp/m6/native/waypoints-020aw/`, ending with successful detach and runner exit
+zero. The previously measured preview update rates remain unchanged.

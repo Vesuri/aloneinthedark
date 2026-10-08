@@ -11,14 +11,6 @@ required.
 
 ## M6 Completion
 
-- **PERF.1 Item-preview capture discrepancy.** Recheck the baseline and fast
-  PtInRect record preview at matching completed drawing state. Retained
-  angle-zero screens differ by 186 viewport pixels despite matching palettes;
-  angle alone does not establish a state match. Fix any confirmed port defect.
-
-  *Done when* a reproducible completed-frame comparison explains the
-  difference and verifies unchanged preview rendering.
-
 - **M6.5 Remaining visible Mac font faces (D6).** Capture and bundle raw
   original bitmaps for reached visible families/sizes beyond Times/plain/14,
   including pause. Preserve glyph bearings, styles and measured text layout.
