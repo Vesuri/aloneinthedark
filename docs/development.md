@@ -7785,3 +7785,41 @@ in room 3 and a position-only shortcut to room 4's exit corridor bypassed
 navigation, followed by ordinary room transitions. These do not validate the
 skipped Mac corridor traversal. All remain walkthrough room 33; the gem door
 and final cavern are still ahead.
+
+
+## M6 gem door and final cavern checkpoint — 2026-10-08
+
+Both versions pass the maze gem door and enter engine floor 6, room 6
+(walkthrough room 34) with no new runtime stop. The gem inventory offers
+Throw then Drop/Put; Drop/Put performs the door interaction. Native
+`waypoints-020ac` reaches and saves the cavern at checkpoints 34–39; the
+ordinary entry save is preserved as `tmp/m6/native/save-cavern-entry`.
+A position-only shortcut in maze room 5 placed both characters at (4300,1000)
+near the door, followed by ordinary input through the transition. The skipped
+corridors are not traversal evidence.
+
+For the altar diagnostic, both characters were positioned at
+(4300,-210,-6100), heading 256, and test health was raised to 100. This bypasses
+the platform jumps and survival challenge. Native GDB writes did not alter the
+observed guest state, so the native shortcut was applied to its stopped save.
+The save variable block begins TWO bytes after header offset 3; health is
+therefore at `header[3]+2+42`. An initial write one word too early was corrected
+from the untouched entry backup before the successful health-100 run.
+
+The reached original item labels identify talisman 110, lighter 199, hook 232,
+and lamp 13. Hook pickup succeeds on both versions. Mac Drop/Put places the
+talisman at the scripted (5300,-1000,-6100) altar position. Native was knocked
+back and fell from y=-210 to y=1790 before its initial placement; that attempt
+kept the talisman. A later native Drop/Put removed it from inventory but placed
+it below the altar, so this is NOT successful altar-puzzle evidence. Native
+lighter use, lamp throw and save all execute without a runtime stop. The lamp
+projectile and endgame states have not yet demonstrated tree destruction.
+
+Native evidence: `altar-correct-actions.log`, `talisman-retry.log`,
+`waypoints-020ae` captures and `save-cavern-failed-altar`. Original snapshots
+include `cavern-entry.sta` and `lamp-thrown.sta`; the latter proves only the
+throw, not tree destruction. Mac hook Use changed door object 273's script
+from 512 to 513, but subsequent navigation/position shortcuts did not establish
+the exit transition. Resume from a suitable preserved checkpoint and verify
+actual tree destruction, cavern escape, basement and ending. M6.2–M6.5 remain
+open; these gameplay checkpoints do not replace their acceptance checks.
