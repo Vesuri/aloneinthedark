@@ -87,6 +87,7 @@ host-tests:
 	@python3 tools/check_line8.py
 	@python3 tools/check_polygon.py
 	@python3 tools/check_regionrecord.py
+	@python3 tools/check_region_ops.py
 	@python3 tools/check_insetrgn.py
 	@python3 tools/check_copybits8_helper.py
 	@python3 tools/check_colormap8_cache.py

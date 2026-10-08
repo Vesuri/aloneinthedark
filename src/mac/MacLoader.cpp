@@ -17,6 +17,8 @@
 #include "PolygonRecord.h"
 #include "PolygonRegion.h"
 #include "RegionCopy.h"
+#include "RegionOps.h"
+#include "InvertRegion8.h"
 #include "CopyBits8.h"
 #include "ColorMap8Cache.h"
 #include "PictureRecord8.h"
@@ -468,7 +470,7 @@ static uint8_t* s_picturePort;
 static uint32_t s_pictureBytes;
 static uint8_t s_regionRecord[PolygonRegion::capacity];
 static uint8_t* s_regionPort;
-static bool s_regionHasPolygon;
+static bool s_regionHasContour;
 // Geometry services complete before original callbacks can run. Native VBI
 // does not touch these buffers, so sequential calls share private workspace
 // without allocating temporary handles in the application heap.
@@ -504,6 +506,7 @@ struct WindowSlot {
     uint8_t* updateRegionMaster;
     uint8_t title[256];
     uint8_t* titleMaster;
+    MacHeap::Handle ownedClip; // Allocated lazily by SetClip; ordinary rectangular ports use inline storage.
     MacHeap::Handle ownedTitle; // WIND title; dialogs retain their separate compatibility records.
     int16_t procID;
     int16_t resourceID; // Original WIND/DLOG identity, retained for presentation.
@@ -733,7 +736,7 @@ static void releaseZones()
 {
     g_defaultPalette=0;s_activePalette=0;
     for(uint16_t i=0;i<8;++i) {
-        s_windows[i].ownedTitle=0;s_windows[i].palette=0;s_windows[i].paletteUpdates=false;
+        s_windows[i].ownedClip=0;s_windows[i].ownedTitle=0;s_windows[i].palette=0;s_windows[i].paletteUpdates=false;
     }
     for(uint16_t i=0;i<32;++i) {
         s_createdPalettes[i].handle=0;s_createdPalettes[i].privateHandle=0;
@@ -1032,7 +1035,7 @@ static const TrapName s_trapNames[] = {
     {0xa8a2,"QUICKDRAW","PAINTRECT"}, {0xa891,"QUICKDRAW","LINETO"}, {0xa892,"QUICKDRAW","LINE"},
     {0xa8cb,"QUICKDRAW","OPENPOLY"}, {0xa8cc,"QUICKDRAW","CLOSEPOLY"},
     {0xa8f3,"QUICKDRAW","OPENPICTURE"}, {0xa8f4,"QUICKDRAW","CLOSEPICTURE"},
-    {0xa8f5,"QUICKDRAW","KILLPICTURE"},
+    {0xa8f5,"QUICKDRAW","KILLPICTURE"}, {0xa8fb,"QUICKDRAW","MAPRGN"},
     {0xa8dc,"QUICKDRAW","COPYRGN"}, {0xa8b7,"QUICKDRAW","FRAMEOVAL"},
     {0xa8e7,"QUICKDRAW","XORRGN"}, {0xa8e6,"QUICKDRAW","DIFFRGN"},
     {0xa879,"QUICKDRAW","SETCLIP"}, {0xa8d3,"QUICKDRAW","INVERTRGN"},
@@ -3236,6 +3239,9 @@ static bool disposeWindow(uint8_t* window)
         write32(s_qdThePort, (uint32_t)s_windowManagerPort);
     window[110] = 0;
     write32(window + 144, 0);
+    if(slot->ownedClip) {
+        s_applicationZone.disposeHandle(slot->ownedClip);slot->ownedClip=0;
+    }
     if(slot->ownedTitle) {
         s_applicationZone.disposeHandle(slot->ownedTitle);slot->ownedTitle=0;
     }
@@ -4864,7 +4870,18 @@ static bool copyPortBits8(const uint8_t* sourceBitmap,const uint8_t* destination
         destinationColors=s_windowManagerColors;inverse=s_mainDeviceITable;
     }
     uint8_t** vh=(uint8_t**)read32(port+24);uint8_t** ch=(uint8_t**)read32(port+28);
-    if(!vh || !*vh || !ch || !*ch || read16(*vh)!=10 || read16(*ch)!=10)return false;
+    if(!vh || !*vh || !ch || !*ch || read16(*vh)!=10)return false;
+    if(read16(*ch)!=10) {
+        MacHeap* clipOwner=handleZone(ch);
+        if(!clipOwner || clipOwner->handleSize(ch)>32766)return false;
+        uint16_t clipBytes=uint16_t(clipOwner->handleSize(ch));
+        if(maskBody) {
+            uint16_t size=0;
+            if(!RegionOps::combine(maskBody,maskBytes,*ch,clipBytes,RegionOps::Intersection,
+                                  s_regionWorkspace.expanded,sizeof(s_regionWorkspace.expanded),size))return false;
+            maskBody=s_regionWorkspace.expanded;maskBytes=size;
+        } else {maskBody=*ch;maskBytes=clipBytes;}
+    }
 #ifdef AITD_PROBE
     extern volatile uint16_t g_profileState;
     if(g_profileState==1) {
@@ -9457,7 +9474,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         if(!port || (!gWorldForPort(port) && !windowSlot(port)) || s_regionPort
            || s_recordingPolygon || read16(port+66) || read32(port+92)
            || read32(port+96) || read32(port+100))goto unsupportedTrap;
-        s_regionPort=port;s_regionHasPolygon=false;
+        s_regionPort=port;s_regionHasContour=false;
         memoryResult(0,false);
         write16(port+66,0xffff);write32(port+96,1);
         regs[0]=0xffffffffUL;regs[8]=(uint32_t)port;
@@ -9469,7 +9486,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         MacHeap* owner=handleZone(polygon);
         uint16_t bytes=0;
         if(!owner || !*polygon || !s_regionPort
-           || port!=s_regionPort || s_regionHasPolygon || read16(port+66)!=0xffff
+           || port!=s_regionPort || s_regionHasContour || read16(port+66)!=0xffff
            || read32(port+96)!=1 || read16(port+52)!=1 || read16(port+54)!=1)goto unsupportedTrap;
         // Keep contour edges and atomic staging off the shared system stack.
         bool valid=PolygonRegion::encode(*polygon,owner->handleSize(polygon),s_regionRecord,
@@ -9477,21 +9494,56 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         if(!valid)goto unsupportedTrap;
         write32(port+48,read32(*polygon+read16(*polygon)-4));
         memoryResult(0,false);
-        s_regionHasPolygon=true;regs[0]=0;regs[8]=(uint32_t)s_qdThePort;
+        s_regionHasContour=true;regs[0]=0;regs[8]=(uint32_t)s_qdThePort;
         return 5;
+    }
+    if(trap==0xa8b7) {                       // FrameOval during OpenRgn
+        uint8_t* port=s_qdThePort ? (uint8_t*)read32(s_qdThePort) : 0;
+        const uint8_t* rectangle=(const uint8_t*)read32(userStack);
+        if(!rectangle || !s_regionPort || port!=s_regionPort || s_regionHasContour
+           || read16(port+66)!=0xffff || read32(port+96)!=1
+           || read16(port+52)!=1 || read16(port+54)!=1)goto unsupportedTrap;
+        uint16_t size=0;
+        if(!RegionOps::circle(rectangle,s_regionWorkspace.expanded,
+                             sizeof(s_regionWorkspace.expanded),size))goto unsupportedTrap;
+        for(uint16_t i=0;i<size;++i)s_regionRecord[i]=s_regionWorkspace.expanded[i];
+        s_regionHasContour=true;memoryResult(0,false);
+        regs[0]=0;regs[8]=(uint32_t)s_qdThePort;regs[9]=(uint32_t)rectangle;
+        return 5;
+    }
+    if(trap==0xa8e7 || trap==0xa8e6) {        // XorRgn / DiffRgn(a,b,destination)
+        MacHeap::Handle destination=(MacHeap::Handle)read32(userStack);
+        MacHeap::Handle b=(MacHeap::Handle)read32(userStack+4);
+        MacHeap::Handle a=(MacHeap::Handle)read32(userStack+8);
+        MacHeap* owner=handleZone(destination);
+        MacHeap* aOwner=handleZone(a);MacHeap* bOwner=handleZone(b);
+        if(!owner || !aOwner || !bOwner || !*destination || !*a || !*b
+           || resourceHandleIndex(destination)>=0 || aOwner->handleSize(a)>32766
+           || bOwner->handleSize(b)>32766)goto unsupportedTrap;
+        uint16_t size=0;
+        if(!RegionOps::combine(*a,uint16_t(aOwner->handleSize(a)),
+              *b,uint16_t(bOwner->handleSize(b)),
+              trap==0xa8e7 ? RegionOps::Xor : RegionOps::Difference,
+              s_regionWorkspace.expanded,sizeof(s_regionWorkspace.expanded),size))goto unsupportedTrap;
+        // Both operands have been fully consumed before resizing; aliases and
+        // movement of either source during heap compaction are safe.
+        if(memoryResult(owner->setHandleSize(destination,size))!=MacHeap::noErr)goto unsupportedTrap;
+        for(uint16_t i=0;i<size;++i) {volatile uint8_t value=s_regionWorkspace.expanded[i];(*destination)[i]=value;}
+        regs[0]=0;
+        return 13;
     }
     if(trap==0xa8db) {                       // CloseRgn(owned destination)
         uint8_t* port=s_qdThePort ? (uint8_t*)read32(s_qdThePort) : 0;
         MacHeap::Handle region=(MacHeap::Handle)read32(userStack);
         MacHeap* owner=handleZone(region);
         if(!owner || !*region || !s_regionPort
-           || port!=s_regionPort || !s_regionHasPolygon || read16(port+66)!=0xffff
+           || port!=s_regionPort || !s_regionHasContour || read16(port+66)!=0xffff
            || read32(port+96)!=1)goto unsupportedTrap;
         uint16_t size=read16(s_regionRecord);
         if(owner->setHandleSize(region,size)!=MacHeap::noErr)goto unsupportedTrap;
         for(uint16_t i=0;i<size;++i) {volatile uint8_t value=s_regionRecord[i];(*region)[i]=value;}
         regs[0]=0;regs[1]&=0xffff0000UL;regs[2]=(regs[2]&0xffff0000UL)|read16(*region+6);
-        s_regionPort=0;s_regionHasPolygon=false;
+        s_regionPort=0;s_regionHasContour=false;
         write16(port+66,0);write32(port+96,0);
         return 5;
     }
@@ -9524,6 +9576,64 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         regs[0]=0;regs[1]=(regs[1]&0xffff0000UL)|0xffff;
         regs[2]=(regs[2]&0xffff0000UL)|read16(*region+6);
         return 9;
+    }
+    if(trap==0xa879) {                       // SetClip copies, never borrows the region
+        uint8_t* port=s_qdThePort ? (uint8_t*)read32(s_qdThePort) : 0;
+        GWorldSlot* world=gWorldForPort(port);WindowSlot* window=windowSlot(port);
+        MacHeap::Handle source=(MacHeap::Handle)read32(userStack);
+        MacHeap* sourceOwner=handleZone(source);
+        if(!port || (!world && !window) || !sourceOwner || !*source)goto unsupportedTrap;
+        MacHeap::Handle destination=(MacHeap::Handle)read32(port+28);
+        bool fresh=window && !window->ownedClip;
+        if(fresh) {
+            uint8_t state=sourceOwner->state(source);sourceOwner->setState(source,state|0x80);
+            destination=s_applicationZone.newHandle(10,true);
+            sourceOwner->setState(source,state);
+            if(!destination)goto unsupportedTrap;
+        }
+        MacHeap* owner=handleZone(destination);uint16_t size=0;
+        int16_t error=owner ? RegionCopy::copy(*sourceOwner,source,*owner,destination,size) : MacHeap::memWZErr;
+        if(error) {
+            if(fresh)s_applicationZone.disposeHandle(destination);
+            memoryResult(error);goto unsupportedTrap;
+        }
+        if(fresh) {window->ownedClip=destination;write32(port+28,(uint32_t)destination);}
+        memoryResult(0);regs[0]=(regs[0]&0xffff0000UL)|0xffff;
+        regs[8]=(uint32_t)*source+size;regs[9]=(uint32_t)*destination+size;
+        return 5;
+    }
+    if(trap==0xa8d3) {                       // InvertRgn on an indexed colour port
+        uint8_t* port=s_qdThePort ? (uint8_t*)read32(s_qdThePort) : 0;
+        GWorldSlot* world=gWorldForPort(port);WindowSlot* window=windowSlot(port);
+        MacHeap::Handle region=(MacHeap::Handle)read32(userStack);
+        MacHeap* owner=handleZone(region);
+        if(!port || (!world && !window) || !owner || !*region || owner->handleSize(region)>32766
+           || read16(port+66) || read32(port+92) || read32(port+96))goto unsupportedTrap;
+        uint8_t** vh=(uint8_t**)read32(port+24);uint8_t** ch=(uint8_t**)read32(port+28);
+        if(!vh || !*vh || read16(*vh)!=10 || !ch || !*ch)goto unsupportedTrap;
+        uint32_t clipBytes=10;
+        if(read16(*ch)!=10) {
+            MacHeap* clipOwner=handleZone(ch);
+            if(!clipOwner)goto unsupportedTrap;
+            clipBytes=clipOwner->handleSize(ch);if(clipBytes>32766)goto unsupportedTrap;
+        }
+        uint16_t size=0;
+        if(!RegionOps::combine(*region,uint16_t(owner->handleSize(region)),*ch,uint16_t(clipBytes),
+              RegionOps::Intersection,s_regionWorkspace.expanded,sizeof(s_regionWorkspace.expanded),size))goto unsupportedTrap;
+        const uint8_t* map=world ? world->pixMap : window->pixelMap;
+        uint8_t* pixels=world ? world->pixels : s_colorScreen;
+        uint32_t bytes=world ? world->owner->handleSize(world->handles[1]) : sizeof(s_colorScreen);
+        if(read16(map+32)!=8 || read32(map)!=(uint32_t)pixels || (world && !world->locked)
+           || (window && (window->dialog || !port[110])))goto unsupportedTrap;
+        uint8_t drawn[8];
+        if(!InvertRegion8::draw(pixels,bytes,read16(map+4)&0x3fff,map+6,port+16,*vh+2,
+              s_regionWorkspace.expanded,size,drawn))goto unsupportedTrap;
+        if(window && read16(drawn)!=read16(drawn+4) && read16(drawn+2)!=read16(drawn+6))
+            markDirtyBounds(int16_t(read16(drawn))-int16_t(read16(map+6)),
+                            int16_t(read16(drawn+2))-int16_t(read16(map+8)),
+                            int16_t(read16(drawn+4))-int16_t(read16(map+6)),
+                            int16_t(read16(drawn+6))-int16_t(read16(map+8)));
+        regs[0]=0;return 5;
     }
     if(trap==0xa8dc) {                       // CopyRgn(source, destination)
         MacHeap::Handle destination=(MacHeap::Handle)read32(userStack);

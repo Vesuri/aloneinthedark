@@ -16,8 +16,8 @@ required.
   [walkthrough](https://gamefaqs.gamespot.com/pc/564567-alone-in-the-dark-1992/faqs/1768).
   Implement every new trap and path it finds. Owner-authorized test cheats may
   bypass gameplay obstacles; record each bypass and its coverage limits.
-  Implement and verify the reached maze-lamp region path: oval recording,
-  XOR/difference, complex clipping and inversion; then continue to the ending.
+  Implement `MapRgn`, reached when saving with the maze lamp active, and verify
+  the complete lamp/save pixels against the Mac; then continue to the ending.
 
   *Done when* the game can be finished on the Amiga with no loud stop.
 - **M6.2 State-keyed fidelity set.** Frame compares for representative rooms,

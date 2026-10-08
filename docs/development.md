@@ -7683,3 +7683,34 @@ real stop is `FrameOval` at (Dark, $4096); the lamp also calls `XorRgn`,
 `DiffRgn`, `SetClip` and `InvertRgn`. Complex native copying and the complete
 lamp path remain unverified until those services run. Original oval and
 lamp-region fixtures are retained locally in `tmp/m6/play/mac/`.
+
+
+## M6 maze lamp rendering — 2026-10-08
+
+The reached lamp path now implements circular `FrameOval` recording, `XorRgn`,
+`DiffRgn`, `SetClip` and indexed `InvertRgn`. Boolean operations sweep encoded
+region transitions without a framebuffer shadow. CopyBits intersects complex
+clip regions with any explicit mask before using its existing span copier.
+Window clips become owned handles on first SetClip and are disposed with the
+window; no large fixed per-window buffers are added. Geometry staging remains
+off the supervisor stack. Non-circular FrameOval recording remains a named
+stop: the captured 51×37 Mac ellipse differs from a pixel-centre equation, so
+that approximation is deliberately not used.
+
+`tools/check_region_ops.py --reference tmp/m6/play/mac` passes 300 independently
+rasterized Boolean cases, 100 clipped inversion cases, invalid-stream checks,
+ten original-Mac circle fixtures (diameters 1–100) and original lamp XOR and
+difference masks. The ordinary host suite runs the checks without local
+reference captures. Indexed inversion complements the pixel index, as specified
+in [Inside Macintosh](https://dev.os9.ca/techpubs/mac/QuickDraw/QuickDraw-59.html).
+
+Native `waypoints-020v` reaches SetClip after the new region calculations; its
+364-byte circle matches the translated original 50-pixel fixture exactly.
+`waypoints-020w` passes ordinary lamp Use, 600 idle ticks and walking (checkpoints
+60–64), with visible circular illumination and no lamp-path loud stop. The
+build passes no-float and probe-symbol audits. Saving then reaches missing
+`MapRgn` `$A8FB` at (Dan1, $37C0), in the thumbnail path. That save did not
+complete. The pre-lamp ordinary checkpoint `save-dark-maze-entry` remains the
+replay boundary. Full state-matched lamp pixels, Save completion and subsequent
+maze traversal remain open. Preliminary debugger captures of Mac screen memory
+used the wrong address translation and are not pixel-parity evidence.
