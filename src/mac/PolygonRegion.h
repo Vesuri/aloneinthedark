@@ -58,6 +58,9 @@ inline bool encode(const uint8_t* polygon,uint32_t bytes,uint8_t* out,
         // Original steep positive edges advance before the first scanline;
         // shallow/diagonal negative edges use the preceding pixel boundary.
         if(dx>0 && dx<dy)start+=slope;
+        // A descending shallow edge owns an exact boundary on the next row,
+        // as in Line8. Keep the fractional bias through subsequent advances.
+        if(dx<0 && -dx>dy)--start;
         if(dx<0 && -dx>=dy)start-=65536;
         edges[count++]={x0,y0,y1,int16_t(dx<0?-1:1),int32_t(start>>16),start&65535,slope};
     }

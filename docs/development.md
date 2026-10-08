@@ -8278,3 +8278,53 @@ no exploratory hooks) also exits zero and passes `check_death_route.py`.
 `death020-final-status`, `death020-final-gdb.log` and
 `death020-final-checked.log` retain this independent confirmation of the final
 controller and observer. Build no-float and probe-symbol audits pass.
+
+
+## M6.2 pirate combat fidelity and polygon ties — 2026-10-08
+
+The original Mac created a normal save of the pirate encounter (floor 3,
+room 2, camera 5). Both platforms loaded its unchanged data/resource forks
+through Command-O and Return. Health 30,000 is a fixture-only survival aid;
+no attack, movement or rendering instructions were replaced. The data fork's
+SHA-256 is `350c74e1986443aecf116d39d6c94d4b6e692bcb16d172f3286f3d4ad1cac207`.
+A rejected preparation run supplied raw Finder metadata in an AFI1 sidecar;
+omitting that optional invalid companion restored normal startup. This was
+fixture preparation, not a game failure.
+
+Capture at byte-checked `(Dark, $5658)` pairs hero 1/body 44 at (350,0,1425),
+beta 508, animation 4/frame 0 with pirate 149/body 150 at (-1093,0,2728),
+beta 100, animation 108/frame 2. The other active room objects 137, 138, 139,
+140, 148 and 142 also have matching identity, body, position, angles, floor,
+room, animation, keyframe and track. Cached MAME screen pixels lagged the CPU
+state; direct NuBus VRAM capture through `tools/mame_mac_frame.lua` supplies
+coherent pixels. The preceding all-black load frame is explicitly excluded.
+
+The rendered frame initially differed at eight pixels on an occlusion edge.
+Five naturally reached FramePoly/CloseRgn pairs were captured at byte-checked
+`(Dark, $33EC)` / `(Dark, $33F0)` and return `$33F2`. Four matched the production
+encoder exactly. The remaining polygon has a descending 3:1 edge; the original
+region owns the exact boundary on the next scanline, while the port rounded
+it a pixel inward. Retaining a one-unit fractional bias for descending shallow
+edges fixes the tie (the same convention already used by Line8). Diagonal
+and other edge branches retain their existing behavior.
+
+A clean `FULLPLAY=1 INTROSKIP=1 PROBES=` build passes both link audits and the
+same fixed `a4000-030-reference` replay with audio logic enabled. The corrected
+viewport matches all 64,000 original RGB pixels exactly, with 99 reference
+colours and all eight active room actor states checked. The observed combat
+continues through 1,200 released-control ticks, damage and knockback to a
+normal checkpoint without a loud stop. This is one exact combat pose, not a
+claim of matching every intermediate attack frame or equal combat timing.
+
+The maintained polygon checker now includes a synthetic descending 3:1 tie
+fixture. Its existing 11 original completed regions, byte checks, recording
+state, pixel isolation and atomic failures still pass; all five new natural
+polygon pairs also match. The viewport checker accepts explicit RGB captures
+and additional required active actor slots. Negative checks reject the old
+eight-pixel discrepancy and a one-unit pirate-angle mutation.
+
+Evidence is local in `tmp/m6/fidelity/{combat-save,combat-polys,combat-mac-vram,
+combat-native,combat-native-fixed}` and `combat-checked.log`; native runs are
+`waypoints-020aq` and `waypoints-020ar` (historical names; both logs specify
+fixed 68030). Original files and captures remain untracked. Representative
+mansion-room coverage remains open under M6.2.

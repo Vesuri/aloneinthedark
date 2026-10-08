@@ -9,9 +9,10 @@ from check_video_transfer import native as display_transfer
 FIELDS = {'actor': 0, 'body': 2, 'x': 28, 'y': 30, 'z': 32,
           'alpha': 40, 'beta': 42, 'gamma': 44, 'floor': 46, 'room': 48, 'animation': 62, 'keyframe': 74, 'track': 82}
 
-def actor_state(data):
+def actor_state(data, slot=1):
     require(len(data) == 75616, 'A5 world capture extent')
-    base = len(data)-0xb292+160
+    require(0 <= slot < 50, 'actor slot must be 0..49')
+    base = len(data)-0xb292+160*slot
     state = {name: struct.unpack_from('>h', data, base+offset)[0]
              for name, offset in FIELDS.items()}
     state['camera'] = struct.unpack_from('>h', data, len(data)-0xcd70)[0]
@@ -28,10 +29,20 @@ def check(args):
     for item in args.expect:
         key, value = item.split('=', 1)
         require(key in original and original[key] == int(value), 'expected state '+item)
+    for slot in getattr(args, 'actor_slot', []):
+        mac_actor = actor_state(args.mac_world.read_bytes(), slot)
+        amiga_actor = actor_state((args.native/f'world-{args.sequence}.bin').read_bytes(), slot)
+        require(mac_actor['actor'] >= 0, f'expected active actor in slot {slot}')
+        require(mac_actor == amiga_actor,
+                f'actor slot {slot} mismatch: Mac={mac_actor}, Amiga={amiga_actor}')
     mac = args.mac_pixels.read_bytes()
-    require(len(mac) == 640*480*4, 'original BGRA screen extent')
-    mac_rgb = bytes(channel for i in range(0,len(mac),4)
-                    for channel in (mac[i+2],mac[i+1],mac[i]))
+    if getattr(args, 'mac_pixel_format', 'bgra') == 'rgb':
+        require(len(mac) == 640*480*3, 'original RGB screen extent')
+        mac_rgb = mac
+    else:
+        require(len(mac) == 640*480*4, 'original BGRA screen extent')
+        mac_rgb = bytes(channel for i in range(0,len(mac),4)
+                        for channel in (mac[i+2],mac[i+1],mac[i]))
     indices = (args.native/f'screen-{args.sequence}.bin').read_bytes()
     table = (args.native/f'clut-{args.sequence}.bin').read_bytes()
     amiga = rgb(indices, table, display_transfer()[::256])
@@ -63,6 +74,9 @@ if __name__ == '__main__':
     p.add_argument('--mac-pixels', type=Path, required=True)
     p.add_argument('--expect', action='append', required=True, metavar='FIELD=VALUE')
     p.add_argument('--scanout', type=Path)
+    p.add_argument('--mac-pixel-format', choices=('bgra', 'rgb'), default='bgra')
+    p.add_argument('--actor-slot', type=int, action='append', default=[],
+                   help='Also require this active actor slot to match, including identity and pose')
     p.add_argument('--minimum-colors', type=int, default=33,
                    help='Positive reference colour bound; default 33 for rooms, measured lower bound for sparse UI')
     try:

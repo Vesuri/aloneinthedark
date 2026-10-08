@@ -12,7 +12,7 @@ required.
 ## M6 Completion
 
 - **M6.2 State-keyed fidelity set.** Frame compares for remaining representative
-  mansion rooms and fights.
+  mansion rooms.
 
   *Done when* all of them pass.
 - **M6.3 Stairs check.**

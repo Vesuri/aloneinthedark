@@ -54,6 +54,23 @@ int main() {
             struct.pack('>hh',y,x) for x,y in [(-10,-10),(10,-10),(10,10),(-10,10),(-10,-10)])
         if encode(rectangle)!=struct.pack('>5h',10,-10,-10,10,10):
             raise ValueError('signed rectangle')
+        # Synthetic 3:1 descending edge: the exact pixel boundary belongs to
+        # the next scanline, including after each fractional accumulator step.
+        points=[(30,0),(0,10),(0,0),(30,0)]
+        triangle=struct.pack('>5h',26,0,0,10,30)+b''.join(
+            struct.pack('>hh',y,x) for x,y in points)
+        transitions=[]
+        previous=set()
+        for y in range(11):
+            current={0,30-3*y} if y<10 else set()
+            changes=sorted(previous ^ current)
+            if changes:transitions.extend([y,*changes,32767])
+            previous=current
+        transitions.append(32767)
+        expected=struct.pack('>5h',10+2*len(transitions),0,0,10,30)+struct.pack(
+            '>'+str(len(transitions))+'h',*transitions)
+        if encode(triangle)!=expected:
+            raise ValueError('descending shallow edge boundary ownership')
         if reference is None:return
         text=reference.read_text()
         if status!=0 or text.count('COMPLETE original polygon region recording')!=1 or text.count('COMPLETE original region fixtures count=10')!=1 or text.count('Exited via the debugger')!=1 or re.search(r'FAIL|LUA ERROR|TIMEOUT|Timed out',text):
