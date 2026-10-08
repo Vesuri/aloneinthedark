@@ -7912,8 +7912,14 @@ Exact preview timing observes the unchanged angle-decrement instruction at
 
 The native improvement is 46.0%, or 31.5% less time per update. These measure
 steady preview redraws, not independent menu-opening or key-response latency.
-Both native 640x480 fixed-angle screens (307,200 index bytes) and complete
-2,056-byte CLUTs agree byte-for-byte. The optimized profile has 265 samples:
+A later recheck of the retained native 640x480 angle-zero captures finds
+186 differing index bytes, all inside the game viewport (x294–410, y186–273);
+the complete 2,056-byte CLUTs match. The earlier claim of identical screens
+is withdrawn. The helper overwrites each capture on repeated angle-zero
+visits; angle alone does not establish equal complete drawing state. Whether
+these differences reflect capture phase or rendering remains unresolved.
+The timing counts above reproduce from the retained logs.
+The optimized profile has 265 samples:
 CopyBits now accounts for 20.0%, C2P 10.6%, and original Dan2 code 16.2%.
 The old general-dispatch PtInRect bottleneck is removed; remaining time is
 spread across copying, original per-pixel work and shared trap services.
