@@ -15,6 +15,8 @@ help:
 	@echo
 	@echo "  make todo                    what is open (docs/open-work.md + a live marker sweep)"
 	@echo "  make amiga                   build amiga/out/Alone.exe (needs . amiga/env.sh)"
+	@echo "  make release                 clean production build and deterministic LHA"
+	@echo "  make release-check           host/native checks, repeat builds and archive audit"
 	@echo "  make extract-original-data   unpack ARCHIVE=$(ARCHIVE) into $(RUNTIME_DATA)"
 	@echo "  make segments                dump the CODE resources into $(SEGMENTS)"
 	@echo "  make m68k-sweep              68020-only instructions on reachable paths"
@@ -180,3 +182,9 @@ installer-amiga-test:
 	@python3 tools/install-data/test_amiga.py
 slave:
 	@$(MAKE) -C whdload
+
+.PHONY: release release-check
+release:
+	@cd . && . amiga/env.sh && python3 tools/release_check.py --package-only
+release-check:
+	@cd . && . amiga/env.sh && python3 tools/release_check.py

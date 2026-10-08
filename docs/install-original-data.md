@@ -1,5 +1,12 @@
 # Original-data extraction
 
+For the Amiga release, run `Install` from the release archive. The bundled
+`AitdInstallData` helper reads this archive directly, checks the known original
+payload and verifies all 74 output files. It needs neither `unar`, `hfsutils`,
+Python nor xadmaster on the Amiga. Its source, bounds, license and native tests
+are documented in [tools/install-data](../tools/install-data/README.md).
+The following host workflow is the independent development/reference extractor.
+
 The port reads the original files; nothing from the release is embedded in the
 executable or the repository. The known release is `AloneInTheDark.img_.sit`
 (sha256 `92a5c1f9…6352db2`), nested four deep:

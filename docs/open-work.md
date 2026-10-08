@@ -9,14 +9,6 @@ design.md §5.
 Each item gives the **goal**, then the scope, then *done when*: the evidence
 required.
 
-## M7 Release
-
-- **M7.3 Packaging and 1.0:**
-  - a deterministic LHA;
-  - `make release-check`;
-  - README requirements from measured numbers;
-  - VERSION 1.0.
-
 ## After M6: Reported stair bug
 
 - **MAC.1 Investigate the game's return-to-attic stair bug**, using

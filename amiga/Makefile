@@ -750,6 +750,7 @@ $(OUT).exe: $(OUT).elf
 	  echo "error: the AmigaOS \$$VER: string is missing from $@ or disagrees with VERSION."; \
 	  echo "       See src/platform/amiga/version.s (SHF_GNU_RETAIN)."; \
 	  $(RM) $@; exit 1; }
+	@python3 ../tools/build_receipt.py "$@" '$(EXTRA_DEFINES)' '$(PROBES)'
 
 $(OUT).elf: $(OBJECTS)
 	$(info Linking $@)

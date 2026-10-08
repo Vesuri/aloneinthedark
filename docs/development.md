@@ -8873,3 +8873,49 @@ whd-load-save}.log`. Successful save/reload fixtures are
 Boot-only, executable-load-only and orderly-quit slave modes pass separately.
 These are WHDLoad integration checks, not a second full-game playthrough;
 full-game acceptance and its limits remain the M6 evidence above.
+
+### M7.3 release 1.0 and completion audit — 2026-10-08
+
+`make release-check` passes with VERSION 1.0. It runs the full host suite and
+original-data helper tests, clean-builds the production executable twice,
+checks native original-main startup and WHDLoad startup/binding, and packages
+the release twice. Production feature receipts bind the executable hash to
+its build flags; diagnostic input, startup skips and instrumentation are
+rejected. The ordinary floating-point and retained-probe audits also pass.
+The final executable SHA-256 is
+`bb6b1cdca42cc0b19367ba980aa55d49954e5eb2c606fc619df49a7f208757ce`.
+
+The Vette-derived packager produces deterministic level-zero LH5 headers,
+fixed timestamps and sorted members. The independent Lhasa decoder verifies
+all payload lengths and CRCs. Exact member allowlisting, source/build byte
+comparisons, original-file hashes, version strings and icon checks pass.
+Negative cases reject corrupted header checksums, corrupted payload CRCs,
+truncation, extra members, diagnostic flags and stale executable receipts.
+Two independent archives are byte-identical:
+
+- `dist/AloneInTheDark-1.0.lha`: 254,152 bytes.
+- SHA-256: `c11fcd3e56fe35ec22242342f493da99ea82b8cec8f40489c6cbc2ed72c493ec`.
+- Drawer: `Alone in the Dark Install`, with its drawer icon.
+- Ten contents: `Alone`, `AloneInTheDark.slave`, `AloneInTheDark.inf`,
+  `overlay.rsrc`, `AitdInstallData`, `Install`, `Install.info`, `ReadMe`,
+  `ReadMe.info`, `LICENSE.LGPL.txt`.
+
+The real Commodore Installer 43.3 also passes fresh installation and in-place
+update **from this exact archive**, on the native 68030 emulator with 2 MiB
+Chip and 8 MiB Fast RAM. The fixture supplies requester answers but retains
+real helper execution, verification, copying and icon.library parsing. All
+74 original files match their hashes; production executable/slave/overlay
+bytes match the archive; the configured icon passes native validation;
+updates preserve the existing saved game and unrelated drawer; scratch
+files are removed. No test-only slave is substituted in these archive tests.
+Commands are `tools/install-data/test_installer_script.py --fresh
+--release=dist/AloneInTheDark-1.0.lha` and the same without `--fresh`.
+The earlier copy-only installer fixture remains available for isolated work.
+
+Completion evidence is `tmp/m7/release-check-final.log`,
+`tmp/release-check/{host-tests,build-0,build-1,native-boot}.log`,
+`tmp/m7/release-installer-{fresh,update}.log` and the preceding M7.1/M7.2
+sections. The README now documents actual installation, measured memory/stack
+requirements, controls, build tools and release commands, replacing stale
+claims that M4/M1 acceptance remains open. M7 is complete; MAC.1 and GLITCH.1
+remain separate open work. Macintosh.js was not run.

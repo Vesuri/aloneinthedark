@@ -6,6 +6,7 @@ game archive. Only the welcome/requester/message/exit forms are replaced; actual
 helper execution, error handling and copy operations use release/Install.
 """
 import os
+import platform
 from pathlib import Path
 import shutil
 import subprocess
@@ -44,6 +45,7 @@ def main():
     fresh = '--fresh' in sys.argv
     remove = '--remove' in sys.argv
     reinstall = '--reinstall' in sys.argv
+    release_archive=next((Path(a.split("=",1)[1]).resolve() for a in sys.argv[1:] if a.startswith("--release=")),None)
     install_data = fresh or remove or reinstall
     build=ROOT/"build/install-data"
     subprocess.run(["make","-C",str(ROOT/"tools/install-data"),"all","amiga"],check=True)
@@ -83,7 +85,16 @@ def main():
         (boot/"devs/Kickstarts").mkdir(parents=True)
         for source in (SHARE/"Kickstarts/kick40063.A600",SHARE/"Kickstarts/kick40063.A600.RTB"):
             shutil.copyfile(source,boot/"devs/Kickstarts"/source.name)
-        script=(ROOT/"release/Install").read_text()
+        if release_archive:
+            unpacked=base/'unpacked';unpacked.mkdir()
+            subprocess.run(['lha','xq',str(release_archive)],cwd=unpacked,check=True)
+            source=unpacked/'Alone in the Dark Install'
+            for entry in source.iterdir():
+                assert entry.is_file(), 'Unexpected release subdirectory'
+                shutil.copyfile(entry,boot/entry.name)
+            script=(boot/'Install').read_text()
+        else:
+            script=(ROOT/"release/Install").read_text()
         # Installer detects welcome syntactically. Omitting it would cause an
         # automatic startup requester; retain it in an unexecuted branch.
         script=replace_form(script,"(welcome)",'(if 0 (welcome))')
@@ -105,8 +116,10 @@ def main():
         (boot/"s/startup-sequence").write_text('CD DH0:\nStack 16384\nIconTest\nDF0:C/Assign C: DF0:C\nDF0:C/Assign LIBS: DF0:Libs\nDF0:C/Assign DEVS: DH0:devs\nPath DH0: ADD\nC:LoadWB\nInstaller SCRIPT DH0:Install APPNAME "Alone in the Dark" MINUSER NOVICE DEFUSER NOVICE LOGFILE DH2:installer.log NOPRETEND >DH2:installer-console.log\n'
             + f'IconTest\nIf EXISTS "{temp_work}"\nEcho leftover >DH2:leftover\nEndIf\nEcho done >DH2:finished\n')
         with (ROOT/"tmp/installer-script-emulator.log").open("w") as log:
-            emu=subprocess.Popen(["fs-uae","--amiga_model=A4000","--cpu=68030","--chip_memory=2048","--fast_memory=8192",
-                "--uae_cpu_model=68030","--uae_cpu_speed=max","--uae_cpu_24bit_addressing=false","--uae_z3mem_size=16",
+            arm=SHARE/'fs-uae-arm/fs-uae'
+            emulator=os.environ.get('FSUAE',str(arm) if platform.machine()=='arm64' and arm.exists() else 'fs-uae')
+            emu=subprocess.Popen([emulator,"--amiga_model=A4000","--cpu=68030","--chip_memory=2048","--fast_memory=8192",
+                "--uae_cpu_model=68030","--uae_cpu_speed=max","--uae_cpu_24bit_addressing=false","--uae_z3mem_size="+("16" if temp_path in ("RAM:","T:") else "0"),
                 "--kickstart_file="+KICKSTART,"--hard_drive_0="+str(boot),
                 "--hard_drive_0_priority=10",
                 "--floppy_drive_0="+str(WORKBENCH),
@@ -155,7 +168,7 @@ def main():
                 assert not list((base/"scratch").glob(".aitd-install-*"))
                 assert not list((base/"scratch").glob(".aitd-data-*"))
                 assert not list((dest/"data").glob(".aitd-publish-*"))
-                print(f"PASS: native Installer fresh={fresh} remove={remove} reinstall={reinstall}; conditional prompts, data, saves, release files and icons verified")
+                print(f"PASS: native Installer fresh={fresh} remove={remove} reinstall={reinstall} release={bool(release_archive)}; conditional prompts, data, saves, release files and icons verified")
             finally:
                 emu.terminate()
                 try: emu.wait(timeout=5)

@@ -37,7 +37,7 @@ remains deferred independently of M2.
 - [Window titles](window-title.md): hidden title ownership, measured advances and paired effects.
 - [Open work](open-work.md): the ordered work queue.
 
-The Vette! repository (`~/Documents/Vette/docs`) holds the complete versions of
+The Vette! repository (`~/Projects/Vette/docs`) holds the complete versions of
 material this port inherits: frame pacing, WHDLoad, installer design, Macintosh
 display model and the regression approach.
 
