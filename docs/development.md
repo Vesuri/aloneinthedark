@@ -8515,3 +8515,29 @@ Evidence and an asserting comparison script are in
 `tmp/menu-enemy-profile/focus-check/`; the bounded native run is
 `tmp/m6/native/waypoints-020aw/`, ending with successful detach and runner exit
 zero. The previously measured preview update rates remain unchanged.
+
+
+## M6.5 original pause-font capture — 2026-10-08
+
+The live original Mac pause path reaches DrawText at (Dan2, $1222), verified
+against the CODE bytes. It draws `The game is paused!` using Times/plain/36,
+srcOr, black, baseline 81 and pen x13. Unlike the Times14 intro captions,
+this draw targets the actual window: 640x480 indexed screen, stride 640,
+PixMap origin (-160,-150). Native `drawGWorldText` currently only supports
+Times14 in an owned GWorld, so this window draw needs its own reached contract;
+a font-table change alone cannot complete M6.5.
+
+Scratch service fixtures capture all 224 MacRoman glyphs (32–255) at Times36,
+with their original integer advances and unchanged half-pixel pen fraction.
+The maximum measured ink is 36 pixels wide and 33 high. Reconstructing the
+original pause call from those captures reproduces all 307,200 before/after
+buffer bytes exactly and ends at the original pen x307. The asserting local
+check is `python3 tmp/m6/fonts/check-capture.py`; raw 96x96 glyph crops,
+metrics, original ports/PixMap/regions and candidate glyph data are beside it.
+The original Mac was restored to its saved pre-fixture state afterward.
+
+This is extraction evidence only. Bundling the glyphs, implementing the
+reached native window draw, checking original text layout/metrics calls and
+state-matched native pause output remain required, along with any other
+reached visible faces. The first capture attempt wrongly assumed a zero-origin
+GWorld and was rejected; the accepted fixture uses the observed window bounds.
