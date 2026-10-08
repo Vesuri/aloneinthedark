@@ -8109,3 +8109,43 @@ python3 tools/check_inventory_frames.py \
 `tmp/m6/fidelity/inventory-checked.log` contains both passes; the bounded
 observer and preview hooks are `inventory-route.gdb` and
 `inventory-preview.gdb`. Inventory is removed from the unresolved M6.2 list.
+
+
+## M6.2 lower-lobby idle phases — 2026-10-08
+
+The lower-lobby save (engine floor 2/room 2/camera 3) passes twelve exact
+state-and-viewport pairs against original Mac execution. Native actor 1/body
+12 is at (2764,0,-250), angles (0,256,0), idle animation 4, manual track 1.
+The accepted pairs span multiple idle keyframes and interpolation phases;
+each has all 64,000 RGB pixels equal. No rendering change was needed.
+
+`waypoints-020ao` is a fresh FULLPLAY=1, INTROSKIP=1, PROBES= fixed-68030
+run. Its lower-lobby save was staged before boot and loaded with normal
+Amiga-O/Return input. After 1,200 settling ticks, checkpoint 4 and twenty-four
+further 30-tick released-key commands provide native samples. The original
+Mac loads `healthy-lower-lobby.sta`, settles, and uses the authorized position
+shortcut to move X from 2863 to 2764, including the actor bounds and world
+object. Neither side's animation/timers are changed. The Mac retains health
+10 and an extra inventory item 41, versus native health 11; this establishes
+visible room/actor fidelity, not complete save-state identity.
+
+A first sweep against checkpoint 4 got within 56 pixels but was not accepted.
+A subsequent independent 400-sample Mac sweep saved 156 distinct frames and
+found exact matches for native checkpoints 4,6,7,9,11,12,14,17,21,22,23,27.
+`lobby-matches.txt` records the reference frame mapping and `lobby-checked.log`
+records all twelve passes through `tools/check_fullplay_frame.py`. For example:
+
+```sh
+python3 tools/check_fullplay_frame.py --label lower-lobby \
+  --native tmp/m6/native/waypoints-020ao --sequence 4 \
+  --mac-world tmp/m6/fidelity/lobby-sweep/mac-56-world.bin \
+  --mac-pixels tmp/m6/fidelity/lobby-sweep/mac-56-bgra.bin \
+  --expect floor=2 --expect room=2 --expect camera=3 --expect animation=4
+```
+
+The older `stairs-lobby-entry-final`/`waypoints-020aj` checkpoint 67 pair is
+excluded: its actor/camera fields agree but the original screenshot still
+shows the preceding scene. State agreement alone does not establish display
+publication. These new comparisons check the logical viewport; the separate
+maze and ending cases provide physical Amiga scanout evidence. Other mansion
+rooms, fights, death and restart remain open under M6.2.
