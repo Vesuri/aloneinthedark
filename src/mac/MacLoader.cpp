@@ -5860,14 +5860,16 @@ static bool lineGWorld(GWorldSlot& w,int16_t horizontal,int16_t vertical)
     const uint8_t* vis=*w.handles[3];const uint8_t* clip=*w.handles[4];
     if(read16(vis)!=10 || read16(clip)!=10)return false;
     const uint16_t penHeight=read16(w.port+52),penWidth=read16(w.port+54);
-    if(penHeight==2 && penWidth==2) {
-        // Measured Dan2+$3FEC particle dot: zero displacement, solid patCopy.
+    if(penHeight!=1 || penWidth!=1) {
+        // Zero-displacement solid dots use the pen rectangle: Dan2+$3FEC
+        // and Dark3+$346A (library particles, including larger pens).
         // General thick strokes and signed pen-rectangle overflow stay loud.
         const int16_t x=int16_t(read16(w.port+50)),y=int16_t(read16(w.port+48));
-        if(horizontal!=x || vertical!=y || x>32765 || y>32765)return false;
+        if(horizontal!=x || vertical!=y || penWidth>32767 || penHeight>32767
+           || int32_t(x)+penWidth>32767 || int32_t(y)+penHeight>32767)return false;
         uint8_t rectangle[8],drawn[8];
         write16(rectangle,uint16_t(y));write16(rectangle+2,uint16_t(x));
-        write16(rectangle+4,uint16_t(y+2));write16(rectangle+6,uint16_t(x+2));
+        write16(rectangle+4,uint16_t(y+penHeight));write16(rectangle+6,uint16_t(x+penWidth));
         if(!FillRect8::solid(w.pixels,w.owner->handleSize(w.handles[1]),
             read16(w.pixMap+4)&0x3fff,w.pixMap+6,w.port+16,vis+2,clip+2,
             rectangle,uint8_t(read32(w.port+80)),drawn))return false;
