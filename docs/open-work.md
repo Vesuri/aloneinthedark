@@ -41,6 +41,21 @@ required.
   *Done when* every reached visible Mac-font draw uses the original bitmap
   artwork and state-matched text captures agree with MAME.
 
+## After M6: Macintosh.js stair bug
+
+- **MAC.1 Reproduce and fix [macintosh.js issue #103](https://github.com/felixrieseberg/macintosh.js/issues/103).**
+  Start after M6 is complete. The report describes the floppy Mac version
+  returning to the attic instead of descending after collecting five items,
+  on an emulated Quadra 900 / 68040 at 25 MHz with Mac OS 8.1.
+  Reproduce in Macintosh.js, compare with the original Mac and Amiga stairs
+  evidence from M6.3, identify the cause, and implement a verified fix in the
+  responsible component. Record exact versions, settings and reproduction
+  steps; do not assume this is the same failure as any Amiga stairs issue.
+
+  *Done when* the reproduced failure has a regression check and the fixed
+  build descends successfully; if it cannot be reproduced, record the tested
+  configurations and the missing evidence without claiming a fix.
+
 ## M7 Release
 
 - **M7.1 Installer:** Vette's `install-data` extractor, an Installer script and
