@@ -1,6 +1,10 @@
 #include <proto/dos.h>
 #include <dos/dos.h>
 #include "ResourceStage.h"
+#include "FileAccess.h"
+extern "C" {
+#include <string.h>
+}
 #include "SystemWindow.h"
 #if defined(AITD_FILE_WRITE_PROBE) || defined(AITD_RESOURCE_EXIT_PROBE)
 extern "C" { volatile uint32_t g_resourceStageFault=0; }
@@ -32,6 +36,18 @@ struct StageRequest { ResourceStage* stage;uint32_t size,offset,actual;const uin
 int32_t ResourceStage::begin(void* context,uint32_t size) {
     if(!context || size>0x7fffffffUL)return -50;
     auto& s=*(ResourceStage*)context;if(!s.path_[0] || s.active())return recoveryRequired;
+    if(FileAccess::resloadActive()) {
+        if(size>2UL*1024*1024)return recoveryRequired;
+        uint32_t previousSize=0;bool exists=false,locked=false;
+        int32_t error=FileAccess::resloadStat(s.temporary_,previousSize,exists,locked);
+        if(error || exists)return error ? error : recoveryRequired;
+        error=FileAccess::resloadStat(s.backup_,previousSize,exists,locked);
+        if(error || exists)return error ? error : recoveryRequired;
+        error=FileAccess::resloadStat(s.path_,previousSize,s.previous_,locked);
+        if(error || locked)return error ? error : -45;
+        s.resloadBytes_=new uint8_t[size?size:1];if(!s.resloadBytes_)return -108;
+        s.handle_=1;s.owned_=true;s.size_=size;s.written_=0;s.poisoned_=false;return 0;
+    }
     StageRequest r={&s,size,0,0,0,false};return aitdSystemWindow(beginInside,&r);
 }
 int32_t ResourceStage::beginInside(void* context) {
@@ -46,6 +62,7 @@ int32_t ResourceStage::write(void* context,uint32_t offset,const uint8_t* bytes,
     actual=0;if(!context || (!bytes && size) || size>65536)return -50;
     auto& s=*(ResourceStage*)context;
     if(!s.handle_ || !s.owned_ || s.failed_ || s.poisoned_ || offset!=s.written_ || offset>s.size_ || size>s.size_-offset)return -50;
+    if(s.resloadBytes_) { if(size)memcpy(s.resloadBytes_+offset,bytes,size);s.written_+=size;actual=size;return 0; }
     StageRequest r={&s,size,offset,0,bytes,false};int32_t error=aitdSystemWindow(writeInside,&r);actual=r.actual;return error;
 }
 int32_t ResourceStage::writeInside(void* context) {
@@ -54,7 +71,16 @@ int32_t ResourceStage::writeInside(void* context) {
     if(r.actual!=r.size || actual<0) { s.poisoned_=true;return -36; }return 0;
 }
 int32_t ResourceStage::finish(void* context,bool publish) {
-    if(!context)return -50;StageRequest r={(ResourceStage*)context,0,0,0,0,publish};return aitdSystemWindow(finishInside,&r);
+    if(!context)return -50;
+    auto& s=*(ResourceStage*)context;
+    if(s.resloadBytes_) {
+        if(publish) {
+            if(s.poisoned_ || s.written_!=s.size_)return -36;
+            int32_t result=FileAccess::resloadReplace(s.path_,s.resloadBytes_,s.size_);if(result)return result;
+        }
+        delete[] s.resloadBytes_;s.resloadBytes_=0;s.handle_=0;s.owned_=false;s.poisoned_=false;return 0;
+    }
+    StageRequest r={(ResourceStage*)context,0,0,0,0,publish};return aitdSystemWindow(finishInside,&r);
 }
 int32_t ResourceStage::finishInside(void* context) {
     auto& r=*(StageRequest*)context;auto& s=*r.stage;

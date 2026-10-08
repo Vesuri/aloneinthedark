@@ -4,19 +4,21 @@
 #include <cstdlib>
 #include <vector>
 #include <algorithm>
+#include <map>
 #include "../src/mac/FileWriteBuffer.h"
 static int allocations=0,failAfter=-1;
+static std::map<uint8_t*,uint32_t> sizes;
 static uint8_t* allocate(uint32_t size) {
-    assert(size==65536);
+    assert(size && size<=2*1024*1024);
     if(failAfter==0)return nullptr;
     if(failAfter>0)--failAfter;
-    ++allocations;return new uint8_t[size];
+    ++allocations;auto* p=new uint8_t[size];sizes[p]=size;return p;
 }
-static void release(uint8_t* p,uint32_t size) { assert(size==65536 && allocations>0);--allocations;delete[] p; }
+static void release(uint8_t* p,uint32_t size) { assert(allocations>0 && sizes.at(p)==size);sizes.erase(p);--allocations;delete[] p; }
 struct Disk {
     std::vector<uint8_t> bytes;
     unsigned reads=0,writes=0,resizes=0;
-    bool shortRead=false,failRead=false,shortWrite=false,failResize=false;
+    bool shortRead=false,failRead=false,shortWrite=false,failResize=false,failReplace=false;
 };
 static int32_t readDisk(void* c,uint32_t off,uint8_t* dest,uint32_t n,uint32_t& actual) {
     auto& d=*(Disk*)c;assert(n<=65536 && off+n<=d.bytes.size());++d.reads;
@@ -30,6 +32,11 @@ static int32_t writeDisk(void* c,uint32_t off,const uint8_t* src,uint32_t n,uint
 static int32_t resizeDisk(void* c,uint32_t size) {
     auto& d=*(Disk*)c;++d.resizes;if(d.failResize)return -36;
     d.bytes.resize(size,0xdd);return 0;
+}
+static int32_t replaceDisk(void* c,const uint8_t* bytes,uint32_t size) {
+    auto& d=*(Disk*)c;
+    if(d.failReplace)return -36;
+    ++d.writes;d.bytes.assign(bytes,bytes+size);return 0;
 }
 static std::vector<uint8_t> pattern(uint32_t n) {
     std::vector<uint8_t> r(n);for(uint32_t i=0;i<n;++i)r[i]=(i*37+(i>>8))&255;return r;
@@ -87,11 +94,26 @@ int main() {
             if(count) { if(off+count>expected.size())expected.resize(off+count,0);std::copy(data.begin(),data.begin()+count,expected.begin()+off); }
         }
         check(b,expected);
-        if(i%11==0) { assert(b.flush(writeDisk,resizeDisk,&d)==0 && d.bytes==expected); }
+        if(i%11==0) { assert((i%22 ? b.flush(writeDisk,resizeDisk,&d) : b.flushWhole(replaceDisk,&d))==0 && d.bytes==expected); }
     }
     assert(b.flush(writeDisk,resizeDisk,&d)==0 && d.bytes==expected);
     assert(b.resize(0)==0 && b.dirty());written=d.writes;
     assert(b.flush(writeDisk,resizeDisk,&d)==0 && d.bytes.empty() && d.writes==written && !b.dirty());
     b.clear();assert(allocations==0);
+    // Whole-file publication keeps both backing and dirty overlay on failures.
+    d.bytes=pattern(200003);expected=d.bytes;
+    assert(b.bind(d.bytes.size(),readDisk,&d,allocate,release)==0);
+    assert(b.write(7,data.data(),32,actual)==0);std::copy(data.begin(),data.begin()+32,expected.begin()+7);
+    auto original=d.bytes;failAfter=0;
+    assert(b.flushWhole(replaceDisk,&d)==-108 && b.dirty() && d.bytes==original);
+    failAfter=-1;d.failReplace=true;
+    assert(b.flushWhole(replaceDisk,&d)==-36 && b.dirty() && d.bytes==original);
+    d.failReplace=false;d.shortRead=true;
+    assert(b.flushWhole(replaceDisk,&d)==-36 && b.dirty() && d.bytes==original);
+    d.shortRead=false;check(b,expected);
+    assert(b.flushWhole(replaceDisk,&d)==0 && !b.dirty() && d.bytes==expected && allocations==0);
+    assert(b.resize(17)==0 && b.flushWhole(replaceDisk,&d)==0 && d.bytes.size()==17);
+    assert(b.resize(0)==0 && b.flushWhole(replaceDisk,&d)==0 && d.bytes.empty());
+    b.clear();assert(allocations==0 && sizes.empty());
     puts("PASS file-write-buffer: lazy bounded pages, byte oracle, truncate/regrow, partial errors, retryable flush, capacity/cleanup");
 }

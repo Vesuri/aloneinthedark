@@ -8779,3 +8779,97 @@ The owner supersedes the old unmeasured 64 KiB slave process-stack allowance:
 M7.2 now targets the normal 4 KiB process stack and measures usage. The existing
 Mac execution stack and music stacks are separate allocations and must be
 reported separately. Release packaging and final requirements remain M7.3.
+
+
+### M7 process-stack measurement — 2026-10-08
+
+The game process now targets 4096 bytes: the WHDLoad slave explicitly allocates
+and swaps to that size, Shell diagnostics issue `Stack 4096`, and the Workbench
+launch fixture requests 4096 rather than 65536. No enlarged Shell stack is
+required by the tested path. `STACKPROBE=1` fills unused stack space, records
+high-water usage at shutdown and keeps the process, Mac and audio stacks
+separate. `amiga/regression.sh stack` runs the existing clean-exit/resource
+ledger observer plus a requirement for at least 512 bytes of measured headroom.
+
+On the native 68030 emulator, startup, attic gameplay, preference saving and
+original Cmd-Q exit pass with these process-stack high-water marks:
+
+| Launch | Allocated | Used | Untouched |
+| --- | ---: | ---: | ---: |
+| Shell | 4096 | 2098 | 1998 |
+| Workbench | 4096 | 2094 | 2002 |
+| WHDLoad | 4096 | 2090 | 2006 |
+
+Shell and Workbench also pass the existing empty-ledger, closed-library,
+restored-vector/display/audio and startup-message checks. WHDLoad returns OK
+and its core dump contains a completed stack report. Commands used:
+`DIAG_STACK=4096 GDBSCRIPT=stack.gdb amiga/diag_run.sh 180`, the same command
+with `DIAG_LAUNCH=workbench`, and
+`tools/test_whdload.py --mode quit --check-stack --ticks 6000 --seconds 180`.
+Build flags are `QUITPROBE=1 STACKPROBE=1 INTROSKIP=1`; logs are
+`tmp/m7/{native-stack,workbench-stack,whd-stack}.log`.
+The earlier WHDLoad attempt hit its 1500-field timeout while loading and is
+not counted as a passing run.
+
+The separately allocated 64 KiB Mac execution stack used 11,942–14,094 bytes
+in these runs. That allocation is not the Amiga process-stack requirement;
+reducing it needs coverage of deeper gameplay/menu/intro paths. Audio probes
+use M5Audit's existing 0xa5 marker so its later initialization cannot create a
+false full-stack reading. Audio stacks were unused in some of these short
+runs; they do not establish a new audio-stack sizing requirement. The earlier
+long M5 session's audio-stack measurements remain documented above.
+
+### M7.2 WHDLoad backend and durable saves — 2026-10-08
+
+The Vette-derived `whdload/AloneSlave.s` uses Kickstart 3.1 emulation,
+`EmulLineA`, `Req68020`, a 4 KiB process stack and F10 exit. It reserves
+2 MiB Chip and 6 MiB game Fast RAM plus the Kickstart image. The initial
+8 MiB game reservation did not fit an 8 MiB physical Fast configuration once
+WHDLoad and Kickstart overhead were included; 6 MiB passes the tests below.
+A versioned, four-byte-aligned `AITDWHDR` block receives the resload table
+before execution. No original game code is patched for this binding.
+
+Persistent data streams and runtime resource reads call resload directly.
+Reads remain bounded to 64 KiB and retain the existing cache/EOF behavior.
+Dirty file pages are assembled into a bounded whole-file buffer for one
+SaveFile call; failures leave the dirty overlay available for retry. Resource
+forks and Finder metadata also use SaveFile. Existing write/delete protection
+and orphan recovery evidence are checked before mutation. The Installer
+precreates the game's `Saved Games` and `prefs` drawers.
+
+The unchanged read/seek/EOF/position/cache/CCR byte oracle reaches all 39
+stages on both backends. WHDLoad records zero OS-window entries, six reads,
+262,168 exact bytes and a 65,536-byte maximum request, then closes the retained
+stream and restores Line-A. Native DOS retains its expected ten windows and
+identical read counters. The native 59-stage write/resource fixture also
+passes: 1039 windows, 25 writes, 19 flushes, independent forks, permission and
+mutation-fault cases, exact resource staging and cleanup. Resload ABI and
+whole-file write-buffer host tests pass under address/undefined sanitizers.
+
+The original-menu WHDLoad Save/Load controller writes `SAVE0.ITD` (36,254
+bytes), walks at least 300 units away, loads 33,644 bytes through the original
+load path, verifies the saved coordinates/idle state and quits successfully.
+Its separately stored resource fork is 60,024 bytes and Finder record is 32.
+A fresh emulator/process with `LOADONLY=1`, PRELOAD disabled and only those
+saved files copied from the first run restores the state again without
+rewriting the data fork. Both runs use 2 MiB Chip/8 MiB physical Fast on a
+68030. Save/Load process-stack usage is 2086/4096 bytes; the private Mac stack
+peaks at 14,290/65,536 and the measured song stack at 388/8192.
+
+Reproduction (clean-build whenever flags change):
+
+- `FILEPROBE=1`; `tools/test_whdload.py --mode file-read --ticks 6000 --seconds 180`.
+- `SAVELOAD=1 STACKPROBE=1 M5AUDIT=1 INTROSKIP=1`;
+  `tools/test_whdload.py --mode save-load --check-stack --ticks 18000 --seconds 240`.
+- `LOADONLY=1 STACKPROBE=1 M5AUDIT=1 INTROSKIP=1`; use `--mode load-save`,
+  `--save-source <previous fixture>/game/Saved Games`, `--no-preload` and the
+  same stack/time options.
+- Native `amiga/regression.sh file-write`; `GDBSCRIPT=file_read.gdb
+  amiga/diag_run.sh 180` after preparing the ordinary read fixture.
+
+Logs: `tmp/m7/{whd-file-read,native-file-read,native-file-write,whd-save-load,
+whd-load-save}.log`. Successful save/reload fixtures are
+`tmp/whdload-test-njznv53r` and `tmp/whdload-test-oymn_qth`.
+Boot-only, executable-load-only and orderly-quit slave modes pass separately.
+These are WHDLoad integration checks, not a second full-game playthrough;
+full-game acceptance and its limits remain the M6 evidence above.

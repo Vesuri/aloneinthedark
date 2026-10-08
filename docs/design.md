@@ -147,7 +147,9 @@ subsystem with its design decision and the queue tasks that implement it.
   and leave it untouched for Toolbox traps. The callback trampoline preserves
   the returned CCR while draining callbacks.
 - **Mac stack.** Run the Mac code on its own 64 KB stack, set up with StackSwap
-  or the entry trampoline, not the Shell stack. `CurStackBase` ($908) =
+  or the entry trampoline, not the Shell stack. The Amiga process uses the
+  normal 4 KB stack; measured launch/gameplay/quit paths use about 2.1 KB.
+  The separate Mac stack uses at least 14 KB in those paths. `CurStackBase` ($908) =
   A5 − 75,616, the lowest global, as on the Mac.
 - **Caches.** Implement `$A0BD _vCacheFlush` and `HWPriv` selectors 1 and 3 as
   `CacheClearU()`. CODE 1 then never reaches its privileged `MOVEC CACR`/`CPUSHA`
@@ -729,7 +731,8 @@ definitions supply hidden compatibility metrics. See [Font Manager](font-manager
   StuffIt extractor) against the user's `AloneInTheDark.img_.sit`, a deterministic
   LHA, and a WHDLoad slave adapted from `VetteSlave.s`. The slave needs:
   - `WHDLF_EmulLineA`;
-  - a 64 KB stack;
+  - a measured minimal Amiga process stack, targeting the normal 4 KB default
+    (owner update 2026-10-08; supersedes the unmeasured 64 KB allowance);
   - chunked reads with `resload_LoadFileOffset`;
   - saves through `resload_SaveFile`.
 

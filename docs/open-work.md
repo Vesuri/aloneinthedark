@@ -11,10 +11,6 @@ required.
 
 ## M7 Release
 
-- **M7.2 WHDLoad slave,** from `VetteSlave.s`: EmulLineA, a measured minimal stack (target 4 KB), the
-  resload file backend (chunked reads, saves), with the WHDLoad test modes.
-  Bind the persistent read-stream API/cache to resload rather than DOS; pass the
-  same read/seek/EOF/cache fixture under WHDLoad with zero OS-window entries.
 - **M7.3 Packaging and 1.0:**
   - a deterministic LHA;
   - `make release-check`;

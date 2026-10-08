@@ -107,3 +107,25 @@ int32_t FileWriteBuffer::flush(Writer writer,Resizer resizer,void* context) {
     }
     sourceLimit_=size_;dirty_=false;return 0;
 }
+
+int32_t FileWriteBuffer::flushWhole(Replacer replace,void* context) {
+    if(!reader_ || !replace)return -50;
+    if(!dirty_)return 0;
+    // Same bounded maximum as the sparse write overlay; no partial publication.
+    if(size_>maxPages*pageBytes)return unsupported;
+    uint8_t* assembled=allocate_(size_?size_:1);if(!assembled)return -108;
+    int32_t error=0;
+    for(uint32_t offset=0;offset<size_;) {
+        uint32_t take=size_-offset,actual=0;if(take>pageBytes)take=pageBytes;
+        error=read(offset,assembled+offset,take,actual);
+        if(error || actual!=take) { if(!error)error=-36;break; }
+        offset+=take;
+    }
+    if(!error)error=replace(context,assembled,size_);
+    release_(assembled,size_?size_:1);
+    if(error)return error;
+    for(uint16_t i=0;i<maxPages;++i)if(pages_[i].bytes) {
+        release_(pages_[i].bytes,pageBytes);pages_[i].bytes=0;
+    }
+    sourceLimit_=size_;dirty_=false;return 0;
+}

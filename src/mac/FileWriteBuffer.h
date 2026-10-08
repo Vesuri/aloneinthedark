@@ -21,6 +21,9 @@ public:
     // Caller runs callbacks in its chosen bounded system window. On any failure
     // all dirty state remains available for a retry; success releases the pages.
     int32_t flush(Writer writer,Resizer resizer,void* context);
+    // Backends without resize/rename can publish a fully assembled file once.
+    typedef int32_t (*Replacer)(void*,const uint8_t*,uint32_t);
+    int32_t flushWhole(Replacer replace,void* context);
     uint32_t size() const { return size_; }
     bool dirty() const { return dirty_; }
 private:

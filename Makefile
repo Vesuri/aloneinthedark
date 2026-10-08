@@ -171,10 +171,12 @@ entrypoints-check:
 # Compatibility spelling for the earlier CODE 1-only check.
 startup-lowmem-check: lowmem-check
 
-.PHONY: installer installer-test installer-amiga-test
+.PHONY: installer installer-test installer-amiga-test slave
 installer:
 	@$(MAKE) -C tools/install-data all amiga
 installer-test:
 	@$(MAKE) -C tools/install-data test
 installer-amiga-test:
 	@python3 tools/install-data/test_amiga.py
+slave:
+	@$(MAKE) -C whdload

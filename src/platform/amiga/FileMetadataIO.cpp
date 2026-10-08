@@ -1,6 +1,7 @@
 #include <proto/dos.h>
 #include <dos/dos.h>
 #include "FileMetadataIO.h"
+#include "FileAccess.h"
 #include "SystemWindow.h"
 extern "C" { extern volatile uint32_t g_macTicks; }
 namespace FileAccess {
@@ -47,6 +48,7 @@ static int32_t writeNewMetadata(const char* path,const FileMetadata::Record& rec
     return result;
 }
 int32_t forkSizeRestored(const char* path,uint32_t& size,bool& found) {
+    if(resloadActive()) { bool locked=false;return resloadStat(path,size,found,locked); }
     size=0;BPTR lock=Lock((CONST_STRPTR)path,ACCESS_READ);found=lock!=0;
     if(!lock)return IoErr()==ERROR_OBJECT_NOT_FOUND ? 0 : error(IoErr());
     FileInfoBlock* info=(FileInfoBlock*)AllocDosObject(DOS_FIB,0);
@@ -58,6 +60,14 @@ int32_t forkSizeRestored(const char* path,uint32_t& size,bool& found) {
 int32_t loadMetadataRestored(const char* path,FileMetadata::Record& record,bool& found) {
     char name[192];found=false;
     if(!companion(name,path,".finfo"))return unsupported;
+    if(resloadActive()) {
+        uint8_t bytes[FileMetadata::bytes+1];uint32_t actual=0;
+        int32_t result=whdload.readAt(name,0,bytes,sizeof(bytes),actual);
+        if(result==notFound)return 0;
+        if(result)return result;
+        if(!FileMetadata::decode(bytes,actual,record))return unsupported;
+        found=true;return 0;
+    }
     BPTR file=Open((CONST_STRPTR)name,MODE_OLDFILE);
     if(!file) { LONG why=IoErr();return why==ERROR_OBJECT_NOT_FOUND ? 0 : error(why); }
     uint8_t bytes[FileMetadata::bytes+1];LONG actual=Read(file,bytes,sizeof(bytes));
@@ -90,6 +100,21 @@ static int32_t createOperation(void* context) {
 }
 int32_t createFile(const char* path,const char* parent,bool materializeParent,FileMetadata::Record& record) {
     if(!path || !parent)return -50;
+    if(resloadActive()) {
+        char name[192];uint32_t size=0;bool found=false,locked=false;
+        int32_t result=resloadStat(path,size,found,locked);if(result || found)return result ? result : -48;
+        const char* suffixes[]={".finfo",".rsrc"};
+        for(const char* suffix : suffixes) {
+            if(!companion(name,path,suffix))return unsupported;
+            result=resloadStat(name,size,found,locked);if(result || found)return result ? result : unsupported;
+        }
+        result=resloadReplace(path,0,0);if(result)return result;
+        FileMetadata::Record fresh={};fresh.created=fresh.modified=metadataTime();
+        uint8_t bytes[FileMetadata::bytes];FileMetadata::encode(fresh,bytes);
+        companion(name,path,".finfo");result=resloadReplace(name,bytes,sizeof(bytes));
+        if(result) { if(resloadDelete(path))return unsupported;return result; }
+        record=fresh;return 0;
+    }
     CreateRequest request={path,parent,materializeParent,&record};return aitdSystemWindow(createOperation,&request);
 }
 struct ProtectionRequest { const char* path;bool locked; };
@@ -102,6 +127,7 @@ static int32_t protectionOperation(void* context) {
     if(info)FreeDosObject(DOS_FIB,info);UnLock(lock);return result;
 }
 int32_t fileProtection(const char* path,bool& locked) {
+    if(resloadActive()) { uint32_t size=0;bool found=false;int32_t result=resloadStat(path,size,found,locked);return result ? result : found ? 0 : notFound; }
     ProtectionRequest request={path,false};int32_t result=aitdSystemWindow(protectionOperation,&request);
     if(!result)locked=request.locked;return result;
 }
@@ -126,6 +152,19 @@ static int32_t deleteOperation(void* context) {
     return 0;
 }
 int32_t deleteFile(const char* path,bool resourceIsBase) {
+    if(resloadActive()) {
+        uint32_t size=0;bool found=false,locked=false,deleteLocked=false;
+        int32_t result=resloadStat(path,size,found,locked,&deleteLocked);
+        if(result || !found || locked || deleteLocked)return result ? result : !found ? notFound : -45;
+        result=resloadDelete(path);if(result)return result;
+        char name[192];const char* suffixes[]={resourceIsBase ? ".data" : ".rsrc",".finfo"};
+        for(const char* suffix : suffixes) {
+            if(!companion(name,path,suffix))return unsupported;
+            result=resloadStat(name,size,found,locked);if(result)return unsupported;
+            if(found && resloadDelete(name))return unsupported;
+        }
+        return 0;
+    }
     DeleteRequest request={path,resourceIsBase};return path ? aitdSystemWindow(deleteOperation,&request) : -50;
 }
 struct MetadataRequest { const char* path;const FileMetadata::Record* record; };
@@ -152,6 +191,19 @@ static int32_t storeOperation(void* context) {
 }
 int32_t storeMetadata(const char* path,const FileMetadata::Record& record,bool restored) {
     if(!path)return -50;
+    if(resloadActive()) {
+        char name[192];uint32_t size=0;bool found=false,locked=false;
+        const char* suffixes[]={".finfo.new",".finfo.old"};
+        for(const char* suffix : suffixes) {
+            if(!companion(name,path,suffix))return unsupported;
+            int32_t result=resloadStat(name,size,found,locked);
+            if(result || found)return result ? result : unsupported;
+        }
+        if(!companion(name,path,".finfo"))return unsupported;
+        int32_t result=resloadStat(name,size,found,locked);if(result || locked)return result ? result : -45;
+        uint8_t bytes[FileMetadata::bytes];FileMetadata::encode(record,bytes);
+        return resloadReplace(name,bytes,sizeof(bytes));
+    }
     MetadataRequest request={path,&record};
     return restored ? storeOperation(&request) : aitdSystemWindow(storeOperation,&request);
 }

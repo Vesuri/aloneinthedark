@@ -10,9 +10,10 @@ struct Backend {
     int32_t (*readAt)(const char*,uint32_t,uint8_t*,uint32_t,uint32_t&);
     int32_t (*save)(const char*,const uint8_t*,uint32_t);
 };
-// Persistent DOS fork. Runtime operations enter a bounded system window;
+// Persistent fork. DOS operations enter a bounded system window;
+// WHDLoad streams retain their own path and call resload directly.
 // the File Manager enforces caller permissions before using write callbacks.
-struct ReadStream { uint32_t handle; bool locked; };
+struct ReadStream { uint32_t handle; bool locked; bool viaResload=false; char path[192]={}; };
 int32_t openStream(const char* path,ReadStream& stream,bool createEmpty=false,const char* protectionPath=0);
 int32_t readStream(void* stream,uint32_t offset,uint8_t* buffer,uint32_t bytes,uint32_t& actual);
 int32_t closeStream(ReadStream& stream);
@@ -25,5 +26,10 @@ extern const Backend dos;
 extern const Backend whdload;
 // Slave supplies the resident resload entry table before starting the runtime.
 void bindResload(void* entryTable);
+void initializeResload();
+bool resloadActive();
+int32_t resloadStat(const char*,uint32_t&,bool&,bool&,bool* deleteLocked=0);
+int32_t resloadReplace(const char*,const uint8_t*,uint32_t);
+int32_t resloadDelete(const char*);
 }
 #endif

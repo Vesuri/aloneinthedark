@@ -1,3 +1,4 @@
+#include "platform/amiga/StackProbe.h"
 #include "platform/amiga/M5Audit.h"
 #include <proto/exec.h>
 #include <exec/memory.h>
@@ -10954,6 +10955,7 @@ bool MacLoader::releaseResourceForks()
     clearResidentSegments();
     releaseZones();
     releaseA5World();
+    aitdStackProbeMacEnd(g_macStackBase,65536);
     if (g_macStackBase) M5_FREE_MEM(g_macStackBase, 65536);
     g_macStackBase = 0;
     g_macTicksAddress = 0;
@@ -11008,7 +11010,10 @@ bool MacLoader::run(AitdScreen* screen)
     s_loudStopScreen = screen;
     if (!s_resourceForks.resourceCount()) return false;
 
-    if (!g_macStackBase) g_macStackBase = (uint8_t*)M5_ALLOC_MEM(65536, MEMF_ANY);
+    if (!g_macStackBase) {
+        g_macStackBase = (uint8_t*)M5_ALLOC_MEM(65536, MEMF_ANY);
+        if(g_macStackBase)aitdStackProbeMacBegin(g_macStackBase,65536);
+    }
     if (!g_macStackBase) {
         loaderStop("MAC STACK MEMORY", 0);
         showLoaderStop();

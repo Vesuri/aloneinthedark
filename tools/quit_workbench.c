@@ -22,7 +22,7 @@ int main(void) {
     if(!directory || !segment || !reply)return 20;
     struct TagItem tags[]={
         {NP_Seglist,segment},{NP_FreeSeglist,FALSE},{NP_Name,(ULONG)"Alone"},
-        {NP_Cli,FALSE},{NP_StackSize,65536},{NP_HomeDir,DupLock(directory)},
+        {NP_Cli,FALSE},{NP_StackSize,4096},{NP_HomeDir,DupLock(directory)},
         {NP_CurrentDir,DupLock(directory)},{NP_WindowPtr,(ULONG)-1},{TAG_DONE,0}};
     struct Process* child=CreateNewProc(tags);
     if(!child)return 20;

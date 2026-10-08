@@ -55,7 +55,10 @@ DH0="$RUN/dh0"; DH1="$RUN/dh1"; GDBHOME="$RUN/gdbhome"
 mkdir -p "$DH0/s" "$DH1" "$RUN/state" "$RUN/logs" "$GDBHOME"
 launch_args=()
 case "${DIAG_LAUNCH:-shell}" in
-  shell) printf 'cd dh1:\nAlone\n' > "$DH0/s/startup-sequence" ;;
+  shell)
+    [[ "${DIAG_STACK:-4096}" =~ ^[1-9][0-9]*$ ]] || { echo 'DIAG / INVALID STACK SIZE' >&2; exit 2; }
+    printf 'Stack %s\ncd dh1:\nAlone\n' "${DIAG_STACK:-4096}" > "$DH0/s/startup-sequence"
+    ;;
   workbench)
     WORKBENCH_ADF="${WORKBENCH_ADF:-$HOME/.local/share/amiga/Workbenchv2.04rev37.67Workbench.adf}"
     [[ -f "$WORKBENCH_ADF" ]] || { echo 'DIAG / MISSING WORKBENCH_ADF' >&2; exit 1; }

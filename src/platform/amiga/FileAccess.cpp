@@ -104,8 +104,37 @@ static int32_t openStreamOperation(void* context) {
 #endif
     return r.stream->handle ? ok : IoErr()==ERROR_OBJECT_NOT_FOUND ? notFound : ioError;
 }
+static int32_t openResloadStream(const char* path,ReadStream& stream,bool createEmpty,const char* protectionPath) {
+    unsigned n=0;while(path[n]) { if(n>=sizeof(stream.path)-1)return invalid;++n; }
+    uint32_t size=0;bool found=false,locked=false;
+    int32_t error=resloadStat(path,size,found,locked);if(error)return error;
+    if(protectionPath) {
+        bool parentFound=false,parentLocked=false;
+        error=resloadStat(protectionPath,size,parentFound,parentLocked);
+        if(error || !parentFound)return error ? error : notFound;
+        locked=locked || parentLocked;
+    }
+    if(!found) { if(!createEmpty)return notFound;if(locked)return -45;error=resloadReplace(path,0,0);if(error)return error; }
+    for(unsigned i=0;i<=n;i++)stream.path[i]=path[i];
+    stream.viaResload=true;stream.locked=locked;stream.handle=1;
+#if defined(AITD_FILE_PROBE) || defined(AITD_RESOURCE_EXIT_PROBE) || defined(AITD_ACTION_NAV) || defined(AITD_QUIT_PROBE)
+    ++g_fileOpenHandles;
+#endif
+    return ok;
+}
+static int32_t closeResloadStream(ReadStream& stream) {
+    stream.handle=0;stream.viaResload=false;stream.path[0]=0;
+#if defined(AITD_FILE_PROBE) || defined(AITD_RESOURCE_EXIT_PROBE) || defined(AITD_ACTION_NAV) || defined(AITD_QUIT_PROBE)
+    --g_fileOpenHandles;
+#endif
+    return ok;
+}
+static int32_t replaceResloadStream(void* context,const uint8_t* bytes,uint32_t size) {
+    return resloadReplace(((ReadStream*)context)->path,bytes,size);
+}
 int32_t openStream(const char* path,ReadStream& stream,bool createEmpty,const char* protectionPath) {
     if(!path || stream.handle)return invalid;
+    if(resloadActive())return openResloadStream(path,stream,createEmpty,protectionPath);
     StreamRequest r={&stream,path,0,0,0,0};r.createEmpty=createEmpty;r.protectionPath=protectionPath;
     return aitdSystemWindow(openStreamOperation,&r);
 }
@@ -133,6 +162,20 @@ int32_t readStream(void* context,uint32_t offset,uint8_t* buffer,uint32_t bytes,
     if(!context)return invalid;
     ReadStream& stream=*(ReadStream*)context;
     if(!stream.handle || (!buffer && bytes) || bytes>0x7fffffffUL || offset>0x7fffffffUL-bytes)return invalid;
+    if(stream.viaResload) {
+        while(actual<bytes) {
+            uint32_t count=bytes-actual,got=0;if(count>chunkBytes)count=chunkBytes;
+#if defined(AITD_FILE_PROBE) || defined(AITD_RESOURCE_EXIT_PROBE) || defined(AITD_ACTION_NAV) || defined(AITD_QUIT_PROBE)
+            ++g_fileReadCalls;if(count>g_fileReadMax)g_fileReadMax=count;
+#endif
+            int32_t error=whdload.readAt(stream.path,offset+actual,buffer+actual,count,got);
+#if defined(AITD_FILE_PROBE) || defined(AITD_RESOURCE_EXIT_PROBE) || defined(AITD_ACTION_NAV) || defined(AITD_QUIT_PROBE)
+            g_fileReadBytes+=got;
+#endif
+            actual+=got;if(error)return error;if(got<count)break;
+        }
+        return ok;
+    }
     StreamRequest r={&stream,0,buffer,offset,bytes,0};
     int32_t error=aitdSystemWindow(readStreamOperation,&r);
     actual=r.actual;return error;
@@ -147,14 +190,14 @@ static int32_t closeStreamOperation(void* context) {
 }
 int32_t closeStream(ReadStream& stream) {
     if(!stream.handle)return invalid;
-    return aitdSystemWindow(closeStreamOperation,&stream);
+    return stream.viaResload ? closeResloadStream(stream) : aitdSystemWindow(closeStreamOperation,&stream);
 }
 int32_t closeRestoredStream(ReadStream& stream) {
     if(!stream.handle)return invalid;
 #if defined(AITD_FILE_PROBE) || defined(AITD_RESOURCE_EXIT_PROBE) || defined(AITD_ACTION_NAV) || defined(AITD_QUIT_PROBE)
     ++g_fileRestoredCloses;
 #endif
-    return closeStreamOperation(&stream);
+    return stream.viaResload ? closeResloadStream(stream) : closeStreamOperation(&stream);
 }
 static int32_t writeStreamInside(void* context,uint32_t offset,const uint8_t* buffer,uint32_t bytes,uint32_t& actual) {
     ReadStream& stream=*(ReadStream*)context;actual=0;
@@ -188,11 +231,13 @@ static int32_t flushStreamOperation(void* context) {
 int32_t flushStream(ReadStream& stream,FileWriteBuffer& buffer) {
     if(!stream.handle)return invalid;
     if(!buffer.dirty())return ok;
+    if(stream.viaResload)return buffer.flushWhole(replaceResloadStream,&stream);
     FlushRequest r={&stream,&buffer};return aitdSystemWindow(flushStreamOperation,&r);
 }
 int32_t flushRestoredStream(ReadStream& stream,FileWriteBuffer& buffer) {
     if(!stream.handle)return invalid;
     if(!buffer.dirty())return ok;
+    if(stream.viaResload)return buffer.flushWhole(replaceResloadStream,&stream);
     FlushRequest r={&stream,&buffer};return flushStreamOperation(&r);
 }
 const Backend dos={readAt,save};

@@ -4,6 +4,8 @@
 #include <proto/exec.h>
 #include <dos/dosextens.h>
 #include <workbench/startup.h>
+#include "platform/amiga/FileAccess.h"
+#include "platform/amiga/StackProbe.h"
 #endif
 
 // ⚠ FILE SCOPE, not a function-local static. A function-local static needs a thread-safe
@@ -45,6 +47,8 @@ static void replyWorkbenchStartupMessage(struct WBStartup* message)
 int main(void)
 {
 #ifdef AITD_PLATFORM_AMIGA
+    aitdStackProbeBegin();
+    FileAccess::initializeResload();
     struct WBStartup* workbenchMessage = getWorkbenchStartupMessage();
 #ifdef AITD_QUIT_PROBE
     g_quitWorkbench=workbenchMessage!=0;g_quitStage=1;aitdQuitCheckpoint();
@@ -53,6 +57,7 @@ int main(void)
 #ifdef AITD_QUIT_PROBE
     g_quitResult=result;g_quitStage=2;aitdQuitCheckpoint();
 #endif
+    aitdStackProbeEnd();
     replyWorkbenchStartupMessage(workbenchMessage);
 #ifdef AITD_QUIT_PROBE
     g_quitStage=3;aitdQuitCheckpoint();

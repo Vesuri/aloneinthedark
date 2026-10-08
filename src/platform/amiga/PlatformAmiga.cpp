@@ -29,6 +29,7 @@
 #include "FullPlayProbe.h"
 #include "SystemWindow.h"
 #include "FileCatalog.h"
+#include "FileAccess.h"
 #ifdef AITD_FILE_PROBE
 extern "C" void aitdFileCleanupFinished();
 #endif
@@ -79,6 +80,7 @@ static int32_t readResourceDOS(void* opaque) {
 static int32_t readResourceSource(void* opaque,uint32_t offset,uint8_t* buffer,uint32_t bytes,uint32_t& actual) {
     ResourceFileSource& files=*(ResourceFileSource*)opaque;actual=0;
     if(!files.handle || bytes>65536 || offset>files.size || bytes>files.size-offset)return -50;
+    if(FileAccess::resloadActive())return FileAccess::whdload.readAt(files.path,offset,buffer,bytes,actual);
     ResourceRead request={&files,offset,buffer,bytes,0};
     // Before takeover DOS is already available. Every later read requires the
     // user-mode bridge; an overlooked indirect Toolbox load fails explicitly.

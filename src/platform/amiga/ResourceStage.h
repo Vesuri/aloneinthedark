@@ -12,6 +12,7 @@ public:
     bool active() const { return owned_ || handle_ || failed_; }
 private:
     char path_[192]={},temporary_[192]={},backup_[192]={};
+    uint8_t* resloadBytes_=0;
     uint32_t handle_=0,size_=0,written_=0;
     bool owned_=false,previous_=false,failed_=false,poisoned_=false;
     static int32_t begin(void*,uint32_t);

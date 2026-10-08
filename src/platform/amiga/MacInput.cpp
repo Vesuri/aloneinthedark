@@ -287,7 +287,7 @@ static const uint8_t s_menuProbeKeys[]={0,0x21,0x21,0x37,0x37,0x21,0x37,0x18,
 #endif
 0x10};
 #ifdef AITD_SAVE_LOAD
-extern "C" { volatile uint16_t g_saveLoadStage=0; volatile uint32_t g_saveLoadTick=0,g_saveLoadClosedBytes=0,g_saveLoadReadBytes=0; volatile int16_t g_saveLoadSavedX=0,g_saveLoadSavedZ=0; }
+extern "C" { volatile uint32_t g_saveLoadReport[8]={0x41495444,0x53415645}; volatile uint16_t g_saveLoadStage=0; volatile uint32_t g_saveLoadTick=0,g_saveLoadClosedBytes=0,g_saveLoadReadBytes=0; volatile int16_t g_saveLoadSavedX=0,g_saveLoadSavedZ=0; }
 #endif
 static const uint8_t s_menuProbeText[]={0x37,0x03,0x14,0x12,0x21,0x14,0x44}; // m3test, Return
 static uint16_t s_menuProbeTextIndex=0;
@@ -342,7 +342,13 @@ void aitdInputMenuProbeQuit()
 }
 void aitdInputMenuProbeFinished(bool ok)
 {
-    g_menuProbeExitOK=ok;g_menuProbeStage=11;aitdMenuProbeCheckpoint();
+    g_menuProbeExitOK=ok;g_menuProbeStage=11;
+#ifdef AITD_SAVE_LOAD
+    g_saveLoadReport[2]=g_saveLoadStage;g_saveLoadReport[3]=g_saveLoadClosedBytes;
+    g_saveLoadReport[4]=g_saveLoadReadBytes;g_saveLoadReport[5]=ok;
+    g_saveLoadReport[6]=uint16_t(g_saveLoadSavedX);g_saveLoadReport[7]=uint16_t(g_saveLoadSavedZ);
+#endif
+    aitdMenuProbeCheckpoint();
 }
 #endif
 
