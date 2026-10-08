@@ -12,8 +12,9 @@ required.
 ## M6 Completion
 
 - **M6.2 State-keyed fidelity set.** Frame compares for remaining representative mansion rooms,
-  fights, death and new-game restart.
-  Pair idle animation frame and interpolation phase before exact restart pixels.
+  fights, the death sequence and the rendered post-death menu.
+  Resolve the current 68020 natural-death fixture timeout (idle hero and nearby
+  attacking enemy) without changing original game logic.
 
   *Done when* all of them pass.
 - **M6.3 Stairs check.**

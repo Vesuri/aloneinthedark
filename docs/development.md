@@ -8149,3 +8149,60 @@ shows the preceding scene. State agreement alone does not establish display
 publication. These new comparisons check the logical viewport; the separate
 maze and ending cases provide physical Amiga scanout evidence. Other mansion
 rooms, fights, death and restart remain open under M6.2.
+
+
+## M6.2 exact new-game restart after natural death — 2026-10-08
+
+Fresh Carnby restart after natural death now passes 23 complete original/native
+viewport comparisons, with equal actor identity, position, orientation, room,
+floor, camera, idle animation and keyframe. Each accepted frame contains more
+than 32 colours and all 64,000 RGB pixels match. The samples cover several
+normal idle phases; neither animation state nor timers were edited.
+
+The native fixed-68030 run clean-builds DEATHROUTE=1, INTROSKIP=1, PROBES=
+and executes the maintained ordinary control/death/restart route. The bounded
+runner exits zero and verifies the natural song-131 call, all thirteen preserved
+registers, result 0/12, resource ownership, post-death menu and fresh attic
+publication. An extended observer captures 100 frames at (Dark, $5658) after
+restart. The original Mac restores its initial attic snapshot, waits for natural
+enemy damage and death, then uses ordinary Return/Right/Return/story/Escape
+input to restart. Its bounded coroutine completes successfully and captures
+172 distinct released-key idle frames. The reference emulator remains alive;
+this is coroutine completion, not a process-exit claim.
+
+The original-code song breakpoints are now armed at the first death-route
+checkpoint, after gameplay begins. Arming them at the early GetFNum stop
+missed the song call in the first current run, although the runtime reached
+the post-death menu. Later arming observes the correct call and return; the
+Core base remains 0x2EAEF8 throughout that run. The precise early-observer
+failure mechanism is not established, and no sound-runtime fix is claimed.
+`amiga/death_song_hooks.gdb` retains the existing original-byte, argument,
+register, return and ownership checks without weakening them.
+
+Evidence is local in `tmp/m6/fidelity/death`, with `death-gdb.log`,
+`death-status` (zero), `death-mac.lua`, `restart-matches.json` and
+`restart-checked.log`. For example:
+
+```sh
+python3 tools/check_fullplay_frame.py --label new-game-restart \
+  --native tmp/m6/fidelity/death --sequence 48 \
+  --mac-world tmp/m6/fidelity/death/mac-restart-124-world.bin \
+  --mac-pixels tmp/m6/fidelity/death/mac-restart-124-bgra.bin \
+  --expect floor=0 --expect room=0 --expect camera=0 --expect animation=4
+```
+
+The post-death candidate had equal actor fields and pixels but was a blank
+transition. The comparator's positive-rendering guard rejects it; it is not
+accepted death/menu fidelity evidence. Death-sequence and rendered-menu frames
+remain open. The exact rendered restart case is removed from M6.2's queue.
+
+
+A follow-up a1200-020 run of the later-armed maintained observer exits one
+at the unchanged 36,000-tick natural-death deadline (`death020-run.log`,
+`death020-status`, and `.run-m6-death020/gdb-out.log`). It never reaches the
+song check: Carnby remains idle at (3231,-1321), while actor/object 21 is at
+(3242,131), animation 22. No runtime loud stop occurs. This is rejected
+acceptance, not a baseline death pass or evidence of a sound regression.
+The exact cause of the stalled encounter is unproven; resolving the diagnostic
+route remains part of the open death-sequence comparison. The new exact
+restart acceptance above is specifically the completed fixed-68030 run.
