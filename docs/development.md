@@ -8040,3 +8040,28 @@ with live host replacement of a previously known save; its exact cache or
 metadata cause is not established, and this is not evidence of an ordinary
 game-generated Save/Load defect. Stage replacement fixtures before boot in
 future diagnostics; do not silently treat a stopped run as a successful load.
+
+
+## M6.2 complete reading viewport — 2026-10-08
+
+The maintained Book comparator now includes every pixel of the 320×200
+reading viewport, including the two formerly excluded blinking-arrow boxes.
+All six visits (pages 0,1,0,1,2,3) match the preserved completed original Mac
+run exactly on fresh current-runtime a1200-020 and a4000-030-reference runs.
+The existing Take/Read, retained inventory, page order, last-page Return and
+published manual-gameplay checks also pass. The reference is the earlier
+original run, not a newly executed Mac session.
+
+Current native evidence is in `tmp/m6/fidelity/book020` and `book030`, with
+`book020-checked.log` and `book030-final-checked.log`; both native runs exited
+zero. The original log is `tmp/m3-explore/mac-book-pages-maintained.log`.
+A negative-control copy changes one pixel at (200,335), inside the formerly
+excluded left-arrow box; the strengthened checker rejects it. The original
+captures remain untouched.
+
+The first current 68020 attempt timed out at the diagnostic west-turn gate:
+a slow frame skipped its ±16 heading window. Widening that BOOK-only input
+controller window to ±32 let it complete through ordinary keys. Both CPUs
+were rerun after this adjustment; no reading/rendering/game logic changed.
+The failed pre-book attempt is retained as `book020-run.log` and excluded
+from acceptance. Reading is removed from the unresolved M6.2 list.

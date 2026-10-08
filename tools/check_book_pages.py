@@ -26,8 +26,8 @@ def check(mac,native,folder,mac_status,native_status):
     stages=[1,4,7,10,13,16]
     transfer=display_transfer()[::256]
     def page(p):
-        return b''.join(p[(y*640+x)*3:(y*640+x)*3+3] for y in range(150,350) for x in range(160,480)
-            if not (y>=330 and (195<=x<220 or 420<=x<445)))
+        # Capture a paired arrow phase too: no viewport pixels are excluded.
+        return b''.join(p[(y*640+160)*3:(y*640+480)*3] for y in range(150,350))
     for index,stage,label in zip(expected,stages,labels):
         require(visits[stage][0:2]==(index,int(index==3)) and visits[stage][3]==4,'actual native page/last/Read state')
         raw=(folder/('book-session-mac-'+label+'-rgb.bin')).read_bytes();require(len(raw)==1228800,'original page extent')

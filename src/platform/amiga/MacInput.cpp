@@ -477,7 +477,8 @@ void aitdInputBook(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_t b
         const uint8_t keys[]={0x4e,0x4c,0x4f,0x4c,0x4f,0x4c,0x18};
         aitdInputInjectProbeKey(keys[(stage-2)/3],true);
     }
-    else if(stage==3) {if(beta<752 || beta>784)return;aitdInputInjectProbeKey(0x4e,false);}
+    // A slow frame can step across the narrower west-facing window.
+    else if(stage==3) {if(beta<736 || beta>800)return;aitdInputInjectProbeKey(0x4e,false);}
     else if(stage==6) {if(x>-1600)return;aitdInputInjectProbeKey(0x4c,false);}
     else if(stage==9) {if(beta>16 && beta<1008)return;aitdInputInjectProbeKey(0x4f,false);}
     else if(stage==12) {if(z>-3100)return;aitdInputInjectProbeKey(0x4c,false);}
