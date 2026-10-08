@@ -9,16 +9,19 @@ static std::vector<uint8_t> read(const std::string& name) {
     return {std::istreambuf_iterator<char>(f),{}};
 }
 int main(int argc,char** argv) {
-    assert(argc==3);
+    assert(argc==3 || argc==4);
     const std::string prefix=std::string(argv[1])+"/pictrecord-reference-";
     auto pm=read(prefix+"enter-src-pm.bin"),ct=read(prefix+"enter-src-clut.bin");
     auto pixels=read(prefix+"enter-src-pixels.bin"),from=read(prefix+"enter-from.bin");
     auto to=read(prefix+"enter-to.bin"),frame=read(prefix+"frame.bin");
     const uint16_t width=RectBounds::word(from.data()+6)-RectBounds::word(from.data()+2);
     const uint16_t height=RectBounds::word(from.data()+4)-RectBounds::word(from.data());
-    std::vector<uint8_t> out(PictureRecord8::capacity(width,height));
+    std::vector<uint8_t> clip;uint8_t rgb[6]={};
+    if(argc==4)clip=read(prefix+"clip.bin");
+    std::vector<uint8_t> out(PictureRecord8::capacity(width,height,clip.empty()?0:20+clip.size()));
     auto size=PictureRecord8::record(out.data(),out.size(),frame.data(),pm.data(),ct.data(),
-        pixels.data(),pixels.size(),from.data(),to.data(),64);
+        pixels.data(),pixels.size(),from.data(),to.data(),64,
+        clip.empty()?nullptr:frame.data(),rgb,clip.empty()?nullptr:clip.data(),clip.size());
     assert(size && size<=out.size());
     assert(!PictureRecord8::record(out.data(),1,frame.data(),pm.data(),ct.data(),
         pixels.data(),pixels.size(),from.data(),to.data(),64));

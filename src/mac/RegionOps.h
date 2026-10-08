@@ -78,6 +78,60 @@ inline bool combine(const uint8_t* a,uint16_t aBytes,const uint8_t* b,uint16_t b
     }
     return writer.finish(size);
 }
+// MapPt rounds the magnitude, including negative half values away from zero.
+// Keep the product unsigned: two 16-bit coordinate distances fit in 32 bits.
+inline bool mapped(int16_t value,int16_t from,int16_t to,uint32_t sourceExtent,
+                   uint32_t targetExtent,int16_t& result) {
+    int32_t offset=int32_t(value)-from;
+    uint32_t magnitude=uint32_t(offset<0?-offset:offset);
+    magnitude=(magnitude*targetExtent+sourceExtent/2)/sourceExtent;
+    if(magnitude>65535)return false;
+    int32_t position=int32_t(to)+(offset<0?-int32_t(magnitude):int32_t(magnitude));
+    if(position<-32768 || position>32767)return false;
+    result=int16_t(position);return true;
+}
+inline bool map(const uint8_t* region,uint16_t bytes,const uint8_t* from,const uint8_t* to,
+                uint8_t* scratch,uint16_t capacity,uint16_t& size) {
+    size=0;if(!from || !to || !scratch || capacity<10)return false;
+    RegionRows::Cursor cursor;if(!cursor.begin(region,bytes))return false;
+    int16_t source[4],target[4];
+    for(uint16_t i=0;i<4;++i) {source[i]=RegionRows::get(from+2*i);target[i]=RegionRows::get(to+2*i);}
+    int32_t sh=int32_t(source[2])-source[0],sw=int32_t(source[3])-source[1];
+    int32_t th=int32_t(target[2])-target[0],tw=int32_t(target[3])-target[1];
+    if(sh<=0 || sw<=0 || th<0 || tw<0)return false;
+    Writer writer(scratch,capacity);
+    if(!th || !tw || RegionRows::get(region+2)==RegionRows::get(region+6)
+       || RegionRows::get(region+4)==RegionRows::get(region+8))return writer.finish(size);
+    if(cursor.size==10) {
+        int16_t bounds[4];
+        for(uint16_t i=0;i<4;++i) {
+            uint16_t axis=i&1;
+            if(!mapped(RegionRows::get(region+2+i*2),source[axis],target[axis],
+                       axis?sw:sh,axis?tw:th,bounds[i]))return false;
+        }
+        if(bounds[0]==bounds[2] || bounds[1]==bounds[3])return writer.finish(size);
+        WindowGeometry::word(scratch,10);
+        for(uint16_t i=0;i<4;++i)WindowGeometry::word(scratch+2+i*2,uint16_t(bounds[i]));
+        size=10;return true;
+    }
+    int32_t y=-32769;int16_t pendingY=0;bool pending=false;
+    RegionRows::Edges pendingEdges{};
+    for(;;) {
+        y=nextLine(cursor,y);if(y==32767)break;
+        int16_t mappedY;
+        if(!mapped(int16_t(y),source[0],target[0],sh,th,mappedY) || mappedY==32767
+           || !cursor.advance(int16_t(y)))return false;
+        if(pending && mappedY!=pendingY && !writer.row(pendingY,pendingEdges))return false;
+        pending=true;pendingY=mappedY;pendingEdges.count=0;
+        for(uint16_t i=0;i<cursor.edges.count;++i) {
+            int16_t x;
+            if(!mapped(cursor.edges.x[i],source[1],target[1],sw,tw,x) || x==32767
+               || !RegionRows::toggle(pendingEdges,x))return false;
+        }
+    }
+    if(pending && !writer.row(pendingY,pendingEdges))return false;
+    return writer.finish(size);
+}
 // Reached FrameOval recording uses circular bounds. Pixel centres are tested
 // with integer arithmetic. Non-circular ellipses remain unsupported pending
 // exact QuickDraw rounding coverage, rather than silently approximated.

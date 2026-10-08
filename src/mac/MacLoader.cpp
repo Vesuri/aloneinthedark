@@ -468,6 +468,9 @@ static uint8_t* s_polygonPort;
 static MacHeap::Handle s_recordingPicture;
 static uint8_t* s_picturePort;
 static uint32_t s_pictureBytes;
+static bool s_pictureHasPaint;
+static uint8_t s_pictureClip[RegionExpand::capacity];
+static uint8_t s_picturePaint[14]; // Rect and RGB, recorded without touching source pixels.
 static uint8_t s_regionRecord[PolygonRegion::capacity];
 static uint8_t* s_regionPort;
 static bool s_regionHasContour;
@@ -1035,7 +1038,7 @@ static const TrapName s_trapNames[] = {
     {0xa8a2,"QUICKDRAW","PAINTRECT"}, {0xa891,"QUICKDRAW","LINETO"}, {0xa892,"QUICKDRAW","LINE"},
     {0xa8cb,"QUICKDRAW","OPENPOLY"}, {0xa8cc,"QUICKDRAW","CLOSEPOLY"},
     {0xa8f3,"QUICKDRAW","OPENPICTURE"}, {0xa8f4,"QUICKDRAW","CLOSEPICTURE"},
-    {0xa8f5,"QUICKDRAW","KILLPICTURE"}, {0xa8fb,"QUICKDRAW","MAPRGN"},
+    {0xa8f5,"QUICKDRAW","KILLPICTURE"}, {0xa8fb,"QUICKDRAW","MAPRGN"}, {0xa8dd,"QUICKDRAW","SETEMPTYRGN"},
     {0xa8dc,"QUICKDRAW","COPYRGN"}, {0xa8b7,"QUICKDRAW","FRAMEOVAL"},
     {0xa8e7,"QUICKDRAW","XORRGN"}, {0xa8e6,"QUICKDRAW","DIFFRGN"},
     {0xa879,"QUICKDRAW","SETCLIP"}, {0xa8d3,"QUICKDRAW","INVERTRGN"},
@@ -3463,8 +3466,10 @@ static GWorldSlot* gWorldForPort(uint8_t* port);
 
 static bool drawIndexedPictureBits(const uint8_t* picture, uint32_t size, uint32_t& offset,
                                    const uint8_t* pictureFrame, const uint8_t* targetRect,
-                                   bool packed)
+                                   bool packed,const uint8_t* recordedClip=0,uint16_t recordedClipSize=0)
 {
+    RegionRows::Cursor pictureRows;
+    if(recordedClip && !pictureRows.begin(recordedClip,recordedClipSize))return false;
     if (offset + 46 > size) return false;
     const uint8_t* pixMap = picture + offset;
     uint16_t rowBytes = (uint16_t)(read16(pixMap) & 0x3fff);
@@ -3667,6 +3672,7 @@ static bool drawIndexedPictureBits(const uint8_t* picture, uint32_t size, uint32
             ditherColors,ditherInverse,storage,width,height,storage+((imageBytes+1)&~1UL));
         if(valid) {
             for(int16_t y=targetTop;y<targetBottom;++y) {
+                if(recordedClip && !pictureRows.advance(y)) {valid=false;break;}
                 if(y<mapTop || y>=mapBottom || y<(int16_t)read16(port+16) || y>=(int16_t)read16(port+20)
                    || y<(int16_t)read16(visible+2) || y>=(int16_t)read16(visible+6)
                    || y<(int16_t)read16(clip+2) || y>=(int16_t)read16(clip+6))continue;
@@ -3676,6 +3682,7 @@ static bool drawIndexedPictureBits(const uint8_t* picture, uint32_t size, uint32
                     if(x<mapLeft || x>=mapRight || x<(int16_t)read16(port+18) || x>=(int16_t)read16(port+22)
                        || x<(int16_t)read16(visible+4) || x>=(int16_t)read16(visible+8)
                        || x<(int16_t)read16(clip+4) || x>=(int16_t)read16(clip+8))continue;
+                    if(recordedClip && !RegionRows::inside(pictureRows.edges,x))continue;
                     destination[x-mapLeft]=source[x-targetLeft];
                 }
             }
@@ -3821,6 +3828,7 @@ static bool drawIndexedPictureBits(const uint8_t* picture, uint32_t size, uint32
 
     if (valid && !usedPackedRows) {
         for (int16_t y = targetTop; y < targetBottom; ++y) {
+            if(recordedClip && !pictureRows.advance(y)) {valid=false;break;}
             if (y < mapTop || y >= mapBottom) continue;
             if(destination8 && (y<(int16_t)read16(port+16) || y>=(int16_t)read16(port+20)
                 || y<(int16_t)read16(visible+2) || y>=(int16_t)read16(visible+6)
@@ -3838,6 +3846,7 @@ static bool drawIndexedPictureBits(const uint8_t* picture, uint32_t size, uint32
                 + multiplyUnsigned16((uint16_t)(y - mapTop), destinationRowBytes);
             for (int16_t x = targetLeft; x < targetRight; ++x) {
                 if (x < mapLeft || x >= mapRight) continue;
+                if(recordedClip && !RegionRows::inside(pictureRows.edges,x))continue;
                 if(destination8 && (x<(int16_t)read16(port+18) || x>=(int16_t)read16(port+22)
                     || x<(int16_t)read16(visible+4) || x>=(int16_t)read16(visible+8)
                     || x<(int16_t)read16(clip+4) || x>=(int16_t)read16(clip+8)))continue;
@@ -4443,6 +4452,9 @@ static bool drawVersionOnePicture(const uint8_t* picture, uint32_t size,
     return false;
 }
 
+static bool paintPictureRect(const uint8_t* rect,const uint8_t* rgb,
+                             const uint8_t* mask,uint16_t maskBytes);
+
 static bool drawPictureContents(uint8_t** pictureHandle, const uint8_t* targetRect)
 {
     // DrawPicture also accepts owned pictures detached from the resource map.
@@ -4452,15 +4464,17 @@ static bool drawPictureContents(uint8_t** pictureHandle, const uint8_t* targetRe
     const uint8_t* picture = *pictureHandle;
     const uint8_t* frame = picture + 2;
     uint8_t* port=(uint8_t*)read32(s_qdThePort);
+    if(!port)return false;
     bool destination8=gWorldForPort(port)!=0 || windowSlot(port)!=0;
     if (picture[10] == 0x11 && picture[11] == 0x01)
         return drawVersionOnePicture(picture, size, frame, targetRect);
     uint32_t offset = 10;
     bool drewPixels = false;
+    uint16_t pictureClipBytes=0;uint8_t pictureRGB[6]={};
     while (offset + 2 <= size) {
         uint16_t opcode = read16(picture + offset); offset += 2;
         if(destination8 && opcode!=0 && opcode!=0x1e && opcode!=0x11 && opcode!=0xc00
-           && opcode!=1 && opcode!=0x98 && opcode!=0xff) {
+           && opcode!=1 && opcode!=8 && opcode!=0x1a && opcode!=0x31 && opcode!=0x98 && opcode!=0xff) {
             s_unsupportedPictureOpcode=opcode;s_unsupportedPictureOffset=offset-2;return false;
         }
         if (opcode == 0x00ff) return drewPixels;
@@ -4475,10 +4489,25 @@ static bool drawPictureContents(uint8_t** pictureHandle, const uint8_t* targetRe
             uint16_t bytes = read16(picture + offset);
             if (bytes < 2 || offset + bytes > size) return false;
             if(destination8) {
-                if(bytes!=10)return false;
-                for(uint16_t i=0;i<8;++i)if(picture[offset+2+i]!=frame[i])return false;
+                if(!RegionOps::map(picture+offset,bytes,frame,targetRect,s_pictureClip,
+                                   sizeof(s_pictureClip),pictureClipBytes))return false;
             }
             offset += bytes; continue;
+        }
+        if(destination8 && opcode==8) {
+            if(offset+2>size || (read16(picture+offset)!=0 && read16(picture+offset)!=8))return false;
+            offset+=2;continue;
+        }
+        if(destination8 && opcode==0x1a) {
+            if(offset+6>size)return false;blockMove(picture+offset,pictureRGB,6);offset+=6;continue;
+        }
+        if(destination8 && opcode==0x31) {
+            if(offset+8>size)return false;
+            uint8_t rgn[10],mapped[10];uint16_t mappedSize=0;
+            write16(rgn,10);blockMove(picture+offset,rgn+2,8);
+            if(!RegionOps::map(rgn,10,frame,targetRect,mapped,10,mappedSize)
+               || !paintPictureRect(mapped+2,pictureRGB,pictureClipBytes?s_pictureClip:0,pictureClipBytes))return false;
+            offset+=8;drewPixels=true;continue;
         }
         if (opcode == 0x000a) { if (offset + 8 > size) return false; offset += 8; continue; }
         if (opcode == 0x00a1) {
@@ -4489,7 +4518,8 @@ static bool drawPictureContents(uint8_t** pictureHandle, const uint8_t* targetRe
         }
         if (opcode == 0x0090 || opcode == 0x0098) {
             if (!drawIndexedPictureBits(picture, size, offset, frame, targetRect,
-                                        opcode == 0x0098)) return false;
+                                        opcode == 0x0098,
+                                        destination8 && pictureClipBytes?s_pictureClip:0,pictureClipBytes)) return false;
             drewPixels = true; continue;
         }
         if (opcode == 0x009a) {
@@ -4614,6 +4644,35 @@ static bool paintRect(const uint8_t* rectangle)
         markDirtyBounds((int16_t)read16(drawn)-top,(int16_t)read16(drawn+2)-left,
                         (int16_t)read16(drawn+4)-top,(int16_t)read16(drawn+6)-left);
     }
+    return true;
+}
+
+// PICT drawing keeps its foreground and clip state local to the interpreter.
+static bool paintPictureRect(const uint8_t* rect,const uint8_t* rgb,
+                             const uint8_t* mask,uint16_t maskBytes)
+{
+    uint8_t* port=s_qdThePort ? (uint8_t*)read32(s_qdThePort) : 0;
+    GWorldSlot* world=gWorldForPort(port);WindowSlot* window=windowSlot(port);
+    if(!port || (!world && !window) || (world && !world->locked)
+       || (window && (window->dialog || !port[110])))return false;
+    uint8_t** vh=(uint8_t**)read32(port+24);uint8_t** ch=(uint8_t**)read32(port+28);
+    if(!vh || !*vh || !ch || !*ch || read16(*vh)!=10 || read16(*ch)!=10)return false;
+    const uint8_t* colors=world ? world->colorTable : s_windowManagerColors;
+    const uint8_t* inverse=world ? *world->handles[26] : s_mainDeviceITable;
+    if(window && (!s_mainDeviceITableValid || read32(inverse)!=read32(colors)) && !makeITable(0,0,4))return false;
+    uint16_t pen=0;if(!GWorld8::colorIndex(colors,inverse,rgb,pen))return false;
+    const uint8_t* map=world ? world->pixMap : window->pixelMap;
+    uint8_t* pixels=world ? world->pixels : s_colorScreen;
+    uint32_t bytes=world ? world->owner->handleSize(world->handles[1]) : sizeof(s_colorScreen);
+    if(read16(map+32)!=8 || read32(map)!=(uint32_t)pixels)return false;
+    uint8_t drawn[8];
+    if(!FillRect8::solid(pixels,bytes,read16(map+4)&0x3fff,map+6,port+16,*vh+2,*ch+2,
+                        rect,uint8_t(pen),drawn,mask,maskBytes))return false;
+    if(window && read16(drawn)!=read16(drawn+4) && read16(drawn+2)!=read16(drawn+6))
+        markDirtyBounds(int16_t(read16(drawn))-int16_t(read16(map+6)),
+                        int16_t(read16(drawn+2))-int16_t(read16(map+8)),
+                        int16_t(read16(drawn+4))-int16_t(read16(map+6)),
+                        int16_t(read16(drawn+6))-int16_t(read16(map+8)));
     return true;
 }
 
@@ -4839,8 +4898,8 @@ static bool copyPortBits8(const uint8_t* sourceBitmap,const uint8_t* destination
     if(!source || !source->locked || !port || (destinationBitmap!=port+2 && (!destination || destinationBitmap!=destination->pixMap))
        || read16(source->pixMap+32)!=8 || read32(source->pixMap)!=(uint32_t)source->pixels)return false;
     if(s_recordingPicture) {
-        // OpenPicture suppresses the visible copy. This reached save path
-        // records exactly one full-room copy into the thumbnail frame.
+        // OpenPicture suppresses drawing. Retain the full source raster, an
+        // optional preceding solid fill, and the current clipping region.
         MacHeap* owner=handleZone(s_recordingPicture);
         if(!owner || !*s_recordingPicture || port!=s_picturePort || source!=destination
            || mask || s_pictureBytes || read16(port+66)!=0xffff
@@ -4848,11 +4907,21 @@ static bool copyPortBits8(const uint8_t* sourceBitmap,const uint8_t* destination
         uint8_t frame[8];blockMove(*s_recordingPicture+2,frame,8);
         const uint16_t stride=read16(from+6)-read16(from+2);
         const uint16_t height=read16(from+4)-read16(from);
-        uint32_t capacity=PictureRecord8::capacity(stride,height);
+        MacHeap::Handle clip=(MacHeap::Handle)read32(port+28);
+        MacHeap* clipOwner=handleZone(clip);
+        if(!clipOwner || !*clip || clipOwner->handleSize(clip)>32766)return false;
+        uint16_t clipBytes=read16(*clip);
+        if(clipBytes<10 || clipBytes>clipOwner->handleSize(clip))return false;
+        bool recordClip=clipBytes!=10;
+        for(uint16_t i=0;i<8;++i)if((*clip)[2+i]!=frame[i])recordClip=true;
+        uint16_t extra=(s_pictureHasPaint?18:0)+(recordClip?2+clipBytes:0);
+        uint32_t capacity=PictureRecord8::capacity(stride,height,extra);
         if(capacity>350000 || owner->setHandleSize(s_recordingPicture,capacity)!=MacHeap::noErr)return false;
         s_pictureBytes=PictureRecord8::record(*s_recordingPicture,capacity,frame,
             source->pixMap,source->colorTable,source->pixels,
-            source->owner->handleSize(source->handles[1]),from,to,mode);
+            source->owner->handleSize(source->handles[1]),from,to,mode,
+            s_pictureHasPaint?s_picturePaint:0,s_pictureHasPaint?s_picturePaint+8:0,
+            recordClip?*clip:0,recordClip?clipBytes:0);
         return s_pictureBytes!=0;
     }
     const uint8_t* map;const uint8_t* destinationColors;const uint8_t* inverse;
@@ -9401,7 +9470,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         MacHeap::Handle picture=newHandle(12,true);
         if(!picture)goto unsupportedTrap;
         write16(*picture,12);blockMove(bounds,*picture+2,8);
-        s_recordingPicture=picture;s_picturePort=port;s_pictureBytes=0;
+        s_recordingPicture=picture;s_picturePort=port;s_pictureBytes=0;s_pictureHasPaint=false;
         write16(port+66,0xffff);write32(port+92,(uint32_t)picture);
         write32(userStack+4,(uint32_t)picture);return 5;
     }
@@ -9412,7 +9481,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
            || read16(port+66)!=0xffff || read32(port+92)!=(uint32_t)s_recordingPicture
            || owner->setHandleSize(s_recordingPicture,s_pictureBytes)!=MacHeap::noErr)goto unsupportedTrap;
         write16(port+66,0);write32(port+92,0);
-        s_recordingPicture=0;s_picturePort=0;s_pictureBytes=0;return 1;
+        s_recordingPicture=0;s_picturePort=0;s_pictureBytes=0;s_pictureHasPaint=false;return 1;
     }
     if(trap==0xa8f5) {                       // KillPicture(PicHandle)
         MacHeap::Handle picture=(MacHeap::Handle)read32(userStack);
@@ -9635,6 +9704,19 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
                             int16_t(read16(drawn+6))-int16_t(read16(map+8)));
         regs[0]=0;return 5;
     }
+    if(trap==0xa8fb) {                       // MapRgn(region, sourceRect, destinationRect)
+        MacHeap::Handle region=(MacHeap::Handle)read32(userStack+8);
+        MacHeap* owner=handleZone(region);
+        if(!owner || !*region || resourceHandleIndex(region)>=0
+           || owner->handleSize(region)>32766)goto unsupportedTrap;
+        uint16_t size=0;
+        if(!RegionOps::map(*region,uint16_t(owner->handleSize(region)),
+              (const uint8_t*)read32(userStack+4),(const uint8_t*)read32(userStack),
+              s_regionWorkspace.expanded,sizeof(s_regionWorkspace.expanded),size))goto unsupportedTrap;
+        if(memoryResult(owner->setHandleSize(region,size))!=MacHeap::noErr)goto unsupportedTrap;
+        for(uint16_t i=0;i<size;++i) {volatile uint8_t value=s_regionWorkspace.expanded[i];(*region)[i]=value;}
+        regs[0]=0;return 13;
+    }
     if(trap==0xa8dc) {                       // CopyRgn(source, destination)
         MacHeap::Handle destination=(MacHeap::Handle)read32(userStack);
         MacHeap::Handle source=(MacHeap::Handle)read32(userStack+4);
@@ -9654,9 +9736,8 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     if(trap==0xa8dd) {                       // SetEmptyRgn(owned RgnHandle)
         MacHeap::Handle region=(MacHeap::Handle)read32(userStack);
         MacHeap* owner=handleZone(region);
-        if(!owner || !*region
-           || owner->handleSize(region)!=10 || read16(*region)!=10
-           || resourceHandleIndex(region)>=0)goto unsupportedTrap;
+        if(!owner || !*region || resourceHandleIndex(region)>=0)goto unsupportedTrap;
+        if(memoryResult(owner->setHandleSize(region,10))!=MacHeap::noErr)goto unsupportedTrap;
         write16(*region,10);write32(*region+2,0);write32(*region+6,0);
         regs[8]=(uint32_t)region;regs[9]=(uint32_t)*region;
         return 5;
@@ -10200,6 +10281,17 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     if (trap == 0xa8a2) {                    // PaintRect(rectangle)
         const uint8_t* rectangle = (const uint8_t*)read32(userStack);
         GWorldSlot* world=gWorldForPort((uint8_t*)read32(s_qdThePort));
+        if(s_recordingPicture) {
+            uint8_t* port=world ? world->port : 0;
+            if(!port || port!=s_picturePort || !rectangle || s_pictureBytes || s_pictureHasPaint
+               || read16(port+66)!=0xffff || read32(port+92)!=(uint32_t)s_recordingPicture
+               || (read16(port+56)!=0 && read16(port+56)!=8) || read16(*world->handles[7])!=0
+               || read16(*world->handles[4])!=10)goto unsupportedTrap;
+            for(uint16_t i=0;i<8;++i)
+                if((*world->handles[14])[i]!=255 || (*world->handles[4])[i+2]!=(*s_recordingPicture)[i+2])goto unsupportedTrap;
+            blockMove(rectangle,s_picturePaint,8);blockMove(port+36,s_picturePaint+8,6);
+            s_pictureHasPaint=true;regs[0]=0;return 5;
+        }
         if (world ? paintGWorldRect(*world,rectangle) : paintRect(rectangle)) {
             if(bookEdge==4)finishBookFrame(2,bookOwner);
             regs[0]=0;regs[1]=(regs[1]&0xffff0000UL)|8;

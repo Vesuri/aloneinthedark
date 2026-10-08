@@ -10,11 +10,24 @@ import tempfile
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def raster(path):
+def raster(path, with_operations=False):
     data = path.read_bytes()
     assert data[10:16] == bytes.fromhex('001102ff0c00')
-    assert data[52:54] == bytes.fromhex('0098')
-    pos = 54
+    pos=40;clip=None;color=bytes(6);paints=[]
+    while True:
+        op=int.from_bytes(data[pos:pos+2],'big');pos+=2
+        if op==0x98:break
+        if op==1:
+            length=int.from_bytes(data[pos:pos+2],'big')
+            assert length>=10 and pos+length<=len(data)
+            clip=data[pos:pos+length];pos+=length
+        elif op==8:
+            assert int.from_bytes(data[pos:pos+2],'big') in (0,8);pos+=2
+        elif op==0x1a:
+            color=data[pos:pos+6];pos+=6
+        elif op==0x31:
+            paints.append((color,data[pos:pos+8],clip));pos+=8
+        else:raise AssertionError(f'unexpected leading PICT opcode {op:04x}')
     stride = int.from_bytes(data[pos:pos+2], 'big') & 0x3fff
     top, left, bottom, right = struct.unpack_from('>4h', data, pos+2)
     pos += 46
@@ -45,7 +58,8 @@ def raster(path):
         rows.append(row)
     pos += pos & 1
     assert data[pos:pos+2] == bytes.fromhex('00ff') and pos+2 == len(data)
-    return rows, (top, left, bottom, right), source, destination, mode, colors
+    result=(rows, (top, left, bottom, right), source, destination, mode, colors)
+    return result+(paints,clip) if with_operations else result
 
 
 def main():

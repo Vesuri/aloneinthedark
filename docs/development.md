@@ -7714,3 +7714,32 @@ complete. The pre-lamp ordinary checkpoint `save-dark-maze-entry` remains the
 replay boundary. Full state-matched lamp pixels, Save completion and subsequent
 maze traversal remain open. Preliminary debugger captures of Mac screen memory
 used the wrong address translation and are not pixel-parity evidence.
+
+
+## M6 lamp Save/Load — 2026-10-08
+
+`MapRgn` now maps encoded region transitions, rounding negative and positive
+half-coordinate values away from zero and cancelling merged edges/rows. The
+original (Dan1, $37C0) maps the 320×200 lamp region into a 100×70 preview.
+Native then exposed the rest of this Save variant: a suppressed PaintRect
+during OpenPicture, a complex PICT clip, and SetEmptyRgn on an existing complex
+region during Load. All are implemented. The recorder retains the full source
+raster plus fill/clip operations; playback transforms the clip and applies it
+after the existing original-matched dithering. Recording does not paint into
+the source GWorld. SetEmptyRgn resizes its owned region to the empty encoding.
+
+`tools/check_lamp_picture.py --reference tmp/m6/play/mac --native
+tmp/m6/native/waypoints-020y` passes original fill/clip semantics, complete
+source-rectangle pixels, palette, destination and dither mode. It independently
+checks native MapRgn's actual result through the clip recorded in its PICT.
+`tools/check_region_ops.py` adds 100 independent scaling and 100 masked-fill
+cases to the Boolean/inversion checks; the original 152-byte scaled lamp fixture
+matches exactly. The earlier ordinary PictureRecord8 reference still passes.
+
+Native `waypoints-020z` passes Load, lamp Save return (checkpoint 8), visible
+lamp preview (10), Load return (12), and walking afterwards (14), preserving
+health, inventory and the equipped lamp. The ordinary save is backed up as
+`tmp/m6/native/save-maze-lamp-working/`. The clean FULLPLAY/INTROSKIP build
+passes no-float and probe-symbol audits; the complete host suite passes. These checks establish this Save/Load
+contract; full state-keyed rendered-pixel comparisons remain M6.2. The maze
+route is still at room 0 on native and room 3 on the Mac.
