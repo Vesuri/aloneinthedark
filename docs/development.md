@@ -7569,15 +7569,27 @@ passage and monster, and the study coat-of-arms/record puzzle. The original
 Mac and native `a1200-020` have now defeated the pirate and survived with
 three health. Native object 149 is deleted from both floor and room; the
 ordinary save is `tmp/m6/native/save-pirate-cleared/`. Both builds have entered the
-ballroom. The Mac has taken the fireplace key after discarding optional
-items in the cleared pirate room; a surviving dancehall exit and the native
-key approach are still being developed.
+ballroom, taken the fireplace key, and exited alive with three health. The
+Mac discarded optional items in the cleared pirate room first. Native
+`waypoints-020m` checkpoints 187–201 cover the key and surviving exit; its
+ordinary save is `tmp/m6/native/save-ballroom-exit/`. Both pilots have returned
+to Jeremy’s study, descended its stair, crossed the collapsing bridge, and
+defeated the cave monster, completed the second worm lure, and crossed the
+dock. Native has also defeated the tunnel spider without further health loss
+(`waypoints-020n`, checkpoints 516–527); its ordinary save is
+`tmp/m6/native/save-spider-cleared/`. The rock-pillar cavern and remaining
+underground route are still in development. The dock water monster is
+triggered by elapsed time and camera position, not necessarily by entering
+water; the successful Mac pilot waits before its plank jump. Native saves
+for earlier underground boundaries remain under `tmp/m6/native/`.
 
 These are recovered route-development pilots, not fresh continuous acceptance
 runs. Failed approaches have exercised ordinary deaths and Save/Load. Sword
 hits push the pirate out of reach, so the route must approach again between
 attack bursts, allow a complete key-release interval, and track lateral
-alignment. The successful native pilot used right strikes; local command and
+alignment. Ballroom routing must also check whether the ghosts still dance:
+contact can switch them to pursuit before health falls. The successful native
+pilot used right strikes; local command and
 state captures are in `tmp/m6/native/waypoints-020k/` and the combat logs in
 `tmp/m6/native/pirate-*`. The complete maintained route, runtime-trap-logged
 reference replay and final native acceptance remain open.
