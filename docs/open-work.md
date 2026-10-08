@@ -9,6 +9,18 @@ design.md §5.
 Each item gives the **goal**, then the scope, then *done when*: the evidence
 required.
 
+## M7 Release
+
+- **M7.2 WHDLoad slave,** from `VetteSlave.s`: EmulLineA, a measured minimal stack (target 4 KB), the
+  resload file backend (chunked reads, saves), with the WHDLoad test modes.
+  Bind the persistent read-stream API/cache to resload rather than DOS; pass the
+  same read/seek/EOF/cache fixture under WHDLoad with zero OS-window entries.
+- **M7.3 Packaging and 1.0:**
+  - a deterministic LHA;
+  - `make release-check`;
+  - README requirements from measured numbers;
+  - VERSION 1.0.
+
 ## After M6: Reported stair bug
 
 - **MAC.1 Investigate the game's return-to-attic stair bug**, using
@@ -41,17 +53,3 @@ required.
   or unresolved), reproducible steps and evidence; version-inapplicable cases
   have reasons. File confirmed port defects as actionable open items. Report
   inherited glitches separately without silently changing original game logic.
-
-## M7 Release
-
-- **M7.1 Installer:** Vette's `install-data` extractor, an Installer script and
-  icons, run against `AloneInTheDark.img_.sit` with the known hashes checked.
-- **M7.2 WHDLoad slave,** from `VetteSlave.s`: EmulLineA, a 64 KB stack, the
-  resload file backend (chunked reads, saves), with the WHDLoad test modes.
-  Bind the persistent read-stream API/cache to resload rather than DOS; pass the
-  same read/seek/EOF/cache fixture under WHDLoad with zero OS-window entries.
-- **M7.3 Packaging and 1.0:**
-  - a deterministic LHA;
-  - `make release-check`;
-  - README requirements from measured numbers;
-  - VERSION 1.0.

@@ -8749,3 +8749,33 @@ that collecting the issue's five items, different animation timing or another
 original-game state cannot produce the reported reversal. Those reproduction
 conditions and the precise cause remain under investigation; no gameplay fix
 or global frame cap has been introduced.
+
+
+### M7.1 original-data installer — 2026-10-08
+
+`tools/install-data` adapts Vette's bounded StuffIt/HFS helper. This archive
+needs an additional LGPL Arsenic decoder for its outer raw HFS image, followed
+by the original InstallerMaker data fork. The complete inner payload is checked
+before using the known layout; all 74 installed files and Finder records are
+checked individually. Their 7,103,622 bytes agree with the independent Python
+extraction. No original bytes are included in the source or release inputs.
+
+Host tests cover exact output, idempotency, partial repair, preservation of an
+unsupported existing file, corruption, cancellation and cleanup; the same suite
+passes AddressSanitizer and UndefinedBehaviorSanitizer. The actual Amiga helper
+passes on a 68030 with 2 MiB Chip and 8 MiB Fast, across separate guest volumes.
+Its 4096-byte stack retains 3272 untouched bytes (824 used). The source archive's
+512 KiB Arsenic block needs 2,621,440 bytes of explicit allocation; helper BSS is
+109,708 bytes. Native log: `tmp/installer-amiga.log`.
+
+The real Commodore Installer 43.3 passes fresh installation and in-place update,
+including native icon.library validation, complete original-data hashes,
+port overlay/executable copies, preserved saved games and scratch cleanup.
+The script tests use a named copy-only slave fixture; actual WHDLoad execution
+is tested separately under M7.2. The helper is independently LGPL-2.1-or-later,
+with full license and source provenance retained.
+
+The owner supersedes the old unmeasured 64 KiB slave process-stack allowance:
+M7.2 now targets the normal 4 KiB process stack and measures usage. The existing
+Mac execution stack and music stacks are separate allocations and must be
+reported separately. Release packaging and final requirements remain M7.3.

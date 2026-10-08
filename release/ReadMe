@@ -1,0 +1,49 @@
+Alone in the Dark 1.0 -- Amiga port
+
+This package runs the original Macintosh Alone in the Dark 1.0 game code.
+Original game data is not included. Supply your own unmodified
+AloneInTheDark.img_.sit archive when the Installer asks for it.
+
+Installation
+------------
+Open Install using Amiga Installer 43 or newer. Install WHDLoad 17 or newer
+first and provide a Kickstart 3.1 image with its matching .RTB in
+Devs:Kickstarts or WHDCOMMON:. Supported names are kick40068.A1200,
+kick40068.A4000 and kick40063.A600. These files are not included.
+
+Allow 24 MB free in the temporary drawer and 8 MB at the destination.
+Use a hard disk temporary drawer when RAM is limited. The extractor needs
+about 2.7 MB of working allocations, plus its executable and the OS. It checks the exact original version, every
+installed file, resource fork and Finder record. Keep the archive compressed.
+
+Use the installed AloneInTheDark icon to launch through WHDLoad. F10 quits.
+Saved games are kept when updating an installation in place. Selecting Remove
+in the Installer explicitly deletes the existing drawer, including saves.
+
+Requirements
+------------
+AGA, 68020 or better, 2 MB Chip RAM and 8 MB Fast RAM. A 68030 or faster is
+recommended. Native 68020/68030 intro and first-floor endurance tests pass;
+4 MB Fast RAM fails startup. WHDLoad startup, attic play and Save/Load pass
+on a 68030 with 2 MB Chip and 8 MB Fast. More Fast RAM allows more PRELOAD
+caching. WHDLoad and its Kickstart image also need memory outside the game.
+
+The game uses a normal 4 KB Amiga process stack: measured usage is about
+2.1 KB through startup, gameplay, Save/Load and exit. Private Macintosh and
+music stacks are allocated internally. No Shell Stack increase is needed.
+
+Controls
+--------
+Use the keyboard for movement and actions; Enter opens the action menu.
+Use the original game menus for saving, loading and starting a new game.
+F10 exits WHDLoad. The original Cmd-Q equivalent uses the right Amiga key
+with Q. See the repository README for the complete control mapping.
+
+Source and support
+------------------
+https://github.com/Vesuri/aloneinthedark
+
+The independent AitdInstallData helper is LGPL-2.1-or-later. See
+LICENSE.LGPL.txt and tools/install-data in the source repository for its
+complete source and build instructions. This port does not grant rights to
+the original game, data or Kickstart images.
