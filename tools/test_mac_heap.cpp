@@ -1,5 +1,6 @@
 #include <cstdint>
 #include "../src/mac/MacHeap.h"
+#include "../src/mac/RegionCopy.h"
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -16,6 +17,35 @@ static void freeChain(MacHeap& heap,uint8_t* arena,std::vector<MacHeap::Handle> 
     }
     uint32_t head=0;for(unsigned i=8;i<12;++i)head=(head<<8)|arena[i];
     CHECK(head==uint32_t((unsigned long)previous));CHECK(heap.check());
+}
+static void checkRegionCopy() {
+    alignas(8) uint8_t arena[16384];MacHeap h;CHECK(h.init(arena,sizeof(arena)));
+    auto dst=h.newHandle(10,true);auto barrier=h.newPtr(128,true);
+    auto src=h.newHandle(36,true);CHECK(dst && barrier && src);
+    const int16_t words[]={36,1,2,4,8,1,2,4,6,8,32767,4,2,4,6,8,32767,32767};
+    for(unsigned i=0;i<18;++i) {(*src)[2*i]=uint16_t(words[i])>>8;(*src)[2*i+1]=uint8_t(words[i]);}
+    uint8_t expected[36];std::memcpy(expected,*src,36);
+    CHECK(h.setState(src,0x40)==0 && h.setState(dst,0x40)==0);
+    uint16_t size=0;CHECK(RegionCopy::copy(h,src,h,dst,size)==0 && size==36);
+    CHECK(h.handleSize(dst)==36 && std::memcmp(*dst,expected,36)==0);
+    CHECK(std::memcmp(*src,expected,36)==0 && h.state(src)==0x40 && h.state(dst)==0x40);
+    CHECK(RegionCopy::copy(h,src,h,src,size)==0 && size==36);
+    CHECK(std::memcmp(*src,expected,36)==0 && h.check());
+    // Shrink a complex destination to a rectangular/empty region.
+    (*src)[0]=0;(*src)[1]=10;std::memset(*src+2,0,8);
+    CHECK(RegionCopy::copy(h,src,h,dst,size)==0 && h.handleSize(dst)==10);
+    CHECK(std::memcmp(*src,*dst,10)==0);
+    (*src)[1]=37;
+    CHECK(RegionCopy::copy(h,src,h,dst,size)==MacHeap::paramErr && size==0);
+    CHECK(h.handleSize(dst)==10 && (*dst)[1]==10 && h.state(src)==0x40);
+    // A locked destination that cannot grow retains its contents and flags.
+    auto locked=h.newHandle(10,true);auto obstruction=h.newPtr(128,true);
+    CHECK(locked && obstruction);(*locked)[1]=10;CHECK(h.setState(locked,0x80)==0);
+    std::memcpy(*src,expected,36);
+    CHECK(RegionCopy::copy(h,src,h,locked,size)!=0);
+    CHECK(h.handleSize(locked)==10 && (*locked)[1]==10 && h.state(locked)==0x80);
+    CHECK(h.state(src)==0x40 && h.check());
+    std::puts("PASS region-copy: complex resize shrink alias validation locked-failure handle-state");
 }
 // Direct handle validation: interior, stale and forged data pointers fail
 // exactly as the block-chain walk did; master tables beyond the fixed list
@@ -189,6 +219,7 @@ int main() {
     for(unsigned i=0;i<120;++i)if(handles[i]){CHECK(h.moveHigh(handles[i])==0);CHECK(h.setHandleSize(handles[i],300)==0);CHECK(patternIs(*handles[i],200,i+1));}
     h.compact();CHECK(h.check());
     for(unsigned i=0;i<120;++i)if(handles[i])CHECK(patternIs(*handles[i],200,i+1));
+    checkRegionCopy();
     checkDirectLookup();
     std::puts("PASS mac-heap: direct-lookup allocation master-blocks lock purge compact resize move-high fragmentation=2500");
 }

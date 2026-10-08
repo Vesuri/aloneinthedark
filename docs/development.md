@@ -7592,10 +7592,14 @@ then reached the large plank cavern. A second navigation bypass places Carnby
 on its north plateau; native fixture `save-planks-bypass` and
 `waypoints-020r` checkpoints 4–6 cover its load and ordinary transition into
 the pirate-chest room (walkthrough 32, engine room 11). Mac reached the same
-room after a guest-RAM position adjustment. The chest interaction remains
-under test; no new native loud stop was reached. These bypasses do not claim
-complete ordinary platform traversal. The remaining underground route is
-still in development. The dock water monster is
+room after a guest-RAM position adjustment. Both pilots then unlocked the chest with fireplace key 144, took gem 268,
+and pushed blocking rock 266 through ordinary interactions. A position-only
+adjustment centered Carnby in the narrow passage after pushing; both walked
+the ordinary transition to floor 6 and reached the dark maze. These bypasses
+do not claim complete ordinary platform traversal. Native ordinary saves
+`save-gem-rock-cleared` and `save-dark-maze-entry` preserve these boundaries.
+The Mac has reached maze room 3 with its lamp enabled. The remaining
+underground route is still in development. The dock water monster is
 triggered by elapsed time and camera position, not necessarily by entering
 water; the successful Mac pilot waits before its plank jump. Native saves
 for earlier underground boundaries remain under `tmp/m6/native/`.
@@ -7660,3 +7664,22 @@ ordinary controls (`tmp/m6/native/save-library-entry/`). Captures are under
 `tmp/m6/play/mac/library-thick-line-*` and
 `tmp/m6/native/waypoints-020g/library-line-*`; the original caller bytes are
 `42A7 A892` (push zero / Line). Full-route acceptance remains open.
+
+
+## M6 maze lamp: CopyRgn — 2026-10-08
+
+Using the lamp at the maze entrance reached missing QuickDraw `CopyRgn`
+`$A8DC` at (Dark, $408E). The implementation copies the complete encoded
+region into an owned destination handle, preserving handle state and locking
+the source during destination resizing. Invalid lengths and failed growth
+remain errors. Original-Mac captures establish the eight-byte Pascal cleanup,
+D0 low word `$FFFF`, unchanged D1/D2 and A0/A1 at the ends of the copied data.
+
+The sanitized heap check passes complex-region growth, shrinking, aliasing,
+invalid length and locked-destination failure cases. Native `waypoints-020u`
+passes the first natural ten-byte copy's ABI and byte checks, including an
+unchanged source. The build passes no-float and probe-symbol audits. The next
+real stop is `FrameOval` at (Dark, $4096); the lamp also calls `XorRgn`,
+`DiffRgn`, `SetClip` and `InvertRgn`. Complex native copying and the complete
+lamp path remain unverified until those services run. Original oval and
+lamp-region fixtures are retained locally in `tmp/m6/play/mac/`.

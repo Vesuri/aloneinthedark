@@ -16,6 +16,7 @@
 #include "Line8.h"
 #include "PolygonRecord.h"
 #include "PolygonRegion.h"
+#include "RegionCopy.h"
 #include "CopyBits8.h"
 #include "ColorMap8Cache.h"
 #include "PictureRecord8.h"
@@ -1032,6 +1033,9 @@ static const TrapName s_trapNames[] = {
     {0xa8cb,"QUICKDRAW","OPENPOLY"}, {0xa8cc,"QUICKDRAW","CLOSEPOLY"},
     {0xa8f3,"QUICKDRAW","OPENPICTURE"}, {0xa8f4,"QUICKDRAW","CLOSEPICTURE"},
     {0xa8f5,"QUICKDRAW","KILLPICTURE"},
+    {0xa8dc,"QUICKDRAW","COPYRGN"}, {0xa8b7,"QUICKDRAW","FRAMEOVAL"},
+    {0xa8e7,"QUICKDRAW","XORRGN"}, {0xa8e6,"QUICKDRAW","DIFFRGN"},
+    {0xa879,"QUICKDRAW","SETCLIP"}, {0xa8d3,"QUICKDRAW","INVERTRGN"},
     {0xa8d9,"QUICKDRAW","DISPOSERGN"}, {0xa8da,"QUICKDRAW","OPENRGN"}, {0xa8db,"QUICKDRAW","CLOSERGN"}, {0xa8e1,"QUICKDRAW","INSETRGN"},
     {0xa8c6,"QUICKDRAW","FRAMEPOLY"}, {0xa8cd,"QUICKDRAW","KILLPOLY"},
     {0xa8a4,"QUICKDRAW","INVERTRECT"},
@@ -9519,6 +9523,22 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         memoryResult(0,false);
         regs[0]=0;regs[1]=(regs[1]&0xffff0000UL)|0xffff;
         regs[2]=(regs[2]&0xffff0000UL)|read16(*region+6);
+        return 9;
+    }
+    if(trap==0xa8dc) {                       // CopyRgn(source, destination)
+        MacHeap::Handle destination=(MacHeap::Handle)read32(userStack);
+        MacHeap::Handle source=(MacHeap::Handle)read32(userStack+4);
+        MacHeap* sourceOwner=handleZone(source);
+        MacHeap* destinationOwner=handleZone(destination);
+        if(!sourceOwner || !destinationOwner || resourceHandleIndex(destination)>=0)
+            goto unsupportedTrap;
+        uint16_t size=0;
+        if(memoryResult(RegionCopy::copy(*sourceOwner,source,*destinationOwner,destination,size))
+           !=MacHeap::noErr)goto unsupportedTrap;
+        // Original Mac (Dark, $408E): Pascal pops eight bytes; D1/D2 and
+        // the high half of D0 survive the word-copy loop.
+        regs[0]=(regs[0]&0xffff0000UL)|0xffff;
+        regs[8]=(uint32_t)*source+size;regs[9]=(uint32_t)*destination+size;
         return 9;
     }
     if(trap==0xa8dd) {                       // SetEmptyRgn(owned RgnHandle)
