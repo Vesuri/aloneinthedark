@@ -7952,3 +7952,40 @@ Left/Down selection, Escape cancellation and 300 further gameplay ticks, with
 new scene publication and pirate damage (health 29,979→29,976), no loud stop.
 The source helper is shared between normal and fast dispatch, so both paths
 retain the same containment and return-slot implementation.
+
+
+## M6.2 ending display fidelity — 2026-10-08
+
+The static ending now passes an explicit original/native state and full
+viewport comparison. `tools/check_fullplay_frame.py` verifies the A5 capture
+extent and actor identity, position, angles, room/floor, animation, keyframe
+and track before comparing all 64,000 viewport pixels. Native palette bytes
+are converted through the existing exhaustive-reference-verified VideoColor
+transfer; original pixels come directly from MAME's captured BGRA output.
+Optional physical eight-plane input must agree with the logical viewport.
+This comparison intentionally excludes Mac window chrome outside the game.
+
+Reproduce the ending acceptance with:
+
+```sh
+python3 tools/check_fullplay_frame.py --label ending \
+  --native tmp/m6/native/waypoints-020aj --sequence 115 \
+  --mac-world tmp/m6/play/mac/stairs-ending-after-minute-a5.bin \
+  --mac-pixels tmp/m6/play/mac/stairs-mac-ending-after-minute-rgb.bin \
+  --expect floor=7 --expect room=0 --expect actor=287 \
+  --scanout tmp/m6/native/waypoints-020aj/ending-scanout.bin
+```
+
+`tmp/m6/ending-fidelity.log` records zero differing pixels and matching
+physical scanout. The shared state is actor 287, body -1, position (0,0,150),
+heading 0, floor 7/room 0, animation -1, keyframe 0, track 0. Independent
+negative controls change one reference viewport pixel and one keyframe word;
+the checker rejects both. No original fixtures are committed.
+
+The earlier maze-room-5 comparison still fails exact pixels after the correct
+display transfer, but only 160 pixels differ rather than 2,026. Its captured
+animation keyframes differ (native 1, Mac 3), so it is not a valid exact-pose
+pair. The stricter checker now rejects that state mismatch before drawing a
+rendering conclusion. Interpolation/publication pairing remains required for
+the remaining animated-room, fight, death and restart cases. The ending case
+is removed from the unresolved M6.2 queue; the broader milestone remains open.
