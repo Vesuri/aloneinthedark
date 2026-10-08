@@ -18,7 +18,6 @@
 #include "PolygonRegion.h"
 #include "RegionCopy.h"
 #include "RegionOps.h"
-#include "InvertRegion8.h"
 #include "CopyBits8.h"
 #include "ColorMap8Cache.h"
 #include "PictureRecord8.h"
@@ -1041,7 +1040,7 @@ static const TrapName s_trapNames[] = {
     {0xa8f5,"QUICKDRAW","KILLPICTURE"}, {0xa8fb,"QUICKDRAW","MAPRGN"}, {0xa8dd,"QUICKDRAW","SETEMPTYRGN"},
     {0xa8dc,"QUICKDRAW","COPYRGN"}, {0xa8b7,"QUICKDRAW","FRAMEOVAL"},
     {0xa8e7,"QUICKDRAW","XORRGN"}, {0xa8e6,"QUICKDRAW","DIFFRGN"},
-    {0xa879,"QUICKDRAW","SETCLIP"}, {0xa8d3,"QUICKDRAW","INVERTRGN"},
+    {0xa879,"QUICKDRAW","SETCLIP"}, {0xa8d3,"QUICKDRAW","PAINTRGN"},
     {0xa8d9,"QUICKDRAW","DISPOSERGN"}, {0xa8da,"QUICKDRAW","OPENRGN"}, {0xa8db,"QUICKDRAW","CLOSERGN"}, {0xa8e1,"QUICKDRAW","INSETRGN"},
     {0xa8c6,"QUICKDRAW","FRAMEPOLY"}, {0xa8cd,"QUICKDRAW","KILLPOLY"},
     {0xa8a4,"QUICKDRAW","INVERTRECT"},
@@ -9671,7 +9670,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         regs[8]=(uint32_t)*source+size;regs[9]=(uint32_t)*destination+size;
         return 5;
     }
-    if(trap==0xa8d3) {                       // InvertRgn on an indexed colour port
+    if(trap==0xa8d3) {                       // PaintRgn with the selected solid foreground pen
         uint8_t* port=s_qdThePort ? (uint8_t*)read32(s_qdThePort) : 0;
         GWorldSlot* world=gWorldForPort(port);WindowSlot* window=windowSlot(port);
         MacHeap::Handle region=(MacHeap::Handle)read32(userStack);
@@ -9694,9 +9693,16 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         uint32_t bytes=world ? world->owner->handleSize(world->handles[1]) : sizeof(s_colorScreen);
         if(read16(map+32)!=8 || read32(map)!=(uint32_t)pixels || (world && !world->locked)
            || (window && (window->dialog || !port[110])))goto unsupportedTrap;
+        if((read16(port+56)!=0 && read16(port+56)!=8) || read32(port+80)>255)
+            goto unsupportedTrap;
+        if(world) {
+            if(read16(*world->handles[7])!=0)goto unsupportedTrap;
+            for(uint16_t i=0;i<8;++i)if((*world->handles[14])[i]!=255)goto unsupportedTrap;
+        } else if(read32(port+58))goto unsupportedTrap;
         uint8_t drawn[8];
-        if(!InvertRegion8::draw(pixels,bytes,read16(map+4)&0x3fff,map+6,port+16,*vh+2,
-              s_regionWorkspace.expanded,size,drawn))goto unsupportedTrap;
+        if(!FillRect8::solid(pixels,bytes,read16(map+4)&0x3fff,map+6,port+16,*vh+2,
+              *ch+2,*region+2,uint8_t(read32(port+80)),drawn,
+              s_regionWorkspace.expanded,size))goto unsupportedTrap;
         if(window && read16(drawn)!=read16(drawn+4) && read16(drawn+2)!=read16(drawn+6))
             markDirtyBounds(int16_t(read16(drawn))-int16_t(read16(map+6)),
                             int16_t(read16(drawn+2))-int16_t(read16(map+8)),

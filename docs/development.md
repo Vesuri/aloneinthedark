@@ -7680,7 +7680,7 @@ invalid length and locked-destination failure cases. Native `waypoints-020u`
 passes the first natural ten-byte copy's ABI and byte checks, including an
 unchanged source. The build passes no-float and probe-symbol audits. The next
 real stop is `FrameOval` at (Dark, $4096); the lamp also calls `XorRgn`,
-`DiffRgn`, `SetClip` and `InvertRgn`. Complex native copying and the complete
+`DiffRgn`, `SetClip` and `PaintRgn`. Complex native copying and the complete
 lamp path remain unverified until those services run. Original oval and
 lamp-region fixtures are retained locally in `tmp/m6/play/mac/`.
 
@@ -7688,7 +7688,7 @@ lamp-region fixtures are retained locally in `tmp/m6/play/mac/`.
 ## M6 maze lamp rendering — 2026-10-08
 
 The reached lamp path now implements circular `FrameOval` recording, `XorRgn`,
-`DiffRgn`, `SetClip` and indexed `InvertRgn`. Boolean operations sweep encoded
+`DiffRgn`, `SetClip` and solid foreground `PaintRgn`. Boolean operations sweep encoded
 region transitions without a framebuffer shadow. CopyBits intersects complex
 clip regions with any explicit mask before using its existing span copier.
 Window clips become owned handles on first SetClip and are disposed with the
@@ -7698,11 +7698,13 @@ stop: the captured 51×37 Mac ellipse differs from a pixel-centre equation, so
 that approximation is deliberately not used.
 
 `tools/check_region_ops.py --reference tmp/m6/play/mac` passes 300 independently
-rasterized Boolean cases, 100 clipped inversion cases, invalid-stream checks,
+rasterized Boolean cases, 100 clipped masked-fill cases, invalid-stream checks,
 ten original-Mac circle fixtures (diameters 1–100) and original lamp XOR and
 difference masks. The ordinary host suite runs the checks without local
-reference captures. Indexed inversion complements the pixel index, as specified
-in [Inside Macintosh](https://dev.os9.ca/techpubs/mac/QuickDraw/QuickDraw-59.html).
+reference captures. The initial implementation misidentified `$A8D3` as
+InvertRgn; it is PaintRgn (InvertRgn is `$A8D5`). The original game paints
+the previous lamp area with the current foreground pen. The initial inversion
+checks tested the wrong operation and did not establish game fidelity.
 
 Native `waypoints-020v` reaches SetClip after the new region calculations; its
 364-byte circle matches the translated original 50-pixel fixture exactly.
@@ -7743,3 +7745,43 @@ health, inventory and the equipped lamp. The ordinary save is backed up as
 passes no-float and probe-symbol audits; the complete host suite passes. These checks establish this Save/Load
 contract; full state-keyed rendered-pixel comparisons remain M6.2. The maze
 route is still at room 0 on native and room 3 on the Mac.
+
+
+## M6 maze PaintRgn correction — 2026-10-08
+
+The owner’s FS-UAE screenshots at 12:09 and 12:10 exposed persistent
+inverted-colour trails and a white patch outside the lamp. The cause was a
+wrong trap identification: `$A8D3` is PaintRgn, not InvertRgn (`$A8D5`), as
+listed in Apple's Inside Macintosh trap table and confirmed in the running
+original at (Dark, $40F8). The handler now fills the clipped region using the
+port's foreground index and validates the reached solid-pen copy mode. It
+uses the existing masked FillRect8 helper and dirty bounds. The unused
+inversion helper and its irrelevant tests were removed.
+
+The region suite passes 300 Boolean, 100 mapping and 100 masked-paint checks,
+plus the original Mac circle, difference, XOR and mapped-thumbnail fixtures.
+The clean FULLPLAY/INTROSKIP build passes both link audits. Native run
+`waypoints-020ab` loads the maze-room-5 save, walks with the lamp, returns to
+room 4, re-enters room 5 and saves without a runtime loud stop. Captures 4–6,
+10 and 14 contain only the 50×50 lamp area against black; capture 18 also
+contains the expected Game Saved message. Decoding the active Amiga scanout
+bitplanes at checkpoint 6 confirms no trail or stray white patch. Its 23-pixel
+difference from the logical frame is inside the actor, with a frame pending.
+A later attempt to advance directly to VBI violated the diagnostic command
+protocol and terminated the observer; this is not a successful publication
+synchronization check.
+
+The original Mac was positioned at native checkpoint 6's coordinates
+(-4291,428), room 5, heading 256, idle animation 287, using the authorized
+position-only test shortcut. Both show the lamp against black, but 2026 RGB
+pixels differ inside their combined 51×50 lamp bounds. Position/interpolation
+and colour matching remain part of M6.2; this is not exact pixel-parity evidence.
+Local evidence is in `paint-validation.log`, `paint-transition-validation.log`,
+`waypoints-020ab/scanout-6.bin`, and Mac `paint-matched-native` captures.
+
+Before this correction, ordinary native navigation reached engine maze rooms
+0–5; the current ordinary save is in room 5. On Mac, an exact-heading write
+in room 3 and a position-only shortcut to room 4's exit corridor bypassed
+navigation, followed by ordinary room transitions. These do not validate the
+skipped Mac corridor traversal. All remain walkthrough room 33; the gem door
+and final cavern are still ahead.
