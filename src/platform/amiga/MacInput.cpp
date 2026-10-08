@@ -576,7 +576,6 @@ static bool saberFindReady(uint32_t ticks,uint16_t objects,uint16_t animation,ui
     ++g_saberOpenAttempts;aitdInputSaberActionCheckpoint();return false;
 }
 #endif
-#ifdef AITD_HALLWAY
 extern "C" { volatile uint16_t g_exploreAlignment=0; }
 extern "C" __attribute__((noinline)) void aitdInputExploreAlignCheckpoint()
 { __asm__ volatile("nop" ::: "memory"); }
@@ -600,6 +599,7 @@ static bool exploreAligned(int16_t position,int16_t low,int16_t high,bool backFo
     }
     return true;
 }
+#ifdef AITD_HALLWAY
 static uint8_t s_stairExitState=0;
 static uint32_t s_stairExitTick=0;
 static bool exploreStairExit(uint32_t ticks,int16_t x,uint16_t beta,uint16_t animation)
@@ -800,6 +800,18 @@ void aitdInputExplore(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_
         g_exploreRouteStage=stage+1;g_exploreRouteTick=ticks;aitdInputExploreCheckpoint();return;
     }
 #endif
+#ifndef AITD_LAMP_STAIRS
+    // This fixture starts at heading zero. Let each original quarter-turn
+    // reach its cardinal endpoint instead of cutting it short: early release
+    // compounds angular error and can steer the approach into the partition.
+    if(stage==3 || stage==7 || stage==11 || stage==15) {
+        const uint16_t target=stage==7 ? 512 : stage==15 ? 0 : 256;
+        if(beta!=target)return;
+        aitdInputInjectProbeKey(stage==3 || stage==7 ? 0x4f : 0x4e,false);
+        g_exploreRouteStage=stage+1;g_exploreRouteTick=ticks;
+        aitdInputExploreCheckpoint();return;
+    }
+#endif
     if(!stage)aitdInputInjectProbeKey(0x4d,true);
     else if(stage==1) {if(z<1000)return;aitdInputInjectProbeKey(0x4d,false);}
     else if(stage==3) {if(beta<240 || beta>=512)return;aitdInputInjectProbeKey(0x4f,false);}
@@ -824,11 +836,11 @@ void aitdInputExplore(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_
         aitdInputInjectProbeKey(0x4e,false);}
     else if(stage==17) {if(floor!=1)return;aitdInputInjectProbeKey(0x4c,false);}
     else {
-#ifdef AITD_HALLWAY
+        // Reach the doorway before turning east. Coasting after release differs
+        // with frame rate; the standalone stairs fixture needs this too.
         if(stage==10) {
             if(ticks-g_exploreRouteTick<30 || !exploreAligned(z,3920,4070,true,animation))return;
         }
-#endif
         if(animation!=4 || ticks-g_exploreRouteTick<30)return;
         const uint8_t key=stage==2 || stage==6 ? 0x4f : stage==10 || stage==14 ? 0x4e : 0x4c;
         aitdInputInjectProbeKey(key,true);

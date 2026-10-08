@@ -549,9 +549,6 @@ endif
 ifeq ($(ROOM5RETURN),1)
 PROBE_SYMS += g_activeGameplayTicks g_activeMoveTicks g_activeTurnTicks g_activeKickTicks g_activeGameplaySamples g_returnDroppedKeys g_returnOpenEvents
 endif
-ifeq ($(HALLWAY),1)
-PROBE_SYMS += g_exploreAlignment
-endif
 ifeq ($(SABERROUTE),1)
 PROBE_SYMS += g_saberOpenAttempts
 ifeq ($(SABERBREAK),1)
@@ -559,7 +556,7 @@ PROBE_SYMS += g_saberBreakAttempts
 endif
 endif
 ifeq ($(EXPLOREROUTE),1)
-PROBE_SYMS += g_exploreRouteStage g_exploreRouteTick
+PROBE_SYMS += g_exploreRouteStage g_exploreRouteTick g_exploreAlignment
 endif
 PROBE_SYMS += g_macTicks
 ifeq ($(SONGCOST),1)

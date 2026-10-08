@@ -780,6 +780,10 @@ Owner update 2026-10-06 permits the fastest practical CPU for development.
 `a4000-060` provides an optional unlimited-speed 68060 pilot with the same
 memory and disabled FPU/MMU/JIT. Full 68040/68060 acceptance remains deferred
 (M5.0); this pilot does not change the executable target or timed comparisons.
+M6.3 also enables `a1200-030`, `a4000-040` and `a1200-060` as
+unlimited-speed test configurations with the same memory/FPU/MMU/JIT policy.
+The stairs case passes all eight named configurations in PAL and NTSC; this
+is bounded stairs acceptance, not a claim of full-game CPU compatibility.
 Unattended diagnostics default to warp; set `EXTRA_ARGS=--warp_mode=0`
 explicitly when measuring real-time behavior.
 `runtime_status.gdb` reports the emulator CPU tuple and Exec CPU flags.

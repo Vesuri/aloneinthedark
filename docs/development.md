@@ -8377,3 +8377,68 @@ faces retain their separate acceptance requirements.
 Shared `ballroom-save2` data fork SHA-256: `1632fb1f677b2b6656dd04ca4db710e93666d5844ec30776dcd1083ac0ed9f21`.
 
 Shared `library-visible-save` data fork SHA-256: `947f241efb47d1ccfcb1037bbd7924d2869261c3da855a531641a5ad29881405`.
+
+
+## M6.3 uncapped stairs matrix — 2026-10-08
+
+`amiga/regression.sh stairs` clean-builds `EXPLOREROUTE=1 INTROSKIP=1 PROBES=`
+and runs `amiga/stairs.gdb` with isolated, recoverable preferences and saves.
+The original game handles all movement, collisions and the automatic stair
+track. No actor state, game instructions, timing or frame cap is changed.
+The checker requires all nineteen route phases, real approach coordinates,
+floor 0 → floor 1 / room 6, released manual control with idle animation 4,
+a later completed scene, and populated frame/palette captures. A runner timeout
+or missing completion cannot pass. Failure logs retain a guest-time frame rate.
+
+`a1200-030`, `a4000-040` and `a1200-060` are enabled in the shared configuration
+selector for this acceptance. Like the existing unlimited-speed profiles they
+use AGA, 2 MiB Chip / 8 MiB Fast, no FPU/MMU/JIT. The executable remains 68020
+code. The fixed 68020 and fixed 68030 reference retain their existing clocks.
+This does not establish full-game compatibility on every processor.
+
+All sixteen final cases pass using one identical executable. These rates cover
+route stage 17 (released north-facing approach) through stage 19 (published
+manual storeroom), including the approach, transition and original stair track;
+they are not steady rendering or host-wall-clock benchmarks. Warp affects host
+duration only, and sub-frame accounting probes are compiled out.
+
+| Configuration | PAL FPS | NTSC FPS |
+| --- | ---: | ---: |
+| a1200-020 | 6.937 | 6.187 |
+| a4000-020 | 20.532 | 20.606 |
+| a1200-030 | 20.577 | 20.887 |
+| a4000-030 | 20.825 | 20.940 |
+| a4000-030-reference | 7.979 | 6.977 |
+| a4000-040 | 21.670 | 21.473 |
+| a1200-060 | 21.384 | 21.473 |
+| a4000-060 | 21.349 | 21.436 |
+
+Two rejected route-development results stopped before the original stair track.
+The initial NTSC A4000/020 approach ended against the partition at (6126,3750).
+Reusing the longer route's existing small-step doorway alignment resolved that
+position error. A subsequent PAL A4000/040 attempt released its east turn at
+beta 274 and drifted into the wall. The standalone fixture starts at beta zero;
+it now lets original quarter-turns reach their cardinal endpoints rather than
+cutting them short. Other routes retain their existing heading tolerances.
+These are diagnostic-controller corrections, not fixes to original stair logic.
+Both failed matrices remain archived; only the final complete matrix is accepted.
+
+Evidence is under `tmp/m6/stairs-cardinal/<config>-<PAL|NTSC>/`, including
+runner status, actual emulator CPU records, actor captures, logical frame/CLUT,
+and checker output. `matrix-checked.log` revalidates all sixteen cases, matching
+CPU/FPU/MMU/JIT tuples and a single executable SHA-256:
+`925541da5b03bac961fd27e3312b8b1b4c0bf0f5cc3d4ebc22a7583acbcf5e14`.
+The final source cleanup rebuild produces that same executable byte-for-byte.
+Both link audits pass (109 retained probe symbols). The maintained paired Mac
+stairs checker also passes against the final 68020 PAL run and the preserved
+original `tmp/m3-explore/mac-stairs.log`/captures. Configuration host tests cover
+all sixteen CPU/video combinations; preferences/save isolation tests pass.
+Negative checks reject timeout, missing completion, incomplete phase sequence
+and a final actor capture changed back to the attic.
+
+Reproduce an individual case, for example:
+`AMIGA_CONFIG=a1200-060 AMIGA_VIDEO=NTSC amiga/regression.sh stairs`.
+The final same-binary matrix driver is retained locally as
+`tmp/m6-stairs-cardinal-matrix.py`; it preserves each result before the next run.
+No tested descent exhibits the original return-to-attic failure, so no separate
+owner gameplay-change item is required. M6.4 cleanup and M6.5 fonts remain open.

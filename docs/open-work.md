@@ -11,13 +11,6 @@ required.
 
 ## M6 Completion
 
-- **M6.3 Stairs check.**
-  - Add the `stairs` regression (attic → storeroom descent) on every config,
-    including `a1200-060`.
-  - No frame cap (D3). If the descent fails anywhere, file a separate item for
-    the owner, with the measured frame rate.
-
-  *Done when* the case runs on all configs and its result is recorded.
 - **M6.4 Quit and cleanup.** A `quit` regression: all ledgers empty, the OS
   restored, and both Workbench and Shell starts work.
 

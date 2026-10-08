@@ -11,6 +11,11 @@ case "${1:-boot}" in
   resource-exit) exec bash ./resource_exit.sh ;;
   audio) exec bash ./audio.sh ;;
   boot) flags=(); observer=boot.gdb ;;
+  stairs)
+    flags=(EXPLOREROUTE=1 INTROSKIP=1 PROBES=); observer=stairs.gdb; deadline=900
+    mkdir -p ../tmp/stairs-regression
+    rm -f ../tmp/stairs-regression/native-*-actor.bin ../tmp/stairs-regression/stairs-native-*.bin
+    ;;
   intro)
     flags=(C2PVERIFY=1 FIXEDRNG=1); observer=intro.gdb; deadline=1800
     export AMIGA_CONFIG="${AMIGA_CONFIG:-a1200-020}"
@@ -43,7 +48,9 @@ if ! make -j4 "${flags[@]}" >> .run/regression-build.log 2>&1; then
 fi
 status=0
 GDBTAIL=120 EXTRA_ARGS=--warp_mode=1 GDBSCRIPT="$observer" ./diag_run.sh "$deadline" || status=$?
-if [[ "$observer" == intro.gdb ]]; then
+if [[ "$observer" == stairs.gdb ]]; then
+  python3 ../tools/check_stairs_regression.py .run/gdb-out.log --status "$status"
+elif [[ "$observer" == intro.gdb ]]; then
   python3 ../tools/check_intro.py .run/gdb-out.log --status "$status"
 elif [[ "$observer" == resource_read.gdb ]]; then
   python3 ../tools/check_resource_reads.py --status "$status"

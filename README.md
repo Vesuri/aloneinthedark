@@ -146,6 +146,9 @@ For testing directly in Carnby's first room, use a clean build with
 scenes, menus and story; initialization and loading still run. Clean-build
 without the option to restore the full startup. `SAVELOAD=1` automates save → move → load and Quit; paired Mac/A1200/68020 checks verify actual file IO and restored actor/room state. Use `DIAG_RUN_DIR=.run-saveload` to keep diagnostic saves separate. `EXPLOREROUTE=1` descends the attic stairs through ordinary controls and waits
 for first-floor manual control; paired Mac/68020/68030 checks pass.
+Run `AMIGA_CONFIG=a1200-060 AMIGA_VIDEO=PAL amiga/regression.sh stairs` for
+the maintained descent check. It passes all eight named CPU configurations
+in PAL and NTSC, with uncapped pacing and measured guest-time FPS.
 `SABERBREAK=1` extends the cabinet route through weapon attacks, actual breakage
 and blade recovery; its 115-phase paired regression passes on both CPUs.
 `SOUTHROOMS=1` exercises the hallway’s southern room entrance and released manual
