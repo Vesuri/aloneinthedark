@@ -7551,3 +7551,83 @@ place of the previously requested before/during/after probe screenshots; no
 new rendered probe capture is claimed. The historical capture restriction
 does not grant additional host capture or input permissions. The completed
 item is removed from open work.
+
+## M6 autonomous full play-through — 2026-10-08
+
+The owner requested completion of all M6 work using the
+[GameFAQs walkthrough](https://gamefaqs.gamespot.com/pc/564567-alone-in-the-dark-1992/faqs/1768).
+Walkthrough location numbers are distinct from engine room IDs. M6.1 begins
+with a fresh Carnby game and must collect the progression items; the M3
+first-floor circuit is not a full-game route. Only ordinary controls drive
+play, with read-only actor/inventory/puzzle observations. Original-Mac
+exploration captures are under `tmp/m6/play/mac/`. Emulator checkpoints are
+for route development; rejected attempts are not continuous-play acceptance.
+Both pilots have completed the attic barriers, upstairs combat and mirror
+puzzles, both bathrooms, the statuette/armour puzzle, porch arrows, kitchen
+and dining puzzles, smoking-room ashtray, paintings, Jeremy’s clock, library
+passage and monster, and the study coat-of-arms/record puzzle. The original
+Mac and native `a1200-020` have now defeated the pirate and survived with
+three health. Native object 149 is deleted from both floor and room; the
+ordinary save is `tmp/m6/native/save-pirate-cleared/`. Both builds have entered the
+ballroom. The Mac has taken the fireplace key after discarding optional
+items in the cleared pirate room; a surviving dancehall exit and the native
+key approach are still being developed.
+
+These are recovered route-development pilots, not fresh continuous acceptance
+runs. Failed approaches have exercised ordinary deaths and Save/Load. Sword
+hits push the pirate out of reach, so the route must approach again between
+attack bursts, allow a complete key-release interval, and track lateral
+alignment. The successful native pilot used right strikes; local command and
+state captures are in `tmp/m6/native/waypoints-020k/` and the combat logs in
+`tmp/m6/native/pirate-*`. The complete maintained route, runtime-trap-logged
+reference replay and final native acceptance remain open.
+
+One Mac ballroom attempt stalled with TickCount fixed at 368211 across 600
+emulator frames (PC `$034970`, SR `$2204`). The reference state is preserved as
+`tmp/m6/play/mac/ballroom-reference-stall.sta`; restoring the earlier corner
+checkpoint makes TickCount advance again. Its cause has not been established;
+it is not evidence of a native-port fault or a successful route.
+
+`FULLPLAY=1 INTROSKIP=1` enables a diagnostic ordinary-key controller. The
+FS-UAE debugger supplied on this host supports memory reads but not writes,
+so commands use `PROGDIR:M6Control`, read through the existing user-service
+OS window only at checkpoints. The command contains six big-endian 32-bit
+words: sequence, key mask, maximum ticks, observed actor field, signed target,
+and comparison. Observations never modify original game memory. VBI expires
+held keys even when original menus poll KeyMap without calling a trap; input
+service checkpoints can also stop at a read-only actor waypoint. Active key
+holds stay on the normal input-trap path until expiry or the waypoint is
+reached; they do not request an OS window for every input poll. The clean
+build passes the no-float/probe-symbol audits and native ordinary Save/Load,
+held-key and heading checkpoints. This diagnostic build is not a performance
+measurement.
+Modifier transitions precede ordinary key presses and follow ordinary key
+releases, matching the native event path; original Command-O Load and
+Command-S Save have been exercised after this ordering fix.
+`amiga/fullplay.gdb` captures actor/inventory state, variables and the logical
+frame/palette at each checkpoint; `tools/fullplay_command.py` records each
+host command and sends only `continue` to GDB. Route-development files and
+logs remain under `tmp/m6/`. The complete maintained route, final acceptance
+run and M6 fidelity/configuration checks remain open.
+
+A route-development backup restored over a live save directory produced an
+`HOpenResFile` stop: the live catalog retained the newer 29,456-byte resource
+fork length while the restored fork was 47,988 bytes. The same backup loads
+correctly after a fresh launch (native `waypoints-020c`, checkpoint 4). Restore
+backup files only with the runtime stopped; ordinary in-game Save/Load stays
+within the live catalog. This externally induced stop is not a missing trap.
+
+Entering the library exposed a genuine `QUICKDRAW / LINE` stop at
+`Dark3+$346A`: a zero-displacement solid `patCopy` call with a 5×5 pen. The
+previous GWorld line path accepted only 1×1 strokes and 2×2 points. It now
+fills the clipped pen rectangle for zero-displacement points of other sizes,
+while retaining rejection of unimplemented thick strokes and coordinate
+overflow. Natural original-Mac and native calls pass
+`tools/check_solid_point.py`: the 3×3 Mac dot and 5×5 native dot match the
+expected clipped rectangle across all 261,452 buffer bytes, with unchanged
+port, PixMap and regions. The native call also returns D0=0 and consumes four
+argument bytes. The rebuilt `a1200-020` reaches the library and saves through
+ordinary controls (`tmp/m6/native/save-library-entry/`). Captures are under
+`tmp/m6/play/mac/library-thick-line-*` and
+`tmp/m6/native/waypoints-020g/library-line-*`; the original caller bytes are
+`42A7 A892` (push zero / Line). Full-route acceptance remains open.

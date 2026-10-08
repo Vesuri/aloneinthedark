@@ -47,6 +47,7 @@ extern "C" void aitdDriverClockProbe();
 #include "platform/amiga/AitdScreen.h"
 #include "platform/amiga/MacInput.h"
 #include "platform/amiga/FirstFloorCircuit.h"
+#include "platform/amiga/FullPlayProbe.h"
 #include "platform/amiga/FirstFloorRecovery.h"
 #include "platform/amiga/FirstFloorLoad.h"
 #include "platform/amiga/PerfProbe.h"
@@ -7460,6 +7461,11 @@ static uint16_t synchronousFileTrap(uint16_t trap,uint16_t selector) {
 }
 static bool isUserService(uint16_t trap)
 {
+#ifdef AITD_FULL_PLAY
+    if(g_ingameStage==5 && s_a5WorldStorage &&
+       (trap==0xa975 || trap==0xa976 || trap==0xa974 || trap==0xa970 || trap==0xa860) &&
+       aitdInputFullPlayNeedsService(s_a5WorldStorage+75616-0xb292+160))return true;
+#endif
 #ifdef AITD_FILE_WRITE_PROBE
     if(trap==0xa0fb || trap==0xa0fa || trap==0xa0f9)return true;
 #endif
@@ -7888,6 +7894,10 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
 #endif
     aitdInputInGame(trap,gameMenu,
         atPortraits,atStory,gameplay,g_macTicks);
+#ifdef AITD_FULL_PLAY
+    if(inUserService && g_ingameStage==5 && s_a5WorldStorage && g_macFramesPresented &&
+       (trap==0xa975 || trap==0xa976 || trap==0xa974 || trap==0xa970 || trap==0xa860))aitdInputFullPlay(g_macTicks,s_a5WorldStorage+75616-0xb292+160);
+#endif
 #ifdef AITD_FIRSTFLOOR_LOAD
     if(s_a5WorldStorage && g_ingameStage==5)
         aitdInputFirstFloorLoad(g_macTicks,g_macSceneFramesCompleted,s_a5WorldStorage+75616,s_colorScreen,s_windowManagerColors);

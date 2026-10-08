@@ -28,6 +28,11 @@ ifeq ($(SCENEFRAMEVERIFY),1)
 PROBES=1
 EXTRA_DEFINES += -DAITD_SCENE_FRAME_VERIFY
 endif
+ifeq ($(FULLPLAY),1)
+INGAME=1
+PROBES=1
+EXTRA_DEFINES += -DAITD_FULL_PLAY
+endif
 ifeq ($(FIRSTFLOORLOAD),1)
 INGAME=1
 PROBES=1
@@ -645,6 +650,9 @@ GAMEINPUT=1
 PROBES=1
 EXTRA_DEFINES += -DAITD_DEATH_ROUTE
 PROBE_SYMS += g_deathRouteStage g_deathRouteTick
+endif
+ifeq ($(FULLPLAY),1)
+PROBE_SYMS += g_fullPlaySequence g_fullPlayMask g_fullPlayDuration g_fullPlayTick g_fullPlayStatus
 endif
 ifeq ($(GAMEINPUT),1)
 INGAME=1

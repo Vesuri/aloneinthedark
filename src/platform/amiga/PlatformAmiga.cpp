@@ -26,6 +26,7 @@
 #include "framework/CopperList.h"
 #include "PlatformAmiga.h"
 #include "MacInput.h"
+#include "FullPlayProbe.h"
 #include "SystemWindow.h"
 #include "FileCatalog.h"
 #ifdef AITD_FILE_PROBE
@@ -206,6 +207,9 @@ static uint32_t vbiHandler()
     // PAL fields need the 50-to-60 Hz conversion; NTSC advances one Mac tick.
     uint16_t tickDelta=VideoTiming::tickDelta(g_videoPAL!=0,s_macTickRemainder);
     g_macTicks += tickDelta;
+#ifdef AITD_FULL_PLAY
+    aitdInputFullPlayVBI(g_macTicks);
+#endif
     if (g_macTicksAddress) *g_macTicksAddress = g_macTicks;
     // System 6 keeps its low-memory random seed live independently of each
     // application's QuickDraw randSeed.  MAME shows it one tick behind Ticks;
