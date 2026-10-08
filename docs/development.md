@@ -7558,8 +7558,11 @@ The owner requested completion of all M6 work using the
 [GameFAQs walkthrough](https://gamefaqs.gamespot.com/pc/564567-alone-in-the-dark-1992/faqs/1768).
 Walkthrough location numbers are distinct from engine room IDs. M6.1 begins
 with a fresh Carnby game and must collect the progression items; the M3
-first-floor circuit is not a full-game route. Only ordinary controls drive
-play, with read-only actor/inventory/puzzle observations. Original-Mac
+first-floor circuit is not a full-game route. Ordinary controls drive play,
+with read-only actor/inventory/puzzle observations. The owner subsequently
+authorized test cheats to bypass gameplay obstacles and prioritize whole-game
+coverage over refining navigation scripts. Record bypasses separately; keep
+them out of the shipped runtime. Original-Mac
 exploration captures are under `tmp/m6/play/mac/`. Emulator checkpoints are
 for route development; rejected attempts are not continuous-play acceptance.
 Both pilots have completed the attic barriers, upstairs combat and mirror
@@ -7577,8 +7580,22 @@ to Jeremy’s study, descended its stair, crossed the collapsing bridge, and
 defeated the cave monster, completed the second worm lure, and crossed the
 dock. Native has also defeated the tunnel spider without further health loss
 (`waypoints-020n`, checkpoints 516–527); its ordinary save is
-`tmp/m6/native/save-spider-cleared/`. The rock-pillar cavern and remaining
-underground route are still in development. The dock water monster is
+`tmp/m6/native/save-spider-cleared/`. The Mac pilot subsequently crossed the
+rock-pillar cavern and reached the large plank cavern (walkthrough room 31).
+Native reached the fifth pillar; the active bird caused collision/fall failures.
+A local save-only bypass (`tmp/m6/native/save-pillars-bypass/`) removes bird 230
+and places Carnby on the room-30 exit ledge, retaining health and inventory.
+Native `waypoints-020q` checkpoints 3–6 verify loading that fixture and the
+ordinary exit transition into engine room 5 with no loud stop. This is bypassed
+encounter coverage, not a successful ordinary-input bird fight. Both versions
+then reached the large plank cavern. A second navigation bypass places Carnby
+on its north plateau; native fixture `save-planks-bypass` and
+`waypoints-020r` checkpoints 4–6 cover its load and ordinary transition into
+the pirate-chest room (walkthrough 32, engine room 11). Mac reached the same
+room after a guest-RAM position adjustment. The chest interaction remains
+under test; no new native loud stop was reached. These bypasses do not claim
+complete ordinary platform traversal. The remaining underground route is
+still in development. The dock water monster is
 triggered by elapsed time and camera position, not necessarily by entering
 water; the successful Mac pilot waits before its plank jump. Native saves
 for earlier underground boundaries remain under `tmp/m6/native/`.
