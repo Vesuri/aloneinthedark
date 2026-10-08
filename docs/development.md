@@ -8601,15 +8601,113 @@ files are absent, so it is not reported as a new reference run. Clean normal
 and diagnostic builds pass the no-float and retained-symbol link audits.
 
 
-## M6 completion audit: remaining reference trace — 2026-10-08
+## M6 final completion audit — 2026-10-08
 
-M6.1's cheat-assisted ending/return journal, M6.2's representative exact frames,
-M6.3's sixteen-case stairs matrix, M6.4's thirty-two-case quit matrix and M6.5's
-paired Times14/Times36 artwork cover their stated acceptance scopes. The
-completion audit also checked design §9 R9, which calls for repeating the
-original full-session runtime trap log in M6. Retained M6 state journals,
-individual service captures and framebuffer comparisons do not constitute
-that log. No full-session M6 trace was found. M6.6 records this outstanding
-requirement; M6 must not be marked complete until it is satisfied. This does
-not claim a fresh, uninterrupted ordinary-input play-through: authorized
-fixture cheats and recovered route boundaries retain the limitations above.
+The remaining design §9 R9 audit now has an uninterrupted original Mac IIx /
+68030 session from New Game through all eight engine floors, the ending and
+return sequence. `tools/mac_traps.lua` remained enabled throughout; the replay
+loaded no earlier emulator state and changed no original instructions. MAME
+exited zero after the final captures. This completes M6 under the owner's
+explicit authorization for autonomous controls and test cheats. It does not
+claim an unassisted play-through or every possible branch of the game.
+
+The local evidence bundle is `tmp/m6/trap-audit/`: `session.log`,
+`session-manifest.json`, `full-report.md`, `events.log`, `journal.md`, controller
+scripts and original captures. The raw log is 6,840,405,291 bytes / 19,717,000
+lines, SHA-256
+`e7b3b817c656c2f047b378c281bc30b699fa02f129e2c05fd6e6fab4c5b391d1`.
+The final audit independently rechecked that checksum and every reported
+original opcode. Raw game data, captures and logs remain untracked.
+
+### Trap and font findings
+
+The report attributes 8,395,437 calls to 564 original CODE sites and 152 trap
+words, with no words or sites outside the maintained static census. It also
+records 8,715,274 results and 363,602 driver calls. The 2,045,130 unattributed,
+system or driver calls remain separate; they are not assigned to nearby game
+CODE. Original MDRV internals remain outside the native replacement's contract
+under D8.
+
+Compared with the earlier UI report (`tmp/mac-traps.md`), this trace adds 33
+call sites but no trap words or raw D0 selector values. Reviewing those sites
+against the current native services found no new missing contract:
+
+| Original sites (header-inclusive offsets) | Existing native contract |
+| --- | --- |
+| Misc3 $068A; Dan2 $2208 | BlockMove |
+| Dan1 $0DBE, $21BC | SetRect, TickCount |
+| Dan2 $3D64, $3D78, $4386; Dark $3C96, $3CA4, $3CC8, $3DC2, $3DE6 | GWorld dispatch |
+| Dark $3C9A | FrontWindow |
+| Dark $3CB8, $3DD6 | PaintRect |
+| Dan2 $3F86, $3F8E, $3FDE, $3FE8, $3FEC, $40CA, $436A, $4372; Dark $3CAC, $3CB0, $3DCA, $3DCE; Dark3 $344C, $3452, $345C, $3466, $346A, $3472 | Pen mode/size, RGB foreground, MoveTo and relative Line |
+
+This is a review of newly observed sites, not a claim that trap-name recognition
+alone proves implementation. These drawing paths also have the retained
+native gameplay, menu and state-paired frame evidence below. Unsupported
+services/variants continue to stop loudly; the audit adds no permissive fallback.
+
+Gameplay DrawText uses Times/plain/14 and Times/plain/36, including the pause
+message. Both original bitmap faces are already bundled and verified. Font 0
+at size 0/12 appears in system DrawString/DrawText calls for Mac window/menu
+titles and the screen-size dialog. These presentations are intentionally
+suppressed by D4/D5/D7, rather than missing gameplay fonts. The third static
+DrawText site (Misc2, $146C) remains absent from this completed trace.
+
+The existing reporter exits **1**, and that result is retained. Its default
+acceptance gate requires seven M0 save/load UI proof names; this replay uses
+EXPLORE/DIALOG_STATE observations and ending proof names instead. It also
+records thirteen recovered controller timeouts. Each recovery is documented
+in the journal, with subsequent original-game observations and a completed
+ending. This is separately reviewed full-game trace acceptance, **not a passing
+M0 UI regression**. The gate was not weakened and no missing UI markers were
+invented. Its MDRV `after=startup` labels likewise reflect the absence of its
+CHECKPOINT markers, not that every driver call happened at startup.
+
+### Route, cheats and ending
+
+The journal covers attic, upstairs rooms, mirrors/stairs, first-floor rooms,
+kitchen/pantry/coal, dining/smoking/study, library/secret room, pirate/ballroom,
+underground bridge/cave/dock/pillars/planks, maze, tree, basement escape and the
+front-door ending. The trace records all engine floors 0–7. Controller mistakes,
+failed approaches and corrected premature checkpoint labels remain in the
+journal; reaching a later floor does not turn a failed interaction into success.
+
+Assistance includes health 30,000, position/height shortcuts, selected enemy
+removals, reduced pirate health, granted missed items and bypassed locked-door,
+chest, rock and hook-exit navigation. Those bypasses do not establish ordinary
+puzzle completion. The earlier paired full-route evidence remains separate.
+In this new Mac session, ordinary talisman Put and the actual lamp Throw did
+trigger tree destruction (VAR33=1, tree object 40 removed, lamp absent) at tick
+290,709, without altering life 522. This improves the Mac evidence only: the
+accepted earlier native tree sequence still used the disclosed private
+life-script fixture. No cheat is included in production assets or code.
+
+The inspected ending capture shows “The End” at tick 306,597. Enter returns to
+the car intro (311,442); Escape reaches the Infogrames publisher logo (312,018).
+All three captures have explicit verification markers followed by SESSION
+complete. Post-ending captures do not interpret freed gameplay storage as
+actor/health evidence. Native `waypoints-020aj` separately covers the ending,
+physical publication and return loop without a loud stop, as documented in
+M6.1 above.
+
+### Requirement-by-requirement closure
+
+| Requirement | Accepted evidence and scope |
+| --- | --- |
+| M6.1 full route and ending | Mac/native journals, ordinary transitions and disclosed cheats; native `actual-front-door.log` and `waypoints-020aj` ending/return checkpoints |
+| M6.2 state-matched fidelity | `tmp/m6/fidelity/*-checked.log`: maze lamp, inventory/actions, complete book navigation on 020/030, twelve lobby phases, 23 restart phases, death/menu, pirate, ballroom and lit library; exact 64,000-pixel viewports with actor/pose checks, including all active actors in the combat/dance/library comparisons |
+| M6.3 stairs | Sixteen CPU/video cases in `tmp/m6/stairs-cardinal/`; original input/track, living manual actor in floor 1 room 6 and published destination; original Mac paired check |
+| M6.4 quit | Thirty-two CPU/video/startup cases in `tmp/m6/quit-final/`; original Quit, empty ledgers, restored display/interrupt/input/audio state; Workbench startup/reply protocol fixture, not an icon-click test |
+| M6.5 reached original fonts | Bundled Times14/36; original glyph/service comparisons; paired 307,200-byte Times36 draw plus 64,000-pixel physical publication and ordinary resume on 020/030 |
+| M6.6 continuous reference trace | Sealed complete log, byte-attributed report, journal, reviewed new sites/selectors/fonts and ending/return captures above |
+
+The closure re-runs the maintained validators against all sixteen stairs and
+thirty-two quit captures and both native pause fixtures; all pass. Output is
+`completion-recheck.log`. `completion-review.json` records the trace checksum,
+564 independently checked original opcodes, floor coverage, ending markers and
+the thirteen retained timeout observations. Existing rejected captures and
+negative-test results are not counted as accepted fidelity runs. Representative
+frame comparisons do not imply that every frame in every room was compared.
+
+There are no remaining M6 contracts from this audit. The separately requested
+Macintosh.js issue and SDA glitch audit remain in open work, followed by M7.

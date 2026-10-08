@@ -11,13 +11,12 @@ and Toolbox layer are carried over from Vette!; see
 
 ## Current state
 
-**M6 has reached the ending on both Mac and Amiga**, with the authorized test
-cheats documented in the development notes. Representative frame comparisons,
-all sixteen stairs configurations and all thirty-two quit/startup cases pass.
-Pause now uses the original Times36 artwork, with exact Mac/native text-service
-comparisons and physical display checks on 68020 and 68030; ordinary resume
-also passes. The remaining M6 item is the full-session original-Mac trap audit.
-[Evidence and limits](docs/development.md#m65-pause-implementation-and-acceptance--2026-10-08).
+**M6 is complete**, with the authorized test cheats and acceptance limits
+recorded in the [final audit](docs/development.md#m6-final-completion-audit--2026-10-08).
+Both Mac and Amiga reach the ending and return loop. Representative frame
+comparisons, sixteen stairs configurations and thirty-two quit/startup cases
+pass. The original Times14/Times36 artwork is bundled, and the continuous
+original-Mac full-game trap audit found no new missing port contracts.
 
 **M5 performance acceptance is complete.** Fixed-clock 68020/68030 checks,
 phase profiling, interrupt timing and measured memory requirements are recorded

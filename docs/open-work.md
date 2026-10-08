@@ -9,21 +9,6 @@ design.md §5.
 Each item gives the **goal**, then the scope, then *done when*: the evidence
 required.
 
-## M6 Completion
-
-- **M6.6 Original-Mac full-session trap audit (design §9, R9).** Repeat the
-  whole-game reference route with `tools/mac_traps.lua` logging active, using
-  the authorized autonomous controls and documented test cheats. Retained
-  M6 play-through journals and per-call/frame captures do not provide this
-  full-session runtime log. Attribute observed traps to checked original CODE
-  bytes and investigate any calls or visible font selections absent from the
-  accepted native coverage. Keep raw logs and game assets local.
-
-  *Done when* a positively completed original session covers the route through
-  the ending and return sequence with its trap log, report and coverage journal;
-  every newly exposed port contract is fixed and verified, and the final M6
-  audit/checkpoint is committed and pushed.
-
 ## After M6: Macintosh.js stair bug
 
 - **MAC.1 Reproduce and fix [macintosh.js issue #103](https://github.com/felixrieseberg/macintosh.js/issues/103).**
