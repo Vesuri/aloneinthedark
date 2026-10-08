@@ -8448,3 +8448,40 @@ The final same-binary matrix driver is retained locally as
 `tmp/m6-stairs-cardinal-matrix.py`; it preserves each result before the next run.
 No tested descent exhibits the original return-to-attic failure, so no separate
 owner gameplay-change item is required. M6.4 cleanup and M6.5 fonts remain open.
+
+
+## M6.4 quit and OS handback — 2026-10-08
+
+The maintained `amiga/regression.sh quit` builds `QUITPROBE=1 INTROSKIP=1`,
+starts ordinary gameplay, sends Right-Amiga-Q and observes the original
+ExitToShell path through final cleanup. It passes all eight named CPU
+configurations in PAL and NTSC, for both Shell and Workbench-protocol starts
+(32 cases). All final captures used executable SHA-256
+`3fae969c3169d4ef935fd422a3ba58075329fe5f9a6100cbdfac224c8f14b292`.
+
+`amiga/quit.gdb` rejects loud stops and checks zero Chip/Fast allocations,
+accounting errors, file/resource/overlay handles and close failures; released
+zones, guest stack, service state and libraries; stopped music/effects and
+released sound channels; restored View, DMA/IRQ masks and silenced Paula.
+It compares the actual Line-A and VERTB vector contents with their saved
+values, and verifies released keyboard ownership and timer port. The host
+checker requires the ordered gameplay, original exit, cleanup and final
+return checkpoints, successful status and debugger detach.
+
+With `DIAG_LAUNCH=workbench`, `tools/quit_workbench.c` loads real Workbench
+from an external `WORKBENCH_ADF`, creates a non-CLI process with a 64 KiB
+stack and sends a WBStartup message. The parent must receive that exact
+message back after cleanup before it writes the success marker; the runner
+and checker both require it. This tests the standard Workbench startup
+protocol, not icon loading or an actual mouse double-click. No OS media is
+bundled. The successful fixture releases its segment, directory and port.
+
+Final evidence is local in `tmp/m6/quit-final/<config>-<video>-<launch>/`,
+including status, actual emulator configuration, observer and reply logs.
+All 32 archived cases were independently rechecked. Negative checks reject
+timeout status, leaked memory, incorrect startup mode, missing restoration
+evidence, a changed vector, missing completion and a missing Workbench reply.
+The six preference-isolation tests and shell syntax checks pass. A clean
+normal build with the diagnostic disabled passes the no-float and probe
+link audits (`tmp/m6/quit-normal-build.log`). No production cleanup defect
+was found; the added runtime hooks are diagnostic-only.

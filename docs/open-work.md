@@ -19,10 +19,6 @@ required.
   *Done when* a reproducible completed-frame comparison explains the
   difference and verifies unchanged preview rendering.
 
-- **M6.4 Quit and cleanup.** A `quit` regression: all ledgers empty, the OS
-  restored, and both Workbench and Shell starts work.
-
-  *Done when* it passes on all configs.
 - **M6.5 Remaining visible Mac font faces (D6).** Capture and bundle raw
   original bitmaps for reached visible families/sizes beyond Times/plain/14,
   including pause. Preserve glyph bearings, styles and measured text layout.

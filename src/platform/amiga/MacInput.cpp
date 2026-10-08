@@ -306,6 +306,11 @@ void aitdInputMenuProbe(uint32_t ticks)
     if(g_ingameStage!=5 || g_menuProbeStage>=9)return;
     if(!g_menuProbeTick) {g_menuProbeTick=ticks;return;}
     const uint32_t elapsed=ticks-g_menuProbeTick;
+#ifdef AITD_QUIT_PROBE
+    if(elapsed<300)return;
+    g_menuProbeStage=9;g_menuProbeTick=ticks;
+    aitdMenuProbeCheckpoint();menuProbeKey(true);return;
+#endif
     if(!g_menuProbeStage) {
         if(elapsed<300)return;
     } else if(s_menuProbeHeld) {

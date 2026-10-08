@@ -53,7 +53,22 @@ esac
 
 DH0="$RUN/dh0"; DH1="$RUN/dh1"; GDBHOME="$RUN/gdbhome"
 mkdir -p "$DH0/s" "$DH1" "$RUN/state" "$RUN/logs" "$GDBHOME"
-printf 'cd dh1:\nAlone\n' > "$DH0/s/startup-sequence"
+launch_args=()
+case "${DIAG_LAUNCH:-shell}" in
+  shell) printf 'cd dh1:\nAlone\n' > "$DH0/s/startup-sequence" ;;
+  workbench)
+    WORKBENCH_ADF="${WORKBENCH_ADF:-$HOME/.local/share/amiga/Workbenchv2.04rev37.67Workbench.adf}"
+    [[ -f "$WORKBENCH_ADF" ]] || { echo 'DIAG / MISSING WORKBENCH_ADF' >&2; exit 1; }
+    m68k-amiga-elf-gcc -g -m68020 -msoft-float -Os -nostdlib -ffunction-sections -fdata-sections \
+      -Wl,--emit-relocs,--gc-sections,-Ttext=0 ../tools/quit_workbench.c \
+      obj/gcc8_c_support.o obj/gcc8_a_support.o -o "$RUN/quit-workbench.elf"
+    elf2hunk "$RUN/quit-workbench.elf" "$DH1/QuitWorkbench" -s
+    rm -f "$DH1/QuitWorkbench.done"
+    printf 'cd dh1:\nQuitWorkbench\n' > "$DH0/s/startup-sequence"
+    launch_args+=(--floppy_drive_0="$WORKBENCH_ADF" --hard_drive_0_priority=10)
+    ;;
+  *) echo 'DIAG / UNKNOWN DIAG_LAUNCH' >&2; exit 1 ;;
+esac
 cp -f out/Alone.exe "$DH1/Alone"
 stage_aitd_original_data "$DH1"
 case "${GDBSCRIPT:-runtime_status.gdb}" in
@@ -68,7 +83,7 @@ fsuae_claim_port || exit 1
 # Default to silent host playback; DIAG_AUDIO=1 keeps the normal audio driver.
 # Emulated Paula/DMA remains active in either mode.
 "$FSUAE" \
-  "${audio_args[@]}" \
+  "${audio_args[@]}" "${launch_args[@]}" \
   $EXTRA_ARGS "${AITD_MACHINE_ARGS[@]}" \
   --logs_dir="$PWD/$RUN/logs" --kickstart_file="$ROM" \
   --hard_drive_0="$DH0" --hard_drive_1="$DH1" \
@@ -132,6 +147,18 @@ else
   wait "$GDB_PID" || status=$?
 fi
 GDB_PID=
+if [[ "$status" == 0 && "${DIAG_LAUNCH:-shell}" == workbench ]]; then
+  for i in $(seq 1 10); do
+    [[ -f "$DH1/QuitWorkbench.done" ]] && break
+    kill -0 "$FSUAE_PID" 2>/dev/null || break
+    sleep 1
+  done
+  if [[ ! -f "$DH1/QuitWorkbench.done" ]] || ! grep -qx 'PASS Workbench startup reply received after game cleanup' "$DH1/QuitWorkbench.done"; then
+    echo 'DIAG / WORKBENCH REPLY MISSING' >&2; status=1
+  else
+    cat "$DH1/QuitWorkbench.done"
+  fi
+fi
 cleanup
 echo "=== gdb output (filtered) ==="
 # Preserve the observer/timeout exit status even when the filtered log is empty.

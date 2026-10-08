@@ -11,6 +11,9 @@ case "${1:-boot}" in
   resource-exit) exec bash ./resource_exit.sh ;;
   audio) exec bash ./audio.sh ;;
   boot) flags=(); observer=boot.gdb ;;
+  quit)
+    flags=(QUITPROBE=1 INTROSKIP=1); observer=quit.gdb; deadline=300
+    ;;
   stairs)
     flags=(EXPLOREROUTE=1 INTROSKIP=1 PROBES=); observer=stairs.gdb; deadline=900
     mkdir -p ../tmp/stairs-regression
@@ -48,7 +51,9 @@ if ! make -j4 "${flags[@]}" >> .run/regression-build.log 2>&1; then
 fi
 status=0
 GDBTAIL=120 EXTRA_ARGS=--warp_mode=1 GDBSCRIPT="$observer" ./diag_run.sh "$deadline" || status=$?
-if [[ "$observer" == stairs.gdb ]]; then
+if [[ "$observer" == quit.gdb ]]; then
+  python3 ../tools/check_quit_regression.py .run/gdb-out.log --status "$status" --launch "${DIAG_LAUNCH:-shell}" --reply .run/dh1/QuitWorkbench.done
+elif [[ "$observer" == stairs.gdb ]]; then
   python3 ../tools/check_stairs_regression.py .run/gdb-out.log --status "$status"
 elif [[ "$observer" == intro.gdb ]]; then
   python3 ../tools/check_intro.py .run/gdb-out.log --status "$status"

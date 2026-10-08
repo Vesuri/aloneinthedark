@@ -150,6 +150,11 @@ for first-floor manual control; paired Mac/68020/68030 checks pass.
 Run `AMIGA_CONFIG=a1200-060 AMIGA_VIDEO=PAL amiga/regression.sh stairs` for
 the maintained descent check. It passes all eight named CPU configurations
 in PAL and NTSC, with uncapped pacing and measured guest-time FPS.
+Run `AMIGA_CONFIG=a4000-030-reference AMIGA_VIDEO=PAL amiga/regression.sh quit`
+for the quit/cleanup check. Set `DIAG_LAUNCH=workbench` to test the Workbench
+startup-message protocol with real Workbench loaded; `WORKBENCH_ADF` selects
+the external OS disk. This is a protocol fixture, not an icon double-click.
+Both launch paths pass on all eight configurations in PAL and NTSC.
 `SABERBREAK=1` extends the cabinet route through weapon attacks, actual breakage
 and blade recovery; its 115-phase paired regression passes on both CPUs.
 `SOUTHROOMS=1` exercises the hallway’s southern room entrance and released manual

@@ -10,6 +10,13 @@
 // initialization guard (`__cxa_guard_acquire`/`_release`), which the freestanding CRT does not
 // provide. Platform stays stateless; large machine-specific storage belongs to the backend.
 static Platform s_platform;
+#ifdef AITD_QUIT_PROBE
+extern "C" {
+volatile unsigned long g_quitStage=0,g_quitResult=0,g_quitWorkbench=0;
+__attribute__((noinline)) void aitdQuitCheckpoint() { __asm__ volatile("nop" ::: "memory"); }
+}
+#endif
+
 
 #ifdef AITD_PLATFORM_AMIGA
 // The freestanding CRT does not implement Amiga Workbench startup.  A Shell
@@ -39,8 +46,17 @@ int main(void)
 {
 #ifdef AITD_PLATFORM_AMIGA
     struct WBStartup* workbenchMessage = getWorkbenchStartupMessage();
+#ifdef AITD_QUIT_PROBE
+    g_quitWorkbench=workbenchMessage!=0;g_quitStage=1;aitdQuitCheckpoint();
+#endif
     int result = s_platform.run() ? 0 : 20; // 20 = the AmigaDOS FAIL level
+#ifdef AITD_QUIT_PROBE
+    g_quitResult=result;g_quitStage=2;aitdQuitCheckpoint();
+#endif
     replyWorkbenchStartupMessage(workbenchMessage);
+#ifdef AITD_QUIT_PROBE
+    g_quitStage=3;aitdQuitCheckpoint();
+#endif
     return result;
 #else
     return s_platform.run() ? 0 : 20;

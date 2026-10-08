@@ -24,6 +24,13 @@
 # basename — KEEP BASENAMES UNIQUE across the source trees), sources located via vpath.
 
 # Diagnostic feature flags must enable probes before conditional symbol groups.
+ifeq ($(QUITPROBE),1)
+MENUPROBE=1
+M5AUDIT=1
+PROBES=1
+EXTRA_DEFINES += -DAITD_QUIT_PROBE
+endif
+
 ifeq ($(SCENEFRAMEVERIFY),1)
 PROBES=1
 EXTRA_DEFINES += -DAITD_SCENE_FRAME_VERIFY
@@ -636,6 +643,9 @@ MENUPROBE=1
 PROBES=1
 EXTRA_DEFINES += -DAITD_SAVE_LOAD
 PROBE_SYMS += g_saveLoadStage g_saveLoadTick g_saveLoadSavedX g_saveLoadSavedZ g_saveLoadClosedBytes g_saveLoadReadBytes
+endif
+ifeq ($(QUITPROBE),1)
+PROBE_SYMS += g_quitStage g_quitResult g_quitWorkbench g_fileOpenHandles g_fileCloseErrors g_musicTimerSource GfxBase DOSBase TimerBase
 endif
 ifeq ($(MENUPROBE),1)
 INGAME=1
