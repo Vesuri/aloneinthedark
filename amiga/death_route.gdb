@@ -1,6 +1,9 @@
 # Ordinary control sequence, natural death call and fresh Carnby game.
 set pagination off
 set confirm off
+# Read live guest stack/code through this custom remote stub.
+set stack-cache off
+set code-cache off
 break AitdScreen::showLoudStop
 commands
  silent

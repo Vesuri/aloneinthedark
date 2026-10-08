@@ -8191,10 +8191,11 @@ python3 tools/check_fullplay_frame.py --label new-game-restart \
   --expect floor=0 --expect room=0 --expect camera=0 --expect animation=4
 ```
 
-The post-death candidate had equal actor fields and pixels but was a blank
-transition. The comparator's positive-rendering guard rejects it; it is not
-accepted death/menu fidelity evidence. Death-sequence and rendered-menu frames
-remain open. The exact rendered restart case is removed from M6.2's queue.
+The post-death candidate had equal actor fields and pixels but failed the
+room comparator's 33-colour positive-rendering guard. It was initially
+misclassified as a blank transition. Subsequent visual inspection establishes
+that it is the complete 28-colour menu; see the corrected acceptance below.
+The exact rendered restart case is removed from M6.2's queue.
 
 
 A follow-up a1200-020 run of the later-armed maintained observer exits one
@@ -8203,6 +8204,77 @@ at the unchanged 36,000-tick natural-death deadline (`death020-run.log`,
 song check: Carnby remains idle at (3231,-1321), while actor/object 21 is at
 (3242,131), animation 22. No runtime loud stop occurs. This is rejected
 acceptance, not a baseline death pass or evidence of a sound regression.
-The exact cause of the stalled encounter is unproven; resolving the diagnostic
-route remains part of the open death-sequence comparison. The new exact
-restart acceptance above is specifically the completed fixed-68030 run.
+The exact cause of the stalled encounter is unproven; the subsequent bounded
+approach below resolves the diagnostic route without changing original game
+logic. The exact restart acceptance above is specifically the completed
+fixed-68030 run.
+
+
+## M6.2 rendered death and post-death menu — 2026-10-08
+
+The final death tableau (body on the altar, with “The End”) and the complete
+post-death menu now each match all 64,000 original/native viewport pixels.
+Both pairs have actor 1/body 12 at (5200,-1000,-6000), angles (0,512,0), engine
+floor 6/room 6/camera 4, animation 273/keyframe 0, track 2. These are actual
+rendered scenes; the original captures have been visually inspected.
+
+The Book/room-oriented comparator's default minimum of 33 reference colours
+was inappropriate for the complete menu, which contains 28. The previously
+rejected `death/mac-menu-bgra.bin` is byte-for-byte identical to the newly
+captured complete menu, `death-sequence/mac-191-bgra.bin`. The earlier claim
+that it was blank was incorrect. `check_fullplay_frame.py` now permits an
+explicit measured colour bound for sparse UI (`--minimum-colors 20` here),
+while retaining the room default, complete state pairing and exact pixels.
+Bounds below two are rejected. Negative controls reject a genuinely blank
+reference, an invalid bound of one and a one-pixel change.
+
+The DEATHROUTE-only controller now makes one ordinary Back approach toward
+Z=-500 after 6,000 idle-wait ticks, if still alive and idle. It releases the
+key at the target, death or menu, and retains the existing overall deadline.
+This closes the observed attack gap without editing game/actor state, enemy
+AI or original instructions. Both the a1200-020 and a4000-030-reference
+approach runs complete natural death, the song-131 ABI checks and fresh
+Carnby restart. Functional-check logs are `death020-approach-checked.log` and
+`death030-approach-checked.log`. Their first restart images differ in idle
+phase from the historical Mac functional fixture; they do not replace the
+23 exact restart pairs already accepted above.
+
+Later arming alone did not eliminate the intermittent song-observer miss on
+the 68030. The observer now disables the custom remote stub's stack/code
+caches and stops unconditionally at the original song-call site, testing the
+argument inside the stopped command list. The original-byte, argument,
+register and resource checks remain intact. An exploratory run logged both
+Core calls and native `startNativeSong` calls and passed the complete route.
+The precise cause of the earlier conditional-breakpoint miss is unproven;
+this is an observer change, not a sound-runtime correction.
+
+The original Mac restores the initial attic snapshot and waits for natural
+enemy damage. `death-sequence.lua` captures 227 distinct frames through death,
+the complete menu and the following automatic attract sequence. It does not
+write game state or send input during the sequence. Native samples are from
+`death020-approach` (tableau at tick 16428) and `death030-approach` (menu captured
+at the original menu-input checkpoint). Reproduce the exact comparisons:
+
+```sh
+python3 tools/check_fullplay_frame.py --label death-sequence \
+  --native tmp/m6/fidelity/death020-approach --sequence 16428 \
+  --mac-world tmp/m6/fidelity/death-sequence/mac-188-world.bin \
+  --mac-pixels tmp/m6/fidelity/death-sequence/mac-188-bgra.bin \
+  --expect floor=6 --expect room=6 --expect animation=273
+python3 tools/check_fullplay_frame.py --label post-death-menu \
+  --native tmp/m6/fidelity/death030-approach --sequence 1 \
+  --mac-world tmp/m6/fidelity/death-sequence/mac-191-world.bin \
+  --mac-pixels tmp/m6/fidelity/death-sequence/mac-191-bgra.bin \
+  --expect floor=6 --expect room=6 --expect animation=273 --minimum-colors 20
+```
+
+`death-scene-checked.log` and `death-menu-checked.log` record the passes.
+The state-paired death tableau and menu cases are complete; this does not
+claim a frame-by-frame comparison of every moving corpse-sequence frame.
+
+
+A final a1200-020 run using the maintained observer (only output paths changed,
+no exploratory hooks) also exits zero and passes `check_death_route.py`.
+`death020-final-status`, `death020-final-gdb.log` and
+`death020-final-checked.log` retain this independent confirmation of the final
+controller and observer. Build no-float and probe-symbol audits pass.

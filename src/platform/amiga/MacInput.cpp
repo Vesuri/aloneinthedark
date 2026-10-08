@@ -230,6 +230,7 @@ extern "C" __attribute__((noinline)) void aitdInputDeathRouteCheckpoint()
 void aitdInputDeathRoute(bool menu,uint32_t ticks,bool initialActor,int16_t z,uint16_t animation)
 {
     static uint32_t sampled=0;
+    static bool approached=false,approaching=false;
     if(g_deathRouteStage>=5)return;
     if(!g_deathRouteStage) {
         if(g_gameInputStage!=9)return;
@@ -247,6 +248,16 @@ void aitdInputDeathRoute(bool menu,uint32_t ticks,bool initialActor,int16_t z,ui
         if(animation!=4 || ticks-g_deathRouteTick<30)return;
         g_deathRouteStage=3;g_deathRouteTick=ticks;sampled=ticks;
     } else if(g_deathRouteStage==3) {
+        // The idle starting position can leave the attacker just out of reach.
+        // Once, use ordinary Back to close that gap; never edit combat state.
+        if(!approached && !approaching && !menu && animation==4
+           && ticks-g_deathRouteTick>=6000) {
+            approached=true;
+            if(z<-500) {approaching=true;aitdInputInjectProbeKey(0x4d,true);}
+        }
+        if(approaching && (z>=-500 || animation==261 || menu)) {
+            aitdInputInjectProbeKey(0x4d,false);approaching=false;
+        }
         if(!menu) {
             if(ticks-sampled>=600) {sampled=ticks;aitdInputDeathRouteCheckpoint();}
             return;

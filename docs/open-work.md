@@ -11,10 +11,8 @@ required.
 
 ## M6 Completion
 
-- **M6.2 State-keyed fidelity set.** Frame compares for remaining representative mansion rooms,
-  fights, the death sequence and the rendered post-death menu.
-  Resolve the current 68020 natural-death fixture timeout (idle hero and nearby
-  attacking enemy) without changing original game logic.
+- **M6.2 State-keyed fidelity set.** Frame compares for remaining representative
+  mansion rooms and fights.
 
   *Done when* all of them pass.
 - **M6.3 Stairs check.**

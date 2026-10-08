@@ -36,7 +36,11 @@ def check(args):
     table = (args.native/f'clut-{args.sequence}.bin').read_bytes()
     amiga = rgb(indices, table, display_transfer()[::256])
     a, b = viewport(mac_rgb), viewport(amiga)
-    require(len(set(a[i:i+3] for i in range(0,len(a),3))) > 32,
+    # Sparse menus have fewer colours than room artwork. Keep a positive
+    # reference requirement even when the caller selects a measured UI bound.
+    minimum = getattr(args, 'minimum_colors', 33)
+    require(2 <= minimum <= 256, 'reference colour bound must be 2..256')
+    require(len(set(a[i:i+3] for i in range(0,len(a),3))) >= minimum,
             'positive rendered reference coverage')
     different = sum(a[i:i+3] != b[i:i+3] for i in range(0,len(a),3))
     require(different == 0, f'viewport: {different} differing pixels')
@@ -59,6 +63,8 @@ if __name__ == '__main__':
     p.add_argument('--mac-pixels', type=Path, required=True)
     p.add_argument('--expect', action='append', required=True, metavar='FIELD=VALUE')
     p.add_argument('--scanout', type=Path)
+    p.add_argument('--minimum-colors', type=int, default=33,
+                   help='Positive reference colour bound; default 33 for rooms, measured lower bound for sparse UI')
     try:
         check(p.parse_args())
     except (ValueError, OSError) as error:

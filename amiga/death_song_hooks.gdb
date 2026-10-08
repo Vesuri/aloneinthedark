@@ -3,9 +3,13 @@ set $core=s_segments[3].begin
 set $deathSong131_seen=0
 set $deathSongReturned=0
 set $deathMenuSeen=0
-break *($core+0x138c) if *(unsigned long*)($sp+4)==131
+break *($core+0x138c)
 commands
  silent
+ # Inspect the argument after stopping instead of filtering on remote stack data.
+ if *(unsigned long*)($sp+4)!=131
+  continue
+ end
  if *(unsigned long*)($core+0x1382)!=0x2f2e0008 || *(unsigned long*)($core+0x1386)!=0x42a7206d || *(unsigned long*)($core+0x138a)!=0xf9544e90 || *(unsigned short*)($core+0x138e)!=0x508f || *(unsigned long*)$sp || g_song.ownedCount || g_song.playing
   echo FAIL DEATH ROUTE caller bytes/previous ownership\n
   detach
