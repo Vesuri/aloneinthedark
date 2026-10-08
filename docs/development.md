@@ -7820,6 +7820,60 @@ Native evidence: `altar-correct-actions.log`, `talisman-retry.log`,
 include `cavern-entry.sta` and `lamp-thrown.sta`; the latter proves only the
 throw, not tree destruction. Mac hook Use changed door object 273's script
 from 512 to 513, but subsequent navigation/position shortcuts did not establish
-the exit transition. Resume from a suitable preserved checkpoint and verify
-actual tree destruction, cavern escape, basement and ending. M6.2–M6.5 remain
-open; these gameplay checkpoints do not replace their acceptance checks.
+the exit transition at that checkpoint. The subsequent escape and ending
+verification, including its explicit puzzle bypass, is recorded below.
+
+
+## M6.1 ending and return sequence — 2026-10-08
+
+Both original Mac (MAME Mac IIx/68030) and native `a1200-020` now reach the
+final car cinematic and visible “The End”. Native `waypoints-020aj`
+checkpoints 113–115 cover the cinematic and final text, with the loud-stop
+breakpoint active throughout. At checkpoint 115 all 64,000 decoded physical
+scanout pixels match the logical game viewport. Original captures are
+`stairs-mac-ending-trigger-rgb.bin` and
+`stairs-mac-ending-after-minute-rgb.bin`. These complete the cheat-assisted
+M6.1 play-through acceptance, not natural completion of bypassed gameplay.
+
+The successful tree destruction used an isolated test-only change to original
+life 522: its initial HIT_BY comparison literal changed from lamp object 13
+to -1; the lamp-lit condition remained. Mac changed the loaded script in RAM.
+Native used `tmp/m6/tree-trigger-data`, a private asset copy, for run 020ag;
+the comparison changes only two decoded bytes. Test state also supplied the
+altar/lamp conditions and position. Both executions set variable 33 to 1 and
+removed tree object 40. Native `save-tree-destroyed-cheat` preserves that result.
+This exercises the destruction sequence but does not validate ordinary lamp
+aiming or talisman placement. Unmodified original native assets were restored
+for run 020ah and all subsequent escape/ending runs. No cheat was shipped.
+
+Position shortcuts then bypassed cavern platforms and selected corridors:
+near the cavern hook door (-3500,-4010,8200); dock exit (-4300,-4010,8300);
+room 5/5 return corridor (native -6000,-4010,-4000); room 5/2 exit
+(-5800,-4010,4000); room 5/3 tunnel approach (native -300,-4010,5700,
+Mac x alignment at its reached z); and basement stair foot (-7100,-3700
+in x/z). Ordinary input performed the subsequent transitions through 6/0,
+5/9, 5/8, 5/5, 5/2, 5/3, 4/0 and 3/5. Hook Use opened the cavern/maze
+escape doors. The basement interruption was an ordinary bullet pickup dialog,
+cleared on both versions; it was not evidence of an engine freeze. The cellar
+ascent ran its original track after the position shortcut. These runs do not
+replace M6.3's attic-stairs configuration coverage.
+
+The actual front exit is east from 3/1, reached through 3/0 from 3/5. The
+south doors in 3/0 tried earlier were unrelated locked doors. Ordinary input
+opened the correct doors and triggered the original floor-7 ending on both
+versions. The Mac heading was aligned to 256 at rest before the final approach.
+Local evidence includes `tree-destruction-cheat.log`, `cavern-escape.log`,
+`dock-return.log`, `return-tunnel.log`, `basement-tunnel-route.log`,
+`basement-arrival.log`, `lobby-entry-final.log` and `actual-front-door.log`.
+
+Enter dismisses “The End” on both versions and restarts the title/intro loop.
+Native checkpoints 116–118 verify this without a loud stop; Escape then
+returns to the MacPlay publisher screen (119–120), matching the original.
+State fields pointing into freed gameplay storage during title screens are
+not valid health or actor evidence. M6.2–M6.5 remain open.
+
+The quick logical-frame PNG helper omits the existing VideoColor display
+transfer, making its images darker than the physical display. The ending has
+zero spatial residual pixels when each native index is mapped to its observed
+Mac display colour. This is useful static fidelity evidence, but future RGB
+comparisons must use the actual display palette, not raw logical CLUT bytes.

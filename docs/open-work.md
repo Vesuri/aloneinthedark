@@ -11,13 +11,6 @@ required.
 
 ## M6 Completion
 
-- **M6.1 Full-game play-through,** in MAME and on `a1200-020`, with the runtime
-  trap log. Run autonomously using the owner-supplied
-  [walkthrough](https://gamefaqs.gamespot.com/pc/564567-alone-in-the-dark-1992/faqs/1768).
-  Implement every new trap and path it finds. Owner-authorized test cheats may
-  bypass gameplay obstacles; record each bypass and its coverage limits.
-
-  *Done when* the game can be finished on the Amiga with no loud stop.
 - **M6.2 State-keyed fidelity set.** Frame compares for representative rooms,
   inventory, book/reading views, fights, death, new-game restart and the ending.
   Pair idle animation frame and interpolation phase before exact restart pixels.
