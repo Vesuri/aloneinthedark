@@ -8508,9 +8508,9 @@ completed angle-zero capture also matches every pixel of the baseline's
 This follow-up loads the pirate combat save, with diagnostic health 30,000.
 Its fourth inventory item is an oil lamp rather than the old fixture's dagger;
 the remaining 243 full-screen differences at matching focus/angle are confined
-to that fourth item's label (x283–356, y228–240). An attempted inventory-list
-RAM adjustment was rebuilt by the original menu and did not change the list;
-it is not claimed as a successful state match. No renderer change is needed.
+to that fourth item's label (x283–356, y228–240). An attempted debugger inventory-list
+write did not change the list: this FS-UAE stub does not support guest-memory
+writes. It is not claimed as a successful state match. No renderer change is needed.
 Evidence and an asserting comparison script are in
 `tmp/menu-enemy-profile/focus-check/`; the bounded native run is
 `tmp/m6/native/waypoints-020aw/`, ending with successful detach and runner exit
@@ -8521,7 +8521,7 @@ zero. The previously measured preview update rates remain unchanged.
 
 The live original Mac pause path reaches DrawText at (Dan2, $1222), verified
 against the CODE bytes. It draws `The game is paused!` using Times/plain/36,
-srcOr, black, baseline 81 and pen x13. Unlike the Times14 intro captions,
+srcOr, foreground index zero (white in the game palette), baseline 81 and pen x13. Unlike the Times14 intro captions,
 this draw targets the actual window: 640x480 indexed screen, stride 640,
 PixMap origin (-160,-150). Native `drawGWorldText` currently only supports
 Times14 in an owned GWorld, so this window draw needs its own reached contract;
@@ -8541,3 +8541,75 @@ reached native window draw, checking original text layout/metrics calls and
 state-matched native pause output remain required, along with any other
 reached visible faces. The first capture attempt wrongly assumed a zero-origin
 GWorld and was rejected; the accepted fixture uses the observed window bounds.
+
+
+## M6.5 pause implementation and acceptance — 2026-10-08
+
+Times/plain/36 now uses the captured 224-glyph bitmap and measured advances,
+with TextWidth and GetFontInfo matching the original Mac. `drawWindowText`
+handles the reached owned-window srcOr path, clipped by port/visibility/clip,
+with explicit glyph dirty bounds. The original pause routine continues to
+perform centering, text selection, pause input and resume. No original game
+instructions change. Reached visible Mac fonts are Times/plain/14 (existing
+intro/feedback path) and Times/plain/36 (pause); the other startup font/style
+associations supply hidden metrics. Unsupported visible font selections remain
+named stops. The third static DrawText site, (Misc2, $146C), is not reached by
+the accepted play-through and is not claimed as a newly supported visible UI.
+
+The first native pause found an earlier missing contract: (Dark, $1DBC) copies
+the visible window into an owned GWorld before drawing text. `copyPortBits8`
+now accepts an owned visible window source using the existing indexed-copy,
+colour-map and clipping implementation. Original source/destination PixMaps,
+rectangles, palettes and before/after bytes are retained in `copy-*` captures.
+The existing GWorld source and picture-recording paths retain their behavior.
+
+Final `FULLPLAY=1 INTROSKIP=1 PROBES=` runs load the same original lit-library
+save and use ordinary P/release/P input: `waypoints-020az` on fixed 68030 and
+`waypoints-020ba` on baseline 68020. Both preserve hero position/room, publish
+the pause screen, stop publishing while paused, and resume gameplay without a
+loud stop. Their physical eight-plane output matches the logical pause screen
+at all 64,000 pixels. Both terminate by successful debugger detach and exit 0.
+
+Exact text-service comparisons use each unmodified native run's starting
+screen pixels as input to the original Mac DrawText. The original fixture
+requires matching window/pen/font/mode/fraction fields and the same 19-byte
+string, then restores the Mac pixels. All 307,200 output bytes match on both
+CPUs; the final pen is x307 and the native Pascal stack advances eight bytes.
+This is a paired text-service test, not a claim that two independently timed
+whole-room animations have the same pose. Earlier full-room comparisons were
+rejected for differing hero interpolation/keyframe state, despite matching
+text. An attempted native bulk-memory fixture stalled because this remote
+stub does not support memory writes; it is excluded. The final native captures
+are read-only. No original Mac instruction is changed by the reference fixture.
+
+Recheck with:
+
+```sh
+python3 tools/times36_bitmap.py --check
+python3 tools/check_times36.py --reference-dir tmp/m6/fonts
+python3 tools/check_pause_font.py --capture-dir tmp/m6/fonts --prefix native030 \
+  --run tmp/m6/native/waypoints-020az --status 0
+python3 tools/check_pause_font.py --capture-dir tmp/m6/fonts --prefix native020 \
+  --run tmp/m6/native/waypoints-020ba --status 0
+```
+
+The compiled renderer passes AddressSanitizer/UndefinedBehaviorSanitizer,
+original-buffer comparison, clipping, dirty-bound and rejected-input checks.
+The existing Times14 generator and sanitizer-backed Text8 helper checks pass;
+the optional old Times14 capture comparison was unavailable because its input
+files are absent, so it is not reported as a new reference run. Clean normal
+and diagnostic builds pass the no-float and retained-symbol link audits.
+
+
+## M6 completion audit: remaining reference trace — 2026-10-08
+
+M6.1's cheat-assisted ending/return journal, M6.2's representative exact frames,
+M6.3's sixteen-case stairs matrix, M6.4's thirty-two-case quit matrix and M6.5's
+paired Times14/Times36 artwork cover their stated acceptance scopes. The
+completion audit also checked design §9 R9, which calls for repeating the
+original full-session runtime trap log in M6. Retained M6 state journals,
+individual service captures and framebuffer comparisons do not constitute
+that log. No full-session M6 trace was found. M6.6 records this outstanding
+requirement; M6 must not be marked complete until it is satisfied. This does
+not claim a fresh, uninterrupted ordinary-input play-through: authorized
+fixture cheats and recovered route boundaries retain the limitations above.

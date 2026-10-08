@@ -11,12 +11,18 @@ required.
 
 ## M6 Completion
 
-- **M6.5 Remaining visible Mac font faces (D6).** Capture and bundle raw
-  original bitmaps for reached visible families/sizes beyond Times/plain/14,
-  including pause. Preserve glyph bearings, styles and measured text layout.
+- **M6.6 Original-Mac full-session trap audit (design §9, R9).** Repeat the
+  whole-game reference route with `tools/mac_traps.lua` logging active, using
+  the authorized autonomous controls and documented test cheats. Retained
+  M6 play-through journals and per-call/frame captures do not provide this
+  full-session runtime log. Attribute observed traps to checked original CODE
+  bytes and investigate any calls or visible font selections absent from the
+  accepted native coverage. Keep raw logs and game assets local.
 
-  *Done when* every reached visible Mac-font draw uses the original bitmap
-  artwork and state-matched text captures agree with MAME.
+  *Done when* a positively completed original session covers the route through
+  the ending and return sequence with its trap log, report and coverage journal;
+  every newly exposed port contract is fixed and verified, and the final M6
+  audit/checkpoint is committed and pushed.
 
 ## After M6: Macintosh.js stair bug
 

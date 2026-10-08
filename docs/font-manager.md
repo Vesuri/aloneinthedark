@@ -1,10 +1,10 @@
 # Font Manager
 
-**Status, 2026-10-04:** Visible Times/plain/14 now uses raw glyph bitmaps captured
-from the original Macintosh renderer, under the owner's revised D6. Lowercase,
-serifs, accents and punctuation retain their original ink and bearings. Hidden
-font definitions still supply compatibility metrics; other visible font faces
-remain separate work.
+**Status, 2026-10-08:** Reached visible Times/plain/14 and Times/plain/36 use
+raw glyph bitmaps captured from the original Macintosh renderer under D6.
+Lowercase, serifs, accents and punctuation retain their original ink and
+bearings. Hidden startup font definitions supply compatibility metrics;
+they are not used as substitute artwork for reached visible text.
 
 The checkpoint sections below preserve service-level evidence. References to
 an intermediate startup stop or a then-pending M2 gate are historical; current
@@ -35,6 +35,32 @@ clipping, untouched pixels and row padding: **zero differing bytes**. The
 original caption contains 664 changed pixels. Existing font-family metrics and
 unsupported-face loud stops remain unchanged. The historical placeholder
 contracts below describe their original implementation, not current Times/14 ink.
+
+## Bundled Times/36 pause bitmap
+
+`resources/times36-bitmap.json` contains all MacRoman glyphs 32–255, original
+bearings, integer advances and FontInfo (30, 9, 39, 0). Generate the packed
+`Times36Bitmap.h` with `python3 tools/times36_bitmap.py`; `--check` checks the
+bundle, and `--capture-dir` imports the bounded original glyph captures.
+`Times36Text.h` clips glyph coverage against map, port, visibility and clipping
+bounds and returns explicit dirty bounds. It implements the reached srcOr
+path with foreground index zero (displayed white in the game palette).
+
+The pause helper at (Dan2, $1222) draws into the actual window. Its measured
+TextWidth is 294, pen starts at (13,81), and ends at x307. Native TextWidth,
+GetFontInfo and DrawText use the captured metrics/artwork. CopyBits accepts an
+owned window as source so the original game can save and restore its pause
+background using its existing GWorld. There is no game-code patch or generated
+replacement pause screen.
+
+`tools/check_times36.py --reference-dir tmp/m6/fonts` runs sanitizer-backed
+compiled-renderer checks against the original pause buffer, clipping and pen
+state. `tools/check_pause_font.py` checks original/native paired text-service
+captures, all 307,200 output bytes, physical Amiga publication, stable pause
+and ordinary gameplay resumption on 68020 and 68030. The Mac fixture uses the
+native starting pixels and verifies the same port and string before calling
+the original DrawText, then restores the Mac pixels. This isolates text state
+from different interpolation phases in the room's idle animation.
 
 ## GetFNum reference contract
 

@@ -9,6 +9,7 @@
 #include "BitmapFont.h"
 #include "Times14Metrics.h"
 #include "Text8.h"
+#include "Times36Text.h"
 #include "Palette8.h"
 #include "WindowGeometry.h"
 #include "RectBounds.h"
@@ -4646,6 +4647,29 @@ static bool paintRect(const uint8_t* rectangle)
     return true;
 }
 
+// Measured original Times/plain/36 srcOr draw (foreground index zero) on an owned window.
+static bool drawWindowText(const uint8_t* text,int16_t first,int16_t count)
+{
+    uint8_t* port=s_qdThePort ? (uint8_t*)read32(s_qdThePort) : 0;
+    WindowSlot* window=windowSlot(port);
+    if(!window || window->dialog || !port[110] || read16(port+6)!=0xc000
+       || read16(window->pixelMap+32)!=8 || read32(window->pixelMap)!=(uint32_t)s_colorScreen
+       || read16(port+68)!=20 || read16(port+74)!=36 || port[70]
+       || read16(port+72)!=1 || read32(port+76) || read32(port+80) || read16(port+66))return false;
+    uint8_t** vh=(uint8_t**)read32(port+24);uint8_t** ch=(uint8_t**)read32(port+28);
+    if(!vh || !*vh || !ch || !*ch || read16(*vh)!=10 || read16(*ch)!=10)return false;
+    uint8_t drawn[8];const uint8_t* map=window->pixelMap;int16_t pen=int16_t(read16(port+50));
+    if(!Times36Text::draw(s_colorScreen,sizeof(s_colorScreen),read16(map+4)&0x3fff,
+        map+6,port+16,*vh+2,*ch+2,text,first,count,int16_t(read16(port+48)),pen,drawn))return false;
+    write16(port+50,uint16_t(pen));
+    if(read16(drawn)!=read16(drawn+4) && read16(drawn+2)!=read16(drawn+6))
+        markDirtyBounds(int16_t(read16(drawn))-int16_t(read16(map+6)),
+                        int16_t(read16(drawn+2))-int16_t(read16(map+8)),
+                        int16_t(read16(drawn+4))-int16_t(read16(map+6)),
+                        int16_t(read16(drawn+6))-int16_t(read16(map+8)));
+    return true;
+}
+
 // PICT drawing keeps its foreground and clip state local to the interpreter.
 static bool paintPictureRect(const uint8_t* rect,const uint8_t* rgb,
                              const uint8_t* mask,uint16_t maskBytes)
@@ -4891,16 +4915,32 @@ static bool copyPortBits8(const uint8_t* sourceBitmap,const uint8_t* destination
     GWorldSlot* source=0;
     for(uint16_t i=0;i<sizeof(s_gworlds)/sizeof(s_gworlds[0]);++i)
         if(s_gworlds[i].used && (sourceBitmap==s_gworlds[i].pixMap || sourceBitmap==s_gworlds[i].port+2))source=&s_gworlds[i];
+    WindowSlot* sourceWindow=0;
+    if(!source)for(uint16_t i=0;i<sizeof(s_windows)/sizeof(s_windows[0]);++i)
+        if(s_windows[i].used && (sourceBitmap==s_windows[i].window+2
+           || sourceBitmap==s_windows[i].pixelMap))sourceWindow=&s_windows[i];
+    const uint8_t* sourceMap;const uint8_t* sourceColors;
+    const uint8_t* sourcePixels;uint32_t sourceBytes;
+    if(source) {
+        if(!source->locked)return false;
+        sourceMap=source->pixMap;sourceColors=source->colorTable;sourcePixels=source->pixels;
+        sourceBytes=source->owner->handleSize(source->handles[1]);
+    } else {
+        // Original pause preserves the visible window in an owned GWorld.
+        if(!sourceWindow || sourceWindow->dialog || !sourceWindow->window[110])return false;
+        sourceMap=sourceWindow->pixelMap;sourceColors=s_windowManagerColors;
+        sourcePixels=s_colorScreen;sourceBytes=sizeof(s_colorScreen);
+    }
+    if(read16(sourceMap+32)!=8 || read32(sourceMap)!=(uint32_t)sourcePixels)return false;
     uint8_t* port=s_qdThePort ? (uint8_t*)read32(s_qdThePort) : 0;
     GWorldSlot* destination=gWorldForPort(port);
     WindowSlot* window=destination ? 0 : windowSlot(port);
-    if(!source || !source->locked || !port || (destinationBitmap!=port+2 && (!destination || destinationBitmap!=destination->pixMap))
-       || read16(source->pixMap+32)!=8 || read32(source->pixMap)!=(uint32_t)source->pixels)return false;
+    if(!port || (destinationBitmap!=port+2 && (!destination || destinationBitmap!=destination->pixMap)))return false;
     if(s_recordingPicture) {
         // OpenPicture suppresses drawing. Retain the full source raster, an
         // optional preceding solid fill, and the current clipping region.
         MacHeap* owner=handleZone(s_recordingPicture);
-        if(!owner || !*s_recordingPicture || port!=s_picturePort || source!=destination
+        if(!owner || !*s_recordingPicture || !source || port!=s_picturePort || source!=destination
            || mask || s_pictureBytes || read16(port+66)!=0xffff
            || read32(port+92)!=(uint32_t)s_recordingPicture)return false;
         uint8_t frame[8];blockMove(*s_recordingPicture+2,frame,8);
@@ -4954,11 +4994,11 @@ static bool copyPortBits8(const uint8_t* sourceBitmap,const uint8_t* destination
     extern volatile uint16_t g_profileState;
     if(g_profileState==1) {
         if(!g_pageProfile[3]) {
-            g_pageProfile[4]=(uint32_t)source->colorTable;
+            g_pageProfile[4]=(uint32_t)sourceColors;
             g_pageProfile[5]=(uint32_t)destinationColors;
-            g_pageProfile[6]=read32(source->colorTable);g_pageProfile[7]=read32(destinationColors);
-        } else if(g_pageProfile[10]!=read32(source->colorTable) || g_pageProfile[11]!=read32(destinationColors))++g_pageProfile[9];
-        ++g_pageProfile[3];g_pageProfile[10]=read32(source->colorTable);g_pageProfile[11]=read32(destinationColors);
+            g_pageProfile[6]=read32(sourceColors);g_pageProfile[7]=read32(destinationColors);
+        } else if(g_pageProfile[10]!=read32(sourceColors) || g_pageProfile[11]!=read32(destinationColors))++g_pageProfile[9];
+        ++g_pageProfile[3];g_pageProfile[10]=read32(sourceColors);g_pageProfile[11]=read32(destinationColors);
     }
 #endif
     static ColorMap8Cache colorMapCache;
@@ -4967,15 +5007,15 @@ static bool copyPortBits8(const uint8_t* sourceBitmap,const uint8_t* destination
     // are identical: no quantization or dithering is required. Other dither
     // colour environments remain unsupported until measured.
     if(mode==64) {
-        if(read16(source->colorTable+6)!=255 || read16(destinationColors+6)!=255)return false;
+        if(read16(sourceColors+6)!=255 || read16(destinationColors+6)!=255)return false;
         for(uint16_t i=0;i<256;++i)
             for(uint16_t channel=2;channel<8;channel+=2)
-                if(read16(source->colorTable+8+uint32_t(i)*8+channel)
+                if(read16(sourceColors+8+uint32_t(i)*8+channel)
                    !=read16(destinationColors+8+uint32_t(i)*8+channel))return false;
     }
-    if(mode!=64 && read32(source->colorTable)!=read32(destinationColors)) {
+    if(mode!=64 && read32(sourceColors)!=read32(destinationColors)) {
         AitdProfileScope profile(kProfileCopyMap);
-        const uint8_t* ct=source->colorTable;
+        const uint8_t* ct=sourceColors;
         if(read16(ct+6)!=255 || (read16(ct+4)!=0 && read16(ct+4)!=0x8000))return false;
         if(window && (!s_mainDeviceITableValid || read32(inverse)!=read32(destinationColors))
            && !makeITable(0,0,4))return false;
@@ -4987,8 +5027,8 @@ static bool copyPortBits8(const uint8_t* sourceBitmap,const uint8_t* destination
 #endif
     }
     uint8_t drawn[8];
-    if(!CopyBits8::copy(source->pixels,source->owner->handleSize(source->handles[1]),
-        read16(source->pixMap+4)&0x3fff,source->pixMap+6,pixels,pixelBytes,
+    if(!CopyBits8::copy(sourcePixels,sourceBytes,
+        read16(sourceMap+4)&0x3fff,sourceMap+6,pixels,pixelBytes,
         read16(map+4)&0x3fff,map+6,from,to,port+16,*vh+2,*ch+2,drawn,remap,maskBody,maskBytes))return false;
     if(window && read16(drawn)!=read16(drawn+4) && read16(drawn+2)!=read16(drawn+6))
         markDirtyBounds((int16_t)read16(drawn)-(int16_t)read16(map+6),
@@ -8981,13 +9021,27 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     if(trap==0xa886) {                      // TextWidth(text, first, count)
         uint8_t* port=s_qdThePort ? (uint8_t*)read32(s_qdThePort) : 0;
         BitmapFont font;uint16_t width;
-        if(!port || read16(port+68)!=20 || read16(port+74)!=14 || port[70]
-           || !fontForCurrentPort(font)
+        if(!port || read16(port+68)!=20 || port[70] || read32(port+76))goto unsupportedTrap;
+        if(read16(port+74)==36) {
+            if(!Times36Text::width((const uint8_t*)read32(userStack+4),
+                 int16_t(read16(userStack+2)),int16_t(read16(userStack)),width))goto unsupportedTrap;
+        } else if(read16(port+74)!=14 || !fontForCurrentPort(font)
            || !Times14Metrics::width((const uint8_t*)read32(userStack+4),
                  (int16_t)read16(userStack+2),(int16_t)read16(userStack),width))goto unsupportedTrap;
         write16(userStack+8,width);return 9;
     }
     if(trap==0xa88b || trap==0xa88d) {
+        const uint8_t* selected=s_qdThePort ? (const uint8_t*)read32(s_qdThePort) : 0;
+        if(selected && read16(selected+68)==20 && read16(selected+74)==36
+           && !selected[70] && !read32(selected+76)) {
+            if(trap==0xa88b) {
+                uint8_t* out=(uint8_t*)read32(userStack);if(!out)goto unsupportedTrap;
+                write16(out,30);write16(out+2,9);write16(out+4,39);write16(out+6,0);return 5;
+            }
+            uint16_t character=read16(userStack);
+            if(character<32 || character>255)goto unsupportedTrap;
+            write16(userStack+2,Times36Bitmap::glyphs[character-32].advance);return 3;
+        }
         BitmapFont font;
         if(!fontForCurrentPort(font))goto unsupportedTrap;
         if(trap==0xa88b) {
@@ -10234,6 +10288,10 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         return 5;
     }
     if (trap == 0xa885) {                    // DrawText(text, firstByte, byteCount)
+        if(drawWindowText((const uint8_t*)read32(userStack+4),
+                          int16_t(read16(userStack+2)),int16_t(read16(userStack)))) {
+            regs[0]=0;return 9;
+        }
         GWorldSlot* world=gWorldForPort((uint8_t*)read32(s_qdThePort));
         if(world && drawGWorldText(*world,(const uint8_t*)read32(userStack+4),
                                   int16_t(read16(userStack+2)),int16_t(read16(userStack)))) {

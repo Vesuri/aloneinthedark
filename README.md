@@ -11,6 +11,14 @@ and Toolbox layer are carried over from Vette!; see
 
 ## Current state
 
+**M6 has reached the ending on both Mac and Amiga**, with the authorized test
+cheats documented in the development notes. Representative frame comparisons,
+all sixteen stairs configurations and all thirty-two quit/startup cases pass.
+Pause now uses the original Times36 artwork, with exact Mac/native text-service
+comparisons and physical display checks on 68020 and 68030; ordinary resume
+also passes. The remaining M6 item is the full-session original-Mac trap audit.
+[Evidence and limits](docs/development.md#m65-pause-implementation-and-acceptance--2026-10-08).
+
 **M5 performance acceptance is complete.** Fixed-clock 68020/68030 checks,
 phase profiling, interrupt timing and measured memory requirements are recorded
 in [the M5 acceptance notes](docs/development.md#m5-cpu-full-profile-interrupt-and-memory-acceptance--2026-10-07).

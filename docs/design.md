@@ -698,9 +698,10 @@ other families and sizes.
 `resources/times14-bitmap.json` contains the original Times/plain/14 MacRoman
 glyphs, captured through isolated original QuickDraw DrawText calls. The compiled
 raw table preserves bearings and measured fractional spacing without runtime
-font rasterization. Other installed placeholder definitions still provide
-compatibility metrics; remaining reached visible font faces must receive the
-same original bitmap treatment. See [Font Manager](font-manager.md).
+font rasterization. `resources/times36-bitmap.json` likewise supplies the reached
+pause window text, with original integer advances and FontInfo. Both reached
+visible faces pass original/native text comparisons. Other installed placeholder
+definitions supply hidden compatibility metrics. See [Font Manager](font-manager.md).
 
 ### 4.12 Time, VBL, pacing
 
