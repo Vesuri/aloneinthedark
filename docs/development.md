@@ -8065,3 +8065,47 @@ controller window to ±32 let it complete through ordinary keys. Both CPUs
 were rerun after this adjustment; no reading/rendering/game logic changed.
 The failed pre-book attempt is retained as `book020-run.log` and excluded
 from acceptance. Reading is removed from the unresolved M6.2 list.
+
+
+## M6.2 inventory and item-action fidelity — 2026-10-08
+
+The Book-selected inventory and its action list now each pass all 64,000
+viewport pixels against the preserved original Mac Book route. Both sides
+retain inventory [2,12,13], Actions stance 2, no pending action, and the taken
+unread Book (body 21, name 205). The preview angles match modulo 1024: 688
+for selection and 672 for the action list. `tools/check_inventory_frames.py`
+checks these fields, both completed-route logs and the complete RGB viewport
+using the independently verified video transfer. Negative controls reject a
+changed angle and a changed viewport pixel.
+
+The native run uses a4000-030-reference, BOOKPAGES=1, INTROSKIP=1, PROBES=.
+For this capture only, the diagnostic controller left stages 31 and 33 open
+for 2,200 ticks instead of 120, allowing a natural full preview rotation with
+released keys. No original game instructions, animation variables or timers
+were changed. That temporary controller edit was reverted after the run,
+and the ordinary build restored with clean no-float/probe audits. The route
+completed Take, Read, all pages and returned to published manual gameplay
+with exit zero. Original evidence is the earlier completed Mac route.
+
+Matching the angle alone is insufficient during a redraw. The selected-item
+reference matches the native completed preview at (Dan1, $10EE). The action
+reference matches (Dan1, $F80), after the angle decrement and before the new
+preview replaces the previous pixels. Both observer sites check original
+instruction bytes. Capturing selection at the latter site produced 285
+mismatching pixels confined to the rotating book, while the correct completed
+phase matches exactly. The first observer attempts failed to hold the
+selection stage long enough and are not accepted evidence.
+
+Reproduce the accepted comparison with:
+
+```sh
+python3 tools/check_inventory_frames.py \
+  --reference tmp/m6/fidelity/book030 --folder tmp/m6/fidelity/inventory \
+  --mac-log tmp/m3-explore/mac-book-pages-maintained.log \
+  --native-log tmp/m6/fidelity/inventory-gdb.log \
+  --mac-status 0 --native-status 0
+```
+
+`tmp/m6/fidelity/inventory-checked.log` contains both passes; the bounded
+observer and preview hooks are `inventory-route.gdb` and
+`inventory-preview.gdb`. Inventory is removed from the unresolved M6.2 list.

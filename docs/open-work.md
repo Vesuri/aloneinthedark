@@ -12,7 +12,7 @@ required.
 ## M6 Completion
 
 - **M6.2 State-keyed fidelity set.** Frame compares for remaining representative mansion rooms,
-  inventory, fights, death and new-game restart.
+  fights, death and new-game restart.
   Pair idle animation frame and interpolation phase before exact restart pixels.
 
   *Done when* all of them pass.
