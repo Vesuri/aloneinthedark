@@ -7989,3 +7989,54 @@ pair. The stricter checker now rejects that state mismatch before drawing a
 rendering conclusion. Interpolation/publication pairing remains required for
 the remaining animated-room, fight, death and restart cases. The ending case
 is removed from the unresolved M6.2 queue; the broader milestone remains open.
+
+
+## M6.2 settled maze and publication pairing — 2026-10-08
+
+The lamp-lit maze now passes all 64,000 original/native display pixels and
+actual Amiga scanout bytes. The pair is actor 1/body 11, (-4291,-4010,428),
+angles (0,256,0), floor 6/room 5/camera 1, animation 287/keyframe 6, manual
+track 1. The comparator now also checks the camera and all actor angles.
+The ending case still passes after that stricter state requirement.
+
+Native `waypoints-020an` uses the current ordinary-cost FULLPLAY build on the
+fixed 68030. A position-adjusted maze save was staged before startup, loaded
+through ordinary input and allowed 1,200 ticks to settle (checkpoint 4).
+The original Mac used its preserved maze-room-five snapshot, the same
+owner-authorized position shortcut and natural released-key idle animation.
+`tmp/m6/fidelity/match-maze.lua` observes screen frames without changing the
+animation/timers; sample 11 at original tick 500768 reaches zero differences
+with keyframe 6. The initial attempt used the older walk-to-idle native frame
+and got no closer than six pixels; it is not the accepted pair. An intervening
+fixture mistakenly set native Y to zero and was rejected/corrected to -4010.
+
+At native checkpoint 4, logical pixels are ready but physical publication is
+pending. A valid next fullplay command was queued before continuing to a
+one-shot `aitdMacMouseVBI` breakpoint conditional on an increased presentation
+count. This observes the completed swap: 139→140 frames, framePending=0.
+`maze-published.bin` then matches the paired logical viewport exactly. The
+observer was resumed to its normal checkpoint afterwards. Reproduce with:
+
+```sh
+python3 tools/check_fullplay_frame.py --label maze-lamp \
+  --native tmp/m6/native/waypoints-020an --sequence 4 \
+  --mac-world tmp/m6/fidelity/maze-best-world.bin \
+  --mac-pixels tmp/m6/fidelity/maze-best-bgra.bin \
+  --expect floor=6 --expect room=5 --expect camera=1 \
+  --expect animation=287 --expect keyframe=6 \
+  --scanout tmp/m6/fidelity/maze-published.bin
+```
+
+`tmp/m6/fidelity/maze-checked.log` records the pass. This establishes the
+PaintRgn lamp path and this exact room pose, not all mansion/fight/restart
+poses. No rendering or original-game logic change was needed.
+
+Replacing all save forks from the host during the preceding live pirate run
+exposed RESOURCE MANAGER/HOPENRESFILE at (Core, $46F2). The terminated trace is
+`tmp/m6/fidelity/host-replaced-save-stop.log`. The identical staged file loads
+successfully from a fresh runtime (`fresh-maze-load.log`), and the corrected
+fixture does too (`settled-maze-load.log`). Thus the failure is associated
+with live host replacement of a previously known save; its exact cache or
+metadata cause is not established, and this is not evidence of an ordinary
+game-generated Save/Load defect. Stage replacement fixtures before boot in
+future diagnostics; do not silently treat a stopped run as a successful load.

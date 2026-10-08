@@ -7,13 +7,15 @@ from check_menu_keyboard import require, rgb
 from check_video_transfer import native as display_transfer
 
 FIELDS = {'actor': 0, 'body': 2, 'x': 28, 'y': 30, 'z': 32,
-          'beta': 42, 'floor': 46, 'room': 48, 'animation': 62, 'keyframe': 74, 'track': 82}
+          'alpha': 40, 'beta': 42, 'gamma': 44, 'floor': 46, 'room': 48, 'animation': 62, 'keyframe': 74, 'track': 82}
 
 def actor_state(data):
     require(len(data) == 75616, 'A5 world capture extent')
     base = len(data)-0xb292+160
-    return {name: struct.unpack_from('>h', data, base+offset)[0]
-            for name, offset in FIELDS.items()}
+    state = {name: struct.unpack_from('>h', data, base+offset)[0]
+             for name, offset in FIELDS.items()}
+    state['camera'] = struct.unpack_from('>h', data, len(data)-0xcd70)[0]
+    return state
 
 def viewport(data):
     require(len(data) == 640*480*3, 'RGB capture extent')
@@ -25,7 +27,7 @@ def check(args):
     require(original == native, f'actor state mismatch: Mac={original}, Amiga={native}')
     for item in args.expect:
         key, value = item.split('=', 1)
-        require(key in FIELDS and original[key] == int(value), 'expected state '+item)
+        require(key in original and original[key] == int(value), 'expected state '+item)
     mac = args.mac_pixels.read_bytes()
     require(len(mac) == 640*480*4, 'original BGRA screen extent')
     mac_rgb = bytes(channel for i in range(0,len(mac),4)
