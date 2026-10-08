@@ -7877,3 +7877,78 @@ transfer, making its images darker than the physical display. The ending has
 zero spatial residual pixels when each native index is mapped to its observed
 Mac display colour. This is useful static fidelity evidence, but future RGB
 comparisons must use the actual display palette, not raw logical CLUT bytes.
+
+
+## Enemy-room and item-menu profiling — 2026-10-08
+
+Owner-requested profiles use the preserved pirate encounter (engine 3/2) and
+inventory object 126, the record. Baseline and changed native runs use
+`a4000-030-reference`, PAL, 68030 at 15.6672 MHz, 8 MiB Fast RAM, with audio
+logic enabled. Warp changes host duration only. Clean builds use
+`FULLPLAY=1 INTROSKIP=1 PROBES=`: input/checkpoint control remains, but timing
+scope overhead is compiled out. Earlier 68020 FULLPLAY builds included
+accounting scopes and are preliminary profiles, not the quoted timings.
+Statistical sampling interrupts GDB at randomized 30–90 ms host intervals;
+all throughput measurements use emulated fields or TickCount, not host time.
+
+The record preview spends 46.3% of its baseline 255 samples servicing
+PtInRect, 11.4% in CopyBits and 9.4% in the C2P leaf. Original instructions
+at (Dan2, $1934–$199E), specifically PtInRect at $1966, copy pixels with an
+individual Toolbox containment call for each nontransparent pixel. This is
+why even the original Mac preview is slow; it is not just polygon rendering.
+The shared pointInRect handler now runs through the existing fast dispatcher.
+The result byte, signed bounds, half-open edges, Pascal stack consumption,
+patched-trap fallback, scene boundary, effect/VBL service and presentation
+rules are retained. No original game instructions are replaced.
+
+Exact preview timing observes the unchanged angle-decrement instruction at
+(Dan1, $F7A), using released controls and the same selected item:
+
+| Fixed 68030 item preview | Updates | Emulated ticks | Updates/second |
+| --- | ---: | ---: | ---: |
+| Native baseline | 164 intervals | 3,590 | 2.741 |
+| Native fast PtInRect | 239 intervals | 3,584 | 4.001 |
+| Original Mac IIx | 37 intervals | 1,060 | 2.094 |
+
+The native improvement is 46.0%, or 31.5% less time per update. These measure
+steady preview redraws, not independent menu-opening or key-response latency.
+Both native 640x480 fixed-angle screens (307,200 index bytes) and complete
+2,056-byte CLUTs agree byte-for-byte. The optimized profile has 265 samples:
+CopyBits now accounts for 20.0%, C2P 10.6%, and original Dan2 code 16.2%.
+The old general-dispatch PtInRect bottleneck is removed; remaining time is
+spread across copying, original per-pixel work and shared trap services.
+
+The enemy baseline has 242 samples: 45.0% original game code, 52.5% native
+runtime and 2.1% Kickstart. Original Dark3 dominates (40.1% overall); its
+nested comparison loop over ten-byte records at (Dark3, $1E80) alone has
+7.0%. Native C2P is 9.1%; CopyBits is 5.4%. There is no single enemy-specific
+service bottleneck comparable to the menu's PtInRect problem. The two native
+windows complete 162/3,028 and 152/3,004 scenes/PAL fields, approximately
+2.68 and 2.53 FPS. The pirate remains alive, moves and hits the hero; health
+was raised to 30,000 solely to keep this bounded profile from ending in death.
+These dynamic windows differ in knockback/attack timing and do not establish
+a gameplay speedup or regression from the menu change.
+
+The Mac pirate-room observation counts 63 frame entries in 1,076 ticks,
+about 3.51 FPS, at the byte-checked scene entry (Dark, $3CCE). Its hero position,
+pose and enemy phase differ from the native save. This is contextual evidence
+that the original also runs slowly with this enemy, not a state-matched speed
+ratio. The previous Actions-character timing likewise must not be presented
+as a measurement of every item-menu state.
+
+Evidence is local under `tmp/menu-enemy-profile/`: `enemy-030-baseline`,
+`enemy-030-fast-point`, `item-030-baseline`, `item-030-fast-point` and the two
+`item-030-*-timing` directories. Runtime runs are `waypoints-020ak` and
+`waypoints-020al`; despite these historical directory names, their logs prove
+fixed 68030 configuration. `sample-live.py` and `preview-timing.py` are local
+reproduction helpers. Both build audits pass. A timing-helper cleanup initially
+deleted checkpoint breakpoint 3 instead of added preview breakpoint 4; the
+first navigation follow-up therefore timed out. The observer was restored
+without a game restart and the helper corrected. That timeout is excluded
+from runtime validation and does not invalidate the completed timing windows.
+
+The corrected `menu-navigation-retry.log` reaches checkpoints 13–19: ordinary
+Left/Down selection, Escape cancellation and 300 further gameplay ticks, with
+new scene publication and pirate damage (health 29,979→29,976), no loud stop.
+The source helper is shared between normal and fast dispatch, so both paths
+retain the same containment and return-slot implementation.

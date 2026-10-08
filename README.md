@@ -59,6 +59,10 @@ on both acceptance CPUs. The continuous new-game route also passes on both CPUs;
 experiments are not acceptance gates.
 The action-menu preview now runs at 2.07 updates/sec on the reference 68030
 versus 1.65 on Mac; keyboard choices, hover, clicks and cancellation pass paired checks.
+A later item-menu profile improves the rotating record preview from 2.74 to
+4.00 updates/sec on the fixed 68030 (original Mac: 2.09), with identical
+fixed-angle frame and palette bytes. This is a separate item/scene measurement.
+[Profile and limits](docs/development.md#enemy-room-and-item-menu-profiling--2026-10-08).
 
 **M3.3 (game interfaces) is complete for the reached routes.** New game and
 save/load use the original engine UI inside 320×200. New-game and character-story

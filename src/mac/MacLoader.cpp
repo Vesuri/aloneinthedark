@@ -7912,6 +7912,21 @@ static uint32_t graphicsQuery(uint16_t trap,uint32_t pc,uint32_t* regs,uint8_t* 
     return 0;
 }
 
+static uint32_t pointInRect(uint8_t* userStack)
+{
+    const uint8_t* rectangle = (const uint8_t*)read32(userStack);
+    int16_t vertical = (int16_t)read16(userStack + 4);
+    int16_t horizontal = (int16_t)read16(userStack + 6);
+    bool inside = rectangle
+        && vertical >= (int16_t)read16(rectangle)
+        && horizontal >= (int16_t)read16(rectangle + 2)
+        && vertical < (int16_t)read16(rectangle + 4)
+        && horizontal < (int16_t)read16(rectangle + 6);
+    userStack[8] = inside ? 1 : 0;
+    if (g_stageCDepth < 84) g_stageCDepth = 84;
+    return 9;
+}
+
 static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
                                uint8_t* frame, uint8_t* userStack, bool inUserService=false)
 {
@@ -9788,19 +9803,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         if (g_stageCDepth < 97) g_stageCDepth = 97;
         return 13;
     }
-    if (trap == 0xa8ad) {                    // PtInRect(Point, Rect*) -> Boolean
-        const uint8_t* rectangle = (const uint8_t*)read32(userStack);
-        int16_t vertical = (int16_t)read16(userStack + 4);
-        int16_t horizontal = (int16_t)read16(userStack + 6);
-        bool inside = rectangle
-            && vertical >= (int16_t)read16(rectangle)
-            && horizontal >= (int16_t)read16(rectangle + 2)
-            && vertical < (int16_t)read16(rectangle + 4)
-            && horizontal < (int16_t)read16(rectangle + 6);
-        userStack[8] = inside ? 1 : 0;
-        if (g_stageCDepth < 84) g_stageCDepth = 84;
-        return 9;
-    }
+    if (trap == 0xa8ad) return pointInRect(userStack);
     if (trap == 0xa972) {                    // GetMouse(Point*)
         uint8_t* point = (uint8_t*)read32(userStack);
         if (point) {
@@ -10680,6 +10683,7 @@ extern "C" volatile uint16_t g_introSkipState;
 static uint32_t dispatchFastTrap(uint16_t trap,uint32_t pc,uint32_t* regs,uint8_t* userStack)
 {
     switch(trap) {
+    case 0xa8ad:
     case 0xa893: case 0xa89b: case 0xa89c: case 0xa891: case 0xaa14:
     case 0xa01b: case 0xa11a: case 0xaa15:
     case 0xaa29: case 0xaa2b: case 0xaa2c: case 0xa8aa:
@@ -10722,6 +10726,7 @@ static uint32_t dispatchFastTrap(uint16_t trap,uint32_t pc,uint32_t* regs,uint8_
     scheduleVBLTask();
     presentMacRuntime();
     switch(trap) {
+    case 0xa8ad: return pointInRect(userStack);
     case 0xa01b: case 0xa11a: return dispatchMemoryTrap(trap,regs) ? 1 : 0;
     case 0xa893: penMoveTo(userStack);return 5;
     case 0xa89b: penSize(userStack);return 5;
