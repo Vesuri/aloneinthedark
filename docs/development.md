@@ -8711,3 +8711,41 @@ frame comparisons do not imply that every frame in every room was compared.
 
 There are no remaining M6 contracts from this audit. The separately requested
 Macintosh.js issue and SDA glitch audit remain in open work, followed by M7.
+
+
+## MAC.1 original stair investigation — 2026-10-08
+
+The owner excludes running or testing Macintosh.js. Issue #103 is a symptom
+report, not attribution to that emulator. The investigation continues using
+original Mac instructions in MAME and the Amiga port. The earlier isolated
+Macintosh.js setup did not produce a gameplay reproduction and is excluded;
+no such process remains running.
+
+A fresh Mac IIx/68030, System 7.5.5, 8 MiB run passes ordinary attic descent
+again, reaching living manual control in floor 1 room 6 at tick 8,823. It uses
+the original `mac_attic_stairs.lua` route with a read-only per-field actor
+observer. Evidence is `tmp/mac1/reference/{stairs.lua,run.log,actor-trace.csv}`.
+The initial observer used an unavailable callback and failed before movement;
+`run-observer-rejected.log` is excluded. The corrected observer uses the same
+`register_frame_done` API as the maintained input library. Its first CSV header
+misnamed fields at actor offsets 86–92; the retained header now correctly calls
+them mark, track position, step X and step Y. Future captures also include step Z
+at offset 94. No game instructions or actor fields changed in this run.
+
+Original ListTrak entry 31 disables collision/decor interaction, stops, fixes
+angles, starts walking, records the starting coordinates, then executes command
+18 toward (0,0,-2000), before restoring collision/decor and ending. Original
+(Dark2, $4F06–$508E) handles this Z-axis stair movement. At $4F30–$4F46 it tests
+room Y plus step Y against target Y ±100; only the in-band branch advances the
+track at $4F86. Outside the band, it interpolates height from Z progression and
+steers toward the target. The proportional helper (Dark3, $0840) uses signed
+integer multiplication/division. This is original-byte evidence, not a diagnosis
+that the reported failure necessarily skips that band.
+
+The passing trace descends from Y=-1900/Z=2500 and ends at Y=0/Z=-2023,
+heading zero, idle animation 4 and manual mode 1. It establishes a successful
+baseline alongside M6.3's sixteen native configurations. It does not establish
+that collecting the issue's five items, different animation timing or another
+original-game state cannot produce the reported reversal. Those reproduction
+conditions and the precise cause remain under investigation; no gameplay fix
+or global frame cap has been introduced.
