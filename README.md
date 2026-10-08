@@ -37,7 +37,7 @@ all results use fixed emulated CPU clocks. Intro frames match the Mac exactly,
 and PAL/NTSC cursor checks and the independent scene-end audit pass.
 [Methods, profile and evidence](docs/development.md#gameplay-frame-profile-and-first-optimisations--2026-10-07).
 
-**M3.4 is in progress.** Launch Apple Event delivery calls the original handler
+**M3.4 is complete.** Launch Apple Event delivery calls the original handler
 in user mode, and all five implemented SANE operations pass integrated checks.
 The reached `MONSTER`, `FIGHT` and `BDISK2` music tracks pass paired note-event
 and complete native interrupt-playback checks. Natural MONSTER/FIGHT/BDISK2 calls
@@ -55,7 +55,8 @@ and restored living manual control pass paired Mac/68020/68030 checks.
 Post-combat wardrobe Search and hallway return also pass on the fixed 68030;
 a room 5 → room 4 → western hallway bypass also passes paired Mac and fixed
 68030 checks. An ordinary-Load first-floor circuit passes over ten minutes of active gameplay
-on both acceptance CPUs. New-game knockback recovery remains open.
+on both acceptance CPUs. The continuous new-game route also passes on both CPUs; additional knockback
+experiments are not acceptance gates.
 The action-menu preview now runs at 2.07 updates/sec on the reference 68030
 versus 1.65 on Mac; keyboard choices, hover, clicks and cancellation pass paired checks.
 
