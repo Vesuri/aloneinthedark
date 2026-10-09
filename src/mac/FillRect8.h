@@ -3,9 +3,10 @@
 #include "RectBounds.h"
 #include "RegionRows.h"
 namespace FillRect8 {
-// 68020+ permits unaligned longword stores. Replicate the colour once per span;
-// byte stores are only for the short tail, not every pixel of a page strip.
+// Align longword stores to avoid split bus accesses on narrow page strips.
+// Byte stores handle only the alignment prefix and the short tail.
 inline void fillSpan(uint8_t* out,uint32_t count,uint8_t color) {
+    while(count && ((unsigned long)out&3)) {*out++=color;--count;}
     const uint32_t word=uint32_t(color)*0x01010101UL;
     while(count>=16) {
 #ifdef AITD_PLATFORM_AMIGA
@@ -49,6 +50,12 @@ inline bool solid(uint8_t* pixels,uint32_t capacity,uint16_t stride,
     if(!nonempty)return true;
     int32_t top=int16_t(RectBounds::word(drawn)),left=int16_t(RectBounds::word(drawn+2));
     int32_t bottom=int16_t(RectBounds::word(drawn+4)),right=int16_t(RectBounds::word(drawn+6));
+    if(!mask) {
+        uint8_t* row=pixels+uint32_t(top-mt)*stride+left-ml;
+        const uint32_t width=uint32_t(right-left);
+        for(int32_t y=top;y<bottom;++y,row+=stride)fillSpan(row,width,color);
+        return true;
+    }
     for(int32_t y=top;y<bottom;++y) {
         uint8_t* row=pixels+uint32_t(y-mt)*stride;
         if(mask && !rows.advance(int16_t(y)))return false;

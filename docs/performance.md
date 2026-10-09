@@ -77,6 +77,22 @@ The book uses 56 authored steps per forward page turn. The original wait at
 holds account for 70 seconds of the 86.5-second interval from the first animated
 publication to the last. Rendering optimizations do not shorten these reading holds.
 
+On the default cycle-exact 15.6672 MHz 68030/PAL setup, a lightweight
+`FRAMEAUDIT=1` run measures **11.74 displayed steps/s** within the moving folds
+(825 intervals, 2–8 fields each, mean 4.259). The first-to-last book publication
+spans 145.74 seconds: 70.28 seconds within folds and 75.46 seconds in the 14
+page-transition gaps, including the 70 seconds of deliberate reading holds.
+These are emulated-field measurements, independent of host warp speed.
+
+A separate, instrumented mid-fold sample identifies C2P as the largest cost:
+about 31% of that step, versus 11% for six solid rectangle fills and 13% for
+general trap services. Profiling adds overhead; these percentages describe that
+sample, not every page. The original code also draws/copies strips and enters
+many Macintosh traps per step. This is more work than filling a few rectangles:
+the changed 8-bit pixels must be transposed into eight AGA bitplanes, with Chip
+RAM access costs. Completed-frame pacing adds no extra wait per drawing call;
+a 15.67 MHz CPU cannot sustain 50 FPS in this measured workload.
+
 Book dirty bounds are accumulated from the min/max coordinates of actual clipped
 fills, lines and copies. At frame completion, combine those bounds **before** C2P
 alignment. This avoids overlapping conversions caused by separately aligned page
@@ -85,8 +101,10 @@ All 840 opening steps use one converted rectangle, ranging from 6,400 to 38,400 
 (mean 22,057), rather than the full 64,000-pixel viewport. Alignment is 16 pixels at
 the left edge and a width divisible by 32, as required by the Kalms converter.
 
-Solid spans use longword stores. Back-buffer synchronization copies only prior dirty
-spans not fully replaced by the current conversion. With the pointer disabled, these copies
+Solid spans align their longword stores and handle unmasked rectangles with a
+fixed row stride, without region-edge work on each row. Back-buffer synchronization
+copies only prior dirty spans not fully replaced by the current conversion. With the
+pointer disabled, these copies
 need no cursor-inversion interrupt guard: VBI cannot alter the buffers until the
 completed frame is queued. The explicit cursor fixture retains its guarded path.
 

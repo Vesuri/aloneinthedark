@@ -225,6 +225,19 @@ Use a clean ordinary build with `GDBSCRIPT=frame_pacing.gdb` and the bounded
 python3 tools/check_frame_pacing.py --log amiga/.run/gdb-out.log
 ```
 
+For native display cadence on the reference 68030, clean-build `FRAMEAUDIT=1`
+and run the lightweight observer (only startup/end breakpoints):
+
+```sh
+AMIGA_CONFIG=a4000-030-reference GDBSCRIPT=book_cadence.gdb amiga/diag_run.sh 600
+python3 tools/check_frame_pacing.py --core tmp/book-cadence.bin
+```
+
+Require a successful runner exit and `PASS complete book audit` before checking the
+capture. The report records all 840 steps at their actual VBI publication; the checker
+validates coordinate-derived conversion bounds and separates folds from reading gaps.
+Warp accelerates host execution; the reported intervals use emulated fields.
+
 For actual display cadence on a fast emulator without GDB, clean-build
 `FRAMEAUDIT=1` and run `tools/test_whdload.py --mode timed --no-warp --ticks 6500
 --seconds 300 --machine-config tmp/test-machine.fs-uae`. Select the intended emulator

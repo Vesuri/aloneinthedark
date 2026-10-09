@@ -20,19 +20,6 @@ Each item gives the **goal**, then the scope, then *done when*: the evidence req
   including Enter and Escape, with native and WHDLoad regressions and owner
   verification of the reported physical-key case.
 
-## Book performance
-
-- **BOOK.1 Profile slow page turns on the reference 68030.** The default
-  launcher uses a cycle-exact 15.67 MHz 68030; unlimited-68040 50 FPS checks do
-  not establish acceptable performance there. Profile the moving page fold,
-  separately from the original five-second reading holds, and address the
-  largest avoidable drawing/service costs. Preserve explicit min/max dirty
-  bounds and completed-frame pacing; never use shadow pixel comparisons.
-
-  *Done when* matched reference-68030 measurements identify the limiting costs,
-  justified improvements are verified for pixels/palette and frame boundaries,
-  and remaining limits are explained.
-
 ## AITD 1 glitch audit
 
 - **GLITCH.1 Check the Amiga port against the AITD 1 material in the
