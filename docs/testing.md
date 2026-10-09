@@ -72,16 +72,23 @@ branch.
 `test_amiga.py` runs the extraction helper with a real 4 KB stack and checks its
 watermark. `test_whdload.py --mode timed` uses production code, requires the expected
 WHDLoad timeout core, and verifies original resource reads, the embedded overlay and
-the resload ABI. This is an explicit bounded startup test, not normal game exit. Other modes require a normal
-return:
+the resload ABI. This is an explicit bounded startup test, not normal game exit. The `stairs` and `escape` modes also inspect timeout cores; other modes require
+a normal return:
 
 | WHDLoad mode | Required executable / meaning |
 | --- | --- |
 | `smoke`, `boot`, `load` | Separate slave fixtures for resload, Kickstart and process startup |
+| `stairs` | `EXPLOREROUTE=1 INTROSKIP=1`; fresh Carnby descent to manual floor 1 room 6 |
+| `escape` | `ESCAPEPROBE=1`; short and held Escape menu/resume cycles |
 | `quit` | `QUITPROBE=1 INTROSKIP=1`; original Quit and OS/resource cleanup |
 | `file-read` | `FILEPROBE=1`; exact read/seek/EOF/cache and bounded transfers |
 | `save-load` | `SAVELOAD=1`; original Save, walk, Load and restored coordinates |
 | `load-save` | `LOADONLY=1`; use `--save-source` from the prior run and `--no-preload` |
+
+For unlimited 68040 reproduction use `--cpu 68040-NOMMU`, optionally `--jit`
+and `--no-warp`. `FSUAE` selects the emulator executable. Stairs/Escape fixtures
+disable FILELOG to avoid its overhead and inject ordinary raw key states; they
+do not cover the physical keyboard handshake. A missing core is inconclusive.
 
 Clean-build between flag sets. `--check-stack` additionally needs `STACKPROBE=1`. Use a
 diagnostic executable with a matching observer, not the production build for a

@@ -9,7 +9,21 @@ extern volatile uint32_t g_macTicks;
 extern "C" {
 volatile uint32_t g_fullPlaySequence=0,g_fullPlayMask=0,g_fullPlayDuration=0,g_fullPlayTick=0;
 volatile uint16_t g_fullPlayStatus=0;
-__attribute__((noinline)) void aitdInputFullPlayCheckpoint() {__asm__ volatile("nop" ::: "memory");}
+#ifdef AITD_ESCAPE_PROBE
+extern volatile uint32_t g_macSceneFramesCompleted;
+// Core-dump report: magic, last phase, reserved, then ten tick/frame pairs.
+volatile uint32_t g_escapeReport[24]={0x41495444,0x45534350};
+#endif
+__attribute__((noinline)) void aitdInputFullPlayCheckpoint() {
+#ifdef AITD_ESCAPE_PROBE
+ if(g_fullPlaySequence<=9) {
+  g_escapeReport[2]=g_fullPlaySequence;
+  g_escapeReport[4+2*g_fullPlaySequence]=g_macTicks;
+  g_escapeReport[5+2*g_fullPlaySequence]=g_macSceneFramesCompleted;
+ }
+#endif
+ __asm__ volatile("nop" ::: "memory");
+}
 }
 // Up, Down, Left, Right, Space, Return, Escape, F, O, Shift, P, Right-Amiga, S.
 static const uint8_t keys[]={0x4c,0x4d,0x4f,0x4e,0x40,0x44,0x45,0x23,0x18,0x60,0x19,0x67,0x21};
@@ -33,6 +47,14 @@ static void apply(uint32_t mask)
 }
 static int32_t readCommand(void*)
 {
+#ifdef AITD_ESCAPE_PROBE
+ // Ordinary Escape levels: open/close with 100 ms and one-second holds.
+ static const uint16_t durations[]={180,6,30,6,30,60,30,60,30};
+ g_fullPlaySequence=sequence+1;
+ g_fullPlayMask=sequence<9 && (sequence&1) ? 1UL<<6 : 0;
+ g_fullPlayDuration=sequence<9 ? durations[sequence] : 3600;
+ return 0;
+#else
  uint8_t bytes[25];
  BPTR file=Open("PROGDIR:M6Control",MODE_OLDFILE);
  if(!file)return -1;
@@ -46,6 +68,7 @@ static int32_t readCommand(void*)
  g_fullPlaySequence=words[0];g_fullPlayMask=words[1];g_fullPlayDuration=words[2];
  conditionField=words[3];conditionTarget=(int32_t)words[4];conditionMode=words[5];
  return 0;
+#endif
 }
 void aitdInputFullPlayVBI(uint32_t ticks)
 {

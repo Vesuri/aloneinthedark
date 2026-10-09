@@ -534,9 +534,15 @@ void aitdInputBook(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_t b
 #endif
 
 #ifdef AITD_EXPLORE_ROUTE
-extern "C" { volatile uint16_t g_exploreRouteStage=0; volatile uint32_t g_exploreRouteTick=0; }
+extern "C" {
+volatile uint16_t g_exploreRouteStage=0;
+volatile uint32_t g_exploreRouteTick=0;
+// WHDLoad core-dump report: magic, stage, tick, frames, x/z, heading,
+// animation, floor, room and track. Only present in route diagnostics.
+volatile uint32_t g_stairsReport[12]={0x41495444,0x53545253};
+}
 extern "C" __attribute__((noinline)) void aitdInputExploreCheckpoint()
-{ __asm__ volatile("nop" ::: "memory"); }
+{ g_stairsReport[2]=g_exploreRouteStage;__asm__ volatile("nop" ::: "memory"); }
 static uint32_t s_exploreFrames=0;
 #ifdef AITD_SABER_ROUTE
 extern "C" { volatile uint16_t g_saberOpenAttempts=0; }
@@ -668,6 +674,10 @@ void aitdInputExplore(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_
     (void)objects;
 #endif
     if(!ready || g_exploreRouteStage>=terminal)return;
+    g_stairsReport[3]=ticks;g_stairsReport[4]=scenes;
+    g_stairsReport[5]=(int32_t)x;g_stairsReport[6]=(int32_t)z;
+    g_stairsReport[7]=beta;g_stairsReport[8]=animation;
+    g_stairsReport[9]=floor;g_stairsReport[10]=room;g_stairsReport[11]=track;
     beta&=1023;
     uint16_t stage=g_exploreRouteStage;
     if(stage && ticks-g_exploreRouteTick>3600) {

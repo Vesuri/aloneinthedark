@@ -17,8 +17,9 @@ Each item gives the **goal**, then the scope, then *done when*: the evidence req
   animation progression and timing; compare with M6.3's passing descent matrix.
   See [initial original-code findings](mac-stairs.md).
   The owner also reports immediate automatic return upstairs on unlimited
-  68040-NOMMU with JIT, without collecting any attic items. Reproduce this
-  configuration and compare the same route with JIT disabled.
+  68040-NOMMU on macOS FS-UAE 3.2.35, launched through the WHDLoad icon,
+  without collecting any attic items. Disabling JIT did not resolve it.
+  Reproduce this configuration, including input held across the transition.
   Test the reported item-collection precondition and timing variants; determine
   whether the original game can return to the attic and whether the port is affected. Fix a confirmed port defect; preserve the owner's approval
   requirement for changes to original game behavior.
@@ -26,6 +27,17 @@ Each item gives the **goal**, then the scope, then *done when*: the evidence req
   *Done when* the cause and port applicability have supported findings and any   fix has
 a regression check; if unreproduced, record the tested conditions and   remaining
 uncertainty without claiming that Macintosh.js is at fault.
+
+## Escape menu at high CPU speeds
+
+- **INPUT.1 Verify the owner's Escape-menu reopening report.** The menu opened
+  with Escape can immediately reopen when Escape is used to resume, under
+  WHDLoad with unlimited CPU. A stale queued-event KeyMap update is fixed and
+  covered by the native window fixture; establish whether it explains this
+  interactive symptom. Keep physical keyboard input distinct from injected keys.
+
+  *Done when* short and held Escape presses reliably resume gameplay on the
+  reported macOS FS-UAE 3.2.35 WHDLoad configuration, with JIT on and off.
 
 ## Publisher animation pacing
 

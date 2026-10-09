@@ -28,7 +28,8 @@ has been introduced.
 ## Unlimited 68040 with JIT
 
 The owner reports descending and immediately turning back upstairs on
-68040-NOMMU with unlimited CPU and JIT enabled, with no attic items collected.
+macOS FS-UAE 3.2.35, launched through the WHDLoad icon, with unlimited
+68040-NOMMU and no attic items collected. Disabling JIT did not resolve it.
 This establishes a reported port symptom; JIT causality and equivalence to the
 Macintosh.js report remain unconfirmed.
 
@@ -48,5 +49,10 @@ AMIGA_CONFIG=a4000-040-jit EXTRA_ARGS=--warp_mode=0 amiga/regression.sh stairs
 The regression runner preserves an explicit warp setting. The available x86-64 emulator under
 Rosetta exits before the game starts with `Caught illegal access to 40001000
 at eip=0x40001000` after enabling its 8 MB JIT cache. That failed launch is
-not gameplay evidence. A working JIT host and the owner's JIT-off comparison
-are still needed. No gameplay or original-code changes have been made.
+not gameplay evidence. The official FS-UAE 3.2.35 build starts with JIT enabled, but bounded
+WHDLoad tests have not produced a timeout core within the host limit; these
+runs do not establish a pass or a gameplay failure. A development-emulator
+WHDLoad run without JIT reaches stage 19, floor 1 room 6, idle animation 4
+and manual track 1 at Z=-1906. The fixture releases Up at the floor transition;
+holding input across it remains a different precondition to test. No stair
+gameplay or original-code changes have been made.

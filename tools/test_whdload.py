@@ -3,7 +3,9 @@
 
 Source amiga/env.sh first. ROMs and original data are local inputs, never shipped.
 Use QUITPROBE=1 for quit, FILEPROBE=1 for file-read, SAVELOAD=1 for save-load,
-and LOADONLY=1 for load-save. timed uses production. Always clean-build flags.
+and LOADONLY=1 for load-save; EXPLOREROUTE=1 INTROSKIP=1 for stairs;
+ESCAPEPROBE=1 for escape.
+timed uses production. Always clean-build flags.
 """
 import argparse
 import platform
@@ -20,7 +22,7 @@ SHARE = Path.home()/'.local/share/amiga'
 
 def main():
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument('--mode', choices=('smoke', 'boot', 'load', 'quit', 'timed', 'file-read', 'save-load', 'load-save'), default='quit')
+    p.add_argument('--mode', choices=('smoke', 'boot', 'load', 'quit', 'timed', 'stairs', 'escape', 'file-read', 'save-load', 'load-save'), default='quit')
     p.add_argument('--whdload', type=Path,
                    default=Path(os.environ.get('WHDLOAD', SHARE/'WHDLoad'))/'C/WHDLoad')
     p.add_argument('--workbench', type=Path,
@@ -32,6 +34,8 @@ def main():
     p.add_argument('--seconds', type=int, default=90, help='host safety ceiling')
     p.add_argument('--ticks', type=int, default=1500, help='WHDLoad timeout in PAL fields')
     p.add_argument('--cpu', default='68030')
+    p.add_argument('--jit', action='store_true', help='enable JIT for explicit reproduction runs')
+    p.add_argument('--no-warp', action='store_true', help='run at normal PAL field rate')
     p.add_argument('--save-source', type=Path, help='Saved Games drawer from a preceding run')
     p.add_argument('--no-preload', action='store_true')
     p.add_argument('--check-stack', action='store_true', help='require completed STACKPROBE report and 4 KB process stack')
@@ -49,9 +53,9 @@ def main():
     if args.mode != 'smoke':
         shutil.copyfile(args.rom, boot/'devs/Kickstarts'/args.rom.name)
         shutil.copyfile(args.rtb, boot/'devs/Kickstarts'/(args.rom.name+'.RTB'))
-    if args.mode in ('load', 'quit', 'timed', 'file-read', 'save-load', 'load-save'):
+    if args.mode in ('load', 'quit', 'timed', 'stairs', 'escape', 'file-read', 'save-load', 'load-save'):
         shutil.copyfile(args.exe, game/'AloneInTheDark')
-    if args.mode in ('quit', 'timed', 'file-read', 'save-load', 'load-save'):
+    if args.mode in ('quit', 'timed', 'stairs', 'escape', 'file-read', 'save-load', 'load-save'):
         (game/'Saved Games').mkdir();(game/'prefs').mkdir()
         subprocess.run(['bash', '-c', '. ./stage_original_data.sh; stage_aitd_original_data "$1"',
                         'stage', str(game)], cwd=ROOT/'amiga', check=True)
@@ -63,22 +67,23 @@ def main():
         (game/'read-probe.bin').write_bytes(bytes((i*37+(i>>8))&255 for i in range(200003)))
     (boot/'s/WHDLoad.prefs').write_text('Expert\nReadDelay=0\n')
     preload = '' if args.no_preload else 'PRELOAD '
+    filelog = '' if args.mode in ('stairs', 'escape') else 'FILELOG '
     (boot/'s/startup-sequence').write_text(
         'DF0:C/Assign C: DF0:C\nDF0:C/Assign LIBS: DF0:Libs\n'
         'DF0:C/Assign DEVS: DH0:devs\nStack 16384\nFailAt 999\nC:Avail >DH0:memory\n'
-        f'CD DH1:\nWHDLoad AloneInTheDark.slave {preload}SPLASHDELAY=0 NOREQ COREDUMP FILELOG TIMEOUT={args.ticks} >DH0:result\n'
+        f'CD DH1:\nWHDLoad AloneInTheDark.slave {preload}SPLASHDELAY=0 NOREQ COREDUMP {filelog}TIMEOUT={args.ticks} >DH0:result\n'
         'If WARN\nEcho failed >DH0:failed\nElse\nEcho passed >DH0:passed\nEndIf\n')
     arm=SHARE/'fs-uae-arm/fs-uae'
     emulator=os.environ.get('FSUAE',str(arm) if platform.machine()=='arm64' and arm.exists() else 'fs-uae')
     with (base/'emulator.log').open('w') as log:
         emu = subprocess.Popen([emulator, '--amiga_model=A4000', '--cpu='+args.cpu,
-            '--uae_cpu_model='+args.cpu, '--uae_cpu_24bit_addressing=false','--uae_mmu_model=0','--uae_fpu_model=0',
+            '--uae_cpu_model='+args.cpu.split('-')[0], '--uae_cpu_24bit_addressing=false','--uae_mmu_model=0','--uae_fpu_model=0',
             '--uae_z3mapping=uae',
-            '--jit_compiler=0', '--chip_memory=2048', '--fast_memory=8192','--uae_z3mem_size=0','--uae_a3000mem_size=0','--uae_cpu_speed=max',
+            '--jit_compiler='+str(int(args.jit)), '--chip_memory=2048', '--fast_memory=8192','--uae_z3mem_size=0','--uae_a3000mem_size=0','--uae_cpu_speed=max',
             '--kickstart_file='+str(args.host_rom),
             '--hard_drive_0='+str(boot), '--hard_drive_0_priority=10', '--hard_drive_1='+str(game),
             '--floppy_drive_0='+str(args.workbench),
-            '--joystick_port_0=mouse', '--joystick_port_1=nothing', '--warp_mode=1', '--fullscreen=0',
+            '--joystick_port_0=mouse', '--joystick_port_1=nothing', '--warp_mode='+str(int(not args.no_warp)), '--fullscreen=0',
             '--window_width=720', '--window_height=568', '--state_dir='+str(base/'state'),'--logs_dir='+str(base/'logs')], stdout=log, stderr=log)
         try:
             deadline = time.monotonic()+args.seconds
@@ -90,12 +95,13 @@ def main():
             output = (boot/'result').open(errors='replace').read(512) if (boot/'result').exists() else ''
             report = (game/'.whdl_register').read_text(encoding='latin1') if (game/'.whdl_register').exists() else ''
             assert report, f'No WHDLoad core dump: {base}\n{output}'
-            if args.mode == 'timed':
+            if args.mode in ('timed', 'stairs', 'escape'):
                 assert 'DEBUG caused.' in report, report + output
-                files = (game/'.whdl_log').read_text(encoding='latin1')
-                assert any('[ReadOff]' in line and 'name=data/Alone In The Dark' in line
-                           for line in files.splitlines()), files
-                assert 'overlay.rsrc' not in files, 'Embedded overlay unexpectedly read from disk'
+                if args.mode == 'timed':
+                    files = (game/'.whdl_log').read_text(encoding='latin1')
+                    assert any('[ReadOff]' in line and 'name=data/Alone In The Dark' in line
+                               for line in files.splitlines()), files
+                    assert 'overlay.rsrc' not in files, 'Embedded overlay unexpectedly read from disk'
                 assert not (game/'overlay.rsrc').exists()
                 memory = (game/'.whdl_expmem').read_bytes()
                 magic = b'AITDWHDR'
@@ -103,7 +109,25 @@ def main():
                 offset = memory.index(magic) + len(magic)
                 assert memory[offset:offset+4] == b'\0\1\0\0'
                 assert int.from_bytes(memory[offset+4:offset+8], 'big') != 0
-                print('PASS: timed run loaded original with embedded overlay; resload ABI binding verified')
+                print('PASS: WHDLoad resload ABI binding and embedded overlay verified')
+                if args.mode == 'stairs':
+                    assert memory.count(b'AITDSTRS') == 1, 'Expected stairs diagnostic report'
+                    values = struct.unpack_from('>10I', memory, memory.index(b'AITDSTRS')+8)
+                    stage,tick,frames,x,z,beta,animation,floor,room,track = values
+                    print('STAIRS WHDLoad report:', values, flush=True)
+                    assert stage == 19 and frames > 0, 'Stair route did not complete'
+                    assert (animation,floor,room,track) == (4,1,6,1), 'No living manual storeroom actor'
+                    print('PASS: WHDLoad ordinary attic descent to manual room 6')
+                if args.mode == 'escape':
+                    assert memory.count(b'AITDESCP') == 1, 'Expected Escape-menu report'
+                    values = struct.unpack_from('>22I', memory, memory.index(b'AITDESCP')+8)
+                    assert values[0] == 9, ('Escape sequence incomplete', values)
+                    states = list(zip(values[2::2], values[3::2]))
+                    print('ESCAPE WHDLoad tick/frame pairs:', states, flush=True)
+                    assert all(b[0] > a[0] for a,b in zip(states,states[1:])), 'Guest time did not advance'
+                    assert states[3][1] == states[2][1] and states[7][1] == states[6][1], 'Menu did not stay open'
+                    assert states[5][1] > states[4][1] and states[9][1] > states[8][1], 'Gameplay did not resume'
+                    print('PASS: WHDLoad Escape opens/closes menu with short and long holds')
             else:
                 assert (boot/'passed').exists() and 'Return OK.' in report, report + output
                 if args.mode == 'smoke':

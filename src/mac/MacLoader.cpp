@@ -7090,7 +7090,8 @@ static bool nextEvent(uint16_t mask, uint8_t* event)
         KeyTranslation key;
         uint16_t keyWhat = keyDown ? 3 : 4;
         if (!translateAmigaKey(rawKey, key)) continue;
-        setKeyMapState(key.virtualKey, keyDown);
+        // Raw input updates KeyMap asynchronously. Replaying this queued edge
+        // would overwrite a newer physical release with an old key-down.
         if (!(mask & (1u << keyWhat))) continue;
         what = keyWhat;
         modifiers = (uint16_t)(keyModifiers | (buttonDown ? 0 : 0x0080));
@@ -7147,6 +7148,23 @@ static bool nextEvent(uint16_t mask, uint8_t* event)
     }
     return transition;
 }
+
+#ifdef AITD_WINDOW_PROBE
+extern "C" bool aitdMacKeyEventProbe()
+{
+    // A queued edge is historical; KeyMap must still describe the live keys.
+    uint8_t event[16];
+    uint8_t* keys=s_portLowMemory+kLowKeyMap;
+    aitdInputInjectProbeKey(0x45,true); // Escape, Macintosh virtual key 53
+    aitdInputInjectProbeKey(0x45,false);
+    bool ok=(keys[6]&0x20)==0;
+    ok=nextEvent(0x18,event) && read16(event)==3 && ok;
+    ok=(keys[6]&0x20)==0 && ok;
+    ok=nextEvent(0x18,event) && read16(event)==4 && ok;
+    ok=(keys[6]&0x20)==0 && ok;
+    return ok;
+}
+#endif
 
 static int32_t resourceHandleIndex(uint8_t** handle)
 {
