@@ -5,24 +5,29 @@ set $d20_n=0
 set $d20_active=0
 set $d20_finished=0
 while $d20_finished==0
- tbreak dispatchMacTrap if (trap==0xa891 && $line_seen==0) || (trap==0xa0f8 && *(unsigned long*)(userStack+4)==20) || (trap==0xa8a2 && *(unsigned long*)(frame+2)==(unsigned long)s_segments[5].begin+0x1e44)
+ tbreak aitdLineADispatch if $line_seen==0 && *(unsigned short*)*(unsigned long*)(frame+2)==0xa891
+ set $d20_line_bp=$bpnum
+ tbreak dispatchMacTrap if (trap==0xa0f8 && *(unsigned long*)(userStack+4)==20) || (trap==0xa8a2 && *(unsigned long*)(frame+2)==(unsigned long)s_segments[5].begin+0x1e44)
+ set $d20_service_bp=$bpnum
  continue
+ delete $d20_line_bp $d20_service_bp
+ set $d20_trap=*(unsigned short*)*(unsigned long*)(frame+2)
  if g_stageBState==3
   echo FAIL driver20 unexpected drawing dependency\n
   detach
   quit 1
  end
- if trap==0xa891
+ if $d20_trap==0xa891
   printf "DRIVER20_COVERAGE line-before statuses=%u observed=%u\n",g_effectStatusCalls,$d20_n
   set $d20_scope_start=g_effectStatusCalls
-  source aga_startup_call.gdb
   source lineto_call.gdb
+  source aga_startup_call.gdb
   printf "DRIVER20_COVERAGE line-after statuses=%u observed=%u\n",g_effectStatusCalls,$d20_n
   set $d20_scoped=$d20_scoped+g_effectStatusCalls-$d20_scope_start
   set $line_seen=1
   loop_continue
  end
- if trap==0xa8a2
+ if $d20_trap==0xa8a2
   printf "DRIVER20_COVERAGE paint-before statuses=%u observed=%u\n",g_effectStatusCalls,$d20_n
   set $d20_scope_start=g_effectStatusCalls
   source paintworld_call.gdb

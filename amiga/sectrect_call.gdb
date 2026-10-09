@@ -1,5 +1,5 @@
 set $sr_n=$sr_n+1
-tbreak dispatchMacTrap if trap==0xa8aa
+tbreak aitdLineADispatch if (*(unsigned short*)*(unsigned long*)(frame+2))==0xa8aa
 continue
 set $sr_args=(unsigned long)userStack
 set $sr_return=*(unsigned long*)(frame+2)+2

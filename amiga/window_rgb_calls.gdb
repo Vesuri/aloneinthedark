@@ -20,7 +20,7 @@ if $pc!=$rgb_return
 end
 printf "WRGB_RETURN original=1 fixture=0 trap=AA14 sp=%X rgb=%04X%04X%04X fore=%X back=%X port=%X fields=%04X%04X%04X%04X%04X%04X d0=%08X d1=%08X d2=%08X d3=%08X d4=%08X d5=%08X d6=%08X d7=%08X a0=%08X a1=%08X a2=%08X a3=%08X a4=%08X a5=%08X a6=%08X\n",$sp,*(unsigned short*)($rgb+0),*(unsigned short*)($rgb+2),*(unsigned short*)($rgb+4),*(unsigned long*)($rgb_port+80),*(unsigned long*)($rgb_port+84),$rgb_port,*(unsigned short*)($rgb_port+36),*(unsigned short*)($rgb_port+38),*(unsigned short*)($rgb_port+40),*(unsigned short*)($rgb_port+42),*(unsigned short*)($rgb_port+44),*(unsigned short*)($rgb_port+46),$d0,$d1,$d2,$d3,$d4,$d5,$d6,$d7,$a0,$a1,$a2,$a3,$a4,$a5,$a6
 dump binary memory ../tmp/window-rgb-native-1-return-port.bin (char*)$rgb_port (char*)$rgb_port+108
-tbreak dispatchMacTrap if trap==0xaa15
+tbreak aitdLineADispatch if (*(unsigned short*)*(unsigned long*)(frame+2))==0xaa15
 continue
 set $rgb_args=(unsigned long)userStack
 set $rgb_return=*(unsigned long*)(frame+2)+2

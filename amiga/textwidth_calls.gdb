@@ -1,3 +1,5 @@
+# Read the opcode at the common Line-A entry: fast traps bypass the general
+# dispatcher. User-mode services below retain their parked-register boundary.
 set $tw_finished=0
 set $tw_n=0
 set $binding_captured=0
@@ -7,23 +9,45 @@ set $gc_n=0
 set $wrgb_captured=0
 set $paint_captured=0
 while $tw_finished==0
- tbreak dispatchMacTrap if (trap==0xaa95 && *(unsigned long*)(frame+2)==(unsigned long)s_segments[5].begin+0x20cc) || (trap==0xaa91 && *(unsigned long*)(frame+2)==(unsigned long)s_segments[5].begin+0x201c) || (trap==0xaa18 && *(unsigned short*)userStack==129) || ($paint_captured==0 && trap==0xa8a2) || ($wrgb_captured==0 && trap==0xaa14 && *(unsigned long*)(frame+2)==(unsigned long)s_segments[12].begin+0x624a) || ($gc_n<2 && (trap==0xaa19 || trap==0xaa1a)) || trap==0xa856 || trap==0xa860 || trap==0xa886 || (trap==0xab1d && *(unsigned long*)(frame+2)==(unsigned long)s_segments[9].begin+0xe0a)
+ tbreak aitdLineADispatch if ((*(unsigned short*)*(unsigned long*)(frame+2))==0xaa95 && (*(unsigned long*)(frame+2))==(unsigned long)s_segments[5].begin+0x20cc) || ((*(unsigned short*)*(unsigned long*)(frame+2))==0xaa91 && (*(unsigned long*)(frame+2))==(unsigned long)s_segments[5].begin+0x201c) || ((*(unsigned short*)*(unsigned long*)(frame+2))==0xaa18 && *(unsigned short*)userStack==129) || ($paint_captured==0 && (*(unsigned short*)*(unsigned long*)(frame+2))==0xa8a2) || ($wrgb_captured==0 && (*(unsigned short*)*(unsigned long*)(frame+2))==0xaa14 && (*(unsigned long*)(frame+2))==(unsigned long)s_segments[12].begin+0x624a) || ($gc_n<2 && ((*(unsigned short*)*(unsigned long*)(frame+2))==0xaa19 || (*(unsigned short*)*(unsigned long*)(frame+2))==0xaa1a)) || (*(unsigned short*)*(unsigned long*)(frame+2))==0xa856 || (*(unsigned short*)*(unsigned long*)(frame+2))==0xa860 || (*(unsigned short*)*(unsigned long*)(frame+2))==0xa886 || ((*(unsigned short*)*(unsigned long*)(frame+2))==0xab1d && (*(unsigned long*)(frame+2))==(unsigned long)s_segments[9].begin+0xe0a)
  continue
+ set $startup_trap=*(unsigned short*)*(unsigned long*)(frame+2)
  if g_stageBState==3
   loop_break
  end
- if trap==0xaa95
+ if $startup_trap==0xaa95
   source binding129_call.gdb
-  source presentpicture_calls.gdb
+  # The splash draw/wait is omitted; its palette setup/restoration still runs.
+  set $splash=(unsigned long)s_segments[5].begin
+  if *(unsigned long*)($splash+0x202e)!=0x6000008a || *(unsigned long*)($splash+0x20ce)!=0x6000005e
+   echo FAIL startup MACPLAY omission bytes\n
+   detach
+   quit 1
+  end
+  echo PASS startup MACPLAY omitted with palette retained\n
   tbreak dispatchMacTrap if trap==0xaa95 && *(unsigned long*)(frame+2)==(unsigned long)s_segments[5].begin+0x214c
   continue
   source restorepalette_call.gdb
   tbreak dispatchMacTrap if trap==0xa8ec && *(unsigned long*)(frame+2)==(unsigned long)s_segments[10].begin+0x24d2
   continue
   source copybits8_call.gdb
+  if *(unsigned short*)(g_code3Base+0x1a74)!=0x4e90
+   echo FAIL original driver 22 call bytes\n
+   detach
+   quit 1
+  end
+  tbreak *(g_code3Base+0x1a74)
+  continue
   tbreak dispatchMacTrap if trap==0xa0f8 && inUserService && *(unsigned long*)(userStack+4)==22
   continue
   source driver22_call.gdb
+  if *(unsigned short*)(g_code3Base+0x17fc)!=0x4e90
+   echo FAIL original driver 17 call bytes\n
+   detach
+   quit 1
+  end
+  tbreak *(g_code3Base+0x17fc)
+  continue
   tbreak dispatchMacTrap if trap==0xa0f8 && inUserService && *(unsigned long*)(userStack+4)==17
   continue
   source driver17_call.gdb
@@ -85,119 +109,109 @@ while $tw_finished==0
   tbreak dispatchMacTrap if trap==0xa885 && inUserService
   continue
   source dottext_call.gdb
-  set $postdot_n=0
-  while g_stageBState!=3
-   tbreak dispatchMacTrap if inUserService || trap==0xa891
-   continue
-   if g_stageBState==3
-    loop_break
-   end
-   if trap==0xa891
-    source windowline_call.gdb
-    tbreak *((unsigned long)s_segments[12].begin+0x346) if *(unsigned short*)$sp==4 && *(unsigned short*)($sp+2)==0 && *(unsigned long*)*(unsigned long*)($sp+4)==0x5961896c
-    continue
-    tbreak dispatchMacTrap if trap==0xa885 && inUserService
-    continue
-    source accenttext_call.gdb
-    tbreak *((unsigned long)s_segments[4].begin+0x5220)
-    continue
-    if $pc!=(unsigned long)s_segments[4].begin+0x5220
-     echo FAIL original intro return address\n
-     detach
-     quit 1
-    end
-    # Enter may end the intro early in service checks. Record its result;
-    # only D0=0 uninterrupted runs qualify as full-intro acceptance.
-    printf "INTRO_PROGRESS second-return d0=%u frames=%u ticks=%u\n",$d0,g_macFramesPresented,g_macTicks
-    tbreak *((unsigned long)s_segments[13].begin+0x7fa)
-    continue
-    tbreak dispatchMacTrap
-    continue
-    if trap!=0xa8ec
-     echo FAIL post-intro CopyBits dispatch\n
-     detach
-     quit 1
-    end
-    source postcopy_call.gdb
-    tbreak *((unsigned long)s_segments[12].begin+0x583a)
-    continue
-    tbreak dispatchMacTrap
-    continue
-    if trap!=0xa976
-     echo FAIL GetKeys dispatch\n
-     detach
-     quit 1
-    end
-    source getkeys_call.gdb
-    tbreak *((unsigned long)s_segments[3].begin+0x137e)
-    continue
-    tbreak dispatchMacTrap if inUserService && trap==0xa0f8
-    continue
-    source driver13_call.gdb
-    tbreak *(g_code3Base+0x138c)
-    continue
-    source song_start_call.gdb
-    tbreak *(g_code3Base+0xfc8)
-    continue
-    source driver15_call.gdb
-    tbreak *(g_code3Base+0x1fc8)
-    continue
-    source driver4_call.gdb
-    tbreak dispatchMacTrap if trap==0xa8df
-    continue
-    source rectrgn_call.gdb
-    tbreak dispatchMacTrap if trap==0xa8e2
-    continue
-    source emptyrgn_call.gdb
-    tbreak *((unsigned long)s_segments[4].begin+0x1e4a)
-    continue
-    if $pc!=(unsigned long)s_segments[4].begin+0x1e4a || *(unsigned short*)$pc!=0xa8ec
-     echo FAIL step CopyBits checkpoint\n
-     detach
-     quit 1
-    end
-    tbreak dispatchMacTrap
-    continue
-    source stepcopy_call.gdb
-    set $stepcopy_captured=1
-    loop_break
-   end
-   set $postdot_n=$postdot_n+1
-   printf "POSTDOT_SERVICE n=%u trap=%X entered=%u completed=%u queries=%u\n",$postdot_n,trap,g_macServiceEntered,g_macServiceCompleted,g_effectStatusCalls
+  # Observe the original LineTo before either dispatcher path.
+  tbreak aitdLineADispatch if *(unsigned short*)*(unsigned long*)(frame+2)==0xa891
+  continue
+  source windowline_call.gdb
+  tbreak *((unsigned long)s_segments[12].begin+0x346) if *(unsigned short*)$sp==4 && *(unsigned short*)($sp+2)==0 && *(unsigned long*)*(unsigned long*)($sp+4)==0x5961896c
+  continue
+  tbreak dispatchMacTrap if trap==0xa885 && inUserService
+  continue
+  source accenttext_call.gdb
+  tbreak *((unsigned long)s_segments[4].begin+0x5220)
+  continue
+  if $pc!=(unsigned long)s_segments[4].begin+0x5220
+   echo FAIL original intro return address\n
+   detach
+   quit 1
   end
+  # Enter may end the intro early in service checks. Record its result;
+  # only D0=0 uninterrupted runs qualify as full-intro acceptance.
+  printf "INTRO_PROGRESS second-return d0=%u frames=%u ticks=%u\n",$d0,g_macFramesPresented,g_macTicks
+  tbreak *((unsigned long)s_segments[13].begin+0x7fa)
+  continue
+  tbreak dispatchMacTrap
+  continue
+  if trap!=0xa8ec
+   echo FAIL post-intro CopyBits dispatch\n
+   detach
+   quit 1
+  end
+  source postcopy_call.gdb
+  tbreak *((unsigned long)s_segments[12].begin+0x583a)
+  continue
+  tbreak dispatchMacTrap
+  continue
+  if trap!=0xa976
+   echo FAIL GetKeys dispatch\n
+   detach
+   quit 1
+  end
+  source getkeys_call.gdb
+  tbreak *((unsigned long)s_segments[3].begin+0x137e)
+  continue
+  tbreak dispatchMacTrap if inUserService && trap==0xa0f8
+  continue
+  source driver13_call.gdb
+  tbreak *(g_code3Base+0x138c)
+  continue
+  source song_start_call.gdb
+  tbreak *(g_code3Base+0xfc8)
+  continue
+  source driver15_call.gdb
+  tbreak *(g_code3Base+0x1fc8)
+  continue
+  source driver4_call.gdb
+  tbreak dispatchMacTrap if trap==0xa8df
+  continue
+  source rectrgn_call.gdb
+  tbreak aitdLineADispatch if (*(unsigned short*)*(unsigned long*)(frame+2))==0xa8e2
+  continue
+  source emptyrgn_call.gdb
+  tbreak *((unsigned long)s_segments[4].begin+0x1e4a)
+  continue
+  if $pc!=(unsigned long)s_segments[4].begin+0x1e4a || *(unsigned short*)$pc!=0xa8ec
+   echo FAIL step CopyBits checkpoint\n
+   detach
+   quit 1
+  end
+  tbreak dispatchMacTrap
+  continue
+  source stepcopy_call.gdb
+  set $stepcopy_captured=1
   loop_break
  end
- if trap==0xaa91
+ if $startup_trap==0xaa91
   source palette129_call.gdb
   loop_continue
  end
- if trap==0xaa18
+ if $startup_trap==0xaa18
   source ctable129_call.gdb
   loop_continue
  end
- if trap==0xa8a2
+ if $startup_trap==0xa8a2
   source paintrect_call.gdb
   set $paint_captured=1
   loop_continue
  end
- if trap==0xaa14
+ if $startup_trap==0xaa14
   source window_rgb_calls.gdb
   set $wrgb_captured=1
   loop_continue
  end
- if trap==0xaa19 || trap==0xaa1a
+ if $startup_trap==0xaa19 || $startup_trap==0xaa1a
   source getcolor_call.gdb
   loop_continue
  end
- if trap==0xa856
+ if $startup_trap==0xa856
   source obscure_cursor_call.gdb
   loop_continue
  end
- if trap==0xa860
+ if $startup_trap==0xa860
   source startup_event_call.gdb
   loop_continue
  end
- if trap==0xab1d
+ if $startup_trap==0xab1d
   if $binding_captured==0
    source world_restore_call.gdb
    source localglobal_calls.gdb

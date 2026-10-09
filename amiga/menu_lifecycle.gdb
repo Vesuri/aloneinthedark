@@ -550,13 +550,15 @@ while $i<g_resourceCount
  set $i=$i+1
 end
 echo PASS menu-list checkpoint original-MDRV=absent\n
-if !$stepcopy_captured || g_macServiceActive!=0 || g_systemWindows!=$startup_windows+22 || g_macServiceEntered<$startup_entered+g_effectStatusCalls || g_macServiceCompleted<$startup_completed+g_effectStatusCalls || g_macServiceEntered!=g_macServiceCompleted
+# Splash omission removes one resource read/OS window. Driver status queries
+# now inspect owned state directly and do not enter the user-service bridge.
+if !$stepcopy_captured || g_macServiceActive!=0 || g_systemWindows!=$startup_windows+21 || g_macServiceEntered<$startup_entered || g_macServiceCompleted<$startup_completed || g_macServiceEntered!=g_macServiceCompleted
  echo FAIL menu-list startup endpoint\n
  detach
  quit 1
 end
 echo startup PASS: original main and CopyBits return CODE 4+$1E4C\n
-printf "STARTUP_CAPTURE active=%u baseline=%u/%u frames=%u/%u\n",g_macServiceActive,g_macServiceEntered-g_effectStatusCalls,g_macServiceCompleted-g_effectStatusCalls,g_macFramesQueued,g_macFramesPresented
+printf "STARTUP_CAPTURE active=%u services=%u/%u frames=%u/%u\n",g_macServiceActive,g_macServiceEntered,g_macServiceCompleted,g_macFramesQueued,g_macFramesPresented
 set $ri=0
 set $font_bodies=0
 while $ri<g_resourceCount
@@ -595,5 +597,6 @@ if g_macBookFrameActive || !g_macBookFramesBegun || g_macBookFramesBegun!=g_macB
  quit 1
 end
 printf "DRIVER_COUNTS prep=%u/%u app=%u/%u overlay=%u/%u windows=%u services=%u/%u lowmem=%u mask=%x resources=%u\n",g_overlaySourceReads,g_overlaySourceBytes,g_resourceRuntimeReads,g_resourceRuntimeBytes,g_overlayRuntimeReads,g_overlayRuntimeBytes,g_systemWindows,g_macServiceEntered,g_macServiceCompleted,g_lowMemoryAppliedSites,g_loadedCodeMask,g_resourceCount
+echo PASS combined startup observer\n
 detach
 quit 0

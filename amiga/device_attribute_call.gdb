@@ -1,4 +1,4 @@
-tbreak dispatchMacTrap if trap==0xaa2c
+tbreak aitdLineADispatch if (*(unsigned short*)*(unsigned long*)(frame+2))==0xaa2c
 continue
 set $da_args=(unsigned long)userStack
 set $da_return=*(unsigned long*)(frame+2)+2

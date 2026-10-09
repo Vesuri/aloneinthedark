@@ -128,9 +128,11 @@ dump binary memory ../tmp/restorepal-native-return-old.bin $bind_addr $bind_addr
 set $bind_addr=(unsigned long)(*(unsigned long*)(*(unsigned long*)(*(unsigned long*)$bind_old+12)))
 dump binary memory ../tmp/restorepal-native-return-old-private.bin $bind_addr $bind_addr+4
 echo PASS native palette restoration ABI\n
-tbreak aitdMacMouseVBI if g_macFramesPresented==7
-continue
-set $screen=s_loudStopScreen
-printf "RESTOREPAL_AGA front=%X queued=%u presented=%u pending=%u line=%u late=%u\n",$screen->m_chip,g_macFramesQueued,g_macFramesPresented,$screen->m_framePending,g_beamPresentLine,g_beamPresentsLate
-dump binary memory ../tmp/restorepal-aga-planes.bin (char*)$screen->m_chip (char*)$screen->m_chip+64000
-dump binary memory ../tmp/restorepal-aga-copper.bin (char*)$screen->m_copper (char*)$screen->m_copper+2248
+# No splash is published. Waiting for its former frame number would consume
+# the beginning of Infogrames, including the first driver/effect calls.
+if g_macFramesQueued || g_macFramesPresented || s_loudStopScreen->m_framePending
+ echo FAIL omitted splash published a frame\n
+ detach
+ quit 1
+end
+echo PASS restored palette before first visible frame\n

@@ -1,7 +1,7 @@
 set $gc_n=$gc_n+1
 set $gc_args=(unsigned long)userStack
 set $gc_ret=*(unsigned long*)(frame+2)+2
-set $gc_trap=trap
+set $gc_trap=*(unsigned short*)*(unsigned long*)(frame+2)
 set $gc_rgb=*(unsigned long*)$gc_args
 set $gc_port=*(unsigned long*)s_qdThePort
 if ($gc_trap==0xaa19 && $gc_ret!=(unsigned long)s_segments[12].begin+0x623e) || ($gc_trap==0xaa1a && $gc_ret!=(unsigned long)s_segments[12].begin+0x6244)

@@ -36,16 +36,3 @@ Each item gives the **goal**, then the scope, then *done when*: the evidence req
 unresolved), reproducible steps and evidence; version-inapplicable cases   have reasons.
 File confirmed port defects as actionable open items. Report   inherited glitches
 separately without silently changing original game logic.
-
-## Startup observer maintenance
-
-- **TEST.1 Update the combined startup observer for fast trap dispatch.**
-  `driver_startup.gdb` / `menu_lifecycle.gdb` reaches the font and native driver
-  checks but fails with `FAIL original RGB caller` in `rgb_colors_calls.gdb`.
-  Reproduced on the pre-embedding revision `f6a4c56` with `PROBES=1` on
-  `a4000-030`; the RGB observer watches general dispatch while RGB traps can
-  take the fast path. Audit the subsequent caller/endpoint assumptions too, including the omitted
-  MACPLAY routine and disabled game pointer.
-
-  *Done when* the combined observer reaches its positive completion on the
-  current runtime, with original-byte and register checks preserved.

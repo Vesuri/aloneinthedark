@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Classify the measured startup fixture without modifying its preferences."""
+"""Classify startup preferences, or prepare the isolated measured fixture."""
 import argparse
 from pathlib import Path
 import local_temp as tempfile
@@ -18,6 +18,18 @@ def state(folder):
     if len(rows)!=1 or (rows[0].kind,rows[0].rid,rows[0].attrs,rows[0].name)!=(b'PREF',128,0,'') or rows[0].body not in (DEFAULT,LOW):
         raise ValueError('unmeasured Alone Prefs contents; preserve them and use an isolated fixture')
     return True
+
+def prepare(folder):
+    # Never overwrite owner preferences. The regression wrapper first archives
+    # their entire directory and restores it even when the observer fails.
+    folder.mkdir(parents=True, exist_ok=False)
+    header=struct.pack('>IIII',256,270,14,50)
+    resource_map=header+bytes(8)+struct.pack('>HHH4sHHhHII',28,50,0,b'PREF',0,10,128,0xffff,0,0)
+    (folder/'Alone Prefs').write_bytes(b'')
+    (folder/'Alone Prefs.rsrc').write_bytes(header+bytes(240)+struct.pack('>I',10)+DEFAULT+resource_map)
+    from installed_metadata import encode
+    (folder/'Alone Prefs.finfo').write_bytes(encode(b'PREFAITD'+bytes(8),0,0))
+    if not state(folder):raise ValueError('prepared preferences not recognized')
 
 def script(existing):
     # Minimum before effect queries; active music can add safe-point services.
@@ -46,14 +58,23 @@ class Checks(unittest.TestCase):
             with self.assertRaises(ValueError):state(folder)
             (folder/'Alone Prefs.rsrc').write_bytes(raw[:-1])
             with self.assertRaises(ValueError):state(folder)
+    def test_prepare_preserves_existing(self):
+        with tempfile.TemporaryDirectory() as work:
+            folder=Path(work)/'prefs';prepare(folder)
+            self.assertTrue(state(folder))
+            before={p.name:p.read_bytes() for p in folder.iterdir()}
+            with self.assertRaises(FileExistsError):prepare(folder)
+            self.assertEqual(before,{p.name:p.read_bytes() for p in folder.iterdir()})
     def test_exact_modes(self):
         self.assertIn('windows=244 services=1398/1398',script(False))
         self.assertIn('windows=218 services=1390/1390',script(True))
 
 if __name__=='__main__':
-    p=argparse.ArgumentParser(description=__doc__);p.add_argument('--folder',type=Path);p.add_argument('--gdb',type=Path);p.add_argument('--selftest',action='store_true');a=p.parse_args()
+    p=argparse.ArgumentParser(description=__doc__);p.add_argument('--folder',type=Path);p.add_argument('--gdb',type=Path);p.add_argument('--selftest',action='store_true');p.add_argument('--prepare',action='store_true');a=p.parse_args()
     if a.selftest:raise SystemExit(not unittest.TextTestRunner().run(unittest.defaultTestLoader.loadTestsFromTestCase(Checks)).wasSuccessful())
     try:
         # Remove stale observer state before inspecting a potentially unsupported fixture.
-        a.gdb.unlink(missing_ok=True);a.gdb.write_text(script(state(a.folder)))
+        if a.prepare:prepare(a.folder)
+        if a.gdb:
+            a.gdb.unlink(missing_ok=True);a.gdb.write_text(script(state(a.folder)))
     except (ValueError,OSError,AttributeError) as error:raise SystemExit('FAIL startup preferences: '+str(error))

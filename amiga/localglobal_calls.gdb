@@ -1,6 +1,6 @@
 set $lg_n=1
 while $lg_n<=2
- tbreak dispatchMacTrap if trap==0xa870
+ tbreak aitdLineADispatch if (*(unsigned short*)*(unsigned long*)(frame+2))==0xa870
  continue
  set $lg_args=(unsigned long)userStack
  set $lg_return=*(unsigned long*)(frame+2)+2

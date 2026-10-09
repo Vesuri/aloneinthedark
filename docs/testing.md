@@ -23,12 +23,29 @@ resource-exit, file-write/read, system-window, boot and resource-read fixtures. 
 native case clean-builds its flags, requires positive completion and rejects loud stops,
 debugger failures and timeouts.
 
-`amiga/regression.sh` exposes `boot`, `stack`, `quit`, `stairs`, `intro`,
+`amiga/regression.sh` exposes `boot`, `startup`, `stack`, `quit`, `stairs`, `intro`,
 `resource-read`, `file-read`, `file-write`, `resource-exit`, `window-core` and `audio`.
 It isolates existing saves/preferences, restores them on either success or failure, and
 keeps fixture output in ignored emulator directories. Build and debugger logs are
 `amiga/.run/regression-build.log` and `amiga/.run/gdb-out.log`. An early checkpoint is
 evidence only for that endpoint.
+
+The combined `startup` case uses the default `.run` directory, builds with
+`PROBES=1`, and follows the original
+font, menu, graphics and sound calls through the post-intro CopyBits return.
+Its isolated directory receives the measured saved-preferences fixture: the first-run
+path can omit the sound-effect calls that this observer pairs. Owner preferences and
+saves are restored afterward; ordinary boot checks still cover missing preferences.
+It deliberately runs the book because its text/line calls are part of the fixture.
+Read-only observations at `aitdLineADispatch` include traps handled by fast dispatch;
+user-mode service checks retain their separate dispatcher boundary. Capture validation
+checks RGB mutations/registers, font resources, text stacks/ports, and decoded AGA
+pixels/palettes. Publication checks follow queued generations and require no visible
+pointer or standalone MACPLAY frame. No historical splash frame numbers are assumed.
+
+```sh
+AMIGA_CONFIG=a4000-030 amiga/regression.sh startup
+```
 
 Use `AMIGA_CONFIG=a1200-020` and `a4000-030-reference` for fixed-clock acceptance. The
 full intro observer verifies original state and then waits for the exact queued frame

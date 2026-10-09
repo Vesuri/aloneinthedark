@@ -1,4 +1,4 @@
-tbreak dispatchMacTrap if trap==0xaa14
+tbreak aitdLineADispatch if (*(unsigned short*)*(unsigned long*)(frame+2))==0xaa14
 continue
 set $rgb_args=(unsigned long)userStack
 set $rgb_return=*(unsigned long*)(frame+2)+2
@@ -33,7 +33,7 @@ set $rgb_pat=*(unsigned long*)*(unsigned long*)($rgb_port+58)
 dump binary memory ../tmp/rgb-native-1-return-pen.bin (char*)$rgb_pat (char*)$rgb_pat+28
 set $rgb_pat=*(unsigned long*)*(unsigned long*)($rgb_port+62)
 dump binary memory ../tmp/rgb-native-1-return-fill.bin (char*)$rgb_pat (char*)$rgb_pat+28
-tbreak dispatchMacTrap if trap==0xaa15
+tbreak aitdLineADispatch if (*(unsigned short*)*(unsigned long*)(frame+2))==0xaa15
 continue
 set $rgb_args=(unsigned long)userStack
 set $rgb_return=*(unsigned long*)(frame+2)+2
