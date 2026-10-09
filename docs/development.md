@@ -8874,9 +8874,11 @@ Boot-only, executable-load-only and orderly-quit slave modes pass separately.
 These are WHDLoad integration checks, not a second full-game playthrough;
 full-game acceptance and its limits remain the M6 evidence above.
 
-### M7.3 release 1.0 and completion audit — 2026-10-08
+### M7.3 packaging completion audit — 2026-10-08
 
-`make release-check` passes with VERSION 1.0. It runs the full host suite and
+Historical acceptance record: the initial build used VERSION 1.0; the owner
+renumbered the release to 0.90 (09.10.2026), as recorded below.
+`make release-check` passed for that initial build. It runs the full host suite and
 original-data helper tests, clean-builds the production executable twice,
 checks native original-main startup and WHDLoad startup/binding, and packages
 the release twice. Production feature receipts bind the executable hash to
@@ -8919,3 +8921,24 @@ sections. The README now documents actual installation, measured memory/stack
 requirements, controls, build tools and release commands, replacing stale
 claims that M4/M1 acceptance remains open. M7 is complete; MAC.1 and GLITCH.1
 remain separate open work. Macintosh.js was not run.
+
+
+### Release renumbered to 0.90 — 2026-10-09
+
+Owner request: use **0.90 (09.10.2026)** throughout the Amiga release.
+VERSION, runtime and slave version strings, slave splash text, extractor,
+Installer, release ReadMe, archive names, canonical LHA date and release
+validator now agree. Original Macintosh 1.0 identifiers remain original-data
+facts; the preceding M7 audit records the superseded initial build.
+
+`make release` clean-builds and validates the updated archive. Release rejection
+tests pass, including full version/date checks for all three shipped HUNK
+binaries. A second packaging pass is byte-identical. The superseded archive
+is retained under `tmp/release-history/`; `dist` contains the current release.
+
+- `dist/AloneInTheDark-0.90.lha`: 254,165 bytes.
+- Archive SHA-256: `0f563e376899a6e26c68f0268704f1ed666c152bc6640b0a77d3ba0bcd6c9a68`.
+- Runtime SHA-256: `ae63c172514ab58712295fb7fd91222f258eaf798cab658400a12dbd3c03631b`.
+
+This changes release metadata only; gameplay and M7 acceptance scope are
+unchanged. Build/package log: `tmp/m7/release-090.log`.

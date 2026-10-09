@@ -8,5 +8,5 @@
 | amiga/Makefile checks the version number against the repository VERSION file.
 	.section .rodata.version,"aR"
 	.balign 2
-	.asciz "$VER: Alone in the Dark 1.0 (08.10.2026)"
+	.asciz "$VER: Alone in the Dark 0.90 (09.10.2026)"
 	.balign 2

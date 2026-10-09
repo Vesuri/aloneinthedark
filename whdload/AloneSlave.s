@@ -34,10 +34,10 @@ slv_CurrentDir dc.b 0
 slv_name dc.b "Alone in the Dark",0
 slv_copy dc.b "1994 Infogrames / Interplay",0
 slv_info dc.b "Amiga port by Vesuri",10
-        dc.b "Version 1.0 (08.10.2026)",10
+        dc.b "Version 0.90 (09.10.2026)",10
         dc.b "F10 quits",0
 slv_config dc.b 0
-        dc.b "$VER: AloneInTheDark.slave 1.0 (08.10.2026)",0
+        dc.b "$VER: AloneInTheDark.slave 0.90 (09.10.2026)",0
 _program dc.b "Alone",0
 _args dc.b 10
         EVEN

@@ -1,5 +1,5 @@
 ; Alone in the Dark WHDLoad installation. Standard Commodore Installer V43 or newer.
-; $VER: Install 1.0 (08.10.2026)
+; $VER: Install 0.90 (09.10.2026)
 (set @app-name "Alone in the Dark")
 (if (< @installer-version (* 43 65536))
   (abort "This installation requires Amiga Installer 43 or newer."))

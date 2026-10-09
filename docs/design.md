@@ -849,7 +849,7 @@ on 2026-10-07 based on observed gameplay without artifacts. See development.md f
 | **M4 Audio** | Native SoundMusicSys driver on Paula voices | Music and effects in intro and play; event log matches MAME |
 | **M5 Performance** | Profile and optimise on 68020 and 68030 | Documented ms/frame by phase; no remaining optimisation the profile justifies; minimum fast RAM measured |
 | **M6 Completion** | Whole-game fidelity | Scripted and manual play-through of all floors and the ending; stairs regression; no loud stop anywhere |
-| **M7 Release** | Installer, WHDLoad, packaging | 1.0 LHA; installer and WHDLoad tests pass on the test matrix |
+| **M7 Release** | Installer, WHDLoad, packaging | 0.90 LHA; installer and WHDLoad tests pass on the test matrix |
 
 Owner update 2026-10-05 authorizes autonomous completion of M3, M4 and M5.
 Use scripted ordinary game controls and positive game-state checks for M3

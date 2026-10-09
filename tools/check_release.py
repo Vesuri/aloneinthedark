@@ -23,7 +23,7 @@ def main():
         assert len(header) == size and sum(header) & 255 == raw[pos + 1], "bad header checksum"
         assert header[:5] == b"-lh5-" and header[18] == 0, "expected level-zero LH5"
         packed, unpacked = struct.unpack_from("<II", header, 5)
-        assert struct.unpack_from('<I',header,13)[0] == ((((2026-1980)<<9)|(10<<5)|8)<<16), 'noncanonical timestamp'
+        assert struct.unpack_from('<I',header,13)[0] == ((((2026-1980)<<9)|(10<<5)|9)<<16), 'noncanonical timestamp'
         n = header[19]
         assert size == 22 + n
         name = header[20:20 + n].decode("ascii").replace("\\", "/")
@@ -50,7 +50,7 @@ def main():
     assert b'WHDLOADS' in payloads['AloneInTheDark.slave'], 'missing WHDLoad slave header'
     for name, kind in (("AloneInTheDark.inf", 4), ("ReadMe.info", 4), ("Install.info", 4), ('@drawer', 2)):
         assert payloads[name][:4] == b"\xe3\x10\0\1" and payloads[name][48] == kind
-    assert b"$VER: Install 1.0 (08.10.2026)" in payloads["Install"]
+    assert b"$VER: Install 0.90 (09.10.2026)" in payloads["Install"]
     assert b'APPNAME=Alone in the Dark\0' in payloads['Install.info']
     assert b'Rescue on Fractalus' not in payloads['Install.info']
     assert payloads['AloneInTheDark.inf'] == installer_icon(game=True)
@@ -61,8 +61,8 @@ def main():
     assert b'Requirements\n------------' in payloads['ReadMe']
     root = Path(__file__).resolve().parent.parent
     version = (root / 'VERSION').read_text().strip().encode('ascii')
-    assert b'$VER: Alone in the Dark ' + version + b' (' in payloads['Alone'], 'wrong game version'
-    assert b'$VER: AloneInTheDark.slave ' + version + b' (' in payloads['AloneInTheDark.slave'], 'wrong slave version'
+    for name, tag in (('Alone', 'Alone in the Dark'), ('AloneInTheDark.slave', 'AloneInTheDark.slave'), ('AitdInstallData', 'AitdInstallData')):
+        assert b'$VER: '+tag.encode('ascii')+b' '+version+b' (09.10.2026)' in payloads[name], 'wrong version/date: '+name
     assert payloads['overlay.rsrc'] == (root/'resources/overlay.rsrc').read_bytes()
     assert payloads['ReadMe'] == (root / 'release/ReadMe').read_bytes()
     assert payloads['LICENSE.LGPL.txt'] == (root / 'tools/install-data/COPYING.LIB').read_bytes()

@@ -8,7 +8,7 @@ struct ExecBase *SysBase;
 struct DosLibrary *DOSBase;
 void *io_alloc(uint32_t n) { return AllocVec(n,MEMF_PUBLIC); }
 void io_free(void *p) { if(p) FreeVec(p); }
-static const char version[] __attribute__((used,section(".text.ver"))) = "$VER: AitdInstallData 1.0 (08.10.2026)";
+static const char version[] __attribute__((used,section(".text.ver"))) = "$VER: AitdInstallData 0.90 (09.10.2026)";
 #ifdef INSTALL_STACK_TEST
 volatile uint32_t installer_stack_size,installer_stack_unused;
 volatile int installer_result;

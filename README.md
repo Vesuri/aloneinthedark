@@ -1,5 +1,7 @@
 # Alone in the Dark — Amiga
 
+Current Amiga release: **0.90 (09.10.2026)**.
+
 An unofficial Amiga port of the 1994 Macintosh **Alone In The
 Dark 1.0** by Infogrames and Interplay.
 
@@ -26,7 +28,7 @@ The [open-work queue](docs/open-work.md) lists only unresolved work.
 
 ## Installation
 
-Extract `AloneInTheDark-1.0.lha` and open `Install` using Amiga Installer 43 or
+Extract `AloneInTheDark-0.90.lha` and open `Install` using Amiga Installer 43 or
 newer. Install WHDLoad 17 or newer and provide a matching Kickstart 3.1 image
 and RTB first. The installer accepts `kick40068.A1200`, `kick40068.A4000` or
 `kick40063.A600` in `Devs:Kickstarts` or `WHDCOMMON:`.
@@ -85,7 +87,7 @@ Set `LHA` to the encoder's path if it is not installed as `lha-compress`.
 make -C amiga
 ```
 
-`make release` clean-builds and produces `dist/AloneInTheDark-1.0.lha`.
+`make release` clean-builds and produces `dist/AloneInTheDark-0.90.lha`.
 `make release-check` runs host and extractor tests, two clean production builds,
 native and WHDLoad startup checks, and two byte-identical archive builds.
 It verifies exact package contents, headers, CRCs, version strings and icons,
