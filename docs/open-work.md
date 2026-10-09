@@ -7,19 +7,6 @@ cited below by § number; owner decisions D1–D9 are in design.md §5.
 
 Each item gives the **goal**, then the scope, then *done when*: the evidence required.
 
-## Saving and input after disk switches
-
-- **INPUT.2 Confirm physical-key recovery under WHDLoad.** Verify the owner
-  can save by typing a name, return to gameplay, and open/close the Escape
-  menu using physical keys, including a held dismissal press. Automated raw-key
-  fixtures cannot validate the host/emulated keyboard handshake. Preserve
-  kickemu restoration and the resload ABI; cached calls must leave input
-  untouched.
-
-  *Done when* saving through the installed icon returns responsive controls,
-  including Enter and Escape, with native and WHDLoad regressions and owner
-  verification of the reported physical-key case.
-
 ## AITD 1 glitch audit
 
 - **GLITCH.1 Check the Amiga port against the AITD 1 material in the
