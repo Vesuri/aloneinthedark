@@ -92,6 +92,8 @@ a normal return:
 
 For unlimited 68040 reproduction use `--cpu 68040-NOMMU`, optionally `--jit`
 and `--no-warp`. `--z3-memory-mb 32` adds 32 MB Zorro III RAM.
+`--no-filelog` disables diagnostic FILELOG disk traffic when counting OS switches.
+Allow `--ticks 15000 --seconds 240` for the full save/load route.
 `--machine-config tmp/machine.fs-uae` instead imports the supplied hardware
 settings (CPU, model, memory, RTG and video timing), retaining isolated test
 disks, ROM overrides and output paths. `FSUAE` selects the emulator executable.

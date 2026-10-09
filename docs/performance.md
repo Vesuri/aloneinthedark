@@ -101,3 +101,38 @@ including pixels outside dirty areas; never use its expensive verifier for FPS c
 The action-menu observer also requires exactly one wait/publication per completed
 preview rotation, rather than one per drawing trap. Gameplay scene batching retains
 its unchanged-frame simulation pacing and complete-frame publication checks.
+
+## Save-related WHDLoad switches
+
+A fresh save measured seven OS returns on the maximum-speed 68030 with 8 MB
+Fast RAM plus 32 MB Zorro III RAM, PRELOAD enabled and FILELOG disabled.
+The individual resload calls account for all seven:
+
+| Operation | OS returns |
+| --- | ---: |
+| Create empty data fork | 1 |
+| Create 32-byte Finder metadata | 1 |
+| Write 36,254-byte game state | 1 |
+| Create empty resource fork | 1 |
+| Publish initial 286-byte resource map | 1 |
+| Publish resource payload and subsequent map update | 2 |
+
+Later metadata writes were cached by WHDLoad. Updating an existing save in a
+fresh launch measured four returns: two initial fork reads, one metadata write,
+and one resource-fork write. These counts depend on cache contents and resource
+sizes; they are observations, not fixed guarantees. FILELOG inflated the measured
+fresh-save count to nine and the existing-save count to seven, so disable it
+when measuring normal-play disk switches.
+
+The File Manager already buffers individual writes and publishes a whole dirty
+fork at flush/close. Resource Manager creation, WriteResource and UpdateResFile
+publish distinct resource states. The remaining fresh-save writes are not
+identical redundant writes. Combining them would defer successful creation or
+publication across original service boundaries, changing failure reporting and
+persistence behavior. The resload API accepts one file per save call; it has no
+multi-file transaction API. No additional runtime buffering is applied.
+
+WHDLoad's default write cache can itself defer writes until exit. Preserve its
+policy; do not interpret a cached success as a physical disk flush. Normal Quit
+and a fresh uncached load are the persistence checks. One or two OS returns
+are therefore not a safe general target for this save implementation.

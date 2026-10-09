@@ -41,6 +41,7 @@ def main():
     p.add_argument('--no-warp', action='store_true', help='run at normal PAL field rate')
     p.add_argument('--save-source', type=Path, help='Saved Games drawer from a preceding run')
     p.add_argument('--no-preload', action='store_true')
+    p.add_argument('--no-filelog', action='store_true', help='disable WHDLoad FILELOG when measuring OS switches')
     p.add_argument('--check-stack', action='store_true', help='require completed STACKPROBE report and 4 KB process stack')
     args = p.parse_args()
     if args.mode == "walking" and not args.save_source:
@@ -72,7 +73,7 @@ def main():
         (game/'read-probe.bin').write_bytes(bytes((i*37+(i>>8))&255 for i in range(200003)))
     (boot/'s/WHDLoad.prefs').write_text('Expert\nReadDelay=0\n')
     preload = '' if args.no_preload else 'PRELOAD '
-    filelog = '' if args.mode in ('stairs', 'escape', 'walking') else 'FILELOG '
+    filelog = '' if args.no_filelog or args.mode in ('stairs', 'escape', 'walking') else 'FILELOG '
     (boot/'s/startup-sequence').write_text(
         'DF0:C/Assign C: DF0:C\nDF0:C/Assign LIBS: DF0:Libs\n'
         'DF0:C/Assign DEVS: DH0:devs\nStack 16384\nFailAt 999\nC:Avail >DH0:memory\n'

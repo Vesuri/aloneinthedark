@@ -20,14 +20,27 @@ Each item gives the **goal**, then the scope, then *done when*: the evidence req
   including Enter and Escape, with native and WHDLoad regressions and owner
   verification of the reported physical-key case.
 
-- **SAVE.1 Reduce save-related OS switches.** Measure the reported roughly
-  seven switches, separate file/metadata operations from WHDLoad cache policy,
-  and batch redundant work where safe. Preserve save/load correctness and
-  error reporting; target one or two switches without deferring durability
-  silently.
+## Reported display and book issues
 
-  *Done when* before/after switch counts and full save/load checks support the
-  change, or document the remaining WHDLoad constraint.
+- **DISPLAY.1 Investigate incorrect green palette areas.** The owner's
+  screenshot from the native `amiga/run.sh` launch shows bright-green regions
+  in the opening landscape. The staged executable matches the production
+  release, not the save diagnostic. Reproduce and compare source palette,
+  published colours and bitplanes before choosing a fix.
+
+  *Done when* the offending scene displays the correct colours in the default
+  launcher and the responsible path has an appropriate regression check.
+
+- **BOOK.1 Profile slow page turns on the reference 68030.** The default
+  launcher uses a cycle-exact 15.67 MHz 68030; unlimited-68040 50 FPS checks do
+  not establish acceptable performance there. Profile the moving page fold,
+  separately from the original five-second reading holds, and address the
+  largest avoidable drawing/service costs. Preserve explicit min/max dirty
+  bounds and completed-frame pacing; never use shadow pixel comparisons.
+
+  *Done when* matched reference-68030 measurements identify the limiting costs,
+  justified improvements are verified for pixels/palette and frame boundaries,
+  and remaining limits are explained.
 
 ## AITD 1 glitch audit
 
