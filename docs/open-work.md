@@ -27,11 +27,24 @@ Each item gives the **goal**, then the scope, then *done when*: the evidence req
 a regression check; if unreproduced, record the tested conditions and   remaining
 uncertainty without claiming that Macintosh.js is at fault.
 
+## Publisher animation pacing
+
+- **INTRO.1 Pace the Infogrames 3D armadillo animation**, after the stair bug
+  is fixed. The owner reports that the opening fly-by runs too quickly and
+  requests a VBlank wait between frames. Trace the sequence's frame production,
+  publication and existing waits; verify the original Mac cadence and add the
+  missing sequence-specific pacing. Do not impose a global gameplay cap.
+
+  *Done when* the complete opening is checked with warp off on the reference
+  68030 and unlimited CPU configurations, including JIT where available; guest
+  frame/VBlank counts show the intended cadence, with no skipped publication,
+  input regression or audio disruption. Record any untested JIT configuration.
+
 ## AITD 1 glitch audit
 
 - **GLITCH.1 Check the Amiga port against the AITD 1 material in the
   [SDA mechanics and glitches guide](https://kb.speeddemosarchive.com/Alone_in_the_Dark_\(1-3\)/Game_Mechanics_and_Glitches).**
-  Start after the queued stair investigation. Enumerate
+  Start after the preceding fixes. Enumerate
   applicable AITD 1 cases and reproduce them in the port and original Mac,
   with matching game state and recorded CPU/timing settings. The guide mainly
   covers the DOS CD release; verify applicability to our Mac version rather
