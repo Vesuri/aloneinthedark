@@ -33,7 +33,7 @@ newer. Install WHDLoad 17 or newer and provide a matching Kickstart 3.1 image
 and RTB first. The installer accepts `kick40068.A1200`, `kick40068.A4000` or
 `kick40063.A600` in `Devs:Kickstarts` or `WHDCOMMON:`.
 
-Download the original Macintosh [AloneInTheDark.img_.sit archive](https://www.macintoshrepository.org/download.php?id=5338)
+Download the [AloneInTheDark.img_.sit StuffIt archive](https://www.macintoshrepository.org/download.php?id=5338)
 and select it when prompted. The helper verifies the archive and all 74 extracted files;
 you do not need to unpack it first. Allow 24 MB free in the temporary drawer
 and 8 MB at the destination. Use a disk temporary drawer on an 8 MB machine.
@@ -141,7 +141,7 @@ for real-time runs. Normal interactive launch retains
 the fixed-clock 68030 setup.
 
 This builds `amiga/out/Alone.exe` without original game data. Extracting your
-original archive, running under FS-UAE and debugging are covered in
+StuffIt archive, running under FS-UAE and debugging are covered in
 [development.md](docs/development.md). The [documentation index](docs/README.md)
 covers architecture and data formats.
 

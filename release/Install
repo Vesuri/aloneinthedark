@@ -1,5 +1,5 @@
 ; Based on WHDLoad 20.0 "Install Template/Xxx Install/Install".
-; Adapted for a single Macintosh archive, following Vette's Installer V43 flow.
+; Adapted for a single StuffIt archive, following Vette's Installer V43 flow.
 ; $VER: Install 0.90 (09.10.2026)
 (set @app-name "Alone in the Dark")
 (set #readme-file "ReadMe")
@@ -47,8 +47,8 @@
              (default #temp)))))
       (set #archive
         (askfile
-          (prompt "Select the downloaded AloneInTheDark.img_.sit archive.")
-          (help "Choose AloneInTheDark.img_.sit downloaded from:\nhttps://www.macintoshrepository.org/download.php?id=5338\nLeave it compressed.")
+          (prompt "Select the downloaded AloneInTheDark.img_.sit StuffIt archive.")
+          (help "Choose the AloneInTheDark.img_.sit StuffIt archive downloaded from:\nhttps://www.macintoshrepository.org/download.php?id=5338\nLeave it compressed.")
           (default "AloneInTheDark.img_.sit")))
       (if (= @pretend 0)
         ((working "Extracting and checking the game data. This may take several minutes. Temporary files are removed when finished.")

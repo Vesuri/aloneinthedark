@@ -1,6 +1,6 @@
 # Original-data extraction
 
-Download [AloneInTheDark.img_.sit](https://www.macintoshrepository.org/download.php?id=5338) and leave it compressed.
+Download the [AloneInTheDark.img_.sit StuffIt archive](https://www.macintoshrepository.org/download.php?id=5338) and leave it compressed.
 For the Amiga release, run `Install` from the release archive. The bundled
 `AitdInstallData` helper reads this archive directly, checks the known original
 payload and verifies all 74 output files. It needs neither `unar`, `hfsutils`,
@@ -9,7 +9,7 @@ are documented in [tools/install-data](../tools/install-data/README.md).
 The following host workflow is the independent development/reference extractor.
 
 The port reads the original files; nothing from the release is embedded in the
-executable or the repository. The known release is `AloneInTheDark.img_.sit`
+executable or the repository. The supported StuffIt archive is `AloneInTheDark.img_.sit`
 (sha256 `92a5c1f9…6352db2`), nested four deep:
 
 | Layer | Format | Opened with |

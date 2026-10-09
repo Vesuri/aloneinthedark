@@ -50,7 +50,7 @@ does not recur. Whole-route counts are therefore not a playback parity test.
 
 The earlier native-only PCM checksums map exactly to original LISTSAMP entries
 58 (`E237BE27`, 27,115 bytes) and 59 (`235E2009`, 21,157 bytes); the original-only
-`F09B4483` maps to entry 61 (10,806 bytes). The local original archive decoder
+`F09B4483` maps to entry 61 (10,806 bytes). The local LISTSAMP decoder
 and byte-identical captures establish these identities; no original samples
 are committed. Original life scripts 528/529 contain a `random(300)` switch
 whose cases 0, 1 and 2 select those three samples. Both sides' captured actor

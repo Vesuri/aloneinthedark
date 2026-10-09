@@ -1589,7 +1589,7 @@ python3 tools/check_demo_model_replay.py tmp/m2-line-tie-demo-native-full.log tm
 
 ## Original data
 
-Put your original archive in ignored `tmp/`, then:
+Put your StuffIt archive in ignored `tmp/`, then:
 
 ```sh
 make extract-original-data ARCHIVE=tmp/AloneInTheDark.img_.sit
@@ -5517,7 +5517,7 @@ nonpurgeable resources and MIDI 905 armed. `tmp/m2-song-events-reference.log`
 completes its original preflight at 3,736 note events. The C++ helper matches
 all events and the seven-instrument/28-sample graph exactly in
 `tmp/m2-song-inputs-paired.log`. The captured song/MIDI bytes also match the
-original archive. See [sound-driver.md](sound-driver.md) for the format details,
+archived game data. See [sound-driver.md](sound-driver.md) for the format details,
 rejected observer and reproducible checker. Runtime sequencing, Paula playback
 and selector-zero acceptance remain M2.3g38; this is no claim of working music.
 
@@ -7484,7 +7484,7 @@ checks pass. The maintained first-room audio checker pairs exact packets with
 original animation/object triggers, including both doors and all ten stair
 events. Extra total footsteps correspond to additional animation steps near
 controller stopping points; every captured native trigger matches an original
-one. The differing ambient samples are identified in the original archive and
+one. The differing ambient samples are identified in the original LISTSAMP data and
 in active original life scripts' random(300) branches. Actual paired ambient
 playback remains open, separately from the accepted movement/door events.
 See [first-room evidence](audio-firstrooms.md) for captures and precise scope.

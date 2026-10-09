@@ -652,7 +652,7 @@ The existing reference installation has dates 7200 seconds below the archive
 headers (the host extraction/MacBinary timezone conversion), cleared initialized
 flags on data files, and application icon x=128. These installation differences
 are explicitly checked and documented, not silently normalized in the port.
-Native metadata retains the original archive timestamps and extracted Finder
+Native metadata retains the archived timestamps and extracted Finder
 record. The opaque metadata round-trip fixtures separately verify Mac API
 preservation of all 16 Finder bytes and both timestamp fields.
 

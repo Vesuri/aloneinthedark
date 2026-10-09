@@ -1,6 +1,7 @@
 # AitdInstallData
 
-Standalone C99 installer for the known Macintosh Alone in the Dark 1.0 archive.
+Standalone C99 installer for Macintosh Alone in the Dark 1.0 game data from the
+supported StuffIt archive.
 Download [AloneInTheDark.img_.sit](https://www.macintoshrepository.org/download.php?id=5338) and leave it compressed.
 The executable needs no Python, archive libraries, host resource forks or
 xadmaster. Its Amiga build uses dos.library and exec.library directly.
