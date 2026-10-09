@@ -102,7 +102,9 @@ VBI samples keyboard/mouse transitions. The game viewport has no visible pointer
 its retained interfaces use the keyboard. Logical Mac hide/show/obscure state and
 mouse-button semantics remain implemented, independently of display visibility.
 Events and Command-key items use measured contracts; Right-Amiga maps Command.
-The menu bar and screen-size chooser are suppressed. The verified Escape-menu
+The menu bar and screen-size chooser are suppressed. The startup menu says
+“Return to AmigaOS” in place of “Return to Finder”; its quit action is unchanged.
+The verified Escape-menu
 handback waits for physical Escape release so one held press cannot immediately
 reopen the menu; event flushing leaves live KeyMap state intact.
 

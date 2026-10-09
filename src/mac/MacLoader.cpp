@@ -1388,6 +1388,31 @@ static uint8_t** loadResource(uint32_t index,const ResourceForks::Item& item,boo
                 write32(code+0x202e,0x6000008a); // GetPicture/geometry -> SetPalette.
                 write32(code+0x20ce,0x6000005e); // Drawing/wait -> restore/cleanup.
             }
+            if(item.id==12) {
+                // Dan1's DOS-to-Finder text conversion: return the Amiga label
+                // before the original renderer measures or draws it. Keep the
+                // original epilogue and all other text conversions unchanged.
+                // CREL still adds A5 at +$434, so store an A5-relative value.
+                static const char quitLabel[]="Return to AmigaOS";
+                uint8_t* code=*handle;
+                if(!s_currentA5 || item.size<0x4a8
+                   || read32(code+0x3f6)!=0x4a80508f
+                   || read16(code+0x3fa)!=0x6742
+                   || read16(code+0x3fc)!=0x2f0b
+                   || read32(code+0x3fe)!=0x2f3cfffe
+                   || read16(code+0x432)!=0x287c
+                   || read32(code+0x434)!=0xfffed9e6UL
+                   || read32(code+0x438)!=0x4fef0010
+                   || read16(code+0x43c)!=0x6060
+                   || read32(code+0x49e)!=0x200c4cdf
+                   || read32(code+0x4a2)!=0x18804e5e
+                   || read16(code+0x4a6)!=0x4e75) {
+                    loaderStop("QUIT LABEL ORIGINAL BYTE MISMATCH",12);showLoaderStop();
+                }
+                write32(code+0x3fc,0x60000034); // DOS match -> replacement pointer.
+                write32(code+0x434,(uint32_t)quitLabel-(uint32_t)s_currentA5);
+                write32(code+0x438,0x4e714e71); // No skipped arguments to pop.
+            }
             s_segments[item.id].handle=handle;
             g_lowMemoryAppliedSites+=MacLowMemory::siteCount(item.id);
         }
