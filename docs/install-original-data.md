@@ -1,5 +1,6 @@
 # Original-data extraction
 
+Download [AloneInTheDark.img_.sit](https://www.macintoshrepository.org/download.php?id=5338) and leave it compressed.
 For the Amiga release, run `Install` from the release archive. The bundled
 `AitdInstallData` helper reads this archive directly, checks the known original
 payload and verifies all 74 output files. It needs neither `unar`, `hfsutils`,

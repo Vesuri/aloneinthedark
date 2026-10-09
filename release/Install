@@ -48,7 +48,7 @@
       (set #archive
         (askfile
           (prompt "Select the downloaded AloneInTheDark.img_.sit archive.")
-          (help "Choose AloneInTheDark.img_.sit downloaded from the Alone in the Dark page at Macintosh Repository. Leave it compressed.")
+          (help "Choose AloneInTheDark.img_.sit downloaded from:\nhttps://www.macintoshrepository.org/download.php?id=5338\nLeave it compressed.")
           (default "AloneInTheDark.img_.sit")))
       (if (= @pretend 0)
         ((working "Extracting and checking the game data. This may take several minutes. Temporary files are removed when finished.")

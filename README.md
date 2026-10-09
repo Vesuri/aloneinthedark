@@ -33,8 +33,8 @@ newer. Install WHDLoad 17 or newer and provide a matching Kickstart 3.1 image
 and RTB first. The installer accepts `kick40068.A1200`, `kick40068.A4000` or
 `kick40063.A600` in `Devs:Kickstarts` or `WHDCOMMON:`.
 
-Supply your original, unmodified Macintosh `AloneInTheDark.img_.sit` archive
-when prompted. The helper verifies the archive and all 74 extracted files;
+Download the original Macintosh [AloneInTheDark.img_.sit archive](https://www.macintoshrepository.org/download.php?id=5338)
+and select it when prompted. The helper verifies the archive and all 74 extracted files;
 you do not need to unpack it first. Allow 24 MB free in the temporary drawer
 and 8 MB at the destination. Use a disk temporary drawer on an 8 MB machine.
 The helper needs about 2.7 MB of working allocations in addition to its code
