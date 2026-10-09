@@ -93,6 +93,19 @@ void aitdInputShutdown()
     s_ciaaBase = 0;
 }
 
+void aitdInputAfterOSSwitch()
+{
+    // WHDLoad's host OS owns the keyboard during disk I/O. Releases there
+    // cannot reach our CIA handler; neither held levels nor queued edges
+    // remain reliable when ownership returns.
+    if(!s_ciaaBase)return;
+    Disable();
+    for(uint16_t i=0;i<128;++i)s_keyDown[i]=0;
+    s_tail=s_head;
+    aitdMacReleaseKeys();
+    Enable();
+}
+
 bool aitdInputPopKey(uint8_t& rawKey, bool& down, uint16_t& modifiers)
 {
     if (s_tail == s_head) return false;

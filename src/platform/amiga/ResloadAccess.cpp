@@ -1,11 +1,23 @@
 #include "FileAccess.h"
+#include "MacInput.h"
 // Offsets and tag value from WHDLoad Include/whdload.i (v18 API).
 // This adapter deliberately makes no Exec/DOS calls.
 extern "C" uint32_t aitdResloadCall(void*,uint32_t,uint32_t,uint32_t,const void*,void*,uint32_t*);
 extern "C" {
-struct ResloadConfig { uint32_t magic[2];uint16_t version,reserved;void* table; };
-volatile ResloadConfig g_resloadConfig __attribute__((aligned(4)))={{0x41495444,0x57484452},1,0,0};
+struct ResloadConfig { uint32_t magic[2];uint16_t version,switchEpoch;void* table; };
+volatile ResloadConfig g_resloadConfig __attribute__((aligned(4)))={{0x41495444,0x57484452},2,0,0};
 }
+extern "C" void aitdResloadReturned()
+{
+    static uint16_t seen=0;
+    uint16_t current=g_resloadConfig.switchEpoch;
+    if(current==seen)return;
+    seen=current;
+    aitdInputAfterOSSwitch();
+}
+#ifdef AITD_WINDOW_PROBE
+extern "C" void aitdResloadSwitchProbe() { ++g_resloadConfig.switchEpoch; }
+#endif
 namespace FileAccess {
 static void* resload=0;
 void bindResload(void* entryTable) { resload=entryTable; }

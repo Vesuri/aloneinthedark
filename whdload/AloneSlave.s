@@ -68,6 +68,8 @@ _bootdos
         bsr _mark
         ENDC
         bsr _patch_resload
+        lea (_input_switch,pc),a0
+        bsr _set_switch
         jsr (resload_FlushCache,a2)
         ; Establish PROGDIR as a Shell would. Calling a LoadSeg entry alone
         ; does not set pr_HomeDir, which the game's resource loader uses.
@@ -119,6 +121,8 @@ _bootdos
         jsr (_LVOSetProgramDir,a6)
         move.l d0,d1
         jsr (_LVOUnLock,a6)
+        lea (_cbswitch,pc),a0
+        bsr _set_switch
         move.l d7,d1
         jsr (_LVOUnLoadSeg,a6)
         move.l a6,a1
@@ -175,7 +179,27 @@ _exitmark dc.b "test-returned",0
         EVEN
         ENDC
 
-; Retained 16-byte ABI block: magic, version, reserved word, resload pointer.
+; Preserve kickemu's hardware restoration and signal an actual OS round trip.
+; WHDLoad callback ABI: no stack, preserve all registers except D0/D1, jmp (a0).
+_input_switch
+        move.l a1,d0
+        move.l (_input_config,pc),a1
+        addq.w #1,(10,a1)
+        move.l d0,a1
+        bra _cbswitch
+_set_switch
+        movem.l d0-d1/a0-a2,-(sp)
+        lea (_input_tags,pc),a1
+        move.l a0,(4,a1)
+        move.l a1,a0
+        move.l (_resload,pc),a2
+        jsr (resload_Control,a2)
+        movem.l (sp)+,d0-d1/a0-a2
+        rts
+_input_config dc.l 0
+_input_tags dc.l WHDLTAG_CBSWITCH_SET,0,0
+
+; Retained 16-byte ABI v2: magic, version, switch epoch, resload pointer.
 ; Patch data only; the C entry binds it before any game service is called.
 _patch_resload
         move.l d7,d0
@@ -196,11 +220,14 @@ _patch_resload
         bne .scan
         cmp.l #$57484452,(a0)    ; WHDR
         bne .scan
-        cmp.l #$00010000,(4,a0)
+        cmp.l #$00020000,(4,a0)
         bne .scan
         tst.l (8,a0)
         bne .scan
         move.l (_resload,pc),(8,a0)
+        lea (_input_config,pc),a1
+        subq.l #4,a0
+        move.l a0,(a1)
         rts
 .missing
         pea (_config_missing,pc)

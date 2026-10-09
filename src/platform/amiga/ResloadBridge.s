@@ -14,5 +14,8 @@ aitdResloadCall:
     jsr (a2)
     move.l 72(sp),a0
     move.l d1,(a0)
+    movem.l d0-d1,-(sp)
+    jsr aitdResloadReturned
+    movem.l (sp)+,d0-d1
     movem.l (sp)+,d2-d7/a2-a6
     rts

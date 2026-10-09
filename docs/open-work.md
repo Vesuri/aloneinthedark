@@ -31,6 +31,27 @@ Each item gives the **goal**, then the scope, then *done when*: the evidence req
 a regression check; if unreproduced, record the tested conditions and   remaining
 uncertainty without claiming that Macintosh.js is at fault.
 
+## Saving and input after disk switches
+
+- **INPUT.2 Verify post-save keyboard recovery under WHDLoad.** The owner
+  reports stuck dialog input after entering a save name, despite the Escape
+  fix. Check lost physical key releases during host OS switches and stale
+  filename events. The return callback must preserve kickemu restoration and
+  the resload ABI; cached calls must leave input untouched.
+
+  *Done when* saving through the installed icon returns responsive controls,
+  including Enter and Escape, with native and WHDLoad regressions and owner
+  verification of the reported physical-key case.
+
+- **SAVE.1 Reduce save-related OS switches.** Measure the reported roughly
+  seven switches, separate file/metadata operations from WHDLoad cache policy,
+  and batch redundant work where safe. Preserve save/load correctness and
+  error reporting; target one or two switches without deferring durability
+  silently.
+
+  *Done when* before/after switch counts and full save/load checks support the
+  change, or document the remaining WHDLoad constraint.
+
 ## Publisher animation pacing
 
 - **INTRO.1 Pace the Infogrames 3D armadillo animation**, after the stair bug

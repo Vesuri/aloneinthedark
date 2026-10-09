@@ -170,3 +170,15 @@ Use [mac-reference-loop.md](mac-reference-loop.md) for MAME setup, deterministic
 and frame/trap capture. Always pass headless video/window options and explicit local
 cfg/nvram directories. Compare matching game state, not matching frame numbers. Do not
 run Macintosh.js for the stair investigation.
+
+## WHDLoad input ownership
+
+The slave/runtime binding is a 16-byte `AITDWHDR` block, ABI version 2:
+magic, version word, OS-return epoch word, and resload pointer. The slave
+chains kickemu's switch callback, increments the epoch without using the
+stack, and restores the original callback before unloading the executable.
+The resload bridge preserves its results while reconciling input after a
+changed epoch. Since physical releases during host OS ownership cannot reach
+the game's CIA handler, it clears held keys, the Mac KeyMap, and stale queued
+edges. Calls satisfied without an OS switch preserve input. Update both the
+slave and executable together; mismatched ABI versions are rejected.

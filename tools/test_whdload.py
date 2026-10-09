@@ -107,7 +107,10 @@ def main():
                 magic = b'AITDWHDR'
                 assert memory.count(magic) == 1, 'Expected one loaded WHDLoad ABI block'
                 offset = memory.index(magic) + len(magic)
-                assert memory[offset:offset+4] == b'\0\1\0\0'
+                assert memory[offset:offset+2] == b'\0\2'
+                switches = int.from_bytes(memory[offset+2:offset+4], 'big')
+                assert switches > 0, 'WHDLoad return callback was not exercised'
+                print('WHDLoad OS returns:', switches)
                 assert int.from_bytes(memory[offset+4:offset+8], 'big') != 0
                 print('PASS: WHDLoad resload ABI binding and embedded overlay verified')
                 if args.mode == 'stairs':

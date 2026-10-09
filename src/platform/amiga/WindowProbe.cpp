@@ -12,6 +12,7 @@
 #include "MacInput.h"
 #include "mac/MacLoader.h"
 extern "C" int aitdResloadBridgeProbe();
+extern "C" void aitdResloadSwitchProbe();
 extern "C" bool aitdMacKeyReleaseProbe();
 extern "C" bool aitdMacKeyEventProbe();
 extern "C" {
@@ -110,6 +111,22 @@ extern "C" bool aitdWindowProbe()
 {
     if(!aitdResloadBridgeProbe()) { g_windowProbeError=8;return false; }
     if(!probeKeyMap() || !aitdMacKeyReleaseProbe() || !aitdMacKeyEventProbe()) { g_windowProbeError=16;return false; }
+    // A Return released while WHDLoad owns the host OS has no guest key-up.
+    aitdInputInjectProbeKey(0x44,true);
+    aitdResloadSwitchProbe();
+    if(!aitdResloadBridgeProbe()) { g_windowProbeError=17;return false; }
+    uint8_t staleRaw;bool staleDown;uint16_t staleModifiers;
+    uint8_t liveKeys[16];aitdMacGetKeys(liveKeys);
+    if(aitdInputKeyDown(0x44) || (liveKeys[4]&0x10)
+        || aitdInputPopKey(staleRaw,staleDown,staleModifiers)) {
+        g_windowProbeError=17;return false;
+    }
+    aitdInputInjectProbeKey(0x44,true);
+    if(!aitdInputPopKey(staleRaw,staleDown,staleModifiers) || staleRaw!=0x44 || !staleDown) {
+        g_windowProbeError=17;return false;
+    }
+    aitdInputInjectProbeKey(0x44,false);
+    aitdInputPopKey(staleRaw,staleDown,staleModifiers);
     AudioProbe audio;
     if(!audio.sample) { g_windowProbeError=5;return false; }
     aitdWindowProbeBefore();

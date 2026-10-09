@@ -3,6 +3,7 @@
 
 bool aitdInputInitialize();
 void aitdInputShutdown();
+void aitdInputAfterOSSwitch();
 bool aitdInputPopKey(uint8_t& rawKey, bool& down, uint16_t& modifiers);
 bool aitdInputKeyDown(uint8_t rawKey);
 uint16_t aitdInputModifiers();
