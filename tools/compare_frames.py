@@ -38,7 +38,7 @@ def compare(reference, native, reference_status, native_status, folder):
     publications = re.findall(r'^INTRO_PUBLICATION n=(\d+) front=([0-9A-F]+) queued=(\d+) presented=(\d+) randomCalls=(\d+)$', native, re.M)
     require(len(publications) == 4, 'four native publications')
     cursors = re.findall(r'^INTRO_CURSOR n=(\d+) enabled=(\d+) control=([0-9A-F]+)$', native, re.M)
-    require(not cursors or cursors == [(str(n),'1','010F') for n in range(1,5)], 'four pointer palette publications')
+    require(not cursors or cursors in [[(str(n),enabled,control) for n in range(1,5)] for enabled,control in [('0','0011'),('1','010F')]], 'four consistent pointer palette publications')
     inversions = re.findall(r'^INTRO_INVERSION n=(\d+) active=([01]) left=(-?\d+) top=(-?\d+)$', native, re.M)
     require(not inversions or [row[0] for row in inversions] == ['1','2','3','4'], 'four cursor inversion records')
     transfer = read(folder, 'video-transfer-lut16.bin', 65536)
@@ -61,7 +61,7 @@ def compare(reference, native, reference_status, native_status, folder):
             masks = struct.unpack('>16H', read(folder, prefix+'-inversion.bin', 32))
             if active == '1':
                 overlay = (int(left), int(top), masks)
-        check_frame(folder, prefix, pixels, clut, 160, 150, int(front, 16), transfer, 1 if cursors else 0, overlay)
+        check_frame(folder, prefix, pixels, clut, 160, 150, int(front, 16), transfer, 1 if cursors and cursors[0][1] == '1' else 0, overlay)
         check_pixels(pixels, original, state)
     print('PASS paired intro: logo and three states, uninterrupted completion and full-frame C2P coverage')
 

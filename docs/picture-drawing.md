@@ -38,6 +38,9 @@ These are offscreen pixel comparisons, not rendered-window or intro acceptance.
 
 ## Presentation window picture
 
+D9 now bypasses this standalone MACPLAY routine. The following describes the original
+Mac service contract; its call-site observer is not reached by production startup.
+
 PICT 1500, MacPlay (small), is a 16,358-byte indexed PackBits picture with frame
 (0,0)–(192,256). The original Dark2+$20EC bytes are `2e8b486effe4a8f6`, calling
 DrawPicture at +$20F2 with destination (4,32)–(196,288). It preserves D0–D7/A0–A6 and

@@ -150,6 +150,7 @@ Changes to these decisions or original game behavior require the owner.
 | D6 | Retain engine fonts; bundle raw bitmaps of the original Mac fonts for Mac-font text. |
 | D7 | No Mac menu bar or visible mouse pointer; keyboard controls and Right-Amiga Command shortcuts. Preserve original mouse-button/event semantics. |
 | D8 | Native SoundMusicSys driver on Paula channels, rather than software mixing. |
+| D9 | Omit the standalone MACPLAY splash and its delay. First visible game picture is Infogrames; retain the book credits. |
 
 ## 6. Verification
 

@@ -535,6 +535,7 @@ static uint8_t** s_activePalette;
 struct CreatedPalette { uint8_t** handle;uint8_t** privateHandle; };
 static CreatedPalette s_createdPalettes[32];
 static bool s_screenDirty = true;
+static bool s_openingPictureReady = false;
 static uint32_t s_bookFrameOwner=0;
 static uint16_t s_bookFrameColumn=0,s_bookFrameQueued=0;
 #ifdef AITD_SCENE_FRAME_BATCH
@@ -1366,6 +1367,19 @@ static uint8_t** loadResource(uint32_t index,const ResourceForks::Item& item,boo
             if(item.id>=kMaximumSegments || !MacLowMemory::patch(item.id,*handle,item.size)) {
                 loaderStop("LOW MEMORY ORIGINAL BYTE MISMATCH",item.id<kMaximumSegments ? item.id : 0);
                 showLoaderStop();
+            }
+            if(item.id==5) {
+                // D9: omit only the standalone MACPLAY routine. The relative
+                // JSR (Dark2,$1BDA) has no arguments/result; NOPs preserve all
+                // registers, CCR and the caller stack. Book credits are separate.
+                uint8_t* code=*handle;
+                if(item.size<0x217c || read32(code+0x1bda)!=0x4eba03c0
+                   || read32(code+0x1f9c)!=0x4e56ffdc
+                   || read32(code+0x210a)!=0x0c800000
+                   || read16(code+0x210e)!=300 || read16(code+0x217a)!=0x4e75) {
+                    loaderStop("MACPLAY ORIGINAL BYTE MISMATCH",5);showLoaderStop();
+                }
+                write32(code+0x1bda,0x4e714e71);
             }
             s_segments[item.id].handle=handle;
             g_lowMemoryAppliedSites+=MacLowMemory::siteCount(item.id);
@@ -6583,6 +6597,9 @@ extern "C" void aitdVBLCallbackComplete()
 
 static void presentMacRuntime(bool completedFrame=false)
 {
+    // Keep the initial black display until the complete Infogrames picture.
+    // Startup window clears/palette changes must never flash white.
+    if(!s_openingPictureReady)return;
     AitdProfileScope profile(kProfilePresent);
 #ifdef AITD_INGAME
     // Retain logical drawing and initialization, but publish only gameplay.
@@ -8068,6 +8085,14 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     aitdInputIntroSkip(trap, g_macTicks);
 #endif
     uint32_t pc = read32(frame + 2);
+    if(!s_openingPictureReady && trap==0xa975 && s_segments[5].begin
+       && pc==(uint32_t)s_segments[5].begin+0x1c92) {
+        // First Infogrames copy has returned; the original starts its hold here.
+        if(read16((uint8_t*)pc-2)!=0x4297 || read32((uint8_t*)pc+2)!=0x2d5fffcc) {
+            loaderStop("OPENING FRAME ORIGINAL BYTES",5);showLoaderStop();
+        }
+        s_openingPictureReady=true;
+    }
 #ifdef AITD_GAME_INPUT
     if(g_ingameStage==5) {
         static const uint16_t observed[]={0xa860,0xa970,0xa976,0xa974,0xa973,0xa032,0xa9b3,0xa856};

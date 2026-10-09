@@ -3,7 +3,7 @@
 This is the work queue. Work it from the top, one item per commit; split an item only if
 it has independent parts. Delete an item in the commit that finishes it, because the Git
 log records finished work. The design and its rationale are in [design.md](design.md),
-cited below by § number; owner decisions D1–D8 are in design.md §5.
+cited below by § number; owner decisions D1–D9 are in design.md §5.
 
 Each item gives the **goal**, then the scope, then *done when*: the evidence required.
 

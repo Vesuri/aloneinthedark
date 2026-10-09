@@ -135,3 +135,12 @@ ticks without a trap safe point demonstrates independent IRQ progress. Song
 replacement/preparation gaps must not be counted as continuous playback of one song. Use
 `m5_circuit.gdb` and `check_m5_audit.py` when modifying interrupt ownership, memory or
 safe points.
+
+## Opening display
+
+The guarded relative call at (Dark2, $1BDA) is replaced with two NOPs to omit the
+standalone MACPLAY routine ($1F9C), including its 300-tick wait. Registers, CCR and
+stack are untouched at that call. The book credits use a separate path and remain.
+Initial window/palette updates stay offscreen until TickCount at (Dark2, $1C92),
+after the complete Infogrames picture copy. The native display stays black during
+necessary initialization; no splash delay or white startup frame is published.

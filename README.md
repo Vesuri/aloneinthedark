@@ -25,7 +25,8 @@ and run **Install**. Select the destination, temporary drawer and the
 Leave it compressed: the included helper extracts and verifies all 74 files.
 Use a disk temporary drawer on an 8 MB machine.
 
-Start the installed **AloneInTheDark** icon. Saved games live in `Saved Games`
+Start the installed **AloneInTheDark** icon. The opening starts with Infogrames;
+the standalone MACPLAY splash is omitted, while the book credits remain. Saved games live in `Saved Games`
 and survive an in-place update. The installer's explicit **Remove** option
 also deletes saved games. The game uses the normal **4 KB process stack**.
 

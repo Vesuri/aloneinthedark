@@ -55,8 +55,8 @@ define intro_frame
   detach
   quit 1
  end
- if !$intro_screen->m_mouseAllowed || *(unsigned short*)0xdff10c!=0x010f
-  echo FAIL intro pointer palette publication\n
+ if $intro_screen->m_mouseAllowed || $intro_screen->m_invertActive || *(unsigned short*)0xdff10c!=0x0011
+  echo FAIL intro pointer-free palette publication\n
   detach
   quit 1
  end
@@ -76,8 +76,25 @@ if *(unsigned short*)$intro_target!=0x2d5f
  detach
  quit 1
 end
+if g_macFramesQueued!=0 || *(unsigned long*)(s_segments[5].begin+0x1bda)!=0x4e714e71
+ echo FAIL startup publication or MACPLAY bypass\n
+ detach
+ quit 1
+end
+break *(s_segments[5].begin+0x1f9c)
+commands
+ silent
+ echo FAIL MACPLAY routine entered\n
+ detach
+ quit 1
+end
 tbreak *$intro_target
 continue
+if g_macFramesQueued!=1
+ echo FAIL first publication is not complete Infogrames\n
+ detach
+ quit 1
+end
 intro_frame
 set $intro_n=2
 set $intro_offset=0x1f46

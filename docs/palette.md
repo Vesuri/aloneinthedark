@@ -384,6 +384,9 @@ python3 tools/check_aga_capture.py startup tmp/m2-binding129-native-final.log --
 
 ## Presentation palette restoration
 
+D9 bypasses the standalone MACPLAY routine in production, including this temporary
+palette binding. The following records the original Mac service contract.
+
 After MacPlay's display interval and the original black clear, Dark2+$214C rebinds the
 default palette with updates true. Original bytes at +$213E are
 `2079fffee4a82f2800241f3c0001aa95`; the long address relocates to A5-$11B58. The call
