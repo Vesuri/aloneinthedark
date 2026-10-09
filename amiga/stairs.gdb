@@ -13,6 +13,7 @@ break aitdInputExploreCheckpoint
 commands
  silent
  printf "STAIRS_RATE stage=%u tick=%u frames=%u fields=%u\n",g_exploreRouteStage,g_macTicks,g_macSceneFramesCompleted,g_vbiCount
+ printf "STAIRS_CHARACTER choice=%u\n",*(unsigned short*)((unsigned long)s_a5WorldStorage+75616-0xd8f2)
  set $actor=(unsigned long)s_a5WorldStorage+75616-0xb292+160
  printf "EXPLORE_NATIVE stage=%u tick=%u x=%d z=%d beta=%d anim=%d room=%d floor=%d track=%d\n",g_exploreRouteStage,g_macTicks,*(short*)($actor+0x1c),*(short*)($actor+0x20),*(short*)($actor+0x2a),*(short*)($actor+0x3e),*(short*)($actor+0x30),*(short*)($actor+0x2e),*(short*)($actor+0x52)
  eval "dump binary memory ../tmp/stairs-regression/native-%u-actor.bin %u %u",g_exploreRouteStage,$actor,$actor+160

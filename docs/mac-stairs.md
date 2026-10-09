@@ -54,5 +54,16 @@ WHDLoad tests have not produced a timeout core within the host limit; these
 runs do not establish a pass or a gameplay failure. A development-emulator
 WHDLoad run without JIT reaches stage 19, floor 1 room 6, idle animation 4
 and manual track 1 at Z=-1906. The fixture releases Up at the floor transition;
-holding input across it remains a different precondition to test. No stair
-gameplay or original-code changes have been made.
+the trace places that release at Z=2500, the beginning of automatic descent.
+The owner confirms the released-key reversal with Emily and recalls it with
+Carnby too. The Escape fix resolves menu reopening but not the stairs.
+
+The native fixture now waits for three seconds of continuous idle/manual
+control after descent, rather than stopping at its first idle frame. Both
+Carnby and Emily pass on unlimited 68040 without JIT. Emily also passes
+through WHDLoad on the development emulator (idle/manual floor 1 room 6 at
+Z=-1890 after the stationary interval). `EMILY=1` selects Emily
+with ordinary Left Arrow input, and the observer checks the original character
+variable at every route checkpoint. Reproducing the owner's exact saved state
+and official emulator configuration remains necessary. No stair gameplay or
+original-code changes have been made.

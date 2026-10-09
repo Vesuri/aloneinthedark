@@ -694,6 +694,10 @@ EXTRA_DEFINES += -DAITD_AUDIO_STOP_PROBE
 PROBE_SYMS += g_audioStopProbeStage g_audioStopProbeTick
 endif
 
+ifeq ($(EMILY),1)
+EXTRA_DEFINES += -DAITD_EMILY
+endif
+
 ifeq ($(INGAME),1)
 STORYENTER=1
 EXTRA_DEFINES += -DAITD_INGAME

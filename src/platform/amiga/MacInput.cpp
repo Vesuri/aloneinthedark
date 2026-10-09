@@ -160,7 +160,11 @@ void aitdInputInGame(uint16_t trap,bool menu,bool portraits,bool story,
         if(ticks-g_ingameTick>=2)key=0x44;
     }
     if(g_ingameStage==2 && portraits) {
+#ifdef AITD_EMILY
+        if(ticks-g_ingameTick>=2 && ticks-g_ingameTick<6)key=0x4f;
+#else
         if(ticks-g_ingameTick>=2 && ticks-g_ingameTick<6)key=0x4e;
+#endif
         if(ticks-g_ingameTick>=8)key=0x44;
     }
     if(g_ingameStage==4 && !gameplay && trap==0xa976)key=0x45;
@@ -685,7 +689,14 @@ void aitdInputExplore(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_
         g_exploreRouteStage=0xffff;aitdInputExploreCheckpoint();return;
     }
     if(stage==18) {
-        if(floor!=1 || track!=1 || animation!=4 || ticks-g_exploreRouteTick<30 || scenes<=s_exploreFrames)return;
+        // A single manual frame can precede another automatic stair trigger.
+        // Require three seconds of released, stable control before accepting it.
+        static uint32_t manualSince=0;
+        if(floor!=1 || room!=6 || track!=1 || animation!=4 || scenes<=s_exploreFrames) {
+            manualSince=0;return;
+        }
+        if(!manualSince)manualSince=ticks;
+        if(ticks-manualSince<180)return;
         g_exploreRouteStage=19;g_exploreRouteTick=ticks;aitdInputExploreCheckpoint();return;
     }
 #ifdef AITD_SOUTH_ROOMS

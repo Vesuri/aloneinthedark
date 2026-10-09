@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Require ordinary attic descent, published storeroom, and measured guest FPS."""
 import argparse
+import os
 from pathlib import Path
 import re
 import struct
@@ -24,6 +25,9 @@ def check(text, status, folder):
             and text.count('[Inferior 1 (Remote target) detached]') == 1, 'positive completion')
     require([r[0] for r in rates] == list(range(1,20)), 'all nineteen route phases')
     require(all(b[1] > a[1] and b[2] >= a[2] for a,b in zip(rates,rates[1:])), 'advancing guest time and frames')
+    choices = re.findall(r"^STAIRS_CHARACTER choice=(\d+)$", text, re.M)
+    expected = "1" if os.environ.get("EMILY") == "1" else "0"
+    require(choices == [expected]*19, "selected character at every route phase")
     snapshots = []
     for stage in range(1,20):
         data = (folder/f'native-{stage}-actor.bin').read_bytes()
