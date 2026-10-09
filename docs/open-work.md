@@ -7,6 +7,20 @@ cited below by § number; owner decisions D1–D9 are in design.md §5.
 
 Each item gives the **goal**, then the scope, then *done when*: the evidence required.
 
+## Frame pacing
+
+- **FRAME.1 Verify complete-frame pacing outside scene/book batches.** Trace
+  original animation boundaries, especially the Infogrames armadillo, against
+  waits, C2P batches and display publications. The fallback presentation path
+  can publish dirty updates between drawing calls; passing pixel checks does
+  not establish one publication per original frame. Fix any partial-frame
+  waits/conversions while retaining dirty rectangles and original game logic.
+
+  *Done when* boundary measurements show no redundant waits or intermediate
+  C2P batches, and an unlimited-speed PAL run can sustain 50 complete frames
+  per second where the original animation permits it, without adding delay
+  to slower frames.
+
 ## Saving and input after disk switches
 
 - **INPUT.2 Confirm physical-key recovery under WHDLoad.** Verify the owner
@@ -53,7 +67,8 @@ separately without silently changing original game logic.
   checks but fails with `FAIL original RGB caller` in `rgb_colors_calls.gdb`.
   Reproduced on the pre-embedding revision `f6a4c56` with `PROBES=1` on
   `a4000-030`; the RGB observer watches general dispatch while RGB traps can
-  take the fast path. Audit the subsequent caller/endpoint assumptions too.
+  take the fast path. Audit the subsequent caller/endpoint assumptions too, including the omitted
+  MACPLAY routine and disabled game pointer.
 
   *Done when* the combined observer reaches its positive completion on the
   current runtime, with original-byte and register checks preserved.
