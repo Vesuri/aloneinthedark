@@ -4,7 +4,8 @@ New game, character choice, save-name entry and load selection use the original 
 interfaces inside 320×200. They do not call the Macintosh Dialog Manager. Preserve these
 existing interfaces rather than replacing them with new controls. Right-Amiga+S/O
 reaches the same engine screens as the original Command-S/O; Escape cancels through the
-game's own input path.
+game's own input path. These interfaces use the keyboard; game presentation has no
+visible mouse pointer. Mouse-button polling remains compatible with the original.
 
 The observed Mac route includes new game, Save cancellation, typed save, overwrite of
 that slot, Load cancellation, actual reload and Quit. Its only application Dialog

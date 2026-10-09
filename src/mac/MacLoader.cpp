@@ -6628,8 +6628,10 @@ static void presentMacRuntime(bool completedFrame=false)
     // screenDirty set before an 8-bit game window exists; those service calls
     // are initialization, not frames. Partial scene/book draws returned above.
     s_loudStopScreen->paceFrame();
+    // The viewport has keyboard-driven interfaces, not pointer targets. Keep
+    // Mac mouse/event semantics, but disable sprite and cursor inversion output.
     int16_t result=s_loudStopScreen->presentMacFrame(s_colorScreen,s_windowManagerColors,
-        s_dirtyRects,s_dirtyRectCount,left,top,true);
+        s_dirtyRects,s_dirtyRectCount,left,top,false);
     if(result==-3) {loaderStop("CURSOR PALETTE",0);showLoaderStop();}
     if(result<0) {loaderStop("DISPLAY INPUT",0);showLoaderStop();}
     if(result>0) {s_screenDirty=false;s_pixelsDirty=false;s_dirtyRectCount=0;}

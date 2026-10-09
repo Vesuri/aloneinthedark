@@ -5,8 +5,8 @@ Infogrames and Interplay. Explore the mansion of Derceto as Edward Carnby or
 Emily Hartwood, solving puzzles and surviving its creatures.
 
 The port runs the original 68k game code with an Amiga implementation of the
-Macintosh services it uses. Graphics use AGA bitplanes and a hardware mouse
-pointer; music and effects use Paula. The game runs through the ending and
+Macintosh services it uses. Graphics use AGA bitplanes; music and effects use Paula.
+The game runs through the ending and
 returns to the title sequence. See the [coverage and limits](docs/testing.md#gameplay-coverage)
 and [open work](docs/open-work.md) for the remaining investigations.
 

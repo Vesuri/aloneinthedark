@@ -1,8 +1,13 @@
 # Cursor display and obscuring
 
-Original-game presentation now enables the pointer. Two AGA sprites provide black and
-white without replacing any game colour: playfield XOR 1 and the matching palette
-permutation select existing protected endpoint colours.
+Game presentation disables the visible pointer, sprite palette permutation and cursor
+inversion. The retained game interfaces use the keyboard; Mac menu-bar and screen-size
+controls are suppressed. Mouse events and logical cursor traps retain their contracts.
+
+The platform cursor implementation remains for isolated compatibility fixtures. When
+explicitly enabled by a fixture, two AGA sprites provide black and white without
+replacing game colours: playfield XOR 1 and the matching palette permutation select
+existing protected endpoint colours.
 
 Startup reaches original CURS 132, which contains two inversion pixels.
 `mac_cursor_invert.lua` measures the real QuickDraw cursor over all 256 indexed values.

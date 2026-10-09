@@ -98,9 +98,10 @@ rows and masks preserve original parity, signed bounds, clipping and aliasing. S
 
 ### 4.5 Input, interfaces and fonts
 
-VBI samples keyboard/mouse transitions and drives the hardware pointer. Logical Mac
-hide/show/obscure state is separate from sprite visibility. Original cursor inversion is
-retained. Events and Command-key items use measured contracts; Right-Amiga maps Command.
+VBI samples keyboard/mouse transitions. The game viewport has no visible pointer:
+its retained interfaces use the keyboard. Logical Mac hide/show/obscure state and
+mouse-button semantics remain implemented, independently of display visibility.
+Events and Command-key items use measured contracts; Right-Amiga maps Command.
 The menu bar and screen-size chooser are suppressed. The verified Escape-menu
 handback waits for physical Escape release so one held press cannot immediately
 reopen the menu; event flushing leaves live KeyMap state intact.
@@ -147,7 +148,7 @@ Changes to these decisions or original game behavior require the owner.
 | D4 | No screen-size dialog; only 320×200. |
 | D5 | Replace reached Mac dialogs with measured in-game interfaces inside the viewport, preserving their choices and actions. |
 | D6 | Retain engine fonts; bundle raw bitmaps of the original Mac fonts for Mac-font text. |
-| D7 | No Mac menu bar; keyboard controls and Right-Amiga Command shortcuts. |
+| D7 | No Mac menu bar or visible mouse pointer; keyboard controls and Right-Amiga Command shortcuts. Preserve original mouse-button/event semantics. |
 | D8 | Native SoundMusicSys driver on Paula channels, rather than software mixing. |
 
 ## 6. Verification

@@ -68,7 +68,7 @@
  ---------
  - original Macintosh 68k game code and game interfaces
  - complete introduction and game, including the ending and return loop
- - native 320x200 AGA display and hardware mouse pointer
+ - native 320x200 AGA display
  - Paula music and effects, with music driven by a CIA interrupt
  - original game Save/Load and normal exit to the operating system
 

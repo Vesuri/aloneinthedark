@@ -63,9 +63,9 @@ Original Core/Dark VBL tasks run at safe user-mode
 boundaries and preserve the original callback ABI. They never run inside the native VBI
 or music interrupt.
 
-Keyboard transitions and held states survive bounded OS windows. VBI also updates the
-hardware mouse pointer independently of game frame rate. Its two sprite banks preserve
-all game colours, and cursor inversion follows the original masks. See
+Keyboard transitions and held states survive bounded OS windows. Game presentation
+disables the mouse sprite and cursor inversion; retained interfaces use the keyboard.
+Mouse sampling and logical cursor services remain available to original code. See
 [events.md](events.md) and [cursor.md](cursor.md).
 
 TickCount writes its long result at entry SP without consuming it, clears D1, returns
