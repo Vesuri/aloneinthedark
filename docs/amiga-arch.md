@@ -138,9 +138,12 @@ safe points.
 
 ## Opening display
 
-The guarded relative call at (Dark2, $1BDA) is replaced with two NOPs to omit the
-standalone MACPLAY routine ($1F9C), including its 300-tick wait. Registers, CCR and
-stack are untouched at that call. The book credits use a separate path and remain.
+The standalone MACPLAY routine retains its palette setup and restoration: later
+explicit palettes inherit the colours in duplicate black/white slots (1, 15 and 191).
+Guarded branches at (Dark2, $202E) and ($20CE) skip picture loading/geometry and
+drawing/the 300-tick wait, respectively. Both targets have balanced stacks; branches
+preserve registers and CCR, and the original prologue/epilogue remain. The book
+credits use a separate path and remain.
 Initial window/palette updates stay offscreen until TickCount at (Dark2, $1C92),
 after the complete Infogrames picture copy. The native display stays black during
 necessary initialization; no splash delay or white startup frame is published.

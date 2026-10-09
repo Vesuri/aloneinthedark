@@ -76,15 +76,16 @@ if *(unsigned short*)$intro_target!=0x2d5f
  detach
  quit 1
 end
-if g_macFramesQueued!=0 || *(unsigned long*)(s_segments[5].begin+0x1bda)!=0x4e714e71
+if g_macFramesQueued!=0 || *(unsigned long*)(s_segments[5].begin+0x1bda)!=0x4eba03c0 || *(unsigned long*)(s_segments[5].begin+0x202e)!=0x6000008a || *(unsigned long*)(s_segments[5].begin+0x20ce)!=0x6000005e
  echo FAIL startup publication or MACPLAY bypass\n
  detach
  quit 1
 end
-break *(s_segments[5].begin+0x1f9c)
+break *(s_segments[5].begin+0x2048)
+break *(s_segments[5].begin+0x20d2)
 commands
  silent
- echo FAIL MACPLAY routine entered\n
+ echo FAIL MACPLAY picture or wait entered\n
  detach
  quit 1
 end
@@ -125,6 +126,14 @@ if *(unsigned long*)$intro_return!=0x600001b8
  detach
  quit 1
 end
+# Duplicate endpoint slots inherit clut 129 even though its splash is omitted.
+# Check the completed title before subsequent palette changes.
+if *(unsigned long*)(s_windowManagerColors+18)!=0xf7f7f7f7 || *(unsigned short*)(s_windowManagerColors+22)!=0xf7f7 || *(unsigned long*)(s_windowManagerColors+130)!=0x63636363 || *(unsigned short*)(s_windowManagerColors+134)!=0x6363 || *(unsigned long*)(s_windowManagerColors+1538)!=0x08081818 || *(unsigned short*)(s_windowManagerColors+1542)!=0x2121
+ echo FAIL inherited MACPLAY palette slots 1/15/191\n
+ detach
+ quit 1
+end
+echo PASS inherited MACPLAY palette slots 1/15/191 at book title\n
 tbreak *$intro_return
 continue
 set $intro_n=4

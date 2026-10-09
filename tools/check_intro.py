@@ -10,7 +10,10 @@ if __name__ == '__main__':
     parser.add_argument('--status', type=int, required=True)
     args = parser.parse_args()
     try:
-        capture(args.log.read_text(), args.status, 'native')
+        log = args.log.read_text()
+        capture(log, args.status, 'native')
+        if log.count('PASS inherited MACPLAY palette slots 1/15/191 at book title') != 1:
+            raise ValueError('Missing inherited splash-palette check')
     except (OSError, ValueError) as error:
         raise SystemExit('FAIL intro regression: '+str(error))
     print('PASS intro regression: four original states, all 840 book batches, zero full-frame C2P mismatches including partial updates')

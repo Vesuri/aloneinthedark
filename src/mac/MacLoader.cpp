@@ -1369,17 +1369,24 @@ static uint8_t** loadResource(uint32_t index,const ResourceForks::Item& item,boo
                 showLoaderStop();
             }
             if(item.id==5) {
-                // D9: omit only the standalone MACPLAY routine. The relative
-                // JSR (Dark2,$1BDA) has no arguments/result; NOPs preserve all
-                // registers, CCR and the caller stack. Book credits are separate.
+                // D9: skip MACPLAY's picture and delay, retaining its palette
+                // setup/restoration. Later explicit palettes leave duplicate
+                // black/white slots untouched and depend on these prior colours.
+                // Branches preserve CCR/registers; both skipped ranges have no
+                // live stack arguments. The original prologue/epilogue remain.
                 uint8_t* code=*handle;
                 if(item.size<0x217c || read32(code+0x1bda)!=0x4eba03c0
                    || read32(code+0x1f9c)!=0x4e56ffdc
+                   || read32(code+0x202e)!=0x42a72079
+                   || read32(code+0x20ba)!=0x4eb90000
+                   || read32(code+0x20ce)!=0x42a72079
+                   || read32(code+0x212e)!=0x42274eb9
                    || read32(code+0x210a)!=0x0c800000
                    || read16(code+0x210e)!=300 || read16(code+0x217a)!=0x4e75) {
                     loaderStop("MACPLAY ORIGINAL BYTE MISMATCH",5);showLoaderStop();
                 }
-                write32(code+0x1bda,0x4e714e71);
+                write32(code+0x202e,0x6000008a); // GetPicture/geometry -> SetPalette.
+                write32(code+0x20ce,0x6000005e); // Drawing/wait -> restore/cleanup.
             }
             s_segments[item.id].handle=handle;
             g_lowMemoryAppliedSites+=MacLowMemory::siteCount(item.id);

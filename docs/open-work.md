@@ -20,16 +20,7 @@ Each item gives the **goal**, then the scope, then *done when*: the evidence req
   including Enter and Escape, with native and WHDLoad regressions and owner
   verification of the reported physical-key case.
 
-## Reported display and book issues
-
-- **DISPLAY.1 Investigate incorrect green palette areas.** The owner's
-  screenshot from the native `amiga/run.sh` launch shows bright-green regions
-  in the opening landscape. The staged executable matches the production
-  release, not the save diagnostic. Reproduce and compare source palette,
-  published colours and bitplanes before choosing a fix.
-
-  *Done when* the offending scene displays the correct colours in the default
-  launcher and the responsible path has an appropriate regression check.
+## Book performance
 
 - **BOOK.1 Profile slow page turns on the reference 68030.** The default
   launcher uses a cycle-exact 15.67 MHz 68030; unlimited-68040 50 FPS checks do

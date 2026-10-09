@@ -73,6 +73,11 @@ supplies the actual release. Executing the slave is the separate WHDLoad suite.
 `--reinstall` checks replacing damaged data; `--remove` checks the explicit removal
 branch.
 
+The `intro` regression also checks that the omitted MACPLAY picture and delay
+are never entered, Infogrames is the first published frame, and palette slots
+1, 15 and 191 retain the original splash palette colours at the book title.
+These slots are deliberately inherited by subsequent palettes.
+
 `test_amiga.py` runs the extraction helper with a real 4 KB stack and checks its
 watermark. `test_whdload.py --mode timed` uses production code, requires the expected
 WHDLoad timeout core, and verifies original resource reads, the embedded overlay and
