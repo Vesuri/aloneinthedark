@@ -48,25 +48,10 @@ def check(reference,status,native=None,native_status=None,dot=False,accent=False
         for off,size in ((14,2),(16,8),(48,4),(68,20)):
             if before[off:off+size]!=read('reference','enter','port')[off:off+size]:raise ValueError('paired text state')
         native_before=read('native','enter','pixels');reference_before=read('reference','enter','pixels')
-        if not (dot or accent) and any(native_before[y*652:y*652+648]!=reference_before[y*652:y*652+648] for y in range(401)):raise ValueError('paired initial pixel columns')
-        if accent:
-            # Earlier credit lines use the same owned font. Their text boxes
-            # cover the paired reference captions plus the owned glyph ascent.
-            # The two-column margin covers separate word placement/ink bearings.
-            areas=((48,30,131,46),(99,54,213,70),(48,78,164,94))
-            for row in range(401):
-                for col in range(648):
-                    n,r=native_before[row*652+col],reference_before[row*652+col]
-                    if n!=r and (26 not in (n,r) or not any(l<=col<rr and t<=row<b for l,t,rr,b in areas)):
-                        raise ValueError('paired initial pixels outside prior credit ink')
-        if dot:
-            # The preceding 'Published by' line uses owned glyphs too. Outside
-            # its measured ink bounds the full visible input buffer must match.
-            for row in range(401):
-                for col in range(648):
-                    n,r=native_before[row*652+col],reference_before[row*652+col]
-                    if n!=r and (not (119<=col<189 and 70<=row<85) or 26 not in (n,r)):
-                        raise ValueError('paired initial pixels outside prior placeholder ink')
+        # Ignore allocator padding, but require every input pixel to match.
+        for row in range(401):
+            if native_before[row*652:row*652+648] != reference_before[row*652:row*652+648]:
+                raise ValueError('paired initial visible pixels')
         if dot and 'PASS native Times FontInfo ascent=12 descent=4 maximum=15 leading=0' not in log:raise ValueError('native Times FontInfo')
         if read('native','return','clut')[4:]!=read('reference','return','clut')[4:]:raise ValueError('paired colours')
         expected=bytearray(read('native','enter','pixels'));pm=read('native','enter','pm')

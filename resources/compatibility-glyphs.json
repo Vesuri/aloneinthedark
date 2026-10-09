@@ -1,5 +1,5 @@
 {
-  "provenance": "Digits and uppercase reuse the port-owned Vette picture font inherited in MacLoader.cpp; punctuation drawn for this port. Lowercase uses uppercase shapes until M2.9. No Apple font data.",
+  "provenance": "Digits and uppercase reuse the port-owned Vette picture font inherited in MacLoader.cpp; punctuation drawn for this port. Lowercase shares uppercase shapes. These shapes populate compatibility FOND/NFNT resources and parser fixtures; visible Times text uses the separate captured bitmaps. No Apple font data in this file.",
   "glyphs": {
     "0": [14, 17, 19, 21, 25, 17, 14],
     "1": [4, 12, 4, 4, 4, 4, 14],

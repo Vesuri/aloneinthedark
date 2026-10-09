@@ -5,7 +5,7 @@ import hashlib
 from pathlib import Path
 import re
 import unittest
-from placeholder_font import build
+from compatibility_font import build
 from check_font_lookup import check_original
 from check_native_driver import check as check_driver
 from resource_fork import read_resource_fork

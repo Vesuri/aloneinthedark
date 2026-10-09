@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify installed placeholder definitions against independent Mac measurements."""
+"""Verify installed compatibility definitions against independent Mac measurements."""
 import os
 from pathlib import Path
 import struct

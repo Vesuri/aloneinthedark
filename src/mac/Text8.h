@@ -1,6 +1,5 @@
 #ifndef AITD_TEXT8_H
 #define AITD_TEXT8_H
-#include "BitmapFont.h"
 #include "RectBounds.h"
 #include "Times14Metrics.h"
 #include "Times14Bitmap.h"
@@ -9,10 +8,10 @@ namespace Text8 {
 // calls; MoveTo supplies the measured half-pixel initial fraction.
 inline bool draw(uint8_t* pixels,uint32_t capacity,uint16_t stride,
                  const uint8_t* map,const uint8_t* port,const uint8_t* vis,
-                 const uint8_t* clip,const BitmapFont& font,
+                 const uint8_t* clip,
                  const uint8_t* text,int16_t first,int16_t count,
                  int16_t baseline,int16_t& pen,uint16_t& fraction,uint8_t color) {
-    if(!pixels || !map || !port || !vis || !clip || !font.height()
+    if(!pixels || !map || !port || !vis || !clip
        || first<0 || count<0 || (!text && count))return false;
     int32_t mt=int16_t(RectBounds::word(map)),ml=int16_t(RectBounds::word(map+2));
     int32_t mb=int16_t(RectBounds::word(map+4)),mr=int16_t(RectBounds::word(map+6));
@@ -21,7 +20,7 @@ inline bool draw(uint8_t* pixels,uint32_t capacity,uint16_t stride,
     uint32_t advance=fraction;
     for(uint16_t i=0;i<uint16_t(count);++i) {
         uint8_t c=text[uint32_t(first)+i];
-        // Only characters with owned artwork are enabled, never the missing box.
+        // Keep the reached character contract; additional captured glyphs are not enabled here.
         if(!((c>=32 && c<=126) || c==0x89 || c==0xa5 || c==0xa9 || c==0xfa))return false;
         uint32_t step=uint32_t(Times14Metrics::units(c))*299*256;
         if(advance>0x7fffffffUL-step)return false;

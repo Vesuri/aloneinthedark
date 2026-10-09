@@ -25,8 +25,7 @@ into cells or convert lowercase into capitals.
 compiled renderer against the original intro-caption buffer, including clipping,
 untouched pixels and row padding: **zero differing bytes**. The original caption
 contains 664 changed pixels. Existing font-family metrics and unsupported-face loud
-stops remain unchanged. The historical placeholder contracts below describe their
-original implementation, not current Times/14 ink.
+stops remain unchanged. Compatibility resources are described below; their artwork does not supply visible Times text.
 
 ## Bundled Times/36 pause bitmap
 
@@ -53,359 +52,73 @@ verifies the same port and string before calling the original DrawText, then res
 the Mac pixels. This isolates text state from different interpolation phases in the
 room's idle animation.
 
-## GetFNum reference contract
+## Compatibility resources
 
-The original Dan1 calls at +$0012 and +$0038 request the Pascal string `Times` and write
-family ID 20. Both preserve D0, pop eight argument bytes and leave ResErr/MemErr zero in
-this startup context. The second call follows the original screen-size dialog; choosing
-320×200 is required to reach it. No original code or game state is patched by the
-original-call observer.
+`resources/compatibility-glyphs.json` contains port-owned 5×7 shapes inherited
+from Vette, plus punctuation and symbols drawn for this port. Lowercase shares
+uppercase shapes. These are inputs to valid classic font resources and parser
+fixtures, not the game's visible Times artwork.
 
-`tools/mac_font_lookup.lua` catches the verified System 7.5.5 Line-A dispatcher and
-attributes calls through the live Dan1 jump-table entry. It records the name bytes,
-instruction after each trap, output pointer, D0 and stack. The host checker verifies the
-original Dan1 routine bytes independently. Frame callbacks alone miss the early first
-call and are not sufficient evidence.
+`tools/compatibility_font.py` encodes Times family 20 as a 60-byte FOND with a
+plain 14-point association to NFNT 128. The 2,842-byte NFNT retains its resource
+layout, character widths and bounds. `tools/startup_fonts.py` generates the
+additional faces from `resources/startup-fonts.json`:
 
-The separate `AITD_FONT_FIXTURE=1` diagnostic replays GetFNum in scratch stack memory
-after the first original return. These calls measure the service contract; they do not
-prove original startup progress. Every call starts with D0=$12345678, ResErr=$8888,
-MemErr=$7777 and a $CCCC result surrounded by $ABCD/$DCBA guards. All eight preserve D0
-and both guards and pop exactly eight bytes.
+| Family | Sizes | Styles |
+| --- | --- | --- |
+| 0 | 12 | plain, bold, italic, condensed, bold-condensed |
+| 3 | 9 | same five styles |
+| 21 | 9, 18, 36 | same five styles |
 
-| Name | Result | ResErr | MemErr |
-| --- | --- | --- | --- |
-| Times, times, TIMES, tImEs | 20 | 0 | $7777 unchanged |
-| AITD Missing Font | 0 | -192 | 0 |
-| empty string | 0 | -192 | $7777 unchanged |
-| Times followed by space | 0 | -192 | 0 |
-| space followed by Times | 0 | -192 | 0 |
+These 25 faces provide measured ascent, descent, maximum width, leading and
+advances for zero and space. Family 0/plain also supplies all 95 measured
+printable ASCII advances for [hidden window titles](window-title.md). Other
+advances are compatibility defaults, not claimed original Mac measurements.
+There is no synthesized scaling or guessed style increment.
 
-These are measured names, not a complete international name-collation contract. The
-error-global effects are observed System 7.5.5 behavior for these cases. A matching ID
-alone is not a font implementation: the native trap still needs a validated port-owned
-font definition in the overlay.
+`tools/build_overlay.py` combines the four FONDs, 26 NFNTs and native Jnth 11
+entry into the 83,050-byte `resources/overlay.rsrc`. The executable embeds it;
+resource bodies are loaded lazily from memory into owned handles. Regenerate
+with `python3 tools/build_overlay.py`; `--check` requires byte-identical output.
 
-The independent M2.1c3a reference prerequisite passes both bounded captures with process
-status zero and the full host suite. That reference-only checkpoint did not change
-runtime code. Native integration evidence and its remaining startup dependency are
-recorded below.
+## Service contracts
 
-## Reproduction
+GetFNum traverses the resource chain and validates the matching FOND and linked
+NFNT. Both original Dan1 calls request Times and return family 20. Name matching
+is ASCII case-insensitive with exact length: leading/trailing spaces do not
+match. Missing names return family zero and resource error -192.
 
-Run each mode sequentially, after sourcing `amiga/env.sh`:
+`BitmapFont.h` validates association ordering, exact size/style selection,
+flags, extents, glyph locations and width entries. Unsupported optional tables,
+malformed data and unavailable selections are rejected. GetFontInfo and
+CharWidth use the selected compatibility resource except for the explicit
+Times/14 FontInfo and captured Times/36 metrics. Point size is distinct from
+ascent plus descent.
 
-```sh
-AITD_FONT_FIXTURE=0 SDL_VIDEODRIVER=dummy timeout -k 5 90 mame maciix \
-  -rompath ref/mame/roms -nb9 mdc48 -ramsize 8M \
-  -hard ref/mame/hd/aitd_755.hd -video none -sound none -window \
-  -skip_gameinfo -nothrottle -seconds_to_run 180 \
-  -snapshot_directory ref/mame/snap -cfg_directory ref/mame/cfg \
-  -nvram_directory ref/mame/nvram -debug -debugger none -oslog \
-  -autoboot_script tools/mac_font_lookup.lua >tmp/font-original.log 2>&1
-font_status=$?
-python3 tools/check_font_lookup.py tmp/font-original.log --status "$font_status"
-```
+Times/14 TextWidth and DrawText use `Times14Metrics.h` fractional advances.
+DrawText validates the selected resource at the service boundary, then passes
+only pixel buffers, clipping, text and pen state to `Text8.h`. The renderer has
+no dependency on the compatibility font object or glyph source. It uses the
+captured `Times14Bitmap.h` rows and bearings. Its reached character set remains
+ASCII plus MacRoman â, bullet, copyright and dot-above. Unsupported characters,
+faces and modes remain explicit failures. DrawChar/DrawString remain unsupported.
 
-Repeat with `AITD_FONT_FIXTURE=1`, a separate log and checker `--fixture`. The checker
-requires normal process exit and exactly one positive completion, rejects
-incomplete/duplicate/reordered calls, verifies stack/results and D0, and checks original
-bytes. Its negative fixtures run in `make host-tests`. Timeouts and diagnostic wait
-snapshots are failures. Internal MAME snapshots are local diagnostics and do not satisfy
-deferred Amiga rendered-video checks.
+The copyright line begins at x37 with fraction $8000 and advances to x285,
+fraction $1C00. Repeated draws retain the fractional pen. Credits issue separate
+word calls; their spacing must not be reconstructed by joining strings.
 
-## Port-owned placeholder definition
+## Verification
 
-`resources/placeholder-font.json` contains original port-owned 5×7 shapes. Digits and
-capitals match the inherited Vette picture font; punctuation is drawn for this port.
-Lowercase deliberately shares capital shapes at this prerequisite stage. This is a
-placeholder, not Times artwork or an Apple font.
+`make host-tests` checks generated resources and bitmap headers, parser bounds,
+malformed/truncated resources, every startup face, name lookup and text clipping,
+fractional endpoints, padding and atomic rejection. `check_text8.py` can compare
+the original caption buffer; `check_times36.py` can compare the pause buffer as
+shown above. The frame comparator requires exact viewport pixels and offers no
+exception for substitute lettering.
 
-`tools/placeholder_font.py` encodes family 20 as a 60-byte FOND with one plain 14-point
-association to NFNT 128. The 2,842-byte NFNT contains printable ASCII and the reached
-MacRoman ©/•/˙/â symbols, with missing boxes in unused slots: a 1104×14 monochrome
-bitmap, 221 location words and 221 offset/width words. The fixed advance is six pixels,
-ascent twelve and descent two. Font type $3000 and FOND flags $C000 describe this
-restricted layout. The width-table offset is measured in words from the NFNT field at
-byte 16.
-
-The format follows Apple's [NFNT
-description](https://dev.os9.ca/techpubs/mac/Text/Text-250.html), [font type
-flags](https://dev.os9.ca/techpubs/mac/Text/Text-251.html), and [FamRec
-definition](https://dev.os9.ca/techpubs/mac/Text/Text-215.html). No optional tables or
-external font data are used.
-
-`BitmapFont.h` validates the family link, metrics, bitmap bounds and every glyph
-location/width before exposing pixels. Unsupported layouts are rejected. Its ASCII
-family-name matcher passes the measured Times case/space cases. `check_bitmap_font.py`
-compiles that native header under address/undefined-behavior sanitizers and checks exact
-A, space and missing-glyph pixels, every truncation and malformed header/table cases. It
-runs in `make host-tests`. The complete host suite passes. A standalone parser
-translation unit also compiles with the repository’s 68020 flags and compatibility
-prelude without unresolved helpers; this is a compiler check, not native runtime
-acceptance.
-
-The overlay now publishes the Times definition, 25 startup faces in three additional
-families, and the native Jnth driver stub (83,050 bytes total). Its metadata-only
-preparation uses 33 reads / 572 bytes; the first lookup reads the two bodies in two
-bounded windows / 1,878 bytes. Startup retains 243 resource entries before preferences,
-including the fonts and stub. GetFNum traverses the resource chain, validates the
-matching FOND and linked NFNT, and returns the installed family ID. It preserves D0 and
-the measured error behavior; unsupported collation, formats and missing linked
-definitions stop explicitly. DrawChar/DrawString remain named trap stops. DrawText now
-consumes the selected owned font for the measured intro path described below.
-
-## Integrated native lookup acceptance
-
-Both original Dan1 calls now return family 20 through the installed FOND/NFNT.
-`amiga/font_lookup.gdb` delegates to the shared `menu_lifecycle.gdb` observer: original
-call bytes and Pascal names are checked, each result pops eight argument bytes, and D0
-and startup ResErr/MemErr match the reference. The second call preserves the observed
-nonzero D0 ($00312FF2 in the accepted run). Installed 60-byte FOND and 2,842-byte NFNT
-dumps match the generator exactly.
-
-`tools/check_native_font.py LOG --status STATUS` requires both calls in order,
-second-call register/error evidence, both native driver calls, the exact UnionRect stop
-at Dan2+$01DA, MDRV absence and normal debugger completion. `--prepare` removes old font
-dumps before capture. Missing/duplicate controls, wrong results, wrong error flags,
-incomplete service counts and timeout/error completion fail. The checker also
-fingerprints the original Jnth/MDRV loader and entry store.
-
-## Original startup metrics
-
-M2.1c3c2c5b2c2b1 measures the original Misc1+$05A0 initializer after hidden size
-selection. Original bytes +$0534–+$066B validate table identities, iterate five
-font/size records and five style records, then restore the previous font, size and face.
-This initializes text layout data; these calls do not draw text, dialogs or menus.
-
-| Family ID | Point sizes |
-| --- | --- |
-| 0 | 12 |
-| 3 | 9 |
-| 21 | 9, 18, 36 |
-
-Each pair uses styles 0, 1, 2, 32, 33 (plain, bold, italic, condensed and
-bold-condensed). The original tables reside at A5−$0F10 and A5−$0EF2. Native startup
-reaches the same first input: family 0, size 12, face 0, extra 0. A read-only native
-snapshot confirms both tables. The existing Times/family-20 14-point overlay therefore
-cannot satisfy this new call.
-
-GetFontInfo at +$0610 writes eight bytes (ascent, descent, maximum width, leading), pops
-four bytes and preserves D3–D7/A2–A6 and the current port. CharWidth at +$0618/+$0626
-measures '0'/space, pops the two-byte character argument and returns a word in the
-caller's preallocated result slot. It preserves the same registers and port. D0–D2/A0–A1
-are volatile; original code uses the result slot. The 25 FontInfo records and 50 widths
-are measured facts in `check_font_metrics.py`, not a runtime shortcut or font artwork.
-
-The values require per-style definitions. For example family 21 at 9 points has
-zero-character width 5 in both plain and bold, while space grows 2→3. At 36 points bold
-grows both by two pixels. A uniform guessed style increment would be incorrect. Point
-size also differs from ascent+descent, and family 0 has leading 1. These properties must
-be represented by the installed native font definitions.
-
-Run the documented headless MAME command with `-autoboot_script
-tools/mac_font_metrics.lua`, then:
-
-```sh
-python3 tools/check_font_metrics.py tmp/m2-font-metrics-reference-accepted.log --status 0
-```
-
-The accepted reference exits normally with exactly 75 calls and positive completion. The
-checker guards original bytes, both tables, call order, all metrics/widths, output
-guards, stack/registers and restoration of saved text state (font/size/face 0/0/0,
-result zero). It rejects changed values/styles, missing/duplicate completion and
-timeout. Native implementation and integrated progression now pass as described below.
-
-## Installed startup faces and native metrics
-
-`resources/startup-fonts.json` describes the 25 measured faces. The generator
-`startup_fonts.py` builds proportional monochrome NFNTs and three FONDs with explicit
-size/style associations, using only the existing port-owned glyph shapes. Ascent,
-descent, maximum width, leading and the two requested advances match the Mac. The plain
-system face now also uses all 95 measured printable advances for [hidden window
-titles](window-title.md). Other character advances are explicitly placeholder design,
-not claimed Mac measurements: space uses its measured width, M/W/@ and the missing box
-use maximum width, and other ASCII characters use the zero-character width.
-
-`BitmapFont` validates bounded association tables, unique ordered size/style keys,
-flags, bitmap extents, glyph locations and proportional offset/width entries. Point size
-is distinct from ascent+descent. It rejects unsupported associations, optional tables
-and invalid bounds. The original Times association remains unchanged; its owned bitmap
-now also contains the two intro symbols. Sanitizer fixtures cover every required face,
-every truncation, malformed fields, missing selections, glyph bounds and empty space.
-Format details follow Apple's [NFNT
-record](https://dev.os9.ca/techpubs/mac/Text/Text-250.html), [font
-flags](https://dev.os9.ca/techpubs/mac/Text/Text-251.html) and [FOND
-record](https://dev.os9.ca/techpubs/mac/Text/Text-269.html).
-
-GetFontInfo and CharWidth run through the user-mode service bridge and find the selected
-family in resource search order. They load only its exact intrinsic size/style
-definition on demand. Unsupported sizes, styles, missing definitions, nonzero spaceExtra
-or malformed data stop under the requested routine name. There is no guessed scaling,
-fallback font or native metric-result table. All 25 records and 50 widths match the
-reference, including register/stack and output-bound checks. All 30 installed FOND/NFNT
-bodies match the generated bytes.
-
-```sh
-python3 tools/check_font_metrics.py tmp/m2-font-metrics-reference-accepted.log --status 0 \
-  --native tmp/m2-metrics-native-final.log --native-status 0
-```
-
-Run `amiga/font_metrics.gdb` with the bounded native diagnostic launcher. The first
-entry is read from the actual saved Line-A frame after Misc1 loads; later calls use
-sequential original-site breakpoints. The observer never writes game memory or
-registers. At completion the original restores font/size/face 0/0/0 and returns zero. It
-then stops at Engine+$110E GetCTable/$AA18, now named `COLOR QUICKDRAW / GETCTABLE`. The
-second Times lookup and WIND 128 request remain unverified behind that next dependency.
-Original MDRV is absent. These are metric/data contracts, not rendered-font acceptance.
-
-## Startup TextWidth
-
-The unchanged Dan1+$0216 call measures text in Times/plain/14 with zero extra spacing.
-Its original +$0212–$0217 bytes are `548f3e80a886`. All 220 calls through the subsequent
-Misc1+$0E0A SetGWorld boundary now match the Mac: exact byte strings (including extended
-characters), ranges, widths, eight-byte stack cleanup and unchanged port records.
-D3–D7/A2–A6 are preserved by the Mac; the native service preserves all caller registers.
-Mac scratch-register values are not reproduced. No text or Mac dialog is drawn by this
-service.
-
-The measured font's integer advance units scale by 299/256. Accumulate before
-truncation: “Alone in the Dark” measures 99, while adding individually truncated
-character widths would give 92. `Times14Metrics.h` retains the 256 measured spacing
-values, not font artwork. The selected installed placeholder definition is validated
-before use. Other selections, nonzero extra spacing, negative ranges and signed-width
-overflow remain explicit TextWidth stops.
-
-`mac_textwidth.lua` defaults to the first original call plus 256 CharWidth calls, 256
-repeated-character runs and 17 title prefixes in CPU-only scratch fixtures. Set
-`AITD_TEXTWIDTH_CALLS=220` for an unmodified original-call capture instead. The scratch
-code, stack and text buffer are separated to avoid overwriting code inside a deeper Mac
-service. An earlier overlapping fixture failed and is not acceptance.
-`check_textwidth.py` validates the fixture's terminal markers, original bytes, ABI and
-accumulation model. `check_text_metrics.py` compiles the actual native helper under
-sanitizers; `--reference tmp/m2-textwidth-fractions2.log --status 0` compares all 529
-measured results.
-
-`textwidth_calls.gdb` captures every native call read-only within the shared startup
-observer. Compare the final captures with:
-
-```
-python3 tools/check_textwidth_startup.py tmp/m2-textwidth-original-reference.log tmp/m2-textwidth-native-final.log --reference-status 0 --native-status 0
-```
-
-Pass actual terminal statuses to the checkers; a timeout never passes.
-
-## Intro DrawText
-
-The original Dan1+$0346 call (bytes +$0342 `548f3e80a885`) draws 41 MacRoman bytes:
-“©1992 I•Motion/Infogrames, 1994 Interplay”. The selected locked eight-bit GWorld is
-648×401 with stride 652, Times/plain/14, text mode 1, foreground index 26 and zero extra
-spacing. Its baseline is 196 and initial horizontal pen 37. The fractional pen at
-port+14 begins at $8000. The 212 measured advance units add $00F79C00: the final pen is
-285, fraction $1C00. Repeating without MoveTo ends at 532/$B800; MoveTo resets the
-fraction to $8000. Empty text preserves pixels and the whole port. DrawText pops eight
-bytes, returns D0=0 and preserves D1–D7/A1–A6. The original fixtures establish these
-contracts independently of placeholder artwork.
-
-`Text8.h` draws the installed owned bitmap using these fractional character positions,
-the selected foreground and map/port/visible/clip intersections. It fits each ink shape
-within its measured cell with one separating column. The placeholder deliberately uses
-capitals for lowercase, block shapes instead of Times serifs, and its own ascent of
-twelve; © and • are newly authored 5×7 shapes stretched to ten ink rows, starting two
-rows below the ascent. This keeps the car caption inside its original redraw band. These
-D6 differences preserve the baseline, spacing and resulting pen. No Apple artwork is
-included. Uninstalled characters, other fonts/styles/sizes/modes, complex regions and
-signed pen overflow stop before changing the buffer. The obsolete packed four-bit text
-renderer is removed.
-
-`mac_drawtext.lua` captures the original call and repeat/MoveTo/empty fixtures.
-`check_drawtext.py REFERENCE --status 0 --native NATIVE --native-status 0` checks
-original bytes, paired text state, ABI and pen, and every native output byte against an
-independent owned-glyph stencil. Initial visible pixel columns match; the four unused
-bytes per row contain different allocator history on each machine and must remain
-unchanged on their own side. `check_text8.py` adds sanitizer coverage of clipping,
-padding, range/overflow rejection and offset input. The local logical-buffer crops show
-placement and coarse placeholder lettering; they are not rendered FS-UAE screenshots and
-do not close M1.7b2.
-
-## Credits line spacing and dot-above
-
-Dan1+$013C calls GetFontInfo with Times/plain/14 before laying out the credits. The
-checked bytes +$0138–$013D are `486efff8a88b`. The Mac returns ascent 12, descent 4,
-maximum width 15 and leading 0, preserving the adjacent four bytes. The original adds
-ascent, descent and leading to obtain 16-pixel line spacing. Returning the owned
-bitmap's intrinsic 12/2/6/0 changed that spacing to 14; the sixth credits line
-consequently began twelve pixels too high. The service now reports the measured layout
-metrics while the owned ink retains its own 12-pixel ascent and 14-pixel bitmap.
-
-The reached “I˙Motion” DrawText uses bytes `49fa4d6f74696f6e`, pen (98,129), fraction
-$8000 and the same Times/plain/14 mode-1 world as the copyright line. It returns
-h179/$B900; a repeat ends at h229/$F200. MoveTo resets h129/$8000, and empty text
-preserves it. The new ˙ is an authored top dot; its block shape and placement within the
-character cell are D6 placeholder differences. No original glyph artwork is included.
-The installed range now extends through MacRoman $FA, but unowned characters still stop
-instead of drawing missing boxes.
-
-Use `AITD_DOT_TEXT=1` with `mac_drawtext.lua` and `--dot` with `check_drawtext.py` for
-this reference and paired native check. It checks the original FontInfo
-bytes/result/extent, drawing ABI, whole-port preservation, exact fractional pen, colours
-and the complete native output buffer against the owned stencil. Before this draw, the
-preceding “Published by” line differs only inside its measured placeholder ink bounds;
-all other visible input pixels match. Logical 320×200 crops show both credits lines
-legibly at their measured baselines. These are logical-buffer images, not
-rendered-window acceptance.
-
-## Accented-a credit glyph
-
-The reached Dan1+$0346 call draws the original bytes `5961896c`, decoded as “Yaâl” in
-MacRoman. Keep the original bytes; correcting the name would change the game's text. The
-selected Times/plain/14 world, mode 1, foreground 26 and zero extra spacing are
-unchanged. From pen (v114,h99), fraction $8000, the Mac returns h125/$3200. A repeat
-ends at h150/$E400; MoveTo resets h99/$8000 and an empty draw preserves it. The original
-caller bytes remain `548f3e80a885`.
-
-The owned 5×7 Â shape compresses the capital A below a two-row circumflex, using the
-same lowercase-to-capitals placeholder convention. The renderer now admits MacRoman $89,
-while other unowned characters still stop. The existing NFNT range already covers this
-slot, so the font and overlay lengths do not change. `AITD_ACCENT_TEXT=1` selects this
-reference fixture in `mac_drawtext.lua`; `--accent` selects it in `check_drawtext.py`.
-
-The original reference fixtures, owned-font/Text8 checks, full host suite and clean
-68020 build pass. `tmp/m2-accenttext-reference.log` and
-`tmp/m2-accenttext-isolated-native.log` finish normally; all 33 integrated comparisons
-pass in `tmp/m2-accenttext-regressions.log`. Native output matches the complete owned
-stencil, pen and register/stack contract, preserving every other byte of the port, pixel
-buffer and associated records. Logical crops were inspected. All 1,439 preceding-text
-differences stay inside the three explained placeholder credit boxes; no other visible
-input pixel differs.
-
-The original intro returns at Dark+$5220 with D0 zero after 5,606 frames, then stops at
-CopyBits Dan2+$07FA. Sixteen effects complete with no sample allocation remaining; all
-2,558 services complete, and original MDRV remains absent. Earlier timeout,
-observer-error and debugger-port-collision runs are rejected. The accepted run uses the
-isolated debugger launcher (M2.3g34a). This completes the glyph prerequisite; full intro
-frame and rendered-video acceptance remain open.
-
-## Car caption removal
-
-Original Dark+$3A14 lays out the car copyright at baseline 191 with a 16-row redraw band
-[180,196). The original DrawText captures show ink in rows 181–193. Our twelve ink rows
-began at 179, leaving a dotted line after the original stopped redrawing the caption.
-The authored NFNT now uses ten ink rows starting two rows below its unchanged twelve-row
-ascent. Fractional advances, baseline and all FontInfo/resource metadata remain
-unchanged; only the NFNT 128 bitmap changes. No original game instructions change.
-
-The host regression reproduces the leftover row with the preceding resource and passes
-after regeneration, including the measured final pen 285/$1C00. The full host suite and
-clean 68020 link audits pass. The bounded native run with normal Enter skip reaches the
-close car and ends normally. All background pixels outside both captured cars' bounds
-now equal the Mac, including the cleared caption, and all 256 logical colours match.
-Against the preceding native close-car capture, exactly 99 pixels change, all on row
-179. Car poses differ with timing; this accepts the static background/caption removal,
-not exact animation or full sequence fidelity.
-
-Local evidence: `tmp/m2-car-text-reference.log`, `tmp/m2-car-text-host.log`,
-`tmp/m2-car-text-native-full.log` and `tmp/m2-car-text-compare.log`. The native
-first-DrawText ABI check in this skipped run covers “Begin a new game”; it is not a
-rerun of the title-caption fixture. The independent stencil checker is updated for the
-ten-row artwork. Actual rendered-window verification remains owner-deferred.
+`mac_font_lookup.lua`, `mac_font_metrics.lua` and their paired checkers retain
+the original byte, call-order, stack and register contracts. The combined native
+`font_lookup.gdb` / `driver_startup.gdb` observer shares `menu_lifecycle.gdb`;
+its later RGB checkpoint needs maintenance described by TEST.1 in
+[open work](open-work.md). Passing its initial font checks alone is not completion
+of that combined observer.

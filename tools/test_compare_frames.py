@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Reject mismatched states and incomplete runs before reading capture files."""
 import unittest
-from compare_frames import capture, explained_placeholder, placeholder_policy
+from compare_frames import capture, check_pixels
 
 ROWS = '\n'.join(f'INTRO_FRAME n={n} segment={segment} offset={offset:X} d0=0'
                  for n, segment, offset in [(1,5,0x1c94),(2,5,0x1f46),(3,13,0x2ed4),(4,4,0x5220)])
@@ -33,23 +33,15 @@ class Checks(unittest.TestCase):
             with self.subTest(status=status), self.assertRaises(ValueError):
                 capture(text,status,'reference')
 
-    def test_placeholder_exception_requires_owned_ink(self):
-        ink,areas=placeholder_policy(3)
-        index=lambda x,y:(y+150)*640+x+160
-        original=bytes([18])*307200
-        native=bytearray(original)
-        for x,y in ink:native[index(x,y)]=26
-        explained_placeholder(3,native,original,list(ink))
-        # A blank caption cannot pass as an explained font difference.
-        with self.assertRaises(ValueError):
-            explained_placeholder(3,original,original,[])
-        # Nor can added ink, changed paper, or an out-of-caption mark.
-        l,t,r,b=areas[0]
-        clear=next((x,y) for y in range(t,b) for x in range(l,r) if (x,y) not in ink)
-        for point,value in [(clear,26),(clear,19),((20,20),26)]:
-            damaged=bytearray(native);damaged[index(*point)]=value
-            with self.subTest(point=point,value=value), self.assertRaises(ValueError):
-                explained_placeholder(3,damaged,original,list(ink)+[point])
+    def test_exact_caption_pixels(self):
+        original = bytes([18])*307200
+        check_pixels(original, original, (3,13,0x2ed4))
+        # Even a single changed pixel in the former caption exception is rejected.
+        for x,y in ((37,190),(20,20),(319,199)):
+            damaged = bytearray(original)
+            damaged[(y+150)*640+x+160] = 26
+            with self.subTest(x=x,y=y), self.assertRaises(ValueError):
+                check_pixels(damaged, original, (3,13,0x2ed4))
 
 
 if __name__ == '__main__':

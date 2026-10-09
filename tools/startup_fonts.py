@@ -1,4 +1,4 @@
-"""Build explicit styled placeholder NFNTs from owned glyphs and measured metrics."""
+"""Build compatibility NFNTs from port-owned shapes and measured startup metrics."""
 import json
 from pathlib import Path
 import struct
@@ -6,10 +6,10 @@ ROOT=Path(__file__).resolve().parents[1]
 def definitions():
     return json.loads((ROOT/'resources/startup-fonts.json').read_text())['faces']
 def bitmap(face):
-    glyphs=json.loads((ROOT/'resources/placeholder-font.json').read_text())['glyphs']
+    glyphs=json.loads((ROOT/'resources/compatibility-glyphs.json').read_text())['glyphs']
     shapes=[glyphs[chr(c).upper()] for c in range(32,127)]+[[31,17,17,17,17,17,31]]
     ascent,descent,maximum=face['ascent'],face['descent'],face['widMax']
-    # Other advances are explicit placeholder design, not measured Mac widths.
+    # Other advances are compatibility defaults, not measured Mac widths.
     advances=[face['spaceWidth'] if c==32 else maximum if c in (64,77,87,127) else face['zeroWidth'] for c in range(32,128)]
     # System plain face also carries measured printable advances for window titles.
     if 'printableWidths' in face:

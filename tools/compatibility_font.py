@@ -1,9 +1,9 @@
-"""Port-owned 14-point bitmap placeholder, encoded as classic FOND/NFNT."""
+"""Port-owned compatibility font, encoded as classic FOND/NFNT."""
 import json
 from pathlib import Path
 import struct
 
-SOURCE=Path(__file__).resolve().parents[1]/'resources/placeholder-font.json'
+SOURCE=Path(__file__).resolve().parents[1]/'resources/compatibility-glyphs.json'
 FAMILY=20
 BITMAP=128
 
@@ -19,8 +19,8 @@ def build():
     width=5*len(shapes);row_words=(width+15)//16;height=14
     bitmap=bytearray(row_words*2*height)
     for n,shape in enumerate(shapes):
-        # Keep the capital ink within the measured Times caption band:
-        # baseline-10 through baseline-1, with unchanged ascent/descent.
+        # Preserve the compatibility bitmap layout and parser fixture pixels.
+        # Visible Times text is drawn from its separate captured bitmap.
         for y in range(2,12):
             row=shape[(y-2)*7//10]
             for x in range(5):

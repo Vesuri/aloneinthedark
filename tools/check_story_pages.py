@@ -43,21 +43,15 @@ def main():
         clut = read(folder, prefix+"-clut.bin", 2056)
         original = read(folder, f"story-pages-reference-{i}-screen.bin", 307200)
         original_clut = read(folder, f"story-pages-reference-{i}-clut.bin", 2056)
-        differences = 0
         for y in range(200):
             for x in range(320):
-                a, b = pixels[(y+150)*640+x+160], original[(y+150)*640+x+160]
-                if a != b:
-                    require(165 <= x < 316 and 11 <= y < 184 and
-                            ((a == 0 and 146 <= b <= 159) or (b == 0 and 146 <= a <= 159)),
-                            f"page {i} non-glyph difference at {x},{y}")
-                    differences += 1
+                at = (y+150)*640+x+160
+                require(pixels[at] == original[at], f"page {i} pixel difference at {x},{y}")
         for pen in range(256):
             require(clut[10+pen*8:16+pen*8] == original_clut[10+pen*8:16+pen*8], f"page {i} RGB16 {pen}")
         check_frame(folder, prefix, pixels, clut, 160, 150, int(front, 16), transfer)
-        print(f"PASS page {i}: artwork/background/arrow/palette/publication; {differences} placeholder ink differences")
+        print(f"PASS page {i}: artwork/background/arrow/palette/publication; exact viewport pixels")
     print("PASS all eight letter pages: 257 identical text calls and normal input/return")
-    print("Placeholder glyph artwork differs; rendered host-window acceptance remains pending.")
 
 
 if __name__ == "__main__":

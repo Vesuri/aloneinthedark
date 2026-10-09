@@ -57,21 +57,16 @@ def check(text,status,native=False):
         ref=data('reference','return','dst-pixels')
         # The Mac's four padding bytes per source row are allocator contents.
         # They are preserved on each platform, excluded from the pixel bounds.
-        # Copyright ink differs by D6; every differing copied pixel must come
-        # from a differing source pixel at the identical coordinate.
+        # Visible glyphs and every copied client pixel must match the Mac.
         reference_source=data('reference','enter','src-pixels')
         if sct[4:]!=data('reference','enter','src-clut')[4:] or dct[4:]!=data('reference','enter','dst-clut')[4:]:raise ValueError('paired colour tables')
         for y in range(401):
             for x in range(648):
-                if src[y*652+x]!=reference_source[y*652+x] and not (37<=x<285 and 184<=y<200):raise ValueError('unexplained paired source pixel difference')
-        differences=0
+                if src[y*652+x]!=reference_source[y*652+x]:raise ValueError('unexplained paired source pixel difference')
         for y in range(200):
             for x in range(320):
                 at=(y+150)*640+x+160
-                if after[at]!=ref[at]:
-                    if src[y*652+x]==reference_source[y*652+x] or not (37<=x<285 and 184<=y<200):raise ValueError('unexplained paired pixel difference')
-                    differences+=1
-        print('D6 placeholder differing client pixels:',differences)
+                if after[at]!=ref[at]:raise ValueError('paired client pixel difference')
     print('PASS later intro CopyBits: original bytes/ABI, inverse-table colour remapping, complete source/destination buffers and unchanged records')
 if __name__=='__main__':
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('log',type=Path);p.add_argument('--status',type=int,required=True);p.add_argument('--native',action='store_true');a=p.parse_args()

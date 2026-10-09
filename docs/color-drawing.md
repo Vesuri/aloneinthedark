@@ -149,7 +149,7 @@ without the GWorld scratch fixtures. `tools/check_windowline.py` checks its comp
 screen buffer and the native rasterizer; paired acceptance also checks
 `amiga/windowline_call.gdb`'s ABI, dirty bounds and queued/active AGA buffers. Both
 complete input screens must equal their previously verified title captures, retaining
-the documented hidden-desktop and placeholder-text differences. The line's changed
+the documented hidden-desktop differences. Visible text must match the Mac. The line's changed
 coordinates and colour are identical.
 
 The first native discovery run captured the correct line and AGA publication, but

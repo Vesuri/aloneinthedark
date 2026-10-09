@@ -4,7 +4,7 @@ import argparse
 from pathlib import Path
 import struct
 from resource_fork import parse_resource_fork
-from placeholder_font import build as font_definition, FAMILY, BITMAP
+from compatibility_font import build as font_definition, FAMILY, BITMAP
 
 OUTPUT=Path(__file__).resolve().parents[1]/'resources/overlay.rsrc'
 def definitions():

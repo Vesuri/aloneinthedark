@@ -5953,7 +5953,7 @@ static bool drawGWorldText(GWorldSlot& w,const uint8_t* text,int16_t first,int16
     BitmapFont font;if(!fontForCurrentPort(font))return false;
     int16_t pen=int16_t(read16(w.port+50));uint16_t fraction=read16(w.port+14);
     if(!Text8::draw(w.pixels,w.owner->handleSize(w.handles[1]),read16(w.pixMap+4)&0x3fff,
-        w.pixMap+6,w.port+16,vis+2,clip+2,font,text,first,count,
+        w.pixMap+6,w.port+16,vis+2,clip+2,text,first,count,
         int16_t(read16(w.port+48)),pen,fraction,uint8_t(read32(w.port+80))))return false;
     write16(w.port+50,uint16_t(pen));write16(w.port+14,fraction);return true;
 }
@@ -9049,7 +9049,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
             uint8_t* out=(uint8_t*)read32(userStack);if(!out)goto unsupportedTrap;
             const uint8_t* port=(const uint8_t*)read32(s_qdThePort);
             if(read16(port+68)==20 && read16(port+74)==14 && !port[70]) {
-                // Measured Times/plain/14 layout; placeholder ink is independent.
+                // Measured Times/plain/14 layout; visible ink uses the captured bitmap.
                 write16(out,12);write16(out+2,4);write16(out+4,15);write16(out+6,0);
             } else {
                 write16(out,font.ascent());write16(out+2,font.descent());

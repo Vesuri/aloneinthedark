@@ -3,7 +3,7 @@
 #ifndef AITD_PLATFORM_AMIGA
 #include <stdint.h>
 #endif
-// Restricted classic FOND/NFNT reader for the port-owned placeholder overlay.
+// Restricted classic FOND/NFNT reader for the embedded compatibility resources.
 // Unsupported tables, styles and depths are rejected, never guessed.
 class BitmapFont {
 public:
