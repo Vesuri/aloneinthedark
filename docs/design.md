@@ -12,8 +12,8 @@ Addresses use (segment, offset), including the four-byte CODE header.
 
 Preserve original game decisions while implementing the Macintosh services they call,
 AGA display, Paula audio and Amiga input. The executable targets 68020 without an FPU.
-The verified minimum configuration is 2 MB Chip and 8 MB Fast RAM with AGA; 68030 or
-better is recommended. Native development uses Kickstart 3.1, and the release uses a
+The verified minimum configuration is 2 MB Chip and 8 MB Fast RAM with AGA; 68040 or
+better is strongly recommended. Native development uses Kickstart 3.1, and the release uses a
 WHDLoad Kickstart slave.
 
 The display is 320×200, eight bitplanes and 256 colours. Only the low-resolution game

@@ -14,7 +14,7 @@ Current Amiga release: **0.90 (09.10.2026)**.
 
 ## Requirements and installation
 
-- AGA Amiga, 68020 or better; **68030 or better recommended**.
+- AGA Amiga, 68020 or better; **68040 or better strongly recommended**.
 - **2 MB Chip RAM and 8 MB Fast RAM**; more Fast RAM permits more PRELOAD caching.
 - WHDLoad 17+, Installer 43+, and a supported Kickstart 3.1 image with its RTB.
 - 8 MB destination space and 24 MB temporary disk space.

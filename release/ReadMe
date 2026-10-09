@@ -15,8 +15,9 @@
  Requirements:
  -------------
  This install requires WHDLoad version 17.0 or better, an AGA Amiga and a
- 68020 or better. A 68030 or faster is recommended. Installation requires
- Installer V43 or later and 8 MB disk space for the game and original data.
+ 68020 or better. A 68040 or better is strongly recommended.
+ Installation requires Installer V43 or later and 8 MB disk space for the
+ game and original data.
 
  The installed program reserves 2048 KB ChipMem and 6656 KB OtherMem,
  including its Kickstart image. Allow additional memory for the host system,
