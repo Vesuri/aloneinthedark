@@ -54,7 +54,7 @@ if ! make -j4 "${flags[@]}" >> .run/regression-build.log 2>&1; then
   exit 1
 fi
 status=0
-GDBTAIL=120 EXTRA_ARGS=--warp_mode=1 GDBSCRIPT="$observer" ./diag_run.sh "$deadline" || status=$?
+GDBTAIL=120 EXTRA_ARGS="${EXTRA_ARGS:---warp_mode=1}" GDBSCRIPT="$observer" ./diag_run.sh "$deadline" || status=$?
 if [[ "$observer" == quit.gdb || "$observer" == stack.gdb ]]; then
   python3 ../tools/check_quit_regression.py .run/gdb-out.log --status "$status" --launch "${DIAG_LAUNCH:-shell}" --reply .run/dh1/QuitWorkbench.done
 elif [[ "$observer" == stairs.gdb ]]; then

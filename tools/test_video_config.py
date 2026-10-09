@@ -19,7 +19,7 @@ class Checks(unittest.TestCase):
 
     def test_video_and_machine_combinations(self):
         for model in ('a1200-020', 'a4000-020', 'a1200-030', 'a4000-030',
-                      'a4000-030-reference', 'a4000-040', 'a1200-060', 'a4000-060'):
+                      'a4000-030-reference', 'a4000-040', 'a4000-040-jit', 'a1200-060', 'a4000-060'):
             for video, ntsc, clock in (('PAL', 0, 14187580), ('NTSC', 1, 14318180)):
                 with self.subTest(model=model, video=video):
                     result = self.config(AMIGA_CONFIG=model, AMIGA_VIDEO=video)
@@ -31,11 +31,12 @@ class Checks(unittest.TestCase):
                     frequency = 15667200 if model == 'a4000-030-reference' else clock if model == 'a1200-020' else 0
                     self.assertIn(f'--uae_cpu_frequency={frequency}', args)
                     cpu = '68EC020' if model.endswith('020') else '68'+model.split('-')[1]
+                    if model == 'a4000-040-jit': cpu = '68040-NOMMU'
                     self.assertIn('--cpu='+cpu, args)
                     self.assertIn('--amiga_model='+model.split('-')[0].upper(), args)
                     self.assertIn('--uae_mmu_model=0', args)
                     self.assertIn('--uae_fpu_model=0', args)
-                    self.assertIn('--jit_compiler=0', args)
+                    self.assertIn('--jit_compiler='+('1' if model == 'a4000-040-jit' else '0'), args)
                     self.assertIn('--uae_cpu_speed='+('real' if frequency else 'max'), args)
                     self.assertIn('--uae_cpu_cycle_exact='+('true' if frequency else 'false'), args)
 

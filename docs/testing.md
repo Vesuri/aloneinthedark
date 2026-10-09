@@ -43,7 +43,7 @@ DIAG_LAUNCH=workbench AMIGA_CONFIG=a4000-030 amiga/regression.sh quit
 AMIGA_CONFIG=a4000-030 amiga/regression.sh stack
 ```
 
-The stairs and quit fixtures cover all eight named CPU configurations in PAL and NTSC.
+The stairs and quit fixtures cover the eight non-JIT CPU configurations in PAL and NTSC.
 Quit also has Shell and Workbench startup/reply coverage. The Workbench fixture runs
 under real Workbench but is a protocol fixture, not an icon double-click. The stack
 fixture verifies a 4096-byte game-process stack; it does not change the separate

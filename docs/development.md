@@ -113,8 +113,10 @@ amiga/run.sh
 | `a4000-030-reference` | 68030, fixed 15.6672 MHz, comparable to the Mac IIx |
 | `a4000-020`, `a1200-030`, `a4000-030` | Maximum-speed 020/030 functional diagnostics |
 | `a4000-040`, `a1200-060`, `a4000-060` | Maximum-speed 040/060 functional diagnostics |
+| `a4000-040-jit` | Unlimited 68040-NOMMU with JIT; stair-bug reproduction, not an accepted configuration |
 
-All use AGA, 2 MB Chip and 8 MB Fast RAM, no JIT/MMU/FPU. Set `AMIGA_VIDEO=PAL|NTSC`;
+All use AGA, 2 MB Chip and 8 MB Fast RAM, no MMU/FPU. JIT is disabled
+except in the explicitly named reproduction configuration. Set `AMIGA_VIDEO=PAL|NTSC`;
 `AMIGA_FAST_KB=2048|4096|8192` selects memory rejection or acceptance cases.
 `AMIGA_CONFIG` takes precedence over `AMIGA_MODEL`. Do not override pinned machine
 settings through `EXTRA_ARGS`.

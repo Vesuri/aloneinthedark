@@ -16,6 +16,9 @@ Each item gives the **goal**, then the scope, then *done when*: the evidence req
   original-Mac emulator and Amiga port to inspect the original stair track,
   animation progression and timing; compare with M6.3's passing descent matrix.
   See [initial original-code findings](mac-stairs.md).
+  The owner also reports immediate automatic return upstairs on unlimited
+  68040-NOMMU with JIT, without collecting any attic items. Reproduce this
+  configuration and compare the same route with JIT disabled.
   Test the reported item-collection precondition and timing variants; determine
   whether the original game can return to the attic and whether the port is affected. Fix a confirmed port defect; preserve the owner's approval
   requirement for changes to original game behavior.

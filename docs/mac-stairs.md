@@ -24,3 +24,29 @@ step X/Y/Z. Use `register_frame_done` for per-field observation and record the a
 input/state preconditions. Retained local baseline data is under `tmp/mac1/reference/`.
 No game instructions or actor fields changed in that run; no gameplay fix or global cap
 has been introduced.
+
+## Unlimited 68040 with JIT
+
+The owner reports descending and immediately turning back upstairs on
+68040-NOMMU with unlimited CPU and JIT enabled, with no attic items collected.
+This establishes a reported port symptom; JIT causality and equivalence to the
+Macintosh.js report remain unconfirmed.
+
+The fresh Carnby route passes without JIT on unlimited 68040/PAL, reaching
+floor 1, room 6, manual mode 1 and idle animation 4 at Z=-1873. The stair
+portion measures 215 frames over 599 guest ticks (21.536 FPS). This run used
+warp; it does not reproduce the owner's JIT timing. A native ARM-host run
+with unlimited 68040, JIT off and warp off also reaches manual room 6 at
+Z=-1867 (209 frames / 589 guest ticks through the stair portion).
+
+Use the explicit JIT reproducer:
+
+```sh
+AMIGA_CONFIG=a4000-040-jit EXTRA_ARGS=--warp_mode=0 amiga/regression.sh stairs
+```
+
+The regression runner preserves an explicit warp setting. The available x86-64 emulator under
+Rosetta exits before the game starts with `Caught illegal access to 40001000
+at eip=0x40001000` after enabling its 8 MB JIT cache. That failed launch is
+not gameplay evidence. A working JIT host and the owner's JIT-off comparison
+are still needed. No gameplay or original-code changes have been made.

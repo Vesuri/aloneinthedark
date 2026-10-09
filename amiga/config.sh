@@ -13,11 +13,13 @@ case "$AMIGA_VIDEO" in
   NTSC) aitd_ntsc=1; aitd_core_ntsc=true; aitd_cpu_frequency=14318180 ;;
   *) echo "CONFIG / UNKNOWN AMIGA_VIDEO: $AMIGA_VIDEO; use PAL or NTSC" >&2; return 1 ;;
 esac
+aitd_jit=0
 case "$AMIGA_CONFIG" in
   a1200-020) AMIGA_MODEL=A1200; aitd_cpu=68EC020 ;;
   a4000-020) AMIGA_MODEL=A4000; aitd_cpu=68EC020 ;;
   a1200-030) AMIGA_MODEL=A1200; aitd_cpu=68030 ;;
   a4000-040) AMIGA_MODEL=A4000; aitd_cpu=68040 ;;
+  a4000-040-jit) AMIGA_MODEL=A4000; aitd_cpu=68040-NOMMU; aitd_jit=1 ;;
   a1200-060) AMIGA_MODEL=A1200; aitd_cpu=68060 ;;
   a4000-030) AMIGA_MODEL=A4000; aitd_cpu=68030 ;;
   a4000-030-reference) AMIGA_MODEL=A4000; aitd_cpu=68030; aitd_cpu_frequency=15667200 ;;
@@ -48,7 +50,7 @@ AITD_MACHINE_ARGS=(
   --uae_ntsc="$aitd_core_ntsc"
   --chip_memory=2048 --slow_memory=0 --fast_memory="$AMIGA_FAST_KB"
   --zorro_iii_memory=0 --uae_mbresmem_size=0 --uae_a3000mem_size=0
-  --uae_mmu_model=0 --uae_fpu_model=0 --jit_compiler=0
+  --uae_mmu_model=0 --uae_fpu_model=0 --jit_compiler="$aitd_jit"
 )
 if [[ "$AMIGA_CONFIG" == a1200-020 || "$AMIGA_CONFIG" == a4000-030-reference ]]; then
   AITD_MACHINE_ARGS+=(
@@ -63,4 +65,4 @@ else
     --uae_blitter_cycle_exact=false --uae_cpu_multiplier=0 --uae_cpu_frequency=0
   )
 fi
-echo "CONFIG $AMIGA_CONFIG model=$AMIGA_MODEL cpu=$aitd_cpu frequency_hz=$aitd_cpu_frequency chipset=AGA chip_kb=2048 fast_kb=$AMIGA_FAST_KB mmu=0 jit=0 video=$AMIGA_VIDEO"
+echo "CONFIG $AMIGA_CONFIG model=$AMIGA_MODEL cpu=$aitd_cpu frequency_hz=$aitd_cpu_frequency chipset=AGA chip_kb=2048 fast_kb=$AMIGA_FAST_KB mmu=0 jit=$aitd_jit video=$AMIGA_VIDEO"
