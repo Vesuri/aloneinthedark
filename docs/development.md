@@ -8942,3 +8942,31 @@ is retained under `tmp/release-history/`; `dist` contains the current release.
 
 This changes release metadata only; gameplay and M7 acceptance scope are
 unchanged. Build/package log: `tmp/m7/release-090.log`.
+
+### WHDLoad 20.0 install-template adaptation — 2026-10-09
+
+`release/ReadMe` now follows WHDLoad 20.0's
+`Install Template/Xxx Install/ReadMe`, with Vette's release ReadMe as the
+concrete adaptation example. It retains the template warranty and conventional
+Requirements, Features, History and Contact sections, with this port's actual
+memory, Kickstart, installation, keyboard and normal/immediate quit behavior.
+The version remains 0.90 (09.10.2026).
+
+`release/Install` is based on the corresponding `Xxx Install/Install`:
+`P_ChkRun`/`P_ChkRun_Package`, the data-install hook, slave/icon procedures,
+document copying and the `WHDLInstPath` destination default. The single-archive
+flow retains Vette's Installer V43 compatibility and the verified staging,
+Keep/Remove, Reinstall/Use existing and saved-game preservation behavior.
+Disk-imaging tools and multiple-version/icon choices are not required by this
+package. Source paths remain anchored to the Install icon's drawer.
+
+The actual Commodore Installer passes fresh installation and in-place update
+on the 68030 using the rebuilt archive: all 74 data-file hashes, shipped files,
+native icon checks, preserved saves/unrelated files and scratch cleanup pass.
+Logs: `tmp/m7/template-fresh.log` and `tmp/m7/template-update.log`.
+Release validation and corrupt-archive rejection checks pass; a second
+packaging run produces identical bytes.
+
+`dist/AloneInTheDark-0.90.lha` is now 255,759 bytes, SHA-256
+`9095e24853fd77e99a4176e69a87207c8685127364df2045ae098fed7ae174cc`.
+Runtime, slave and extractor binaries are unchanged by this template update.

@@ -1,14 +1,123 @@
-; Alone in the Dark WHDLoad installation. Standard Commodore Installer V43 or newer.
+; Based on WHDLoad 20.0 "Install Template/Xxx Install/Install".
+; Adapted for a single Macintosh archive, following Vette's Installer V43 flow.
 ; $VER: Install 0.90 (09.10.2026)
 (set @app-name "Alone in the Dark")
+(set #readme-file "ReadMe")
+(set #source (pathonly @icon))
+(set @execute-dir #source)
+
+(procedure P_ChkRun
+  (set #package "WHDLoad (https://www.whdload.de)")
+  (P_ChkRun_Package)
+)
+(procedure P_ChkRun_Package
+  (if (= 0 (run ("cd SYS:\nWhich %s >NIL:" #program)))
+    ("")
+    (abort
+      (cat
+	"You must install \"" #program "\" first!\n"
+	"It must be accessible via the path.\n"
+	"You can find it in the package " #package "."
+      )
+    )
+  )
+)
+
+; RAM: is expandable: filesystem free blocks are not its available capacity.
+; Resolve the device so T: and other assigns/subdrawers are handled too.
+(procedure P_TempSpace
+  (if (= (getdevice #temp) (getdevice "RAM:"))
+    (- (+ (database "total-mem")) 6291456)
+    (getdiskspace #temp)))
+
+(procedure P_MakeImages
+  (if #install-data
+    (
+      (set #temp
+        (askdir
+          (prompt "Select a temporary drawer with at least 24 MB free.")
+          (help "Allow 24 MB free. T: normally uses RAM; choose a hard disk drawer if RAM is insufficient. Temporary files are removed when finished.")
+          (default "T:")))
+      (while (< (P_TempSpace) 25165824)
+        ((message "The temporary drawer needs 24 MB free. Please select a hard disk drawer or free some space." (all))
+         (set #temp
+           (askdir
+             (prompt "Select a temporary drawer with at least 24 MB free.")
+             (help "Choose an existing hard disk drawer. Temporary files are removed when finished.")
+             (default #temp)))))
+      (set #archive
+        (askfile
+          (prompt "Select the downloaded AloneInTheDark.img_.sit archive.")
+          (help "Choose AloneInTheDark.img_.sit downloaded from the Alone in the Dark page at Macintosh Repository. Leave it compressed.")
+          (default "AloneInTheDark.img_.sit")))
+      (if (= @pretend 0)
+        ((working "Extracting and checking the game data. This may take several minutes. Temporary files are removed when finished.")
+         ; Extract into a fresh drawer: the helper deliberately preserves existing
+         ; originals. Publish replacements only after extraction has succeeded.
+         (set #attempt 0)
+         (set #stage (tackon #temp (".aitd-data-%ld" #attempt)))
+         (while (exists #stage)
+           ((set #attempt (+ #attempt 1))
+            (set #stage (tackon #temp (".aitd-data-%ld" #attempt)))))
+         (set #result
+           (run ("\"%s\" \"%s\" \"%s\" \"%s\"" (tackon #source "AitdInstallData") #archive #stage #temp)))
+         (if (<> #result 0)
+           ((if (exists #stage) (delete #stage (all) (optional "force")))
+            (abort "Original game data could not be installed. Check the archive and free disk space. Existing data files have not been replaced. See the helper's error message for details.")))
+         (copyfiles (source #stage) (dest #data) (all) (help @copyfiles-help))
+         (delete #stage (all) (optional "force"))))))
+)
+
+(procedure P_CopySlave
+  (copyfiles
+    (source (tackon #source "AloneInTheDark.slave"))
+    (dest #dest)
+    (help @copyfiles-help))
+)
+
+(procedure P_SelectIcon
+  (copyfiles
+    (source (tackon #source "AloneInTheDark.inf"))
+    (dest #dest)
+    (newname "AloneInTheDark.info")
+    (help @copyfiles-help))
+  ; The package has one normal icon. Clear template tooltypes before assigning.
+  (tooltype
+    (dest (tackon #dest "AloneInTheDark"))
+    (settooltype "Slave")
+    (settooltype "PreLoad"))
+  (tooltype
+    (dest (tackon #dest "AloneInTheDark"))
+    (setdefaulttool "WHDLoad")
+    (settooltype "Slave" "AloneInTheDark.slave")
+    (settooltype "PreLoad" "")
+    (setstack 10240)
+    (noposition))
+)
+
+; WHDLoad template P_CopyFile, with paths anchored to the Install icon drawer.
+; #copy-file names a document; include its icon when present.
+(procedure P_CopyFile
+  (if (exists (tackon #source #copy-file))
+    ((copyfiles
+       (source (tackon #source #copy-file))
+       (dest #dest)
+       (infos)
+       (help @copyfiles-help)))))
+
+(procedure P_MakeIcons
+  (P_CopySlave)
+  (P_SelectIcon))
+
+;----------------------------
+; Main installation: prerequisite, destination, files, icons and data.
 (if (< @installer-version (* 43 65536))
   (abort "This installation requires Amiga Installer 43 or newer."))
 (welcome)
-(set #source (pathonly @icon))
-(set @execute-dir #source)
-; Same prerequisite check as the WHDLoad/Rescue on Fractalus install template.
-(if (<> 0 (run "cd SYS:\nWhich WHDLoad >NIL:"))
-  (abort "Install WHDLoad 17 or newer first. It must be accessible via the command path. See https://www.whdload.de/"))
+(set #program "WHDLoad")
+(P_ChkRun)
+(if (getenv "WHDLInstPath")
+  (set @default-dest (getenv "WHDLInstPath")))
 (set #kick-ready 0)
 (if (and (exists "Devs:Kickstarts/kick40068.A1200") (exists "Devs:Kickstarts/kick40068.A1200.RTB")) (set #kick-ready 1))
 (if (and (exists "Devs:Kickstarts/kick40068.A4000") (exists "Devs:Kickstarts/kick40068.A4000.RTB")) (set #kick-ready 1))
@@ -19,15 +128,9 @@
    (if (and (exists "WHDCOMMON:kick40063.A600") (exists "WHDCOMMON:kick40063.A600.RTB")) (set #kick-ready 1))))
 (if (= #kick-ready 0)
   (message "WHDLoad needs a Kickstart 3.1 image and matching .RTB file in Devs:Kickstarts or WHDCOMMON: before playing. See ReadMe for supported image names." (all)))
-; RAM: is expandable: filesystem free blocks are not its available capacity.
-; Resolve the device so T: and other assigns/subdrawers are handled too.
-(procedure P_TempSpace
-  (if (= (getdevice #temp) (getdevice "RAM:"))
-    (- (+ (database "total-mem")) 6291456)
-    (getdiskspace #temp)))
 (set #parent
   (askdir
-    (prompt "Where should Alone in the Dark be installed? A Alone in the Dark drawer will be created here.")
+    (prompt "Where should Alone in the Dark be installed? An Alone in the Dark drawer will be created here.")
     (help "Choose a hard disk drawer with at least 8 MB free for the game and its original data.")
     (default @default-dest)))
 (set #dest (tackon #parent "Alone in the Dark"))
@@ -53,71 +156,15 @@
 (makedir #dest (infos) (help @makedir-help))
 (makedir #data (help @makedir-help))
 (complete 10)
-(if #install-data
-  (
-    (set #temp
-      (askdir
-        (prompt "Select a temporary drawer with at least 24 MB free.")
-        (help "Allow 24 MB free. T: normally uses RAM; choose a hard disk drawer if RAM is insufficient. Temporary files are removed when finished.")
-        (default "T:")))
-    (while (< (P_TempSpace) 25165824)
-      ((message "The temporary drawer needs 24 MB free. Please select a hard disk drawer or free some space." (all))
-       (set #temp
-         (askdir
-           (prompt "Select a temporary drawer with at least 24 MB free.")
-           (help "Choose an existing hard disk drawer. Temporary files are removed when finished.")
-           (default #temp)))))
-    (set #archive
-      (askfile
-        (prompt "Select the downloaded AloneInTheDark.img_.sit archive.")
-        (help "Choose AloneInTheDark.img_.sit downloaded from the Alone in the Dark page at Macintosh Repository. Leave it compressed.")
-        (default "AloneInTheDark.img_.sit")))
-    (if (= @pretend 0)
-      ((working "Extracting and checking the game data. This may take several minutes. Temporary files are removed when finished.")
-       ; Extract into a fresh drawer: the helper deliberately preserves existing
-       ; originals. Publish replacements only after extraction has succeeded.
-       (set #attempt 0)
-       (set #stage (tackon #temp (".aitd-data-%ld" #attempt)))
-       (while (exists #stage)
-         ((set #attempt (+ #attempt 1))
-          (set #stage (tackon #temp (".aitd-data-%ld" #attempt)))))
-       (set #result
-         (run ("\"%s\" \"%s\" \"%s\" \"%s\"" (tackon #source "AitdInstallData") #archive #stage #temp)))
-       (if (<> #result 0)
-         ((if (exists #stage) (delete #stage (all) (optional "force")))
-          (abort "Original game data could not be installed. Check the archive and free disk space. Existing data files have not been replaced. See the helper's error message for details.")))
-       (copyfiles (source #stage) (dest #data) (all) (help @copyfiles-help))
-       (delete #stage (all) (optional "force"))))))
+(P_MakeImages)
 (makedir (tackon #dest "Saved Games") (help @makedir-help))
 (makedir (tackon #dest "prefs") (help @makedir-help))
 (complete 90)
 (copyfiles (source (tackon #source "overlay.rsrc")) (dest #dest) (help @copyfiles-help))
-(copyfiles
-  (source (tackon #source "Alone"))
-  (dest #dest)
-  (help @copyfiles-help))
-(copyfiles
-  (source (tackon #source "AloneInTheDark.slave"))
-  (dest #dest)
-  (help @copyfiles-help))
-(copyfiles
-  (source (tackon #source "AloneInTheDark.inf"))
-  (dest #dest)
-  (newname "AloneInTheDark.info")
-  (help @copyfiles-help))
-; Keep these explicit, as in the WHDLoad install template.
-(tooltype
-  (dest (tackon #dest "AloneInTheDark"))
-  (setdefaulttool "WHDLoad")
-  (settooltype "Slave" "AloneInTheDark.slave")
-  (settooltype "PreLoad" "")
-  (setstack 10240)
-  (noposition))
-(copyfiles
-  (source (tackon #source "ReadMe"))
-  (dest #dest)
-  (infos)
-  (help @copyfiles-help))
+(copyfiles (source (tackon #source "Alone")) (dest #dest) (help @copyfiles-help))
+(P_MakeIcons)
+(set #copy-file #readme-file)
+(P_CopyFile)
 (set @default-dest #dest)
 (complete 100)
 (exit)

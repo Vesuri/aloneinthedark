@@ -58,7 +58,7 @@ def main():
     assert b'(settooltype "Slave" "AloneInTheDark.slave")' in payloads['Install']
     assert b'(settooltype "PreLoad" "")' in payloads['Install']
     assert b'(set #dest (tackon #parent "Alone in the Dark"))' in payloads['Install']
-    assert b'Requirements\n------------' in payloads['ReadMe']
+    assert b' Requirements:\n -------------' in payloads['ReadMe']
     root = Path(__file__).resolve().parent.parent
     version = (root / 'VERSION').read_text().strip().encode('ascii')
     for name, tag in (('Alone', 'Alone in the Dark'), ('AloneInTheDark.slave', 'AloneInTheDark.slave'), ('AitdInstallData', 'AitdInstallData')):

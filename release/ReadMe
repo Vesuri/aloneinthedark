@@ -1,49 +1,120 @@
-Alone in the Dark 0.90 (09.10.2026) -- Amiga port
 
-This package runs the original Macintosh Alone in the Dark 1.0 game code.
-Original game data is not included. Supply your own unmodified
-AloneInTheDark.img_.sit archive when the Installer asks for it.
+ THIS PACKAGE COMES WITH ABSOLUTELY NO WARRANTY OF ANY KIND, EITHER EXPRESS OR
+ IMPLIED, STATUTORY OR OTHERWISE. THE ENTIRE RISK AS TO USE, RESULTS AND
+ PERFORMANCE OF THE PACKAGE IS ASSUMED BY YOU AND IF THE PACKAGE SHOULD PROVE
+ TO BE DEFECTIVE, YOU ASSUME THE ENTIRE COST OF ALL NECESSARY SERVICING,
+ REPAIR OR OTHER REMEDIATION.
+ UNDER NO CIRCUMSTANCES, CAN THE AUTHOR BE HELD RESPONSIBLE FOR ANY DAMAGE
+ CAUSED IN ANY USUAL, SPECIAL, OR ACCIDENTAL WAY, ALSO IF THE OWNER OR A THIRD
+ PARTY HAS BEEN POINTED AT SUCH POSSIBILITIES OF DAMAGE.
 
-Installation
-------------
-Open Install using Amiga Installer 43 or newer. Install WHDLoad 17 or newer
-first and provide a Kickstart 3.1 image with its matching .RTB in
-Devs:Kickstarts or WHDCOMMON:. Supported names are kick40068.A1200,
-kick40068.A4000 and kick40063.A600. These files are not included.
+ This install applies to "Alone in the Dark", an unofficial Amiga port of
+ the Macintosh game by Infogrames and Interplay (1994), original version 1.0.
 
-Allow 24 MB free in the temporary drawer and 8 MB at the destination.
-Use a hard disk temporary drawer when RAM is limited. The extractor needs
-about 2.7 MB of working allocations, plus its executable and the OS. It checks the exact original version, every
-installed file, resource fork and Finder record. Keep the archive compressed.
 
-Use the installed AloneInTheDark icon to launch through WHDLoad. F10 quits.
-Saved games are kept when updating an installation in place. Selecting Remove
-in the Installer explicitly deletes the existing drawer, including saves.
+ Requirements:
+ -------------
+ This install requires WHDLoad version 17.0 or better, an AGA Amiga and a
+ 68020 or better. A 68030 or faster is recommended. Installation requires
+ Installer V43 or later and 8 MB disk space for the game and original data.
 
-Requirements
-------------
-AGA, 68020 or better, 2 MB Chip RAM and 8 MB Fast RAM. A 68030 or faster is
-recommended. Native 68020/68030 intro and first-floor endurance tests pass;
-4 MB Fast RAM fails startup. WHDLoad startup, attic play and Save/Load pass
-on a 68030 with 2 MB Chip and 8 MB Fast. More Fast RAM allows more PRELOAD
-caching. WHDLoad and its Kickstart image also need memory outside the game.
+ The installed program reserves 2048 KB ChipMem and 6656 KB OtherMem,
+ including its Kickstart image. Allow additional memory for the host system,
+ WHDLoad and PRELOAD. The tested configuration has 2 MB Chip RAM and 8 MB
+ Fast RAM. More Fast RAM allows more of the game data to be cached.
 
-The game uses a normal 4 KB Amiga process stack: measured usage is about
-2.1 KB through startup, gameplay, Save/Load and exit. Private Macintosh and
-music stacks are allocated internally. No Shell Stack increase is needed.
+ The game process uses a normal 4 KB stack (about 2.1 KB measured through
+ gameplay, Save/Load and exit). Private Macintosh and music stacks are
+ allocated internally. No Shell Stack increase is needed.
 
-Controls
---------
-Use the keyboard for movement and actions; Enter opens the action menu.
-Use the original game menus for saving, loading and starting a new game.
-F10 exits WHDLoad. The original Cmd-Q equivalent uses the right Amiga key
-with Q. See the repository README for the complete control mapping.
+ The game requires a Kickstart 3.1 image and matching relocation file in
+ "Devs:Kickstarts" or "WHDCOMMON:". Supported pairs are:
 
-Source and support
-------------------
-https://github.com/Vesuri/aloneinthedark
+   kick40063.A600  and kick40063.A600.RTB
+   kick40068.A1200 and kick40068.A1200.RTB
+   kick40068.A4000 and kick40068.A4000.RTB
 
-The independent AitdInstallData helper is LGPL-2.1-or-later. See
-LICENSE.LGPL.txt and tools/install-data in the source repository for its
-complete source and build instructions. This port does not grant rights to
-the original game, data or Kickstart images.
+ These filenames do not require a particular Amiga model. The relocation
+ files are available in the Aminet archive "util/boot/skick346.lha".
+ Neither Kickstart images nor original game data are included in this package.
+
+
+ Installation:
+ -------------
+ Supply your own unmodified "AloneInTheDark.img_.sit" Macintosh game archive.
+ Leave it compressed. Run the Install icon and choose the destination.
+ An "Alone in the Dark" drawer is created there.
+
+ If the drawer exists, Keep updates it in place and preserves saved games.
+ Remove deletes the whole installation, including saved games. If original
+ data is already installed, choose Reinstall or Use existing. The executable,
+ overlay, slave, icon and ReadMe are always updated.
+
+ Data installation asks for the archive and a temporary drawer with 24 MB
+ free. T: normally uses RAM; choose a hard disk drawer on an 8 MB machine.
+ The extractor needs about 2.7 MB of working allocations, plus its code and
+ the OS. Extraction may take several minutes. All 74 original-data files
+ are verified before replacing installed data; temporary files are removed.
+
+ Start the installed game using its AloneInTheDark icon. PRELOAD is enabled
+ by default; disable that Tooltype if there is insufficient memory to cache
+ the files. Saved games are kept in the "Saved Games" drawer.
+
+
+ Features:
+ ---------
+ - original Macintosh 68k game code and game interfaces
+ - complete introduction and game, including the ending and return loop
+ - native 320x200 AGA display and hardware mouse pointer
+ - Paula music and effects, with music driven by a CIA interrupt
+ - original game Save/Load and normal exit to the operating system
+
+
+ Quitting:
+ ---------
+ Right-Amiga + Q quits normally and saves pending preferences.
+ WHDLoad's QuitKey (F10, changeable with Tooltype "QuitKey=") exits immediately
+ without running the game's normal exit code. Save your game before quitting.
+
+
+ Controls:
+ ---------
+ Cursor keys         move and turn
+ Shift + cursor key  run
+ Enter               action/inventory menu
+ Escape              back/cancel where supported by the game
+ Space + direction   perform the selected action
+ S / M               toggle sound effects / music
+ Right-Amiga + S     save game
+ Right-Amiga + O     load game
+ Right-Amiga + Q     quit normally
+
+ If using an emulator, set port 0 to Mouse and port 1 to Nothing. Keyboard
+ joystick emulation may otherwise consume the cursor keys.
+
+
+ History:
+ --------
+ version 0.90 (09.10.2026):
+ - initial Amiga release
+ - WHDLoad installation with automatic extraction of the original archive
+
+
+ Contact:
+ --------
+ Updates, source code and bug reports for this port:
+ https://github.com/Vesuri/aloneinthedark
+
+ For the full WHDLoad package, other installs and updates refer to:
+ https://www.whdload.de/
+ or Aminet: dev/misc/whdload#? and game/patch/
+
+
+ Installer helper:
+ -----------------
+ LICENSE.LGPL.txt covers the independent AitdInstallData helper only under
+ LGPL-2.1-or-later. It does not license the game or its original data.
+ The complete helper source and build instructions are in tools/install-data:
+ https://github.com/Vesuri/aloneinthedark
+ Archive decoder code and tables include work by MacPaw Way Ltd.; attribution
+ and the full license are retained with the helper source.
