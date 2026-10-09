@@ -40,7 +40,7 @@ printf "window measured: hash=$%x fields=%u ticks=%u inside-fields=%u entry=%u e
 printf "window Paula: interrupts=%u inside=%u positive-windows=%u\n",g_windowProbeAudio,g_windowProbeAudioInside,g_windowProbeAudioWindows
 echo PASS native KeyMap: 11 guarded released/held/multiple-key/alias snapshots; events not consumed\n
 echo PASS WHDLoad input return: lost Return release cleared; next press accepted; resload registers preserved\n
-echo PASS native queued keys: historical Escape events preserve the released KeyMap\n
+echo PASS native queued keys: historical events preserve KeyMap; FlushEvents masks, stop priority, ring wrap and held levels\n
 echo PASS native key release: 256 patterns match individual releases; unmapped bits and extent preserved\n
 echo PASS window-read: bytes=1048576 chunks=16 checksum=59bc1dc5\n
 detach

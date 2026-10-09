@@ -101,7 +101,9 @@ rows and masks preserve original parity, signed bounds, clipping and aliasing. S
 VBI samples keyboard/mouse transitions and drives the hardware pointer. Logical Mac
 hide/show/obscure state is separate from sprite visibility. Original cursor inversion is
 retained. Events and Command-key items use measured contracts; Right-Amiga maps Command.
-The menu bar and screen-size chooser are suppressed.
+The menu bar and screen-size chooser are suppressed. The verified Escape-menu
+handback waits for physical Escape release so one held press cannot immediately
+reopen the menu; event flushing leaves live KeyMap state intact.
 
 Reached Save/Load, inventory and reading use the engine interfaces. Additional Mac
 dialogs require a measured in-game replacement; do not invent success to skip a missing

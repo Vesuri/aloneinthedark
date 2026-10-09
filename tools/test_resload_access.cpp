@@ -3,6 +3,10 @@
 #include <cstring>
 #include <cstdio>
 #include "../src/platform/amiga/FileAccess.h"
+static uint32_t inputReturns=0;
+void aitdInputAfterOSSwitch() { ++inputReturns; }
+extern "C" void aitdResloadReturned();
+extern "C" void aitdResloadSwitchProbe();
 static uint32_t protection=0;
 static int32_t entryType=-3;
 static uint32_t size=100,error=0,success=1,calls=0,lastBytes=0,lastOffset=0,lastFunction=0;
@@ -30,6 +34,13 @@ extern "C" uint32_t aitdResloadCall(void* base,uint32_t function,uint32_t bytes,
 int main()
 {
     using namespace FileAccess;
+    aitdResloadReturned();assert(inputReturns==0); // Cached return.
+    aitdResloadSwitchProbe();aitdResloadReturned();assert(inputReturns==1);
+    aitdResloadReturned();assert(inputReturns==1); // Same epoch preserves input.
+    for(unsigned i=0;i<65536;++i) {
+        aitdResloadSwitchProbe();aitdResloadReturned();
+        assert(inputReturns==i+2); // Includes the 16-bit epoch rollover.
+    }
     uint8_t buffer[128]={};uint32_t actual=99;
     assert(whdload.readAt("probe",0,buffer,20,actual)==unavailable && actual==0);
     assert(whdload.save("probe",buffer,20)==unavailable);

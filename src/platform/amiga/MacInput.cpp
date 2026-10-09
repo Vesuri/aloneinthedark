@@ -117,6 +117,31 @@ bool aitdInputPopKey(uint8_t& rawKey, bool& down, uint16_t& modifiers)
     return true;
 }
 
+uint16_t aitdInputFlushKeys(uint16_t whichMask,uint16_t stopMask)
+{
+    // Compact only queued edges; physical levels and KeyMap belong to the ISR.
+    // Stop before the first matching stop event and retain it and all later
+    // edges, including ones that also match whichMask.
+    Disable();
+    uint8_t read=s_tail,write=s_tail;
+    uint16_t stopped=0;
+    while(read!=s_head) {
+        const uint8_t raw=s_events[read].rawAndUp;
+        const uint16_t modifiers=s_events[read].modifiers;
+        const uint16_t what=(raw&0x80) ? 4 : 3;
+        const uint16_t mask=1u<<what;
+        if(!stopped && (stopMask&mask))stopped=what;
+        if(stopped || !(whichMask&mask)) {
+            s_events[write].rawAndUp=raw;s_events[write].modifiers=modifiers;
+            write=uint8_t((write+1)&31);
+        }
+        read=uint8_t((read+1)&31);
+    }
+    s_head=write;
+    Enable();
+    return stopped;
+}
+
 bool aitdInputKeyDown(uint8_t rawKey)
 {
     if (rawKey >= 128) return false;

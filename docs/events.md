@@ -3,6 +3,26 @@
 Startup and gameplay input use the measured keyboard, mouse and event contracts below.
 Reached dialog behavior is covered in [game interfaces](game-interfaces.md).
 
+## Queue flushing and menu handback
+
+`FlushEvents` implements the low-level queue contract from Apple's
+[Inside Macintosh: Macintosh Toolbox Essentials, Event Manager](https://dev.os9.ca/techpubs/mac/Toolbox/Toolbox-56.html).
+D0's low word selects event types to discard; its high word stops removal before
+the first matching event. The result is zero or that stop event's code in D0.W.
+Queued keyboard edges and pending mouse transitions are separate from physical
+KeyMap state. Flushing never releases a held key or consumes activate/update or
+high-level events. The native window fixture checks mask/stop precedence,
+preserved order through ring wrap and truthful held/released levels.
+
+The original Escape menu returns through (Dan1, $163E) to the input-mode
+restoration routine at $61F8, whose reset calls FlushEvents at $629A. On a fast
+CPU it can return to gameplay GetKeys at (Dan1, $583A) with Escape still held;
+the next scene then opens the menu again. The port waits for physical Escape
+release at that verified handback, before flushing the queued edges. Two caller
+frames and original instruction bytes guard the boundary. No game instructions,
+KeyMap bits or actor state are rewritten; keyboard, VBI and music interrupts
+continue during the wait. This is separate from FlushEvents semantics.
+
 ## Natural first-floor combat
 
 Bedroom enemy 35 and room 5 enemy 62 pass paired original Mac and baseline

@@ -7157,6 +7157,51 @@ static bool nextEvent(uint16_t mask, uint8_t* event)
     return transition;
 }
 
+static void waitMenuEscapeRelease(uint32_t pc,const uint32_t* regs)
+{
+    if(!s_segments[12].begin)return;
+    const uint32_t dan1=(uint32_t)s_segments[12].begin;
+    if(pc!=dan1+0x629a)return;
+    // The original menu restores its input mode through Dan1+$61F8. At high
+    // CPU speed its caller can reach gameplay GetKeys while the dismissing
+    // Escape is still held, immediately opening the same menu again.
+    const uint32_t stack=(uint32_t)g_macStackBase;
+    uint32_t frame=regs[14];
+    const uint16_t callers[]={0x6200,0x1642};
+    for(uint16_t i=0;i<2;++i) {
+        if(!stack || (frame&1) || frame<stack || frame>stack+65528) {
+            loaderStop("MENU RETURN INPUT STACK",12);showLoaderStop();return;
+        }
+        if(read32((uint8_t*)frame+4)!=dan1+callers[i])return;
+        const uint32_t parent=read32((uint8_t*)frame);
+        if(!i && parent<=frame) {
+            loaderStop("MENU RETURN INPUT CHAIN",12);showLoaderStop();return;
+        }
+        frame=parent;
+    }
+    if(read32((uint8_t*)pc-6)!=0x48780018UL || read16((uint8_t*)pc-2)!=0x201f
+       || read32(s_segments[12].begin+0x61fc)!=0x4eba006eUL
+       || read32(s_segments[12].begin+0x163e)!=0x4eba4bb8UL || regs[0]!=0x18) {
+        loaderStop("MENU RETURN INPUT BYTES",12);showLoaderStop();return;
+    }
+    // Pace the handback, not the KeyMap: physical state remains truthful,
+    // and keyboard/VBI/CIA music interrupts keep running until release.
+    while(aitdInputKeyDown(0x45)) {__asm__ volatile("nop" ::: "memory");}
+}
+
+static uint16_t flushEvents(uint16_t whichMask,uint16_t stopMask)
+{
+    // Like nextEvent, the pending mouse edge precedes queued keyboard edges.
+    // Activation/update/high-level events are not in the OS low-level queue.
+    const bool down=pollMacMouse();
+    if(down!=s_mouseButtonDown) {
+        const uint16_t what=down ? 1 : 2,mask=1u<<what;
+        if(stopMask&mask)return what;
+        if(whichMask&mask)s_mouseButtonDown=down;
+    }
+    return aitdInputFlushKeys(whichMask,stopMask);
+}
+
 #ifdef AITD_WINDOW_PROBE
 extern "C" bool aitdMacKeyEventProbe()
 {
@@ -7170,6 +7215,26 @@ extern "C" bool aitdMacKeyEventProbe()
     ok=(keys[6]&0x20)==0 && ok;
     ok=nextEvent(0x18,event) && read16(event)==4 && ok;
     ok=(keys[6]&0x20)==0 && ok;
+    // Remove the first down edge, stop at its release, and preserve the later
+    // press even though it also matches whichMask. Exercise ring wrap too.
+    for(uint16_t i=0;i<40;++i) {
+        aitdInputInjectProbeKey(0x45,true);
+        aitdInputInjectProbeKey(0x45,false);
+        aitdInputInjectProbeKey(0x45,true);
+        ok=flushEvents(0x18,0x10)==4 && ok;
+        ok=nextEvent(0x18,event) && read16(event)==4 && ok;
+        ok=nextEvent(0x18,event) && read16(event)==3 && ok;
+        ok=!nextEvent(0x18,event) && (keys[6]&0x20)!=0 && ok;
+        aitdInputInjectProbeKey(0x45,false);
+        ok=flushEvents(0xffff,0)==0 && !nextEvent(0x18,event) && ok;
+        ok=(keys[6]&0x20)==0 && ok;
+    }
+    // Flushing a queued press must not manufacture a physical key release.
+    aitdInputInjectProbeKey(0x45,true);
+    ok=flushEvents(0xffff,0)==0 && (keys[6]&0x20)!=0 && ok;
+    ok=!nextEvent(0x18,event) && ok;
+    aitdInputInjectProbeKey(0x45,false);
+    flushEvents(0xffff,0);
     return ok;
 }
 #endif
@@ -8898,9 +8963,9 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         return 5;                             // handled + four parameter bytes consumed
     }
     if (trap == 0xa032) {                    // FlushEvents(whichMask, stopMask) in D0
-        // No Macintosh events have been enqueued before the main loop.  The
-        // combined masks in D0 are still accepted exactly as a register trap;
-        // live mouse/key state is not an event-queue entry and is untouched.
+        waitMenuEscapeRelease(pc,regs);
+        const uint16_t result=flushEvents(uint16_t(regs[0]),uint16_t(regs[0]>>16));
+        regs[0]=(regs[0]&0xffff0000UL)|result;
         if (g_stageCDepth < 79) g_stageCDepth = 79;
         return 1;
     }

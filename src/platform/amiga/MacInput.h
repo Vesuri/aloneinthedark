@@ -5,6 +5,7 @@ bool aitdInputInitialize();
 void aitdInputShutdown();
 void aitdInputAfterOSSwitch();
 bool aitdInputPopKey(uint8_t& rawKey, bool& down, uint16_t& modifiers);
+uint16_t aitdInputFlushKeys(uint16_t whichMask,uint16_t stopMask);
 bool aitdInputKeyDown(uint8_t rawKey);
 uint16_t aitdInputModifiers();
 #ifdef AITD_INTRO_SKIP
