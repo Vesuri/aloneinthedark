@@ -57,7 +57,7 @@ launch_args=()
 case "${DIAG_LAUNCH:-shell}" in
   shell)
     [[ "${DIAG_STACK:-4096}" =~ ^[1-9][0-9]*$ ]] || { echo 'DIAG / INVALID STACK SIZE' >&2; exit 2; }
-    printf 'Stack %s\ncd dh1:\nAlone\n' "${DIAG_STACK:-4096}" > "$DH0/s/startup-sequence"
+    printf 'Stack %s\ncd dh1:\nAloneInTheDark\n' "${DIAG_STACK:-4096}" > "$DH0/s/startup-sequence"
     ;;
   workbench)
     WORKBENCH_ADF="${WORKBENCH_ADF:-$HOME/.local/share/amiga/Workbenchv2.04rev37.67Workbench.adf}"
@@ -72,7 +72,7 @@ case "${DIAG_LAUNCH:-shell}" in
     ;;
   *) echo 'DIAG / UNKNOWN DIAG_LAUNCH' >&2; exit 1 ;;
 esac
-cp -f out/Alone.exe "$DH1/Alone"
+cp -f out/AloneInTheDark.exe "$DH1/AloneInTheDark"
 stage_aitd_original_data "$DH1"
 case "${GDBSCRIPT:-runtime_status.gdb}" in
   fresh_viewport.gdb|menu_lifecycle.gdb|pixbase.gdb|apple_events.gdb|font_metrics.gdb|choice_services.gdb|resource_read.gdb|font_lookup.gdb|driver_startup.gdb|menu_records.gdb|device_startup.gdb|setdepth.gdb|hidden_move.gdb|sane.gdb|main_device.gdb|hidden_dialog.gdb|getgworld.gdb|identity.gdb|original_startup.gdb|file_catalog.gdb)
@@ -95,7 +95,7 @@ fsuae_claim_port || exit 1
   --keyboard_key_up=action_key_cursor_up --keyboard_key_down=action_key_cursor_down \
   --keyboard_key_left=action_key_cursor_left --keyboard_key_right=action_key_cursor_right \
   --automatic_input_grab=0 --fullscreen=0 --window_width=720 --window_height=568 \
-  --remote_debugger=20 --remote_debugger_port="$DEBUG_PORT" --remote_debugger_trigger=Alone \
+  --remote_debugger=20 --remote_debugger_port="$DEBUG_PORT" --remote_debugger_trigger=AloneInTheDark \
   --state_dir="$RUN/state" > "$RUN/fsuae-dbg.log" 2>&1 &
 FSUAE_PID=$!
 fsuae_track "$FSUAE_PID"
@@ -126,7 +126,7 @@ continue
 EOF
 
 env HOME="$GDBHOME" XDG_CACHE_HOME="$GDBHOME" \
-  "$GDB" --batch -q -l 10 -x "$RUN/connect.gdb" -x "${GDBSCRIPT:-runtime_status.gdb}" out/Alone.elf \
+  "$GDB" --batch -q -l 10 -x "$RUN/connect.gdb" -x "${GDBSCRIPT:-runtime_status.gdb}" out/AloneInTheDark.elf \
   > "$RUN/gdb-out.log" 2>&1 &
 GDB_PID=$!
 echo "gdb pid=$GDB_PID; running for ${DELAY}s..."

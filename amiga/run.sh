@@ -4,7 +4,7 @@
 # Use KS 3.1 (auto-boots directory HDs). Right-Amiga+Q quits normally.
 # Override ROM via $1 or $KICKSTART.
 #
-# Run a DIFFERENT binary than out/Alone.exe with $AITD_EXE — handy for A/B-ing two builds by
+# Run a DIFFERENT binary than out/AloneInTheDark.exe with $AITD_EXE — handy for A/B-ing two builds by
 # eye or ear without rebuilding between each look, e.g.
 #   AITD_EXE=Alone-a.exe ./run.sh      vs      AITD_EXE=Alone-b.exe ./run.sh
 set -euo pipefail
@@ -16,13 +16,13 @@ cd "$(dirname "$0")"
 FSUAE="${FSUAE:-fs-uae}"
 ROM="${1:-${KICKSTART:-$HOME/.local/share/amiga/Kickstarts/kick40063.A600}}"
 [ -f "$ROM" ] || { echo "Kickstart ROM not found: $ROM  (pass as \$1 or set \$KICKSTART)"; exit 1; }
-EXE="${AITD_EXE:-out/Alone.exe}"
+EXE="${AITD_EXE:-out/AloneInTheDark.exe}"
 [ -f "$EXE" ] || { echo "not found: $EXE  (build first: make, or set \$AITD_EXE)"; exit 1; }
 
 RUN=.run; DH0="$RUN/dh0"; DH1="$RUN/dh1"
 mkdir -p "$DH0/s" "$DH1" "$RUN/state" "$RUN/logs"
-printf 'cd dh1:\nAlone\n' > "$DH0/s/startup-sequence"
-cp -f "$EXE" "$DH1/Alone"
+printf 'cd dh1:\nAloneInTheDark\n' > "$DH0/s/startup-sequence"
+cp -f "$EXE" "$DH1/AloneInTheDark"
 stage_aitd_original_data "$DH1"
 echo "running $EXE"
 

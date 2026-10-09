@@ -38,7 +38,7 @@ slv_info dc.b "Amiga port by Vesuri",10
         dc.b "F10 quits",0
 slv_config dc.b 0
         dc.b "$VER: AloneInTheDark.slave 0.90 (09.10.2026)",0
-_program dc.b "Alone",0
+_program dc.b "AloneInTheDark",0
 _args dc.b 10
         EVEN
 

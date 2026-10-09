@@ -64,7 +64,7 @@ make installer slave
 make release
 ```
 
-Outputs are `amiga/out/Alone.exe`, `build/install-data/AitdInstallData.exe`,
+Outputs are `amiga/out/AloneInTheDark.exe`, `build/install-data/AitdInstallData.exe`,
 `build/whdload/AloneInTheDark.slave` and `dist/AloneInTheDark-0.90.lha`. Production
 builds need no original game input. Always clean when changing build flags or widely
 included headers: make does not track those changes. Every link checks for unwanted
@@ -83,8 +83,8 @@ The first writes the application resource fork and installed data into
 extraction contract](install-original-data.md). The native staging helper accepts
 `AITD_APP_RSRC` and `AITD_DATA_DIR` (paths relative to `amiga/` when used by the
 launchers). Root extras and Finder companions must be beside the application resource
-fork. It stages game inputs under the executable's `data/` directory and the port-owned
-`overlay.rsrc` beside the executable. Saved games and preferences use separate `Saved
+fork. It stages game inputs under the executable's `data/` directory. The port-owned overlay
+is embedded in the executable. Saved games and preferences use separate `Saved
 Games/` and `prefs/` drawers.
 
 ## Running and debugging

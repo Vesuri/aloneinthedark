@@ -59,8 +59,7 @@ def main():
     root = Path(__file__).resolve().parent.parent
     version = (root / "VERSION").read_text().strip()
     files = {
-        "overlay.rsrc": (root/"resources/overlay.rsrc").read_bytes(),
-        "Alone": args.executable.read_bytes(),
+        "AloneInTheDark": args.executable.read_bytes(),
         "AloneInTheDark.slave": (root / "build/whdload/AloneInTheDark.slave").read_bytes(),
         "AloneInTheDark.inf": installer_icon(game=True),
         "AitdInstallData": (root / "build/install-data/AitdInstallData.exe").read_bytes(),

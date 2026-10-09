@@ -9,6 +9,9 @@
  * ⚠ INCLUDE ORDER IS LOAD-BEARING: every system header FIRST, AmigaHardware.h LAST
  * (its bare register macros collide with `struct Custom`'s members).
  */
+extern "C" {
+#include <string.h>
+}
 #include <proto/exec.h>
 #include <proto/graphics.h>
 #include <proto/dos.h>
@@ -53,10 +56,12 @@ volatile uint32_t g_resourceRuntimeReads=0,g_resourceRuntimeBytes=0,g_resourceSo
 volatile uint32_t g_overlaySourceReads=0,g_overlaySourceBytes=0,g_overlaySourceMax=0;
 volatile uint32_t g_overlayRuntimeReads=0,g_overlayRuntimeBytes=0,g_overlaySourceOpen=0,g_overlaySourceCloseErrors=0;
 extern volatile uint16_t g_macServiceActive;
+extern const uint8_t g_embeddedOverlay[],g_embeddedOverlayEnd[];
 }
 struct ResourceFileSource {
     const char* path;
     BPTR handle;
+    const uint8_t* memory;
     uint32_t size;
     bool runtime,overlay;
 };
@@ -65,21 +70,26 @@ static int32_t readResourceDOS(void* opaque) {
     ResourceRead& request=*(ResourceRead*)opaque;
     if(Seek(request.files->handle,request.offset,OFFSET_BEGINNING)<0)return -36;
     LONG got=Read(request.files->handle,request.buffer,request.bytes);
-    if(request.files->overlay) {
-        ++g_overlaySourceReads;g_overlaySourceBytes+=got>0 ? got : 0;
-        if(request.bytes>g_overlaySourceMax)g_overlaySourceMax=request.bytes;
-        if(request.files->runtime) { ++g_overlayRuntimeReads;g_overlayRuntimeBytes+=got>0 ? got : 0; }
-    } else {
-        ++g_resourceSourceReads;g_resourceSourceBytes+=got>0 ? got : 0;
-        if(request.bytes>g_resourceSourceMax)g_resourceSourceMax=request.bytes;
-        if(request.files->runtime) { ++g_resourceRuntimeReads;g_resourceRuntimeBytes+=got>0 ? got : 0; }
-    }
+    ++g_resourceSourceReads;g_resourceSourceBytes+=got>0 ? got : 0;
+    if(request.bytes>g_resourceSourceMax)g_resourceSourceMax=request.bytes;
+    if(request.files->runtime) { ++g_resourceRuntimeReads;g_resourceRuntimeBytes+=got>0 ? got : 0; }
     if(got<0)return -36;
     request.actual=got;return 0;
 }
 static int32_t readResourceSource(void* opaque,uint32_t offset,uint8_t* buffer,uint32_t bytes,uint32_t& actual) {
     ResourceFileSource& files=*(ResourceFileSource*)opaque;actual=0;
-    if(!files.handle || bytes>65536 || offset>files.size || bytes>files.size-offset)return -50;
+    if(bytes>65536 || offset>files.size || bytes>files.size-offset)return -50;
+    if(files.memory) {
+        // Port-owned resources are part of the executable. Keep the bounded
+        // resource-source contract, without opening a DOS window or resload file.
+        if(bytes)memcpy(buffer,files.memory+offset,bytes);
+        actual=bytes;
+        ++g_overlaySourceReads;g_overlaySourceBytes+=bytes;
+        if(bytes>g_overlaySourceMax)g_overlaySourceMax=bytes;
+        if(files.runtime) { ++g_overlayRuntimeReads;g_overlayRuntimeBytes+=bytes; }
+        return 0;
+    }
+    if(!files.handle)return -50;
     if(FileAccess::resloadActive())return FileAccess::whdload.readAt(files.path,offset,buffer,bytes,actual);
     ResourceRead request={&files,offset,buffer,bytes,0};
     // Before takeover DOS is already available. Every later read requires the
@@ -92,7 +102,7 @@ static bool releaseResourceFile(ResourceFileSource& files) {
     bool closed=!files.handle || Close(files.handle)!=0;
     if(files.overlay) { if(!closed)++g_overlaySourceCloseErrors;g_overlaySourceOpen=0; }
     else { if(!closed)++g_resourceSourceCloseErrors;g_resourceSourceOpen=0; }
-    files.handle=0;files.size=0;return closed;
+    files.handle=0;files.memory=0;files.size=0;return closed;
 }
 static bool loadOriginalResourceFiles(ResourceFileSource& files) {
     files.path="PROGDIR:data/Alone In The Dark";
@@ -108,22 +118,16 @@ static bool loadOriginalResourceFiles(ResourceFileSource& files) {
         }
     }
     releaseResourceFile(files);
-    PutStr((CONST_STRPTR)"Alone: cannot read Alone In The Dark in PROGDIR:data/ or PROGDIR:\n");
+    PutStr((CONST_STRPTR)"AloneInTheDark: cannot read Alone In The Dark in PROGDIR:data/ or PROGDIR:\n");
     return false;
 }
 
-static bool loadOverlayResourceFile(ResourceFileSource& files) {
-    files.overlay=true;files.path="PROGDIR:overlay.rsrc";
-    files.handle=Open((CONST_STRPTR)files.path,MODE_OLDFILE);
-    if(files.handle && Seek(files.handle,0,OFFSET_END)>=0) {
-        LONG size=Seek(files.handle,0,OFFSET_CURRENT);
-        if(size>=16 && Seek(files.handle,0,OFFSET_BEGINNING)>=0) {
-            files.size=size;g_overlaySourceOpen=1;return true;
-        }
-    }
-    releaseResourceFile(files);
-    PutStr((CONST_STRPTR)"Alone: cannot read port overlay PROGDIR:overlay.rsrc\n");
-    return false;
+static void initializeEmbeddedOverlay(ResourceFileSource& files) {
+    files.overlay=true;
+    files.memory=g_embeddedOverlay;
+    files.size=(uint32_t)(g_embeddedOverlayEnd-g_embeddedOverlay);
+    // This tracks the logical source lifetime, not an open OS file handle.
+    g_overlaySourceOpen=1;
 }
 
 // ---------------------------------------------------------------------------
@@ -301,7 +305,8 @@ bool PlatformAmiga::run()
     static AitdScreen screen;      // file-scope lifetime, off the stack — see src/main.cpp
     static MacLoader loader;
     ResourceFileSource resourceFiles = {},overlayFile = {};
-    if (!loadOriginalResourceFiles(resourceFiles) || !loadOverlayResourceFile(overlayFile)) {
+    initializeEmbeddedOverlay(overlayFile);
+    if (!loadOriginalResourceFiles(resourceFiles)) {
         releaseResourceFile(resourceFiles);
         releaseResourceFile(overlayFile);
         CloseLibrary((struct Library*)GfxBase);
@@ -314,7 +319,7 @@ bool PlatformAmiga::run()
     ResourceForks::Source source={&resourceFiles,resourceFiles.size,readResourceSource};
     ResourceForks::Source overlay={&overlayFile,overlayFile.size,readResourceSource};
     if (catalogError || !loader.prepareResourceForks(source,overlay)) {
-        PutStr((CONST_STRPTR)"Alone: ");
+        PutStr((CONST_STRPTR)"AloneInTheDark: ");
         PutStr((CONST_STRPTR)(catalogError ? catalogError : loader.preparationError()));
         PutStr((CONST_STRPTR)"\n");
         releaseResourceFile(resourceFiles);
@@ -484,12 +489,12 @@ bool PlatformAmiga::run()
     // established the rule): disk I/O during the takeover would resume
     // unrelated tasks against partially restored state.
     bool filesClosed=loader.releaseResourceForks();
-    if(!filesClosed)PutStr((CONST_STRPTR)"Alone: FILE FLUSH/CLOSE ON EXIT FAILED\n");
+    if(!filesClosed)PutStr((CONST_STRPTR)"AloneInTheDark: FILE FLUSH/CLOSE ON EXIT FAILED\n");
     if(!releaseResourceFile(resourceFiles)) {
-        PutStr((CONST_STRPTR)"Alone: RESOURCE FORK CLOSE FAILED\n");filesClosed=false;
+        PutStr((CONST_STRPTR)"AloneInTheDark: RESOURCE FORK CLOSE FAILED\n");filesClosed=false;
     }
     if(!releaseResourceFile(overlayFile)) {
-        PutStr((CONST_STRPTR)"Alone: OVERLAY FORK CLOSE FAILED\n");filesClosed=false;
+        PutStr((CONST_STRPTR)"AloneInTheDark: OVERLAY FORK CLOSE FAILED\n");filesClosed=false;
     }
 #ifdef AITD_FILE_PROBE
     aitdFileCleanupFinished();

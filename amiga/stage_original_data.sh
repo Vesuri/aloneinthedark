@@ -39,7 +39,8 @@ stage_aitd_original_data()
   local assets="$destination/data"
   mkdir -p "$assets"
   python3 ../tools/install_layout.py "$assets" "$AITD_DATA_DIR/ListBod2.PAK" || return 1
-  cp -f ../resources/overlay.rsrc "$destination/overlay.rsrc" || return 1
+  # Remove the obsolete external overlay from reused development volumes.
+  rm -f "$destination/overlay.rsrc" || return 1
   cp -f "$AITD_APP_RSRC" "$assets/Alone In The Dark"
   cp -f "$AITD_APP_RSRC.finfo" "$assets/Alone In The Dark.finfo"
   for name in 'Quick Reference' 'Register Triple A Pack'; do

@@ -65,7 +65,7 @@ def main():
             (dest/'keep-marker').write_text('old installation')
             (dest/'Saved Games').mkdir()
             (dest/'Saved Games/M7.saved').write_bytes(b'saved game fixture')
-            for name in ('Alone', 'AloneInTheDark.slave', 'ReadMe'):
+            for name in ('Alone', 'overlay.rsrc', 'AloneInTheDark', 'AloneInTheDark.slave', 'ReadMe'):
                 (dest/name).write_bytes(b'old release')
             if reinstall:
                 (dest/'data/Alone In The Dark').write_bytes(b'damaged original')
@@ -73,7 +73,7 @@ def main():
         (base/'out/other-drawer').mkdir()
         (base/'out/other-drawer/keep').write_text('unrelated')
         for source,name in ((installer,"Installer"),(build/"AitdInstallData.exe","AitdInstallData"),
-                (build/"test-icon.exe","IconTest"),(ROOT/"amiga/out/Alone.exe","Alone"),
+                (build/"test-icon.exe","IconTest"),(ROOT/"amiga/out/AloneInTheDark.exe","AloneInTheDark"),
 
                 (WHDLOAD,"WHDLoad"),
                 (ROOT/"release/ReadMe","ReadMe"),
@@ -81,7 +81,6 @@ def main():
             shutil.copyfile(source,boot/name)
         # Copy semantics fixture only; WHDLoad execution has a separate suite.
         (boot/"AloneInTheDark.slave").write_bytes(b"Installer slave copy fixture")
-        shutil.copyfile(ROOT/"resources/overlay.rsrc",boot/"overlay.rsrc")
         (boot/"devs/Kickstarts").mkdir(parents=True)
         for source,name in ((Path(KICKSTART),Path(KICKSTART).name),
                 (Path(os.environ.get("KICKSTART_RTB",KICKSTART+".RTB")),Path(KICKSTART).name+".RTB")):
@@ -152,8 +151,9 @@ def main():
                     space=(base/"space.txt").read_text()
                     assert 'device=RAM disk=0' in space,space
                     assert int(space.split('usable=')[1].split()[0])>=25165824,space
-                assert (dest/"Alone").read_bytes()==(boot/"Alone").read_bytes(), report
-                assert (dest/"overlay.rsrc").read_bytes()==(ROOT/"resources/overlay.rsrc").read_bytes()
+                assert (dest/"AloneInTheDark").read_bytes()==(boot/"AloneInTheDark").read_bytes(), report
+                assert not (dest/"overlay.rsrc").exists(), "Obsolete overlay was not removed"
+                assert not (dest/"Alone").exists(), "Obsolete executable was not removed"
                 assert (dest/"AloneInTheDark.slave").read_bytes()==(boot/"AloneInTheDark.slave").read_bytes(), report
                 assert (dest/"AloneInTheDark.info").exists(),report
                 assert (base/"installed-icon-ok").exists(), "Installed WHDLoad icon failed native validation"

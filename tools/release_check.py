@@ -25,7 +25,7 @@ def main():
         print('PASS: host test suite',flush=True)
         run('make','installer-test')
     run('make','installer','slave')
-    executable=ROOT/'amiga/out/Alone.exe'
+    executable=ROOT/'amiga/out/AloneInTheDark.exe'
     first=None
     for iteration in range(1 if args.package_only else 2):
         with (logs/f'build-{iteration}.log').open('w') as out:

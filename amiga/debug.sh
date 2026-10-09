@@ -13,12 +13,12 @@ FSUAE="${FSUAE:-fs-uae}"
 GDB="${GDB:-m68k-amiga-elf-gdb}"
 ROM="${1:-${KICKSTART:-$HOME/.local/share/amiga/Kickstarts/kick40063.A600}}"
 [ -f "$ROM" ] || { echo "Kickstart ROM not found: $ROM  (pass as \$1 or set \$KICKSTART)"; exit 1; }
-[ -f out/Alone.elf ] || { echo "build first: make"; exit 1; }
+[ -f out/AloneInTheDark.elf ] || { echo "build first: make"; exit 1; }
 
 RUN=.run; DH0="$RUN/dh0"; DH1="$RUN/dh1"; GDBHOME="$RUN/gdbhome"
 mkdir -p "$DH0/s" "$DH1" "$RUN/state" "$RUN/logs" "$GDBHOME"
-printf 'cd dh1:\nAlone\n' > "$DH0/s/startup-sequence"
-cp -f out/Alone.exe "$DH1/Alone"
+printf 'cd dh1:\nAloneInTheDark\n' > "$DH0/s/startup-sequence"
+cp -f out/AloneInTheDark.exe "$DH1/AloneInTheDark"
 stage_aitd_original_data "$DH1"
 
 fsuae_claim_port || exit 1
@@ -33,7 +33,7 @@ fsuae_claim_port || exit 1
   --keyboard_key_up=action_key_cursor_up --keyboard_key_down=action_key_cursor_down \
   --keyboard_key_left=action_key_cursor_left --keyboard_key_right=action_key_cursor_right \
   --automatic_input_grab=0 --fullscreen=0 --window_width=720 --window_height=568 \
-  --remote_debugger=20 --remote_debugger_port="$DEBUG_PORT" --remote_debugger_trigger=Alone \
+  --remote_debugger=20 --remote_debugger_port="$DEBUG_PORT" --remote_debugger_trigger=AloneInTheDark \
   --state_dir="$RUN/state" > "$RUN/fsuae-dbg.log" 2>&1 &
 FSUAE_PID=$!
 fsuae_track "$FSUAE_PID"
@@ -55,7 +55,7 @@ EOF
 
 if [ "${2:-}" ] && [ -f "${2:-}" ]; then
   exec env HOME="$GDBHOME" XDG_CACHE_HOME="$GDBHOME" \
-    "$GDB" -q -l 10 -x "$PREAMBLE" -x "$2" out/Alone.elf
+    "$GDB" -q -l 10 -x "$PREAMBLE" -x "$2" out/AloneInTheDark.elf
 fi
 exec env HOME="$GDBHOME" XDG_CACHE_HOME="$GDBHOME" \
-  "$GDB" -q -l 10 -x "$PREAMBLE" out/Alone.elf
+  "$GDB" -q -l 10 -x "$PREAMBLE" out/AloneInTheDark.elf

@@ -76,6 +76,14 @@ there. Ownership changes defer an IRQ update until the outer guard releases it. 
 have priority over music on four Paula voices. See [sound-driver.md](sound-driver.md)
 and [music coverage](music-resource-coverage.md).
 
+## Embedded port resources
+
+The generated `resources/overlay.rsrc` is linked verbatim into `AloneInTheDark`.
+Its bounded memory-source callback preserves resource-map lookup and lazy handle
+loading without DOS or resload reads. The original game resources still stream
+from disk. Overlay counters describe memory-source reads and its logical lifetime,
+not OS file handles or system windows. The installer needs no separate overlay.
+
 ## Files and lifecycle
 
 Native reads/writes use bounded user-mode system windows. WHDLoad reads use

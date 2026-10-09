@@ -1,7 +1,7 @@
 # Alone in the Dark — Amiga cross-build (m68k-amiga-elf-gcc)
 #
 # Usage (from amiga/ with the toolchain on PATH via `. env.sh`):
-#   make                 build out/Alone.exe
+#   make                 build out/AloneInTheDark.exe
 #   make clean           remove obj/ and out/
 #   make PROBES=1        + the timing probes (diag_run.sh needs this)
 #   make FPSCOUNT=1      the HONEST framerate build: one counter, no probe instrumentation
@@ -137,7 +137,7 @@ ifeq ($(SAVELOAD),1)
 PROBES=1
 endif
 
-OUT      = out/Alone
+OUT      = out/AloneInTheDark
 CC       = m68k-amiga-elf-gcc
 AS       = m68k-amiga-elf-as
 VASM     = vasmm68k_mot
@@ -799,6 +799,8 @@ obj/gcc8_c_support.o : $(SUPPORT)/gcc8_c_support.c
 obj/gcc8_a_support.o : $(SUPPORT)/gcc8_a_support.s
 	$(info ASM  $<)
 	@$(AS) $(ASFLAGS) -o $@ "$<"
+
+obj/EmbeddedOverlay.o: $(REPO)/resources/overlay.rsrc
 
 # Port-authored GAS assembly (68000 exception/trampoline code).
 obj/%.o : $(AMIGA_SRC)/%.s

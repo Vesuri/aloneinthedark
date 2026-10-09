@@ -71,8 +71,8 @@ branch.
 
 `test_amiga.py` runs the extraction helper with a real 4 KB stack and checks its
 watermark. `test_whdload.py --mode timed` uses production code, requires the expected
-WHDLoad timeout core, and verifies original/overlay reads and the resload ABI. This is
-an explicit bounded startup test, not normal game exit. Other modes require a normal
+WHDLoad timeout core, and verifies original resource reads, the embedded overlay and
+the resload ABI. This is an explicit bounded startup test, not normal game exit. Other modes require a normal
 return:
 
 | WHDLoad mode | Required executable / meaning |

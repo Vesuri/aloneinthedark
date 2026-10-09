@@ -8,7 +8,7 @@ from pathlib import Path
 from package_release import ORIGINAL_HASHES, PREFIX, crc16
 from installer_icon import installer_icon, readme_icon, drawer_icon
 
-REQUIRED = {"Alone", "AloneInTheDark.slave", "AloneInTheDark.inf", "AitdInstallData", "Install", "Install.info", "ReadMe", "ReadMe.info", "LICENSE.LGPL.txt", "overlay.rsrc"}
+REQUIRED = {"AloneInTheDark", "AloneInTheDark.slave", "AloneInTheDark.inf", "AitdInstallData", "Install", "Install.info", "ReadMe", "ReadMe.info", "LICENSE.LGPL.txt"}
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -45,7 +45,7 @@ def main():
         pos += packed
     assert raw[pos:] == b"\0" and set(payloads) == REQUIRED | {'@drawer'}, "wrong archive contents"
     assert payloads['@drawer'] == drawer_icon(), 'wrong drawer icon'
-    for name in ("Alone", "AitdInstallData", "AloneInTheDark.slave"):
+    for name in ("AloneInTheDark", "AitdInstallData", "AloneInTheDark.slave"):
         assert payloads[name][:4] == b"\0\0\3\xf3", "not an Amiga HUNK executable"
     assert b'WHDLOADS' in payloads['AloneInTheDark.slave'], 'missing WHDLoad slave header'
     for name, kind in (("AloneInTheDark.inf", 4), ("ReadMe.info", 4), ("Install.info", 4), ('@drawer', 2)):
@@ -61,23 +61,23 @@ def main():
     assert b' Requirements:\n -------------' in payloads['ReadMe']
     root = Path(__file__).resolve().parent.parent
     version = (root / 'VERSION').read_text().strip().encode('ascii')
-    for name, tag in (('Alone', 'Alone in the Dark'), ('AloneInTheDark.slave', 'AloneInTheDark.slave'), ('AitdInstallData', 'AitdInstallData')):
+    for name, tag in (('AloneInTheDark', 'Alone in the Dark'), ('AloneInTheDark.slave', 'AloneInTheDark.slave'), ('AitdInstallData', 'AitdInstallData')):
         assert b'$VER: '+tag.encode('ascii')+b' '+version+b' (09.10.2026)' in payloads[name], 'wrong version/date: '+name
-    assert payloads['overlay.rsrc'] == (root/'resources/overlay.rsrc').read_bytes()
+    assert payloads['AloneInTheDark'].count((root/'resources/overlay.rsrc').read_bytes()) == 1, 'missing or duplicate embedded overlay'
     assert payloads['ReadMe'] == (root / 'release/ReadMe').read_bytes()
     assert payloads['LICENSE.LGPL.txt'] == (root / 'tools/install-data/COPYING.LIB').read_bytes()
     assert b'independent AitdInstallData helper' in payloads['ReadMe']
     assert b'LICENSE.LGPL.txt' not in payloads['Install']
     assert b'https://github.com/Vesuri/aloneinthedark' in payloads['ReadMe']
     expected = {
-        'Alone': root/'amiga/out/Alone.exe',
+        'AloneInTheDark': root/'amiga/out/AloneInTheDark.exe',
         'AloneInTheDark.slave': root/'build/whdload/AloneInTheDark.slave',
         'AitdInstallData': root/'build/install-data/AitdInstallData.exe',
         'Install': root/'release/Install',
     }
     for name, source in expected.items():
         assert payloads[name] == source.read_bytes(), 'archive differs from verified build: '+name
-    print("PASS: WHDLoad release, ten files plus drawer icon, valid LHA CRCs, reference icons and separate helper license")
+    print("PASS: WHDLoad release, nine files plus drawer icon, valid LHA CRCs, reference icons and separate helper license")
 
 if __name__ == "__main__":
     main()

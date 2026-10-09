@@ -34,7 +34,7 @@ if __name__ == '__main__':
     p.add_argument('native', type=Path)
     p.add_argument('--reference-status', type=int, required=True)
     p.add_argument('--native-status', type=int, required=True)
-    p.add_argument('--elf', type=Path, default=ROOT/'amiga/out/Alone.elf')
+    p.add_argument('--elf', type=Path, default=ROOT/'amiga/out/AloneInTheDark.elf')
     a = p.parse_args()
     try:
         check(a.reference.read_text(), a.native.read_text(), a.reference_status, a.native_status, a.elf)

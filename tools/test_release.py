@@ -24,7 +24,7 @@ with tempfile.TemporaryDirectory(prefix='aitd-release-reject-') as directory:
         path=work/(name+'.lha');path.write_bytes(data)
         result=subprocess.run([sys.executable,str(root/'tools/check_release.py'),str(path)],capture_output=True)
         assert result.returncode != 0 and b'AssertionError' in result.stderr,(name,result.stderr)
-    exe=work/'Alone';exe.write_bytes(b'fixture')
+    exe=work/'AloneInTheDark';exe.write_bytes(b'fixture')
     receipt={'sha256':hashlib.sha256(exe.read_bytes()).hexdigest(),'defines':' '.join(sorted(PRODUCTION_DEFINES)),'probes':''}
     path=Path(str(exe)+'.build.json');path.write_text(json.dumps(receipt));require_production(exe)
     for extra,probes in ((' -DAITD_INGAME',''),(' -DAITD_INTRO_SKIP',''),('','1')):

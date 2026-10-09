@@ -17,16 +17,16 @@ int main(void) {
     }
     if(!FindTask((CONST_STRPTR)"Workbench")) {CloseLibrary((struct Library*)DOSBase);return 20;}
     BPTR directory=Lock((CONST_STRPTR)"DH1:",ACCESS_READ);
-    BPTR segment=LoadSeg((CONST_STRPTR)"DH1:Alone");
+    BPTR segment=LoadSeg((CONST_STRPTR)"DH1:AloneInTheDark");
     struct MsgPort* reply=CreateMsgPort();
     if(!directory || !segment || !reply)return 20;
     struct TagItem tags[]={
-        {NP_Seglist,segment},{NP_FreeSeglist,FALSE},{NP_Name,(ULONG)"Alone"},
+        {NP_Seglist,segment},{NP_FreeSeglist,FALSE},{NP_Name,(ULONG)"AloneInTheDark"},
         {NP_Cli,FALSE},{NP_StackSize,4096},{NP_HomeDir,DupLock(directory)},
         {NP_CurrentDir,DupLock(directory)},{NP_WindowPtr,(ULONG)-1},{TAG_DONE,0}};
     struct Process* child=CreateNewProc(tags);
     if(!child)return 20;
-    struct WBArg arg={directory,(STRPTR)"Alone"};
+    struct WBArg arg={directory,(STRPTR)"AloneInTheDark"};
     struct WBStartup startup={0};
     startup.sm_Message.mn_Node.ln_Type=NT_MESSAGE;
     startup.sm_Message.mn_Length=sizeof(startup);

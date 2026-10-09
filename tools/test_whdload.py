@@ -28,7 +28,7 @@ def main():
     p.add_argument('--rom', type=Path, default=Path(os.environ.get('KICKSTART', SHARE/'Kickstarts/kick40063.A600')))
     p.add_argument('--rtb', type=Path, default=os.environ.get('KICKSTART_RTB'))
     p.add_argument('--host-rom', type=Path, default=Path(os.environ.get('WHDLOAD_HOST_KICKSTART', SHARE/'Kickstarts/kick40068.A1200')))
-    p.add_argument('--exe', type=Path, default=ROOT/'amiga/out/Alone.exe')
+    p.add_argument('--exe', type=Path, default=ROOT/'amiga/out/AloneInTheDark.exe')
     p.add_argument('--seconds', type=int, default=90, help='host safety ceiling')
     p.add_argument('--ticks', type=int, default=1500, help='WHDLoad timeout in PAL fields')
     p.add_argument('--cpu', default='68030')
@@ -50,7 +50,7 @@ def main():
         shutil.copyfile(args.rom, boot/'devs/Kickstarts'/args.rom.name)
         shutil.copyfile(args.rtb, boot/'devs/Kickstarts'/(args.rom.name+'.RTB'))
     if args.mode in ('load', 'quit', 'timed', 'file-read', 'save-load', 'load-save'):
-        shutil.copyfile(args.exe, game/'Alone')
+        shutil.copyfile(args.exe, game/'AloneInTheDark')
     if args.mode in ('quit', 'timed', 'file-read', 'save-load', 'load-save'):
         (game/'Saved Games').mkdir();(game/'prefs').mkdir()
         subprocess.run(['bash', '-c', '. ./stage_original_data.sh; stage_aitd_original_data "$1"',
@@ -93,15 +93,17 @@ def main():
             if args.mode == 'timed':
                 assert 'DEBUG caused.' in report, report + output
                 files = (game/'.whdl_log').read_text(encoding='latin1')
-                for name in ('data/Alone In The Dark', 'overlay.rsrc'):
-                    assert any('[ReadOff]' in line and 'name='+name in line for line in files.splitlines()), files
+                assert any('[ReadOff]' in line and 'name=data/Alone In The Dark' in line
+                           for line in files.splitlines()), files
+                assert 'overlay.rsrc' not in files, 'Embedded overlay unexpectedly read from disk'
+                assert not (game/'overlay.rsrc').exists()
                 memory = (game/'.whdl_expmem').read_bytes()
                 magic = b'AITDWHDR'
                 assert memory.count(magic) == 1, 'Expected one loaded WHDLoad ABI block'
                 offset = memory.index(magic) + len(magic)
                 assert memory[offset:offset+4] == b'\0\1\0\0'
                 assert int.from_bytes(memory[offset+4:offset+8], 'big') != 0
-                print('PASS: timed run loaded original and overlay; resload ABI binding verified')
+                print('PASS: timed run loaded original with embedded overlay; resload ABI binding verified')
             else:
                 assert (boot/'passed').exists() and 'Return OK.' in report, report + output
                 if args.mode == 'smoke':
