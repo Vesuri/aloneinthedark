@@ -3,6 +3,33 @@
 #include "RectBounds.h"
 #include "RegionRows.h"
 namespace FillRect8 {
+// 68020+ permits unaligned longword stores. Replicate the colour once per span;
+// byte stores are only for the short tail, not every pixel of a page strip.
+inline void fillSpan(uint8_t* out,uint32_t count,uint8_t color) {
+    const uint32_t word=uint32_t(color)*0x01010101UL;
+    while(count>=16) {
+#ifdef AITD_PLATFORM_AMIGA
+        __asm__ volatile("move.l %1,(%0)+\n\tmove.l %1,(%0)+\n\t"
+                         "move.l %1,(%0)+\n\tmove.l %1,(%0)+"
+                         : "+a"(out) : "d"(word) : "cc", "memory");
+#else
+        for(unsigned i=0;i<16;++i)*out++=color;
+#endif
+        count-=16;
+    }
+    while(count>=4) {
+#ifdef AITD_PLATFORM_AMIGA
+        __asm__ volatile("move.l %1,(%0)+" : "+a"(out) : "d"(word) : "cc", "memory");
+#else
+        for(unsigned i=0;i<4;++i)*out++=color;
+#endif
+        count-=4;
+    }
+    while(count--)*out++=color;
+#ifndef AITD_PLATFORM_AMIGA
+    (void)word;
+#endif
+}
 // All bounds use the selected port's signed local coordinates. The returned
 // rectangle is the actual write area, for conversion to display coordinates.
 inline bool solid(uint8_t* pixels,uint32_t capacity,uint16_t stride,
@@ -29,7 +56,7 @@ inline bool solid(uint8_t* pixels,uint32_t capacity,uint16_t stride,
         for(uint16_t i=0;i<count;i+=2) {
             int32_t start=left,end=right;
             if(mask) {if(start<rows.edges.x[i])start=rows.edges.x[i];if(end>rows.edges.x[i+1])end=rows.edges.x[i+1];}
-            for(int32_t x=start;x<end;++x)row[x-ml]=color;
+            if(start<end)fillSpan(row+start-ml,uint32_t(end-start),color);
         }
     }
     return true;

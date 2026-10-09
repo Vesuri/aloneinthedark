@@ -68,3 +68,36 @@ helper. Keep sprite/VBI and CIA music progress independent of that main-thread l
 Use `M5AUDIT=1` with the matching observers for memory and IRQ accounting; see
 [amiga-arch.md](amiga-arch.md#interrupt-checks). C2P may only convert changed areas
 after a completed frame. Do not reintroduce chunky shadow comparisons.
+
+## Book turns and frame pacing
+
+The book uses 56 authored steps per forward page turn. The original wait at
+(Dan1, $4978) holds each page for 300 Mac ticks (five seconds). On the unlimited
+68040/JIT PAL configuration, the opening's 15 turns run at 50 FPS; the 14 intervening
+holds account for 70 seconds of the 86.5-second interval from the first animated
+publication to the last. Rendering optimizations do not shorten these reading holds.
+
+Book dirty bounds are accumulated from the min/max coordinates of actual clipped
+fills, lines and copies. At frame completion, combine those bounds **before** C2P
+alignment. This avoids overlapping conversions caused by separately aligned page
+strips. No shadow framebuffer or pixel comparison computes the dirty rectangle.
+All 840 opening steps use one converted rectangle, ranging from 6,400 to 38,400 pixels
+(mean 22,057), rather than the full 64,000-pixel viewport. Alignment is 16 pixels at
+the left edge and a width divisible by 32, as required by the Kalms converter.
+
+Solid spans use longword stores. Back-buffer synchronization copies only prior dirty
+spans not fully replaced by the current conversion. With the pointer disabled, these copies
+need no cursor-inversion interrupt guard: VBI cannot alter the buffers until the
+completed frame is queued. The explicit cursor fixture retains its guarded path.
+
+`frame_pacing.gdb` checks the original 106 armadillo loop steps and all 840 book steps:
+one wait and one publication per step, no waits inside drawing batches, and C2P bounds
+exactly matching coordinate bounds plus alignment. The ordinary build contains no
+profiling timers. `FRAMEAUDIT=1` adds a bounded report for WHDLoad/emulators without GDB;
+its timing field is written at the actual VBI buffer swap. Neither diagnostic needs
+shadow comparisons. The separate `C2PVERIFY=1` correctness build decodes every pixel,
+including pixels outside dirty areas; never use its expensive verifier for FPS claims.
+
+The action-menu observer also requires exactly one wait/publication per completed
+preview rotation, rather than one per drawing trap. Gameplay scene batching retains
+its unchanged-frame simulation pacing and complete-frame publication checks.

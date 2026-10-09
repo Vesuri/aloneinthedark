@@ -6822,6 +6822,13 @@ static void finishBookFrame(uint16_t mode,uint32_t owner)
     if(g_macFramesQueued!=s_bookFrameQueued) {
         bookFrameStop("BOOK FRAME PARTIAL PUBLICATION");return;
     }
+    // Page strips nearly touch. Use their explicit min/max draw coordinates
+    // before C2P alignment, avoiding independently expanded overlapping spans.
+    // No pixel comparisons: this is the union of the actual clipped writes.
+    if(s_pixelsDirty) {
+        s_dirtyRects[0]={s_dirtyTop,s_dirtyLeft,s_dirtyBottom,s_dirtyRight};
+        s_dirtyRectCount=1;
+    }
     g_macBookFrameActive=0;s_bookFrameOwner=0;++g_macBookFramesCompleted;
     presentMacRuntime(true);
 }

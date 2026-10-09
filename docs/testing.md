@@ -208,3 +208,31 @@ regression or weaken its gate.
 The remaining return-to-attic and version-specific glitch questions are in [open
 work](open-work.md). Initial stair observations are in [mac-stairs.md](mac-stairs.md).
 Original Macintosh.js is excluded from that work.
+
+## Opening frame boundaries and dirty-area audit
+
+Use a clean ordinary build with `GDBSCRIPT=frame_pacing.gdb` and the bounded
+`amiga/diag_run.sh 600` runner, then validate its full log:
+
+```sh
+python3 tools/check_frame_pacing.py --log amiga/.run/gdb-out.log
+```
+
+For actual display cadence on a fast emulator without GDB, clean-build
+`FRAMEAUDIT=1` and run `tools/test_whdload.py --mode timed --no-warp --ticks 6500
+--seconds 300 --machine-config tmp/test-machine.fs-uae`. Select the intended emulator
+with `FSUAE`; the machine configuration supplies hardware settings only. The report
+contains the first 1,024 publications and each one's actual VBI field, book/scene step,
+dirty and converted bounds, rectangle count and converted area. Check the emitted
+fixture's `game/.whdl_expmem` with:
+
+```sh
+python3 tools/check_frame_pacing.py --core tmp/fixture/game/.whdl_expmem --require-field-rate
+```
+
+`--require-field-rate` is for unlimited-speed acceptance, not fixed-clock machines.
+It requires every within-animation display interval to be one field. Page-reading
+holds are reported separately. Use `amiga/regression.sh intro` for the independent
+full-frame C2P correctness check. For phase costs at one original fold step, clean-build
+`BOOKPROFILE=1` (without `PROFILEFRAME`) and use `GDBSCRIPT=book_profile.gdb`.
+Clean-build again without diagnostics before packaging a release.

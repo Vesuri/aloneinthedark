@@ -3,6 +3,13 @@
 set pagination off
 set confirm off
 set $count=0
+set $paces=0
+break AitdScreen::paceFrame
+commands
+ silent
+ set $paces=$paces+1
+ continue
+end
 set $previous_angle=0
 break AitdScreen::showLoudStop
 commands
@@ -26,6 +33,16 @@ commands
   detach
   quit 1
  end
+ if $count
+  if $paces-$lastPaces!=1 || (unsigned short)(g_macFramesQueued-$lastQueue)!=1
+   echo FAIL ACTION partial publication or extra frame wait\n
+   detach
+   quit 1
+  end
+  printf "ACTION_PACING waits=%u publications=%u\n",$paces-$lastPaces,(unsigned short)(g_macFramesQueued-$lastQueue)
+ end
+ set $lastPaces=$paces
+ set $lastQueue=g_macFramesQueued
  set $previous_angle=*(short*)(s_currentA5-0xce86)
  set $count=$count+1
  if $count==1

@@ -31,6 +31,14 @@ volatile uint16_t g_beamPresentMin = 0xffff;
 volatile uint16_t g_beamPresentMax = 0;
 volatile uint32_t g_beamPresents = 0;
 volatile uint32_t g_beamPresentsLate = 0;
+#ifdef AITD_FRAME_AUDIT
+// Bounded, low-overhead publication trace for emulators without a debugger.
+// Header: magic, row count, video PAL. Rows: VBI publication field, book step, scene step,
+// wait-entry field, dirty bounds, C2P bounds, rectangle count, pixel count / 32.
+volatile uint32_t g_frameAudit[4+1024*7]={0x41495444,0x4652414d,0,0};
+static uint16_t s_frameAuditWaitField;
+extern volatile uint32_t g_macBookFramesCompleted,g_macSceneFramesCompleted;
+#endif
 #ifdef AITD_C2P_VERIFY
 volatile uint32_t g_c2pVerifiedFrames=0,g_c2pPartialFrames=0,g_c2pVerifyFailures=0;
 Planar8::Mismatch g_c2pMismatch={};
@@ -293,6 +301,11 @@ void AitdScreen::vbiUpdate(bool install)
     if(m_invertActive) {xorCursorInversion(invertedPicture);m_invertActive=false;}
     if(present) {
         ++g_macFramesPresented;
+#ifdef AITD_FRAME_AUDIT
+        extern volatile uint16_t g_vbiCount;
+        if(g_macFramesPresented && g_macFramesPresented<=g_frameAudit[2])
+            ((volatile uint16_t*)(g_frameAudit+4+(g_macFramesPresented-1)*7))[0]=g_vbiCount;
+#endif
         __asm__ volatile("" ::: "memory");
         m_framePending=false;
     }
@@ -425,6 +438,9 @@ void AitdScreen::updateMouseSprite()
 void AitdScreen::paceFrame()
 {
     extern volatile uint16_t g_vbiCount;
+#ifdef AITD_FRAME_AUDIT
+    s_frameAuditWaitField=g_vbiCount;
+#endif
     // No OS WaitTOF: the game owns VERTB. Waiting also lets the preceding
     // complete picture publish before its inactive buffer is reused.
     while(g_vbiCount==m_lastFrameField || m_framePending) {
@@ -469,9 +485,11 @@ int16_t AitdScreen::presentMacFrame(const uint8_t* chunky,const uint8_t* colorTa
             for(uint16_t plane=0;plane<kPlanes;++plane) {
                 // A VBI can move the cursor between spans. Copy and undo its
                 // current XOR atomically for one plane span (at most 40 bytes),
-                // preserving a clean inactive bitmap during conversion.
+                // preserving a clean inactive bitmap during conversion. With
+                // the pointer disabled, VBI cannot alter pixels or swap a
+                // buffer until queueFrame: no interrupt guard is necessary.
                 uint32_t* out=(uint32_t*)(m_back+uint32_t(y)*kRowStride+plane*kBytesPerRow+firstByte);
-                Disable();
+                if(m_mouseAllowed)Disable();
                 __asm__ volatile("" ::: "memory");
                 const uint32_t* in=(const uint32_t*)(m_chip+uint32_t(y)*kRowStride+plane*kBytesPerRow+firstByte);
                 for(uint16_t x=0;x<longs;++x)out[x]=in[x];
@@ -479,7 +497,7 @@ int16_t AitdScreen::presentMacFrame(const uint8_t* chunky,const uint8_t* colorTa
                     CursorInvert::row(m_back+uint32_t(y)*kRowStride+plane*kBytesPerRow,
                         r.left,r.right,m_invertLeft,m_invertRows[row]);
                 __asm__ volatile("" ::: "memory");
-                Enable();
+                if(m_mouseAllowed)Enable();
             }
         }
     }
@@ -515,6 +533,34 @@ int16_t AitdScreen::presentMacFrame(const uint8_t* chunky,const uint8_t* colorTa
         }
         m_paletteSeed=seed;m_paletteValid=true;++m_paletteVersion;
     }
+#ifdef AITD_FRAME_AUDIT
+    if(g_frameAudit[2]<1024) {
+        volatile uint16_t* row=(volatile uint16_t*)(g_frameAudit+4+g_frameAudit[2]*7);
+        row[0]=0xffff;row[1]=g_macBookFramesCompleted;row[2]=g_macSceneFramesCompleted;
+        row[3]=s_frameAuditWaitField;
+        Planar8::Rect bounds={200,320,0,0},converted={200,320,0,0};
+        for(uint16_t i=0;i<dirtyRectCount;++i) {
+            const DirtyRect& r=dirtyRects[i];
+            if(r.top-cropTop<bounds.top)bounds.top=r.top-cropTop;
+            if(r.left-cropLeft<bounds.left)bounds.left=r.left-cropLeft;
+            if(r.bottom-cropTop>bounds.bottom)bounds.bottom=r.bottom-cropTop;
+            if(r.right-cropLeft>bounds.right)bounds.right=r.right-cropLeft;
+        }
+        uint32_t area=0;
+        for(uint16_t i=0;i<count;++i) {
+            const Planar8::Rect& r=normalized[i];
+            if(r.top<converted.top)converted.top=r.top;
+            if(r.left<converted.left)converted.left=r.left;
+            if(r.bottom>converted.bottom)converted.bottom=r.bottom;
+            if(r.right>converted.right)converted.right=r.right;
+            area+=uint32_t(r.bottom-r.top)*(r.right-r.left);
+        }
+        row[4]=bounds.top;row[5]=bounds.left;row[6]=bounds.bottom;row[7]=bounds.right;
+        row[8]=converted.top;row[9]=converted.left;row[10]=converted.bottom;row[11]=converted.right;
+        row[12]=count;row[13]=area/32;
+        g_frameAudit[3]=g_videoPAL;++g_frameAudit[2];
+    }
+#endif
     queueFrame(cropLeft,cropTop,mouseAllowed);
     }
     return 1;
