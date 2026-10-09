@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Preference/save isolation must preserve existing files and metadata on failure."""
 from pathlib import Path
-import tempfile
+import local_temp as tempfile
 import unittest
 from unittest.mock import patch
 from types import SimpleNamespace

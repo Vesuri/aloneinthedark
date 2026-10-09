@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 import subprocess
 import sys
-import tempfile
+import local_temp as tempfile
 from build_receipt import PRODUCTION_DEFINES, require_production
 from package_release import member, PREFIX
 

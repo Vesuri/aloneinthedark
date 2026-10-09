@@ -2,7 +2,7 @@
 """Classify the measured startup fixture without modifying its preferences."""
 import argparse
 from pathlib import Path
-import tempfile
+import local_temp as tempfile
 import struct
 import unittest
 from resource_fork import read_resource_fork

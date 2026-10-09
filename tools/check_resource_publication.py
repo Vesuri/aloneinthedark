@@ -3,7 +3,7 @@
 import os
 from pathlib import Path
 import subprocess
-import tempfile
+import local_temp as tempfile
 from resource_fork import read_resource_fork
 root=Path(__file__).resolve().parent.parent
 with tempfile.TemporaryDirectory(prefix='aitd-resource-publication-') as work:

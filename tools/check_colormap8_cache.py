@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-import os, subprocess, tempfile
+import os, subprocess
+import local_temp as tempfile
 from pathlib import Path
 root = Path(__file__).resolve().parents[1]
 with tempfile.TemporaryDirectory(prefix="aitd-colormap8-") as directory:

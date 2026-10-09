@@ -12,7 +12,7 @@ from pathlib import Path
 import shutil
 import struct
 import subprocess
-import tempfile
+import local_temp as tempfile
 import time
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -25,8 +25,9 @@ def main():
                    default=Path(os.environ.get('WHDLOAD', SHARE/'WHDLoad'))/'C/WHDLoad')
     p.add_argument('--workbench', type=Path,
                    default=Path(os.environ.get('WORKBENCH_ADF', SHARE/'Workbenchv2.04rev37.67Workbench.adf')))
-    p.add_argument('--rom', type=Path, default=SHARE/'Kickstarts/kick40063.A600')
-    p.add_argument('--rtb', type=Path, default=SHARE/'Kickstarts/kick40063.A600.RTB')
+    p.add_argument('--rom', type=Path, default=Path(os.environ.get('KICKSTART', SHARE/'Kickstarts/kick40063.A600')))
+    p.add_argument('--rtb', type=Path, default=os.environ.get('KICKSTART_RTB'))
+    p.add_argument('--host-rom', type=Path, default=Path(os.environ.get('WHDLOAD_HOST_KICKSTART', SHARE/'Kickstarts/kick40068.A1200')))
     p.add_argument('--exe', type=Path, default=ROOT/'amiga/out/Alone.exe')
     p.add_argument('--seconds', type=int, default=90, help='host safety ceiling')
     p.add_argument('--ticks', type=int, default=1500, help='WHDLoad timeout in PAL fields')
@@ -35,6 +36,8 @@ def main():
     p.add_argument('--no-preload', action='store_true')
     p.add_argument('--check-stack', action='store_true', help='require completed STACKPROBE report and 4 KB process stack')
     args = p.parse_args()
+    if args.rtb is None:
+        args.rtb = Path(str(args.rom)+'.RTB')
     slave = {'smoke':'Smoke.slave', 'boot':'BootTest.slave', 'load':'LoadTest.slave'}.get(args.mode, 'AloneInTheDark.slave')
     base = Path(tempfile.mkdtemp(prefix='whdload-test-', dir=ROOT/'tmp'))
     print('Fixture:', base, flush=True)
@@ -72,7 +75,7 @@ def main():
             '--uae_cpu_model='+args.cpu, '--uae_cpu_24bit_addressing=false','--uae_mmu_model=0','--uae_fpu_model=0',
             '--uae_z3mapping=uae',
             '--jit_compiler=0', '--chip_memory=2048', '--fast_memory=8192','--uae_z3mem_size=0','--uae_a3000mem_size=0','--uae_cpu_speed=max',
-            '--kickstart_file='+str(SHARE/'Kickstarts/kick40068.A1200'),
+            '--kickstart_file='+str(args.host_rom),
             '--hard_drive_0='+str(boot), '--hard_drive_0_priority=10', '--hard_drive_1='+str(game),
             '--floppy_drive_0='+str(args.workbench),
             '--joystick_port_0=mouse', '--joystick_port_1=nothing', '--warp_mode=1', '--fullscreen=0',

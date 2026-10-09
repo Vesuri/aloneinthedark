@@ -1,60 +1,55 @@
 # Menu records
 
-D7 keeps menu data and keyboard commands without drawing a menu bar. The
-original Engine startup loops over MENU 128–131, counts their items, reads their
-Pascal labels and removes the `|command` suffix through SetMenuItemText. The
-port implements those record operations; the game's code still interprets and
-stores the commands. Menu rendering and Mac MDEF execution are not involved.
+D7 keeps menu data and keyboard commands without drawing a menu bar. The original Engine
+startup loops over MENU 128–131, counts their items, reads their Pascal labels and
+removes the `|command` suffix through SetMenuItemText. The port implements those record
+operations; the game's code still interprets and stores the commands. Menu rendering and
+Mac MDEF execution are not involved.
 
-## Gameplay keyboard route (M3.2)
+## Gameplay keyboard route
 
-The original keyboard run returns MENU 129/item 2 for Command-S, item 1 for
-Command-O and item 4 for Command-Q. The native Right-Amiga route returns the
-same packed results. S and M reach the game's sound/music feedback; M stops
-and resumes song 137. SetItemMark uses the actual packed menu item mark byte.
+The original keyboard run returns MENU 129/item 2 for Command-S, item 1 for Command-O
+and item 4 for Command-Q. The native Right-Amiga route returns the same packed results.
+S and M reach the game's sound/music feedback; M stops and resumes song 137. SetItemMark
+uses the actual packed menu item mark byte.
 
-The 68030 native fixture entered `m3test` and Return in the save prompt,
-returned to gameplay, opened Load and cancelled back to gameplay. The save
-created a 36,254-byte data fork containing that name and a thumbnail resource
-fork. This is an in-session save/Load-menu check; reset-and-load acceptance
-remains M3.6. Quit reaches Core+$1DCC driver selector 8 and then ExitToShell.
-The observer verifies preserved registers/stack, cleared audio DMA, released
-sample ownership, closed files, restored interrupt/DMA masks, restored OS View
-and removal of the Line-A hook.
+The 68030 native fixture entered `m3test` and Return in the save prompt, returned to
+gameplay, opened Load and cancelled back to gameplay. The save created a 36,254-byte
+data fork containing that name and a thumbnail resource fork. Quit reaches Core+$1DCC
+driver selector 8 and then ExitToShell. The observer verifies preserved registers/stack,
+cleared audio DMA, released sample ownership, closed files, restored interrupt/DMA
+masks, restored OS View and removal of the Line-A hook.
 
-All four published ON/OFF feedback messages match the original Times glyphs,
-display RGB and horizontal centring. Captures contain different older queued
-messages, and the requested message can occupy different vertical slots;
-the checker pairs the same message rather than an equal-time queue snapshot.
-Every captured control/menu/feedback state preserves all pixels outside the
-320×200 viewport. DrawMenuBar remains a data-only no-op, and the display
-publisher validates and crops that viewport on every publication.
+All four published ON/OFF feedback messages match the original Times glyphs, display RGB
+and horizontal centring. Captures contain different older queued messages, and the
+requested message can occupy different vertical slots; the checker pairs the same
+message rather than an equal-time queue snapshot. Every captured control/menu/feedback
+state preserves all pixels outside the 320×200 viewport. DrawMenuBar remains a data-only
+no-op, and the display publisher validates and crops that viewport on every publication.
 
-The reached save path additionally needs PBCreate's standard version byte at
-offset 26 (27 is the open-permission byte), InsetRect, contained indexed
-CopyBits scaling and picture recording. OpenPicture/ClosePicture record one
-same-world CopyBits into the requested frame without changing visible pixels.
-`PictureRecord8.h` writes a bounded v2 PackBits picture retaining source
-pixels, rectangles, palette and mode. Its encoding can differ from QuickDraw's
-padding/compression; the independently decoded source pixels and colours
-match the original save picture exactly. Other recording operations remain
-unsupported. Staging buffers use owned handles; the compiled copy/record
-helper's frame, including saved registers, is 368 bytes.
+The reached save path additionally needs PBCreate's standard version byte at offset 26
+(27 is the open-permission byte), InsetRect, contained indexed CopyBits scaling and
+picture recording. OpenPicture/ClosePicture record one same-world CopyBits into the
+requested frame without changing visible pixels. `PictureRecord8.h` writes a bounded v2
+PackBits picture retaining source pixels, rectangles, palette and mode. Its encoding can
+differ from QuickDraw's padding/compression; the independently decoded source pixels and
+colours match the original save picture exactly. Other recording operations remain
+unsupported. Staging buffers use owned handles; the compiled copy/record helper's frame,
+including saved registers, is 368 bytes.
 
-`tools/mac_picture_record.lua` captures the original save operation through
-normal keyboard input. After capturing, run
-`python3 tools/check_picture_record8.py --reference-dir tmp` to compare its
-record with the native writer under address/undefined-behaviour sanitizers.
-The native keyboard fixture is `MENUPROBE=1 PROBES=1`; clean before changing
-these flags. It uses ordinary raw key events, including `m3test` plus Return,
-and never writes game flags or invokes original game functions directly.
-It waits for the requested game's feedback before advancing S/M actions;
+`tools/mac_picture_record.lua` captures the original save operation through normal
+keyboard input. After capturing, run `python3 tools/check_picture_record8.py
+--reference-dir tmp` to compare its record with the native writer under
+address/undefined-behaviour sanitizers. The native keyboard fixture is `MENUPROBE=1
+PROBES=1`; clean before changing these flags. It uses ordinary raw key events, including
+`m3test` plus Return, and never writes game flags or invokes original game functions
+directly. It waits for the requested game's feedback before advancing S/M actions;
 initial room setup can consume a key before the control loop is ready.
 
 The maintained keyboard pair is `tools/mac_menu_keyboard.lua` and
-`amiga/menu_keyboard.gdb`. Run the former with the documented headless Mac IIx
-command, debugger enabled, saving its output as `tmp/m3-menu/mac-keyboard.log`.
-It writes capture files in that directory. For the native run:
+`amiga/menu_keyboard.gdb`. Run the former with the documented headless Mac IIx command,
+debugger enabled, saving its output as `tmp/m3-menu/mac-keyboard.log`. It writes capture
+files in that directory. For the native run:
 
 ```sh
 . amiga/env.sh
@@ -66,81 +61,68 @@ DIAG_AUDIO=1 EXTRA_ARGS=--warp_mode=0 GDBSCRIPT=menu_keyboard.gdb \
 ```
 
 Preserve `amiga/.run/gdb-out.log` as `tmp/m3-menu/native-final-gdb.log`, then run
-`tools/check_menu_keyboard.py` with both logs and their actual exit statuses.
-The observer only succeeds after full restoration, and the checker rejects
-missing feedback captures, wrong menu results, changed pixels outside the
-viewport, incorrect glyphs/colours/centring or incomplete shutdown. Local
-accepted captures are `mac-keyboard.log`, `native-final-gdb.log` and
-`checked-final.log` in `tmp/m3-menu`. The fixture writes slot zero, named
-`m3test`, in its emulator test directory.
+`tools/check_menu_keyboard.py` with both logs and their actual exit statuses. The
+observer only succeeds after full restoration, and the checker rejects missing feedback
+captures, wrong menu results, changed pixels outside the viewport, incorrect
+glyphs/colours/centring or incomplete shutdown. Local accepted captures are
+`mac-keyboard.log`, `native-final-gdb.log` and `checked-final.log` in `tmp/m3-menu`. The
+fixture writes slot zero, named `m3test`, in its emulator test directory.
 
 ## Original contract
 
-`mac_menu_records.lua` observes original Engine+$2DEE CountMItems,
-+$2E0C GetMenuItemText and +$2EC2 SetMenuItemText. It changes no instructions,
-arguments, menu data or RNG. Original bytes through the loop's return are
-fingerprinted by `check_menu_reference.py`.
+`mac_menu_records.lua` observes original Engine+$2DEE CountMItems, +$2E0C
+GetMenuItemText and +$2EC2 SetMenuItemText. It changes no instructions, arguments, menu
+data or RNG. Original bytes through the loop's return are fingerprinted by
+`check_menu_reference.py`.
 
-The bounded reference reaches the second Times lookup with 33 menu calls:
-4 counts, 17 reads and 12 text replacements. Counts are 3/4/6/4. Every count
-returns a word in the caller's reserved slot, popping four argument bytes;
-text calls pop ten. D0 returns zero, and D3–D7/A2–A6 are preserved. Volatile
-registers, including D1/D2 and A0/A1, are not a preservation contract. Native
-calls preserve additional scratch registers; the original loop does not depend
-on their reference clobbers.
+The bounded reference reaches the second Times lookup with 33 menu calls: 4 counts, 17
+reads and 12 text replacements. Counts are 3/4/6/4. Every count returns a word in the
+caller's reserved slot, popping four argument bytes; text calls pop ten. D0 returns
+zero, and D3–D7/A2–A6 are preserved. Volatile registers, including D1/D2 and A0/A1, are
+not a preservation contract. Native calls preserve additional scratch registers; the
+original loop does not depend on their reference clobbers.
 
-Count/read leave the menu record unchanged. SetMenuItemText replaces only the
-requested label, preserving all item icon/key/mark/style bytes, other labels,
-title, flags and MDEF field. It invalidates cached width/height to -1. The input
-Pascal string is unchanged. The capture checks the actual records before and
-after every call, rather than assuming the result from the returned count.
+Count/read leave the menu record unchanged. SetMenuItemText replaces only the requested
+label, preserving all item icon/key/mark/style bytes, other labels, title, flags and
+MDEF field. It invalidates cached width/height to -1. The input Pascal string is
+unchanged. The capture checks the actual records before and after every call, rather
+than assuming the result from the returned count.
 
 ### System-only item
 
-The reference System appends `\0\0Control Panels` to Apple MENU 128 through
-AddResMenu. It is absent from the original application MENU resource. The native
-application/data/overlay resource chain contains no DRVR resources and appends
-nothing. Its Apple count is therefore **2**, and it performs 32 calls: four
-counts, sixteen reads and the same twelve mutations. No count is invented to
-match a different resource set.
+The reference System appends `\0\0Control Panels` to Apple MENU 128 through AddResMenu.
+It is absent from the original application MENU resource. The native
+application/data/overlay resource chain contains no DRVR resources and appends nothing.
+Its Apple count is therefore **2**, and it performs 32 calls: four counts, sixteen reads
+and the same twelve mutations. No count is invented to match a different resource set.
 
-This System-only label has no `|` command suffix. The original loop's null
-`strchr('|')` branch skips registration; its leading NUL also converts to an
-empty C label. It provides no game command, key equivalent or menu bar in D7's
-native environment. The paired checker requires exactly this reference-only
-extra item and compares every application item, including its metadata. It
-never ignores other count/text differences.
+This System-only label has no `|` command suffix. The original loop's null `strchr('|')`
+branch skips registration; its leading NUL also converts to an empty C label. It
+provides no game command, key equivalent or menu bar in D7's native environment. The
+paired checker requires exactly this reference-only extra item and compares every
+application item, including its metadata. It never ignores other count/text differences.
 
-Mac menu dimensions/MDEF pointers established by the system before these calls
-are platform-specific. Native GetMenu retains the original resource values and
-D7 does not draw the bar or execute MDEF code. The comparison therefore checks
-ID/title/flags and all packed items; within each run, count/read preserve the
-whole record, and replacements must invalidate dimensions and preserve MDEF.
+Mac menu dimensions/MDEF pointers established by the system before these calls are
+platform-specific. Native GetMenu retains the original resource values and D7 does not
+draw the bar or execute MDEF code. The comparison therefore checks ID/title/flags and
+all packed items; within each run, count/read preserve the whole record, and
+replacements must invalidate dimensions and preserve MDEF.
 
 ## Native implementation
 
-`MenuRecords.h` parses bounded title/item records. Native CountMItems reads the
-actual handle; GetMenuItemText copies the selected Pascal label. SetMenuItemText
-saves its input before any handle relocation, grows before moving a tail and
-shrinks afterward, keeping the same master pointer. Byte copies use a volatile
-intermediate to avoid the known GCC shared-base postincrement defect.
-
-Nil/malformed records, invalid item numbers and empty replacement labels remain
-named trap stops until their behavior is required and measured. Host sanitizer
-checks cover 510 length-changing replacements (1–255 bytes, both first and last
-items), exact metadata/tails, output guards, empty menus and truncated records.
-The native original-call observer validates all 32 calls and compares each
-record and text with the Mac. The next stop is Engine+$47C2 screen-size-selection; this is
-not second-font, graphics or complete startup acceptance.
+`MenuRecords.h` parses bounded title/item records. Native CountMItems reads the actual
+handle; GetMenuItemText copies the selected Pascal label. SetMenuItemText saves its
+input before any handle relocation, grows before moving a tail and shrinks afterward,
+keeping the same master pointer. Byte copies use a volatile intermediate to avoid the
+known GCC shared-base postincrement defect.
 
 ## Reproduce
 
-The reference probe reuses the shared MAME input library and byte-verified
-System 7.5.5 dispatcher. It reads the internal debugger console to expose action
-errors. Earlier missing-call runs were rejected; the console identified an
-unsupported conditional debugger command before the probe moved to the three
-original call-site breakpoints. See MAME's
-[debugger Lua API](https://docs.mamedev.org/luascript/ref-debugger.html).
+The reference probe reuses the shared MAME input library and byte-verified System 7.5.5
+dispatcher. It reads the internal debugger console to expose action errors. Earlier
+missing-call runs were rejected; the console identified an unsupported conditional
+debugger command before the probe moved to the three original call-site breakpoints. See
+MAME's [debugger Lua API](https://docs.mamedev.org/luascript/ref-debugger.html).
 
 ```sh
 . amiga/env.sh
@@ -162,48 +144,44 @@ python3 tools/check_native_menu.py tmp/m2-menu-native.log \
   --reference-status "$reference_status"
 ```
 
-Both checkers require normal status, exact call order/count, original bytes,
-positive completion, stack/register evidence and complete records. The paired
-checker also rejects deliberately corrupted versions of the actual capture.
-Logs, record dumps and original data remain local-only.
+Both checkers require normal status, exact call order/count, original bytes, positive
+completion, stack/register evidence and complete records. The paired checker also
+rejects deliberately corrupted versions of the actual capture. Logs, record dumps and
+original data remain local-only.
 
-
-The capture-literal audit regenerated `tmp/m2-literals-menu-reference.log`.
-Bare $A0/$A4/$D0/$D4 dump offsets formerly read registers, but only in padding:
-all 33 calls retain exactly the same menu bodies (at most 97 bytes) and text
-(at most 30 bytes). The corrected full dumps pass the original checker and
-pair with the accepted native records. See the impact inventory in
-[mac-reference-loop.md](mac-reference-loop.md).
-
+The capture-literal audit regenerated `tmp/m2-literals-menu-reference.log`. Bare
+$A0/$A4/$D0/$D4 dump offsets formerly read registers, but only in padding: all 33 calls
+retain exactly the same menu bodies (at most 97 bytes) and text (at most 30 bytes). The
+corrected full dumps pass the original checker and pair with the accepted native
+records. See the impact inventory in [mac-reference-loop.md](mac-reference-loop.md).
 
 ## Hidden startup menu-list lifecycle
 
-The original Engine+$2B06 ClearMenuBar, four +$2B32 InsertMenu calls and
-+$2B44 DrawMenuBar now complete. Reset removes membership without disposing
-MENU handles or changing their records. Insertions retain the original order
-128, 129, 130, 131 and return zero with the measured stack cleanup. DrawMenuBar
-returns successfully without drawing any pixels under D7. Callee-preserved
-registers match; system-internal volatile pointers are not portable outputs.
+The original Engine+$2B06 ClearMenuBar, four +$2B32 InsertMenu calls and +$2B44
+DrawMenuBar now complete. Reset removes membership without disposing MENU handles or
+changing their records. Insertions retain the original order 128, 129, 130, 131 and
+return zero with the measured stack cleanup. DrawMenuBar returns successfully without
+drawing any pixels under D7. Callee-preserved registers match; system-internal volatile
+pointers are not portable outputs.
 
-The Mac automatically appends System menus −16490 and −16489 after the first
-insertion. They are absent from the port's menu registry and have no native
-presentation. The comparison identifies these exact two IDs separately; it
-still checks every game menu, title, flag and packed item. Apple menu 128's
-reference-only Control Panels item is the existing documented System addition.
-Menu dimensions and MDEF pointers remain platform-specific as above.
+The Mac automatically appends System menus −16490 and −16489 after the first insertion.
+They are absent from the port's menu registry and have no native presentation. The
+comparison identifies these exact two IDs separately; it still checks every game menu,
+title, flag and packed item. Apple menu 128's reference-only Control Panels item is the
+existing documented System addition. Menu dimensions and MDEF pointers remain
+platform-specific as above.
 
-`tools/mac_menu_lifecycle.lua` captures each list transition and a CPU-executed
-nonempty reset of the same four live menus. That fixture confirms their records
-survive unchanged. `amiga/menu_lifecycle.gdb` captures the original native setup,
-with both font lookups, driver initialization, main/A5 and AGA checks in the
-same bounded run. `tools/check_menu_lifecycle.py` requires original/live bytes,
-six call results, ordered identities, unchanged application items and no native
-screen changes. The original Mac game client also stays unchanged across its
-DrawMenuBar call. These memory checks do not claim rendered-video acceptance.
+`tools/mac_menu_lifecycle.lua` captures each list transition and a CPU-executed nonempty
+reset of the same four live menus. That fixture confirms their records survive
+unchanged. `amiga/menu_lifecycle.gdb` captures the original native setup, with both font
+lookups, driver initialization, main/A5 and AGA checks in the same bounded run.
+`tools/check_menu_lifecycle.py` requires original/live bytes, six call results, ordered
+identities, unchanged application items and no native screen changes. The original Mac
+game client also stays unchanged across its DrawMenuBar call. These memory checks do not
+claim rendered-video acceptance.
 
 Original Engine+$2B04–$2B45 SHA-256:
-`d302ea1079ba3557d446a85bc8faafa1f23e92b2152cf06fab8daa8bb2a29e51`.
-Reference: `tmp/m2-menu-lifecycle-reference-final.log`; native:
+`d302ea1079ba3557d446a85bc8faafa1f23e92b2152cf06fab8daa8bb2a29e51`. Reference:
+`tmp/m2-menu-lifecycle-reference-final.log`; native:
 `tmp/m2-menu-lifecycle-native-final.log`. Supply each actual exit status with
 `--reference-status` and `--native-status` to the paired checker.
-Startup now stops at QUICKDRAW / UNIONRECT, Dan2+$01DA.

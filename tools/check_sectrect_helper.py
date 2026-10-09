@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Run the native SectRect helper against retained measured rectangle fixtures."""
-import argparse,os,subprocess,tempfile
+import argparse, os, subprocess
+import local_temp as tempfile
 from pathlib import Path
 from check_sectrect import check,pairs,ROOT
 # Two original intersections followed by fourteen Mac edge/alias fixtures.

@@ -3,7 +3,7 @@
 import os
 from pathlib import Path
 import subprocess
-import tempfile
+import local_temp as tempfile
 root=Path(__file__).resolve().parent.parent
 with tempfile.TemporaryDirectory(prefix="aitd-files-") as work:
     exe=str(Path(work)/"test")

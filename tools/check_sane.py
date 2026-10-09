@@ -7,7 +7,7 @@ from pathlib import Path
 import random
 import re
 import subprocess
-import tempfile
+import local_temp as tempfile
 ROOT=Path(__file__).resolve().parents[1]
 def pow2(e):return F(2)**e
 def rounded(x):

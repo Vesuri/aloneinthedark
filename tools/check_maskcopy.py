@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Independent masked-copy pixel model, original ABI and record isolation."""
-import argparse,re,struct,os,subprocess,tempfile
+import argparse, re, struct, os, subprocess
+import local_temp as tempfile
 from pathlib import Path
 from check_insetrgn import pixels
 ROOT=Path(__file__).resolve().parents[1]

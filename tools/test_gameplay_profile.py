@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-import tempfile,unittest
+import local_temp as tempfile
+import unittest
 from pathlib import Path
 from summarize_gameplay_profile import summarize
 class Profile(unittest.TestCase):

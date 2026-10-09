@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 import struct
 import subprocess
-import tempfile
+import local_temp as tempfile
 from startup_fonts import resources,definitions
 from check_font_metrics import CASES,STYLES
 ROOT=Path(__file__).resolve().parents[1]

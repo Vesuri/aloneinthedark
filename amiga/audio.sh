@@ -7,7 +7,7 @@ export AMIGA_CONFIG="${AMIGA_CONFIG:-a4000-030-reference}"
 export FSUAE="${FSUAE:-$HOME/.local/share/amiga/fs-uae-arm/fs-uae}"
 export DEBUG_PORT="${DEBUG_PORT:-24391}"
 export DIAG_RUN_DIR="${DIAG_RUN_DIR:-.run}"
-MAME="${MAME:-/opt/homebrew/bin/mame}"
+MAME="${MAME:-mame}"
 mac_disk="${AITD_AUDIO_MAC_DISK:-tmp/m4/sysbeep/mac.hd}"
 [[ -f "$mac_disk" ]] || { echo 'AUDIO / set AITD_AUDIO_MAC_DISK to a private writable reference disk' >&2; exit 2; }
 mkdir -p tmp/m4

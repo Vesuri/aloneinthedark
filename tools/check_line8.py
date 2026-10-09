@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Compare the production LineTo raster with original complete-buffer captures."""
-import argparse,os,re,struct,subprocess,tempfile
+import argparse, os, re, struct, subprocess
+import local_temp as tempfile
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 def rect(*v):return struct.pack('>4h',*v)

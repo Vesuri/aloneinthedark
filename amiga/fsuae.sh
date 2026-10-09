@@ -1,5 +1,5 @@
 # Project-scoped debugger setup, sourced by the three launchers.
-# The shared helper's 40-port hash collides with Pokeri on this host.
+# Use a project-specific default; override when running concurrent checkouts.
 DEBUG_PORT="${DEBUG_PORT:-24377}"
 export DEBUG_PORT
 . "${FSUAE_COMMON:-$HOME/.local/share/amiga/fsuae_common.sh}"

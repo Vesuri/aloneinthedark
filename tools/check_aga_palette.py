@@ -3,7 +3,7 @@
 import os
 from pathlib import Path
 import subprocess
-import tempfile
+import local_temp as tempfile
 ROOT = Path(__file__).resolve().parents[1]
 with tempfile.TemporaryDirectory(prefix='aitd-aga-palette-') as folder:
     exe = Path(folder)/'test'

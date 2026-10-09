@@ -6,7 +6,7 @@ from pathlib import Path
 import shutil
 import struct
 import subprocess
-import tempfile
+import local_temp as tempfile
 from check_picture_record8 import ROOT, raster
 
 

@@ -4,7 +4,7 @@ import os
 import sys
 from pathlib import Path
 import subprocess
-import tempfile
+import local_temp as tempfile
 import re
 ROOT=Path(__file__).resolve().parents[1]
 with tempfile.TemporaryDirectory(prefix='aitd-gworld8-') as directory:

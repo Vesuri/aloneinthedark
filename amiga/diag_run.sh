@@ -25,7 +25,7 @@ if [[ -z "${FSUAE:-}" && "$AMIGA_CONFIG" == a4000-030 && "$(uname -m)" == arm64 
 fi
 FSUAE="${FSUAE:-fs-uae}"
 GDB="${GDB:-m68k-amiga-elf-gdb}"
-ROM="${KICKSTART:-$HOME/Documents/RetroPie/BIOS/kick31.rom}"
+ROM="${KICKSTART:-$HOME/.local/share/amiga/Kickstarts/kick40063.A600}"
 DELAY="${1:-14}"
 [[ "$DELAY" =~ ^[1-9][0-9]*$ ]] || { echo 'DIAG / INVALID DEADLINE' >&2; exit 2; }
 GDB_PID=

@@ -1,656 +1,123 @@
 # Amiga architecture
 
-The runtime is Vette!'s, with its game-specific hooks removed. This page records
-what is inherited unchanged, what was generalised, and what must change for this
-game. Vette's `docs/amiga-arch.md` has the complete rationale for the inherited
-parts.
+The compatibility runtime follows Vette. Original-byte and service contracts are
+documented by subsystem; [design.md](design.md) records the owner decisions.
 
 ## Original game and compatibility layer
 
-`PlatformAmiga` opens the application resource fork under `PROGDIR:data/`
-or `PROGDIR:`, retaining its map rather than preloading every body. It takes
-the machine over in the order
-established by the earlier ports (LoadView(NULL), display DMA down, VERTB vector
-taken over, screen built, published to the ISR, DMA up, Forbid, run, restore in
-reverse). The Workbench startup message is handled as in Vette.
+PlatformAmiga opens the application resource fork under `PROGDIR:data/` or `PROGDIR:`,
+retaining its map and streaming bodies into owned handles. MacLoader validates CODE
+bytes and leaves original CODE 1 responsible for DATA/ZERO/DREL, segment loading and
+CREL relocation. Original code runs in user mode through the Line-A service bridge.
+Named loader/trap stops retain VBI display so their reports remain visible. See
+[static-map.md](static-map.md).
 
-`MacLoader` validates CODE resources before takeover and retains CODE 0/1 for
-startup. The original CODE 1 expands the A5 world, handles later segment loads
-and relocates the jump table. Resource bodies stream into owned zone handles
-on demand; the original executes in user mode through the Line-A service bridge. Loader
-failures and unimplemented traps are named loud stops painted by `AitdScreen`;
-the VBI keeps running so the report stays visible. See [static-map.md](static-map.md).
-
-Page-0 globals the original touches are redirected, after byte checks, to the
-private `s_portLowMemory` block (Ticks, RndSeed, WMgrPort, GrayRgn, KeyMap,
-CurrentA5, mouse and button state). The VBI keeps Ticks at 60 Hz and the mouse
-shadows current. All 58 census low-memory accesses are redirected to private
-shadows; the original A5 state and startup path pass M2 acceptance.
-
-The Memory, Resource, QuickDraw (PICT, CopyBits, GWorlds), Palette, Window,
-Menu, Dialog, Event, Vertical Retrace and Trap Manager services began with
-Vette and now implement the measured Alone in the Dark startup/intro contracts.
-Unimplemented calls or forms still produce named loud stops.
+Mac low-memory operands use an A5-relative private shadow; they never overwrite Amiga
+Page 0. The VBI maintains Ticks and input shadows. MacHeap provides the
+application/system zones and movable handle semantics. The game has a separate 64 KB Mac
+stack, while the Amiga process needs the normal 4 KB stack.
 
 ## Display
 
-### Intro performance comparison (2026-10-03)
+AitdScreen owns bitplanes, copper, sprites and registers. The logical Mac screen is
+640×480×8; the live WIND 128 client selects the 320×200 AGA viewport. Physical output
+uses double-buffered eight-plane Chip RAM. VBI publishes complete display and sprite
+pointers before input/audio work.
 
-The [complete same-character 68030 comparison](intro-comparison.md) closes
-intro performance before M3. Current Amiga/Mac frame-time ratios are mostly
-1.1–1.9×, with one 2.12× late-corridor visit whose cold preparation cost is
-measured. The car runs at 2.86 versus 4.36 FPS; near/far frog rates are
-3.36/3.35 versus 4.73/3.80 FPS. Mansion entry takes 8.82 versus 8.05 seconds,
-and no current camera transition reproduces the reported 15-second gap.
-
-The selected `a4000-030-reference` uses a 68030 at 15.6672 MHz, matching the
-MAME Mac IIx clock, with 8 MB fast RAM, AGA and no JIT. Music uses CIA timing;
-complete note, sample and ownership checks pass. Recorded output gaps originate
-in FS-UAE's host audio queue and remain an emulator limitation. Different
-memory systems and approximate emulator timings limit hardware equivalence.
-
-The chronological checkpoints below retain intermediate measurements and
-then-open gates; the current comparison and acceptance audit supersede their
-status conclusions. Performance uses emulated ticks, not host elapsed time.
-
-| Checkpoint span | Amiga ticks | Mac ticks |
-| --- | ---: | ---: |
-| Matched near-car renderer call, VBI-music build | 15 | 12 |
-| Same near-car draw → next original loop, VBI-music build | 18 | 12 |
-| Natural first frog mask construction | 32 | 11 |
-| Natural first frog loop → next loop | 54 | 27 |
-| Room-2 transition → first hallway loop | 275 | 274 |
-| First two hallway loop entries, room 2/camera 5 | 104 | 55 |
-| Last hallway loop → first stair-view loop, camera 5 → 3 | 140 | 97 |
-
-The model replay pairs geometry, transforms and mask inputs, not every other
-actor or timing state. It now explicitly captures the first cold frog loop;
-the older 10-tick Mac replay had a warmed mask and is not a valid cold-frame
-comparison. Neither draw-to-loop span is an isolated renderer benchmark.
-Natural-route timings can differ with actor trajectories and animation phase.
-In the phase observation, the frog model itself takes 3–4 native ticks versus
-2–3 on Mac; its first mask is much more expensive than subsequent masks.
-
-Those hallway measurements exclude room entry before the first camera-5 loop.
-The complete entry also includes loading room 2 and passing through camera 0.
-The retained native route takes 379 ticks from its room-2 transition checkpoint
-to the first camera-5 loop, versus 274 on Mac. Including the first camera-5 loop
-gives 484 versus 329 ticks (8.07 versus 5.48 seconds). The Mac evidence is
-`tmp/intro-030-route-mac-retry.log`, with all nine transitions, explicit PASS and
-normal debugger exit. These are common original checkpoints, not a claim of
-identical actor/cache state or the exact moment the host picture changes.
-
-The subsequent native VBI-music run (`tmp/music-vbi-busy-route-full.log`, exit 0)
-takes 373 + 104 = 477 ticks (7.95 seconds) across that complete entry, and
-32 ticks for its first frog mask. Its nine transitions, natural completion,
-3,736 music events and 920-byte minimum original stack margin pass. Music's
-maximum delivery delay is one logical tick in this run; an earlier two-tick
-outlier remains documented in [sound-driver.md](sound-driver.md).
-
-The room-entry attribution run (`tmp/intro-room-entry-profile-full.log`, exit 0)
-starts at the first profiled trap in room 2/camera 4 and stops at the first
-camera-5 loop, including the intervening camera-0 loop. It records 152 Open,
-152 Close and 460 Read calls. Their inclusive totals are respectively
-3,498,103, 2,684,489 and 5,685,388 beam units, about 36% combined of the
-408-field interval. Drawing-service time is only 306,781 units. This identifies
-file traffic as a substantial transition cost; profiler overhead means its
-490 elapsed ticks are not a replacement for the unprofiled timing above.
-The retained per-open cache fetches up to 64 KiB on a tiny header miss and
-discards those bytes on close. A 4 KiB read-ahead/direct-payload trial did not
-improve room entry: 437 ticks to the first camera-5 loop versus 373 retained.
-The trial was deliberately stopped after that measurement, not accepted as a
-complete route (`tmp/intro-read-ahead-route-full.log`, exit 1). Its two cache
-changes are reverted. The then-current OS-window return path translated all 128 raw key
-codes to release them on every operation. The bulk-release trial computed the
-translated-key mask once, then applies it to the 16-byte Mac map, preserving
-unmapped bits. Its 256-pattern native comparison matches individual releases.
-`tmp/intro-key-release-window-full.log` (exit 0) passes the original 21-window
-fixture, exact 1 MiB data, save/error cases, held-key/alias checks, Paula progress
-and bitplane snapshots. Total entry/exit costs are 11,475/25,140 beam units,
-about 2.1/4.7 scanlines per window. The historical fixture's approximately
-3/110 lines used an older build/setup, so it is not a matched speedup ratio.
-The unprofiled run (`tmp/intro-key-release-route-full.log`) reduces room entry
-from 373 to 275 ticks, versus 274 on Mac. Including the first hallway loop is
-379 versus 329 ticks (6.32 versus 5.48 seconds). The table above uses this run
-for frog/hallway/stair observations. All nine transitions, natural completion,
-3,736 music events and the 920-byte minimum original stack margin are present.
-The observer exits 1 because the known music timing outlier recurs: two ticks,
-with a busy channel-ownership field at tick 9550 and late delivery at 9552.
-This establishes the deferred field's source; it is not a complete audio pass.
-M3.1 subsequently removed automatic key resets entirely: they interrupted
-held movement keys during animation loading. Keyboard ownership now spans DOS
-windows; the measurements above describe the earlier intro-performance build.
-
-The longword sample-conversion build repeats the complete route in
-`tmp/intro-longword-route-full.log`: nine transitions, natural completion at
-tick 19,906, 1,008 presented frames, all 3,736 music events and zero late
-publications. Hallway entry is 274 ticks, followed by a 104-tick first frame
-(378 combined versus 329 on Mac). The frog mask/first loop is 33/55 ticks;
-hallway-to-stairs is 139. These confirm that the remaining hallway gap is in
-the first frame, rather than room entry. The observer exits 1 on the known
-audio gate: maximum lateness two ticks, after ownership exclusion at 8764
-and delivery at 8766. This is route completion evidence, not audio acceptance.
-
-An isolated first-hallway-frame profile (`tmp/intro-hall-first-full.log`, exit 0)
-subtracts counters at consecutive original Dark+$5658 entries in room 2/camera
-5. It spans exactly one publication, 113 fields / 136 diagnostic ticks; these
-instrumented times are not a shipping-build benchmark. The largest inclusive
-trap totals are InsetRgn 1,417,244 beam units (15 calls), LineTo 1,250,890 (214),
-CopyBits 1,033,557 (34), the sound-driver trap 564,614 (280), and FramePoly
-551,963 (15). Expansion geometry accounts for 1,278,996 units; shared trap
-services 919,215, heap lookup 682,399 and original VBL callbacks 1,342,449.
-These categories overlap and must not be added. Resource/audio preparation
-categories are zero; the driver still handles its ordinary callback traffic.
-This directs the remaining first-frame investigation toward geometry, drawing
-and copying rather than file read-ahead. Before/after arrays are retained as
-`tmp/hall-first-{phase,trap,calls}-{before,after}.bin`.
-
-An eight-entry cache of validated heap-block locations was tested and rejected
-(`tmp/intro-pointer-cache-route-full.log`). It passes sanitized heap tests but
-changes the frog mask only from 33 to 31 ticks and the first hallway loop from
-104 to 100. The complete route still fails the two-tick music gate (exit 1).
-The small gain does not justify the extra cache/invalidation state; the normal
-heap lookup remains unchanged. The trace is not a matched-frame pixel check.
-
-A local free-tail merge in `resizeInPlace`, replacing its whole-heap coalescing
-scan, was also tested and discarded. Sanitized heap tests pass, and
-`tmp/intro-local-coalesce-route-full.log` completes the route and music timing
-gate (exit 0). The frog mask changes from 33 to 30 ticks and first hallway loop
-from 104 to 99. These small gains do not justify continued heap-level tuning
-for P1. A single passing music run does not resolve the previously reproduced
-effect-boundary deferral; that remains a separate correctness/timing issue.
-
-The subsequent deferred-music fix services excluded VBI updates when outer
-audio ownership is released. Its normal route (`tmp/music-deferred-route-full.log`,
-exit 0) completes nine transitions, 3,736 events and 1,046 frames with maximum
-music lateness one tick despite seven excluded fields. No late publications
-occur; minimum observed game-stack margin remains 920 bytes. The first hallway
-loop is 105 ticks, effectively unchanged from 104. See
-[sound-driver.md](sound-driver.md) for the forced nested-ownership fixture and
-remaining listening/sub-field timing acceptance.
-
-The measured hallway-to-stairs span is 2.35 seconds versus 1.62 on Mac; initial
-camera-5 loop preparation is 1.75 versus 0.92 seconds. The owner's earlier recording
-showed a nearly unchanged 14.7-second interval at 334.2–348.9 seconds before
-this stair view. That recording used the earlier A1200 setup and implementation,
-so it is not a same-machine before/after benchmark. Its white cache-window
-interruption is excluded from evidence.
-
-The retained service changes address repeated work:
-
-- Geometry services reuse 9.25 KiB of private recording and scratch storage
-  instead of allocating temporary application-heap handles for each polygon.
-  The algorithms and caller-owned results are unchanged; original callbacks
-  run after these synchronous services finish.
-
-- Region expansion streams three neighbouring rows through validated forward
-  cursors instead of rescanning the whole encoded region for every row. Its
-  first pond call takes one tick and matches all 244 original result bytes.
-- Unlocked handle growth uses an existing free block before shuffling the
-  surrounding heap. Locked handles and fragmented-heap recovery retain their
-  original contracts.
-- Heap mutations maintain the free-byte total and descending free-master chain
-  incrementally. Publishing the zone no longer rescans all blocks or rebuilds
-  every free link. Lowest-address slot allocation and the published chain order
-  are preserved, including new master blocks allocated into lower holes.
-
-The complete cold-mask profile before the last change attributes 1,216,280 of
-5,777,665 beam units (21.1%) to 374 heap publications
-(`tmp/intro-mask-complete-ccr-full.log`, exit 0). This brackets the actual mask
-call rather than diluting it with subsequent frames in a fixed-duration sample.
-The unprofiled first-mask measurement falls from 67 to 47 ticks, and the first
-whole frog loop from 90 to 70. Hallway preparation falls from 146 to 120 ticks,
-and the stair transition from 199 to 162. These useful gains do not close P1.
-Nested diagnostic categories overlap and must not be added or quoted as FPS.
-The repeated complete-call profile (`tmp/intro-incremental-profile-full.log`,
-exit 0) records the same 374 publications at 75,688 beam units, down 93.8%.
-The whole instrumented interval is 3,935,487 units over 49 fields; publication
-is now 1.9% of that interval. Region geometry is 647,352 units, pointer lookup
-336,498 and original VBL callbacks 588,453. Remaining costs need separate
-attribution; the profile does not justify another geometry micro-optimization.
-
-After private workspace reuse, the complete-mask profile is 2,956,031 beam
-units over 37 fields (`tmp/intro-current-mask-profile-full.log`, exit 0).
-The largest inclusive trap totals are InsetRgn 739,937 units (12 calls),
-recording LineTo 656,765 (112), and FramePoly 303,118 (12). Shared services
-take 256,067 units and original VBL callbacks 431,724; these overlap trap
-totals. Expansion geometry itself remains 647,375 units. This is attribution,
-not a shipping-build timing measurement.
-
-Two further trials each reduce the identical twelve-polygon unprofiled mask
-only from 35 to 34 ticks: jumping between region-row transitions instead of
-visiting every row, and dispatching common pen operations before unrelated
-manager checks (`tmp/intro-region-events-frog-full.log` and
-`tmp/intro-mask-fast-dispatch-frog-full.log`, both exit 0). All twelve input
-records match the retained baseline. The region trial also passes independent
-pixel/atomic-rejection tests and the original Mac region bytes. Neither trial
-is retained: their measured benefit does not address the remaining experience
-enough to justify further tuning before current owner-visible playback.
-
-A separate cold-workload replay rules out different polygon inputs as the
-remaining mask explanation. Both runs construct the same 12 polygons in the
-same order, with every record byte equal, and produce identical viewport pixels
-and all 256 colours. That allocator-build baseline takes 46 ticks versus 10 on Mac
-(`tmp/intro-workload-native-full.log`, `tmp/intro-workload-mac.log`, both exit 0).
-This comparison injects the captured native frog model/transform before the
-first Mac frog draw and observes original FramePoly at Dark+$33EC; it does not
-alter original instructions or precompute regions.
-
-A matched near-car pose (previous projected width at least 100 pixels) also
-matches every viewport pixel and colour. On the VBI-music build, the original
-renderer call at Dark+$3ED4 → +$3EDA takes 15 native ticks versus 12 Mac ticks.
-Within Dark3, model setup through sorted surfaces (+$1DA0 → +$1EFE) takes 4 versus 7 ticks;
-drawing the sorted list (+$1EFE → +$1F2E) takes 11 versus 5. Geometry preparation
-does not explain this sample's renderer gap. The complete draw-to-next-loop
-span is 18 versus 12 ticks, including masking, overlay and presentation
-(`tmp/intro-vbi-car-work-full.log`, `tmp/intro-vbi-car-work-mac.log`, both exit 0).
-Attribute the work after drawing separately before treating the whole-frame
-ratio as a model-renderer slowdown. Other actor/cache/timer state is not fully
-paired by the model fixture. Accepted inputs and exact outputs are archived
-under `tmp/intro-vbi-car-work-captures/`. The earlier 16/23-tick native result
-used transform (6029, 0, 379, 0, 512, 0), whereas this pair uses
-(6022, 0, 367, 0, 512, 0). Both pairs match their Mac pixels, but the different
-poses and surrounding timing state prevent attributing the entire apparent
-improvement to interrupt music.
-
-The whole-route compiler experiment with `-O3` gives no useful overall gain:
-the first frog mask takes 41 rather than 35 ticks, hallway preparation 103
-rather than 105, and the stair transition remains 141. It completes naturally
-(`tmp/intro-o3-route-full.log`, exit 0), but the normal `-O2` build is retained.
-Temporary native model injection is not a clean timing baseline: although its
-output matches, surrounding callback/timer state remains unpaired. It is not
-used for the timing table or for attributing a compiler improvement.
-
-The valid steady-car sample (`tmp/intro-car-scene-profile-detail-full.log`,
-exit 0) stays in room 0/camera 0 for 45 fields, spans one publication and
-records 1,117 trap entries. C2P is 7,695 of 3,602,660 beam units (0.21%) and
-bitmap synchronization 3,371 (0.09%), so neither explains the remaining car
-slowdown. Shared trap services take 571,938 units (15.9%); original VBL
-callbacks take 531,615 (14.8%). Inclusive LineTo, RGBForeColor, MoveTo and
-PenMode dispatches together account for 48.8%, overlapping the shared work.
-Their total is not an isolated rasterization cost. The earlier short sample
-failed its acceptance guard and is not evidence; the accepted repeat reports
-all counters before checking scene, publication and converter activity.
-
-The compiler's bytewise big-endian field reads are not an established cause of
-this gap. A discarded experiment replaced MacLoader's word/long accessors with
-native moves: the identical 12 cold-mask polygon records took 54 ticks rather
-than 46, and the near-car sample still took 17 renderer / 23 whole-frame ticks
-with a slightly different pose (`tmp/intro-native-access-cc-{frog,car}-full.log`,
-both exit 0). Fewer generated instructions alone do not justify that rewrite;
-the bytewise accessors remain in use.
-
-Current evidence:
-
-- Private region workspace reduces the identical 12-polygon mask from 42 to
-  35 ticks. `tmp/intro-region-private-frog-full.log` and
-  `tmp/intro-region-private-mac.log` both exit 0, with exact viewport pixels,
-  256 colours and polygon records. The final normal build also takes 35 ticks
-  (`tmp/intro-region-private-route-full.log`, exit 0), completes all nine
-  transitions naturally and gives the 59/105/141-tick spans above. Minimum
-  observed VBI stack margin is 920 bytes. The native region ABI/ownership
-  checker passes `tmp/intro-region-private-record-retry-full.log`, including
-  unchanged heap allocation during FramePoly and 5,392-byte encoder headroom.
-  Original region/expansion host fixtures and atomic rejection checks pass.
-- Resource ownership searches are not a dominant cold-mask cost: the temporary
-  attribution in `tmp/intro-resource-cost-full.log` measures 7,197 of 3,728,711
-  beam units (0.2%), with no forgetHandle calls. No resource-index rewrite is
-  justified by that sample; its extra profiling scopes were removed.
-- Removing two debugger-only largest-free-block scans from memory-result
-  processing reduces the identical 12-polygon cold mask from 46 to 42 ticks
-  (`tmp/intro-heap-stat-frog-full.log`, exit 0; every polygon still matches the
-  Mac record). The full natural route (`tmp/intro-heap-stat-route-full.log`,
-  exit 0) completes all nine transitions with a 928-byte minimum observed
-  stack margin. Its hallway/stair spans were 115/156 ticks, versus
-  120/162 before removing the scans. Allocator searches and original services
-  are unchanged; diagnostic heap counters retain only constant-time totals.
-- `tmp/intro-incremental-route-full.log` exits 0 after all nine original room
-  transitions and natural completion. Minimum observed mouse-VBI stack margin
-  remains 928 bytes above the 6 KiB supervisor-stack lower bound.
-- `tmp/intro-incremental-frog-full.log` and `tmp/intro-frog-phases-mac.log` give
-  the cold/warm phase observations. Both exit 0 at explicit completion checks.
-- `tmp/intro-incremental-frames-full.log` and
-  `tmp/intro-incremental-{car,frog}-mac.log` all exit 0. The matched-model checker
-  passes every one of the 64,000 viewport pixels, all 256 colours and actual
-  AGA publication for both actors. The frog replay asserts the first cold loop.
-- The full host suite (`tmp/intro-incremental-heap-host.log`), allocator
-  sanitizer checks and three-stage native heap fixture
-  (`tmp/intro-incremental-heap-native-full.log`) pass. Structural checks
-  independently recompute free space and verify every free-master link.
-- `tmp/intro-retained-song-full.log` rechecks the retained runtime after private
-  workspace reuse. It exits 0 and passes the original-song checker: 3,736 exact
-  timed events, 25 retained PCM variants (458,974 bytes), effect priority,
-  natural completion and resource/voice cleanup.
-
-Normal owner-visible playback and the remaining car/cold-mask performance gap
-still require acceptance. A successful frame publication does not by itself
-establish smooth playback or audio quality.
-
-`AitdScreen` owns one 320×200 eight-plane display, using the live WIND 128
-content rectangle within the 640×480×8 logical Mac screen. Each chip bitmap
-contains 200 interleaved rows of eight 40-byte planes (64,000 bytes). Explicit
-dirty rectangles align to 32 destination pixels. The back bitmap inherits the
-previous frame's changed spans before receiving the new changes.
-
-Main-thread conversion prepares the inactive bitmap and complete copper list.
-VBI swaps both together before input/audio work. The list includes all 256
-RGB24 colours, using BPLCON3 banks and high/low nibble writes. An integer lookup
-reproduces the measured Mac video transfer while preserving the logical RGB16
-CLUT. PAL and NTSC use one-times fetch and have passed native and owner-rendered
-acceptance. The pointer preserves all game colours through sprite-bank
-ownership and reversible index inversion; see [cursor.md](cursor.md).
-See [aga-display.md](aga-display.md) for display evidence.
+QuickDraw retains exact indexed-colour and region semantics. The native presentation
+gate accumulates dirty rectangles until the original has published a complete scene.
+Only changed spans are converted with Kalms C2P; palette work runs on table-seed
+changes. There is no chunky shadow compare. Scene completion checks the original
+caller's stack/frame identity, with `SCENEFRAMEVERIFY=1` available as an independent
+diagnostic. Unexpected batching states stop loudly.
 
 ### Book-step presentation
 
-The original Dan1 decreasing/increasing book loops build one page-fold position
-through several immediate-mode QuickDraw calls. `bookFrameEdge` identifies their
-existing Toolbox boundaries, checks the live original instructions and caller
-frames, and holds presentation while dirty rectangles accumulate. No original
-instructions are patched. This follows Vette's completed-frame presentation gate.
+The original Dan1 decreasing/increasing book loops build one page-fold position through
+several immediate-mode QuickDraw calls. `bookFrameEdge` identifies their existing
+Toolbox boundaries, checks the live original instructions and caller frames, and holds
+presentation while dirty rectangles accumulate. No original instructions are patched.
+This follows Vette's completed-frame presentation gate.
 
-For decreasing folds, Dan2+$B46 (RGBForeColor), called from Dan1+$3FB4,
-starts the batch; Dark+$1DBC (CopyBits), called from Dan1+$402C or +$405A,
-finishes it. Increasing folds start with the leading copy at Dan1+$410A,
-or the line helper at +$4162 when there is no leading copy. Their final strip
-is Dan2+$D52 (PaintRect), reached through Dan2+$C8A from Dan1+$4182.
-The final standalone copy after that loop retains normal presentation.
-Each completed step passes its accumulated dirty rectangles to Kalms once;
-VBI retains ownership of publishing the bitmap and copper list. Mouse, event,
-audio and original VBL callbacks continue at their existing safe points.
-Unexpected nesting, stack/caller bytes or a publication inside a batch stop
-loudly. This boundary is specific to the proven book loops, not a generic
-QuickDraw end-of-frame signal.
-
-### Point setup
-
-`SetPt` writes the two signed 16-bit coordinates in Macintosh vertical/horizontal
-memory order and pops eight argument bytes. The original Dark+$4F88 call writes
-only its four-byte point, preserves surrounding stack storage and all registers
-except scratch A0, which returns the following instruction address. Null output
-pointers retain a named stop. No original instruction changes or floating-point
-operations are involved. `mac_setpt.lua`, `setpt.gdb` and `check_setpt.py` pair
-that original call; Dark+$4F7A–$4F89 has SHA-256
-`6e383555df80d58e37af9cd2bfa00fa3592060e1864a5782a2b4fde84d5bd102`.
-
-### Empty regions
-
-`NewRgn` allocates a real ten-byte handle in the current zone through the shared
-heap allocator. Its bytes are `000a0000000000000000`: a ten-byte region with
-an empty bounding rectangle. The handle is movable, unlocked and non-purgeable;
-it participates in normal heap ownership and zone cleanup. Allocation failure
-remains a named stop. The measured Misc2+$1DA6 call leaves the stack pointer
-unchanged, writes its result handle into the reserved stack slot, returns the
-body end in A0 and preserves the other registers.
-
-`mac_newrgn.lua` queries the original result with CPU-executed GetHandleSize,
-HGetState and HandleZone. `newrgn.gdb` verifies the native master slot, owning
-block, logical length and flags; `check_newrgn.py` pairs the contracts. Original
-Misc2+$1D9C–$1DA9 has SHA-256
-`fb490c8d89ec18e2450bab69eff1861a43f579444050b9850a75e26b8c3390b7`.
-`EmptyRgn` at Dark+$4182 queries an owned canonical empty ten-byte region.
-It preserves its bytes and Boolean padding, writes true, and reproduces the
-measured D1/A0/A1 results. Later M2 fixtures cover the nonempty forms reached
-by the intro; unmeasured complex forms remain named stops.
-`mac_emptyrgn.lua`, `emptyrgn_call.gdb` and `check_emptyrgn.py` retain the
-original/native calling contract.
-M2.8 acceptance is complete for reached screens. Broader region expansion is
-tracked in M5; see [open-work.md](open-work.md).
-
-See [offscreen worlds](gworld.md) for the real eight-bit allocation, private
-device, owned auxiliary handles and measured inverse-colour lookup.
+For decreasing folds, Dan2+$B46 (RGBForeColor), called from Dan1+$3FB4, starts the
+batch; Dark+$1DBC (CopyBits), called from Dan1+$402C or +$405A, finishes it. Increasing
+folds start with the leading copy at Dan1+$410A, or the line helper at +$4162 when there
+is no leading copy. Their final strip is Dan2+$D52 (PaintRect), reached through
+Dan2+$C8A from Dan1+$4182. The final standalone copy after that loop retains normal
+presentation. Each completed step passes its accumulated dirty rectangles to Kalms once;
+VBI retains ownership of publishing the bitmap and copper list. Mouse, event, audio and
+original VBL callbacks continue at their existing safe points. Unexpected nesting,
+stack/caller bytes or a publication inside a batch stop loudly. This boundary is
+specific to the proven book loops, not a generic QuickDraw end-of-frame signal.
 
 ## Timing and input
 
-The VBI advances `g_vbiCount` per PAL field and Macintosh Ticks at 60 Hz. CIA
-input updates the live KeyMap and event queue; Amiga raw keys are translated to
-Macintosh virtual keys, so held arrow keys are visible to original code that
-polls GetKeys/KeyMap. Original VBL tasks run at safe user-mode trap-return
-boundaries, never from the ISR. `FramePacer` remains available for
-maximum-rate pacing of identified animation loops.
+The game clock is 60 Hz: PAL VBI adds six ticks per five fields; NTSC adds one per
+field. No game frame cap is applied. Original Core/Dark VBL tasks run at safe user-mode
+boundaries and preserve the original callback ABI. They never run inside the native VBI
+or music interrupt.
 
-Keyboard ownership remains with the port during DOS windows, as it does for
-music. Held keys and their event queue survive resource loading; a release
-during a window is recorded normally. The window regression checks a key held
-across eight reads, release inside the eighth window, and continued released
-state through the remaining reads, alongside the existing guarded KeyMap tests.
+Keyboard transitions and held states survive bounded OS windows. VBI also updates the
+hardware mouse pointer independently of game frame rate. Its two sprite banks preserve
+all game colours, and cursor inversion follows the original masks. See
+[events.md](events.md) and [cursor.md](cursor.md).
 
-`TickCount` reads the same private, unsigned 32-bit Ticks shadow as the original
-redirected low-memory accesses. It preserves the existing counter and its wrap
-behavior. The measured Dark+$41F4 call writes its stack result without popping
-bytes, clears D1, returns the result-slot address in A1, and preserves the other
-registers. A Mac scratch fixture confirms a full `$FEDCBA98` result and clears
-all of a `$DEADBEEF` D1 input. No floating-point arithmetic is involved.
-`mac_tickcount.lua`, `tickcount.gdb` and `check_tickcount.py` check the original
-bytes, ABI, clock source and native field accounting. Original Dark+$41EC–$41F7
-has SHA-256 `5e243de4915947497349652df6eab9bad8c9017ada06ca40f852a143ac6e82d1`.
-The existing `window-core` regression also verifies clock continuity across
-OS handbacks: the current run measured 407 PAL fields and 489 Mac ticks while
-reading the exact 1 MiB fixture. This does not claim rendered-window acceptance.
+TickCount writes its long result at entry SP without consuming it, clears D1, returns
+the result-slot address in A1 and preserves the other registers. `tickcount.gdb`,
+`mac_tickcount.lua` and `check_tickcount.py` verify this contract.
 
 ## Audio
 
-The Paula restart/quiesce primitives and `PaulaSample` (sampled-sound layout
-preparation) are inherited. Vette's Bogas engine bridge is removed. This game
-uses `snd ` resources and a MIDI synth driver (`MDRV`, `SONG`, `INST`), plus
-.PAK sample and music lists; its Sound Manager usage is not mapped yet.
+The overlay's Jnth 11 entry (`$A0F8; RTS`) enters the native SoundMusicSys bridge.
+Original MDRV and SMOD code never execute. Song loading owns and prepares all resources
+and immutable PCM variants before enabling playback. The CIA-A timer runs the sequencer
+at 60 Hz on a private 8 KB stack; no allocation, conversion or original callback occurs
+there. Ownership changes defer an IRQ update until the outer guard releases it. Effects
+have priority over music on four Paula voices. See [sound-driver.md](sound-driver.md)
+and [music coverage](music-resource-coverage.md).
 
-The original driver loader now selects port-owned Jnth 11 from the overlay.
-Its four-byte `$A0F8; RTS` stub enters the user-mode service bridge, with the
-original C argument/return convention. MoveHHi flushes the instruction cache
-before the original caller executes it. The native driver implements measured
-initialization/quality, raw effects and their status/stop, song control and gain,
-SONG 131, 132, 135, 136 and 137 playback, track status and the full-width driver
-clock query. Other selectors and unmeasured songs retain named loud stops.
-Song resources are detached, locked and retained until release; original MDRV
-and SMOD code never executes. Song loading prepares the pitch, DMA layout and
-immutable PCM variants before playback. The default sequencer runs from a
-resource-owned CIA-A timer at 60 Hz on a private 8 KiB stack; its interrupt
-performs no allocation, sample conversion or original-code callback. The VBI
-continues to drive the game clock and display, and original Mac VBL callbacks
-remain in user mode. Main-thread audio ownership changes defer an interrupt
-update until the outer ownership guard releases it. Four physical voices
-use free channels then the oldest music voice, with effects taking priority.
-See [sound-driver.md](sound-driver.md) for measured contracts and waveform
-adaptations, and [music-resource-coverage.md](music-resource-coverage.md) for
-all eight resource graphs. The remaining song/event and effect-variant
-acceptance is tracked in [open work](open-work.md).
+## Files and lifecycle
 
-## Lifecycle
+Native reads/writes use bounded user-mode system windows. WHDLoad reads use
+`resload_LoadFileOffset` and saves use `resload_SaveFile`, through the same file
+interface. Original game and resource bodies remain on-demand; PRELOAD is a WHDLoad
+cache choice. Saves and preference writes are durable at their measured
+close/publication points rather than waiting for process termination.
 
-Shell and Workbench startup, the protected Workbench reply, allocation ledgers
-and complete OS restoration are inherited. Deferred disk writes (save games)
-belong after OS restoration, as Vette's score file established.
+Normal Quit follows the original exit patches, drains pending work, stops DMA and
+timers, restores OS vectors/display/input state, releases owned resources and replies to
+Workbench when required. The slave's immediate F10 exit is separate from this path.
+Framework modifications are documented in
+[UPSTREAM.md](../src/platform/amiga/framework/UPSTREAM.md).
 
-Framework modifications and upstream provenance are documented in
-[`framework/UPSTREAM.md`](../src/platform/amiga/framework/UPSTREAM.md).
+## CPU acceptance and memory requirement
 
+The verified minimum is AGA with 2 MB Chip and 8 MB Fast RAM. Fixed-clock 68020/68030
+pass intro and first-floor tests. Stairs and quit additionally cover all eight named CPU
+configurations in PAL/NTSC; this is not complete hardware acceptance for every
+accelerator. Four MB Fast fails startup even in production; intermediate configurations
+such as 6 MB were not measured.
 
-## M5 full-accounting profile — 2026-10-07
-
-Steady gameplay and resource/scene preparation are separate workloads. The
-steady sample starts after **ordinary Load completes (stage 5)**, settles for
-200 PAL fields, and reads the actor in the pinned application A5 world. Each
-run contains 2,000 randomly spaced debugger PC samples, all in room 3/camera 2.
-Every sample belongs to exactly one category; original segment ranges take
-precedence over native backtraces. These are statistical estimates, not sums
-of overlapping `AitdProfileScope` timers.
-
-| Exclusive phase, ms/completed frame | 68020 run A | 68020 run B | 68030 |
-| --- | ---: | ---: | ---: |
-| Original game code | 59.30 | 60.83 | 51.66 |
-| Drawing traps / geometry | 4.04 | 4.09 | 4.55 |
-| CopyBits | 0.00 | 0.00 | 3.03 |
-| C2P | 7.08 | 5.53 | 12.09 |
-| Palette | 0.00 | 0.00 | 0.00 |
-| Audio sequencer / interrupt | 0.00 | 0.00 | 0.00 |
-| System windows / file I/O | 0.00 | 0.00 | 0.00 |
-| Display / input interrupt | 0.00 | 0.00 | 0.00 |
-| Other presentation / synchronization | 0.20 | 0.20 | 0.30 |
-| Other native / trap services | 27.96 | 28.00 | 14.78 |
-| Unresolved / OS | 1.10 | 1.00 | 0.26 |
-| **Total** | **99.67** | **99.65** | **86.67** |
-
-Build: `FIRSTFLOORLOAD=1 INTROSKIP=1 PROBES=1`, without `M5AUDIT`.
-The 68020 uses fixed 14.18758 MHz; the accepted 68030 uses 15.6672 MHz.
-The latter uses the verified ARM FS-UAE build, the former the Intel build.
-The scope-free rates in README are the performance benchmark; this table
-includes instrumentation. Zero means **no sampled PC attributed**, not zero
-execution cost. In particular, the absence of 68020 CopyBits samples despite
-its known calls shows a sampling/backend limitation; do not infer that copying
-is free or that C2P is slower on 68030 from this table. Native callers and
-inlined/unresolved work remain in their stated categories. Rare interrupts
-need the separate direct E-clock audit below. Host-time sampling can be biased
-by emulator throughput; two repeats establish repeatability, not cycle accuracy.
-
-`tools/sample_gameplay.py` is the read-only PC sampler; use
-`amiga/gameplay_sample.gdb` after connecting at `MacLoader::run` in a matching
-build with the original first-floor save installed. Pass `--gdb`, `--elf`,
-`--connect`, `--setup`, `--out` and `--samples 2000`; run from `amiga/`.
-`tools/summarize_gameplay_profile.py <folder>` verifies the room and assigns
-all samples. Evidence: `tmp/m5/acceptance/gameplay020-{a,b}` and `gameplay030`.
-Earlier samples that read the stale `s_currentA5` were excluded and repeated.
-
-### Complete transitions and the owner's recording
-
-The historical intro measurements above bracket complete preparation calls,
-not an arbitrary loading sample presented as FPS. They identify three distinct
-costs: repeated OS/file-window traffic at room entry; region construction and
-heap bookkeeping during cold frog-mask preparation; and drawing/compatibility
-work in the first hallway frame. In the measured room-entry interval, 152
-opens, 152 closes and 460 reads account for about 36% of the instrumented span;
-drawing is small there. The original game performs packed-data decompression
-itself, so that CPU work belongs to original game code, not the port's file
-read time. No separate measured decompressor subtotal is available; the
-unattributed remainder must not be labelled decompression by subtraction.
-The cold-mask and first-frame inclusive subtotals above overlap and are not
-added to make a false 100% total.
-
-The owner's 2026-10-02 recording has a 7.95-second menu-to-landscape black
-interval (48.467–56.417), and a nearly static 14.7-second pre-stair span
-(334.2–348.9). It predates the fixes and uses a different CPU configuration.
-The later same-clock 68030 comparison records mansion entry at 8.82 seconds
-versus 8.05 on Mac, with no 15-second camera transition; it supersedes that
-recording for current timing. The unrelated white cache window and missing
-recorded audio provide no game-performance or audio evidence. See
-[intro-comparison.md](intro-comparison.md) and the rendered-acceptance section
-in development.md for checkpoint definitions and recording provenance.
-
-### Cold song preparation: the remaining large pause
-
-A fixed-68020 natural combat/death/restart route measures disjoint E-clock
-intervals around resource ownership/loading, MoveHHi, locking/code-view
-refresh, MIDI preflight, and PCM conversion. The rest is explicit residual
-preparation overhead. `M5AUDIT=1 DEATHROUTE=1 INTROSKIP=1 SONGCOST=1` and
-`amiga/m5_song_prepare.gdb` retain the measured diagnostic configuration;
-these are not scope-free shipping timings. Identical resource/note/sample
-counts before and after establish the same cold-song workload.
-
-| Song | Before total, s | After total, s | After MoveHHi, s | Resource, s | Lock/views, s | Decode, s | PCM, s | Other, s |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| MONSTER (136) | 12.658 | 3.869 | 3.102 | 0.186 | 0.019 | 0.165 | 0.183 | 0.215 |
-| FIGHT (132) | 24.467 | 7.134 | 6.003 | 0.213 | 0.019 | 0.295 | 0.244 | 0.360 |
-| BDISK2 (131) | 9.477 | 3.106 | 2.184 | 0.092 | 0.010 | 0.332 | 0.154 | 0.334 |
-
-MoveHHi originally rotated entire physical spans with three byte reversals,
-including two needless reversals when the target already occupied the final
-position. It now rotates aligned longwords and skips that no-op. Final handle
-addresses, neighbouring order, locked barriers and free-space accounting stay
-unchanged. This removes about 71% of cold FIGHT preparation and 67% of BDISK2
-preparation. Resource conversion was already performed once before playback;
-it was not the dominant source of these pauses. The remaining movement cost
-is documented; further algorithm changes are not required for this performance
-pass. Heap integrity/fragmentation tests under ASan/UBSan, native Memory Manager
-traps, and the independently checked natural death/restart route pass.
-
-
-### CPU acceptance and memory requirement
-
-The fixed `a4000-030-reference` passes `boot`, `resource-read`, `file-read`,
-`file-write`, `window-core`, all eight `resource-exit` phases, and uninterrupted
-`intro`. AmigaOS reports AttnFlags 7 (68030), 2,096,128 Chip bytes and 8,388,608
-Fast bytes; the pinned clock is 15.6672 MHz. The 68020 baseline reports flags 3.
-The new heap also passes native Memory Manager traps, all resource-exit phases,
-and the full 68030 intro (956 frames, 944 partial, 840 book updates), with exact
-four-state Mac pixel/palette/publication comparisons. Full 68040/68060 acceptance
-remains deferred; the unlimited functional pilot is not a hardware-performance
-reference.
-
-Use `AMIGA_FAST_KB=2048|4096|8192` for explicit RAM variants; CPU, clock, MMU,
-FPU and JIT remain pinned. The default is 8192. The emulator's Zorro II memory
-configuration does not support 6 MB, so it was not presented as a tested
-configuration. With 4096, both the audit and the **production** executable
-stop at `MEMORY MANAGER / FAST RAM ZONES` and release both partially allocated
-arenas. With 8192, ordinary Load and the complete gameplay session pass.
-Thus **8 MB Fast RAM is the smallest verified standard configuration**, not
-an assertion that every intermediate hardware layout would fail. The machine
-also has 2 MB Chip RAM; smaller Chip configurations were not accepted.
-
-`M5AUDIT=1` records aligned port AllocMem/FreeMem balances, zone occupancy and
-OS free-memory low-water marks. Dynamic allocation peaks exclude executable
-storage and unrelated OS allocations; the AvailMem minima include those.
-The diagnostic itself adds static counters, a 20 KiB note ring and a timer-device
-request, so its free-memory minimum is conservative for the production build.
-The full intro's deterministic pixel fixture did not start a song (zero IRQ
-and note counts); it supplies graphics/zone evidence, not audio acceptance.
-The gameplay run supplies song/effect memory and timing coverage instead.
-
-| Measured allocation | Peak bytes |
+| Allocation measured during intro/first-floor tests | Peak bytes |
 | --- | ---: |
-| Application-zone occupied space (including heap metadata) | 2,373,856 |
+| Application-zone occupied space including metadata | 2,373,856 |
 | System-zone occupied space | 304 |
 | Port dynamic Chip allocations | 591,696 |
 | Port dynamic Fast allocations | 3,596,256 |
-| Full-intro application-zone occupied space | 1,660,664 |
-| Full-intro port dynamic Chip / Fast | 132,648 / 3,530,816 |
 
-The zones reserve more than their occupied peak. Do not add zone occupancy to
-port Fast allocation totals: the zones are already contained in those totals.
-No port allocation failure or accounting imbalance occurs in the successful
-sessions. This is measured intro/first-floor acceptance, not an endgame memory
-claim; the full play-through remains M6 work.
+Zone occupancy is already inside the Fast total. These totals exclude the executable and
+unrelated OS allocations, and are not exhaustive endgame peaks. The game-process stack
+uses about 2.1 KB of its 4 KB allocation on measured Shell/Workbench/WHDLoad gameplay,
+Save/Load and exit paths. Private Mac and music stacks are separate. Keep large
+temporary buffers off the exception stack.
 
+## Interrupt checks
 
-### Interrupt budget and safe points
-
-The final fixed-68020 scope-free audit completes **11 living laps**, 36,656
-active gameplay ticks (610.9 seconds), 10,385 completed scene frames and zero
-dropped input transitions. The independent checker pairs actual destinations,
-combat removal, inventory and action/door state with the original Mac route.
-This is distinct from the earlier pre-optimization 12-lap run.
-
-| Interrupt / safe-point observation | Final value |
-| --- | ---: |
-| Native music IRQ calls | 158,137 |
-| Mean / maximum measured IRQ duration | 0.143 / 6.337 ms |
-| Minimum / maximum IRQ entry interval | 16.046 / 17.350 ms |
-| Maximum CIA entry lateness | 0.715 ms |
-| Note events across all songs / late logical deadlines | 8,358 / 0 |
-| Effect starts during the session | 660 |
-| Untouched music / deferred stack headroom, of 8,192 bytes | 7,848 / 8,096 bytes |
-| Maximum trap-entry gap, before / after heap fix | 26.261 / 7.492 s |
-| Maximum gap within one continuously active song | 1.619 s (97 music ticks) |
-
-The audit aggregates **every** note deadline across song changes and retains
-the last 1,024 actual due/delivery pairs in a bounded ring. Both aggregate and
-ring show zero logical lateness; sub-tick interrupt lateness is reported
-separately above. Measured interrupt duration includes diagnostic E-clock and
-note-recording overhead. The worst interrupt stays below the 16.667 ms period,
-and private-stack high-water marks have ample headroom.
-
-The longest general gap is a synchronous native sound-driver operation
-(A0F8, original callers `$2EAFC4`→`$2EAC00`). Music-clock progress across that
-gap is 447 ticks, but it includes song replacement/preparation and therefore
-does **not** establish uninterrupted notes from a single song. The separate
-same-song maximum establishes that the interrupt clock advances for 97 ticks
-while no trap safe point is available. Note deadlines remain met throughout
-the session, including effect changes. Original Mac VBL callbacks and remaining
-user-mode cleanup still wait for trap boundaries; no measured additional
-callback/cleanup requirement justifies a new original-code hook.
-
-Low-water OS free memory in this final run is 1,482,536 Chip bytes and 3,840,016
-Fast bytes, with 1,419 port allocations, zero failures and zero accounting
-errors. `amiga/m5_circuit.gdb`, `amiga/m5_snapshot.gdb` and
-`tools/check_m5_audit.py` provide the bounded observer and independent acceptance
-checks. A timeout, missing positive completion, late note, stalled interval or
-damaged stack guard is rejected by the checker and its host rejection tests.
+The first-floor endurance audit completes more than ten minutes with zero input drops or
+late logical note deadlines. Its worst measured music interrupt is 6.337 ms including
+probe overhead; maximum CIA entry lateness is 0.715 ms. Private music/deferred stacks
+retain 7,848/8,096 bytes of their 8,192-byte budgets. A same-song interval of 97 music
+ticks without a trap safe point demonstrates independent IRQ progress. Song
+replacement/preparation gaps must not be counted as continuous playback of one song. Use
+`m5_circuit.gdb` and `check_m5_audit.py` when modifying interrupt ownership, memory or
+safe points.

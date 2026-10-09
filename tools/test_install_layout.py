@@ -1,6 +1,6 @@
 import hashlib
 from pathlib import Path
-import tempfile
+import local_temp as tempfile
 import unittest
 from unittest.mock import patch
 import install_layout as layout

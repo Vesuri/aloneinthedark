@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Validate original presentation palette replacement and intentional chrome omission."""
-import argparse,os,re,struct,subprocess,tempfile
+import argparse, os, re, struct, subprocess
+import local_temp as tempfile
 from pathlib import Path
 from resource_fork import read_resource_fork
 ROOT=Path(__file__).resolve().parents[1]

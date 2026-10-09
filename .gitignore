@@ -103,10 +103,8 @@ __pycache__/
 
 # --- MAME's own state, written into the CWD ----------------------------------
 # MAME writes cfg/ and nvram/ relative to the working directory unless told
-# otherwise, so a bare run drops emulator state in the repo root -- and it WAS
-# committed once before this rule existed.  The reference invocation now passes
-# -cfg_directory / -nvram_directory into ref/mame/; these two entries are the
-# backstop for a run that forgets.
+# otherwise. Pass -cfg_directory and -nvram_directory under ref/mame/.
+# These entries protect a run that omits those options.
 /cfg/
 /nvram/
 

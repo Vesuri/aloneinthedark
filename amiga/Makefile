@@ -7,7 +7,7 @@
 #   make FPSCOUNT=1      the HONEST framerate build: one counter, no probe instrumentation
 #   make VERIFY=1 PROBES=1  run every asm twin against its C oracle on each call
 #   make FILLWATCH=1     rolling audit of the planar back buffer against the chunky Mac surface
-#   ./run.sh             boot in FS-UAE (CTRL + left mouse button quits)
+#   ./run.sh             boot in FS-UAE (Right-Amiga+Q quits)
 #   ./debug.sh           source-level debug via the FS-UAE GDB stub
 #   ./diag_run.sh [secs] headless probe run (needs PROBES=1)
 #

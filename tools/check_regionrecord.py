@@ -6,7 +6,7 @@ from pathlib import Path
 import re
 import struct
 import subprocess
-import tempfile
+import local_temp as tempfile
 from check_driver22 import fields, one
 
 ROOT = Path(__file__).resolve().parents[1]

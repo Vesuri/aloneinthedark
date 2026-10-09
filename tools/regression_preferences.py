@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 import subprocess
 import sys
-import tempfile
+import local_temp as tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
 

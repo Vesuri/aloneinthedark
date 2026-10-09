@@ -1,28 +1,22 @@
 # Eight-bit offscreen worlds
 
-**Status, 2026-10-02:** Offscreen-world bindings and drawing required by startup/intro pass M2.
-Unmeasured gameplay forms retain their named stops.
+Offscreen-world bindings and drawing required by startup/intro pass M2. Unmeasured
+gameplay forms retain their named stops.
 
-The checkpoint sections below preserve service-level evidence. References to
-an intermediate startup stop or a then-pending M2 gate are historical; current
-acceptance is recorded in [development.md](development.md), and remaining work
-is in [open-work.md](open-work.md). Unsupported contracts remain unsupported
-unless a later section explicitly verifies them.
+The first original request is Misc2+$0074, QDExtensions selector 0. It asks for 8-bit
+pixels, flags 8 (`keepLocal`), no explicit device, a supplied 256-entry colour table and
+bounds (0,0)–(648,401). The allocator now creates real current-zone storage; unsupported
+depth/flags/table forms and allocation failures stop at NEWGWORLD. The original
+instructions remain unchanged.
 
-The first original request is Misc2+$0074, QDExtensions selector 0. It asks for
-8-bit pixels, flags 8 (`keepLocal`), no explicit device, a supplied 256-entry
-colour table and bounds (0,0)–(648,401). The allocator now creates real current-zone
-storage; unsupported depth/flags/table forms and allocation failures stop at
-NEWGWORLD. The original instructions remain unchanged.
-
-The result has a 108-byte fixed colour port and 27 independently owned movable
-handles: two PixMaps, pixels, a copied colour table, visibility and clip regions,
-GrafVars, a private GDevice and inverse table, and three complete PixPat trees.
-Both device and port PixMaps share the pixel and colour-table handles. All new
-handles are unlocked and non-purgeable. Pixel contents are uninitialized; they
-are not accepted as a rendered frame. The subsequent original initialization now binds and clears the world, then
-restores the visible game port. Pixel-address access and the first original image-row copy also pass; the next
-queue item is the startup menu-list reset.
+The result has a 108-byte fixed colour port and 27 independently owned movable handles:
+two PixMaps, pixels, a copied colour table, visibility and clip regions, GrafVars, a
+private GDevice and inverse table, and three complete PixPat trees. Both device and port
+PixMaps share the pixel and colour-table handles. All new handles are unlocked and
+non-purgeable. Pixel contents are uninitialized; they are not accepted as a rendered
+frame. The subsequent original initialization now binds and clears the world, then
+restores the visible game port. Pixel-address access and the first original image-row
+copy also pass; the next queue item is the startup menu-list reset.
 
 Measured allocation details:
 
@@ -41,73 +35,71 @@ Measured allocation details:
   D0–D2 are zero, A0 is the output pointer, A1 is the visibility-region body;
   D3–D7/A2–A6 are preserved.
 
-The registry refreshes cached movable body addresses whenever the Memory
-Manager refreshes its views. Cleanup disposes every owned handle and the fixed
-port before resetting the zones. Capacity and unsupported allocations remain
-explicit stops rather than guessed Macintosh errors.
+The registry refreshes cached movable body addresses whenever the Memory Manager
+refreshes its views. Cleanup disposes every owned handle and the fixed port before
+resetting the zones. Capacity and unsupported allocations remain explicit stops rather
+than guessed Macintosh errors.
 
 ## Inverse colour lookup
 
-Direct Manhattan and Euclidean nearest-colour comparisons did not match the
-original table. Instrumenting the System 7.5.5 MakeITable entry established the
-actual algorithm: quantize colours to a padded cube, seed first/last/intermediate
-palette entries in that order, record same-cell collision rings, and fill unused
-cells breadth-first. The neighbour order reverses on every dequeued cell.
+Direct Manhattan and Euclidean nearest-colour comparisons did not match the original
+table. Instrumenting the System 7.5.5 MakeITable entry established the actual algorithm:
+quantize colours to a padded cube, seed first/last/intermediate palette entries in that
+order, record same-cell collision rings, and fill unused cells breadth-first. The
+neighbour order reverses on every dequeued cell.
 
-`GWorld8.h` implements that integer algorithm. Its resolution-4 result matches
-all 4,096 original lookup bytes, the seed/resolution header, collision count 85
-and all 256 collision links. The final 256 scratch bytes in the allocated table
-are undefined on the Mac and are cleared natively; they are excluded from the
-semantic comparison. The separate grey-only builder remains unsupported.
-Resolution 5 has host coverage; its original-call acceptance remains with the
-broader QuickDraw work when reached.
+`GWorld8.h` implements that integer algorithm. Its resolution-4 result matches all 4,096
+original lookup bytes, the seed/resolution header, collision count 85 and all 256
+collision links. The final 256 scratch bytes in the allocated table are undefined on the
+Mac and are cleared natively; they are excluded from the semantic comparison. The
+separate grey-only builder remains unsupported. Resolution 5 has host coverage; its
+original-call acceptance remains with the broader QuickDraw work when reached.
 
 ## Verification
 
 Original Misc2+$0050–$0075 has SHA-256
 `4a24b196d92950126c330581d9d5c728c555769313b05bcbfd61cd0c9699d5a5`.
 
-`tools/mac_newgworld.lua` captures the constructor and queries all auxiliary
-handles with CPU-executed Memory Manager calls. `amiga/newgworld.gdb` captures the
-native records and owning heap. `tools/check_newgworld.py` validates all defined
-record bytes, pointer relationships, master slots, block ownership, flags,
-lengths, call ABI, colour-copy independence and unchanged screen/device state.
-`tools/check_gworld8.py --reference` also compares the pure inverse builder with
-the local Mac capture; its normal host test covers layout bounds, every valid
-row width, exact PixMap bytes and both supported inverse resolutions.
+`tools/mac_newgworld.lua` captures the constructor and queries all auxiliary handles
+with CPU-executed Memory Manager calls. `amiga/newgworld.gdb` captures the native
+records and owning heap. `tools/check_newgworld.py` validates all defined record bytes,
+pointer relationships, master slots, block ownership, flags, lengths, call ABI,
+colour-copy independence and unchanged screen/device state. `tools/check_gworld8.py
+--reference` also compares the pure inverse builder with the local Mac capture; its
+normal host test covers layout bounds, every valid row width, exact PixMap bytes and
+both supported inverse resolutions.
 
 The local reference is `tmp/m2-newgworld-ownership-all.log`; its dumps and the
-MakeITable disassembly remain under ignored `tmp/`. No original resources,
-System software bytes or captures are committed.
+MakeITable disassembly remain under ignored `tmp/`. No original resources, System
+software bytes or captures are committed.
 
 ## Offscreen initialization
 
-Misc2+$008E–$0114 binds the new world, sets its rectangular clip, gets the
-PixMap, locks its pixels, erases the clipped rectangle, unlocks the pixels and
-restores the game window with the explicit main device. Both SetGWorld forms
-retain their measured return values. GetGWorld derives the device from the
-bound world.
+Misc2+$008E–$0114 binds the new world, sets its rectangular clip, gets the PixMap, locks
+its pixels, erases the clipped rectangle, unlocks the pixels and restores the game
+window with the explicit main device. Both SetGWorld forms retain their measured return
+values. GetGWorld derives the device from the bound world.
 
-LockPixels changes the real pixel handle state to locked and changes only the
-port PixMap from version 2 / handle baseAddr to version 1 / raw pixel baseAddr.
-UnlockPixels reverses that transition. The private device PixMap stays in its
-original handle form throughout. Refreshing movable-body views preserves this
-distinction. The Boolean lock result and both PixMap lookup results match.
+LockPixels changes the real pixel handle state to locked and changes only the port
+PixMap from version 2 / handle baseAddr to version 1 / raw pixel baseAddr. UnlockPixels
+reverses that transition. The private device PixMap stays in its original handle form
+throughout. Refreshing movable-body views preserves this distinction. The Boolean lock
+result and both PixMap lookup results match.
 
-EraseRect uses the owned eight-bit pixels, clips against the map, port,
-visibility and clip rectangles, and fills the solid background index. The
-measured 648×401 world has 259,848 visible bytes; all become zero, while all
-1,604 row-padding bytes remain unchanged. Unsupported patterns, complex regions
-and unlocked storage stop explicitly. No screen publication is requested.
+EraseRect uses the owned eight-bit pixels, clips against the map, port, visibility and
+clip rectangles, and fills the solid background index. The measured 648×401 world has
+259,848 visible bytes; all become zero, while all 1,604 row-padding bytes remain
+unchanged. Unsupported patterns, complex regions and unlocked storage stop explicitly.
+No screen publication is requested.
 
 The original 160-byte sequence starting at Misc2+$0076 has SHA-256
 `6c1c59823b41b3d2087b587439adc5b81dc63377ef8dab2eaed88b5813ed8b70`.
-`tools/mac_gworld_init.lua`, `amiga/gworld_init.gdb` and
-`tools/check_gworld_init.py` compare the live bytes, eight call stack effects,
-callee-preserved registers, owned records, real heap lock states and pixel
-results. System-internal scratch addresses left in EraseRect's A0/D2 are not
-portable return values; the original initialization sequence does not consume these scratch outputs
-as results. The comparison does not require their numerical identity.
+`tools/mac_gworld_init.lua`, `amiga/gworld_init.gdb` and `tools/check_gworld_init.py`
+compare the live bytes, eight call stack effects, callee-preserved registers, owned
+records, real heap lock states and pixel results. System-internal scratch addresses left
+in EraseRect's A0/D2 are not portable return values; the original initialization
+sequence does not consume these scratch outputs as results. The comparison does not
+require their numerical identity.
 
 Run the checker with explicit normal-exit statuses:
 
@@ -116,72 +108,63 @@ python3 tools/check_gworld_init.py tmp/m2-gworld-init-reference-final.log \
   tmp/m2-gworld-init-native-final.log --reference-status 0 --native-status 0
 ```
 
-The accepted reference capture exits normally without Lua errors. An earlier
-capture's shutdown-callback error and an initial native observer's malformed
-memory-dump expression are excluded from acceptance. The next named stop is
-GETPIXBASEADDR, QDOffscreen selector 15, Misc2+$02DA. This establishes offscreen
-initialization, not rendered logo or intro acceptance.
+The accepted reference capture exits normally without Lua errors. An earlier capture's
+shutdown-callback error and an initial native observer's malformed memory-dump
+expression are excluded from acceptance. The next named stop is GETPIXBASEADDR,
+QDOffscreen selector 15, Misc2+$02DA. This establishes offscreen initialization, not
+rendered logo or intro acceptance.
 
 ## Pixel address and original row-copy use
 
-GetPixBaseAddr at Misc2+$02DA now returns the actual owned pixel body without
-changing its state. The locked form (PixMap version 1, raw baseAddr) leaves
-D0's high word intact, sets its low word to 1, and returns the pixel pointer in
-A0 and on the Pascal stack. The unlocked form (version 2, handle baseAddr)
-returns the pixel pointer in D0 and on the stack, with A0 holding the pixel
-handle. Both leave A1 at the PixMap body, pop four argument bytes, and preserve
-the remaining registers. Unsupported or inconsistent layouts stop explicitly.
-All 32 bits of native pixel addresses are retained; no 24-bit masking is used.
+GetPixBaseAddr at Misc2+$02DA now returns the actual owned pixel body without changing
+its state. The locked form (PixMap version 1, raw baseAddr) leaves D0's high word
+intact, sets its low word to 1, and returns the pixel pointer in A0 and on the Pascal
+stack. The unlocked form (version 2, handle baseAddr) returns the pixel pointer in D0
+and on the stack, with A0 holding the pixel handle. Both leave A1 at the PixMap body,
+pop four argument bytes, and preserve the remaining registers. Unsupported or
+inconsistent layouts stop explicitly. All 32 bits of native pixel addresses are
+retained; no 24-bit masking is used.
 
-The original locked call and a CPU-executed unlocked Mac fixture establish both
-forms. The pure helper matches both captured register contracts under host
-sanitizers; the native original route verifies the locked form. No native
-unlocked-call execution is claimed by this capture.
+The original locked call and a CPU-executed unlocked Mac fixture establish both forms.
+The pure helper matches both captured register contracts under host sanitizers; the
+native original route verifies the locked form. No native unlocked-call execution is
+claimed by this capture.
 
-Original instructions then copy 56 rows of 512 bytes into the 520-byte-stride
-buffer and unlock it. Paired captures compare all 28,672 source/visible bytes
-and preserve the remaining eight bytes of each row (four unused pixels plus
-four stride-padding bytes, 448 bytes total). Queries leave the PixMap and pixels
-unchanged; the copy leaves the native screen unchanged. This is offscreen image
-data, not an accepted rendered intro frame.
+Original instructions then copy 56 rows of 512 bytes into the 520-byte-stride buffer and
+unlock it. Paired captures compare all 28,672 source/visible bytes and preserve the
+remaining eight bytes of each row (four unused pixels plus four stride-padding bytes,
+448 bytes total). Queries leave the PixMap and pixels unchanged; the copy leaves the
+native screen unchanged. This is offscreen image data, not an accepted rendered intro
+frame.
 
 The original Misc2+$02AC–$02DB bytes have SHA-256
-`1a629f339fc613c783d30253999e7d72daa777d10837e76747eb0dc21c86ba2a`.
-The copy-loop guard checks its single relocated JSR operand against A5 plus the
-original relocation value before comparing the remaining instruction bytes.
-
-`tools/mac_pixbase.lua` captures the reference; `amiga/pixbase.gdb` combines
-original-byte/main/A5, pointer/copy, mixer-exclusion and AGA-publication checks
-in one bounded native run. Verify with `tools/check_pixbase.py` and explicit
-`--reference-status 0 --native-status 0`, plus `tools/check_gworld8.py
---pixel-reference` and the existing AGA/A5 comparators. Accepted captures are
-`tmp/m2-pixbase-reference-copy.log` and `tmp/m2-pixbase-native-final.log`.
-The next stop is MENU MANAGER / CLEARMENUBAR, Engine+$2B06.
-
+`1a629f339fc613c783d30253999e7d72daa777d10837e76747eb0dc21c86ba2a`. The copy-loop guard
+checks its single relocated JSR operand against A5 plus the original relocation value
+before comparing the remaining instruction bytes.
 
 ## Device colour-table input
 
 The original Dan2+$0234 NewGWorld call uses the GetCTable result directly, with
-ctFlags=$8000. The Mac copies all 2,056 bytes unchanged, including flags and
-entry values, into its separately owned table. It preserves the input table.
-The allocator now accepts this measured flag as well as zero; other table flags
-retain the named stop. There is no colour remapping during this allocation.
+ctFlags=$8000. The Mac copies all 2,056 bytes unchanged, including flags and entry
+values, into its separately owned table. It preserves the input table. The allocator now
+accepts this measured flag as well as zero; other table flags retain the named stop.
+There is no colour remapping during this allocation.
 
 Original Dan2+$0216–+$0235 has SHA-256
-`c55b6fcf3393bf4e7adbffd132760d18fd9ed1225fc5da8b19077b29a5c5baad`.
-The live guard verifies the output-pointer immediate against its original value
-plus A5. Bounds are (0,0)–(138,542), rowBytes=144 (including the existing extra
-slop word), and pixel storage is 78,048 bytes. All 27 owned handles, fixed port,
-PixMaps, regions, patterns, private device and defined inverse-table bytes match
-the reference after pointer/seed normalization. Input table, main device and
-screen remain unchanged. Native heap metadata proves independent ownership and
-unlocked/nonpurgeable states. Return registers and 22-byte argument cleanup match.
+`c55b6fcf3393bf4e7adbffd132760d18fd9ed1225fc5da8b19077b29a5c5baad`. The live guard
+verifies the output-pointer immediate against its original value plus A5. Bounds are
+(0,0)–(138,542), rowBytes=144 (including the existing extra slop word), and pixel
+storage is 78,048 bytes. All 27 owned handles, fixed port, PixMaps, regions, patterns,
+private device and defined inverse-table bytes match the reference after pointer/seed
+normalization. Input table, main device and screen remain unchanged. Native heap
+metadata proves independent ownership and unlocked/nonpurgeable states. Return registers
+and 22-byte argument cleanup match.
 
-The existing reference probe supports this site with
-`AITD_GWORLD_DEVICE_TABLE=1`; use it with the standard headless MAME invocation.
-It writes `tmp/gworld-device-reference-*`. `amiga/gworld_device_call.gdb` is part
-of the combined startup observer and reuses `gworld_records.gdb` for the complete
-native record/heap capture. Verify normal process statuses with:
+The existing reference probe supports this site with `AITD_GWORLD_DEVICE_TABLE=1`; use
+it with the standard headless MAME invocation. It writes
+`tmp/gworld-device-reference-*`. `amiga/gworld_device_call.gdb` is part of the combined
+startup observer and reuses `gworld_records.gdb` for the complete native record/heap
+capture. Verify normal process statuses with:
 
 ```sh
 python3 tools/check_newgworld.py tmp/m2-gworld-device-reference.log \
@@ -190,162 +173,147 @@ python3 tools/check_newgworld.py tmp/m2-gworld-device-reference.log \
 python3 tools/check_gworld8.py --device-reference
 ```
 
-Both accepted captures exit 0. The helper's ordinary `--reference` comparison
-also passes, protecting the existing table path. The first checker expectation
-omitted the established four-byte slop word; both actual captures agreed on
-144-byte rows, and the checker was corrected to that evidence. No runtime
-layout change was needed. Shared startup, detachment, rectangle, font/driver,
-A5 and AGA checks pass. The next named stop is RGBForeColor at Dan2+$02BE;
-M2.3g7 retains colour selection acceptance. Earlier sections record their
-historical boundaries; current shared observers stop at RGBForeColor.
-
+Both accepted captures exit 0. The helper's ordinary `--reference` comparison also
+passes, protecting the existing table path. The first checker expectation omitted the
+established four-byte slop word; both actual captures agreed on 144-byte rows, and the
+checker was corrected to that evidence. No runtime layout change was needed. Shared
+startup, detachment, rectangle, font/driver, A5 and AGA checks pass.
 
 ## Visible background-window binding
 
-The original Misc1+$0E0A SetGWorld call selects the existing background window
-with a nil device. Its +$0DFE–$0E0B bytes are
-`2f2c000842a7203c00080006ab1d`. The window is visible and owned but is not
-frontmost. Binding therefore accepts validated visible screen-backed colour
-windows regardless of their position in the window list. It does not reorder
-windows, draw anything or change the viewport.
+The original Misc1+$0E0A SetGWorld call selects the existing background window with a
+nil device. Its +$0DFE–$0E0B bytes are `2f2c000842a7203c00080006ab1d`. The window is
+visible and owned but is not frontmost. Binding therefore accepts validated visible
+screen-backed colour windows regardless of their position in the window list. It does
+not reorder windows, draw anything or change the viewport.
 
-The reference selects the main device, changes only the current-port pointer,
-returns D0=$0008C000, A0=port and A1=main-device handle, preserves D1–D7/A2–A6,
-and consumes eight bytes. Complete 156-byte window, 50-byte PixMap, 62-byte
-device and 307,200 screen bytes are unchanged. The background's local port
-rectangle is (0,0)–(16000,16000), with PixMap bounds (8000,8000)–(8480,8640).
-Native palette bytes, dirty/publication state and colour seed are also preserved.
-The Mac capture includes a 56-pixel clock-shaped cursor at (252,267)–(261,274);
-the checker validates its exact footprint. The native viewport remains clear.
+The reference selects the main device, changes only the current-port pointer, returns
+D0=$0008C000, A0=port and A1=main-device handle, preserves D1–D7/A2–A6, and consumes
+eight bytes. Complete 156-byte window, 50-byte PixMap, 62-byte device and 307,200 screen
+bytes are unchanged. The background's local port rectangle is (0,0)–(16000,16000), with
+PixMap bounds (8000,8000)–(8480,8640). Native palette bytes, dirty/publication state and
+colour seed are also preserved. The Mac capture includes a 56-pixel clock-shaped cursor
+at (252,267)–(261,274); the checker validates its exact footprint. The native viewport
+remains clear.
 
 `mac_world_restore.lua` captures the original binding. The native
-`world_restore_call.gdb` is included within the shared startup observer's text
-loop, so all previous picture/text checks run in the same acceptance launch.
-The existing checker supports both the front and background cases:
+`world_restore_call.gdb` is included within the shared startup observer's text loop, so
+all previous picture/text checks run in the same acceptance launch. The existing checker
+supports both the front and background cases:
 
 ```
 python3 tools/check_world_binding.py tmp/m2-world-restore-reference-final.log tmp/m2-world-restore-native-final.log --reference-status 0 --native-status 0 --background
 ```
 
-Use actual exit statuses; terminal markers and the next named stop/MDRV guard
-are required. The next original operation is LocalToGlobal at Misc1+$0E20.
-
+Use actual exit statuses; terminal markers and the next named stop/MDRV guard are
+required. The next original operation is LocalToGlobal at Misc1+$0E20.
 
 ## Background point conversion
 
-Misc1+$0E20 and +$0E26 call LocalToGlobal on the two background-window corners.
-The original +$0E1C–$0E27 bytes are `486efff4a870486efff8a870`.
-With the selected PixMap origin (8000,8000), (0,0) becomes (-8000,-8000) and
-(16000,16000) becomes (8000,8000). Both calls preserve D0–D7/A0–A6, consume
-four bytes, and leave the port, PixMap and bytes adjacent to each point unchanged.
-The service uses the real screen-backed window's PixMap bounds; unsupported
-port layouts remain named stops. Arithmetic stays in sixteen-bit point words.
+Misc1+$0E20 and +$0E26 call LocalToGlobal on the two background-window corners. The
+original +$0E1C–$0E27 bytes are `486efff4a870486efff8a870`. With the selected PixMap
+origin (8000,8000), (0,0) becomes (-8000,-8000) and (16000,16000) becomes (8000,8000).
+Both calls preserve D0–D7/A0–A6, consume four bytes, and leave the port, PixMap and
+bytes adjacent to each point unchanged. The service uses the real screen-backed window's
+PixMap bounds; unsupported port layouts remain named stops. Arithmetic stays in
+sixteen-bit point words.
 
-The Vette GlobalToLocal implementation subtracted a fixed (64,91) origin. It is
-now a named stop, with measured inverse conversion queued separately as M2.3b.
-It was not reached by this accepted native startup route.
+The Vette GlobalToLocal implementation subtracted a fixed (64,91) origin. It is now a
+named stop, with measured inverse conversion queued separately as M2.3b. It was not
+reached by this accepted native startup route.
 
-`mac_localglobal.lua` captures the two original calls; `localglobal_calls.gdb`
-adds their native before/after states to the combined startup observer.
+`mac_localglobal.lua` captures the two original calls; `localglobal_calls.gdb` adds
+their native before/after states to the combined startup observer.
 
 ```
 python3 tools/check_localglobal.py tmp/m2-localglobal-reference.log tmp/m2-localglobal-native-final.log --reference-status 0 --native-status 0
 ```
 
-The checker requires exact original/live caller bytes, both results, all
-preserved registers, stack cleanup, adjacent bytes and unchanged drawing records.
-The next stop is TestDeviceAttribute at Misc1+$0E3A.
-
-
 ## Drawing-device attribute query
 
-Misc1+$0E3A calls TestDeviceAttribute with the main-device handle and attribute
-13. Original +$0E32–$0E3B bytes: `42272f0a3f3c000daa2c`. The current $B921
-flags word at GDevice+20 has this bit set. The trap writes Boolean byte 1,
-preserves its Pascal padding byte and consumes six argument bytes. It replaces
-only the low words of D0 (attribute) and D1 (flags), preserving their upper words.
-D2–D7/A2–A6 and the complete device record are unchanged. Native A0/A1 are
-preserved additionally; Mac scratch pointer values are not reproduced.
+Misc1+$0E3A calls TestDeviceAttribute with the main-device handle and attribute 13.
+Original +$0E32–$0E3B bytes: `42272f0a3f3c000daa2c`. The current $B921 flags word at
+GDevice+20 has this bit set. The trap writes Boolean byte 1, preserves its Pascal
+padding byte and consumes six argument bytes. It replaces only the low words of D0
+(attribute) and D1 (flags), preserving their upper words. D2–D7/A2–A6 and the complete
+device record are unchanged. Native A0/A1 are preserved additionally; Mac scratch
+pointer values are not reproduced.
 
-The native query reads the real registered main device for attributes 0–15.
-Unknown devices and out-of-range attributes remain explicit stops. The original
-iterator next checks existing device fields and reaches SectRect at +$0E90;
-completion of that intersection and the remaining iteration is still pending.
+The native query reads the real registered main device for attributes 0–15. Unknown
+devices and out-of-range attributes remain explicit stops. The original iterator checks
+existing device fields and reaches SectRect at +$0E90; see rectangles.md for that
+contract.
 
-`mac_device_attribute.lua` captures the original call plus all sixteen bits,
-with D0/D1 and Boolean-padding sentinels. The original native call is captured
-by `device_attribute_call.gdb` in the combined startup observer. The additional
-sixteen-bit cases are reference fixtures, not claimed as native original calls.
+`mac_device_attribute.lua` captures the original call plus all sixteen bits, with D0/D1
+and Boolean-padding sentinels. The original native call is captured by
+`device_attribute_call.gdb` in the combined startup observer. The additional sixteen-bit
+cases are reference fixtures, not claimed as native original calls.
 
 ```
 python3 tools/check_device_attribute.py tmp/m2-device-attribute-reference-final.log --status 0
 python3 tools/check_device_attribute.py tmp/m2-device-attribute-native-final.log --status 0 --native
 ```
 
-The checker independently checks original/live bytes, the real flags, Boolean
-and padding, upper/lower register words, preserved state and positive completion.
-
+The checker independently checks original/live bytes, the real flags, Boolean and
+padding, upper/lower register words, preserved state and positive completion.
 
 ## Selected-port RGB retrieval
 
 M2.3g16 implements the adjacent original GetForeColor/GetBackColor calls at
-Dan1+$623C/+$6242. Their six-byte caller guards are `2f2e0008aa19` and
-`2f2e000caa1a`. No game instructions change. Both read the selected owned colour
-window or GWorld's RGB fields at offsets 36/42 and write exactly six bytes.
-The three components are read before any output write. Null output, unknown
-ports and monochrome ports retain a named stop.
+Dan1+$623C/+$6242. Their six-byte caller guards are `2f2e0008aa19` and `2f2e000caa1a`.
+No game instructions change. Both read the selected owned colour window or GWorld's RGB
+fields at offsets 36/42 and write exactly six bytes. The three components are read
+before any output write. Null output, unknown ports and monochrome ports retain a named
+stop.
 
-Original startup selects the game window, with both colours black. Four Mac
-fixtures confirm independent component retrieval for `1234/5678/9ABC`,
-`DEF0/1357/2468`, `FFFF/0000/8000` and `0000/FFFF/8001`. The port stays unchanged.
-GetForeColor returns D0=80 and D1=36; GetBackColor returns D0=84 and D1=42.
-A1 is the output pointer, D2–D7/A2–A6 are preserved, and stack cleanup consumes
-four bytes. Mac A0 is scratch state; native code preserves it additionally.
+Original startup selects the game window, with both colours black. Four Mac fixtures
+confirm independent component retrieval for `1234/5678/9ABC`, `DEF0/1357/2468`,
+`FFFF/0000/8000` and `0000/FFFF/8001`. The port stays unchanged. GetForeColor returns
+D0=80 and D1=36; GetBackColor returns D0=84 and D1=42. A1 is the output pointer,
+D2–D7/A2–A6 are preserved, and stack cleanup consumes four bytes. Mac A0 is scratch
+state; native code preserves it additionally.
 
-The observer captures InitGraf's actual `&thePort` argument. An initial probe
-used an earlier GWorld pointer cached in the game's A5 globals, which no longer
-represented the selected port; its mismatched fields made it unsuitable for
-acceptance. The final reference explicitly follows InitGraf's pointer.
+The observer captures InitGraf's actual `&thePort` argument. An initial probe used an
+earlier GWorld pointer cached in the game's A5 globals, which no longer represented the
+selected port; its mismatched fields made it unsuitable for acceptance. The final
+reference explicitly follows InitGraf's pointer.
 
-Use the standard headless MAME command with `tools/mac_get_colors.lua`, then
-native `menu_lifecycle.gdb`. Validate actual terminal exit statuses with:
+Use the standard headless MAME command with `tools/mac_get_colors.lua`, then native
+`menu_lifecycle.gdb`. Validate actual terminal exit statuses with:
 
 ```sh
 python3 tools/check_get_colors.py tmp/m2-getcolor-reference-final.log --status 0
 python3 tools/check_get_colors.py tmp/m2-getcolor-native-final.log --status 0 --native
 ```
 
-The reference covers two original calls and four nontrivial fixtures; native
-acceptance covers both original calls, with exact RGB results, whole-port
-preservation and four guard bytes on either side of each output. The adjacent
-RGB setters use the window next; that extension is M2.3g17.
-
+The reference covers two original calls and four nontrivial fixtures; native acceptance
+covers both original calls, with exact RGB results, whole-port preservation and four
+guard bytes on either side of each output.
 
 ## Window RGB updates and the main inverse table
 
-M2.3g17 extends RGBForeColor/RGBBackColor to the selected owned visible 8-bit
-window. Original Dan1+$624A/+$6252 callers have the same A5-relative black/white
-arguments as the offscreen setters; their unrelocated bytes at +$6244–+$6253 are
+M2.3g17 extends RGBForeColor/RGBBackColor to the selected owned visible 8-bit window.
+Original Dan1+$624A/+$6252 callers have the same A5-relative black/white arguments as
+the offscreen setters; their unrelocated bytes at +$6244–+$6253 are
 `2f3cfffff002aa142f3cfffff008aa15`. No game instructions change.
 
 The window uses the main device's actual 256-entry colour table and 4-bit inverse
-cube/collision rings. The existing GWorld8 inverse builder and RGB16 matcher
-match all 4,096 cube entries, defined collision data and 66 reference lookups for
-this palette too. The old Vette main-device builder only supported sixteen
-entries; it is replaced with that verified eight-bit implementation. Main-device
-storage now includes the collision record (4,620 bytes total). The first window
-colour match builds the table lazily; a changed palette seed rebuilds it. A
-19,856-byte temporary block in the private application zone holds builder
-scratch and is freed before return, without an OS handback. Unsupported tables
-or allocation failure retain the named stop.
+cube/collision rings. The existing GWorld8 inverse builder and RGB16 matcher match all
+4,096 cube entries, defined collision data and 66 reference lookups for this palette
+too. The old Vette main-device builder only supported sixteen entries; it is replaced
+with that verified eight-bit implementation. Main-device storage now includes the
+collision record (4,620 bytes total). The first window colour match builds the table
+lazily; a changed palette seed rebuilds it. A 19,856-byte temporary block in the private
+application zone holds builder scratch and is freed before return, without an OS
+handback. Unsupported tables or allocation failure retain the named stop.
 
-The original foreground black maps to index 255 and background white to index 0.
-Only the selected RGB field and pixel-index longword change. D0/D1 return the
-index, A0 points to that index field, A1 points to the inverse collision record;
-D3–D7/A2–A6 and stack cleanup match the offscreen contract. The Mac's three PixPat
-records remain unchanged. The native window's implicit default-pattern state is
-also unchanged; nondefault pattern handles remain unsupported. The native setters preserve the device palette and do not request display
-publication.
+The original foreground black maps to index 255 and background white to index 0. Only
+the selected RGB field and pixel-index longword change. D0/D1 return the index, A0
+points to that index field, A1 points to the inverse collision record; D3–D7/A2–A6 and
+stack cleanup match the offscreen contract. The Mac's three PixPat records remain
+unchanged. The native window's implicit default-pattern state is also unchanged;
+nondefault pattern handles remain unsupported. The native setters preserve the device
+palette and do not request display publication.
 
 Use the standard headless MAME command with `tools/mac_window_rgb.lua`; it follows
 InitGraf's real global pointer. Native acceptance uses `menu_lifecycle.gdb`.
@@ -361,38 +329,35 @@ whole-port mutations, all unchanged palette bytes, defined inverse-table bytes
 (normalizing independently verified seeds), preserved patterns and ABI. Existing
 offscreen colour checks remain separate regression coverage.
 
-
 ## Window rectangle filling
 
-M2.3g18 implements the original Dan2+$0D52 PaintRect (caller bytes
-`486efff0a8a2`). The selected window uses a 640×480×8 PixMap with local bounds
-(-150,-160)–(330,480), a 320×200 visible region, a rectangular clip, solid pen
-pixel data and patCopy mode. Its implicit native default pen fills with the
-selected foreground index. The reached Dark+$3CB8 call additionally uses
-mode 0 with the same solid pen; the window fill accepts modes 0 and 8.
-Other patterns, transfer modes and complex regions remain named stops. The
-helper clips signed coordinates against map,
-port, visible and clip bounds, then converts the actual write area back to
-screen coordinates for dirty publication.
+M2.3g18 implements the original Dan2+$0D52 PaintRect (caller bytes `486efff0a8a2`). The
+selected window uses a 640×480×8 PixMap with local bounds (-150,-160)–(330,480), a
+320×200 visible region, a rectangular clip, solid pen pixel data and patCopy mode. Its
+implicit native default pen fills with the selected foreground index. The reached
+Dark+$3CB8 call additionally uses mode 0 with the same solid pen; the window fill
+accepts modes 0 and 8. Other patterns, transfer modes and complex regions remain named
+stops. The helper clips signed coordinates against map, port, visible and clip bounds,
+then converts the actual write area back to screen coordinates for dirty publication.
 
-The original full-client black fill preserves every existing pixel. Contrasting
-Mac fixtures establish actual drawing: an interior rectangle changes 72 pixels;
-an oversized rectangle changes exactly 64,000 client pixels, with the surrounding
-screen unchanged. The production helper matches all three complete reference
-screens and six independent clipping/empty/inverted cases under ASan/UBSan.
-Native captures additionally match client pixels and the logical CLUT, preserving
-port, PixMap, regions, rectangle guards and surrounding pixels. D0 is zero,
-D1's low word is 8, A1 is the selected port, D3–D7/A2–A6 are preserved, and the
-argument stack advances four bytes. Mac D2/A0 are scratch; native preserves them.
+The original full-client black fill preserves every existing pixel. Contrasting Mac
+fixtures establish actual drawing: an interior rectangle changes 72 pixels; an oversized
+rectangle changes exactly 64,000 client pixels, with the surrounding screen unchanged.
+The production helper matches all three complete reference screens and six independent
+clipping/empty/inverted cases under ASan/UBSan. Native captures additionally match
+client pixels and the logical CLUT, preserving port, PixMap, regions, rectangle guards
+and surrounding pixels. D0 is zero, D1's low word is 8, A1 is the selected port,
+D3–D7/A2–A6 are preserved, and the argument stack advances four bytes. Mac D2/A0 are
+scratch; native preserves them.
 
 ```sh
 python3 tools/check_fillrect8.py --reference tmp/m2-paintrect-reference-colors.log --status 0 --native tmp/m2-paintrect-native-final.log --native-status 0
 ```
 
 `mac_paintrect.lua` captures the original call before running isolated contrasting
-fixtures. `paintrect_call.gdb` observes the original native call without guest
-writes; it is included in the combined startup observer. That observer retains
-only the first measured colour-getter/setter pair when later original callers
-repeat them. Native acceptance requires positive completion and MDRV exclusion.
-The AGA observer verifies both queued/published frames. These are memory and
-register comparisons, not owner-deferred live-window video acceptance.
+fixtures. `paintrect_call.gdb` observes the original native call without guest writes;
+it is included in the combined startup observer. That observer retains only the first
+measured colour-getter/setter pair when later original callers repeat them. Native
+acceptance requires positive completion and MDRV exclusion. The AGA observer verifies
+both queued/published frames. These are memory and register comparisons, not
+owner-deferred live-window video acceptance.

@@ -6,7 +6,7 @@ from pathlib import Path
 import re
 import struct
 import subprocess
-import tempfile
+import local_temp as tempfile
 from check_picture8 import unpack
 from check_video_transfer import native as transfer_table
 from resource_fork import read_resource_fork

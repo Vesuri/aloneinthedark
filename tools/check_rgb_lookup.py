@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Compare the native inverse-ring helper with recorded Mac RGB results."""
 from pathlib import Path
-import os,re,struct,subprocess,tempfile
+import os, re, struct, subprocess
+import local_temp as tempfile
 ROOT=Path(__file__).resolve().parents[1]
 text=(ROOT/'tmp/m2-rgb-reference-final.log').read_text()
 assert text.count('PASS original RGB colours and 64 fixtures')==1 and text.count('Exited via the debugger')==1 and 'FAIL' not in text

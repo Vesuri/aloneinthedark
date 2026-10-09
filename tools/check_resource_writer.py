@@ -4,7 +4,7 @@ import argparse
 import os
 from pathlib import Path
 import subprocess
-import tempfile
+import local_temp as tempfile
 from resource_fork import read_resource_fork
 p=argparse.ArgumentParser(description=__doc__);p.add_argument('--original',type=Path);a=p.parse_args()
 root=Path(__file__).resolve().parent.parent

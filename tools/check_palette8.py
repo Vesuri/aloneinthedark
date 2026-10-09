@@ -4,7 +4,7 @@ import hashlib
 import os
 from pathlib import Path
 import subprocess
-import tempfile
+import local_temp as tempfile
 ROOT=Path(__file__).resolve().parents[1]
 SYSTEM_CLUT_SHA='8bde63f387a037ed68a9a1b659571162634834d079dd17e593df446b53aabb19'
 def main():

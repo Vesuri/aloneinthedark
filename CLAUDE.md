@@ -1,8 +1,8 @@
 # Repository guidance
 
-This repository is an in-progress Amiga port of the Macintosh **Alone In The
+This repository is an Amiga port of the Macintosh **Alone In The
 Dark 1.0** (Interplay, 1994). It reuses the runtime of the completed Vette!
-port (`~/Documents/Vette`), which is the reference for conventions and for
+port, which is the reference for conventions and for
 solutions already paid for. Read [README.md](README.md),
 [docs/design.md](docs/design.md) (architecture, owner decisions, workflow),
 [docs/development.md](docs/development.md) and
@@ -58,6 +58,13 @@ solutions already paid for. Read [README.md](README.md),
 
 ## Local inputs and tools
 
+- Keep personal filesystem paths and unrelated work references out of tracked
+  files. Name other projects with project-relative paths only. Shared tools under
+  `~/.local` and environment-overridable assets under `~/.local/share/amiga`
+  are the convention; see [development.md](docs/development.md).
+- Put screenshots and scratch output in ignored `tmp/`. Preserve original inputs
+  and saves when cleaning local files. History belongs in Git, not progress logs.
+
 - Never commit original game files, resource forks, .PAK/.ITD data, generated
   disassembly, screenshots, audio captures, ROMs or emulator state. `tmp/` and
   `ref/` are local-only. Build outputs and release archives are ignored.
@@ -86,6 +93,8 @@ solutions already paid for. Read [README.md](README.md),
 - Commit directly to `main`, one verified cohesive change per commit.
 - Preserve unrelated worktree edits. Do not add hooks, signing or coauthor lines.
   Use the existing Vesuri identity and repository-local Git configuration.
+  Keep remote/authentication overrides local to this repository or one command;
+  never change global Git settings for this project.
 - Validate in proportion to the change: host checks for pure helpers; original
   byte checks and bounded Amiga runs for runtime changes.
 - Keep documentation current and concise. Historical experiments and removed

@@ -4,7 +4,7 @@ import argparse
 import os
 from pathlib import Path
 import subprocess
-import tempfile
+import local_temp as tempfile
 
 root = Path(__file__).resolve().parent.parent
 parser = argparse.ArgumentParser(description=__doc__)

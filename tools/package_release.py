@@ -7,7 +7,7 @@ import re
 import shutil
 import struct
 import subprocess
-import tempfile
+import local_temp as tempfile
 from pathlib import Path
 from installer_icon import installer_icon, drawer_icon, readme_icon
 

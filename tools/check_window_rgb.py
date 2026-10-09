@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Check main-device window RGB matching and paired original state transitions."""
-import argparse,os,re,struct,subprocess,tempfile
+import argparse, os, re, struct, subprocess
+import local_temp as tempfile
 from pathlib import Path
 from check_rgb_colors import check,ROOT,rows
 p=argparse.ArgumentParser(description=__doc__)

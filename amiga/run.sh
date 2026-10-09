@@ -1,10 +1,7 @@
 #!/usr/bin/env bash
 # Run the Amiga Alone in the Dark build in FS-UAE with the shared test configuration.
 #   ./run.sh [path-to-kickstart-rom]
-# Use KS 3.1 (auto-boots directory HDs). CTRL + left mouse button quits.
-# ⚠ CTRL-qualified on purpose: whatever this port binds the bare mouse button to (the Mac
-# original is a one-button machine, so it binds it to something), the quit chord must not
-# collide with it.
+# Use KS 3.1 (auto-boots directory HDs). Right-Amiga+Q quits normally.
 # Override ROM via $1 or $KICKSTART.
 #
 # Run a DIFFERENT binary than out/Alone.exe with $AITD_EXE — handy for A/B-ing two builds by
@@ -17,7 +14,7 @@ cd "$(dirname "$0")"
 . ./config.sh || exit 1
 
 FSUAE="${FSUAE:-fs-uae}"
-ROM="${1:-${KICKSTART:-$HOME/Documents/RetroPie/BIOS/kick31.rom}}"
+ROM="${1:-${KICKSTART:-$HOME/.local/share/amiga/Kickstarts/kick40063.A600}}"
 [ -f "$ROM" ] || { echo "Kickstart ROM not found: $ROM  (pass as \$1 or set \$KICKSTART)"; exit 1; }
 EXE="${AITD_EXE:-out/Alone.exe}"
 [ -f "$EXE" ] || { echo "not found: $EXE  (build first: make, or set \$AITD_EXE)"; exit 1; }
@@ -38,7 +35,7 @@ rm -f "$RUN"/state/*.uss
 # Screenshots: this fsemu-core FS-UAE takes them with HOST-KEY + S = hold F12, press S.
 # The screenshot code reads the FSEMU_SCREENSHOTS_DIR env var (the --screenshots_output_dir
 # config key is parsed but ignored by the fsemu core), so set it here.  Dir must exist.
-SHOTS="${FSEMU_SCREENSHOTS_DIR:-$HOME/Pictures/Screenshots}"
+SHOTS="${FSEMU_SCREENSHOTS_DIR:-$PWD/../tmp/screenshots}"
 mkdir -p "$SHOTS"
 export FSEMU_SCREENSHOTS_DIR="$SHOTS"
 

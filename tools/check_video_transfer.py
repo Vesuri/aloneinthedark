@@ -7,7 +7,7 @@ from pathlib import Path
 import re
 import struct
 import subprocess
-import tempfile
+import local_temp as tempfile
 from check_choice_services import one
 from check_getgworld import fields
 from resource_fork import read_resource_fork

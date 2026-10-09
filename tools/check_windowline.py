@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Paired full-buffer acceptance for the original game-window LineTo."""
-import argparse,hashlib,os,re,struct,subprocess,tempfile
+import argparse, hashlib, os, re, struct, subprocess
+import local_temp as tempfile
 from pathlib import Path
 from check_aga_capture import check_frame
 ROOT=Path(__file__).resolve().parents[1]

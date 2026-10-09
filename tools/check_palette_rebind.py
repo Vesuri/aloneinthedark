@@ -6,7 +6,7 @@ from pathlib import Path
 import re
 import struct
 import subprocess
-import tempfile
+import local_temp as tempfile
 from resource_fork import read_resource_fork
 
 ROOT = Path(__file__).resolve().parents[1]

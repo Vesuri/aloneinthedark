@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Original-call and independent full-buffer acceptance for later intro CopyBits."""
-import argparse,re,struct,os,subprocess,tempfile
+import argparse, re, struct, os, subprocess
+import local_temp as tempfile
 from pathlib import Path
 from resource_fork import read_resource_fork
 ROOT=Path(__file__).resolve().parents[1]

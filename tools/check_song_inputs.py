@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Sanitized song-format fixtures and optional original preflight comparison."""
-import argparse,os,re,subprocess,tempfile
+import argparse, os, re, subprocess
+import local_temp as tempfile
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 def check_clock(text,status,decoded):

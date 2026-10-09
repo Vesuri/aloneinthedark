@@ -1,49 +1,41 @@
 # Startup palette construction and binding
 
-**Status, 2026-10-02:** M2 palette activation, measured colour transfer and PAL/NTSC rendered display
-acceptance are complete; unsupported palette forms retain their named stops.
+M2 palette activation, measured colour transfer and PAL/NTSC rendered display acceptance
+are complete; unsupported palette forms retain their named stops.
 
-The checkpoint sections below preserve service-level evidence. References to
-an intermediate startup stop or a then-pending M2 gate are historical; current
-acceptance is recorded in [development.md](development.md), and remaining work
-is in [open-work.md](open-work.md). Unsupported contracts remain unsupported
-unless a later section explicitly verifies them.
-
-The original NewPalette request is measured by `tools/mac_palette.lua` and
-validated by `tools/check_palette.py`. Native construction implements both measured startup source forms. Startup
-activation, complete device realization and measured video transfer are verified;
-see the consolidated M2 acceptance in [development.md](development.md).
-Full-intro frame comparison and PAL/NTSC rendered display acceptance also pass
-as separately verified M2 gates (2026-10-02).
-Vette has GetNewPalette resource loading but no NewPalette constructor to reuse.
+The original NewPalette request is measured by `tools/mac_palette.lua` and validated by
+`tools/check_palette.py`. Native construction implements both measured startup source
+forms. Startup activation, complete device realization and measured video transfer are
+verified; see the consolidated M2 acceptance in [development.md](development.md).
+Full-intro frame comparison and PAL/NTSC rendered display acceptance also pass as
+separately verified M2 gates (2026-10-02). Vette has GetNewPalette resource loading but
+no NewPalette constructor to reuse.
 
 ## Original request and returned record [M]
 
-Engine+$114A clears the result slot, pushes 256, the detached colour-table handle
-at A4+$20, and the long `$0000000A`, then executes `AA91` at +$1158. The stack
-contains tolerance 0, usage `$000A` (pmTolerant + pmExplicit), source handle,
-entry count 256 and the nil result slot. At +$115A, SP has advanced ten bytes
-and holds a nonnil palette handle. D3–D7/A2–A6 are preserved; D0–D2/A0–A1 are
-volatile. The original bytes from +$114A through +$116F have SHA256
-`9c49481e014b240b50e4f2c2441e3382ae48f8955171df072cd946e7ae3b5d30`.
-Both the original fork and live instruction bytes are checked.
+Engine+$114A clears the result slot, pushes 256, the detached colour-table handle at
+A4+$20, and the long `$0000000A`, then executes `AA91` at +$1158. The stack contains
+tolerance 0, usage `$000A` (pmTolerant + pmExplicit), source handle, entry count 256 and
+the nil result slot. At +$115A, SP has advanced ten bytes and holds a nonnil palette
+handle. D3–D7/A2–A6 are preserved; D0–D2/A0–A1 are volatile. The original bytes from
++$114A through +$116F have SHA256
+`9c49481e014b240b50e4f2c2441e3382ae48f8955171df072cd946e7ae3b5d30`. Both the original
+fork and live instruction bytes are checked.
 
-The palette allocation is 4,112 bytes: a 16-byte header and 256 16-byte entries.
-Each entry contains the matching source RGB16 values, usage word `$000A`,
-tolerance word zero and six zero private bytes. The complete source table is
-unchanged. Its index words already contain 0–255 and its flags are zero from
-the preceding original mutation loop.
+The palette allocation is 4,112 bytes: a 16-byte header and 256 16-byte entries. Each
+entry contains the matching source RGB16 values, usage word `$000A`, tolerance word zero
+and six zero private bytes. The complete source table is unchanged. Its index words
+already contain 0–255 and its flags are zero from the preceding original mutation loop.
 
-The header contains entry count 256, then bytes `00000000000200000000`, then
-a handle at offset 12. That private handle owns a separate four-byte zero block.
-Its absolute address is runtime-dependent. The measured private header bytes
-are initialization evidence, not an interpretation of later palette realization
-or attachment state.
+The header contains entry count 256, then bytes `00000000000200000000`, then a handle at
+offset 12. That private handle owns a separate four-byte zero block. Its absolute
+address is runtime-dependent. The measured private header bytes are initialization
+evidence, not an interpretation of later palette realization or attachment state.
 
 ## Ownership and lifecycle fixture [M]
 
-`AITD_PALETTE_FIXTURE=1` runs twelve scratch-code calls after capturing the
-original return, then exits without resuming original execution. It establishes:
+`AITD_PALETTE_FIXTURE=1` runs twelve scratch-code calls after capturing the original
+return, then exits without resuming original execution. It establishes:
 
 - Palette and source handles are distinct, unlocked and nonpurgeable. Their
   allocated sizes are 4,112 and 2,056 bytes respectively; the private block is
@@ -58,19 +50,18 @@ original return, then exits without resuming original execution. It establishes:
   The source retains its size and exact mutated contents.
 
 The checker verifies all actual fixture inputs, order, stack cleanup, preserved
-registers, memory/resource errors, exact body extents and independent ownership.
-No original instructions or on-disk resources are modified. These captures do
-not establish nil palettes, other counts/usages/tolerances, allocation failures,
-window attachment, activation or rendered output; those remain unsupported until
-implemented with evidence.
+registers, memory/resource errors, exact body extents and independent ownership. No
+original instructions or on-disk resources are modified. These captures do not establish
+nil palettes, other counts/usages/tolerances, allocation failures, window attachment,
+activation or rendered output; those remain unsupported until implemented with evidence.
 
 ## Reproduction and accepted evidence
 
 Use the bounded headless MAME command in [mac-reference-loop.md](mac-reference-loop.md)
-with `tools/mac_palette.lua`. Omit the fixture variable for the original capture;
-set it to 1 for lifecycle checks. Preserve each run's `tmp/palette-reference-*.bin`
-files before another run overwrites them. Require actual status zero and the
-matching positive completion marker; timeouts never pass.
+with `tools/mac_palette.lua`. Omit the fixture variable for the original capture; set it
+to 1 for lifecycle checks. Preserve each run's `tmp/palette-reference-*.bin` files
+before another run overwrites them. Require actual status zero and the matching positive
+completion marker; timeouts never pass.
 
 ```sh
 python3 tools/check_palette.py tmp/m2-palette-reference-accepted.log --status 0 \
@@ -80,30 +71,28 @@ python3 tools/check_palette.py tmp/m2-palette-ownership-accepted.log --fixture \
 make host-tests
 ```
 
-Both accepted capture modes exit normally. All 46 maintained Mac scripts pass
-syntax and literal audits. The checker rejects missing/duplicate records,
-timeouts/missing status, changed request arguments and changed live bytes.
-Its initial broad error-word rejection caught missing emulator floppy sound
-samples; validation now distinguishes those startup messages from capture errors.
-Raw captures and original data stay local.
+Both accepted capture modes exit normally. All 46 maintained Mac scripts pass syntax and
+literal audits. The checker rejects missing/duplicate records, timeouts/missing status,
+changed request arguments and changed live bytes. Its initial broad error-word rejection
+caught missing emulator floppy sound samples; validation now distinguishes those startup
+messages from capture errors. Raw captures and original data stay local.
 
 ## Native implementation and verification
 
-NewPalette accepts the measured 256-entry form, usage `$000A`, tolerance zero,
-and an indexed source table with flags zero, stored in either 2,056 or 2,064
-bytes. It allocates and copies the full
-record and its four-byte private block, tracking their ownership separately from
-Resource Manager handles. Unattached DisposePalette releases both allocations
-and preserves the source. Attached/realized disposal, other constructor forms,
-allocation failures and exhaustion of the 32-record ownership table stop loudly.
+NewPalette accepts the measured 256-entry form, usage `$000A`, tolerance zero, and an
+indexed source table with flags zero, stored in either 2,056 or 2,064 bytes. It
+allocates and copies the full record and its four-byte private block, tracking their
+ownership separately from Resource Manager handles. Unattached DisposePalette releases
+both allocations and preserves the source. Attached/realized disposal, other constructor
+forms, allocation failures and exhaustion of the 32-record ownership table stop loudly.
 The ownership table is cleared when the zones are released.
 
 `amiga/palette.gdb` observes the original request/return, captures all palette and
 source bytes and reaches Dark2+$20F2 DRAWPICTURE, with original MDRV absent.
-`PALETTEPROBE=1` builds the CPU-executed twelve-case fixture; its read-only observer
-is `amiga/palette_fixture.gdb`. Actual shutdown must return zero, close both
-resource streams, remove Line-A and release both zones. No debugger writes or
-original-code patches are used.
+`PALETTEPROBE=1` builds the CPU-executed twelve-case fixture; its read-only observer is
+`amiga/palette_fixture.gdb`. Actual shutdown must return zero, close both resource
+streams, remove Line-A and release both zones. No debugger writes or original-code
+patches are used.
 
 ```sh
 . amiga/env.sh
@@ -118,82 +107,82 @@ make -C amiga
 (cd amiga && EXTRA_ARGS=--warp_mode=1 GDBSCRIPT=palette.gdb ./diag_run.sh 120)
 ```
 
-The constructor checks alone do not establish palette binding, activation, video
-colour transfer or rendered-intro acceptance. Binding has separate checks below.
+The constructor checks alone do not establish palette binding, activation, video colour
+transfer or rendered-intro acceptance. Binding has separate checks below.
 
 ## Original default-palette binding [M]
 
 `tools/mac_setpalette.lua` observes SetPalette at Engine+$1172. Original bytes
 +$1166–$1173 are `4878FFFF2F2C00241F3C0001AA95`, SHA256
-`a37e6695ed61b794457a22240ae74b278380251f2205ec46b1001a7afa0c7a82`.
-The arguments are update=true, the constructed palette at A4+$24, and window
--1. The Boolean is the high byte of its stack word; the padding byte is not
-an argument. The call pops ten bytes and preserves D3–D7/A2–A6.
+`a37e6695ed61b794457a22240ae74b278380251f2205ec46b1001a7afa0c7a82`. The arguments are
+update=true, the constructed palette at A4+$24, and window -1. The Boolean is the high
+byte of its stack word; the padding byte is not an argument. The call pops ten bytes and
+preserves D3–D7/A2–A6.
 
-SetPalette installs the handle in the default-palette binding (reference low
-memory $DCC). GetPalette(-1), trap AA96, returns that same handle and pops its
-four-byte argument. The 4,112-byte palette changes only byte 6 from $00 to $E0
-(the word at +6 becomes $E002). All handle/body identities remain unchanged.
-The separate private allocation remains four zero bytes. The full GDevice,
-PixMap, logical CLUT, 307,200 physical framebuffer bytes and all 256 hardware
-palette entries are unchanged. Binding does not establish palette activation.
+SetPalette installs the handle in the default-palette binding (reference low memory
+$DCC). GetPalette(-1), trap AA96, returns that same handle and pops its four-byte
+argument. The 4,112-byte palette changes only byte 6 from $00 to $E0 (the word at +6
+becomes $E002). All handle/body identities remain unchanged. The separate private
+allocation remains four zero bytes. The full GDevice, PixMap, logical CLUT, 307,200
+physical framebuffer bytes and all 256 hardware palette entries are unchanged. Binding
+does not establish palette activation.
 
-The physical capture runs from MAME's periodic callback at stopped debugger
-checkpoints, before the original call and before any subsequent scratch query.
-It reads the full NuBus base $F9000A00 directly through Lua's program space.
-Debugger logical `save` at that address aliases low memory in 24-bit mode;
-an initial apparent pixel mutation was the $DCC binding itself, not video.
-The probe logs both logical and physical reads to keep this distinction checked.
-An initial query used AA90 (InitPalettes); it was rejected and replaced by AA96
-with explicit opcode, input, result and stack readback. A nested debugger
-condition failed to complete and was also rejected. No timeout counts as a pass.
+The physical capture runs from MAME's periodic callback at stopped debugger checkpoints,
+before the original call and before any subsequent scratch query. It reads the full
+NuBus base $F9000A00 directly through Lua's program space. Debugger logical `save` at
+that address aliases low memory in 24-bit mode; an initial apparent pixel mutation was
+the $DCC binding itself, not video. The probe logs both logical and physical reads to
+keep this distinction checked. An initial query used AA90 (InitPalettes); it was
+rejected and replaced by AA96 with explicit opcode, input, result and stack readback. A
+nested debugger condition failed to complete and was also rejected. No timeout counts as
+a pass.
 
-Run the standard bounded headless MAME command with `tools/mac_setpalette.lua`,
-then check the actual exit status and matching dumps:
+Run the standard bounded headless MAME command with `tools/mac_setpalette.lua`, then
+check the actual exit status and matching dumps:
 
 ```sh
 python3 tools/check_setpalette.py tmp/m2-setpalette-reference-accepted.log --status 0
 make host-tests
 ```
 
-The accepted reference capture exits normally and passes original/live bytes,
-argument, register/stack, binding, private-state and device/display comparisons.
-All 47 Mac scripts pass syntax/literal checks and the host suite passes.
-The checker rejects missing/duplicate completion, missing/timeout status,
-wrong query opcodes, changed arguments/live bytes and incomplete pixel captures.
-Evidence is `tmp/m2-setpalette-reference-accepted.log` and
-`tmp/m2-setpalette-reference-host.log`; all raw dumps remain local.
-The native implementation now accepts the measured startup binding: a newly
-created 256-entry palette, window -1 and update=true. It records the default
-handle without activating it, writes only palette byte 6, and clears the binding
-when the zones are released. Uninitialized calls stop explicitly. Replacement/repeated bindings, other window/update
-forms and disposal of a bound palette remain named stops pending their contracts.
+The accepted reference capture exits normally and passes original/live bytes, argument,
+register/stack, binding, private-state and device/display comparisons. All 47 Mac
+scripts pass syntax/literal checks and the host suite passes. The checker rejects
+missing/duplicate completion, missing/timeout status, wrong query opcodes, changed
+arguments/live bytes and incomplete pixel captures. Evidence is
+`tmp/m2-setpalette-reference-accepted.log` and `tmp/m2-setpalette-reference-host.log`;
+all raw dumps remain local. The native implementation now accepts the measured startup
+binding: a newly created 256-entry palette, window -1 and update=true. It records the
+default handle without activating it, writes only palette byte 6, and clears the binding
+when the zones are released. Uninitialized calls stop explicitly. Replacement/repeated
+bindings, other window/update forms and disposal of a bound palette remain named stops
+pending their contracts.
 
-`amiga/setpalette.gdb` and `tools/check_setpalette.py --native` check the original
-call, exact paired palette contents apart from the private handle address,
-unchanged GDevice/PixMap/CLUT and full logical screen storage, unchanged pending
-palette and the current sixteen published copper colour moves, and original MDRV absence. The next
-named stop is Misc1+$1296 `WINDOW MANAGER / SETWTITLE` (A91A). Existing preferences
-reach it with 67 OS windows and 121 completed services (fresh: 93 and 129); original resource bodies
-are 31 / 130,660 bytes, with overlay bodies unchanged at 31 / 80,800.
+`amiga/setpalette.gdb` and `tools/check_setpalette.py --native` check the original call,
+exact paired palette contents apart from the private handle address, unchanged
+GDevice/PixMap/CLUT and full logical screen storage, unchanged pending palette and the
+current sixteen published copper colour moves, and original MDRV absence. The next named
+stop is Misc1+$1296 `WINDOW MANAGER / SETWTITLE` (A91A). Existing preferences reach it
+with 67 OS windows and 121 completed services (fresh: 93 and 129); original resource
+bodies are 31 / 130,660 bytes, with overlay bodies unchanged at 31 / 80,800.
 
-The CPU palette fixture additionally constructs and binds a live palette before
-actual runtime shutdown; its observer requires the binding to clear alongside
-zone, resource-stream and Line-A cleanup. All twelve ownership cases and actual
-shutdown pass. The fixture needed InitGraf/InitFonts/InitWindows before binding;
-instrumentation exposed its initial depth-zero setup and the inherited silent
-fallthrough, now rejected explicitly. Its new assembly-label checks use addresses
-because GDB resolved the labels as byte values. Rejected captures remain local.
+The CPU palette fixture additionally constructs and binds a live palette before actual
+runtime shutdown; its observer requires the binding to clear alongside zone,
+resource-stream and Line-A cleanup. All twelve ownership cases and actual shutdown pass.
+The fixture needed InitGraf/InitFonts/InitWindows before binding; instrumentation
+exposed its initial depth-zero setup and the inherited silent fallthrough, now rejected
+explicitly. Its new assembly-label checks use addresses because GDB resolved the labels
+as byte values. Rejected captures remain local.
 
-The final 68020 production build passes no-float and 78-symbol audits. All
-nineteen startup observers and paired contracts, fresh/existing preference
-variants, clean boot/resource-read and the full host suite pass. The final
-executable is unchanged through the complete final startup/preference suite.
-Prior timeouts and an interrupted run were rejected; only normal exits with
-positive markers count. Original preferences are restored. Evidence:
-`tmp/m2-setpalette-final-startup-suite.log`, `tmp/m2-setpalette-host-final.log`,
-`tmp/m2-setpalette-fixture-final.log`, `tmp/m2-setpalette-boot.log`,
-`tmp/m2-setpalette-resource-read.log`, and `tmp/m2-setpalette-final-low.log`.
+The final 68020 production build passes no-float and 78-symbol audits. All nineteen
+startup observers and paired contracts, fresh/existing preference variants, clean
+boot/resource-read and the full host suite pass. The final executable is unchanged
+through the complete final startup/preference suite. Prior timeouts and an interrupted
+run were rejected; only normal exits with positive markers count. Original preferences
+are restored. Evidence: `tmp/m2-setpalette-final-startup-suite.log`,
+`tmp/m2-setpalette-host-final.log`, `tmp/m2-setpalette-fixture-final.log`,
+`tmp/m2-setpalette-boot.log`, `tmp/m2-setpalette-resource-read.log`, and
+`tmp/m2-setpalette-final-low.log`.
 
 ```sh
 python3 tools/check_setpalette.py tmp/m2-setpalette-final-low.log --native --status 0 \
@@ -202,171 +191,157 @@ python3 tools/check_palette.py tmp/m2-setpalette-fixture-final.log --native --fi
   --status 0 --folder tmp/setpalette-fixture-final
 ```
 
-This is binding and ownership acceptance. Palette activation, video colour
-transfer, eight-plane output and rendered intro acceptance remain M2.7/M2.7a and
-the other queued graphics work.
-
+This is binding and ownership acceptance.
 
 ## Window palette state and first client clear [M]
 
-MoveWindow at Misc1+$0FAC changes palette byte 6 from $E0 to $C0 and long +8
-from zero to one. Private data, device records, CLUT and physical pixels remain
-unchanged. ShowWindow at +$10E6 changes each entry's private word at +10 to
-$800A, realizes the device CLUT, and writes its new seed to the private allocation.
-The private header fields' broader meaning is not inferred from these values.
+MoveWindow at Misc1+$0FAC changes palette byte 6 from $E0 to $C0 and long +8 from zero
+to one. Private data, device records, CLUT and physical pixels remain unchanged.
+ShowWindow at +$10E6 changes each entry's private word at +10 to $800A, realizes the
+device CLUT, and writes its new seed to the private allocation. The private header
+fields' broader meaning is not inferred from these values.
 
-The native initial device table contains the complete measured system palette.
-Its seed-independent SHA-256 is
-`8bde63f387a037ed68a9a1b659571162634834d079dd17e593df446b53aabb19`.
-The realization helper assigns explicit non-endpoint colours and retains
-protected white/black duplicate slots without hardcoding game indices. For the
-original palette these are slots 1, 15 and 191, plus endpoints 0 and 255.
-Sanitizer fixtures cover different duplicate positions, malformed inputs,
-repeat-realization rejection and mutation atomicity. Unsupported forms stop.
+The native initial device table contains the complete measured system palette. Its
+seed-independent SHA-256 is
+`8bde63f387a037ed68a9a1b659571162634834d079dd17e593df446b53aabb19`. The realization
+helper assigns explicit non-endpoint colours and retains protected white/black duplicate
+slots without hardcoding game indices. For the original palette these are slots 1, 15
+and 191, plus endpoints 0 and 255. Sanitizer fixtures cover different duplicate
+positions, malformed inputs, repeat-realization rejection and mutation atomicity.
+Unsupported forms stop.
 
-Original `wctb` 128/131 supply black client backgrounds. Part zero is the
-content background, as documented in Apple's
-[Window Color Table reference](https://dev.os9.ca/techpubs/mac/Toolbox/Toolbox-295.html).
-ShowWindow clears only the global client rectangle (160,150)–(480,350), marks
-it dirty, and updates visibility/hilite state. No Mac chrome is drawn.
-The reference's software arrow explains 43 white pixels inside the otherwise
-black client area; the checker requires its complete measured 16×16 pattern.
-Native hardware cursor presentation remains separate.
+Original `wctb` 128/131 supply black client backgrounds. Part zero is the content
+background, as documented in Apple's [Window Color Table
+reference](https://dev.os9.ca/techpubs/mac/Toolbox/Toolbox-295.html). ShowWindow clears
+only the global client rectangle (160,150)–(480,350), marks it dirty, and updates
+visibility/hilite state. No Mac chrome is drawn. The reference's software arrow explains
+43 white pixels inside the otherwise black client area; the checker requires its
+complete measured 16×16 pattern. Native hardware cursor presentation remains separate.
 
 The MoveWindow helper bytes +$0F94–$0FB3 have SHA-256
-`ac7b10b44ab334076f90cb605411a22f4d82b7cb09e3e91470942a38dea74d5a`;
-the ShowWindow call +$10E2–$10E7 has SHA-256
+`ac7b10b44ab334076f90cb605411a22f4d82b7cb09e3e91470942a38dea74d5a`; the ShowWindow call
++$10E2–$10E7 has SHA-256
 `fbb2f10eed30f3a3ccbb42f116e135a329de15963a39307a540398422a54a59c`.
 `tools/mac_window_palette_state.lua`, `amiga/window_palette_state.gdb` and
 `tools/check_window_palette_state.py` verify original/live bytes, arguments,
-stack/register preservation, full palette/CLUT transitions, private seed
-consistency, loaded window colours and client pixels. Only opaque addresses and
-allocated seeds are normalized, after identity/seed relationships are checked.
-The helper also reproduces the complete captured Mac transition byte-for-byte.
+stack/register preservation, full palette/CLUT transitions, private seed consistency,
+loaded window colours and client pixels. Only opaque addresses and allocated seeds are
+normalized, after identity/seed relationships are checked. The helper also reproduces
+the complete captured Mac transition byte-for-byte.
 
 Use the documented bounded headless MAME command with the Lua observer, and
-`GDBSCRIPT=window_palette_state.gdb ./diag_run.sh 300` for the native capture.
-Preserve captures before subsequent runs. Supply actual runner statuses:
+`GDBSCRIPT=window_palette_state.gdb ./diag_run.sh 300` for the native capture. Preserve
+captures before subsequent runs. Supply actual runner statuses:
 
 ```sh
 python3 tools/check_window_palette_state.py REFERENCE.log NATIVE.log \
   --reference-status 0 --native-status 0
 ```
 
-All 21 startup observers and paired contracts, existing/fresh/low preference
-variants, host tests, clean boot/resource-read and no-float/78-symbol audits
-pass. The clean executable matches the suite's executable. A5 remains exact
-across 75,616 bytes; low-memory validation/applied counts remain 58/55.
-Existing/fresh runs complete 70/96 OS windows and 124/132 services; original
-resource bodies total 34 / 130,788 bytes, overlay bodies 31 / 80,650. Original
-preferences are restored. The checker rejects timeouts, missing completion,
-CLUT/palette/private-seed corruption and writes outside client content.
+All 21 startup observers and paired contracts, existing/fresh/low preference variants,
+host tests, clean boot/resource-read and no-float/78-symbol audits pass. The clean
+executable matches the suite's executable. A5 remains exact across 75,616 bytes;
+low-memory validation/applied counts remain 58/55. Existing/fresh runs complete 70/96 OS
+windows and 124/132 services; original resource bodies total 34 / 130,788 bytes, overlay
+bodies 31 / 80,650. Original preferences are restored. The checker rejects timeouts,
+missing completion, CLUT/palette/private-seed corruption and writes outside client
+content.
 
 Accepted evidence: `tmp/m2-window-state-reference-cursor.log`,
-`tmp/m2-window-state-dirty-pair.log`, `tmp/m2-window-state-final-suite.log`
-(all native observers), `tmp/m2-window-state-final-paired.log` (paired checks),
+`tmp/m2-window-state-dirty-pair.log`, `tmp/m2-window-state-final-suite.log` (all native
+observers), `tmp/m2-window-state-final-paired.log` (paired checks),
 `tmp/m2-window-state-final-preferences.log`, `tmp/m2-window-state-final-host.log`,
-`tmp/m2-window-state-boot.log` and `tmp/m2-window-state-resource-read.log`.
-The suite's first paired pass rejected a zero-padding mismatch in its device
-checker; the corrected expectation passed against the same successful capture.
+`tmp/m2-window-state-boot.log` and `tmp/m2-window-state-resource-read.log`. The suite's
+first paired pass rejected a zero-padding mismatch in its device checker; the corrected
+expectation passed against the same successful capture.
 
-The display path now consumes the dirty rectangle and queues the first AGA
-frame before window binding; see [aga-display.md](aga-display.md). Rendered
-intro acceptance remains pending. The original subsequent
-SetPalette call at Misc1+$10FA is measured to leave the already-realized state
-unchanged, with GetPalette(window) returning the default handle. Its instruction
-range +$10E8–$10FB has SHA-256
-`41c4b669d4c6ce8e4889fb470c9a76c753d11fe61bd4e1285be68a20b6db8a23`.
-The native window binding now assigns the already-active default handle and
-records the update flag. It accepts only a visible front window with no explicit
-binding and a valid realized palette/private seed; unmeasured forms stop loudly.
-It preserves all palette, private, window, device, logical pixel and copper data.
-The next original call is ActivatePalette at Misc1+$1100, currently unsupported.
+The display path now consumes the dirty rectangle and queues the first AGA frame before
+window binding; see [aga-display.md](aga-display.md). The original subsequent SetPalette
+call at Misc1+$10FA is measured to leave the already-realized state unchanged, with
+GetPalette(window) returning the default handle. Its instruction range +$10E8–$10FB has
+SHA-256 `41c4b669d4c6ce8e4889fb470c9a76c753d11fe61bd4e1285be68a20b6db8a23`. The native
+window binding now assigns the already-active default handle and records the update
+flag. It accepts only a visible front window with no explicit binding and a valid
+realized palette/private seed; unmeasured forms stop loudly. It preserves all palette,
+private, window, device, logical pixel and copper data. The next original call is
+ActivatePalette at Misc1+$1100, currently unsupported.
 
 `tools/mac_window_binding.lua` captures the original call and executes a scratch
 GetPalette(window) query through the Mac CPU to verify its result.
-`amiga/window_binding.gdb` records original arguments and live relocated bytes,
-then captures the native service after the dispatcher publishes the preceding
-client clear. This boundary matters: capturing at dispatcher entry would count
-the prior clear as a SetPalette display mutation. The observer checks that no
-binding exists yet at its service boundary.
+`amiga/window_binding.gdb` records original arguments and live relocated bytes, then
+captures the native service after the dispatcher publishes the preceding client clear.
+This boundary matters: capturing at dispatcher entry would count the prior clear as a
+SetPalette display mutation. The observer checks that no binding exists yet at its
+service boundary.
 
 `tools/check_window_binding.py REFERENCE.log NATIVE.log --reference-status 0
---native-status 0` checks the actual runner statuses, original bytes including
-the relocated A5 operand, stack/register contract, full state preservation,
-complete palette/CLUT pairing, binding identity, and next named stop. Captures
-remain local under `tmp/windowpalette-*`. The accepted service capture is
+--native-status 0` checks the actual runner statuses, original bytes including the
+relocated A5 operand, stack/register contract, full state preservation, complete
+palette/CLUT pairing, binding identity, and next named stop. Captures remain local under
+`tmp/windowpalette-*`. The accepted service capture is
 `tmp/m2-window-binding-native-final.log`, paired with
-`tmp/m2-window-binding-reference.log`; both exited normally. Rejection checks
-cover timeout status, missing completion, incorrect query results, changed
-original instructions and CLUT corruption. Broader activation remains queued.
+`tmp/m2-window-binding-reference.log`; both exited normally. Rejection checks cover
+timeout status, missing completion, incorrect query results, changed original
+instructions and CLUT corruption. Broader activation remains queued.
 
-
-Window-binding regression evidence: `tmp/m2-window-binding-regressions.log`
-(default binding, client clear, original startup, native driver and first AGA
-frame with paired checkers), `tmp/m2-window-binding-preferences.log`,
-`tmp/m2-window-binding-host-tests.log`, and the corresponding `boot` and
-`resource-read` logs. All exit zero with positive completion. A5 matches all
-75,616 bytes; resource counts and 70/96 OS-window totals remain unchanged.
-Original preferences are restored. The activation-checkpoint production SHA-256 is
+Window-binding regression evidence: `tmp/m2-window-binding-regressions.log` (default
+binding, client clear, original startup, native driver and first AGA frame with paired
+checkers), `tmp/m2-window-binding-preferences.log`,
+`tmp/m2-window-binding-host-tests.log`, and the corresponding `boot` and `resource-read`
+logs. All exit zero with positive completion. A5 matches all 75,616 bytes; resource
+counts and 70/96 OS-window totals remain unchanged. Original preferences are restored.
+The activation-checkpoint production SHA-256 is
 `c2fbc390d5d3591733342635ea5652edd57e6ed23cecf02454504e34ddebe181`.
-
 
 ## Already-realized window activation
 
-The original Misc1+$1100 ActivatePalette request contains the window pointer
-and pops four argument bytes. Its original +$10FC–$1101 instruction range is
-`2F2C0008AA94`, SHA-256
-`37df3a67690b54fed3ec5919c7018e887f19a8b44f900795abb6d548120a2370`.
-The Mac's palette, private seed, window, window PixMap, device, main PixMap,
-logical CLUT, physical pixels and hardware colours are all unchanged. ShowWindow
-has already realized the bound palette; this call does not allocate colours.
+The original Misc1+$1100 ActivatePalette request contains the window pointer and pops
+four argument bytes. Its original +$10FC–$1101 instruction range is `2F2C0008AA94`,
+SHA-256 `37df3a67690b54fed3ec5919c7018e887f19a8b44f900795abb6d548120a2370`. The Mac's
+palette, private seed, window, window PixMap, device, main PixMap, logical CLUT,
+physical pixels and hardware colours are all unchanged. ShowWindow has already realized
+the bound palette; this call does not allocate colours.
 
-The native service accepts the measured visible front window with update-enabled
-binding to its already-active default palette, validated ownership, realized
-header and matching private/device seed. It preserves the complete state and
-queues no additional frame. Other eight-bit activation states remain explicit
-stops rather than falling through Vette's sixteen-colour allocator.
+The native service accepts the measured visible front window with update-enabled binding
+to its already-active default palette, validated ownership, realized header and matching
+private/device seed. It preserves the complete state and queues no additional frame.
+Other eight-bit activation states remain explicit stops rather than falling through
+Vette's sixteen-colour allocator.
 
-`mac_window_activation.lua`, `window_activation.gdb` and
-`check_window_activation.py REFERENCE.log NATIVE.log --reference-status 0
---native-status 0` pair original bytes, stack/registers, binding and complete
-before/after captures. The accepted reference/native calls are in
-`tmp/m2-window-activation-reference.log` and
-`tmp/m2-window-activation-native-final.log`, both normal exits with positive
-completion. Captures stay under `tmp/activation-*`. Rejection checks cover
-failed/timeout status, missing completion, changed bytes, an extra publication
-and palette corruption. The subsequent ShowHide service now passes without
-changing palette or viewport pixels; SetGWorld also passes, and the next stop is TickCount at Dark+$41F4.
+`mac_window_activation.lua`, `window_activation.gdb` and `check_window_activation.py
+REFERENCE.log NATIVE.log --reference-status 0 --native-status 0` pair original bytes,
+stack/registers, binding and complete before/after captures. The accepted
+reference/native calls are in `tmp/m2-window-activation-reference.log` and
+`tmp/m2-window-activation-native-final.log`, both normal exits with positive completion.
+Captures stay under `tmp/activation-*`. Rejection checks cover failed/timeout status,
+missing completion, changed bytes, an extra publication and palette corruption.
 
-
-Activation regressions: `tmp/m2-window-activation-regressions.log` contains six
-bounded startup observers and paired checks; `tmp/m2-window-activation-host-tests.log`,
-`tmp/m2-window-activation-preferences.log`, and the `boot`/`resource-read` logs
-also pass. Original preferences are restored. A5 matches 75,616 bytes exactly;
-resource and system-window totals are unchanged. No-float and 78-symbol audits
-pass. The activation-checkpoint production SHA-256 is
+Activation regressions: `tmp/m2-window-activation-regressions.log` contains six bounded
+startup observers and paired checks; `tmp/m2-window-activation-host-tests.log`,
+`tmp/m2-window-activation-preferences.log`, and the `boot`/`resource-read` logs also
+pass. Original preferences are restored. A5 matches 75,616 bytes exactly; resource and
+system-window totals are unchanged. No-float and 78-symbol audits pass. The
+activation-checkpoint production SHA-256 is
 `ef4492241f7f0fa1f8e8c519c9708ac08e5e62c738eabbbdf2584e44a7fff81e`.
-
 
 ## Palette from colour-table 129
 
-Dark2+$2010:$201E contains `42a73f3c01002f0c4878000aaa91`. This second constructor
-uses the same 256 entries, usage $000A and tolerance zero as the first, but its
-source allocation is 2,064 bytes. The original has cleared ctFlags and replaced
-all value words with indices before calling. The Mac copies the same 256 RGB
-entries into a 4,112-byte palette, leaves all 2,064 source bytes unchanged, and
-allocates an independent four-byte zero private block. Twelve reference fixtures
-confirm sizes, unlocked/nonpurgeable state, independent mutations and disposal
-while preserving the source. Native original-call captures match the full palette
-and private block, source preservation, allocation ownership and stack/register ABI.
+Dark2+$2010:$201E contains `42a73f3c01002f0c4878000aaa91`. This second constructor uses
+the same 256 entries, usage $000A and tolerance zero as the first, but its source
+allocation is 2,064 bytes. The original has cleared ctFlags and replaced all value words
+with indices before calling. The Mac copies the same 256 RGB entries into a 4,112-byte
+palette, leaves all 2,064 source bytes unchanged, and allocates an independent four-byte
+zero private block. Twelve reference fixtures confirm sizes, unlocked/nonpurgeable
+state, independent mutations and disposal while preserving the source. Native
+original-call captures match the full palette and private block, source preservation,
+allocation ownership and stack/register ABI.
 
 The header value at offset 4 is 3 for this second palette, rather than the first
-palette's 2. Additional Mac allocation/disposal probes produce identifier 4,
-reuse 4 after its disposal, then reuse 3 when the earlier palette is disposed
-while 4 remains alive and unchanged. The port represents this measured reuse
-with its existing first-vacant ownership slot plus 2; the earlier constant 2
-was only valid for the first constructor. No additional allocation is needed.
+palette's 2. Additional Mac allocation/disposal probes produce identifier 4, reuse 4
+after its disposal, then reuse 3 when the earlier palette is disposed while 4 remains
+alive and unchanged. The port represents this measured reuse with its existing
+first-vacant ownership slot plus 2; the earlier constant 2 was only valid for the first
+constructor. No additional allocation is needed.
 
 ```sh
 python3 tools/check_palette129.py tmp/m2-palette129-reference.log --status 0 --ids tmp/m2-palette-serial-holes-reference.log --ids-status 0 --native tmp/m2-palette129-native-final.log --native-status 0
@@ -374,100 +349,93 @@ python3 tools/check_palette.py tmp/m2-palette129-first-palette-regression.log --
 ```
 
 `mac_palette129.lua` captures the second original call and, with
-`AITD_PALETTE_FIXTURE=1`, its twelve ownership cases. `mac_palette_ids.lua`
-measures identifier reuse. The shared palette checker keeps first-constructor
-validation intact; the new wrapper pins the second caller, source and identifier.
-`palette129_call.gdb` is part of the combined native startup observer, with a
-standalone `palette129.gdb` wrapper. Original MDRV remains absent. The next
-SetPalette at Dark2+$20CC is covered by the presentation binding contract below.
-
+`AITD_PALETTE_FIXTURE=1`, its twelve ownership cases. `mac_palette_ids.lua` measures
+identifier reuse. The shared palette checker keeps first-constructor validation intact;
+the new wrapper pins the second caller, source and identifier. `palette129_call.gdb` is
+part of the combined native startup observer, with a standalone `palette129.gdb`
+wrapper. Original MDRV remains absent. The next SetPalette at Dark2+$20CC is covered by
+the presentation binding contract below.
 
 ## Presentation palette binding
 
-Dark2+$20CC binds the second palette to the front game window with updates
-true. Original bytes at +$20C0 are `2f002f39ffff4d601f3c0001aa95`; the long
-operand relocates to A5-$B2A0. The call pops ten argument bytes and preserves
-D3–D7/A2–A6. The unused Boolean padding byte is not part of the argument.
+Dark2+$20CC binds the second palette to the front game window with updates true.
+Original bytes at +$20C0 are `2f002f39ffff4d601f3c0001aa95`; the long operand relocates
+to A5-$B2A0. The call pops ten argument bytes and preserves D3–D7/A2–A6. The unused
+Boolean padding byte is not part of the argument.
 
-Actual GetPalette queries before/after establish the changed association.
-The default palette and its private state remain unchanged. The new header
-becomes $C003/state 1, entries become $800A, and its private word records the
-new device-table seed. The existing Palette8 realization helper reproduces
-all palette, CLUT and private bytes (normalizing owned pointers and seeds).
-The Mac redraws 5,056 title-bar pixels outside the client; D5 intentionally
-omits that chrome. The entire client is unchanged by binding. Native binding
-requests palette publication without dirtying pixels. The following original
-rectangle fill clears all 64,000 client pixels to white before DrawPicture.
+Actual GetPalette queries before/after establish the changed association. The default
+palette and its private state remain unchanged. The new header becomes $C003/state 1,
+entries become $800A, and its private word records the new device-table seed. The
+existing Palette8 realization helper reproduces all palette, CLUT and private bytes
+(normalizing owned pointers and seeds). The Mac redraws 5,056 title-bar pixels outside
+the client; D5 intentionally omits that chrome. The entire client is unchanged by
+binding. Native binding requests palette publication without dirtying pixels. The
+following original rectangle fill clears all 64,000 client pixels to white before
+DrawPicture.
 
-`mac_binding129.lua` captures both transitions and verifies that the isolated
-GetPalette queries do not mutate records or pixels. `binding129_call.gdb`
-observes the native call read-only inside the combined startup observer.
+`mac_binding129.lua` captures both transitions and verifies that the isolated GetPalette
+queries do not mutate records or pixels. `binding129_call.gdb` observes the native call
+read-only inside the combined startup observer.
 
 ```
 python3 tools/check_binding129.py tmp/m2-binding129-reference-final.log --status 0 --helper --native tmp/m2-binding129-native-final.log --native-status 0
 python3 tools/check_aga_capture.py startup tmp/m2-binding129-native-final.log --status 0
 ```
 
-Both bounded runs exit zero. Complete client/CLUT comparison and all 256 AGA
-colours, eight planes and four VBI publications pass. The next stop is
-DRAWPICTURE at Dark2+$20F2; original MDRV remains absent.
-
-
 ## Presentation palette restoration
 
-After MacPlay's display interval and the original black clear, Dark2+$214C
-rebinds the default palette with updates true. Original bytes at +$213E are
-`2079fffee4a82f2800241f3c0001aa95`; the long address relocates to A5-$11B58.
-The call pops ten argument bytes and preserves D3–D7/A2–A6.
+After MacPlay's display interval and the original black clear, Dark2+$214C rebinds the
+default palette with updates true. Original bytes at +$213E are
+`2079fffee4a82f2800241f3c0001aa95`; the long address relocates to A5-$11B58. The call
+pops ten argument bytes and preserves D3–D7/A2–A6.
 
-GetPalette queries prove the outgoing presentation association changes back to
-the default. The default's complete palette record remains unchanged, including
-header $C002/state 1 and entry flags $800A; its private seed changes with the
-device table. Only the outgoing palette's state word changes from 1 to 0;
-its entries and private seed remain unchanged. Palette8 now explicitly accepts
-that already-realized entry state when restoring. Unknown states still fail
-before mutation. The same helper reproduces the complete reference CLUT.
+GetPalette queries prove the outgoing presentation association changes back to the
+default. The default's complete palette record remains unchanged, including header
+$C002/state 1 and entry flags $800A; its private seed changes with the device table.
+Only the outgoing palette's state word changes from 1 to 0; its entries and private seed
+remain unchanged. Palette8 now explicitly accepts that already-realized entry state when
+restoring. Unknown states still fail before mutation. The same helper reproduces the
+complete reference CLUT.
 
-The Mac redraws 5,056 title-bar pixels outside the client. D5 omits those writes;
-the native full buffer is unchanged and only palette publication is requested.
-`mac_restorepalette.lua`, `restorepalette_call.gdb` and
-`check_restorepalette.py` capture/compare records, both queried associations,
-pixels, original/live bytes and ABI. The native observer captures the seventh
-AGA publication before allowing subsequent original drawing to continue.
-
+The Mac redraws 5,056 title-bar pixels outside the client. D5 omits those writes; the
+native full buffer is unchanged and only palette publication is requested.
+`mac_restorepalette.lua`, `restorepalette_call.gdb` and `check_restorepalette.py`
+capture/compare records, both queried associations, pixels, original/live bytes and ABI.
+The native observer captures the seventh AGA publication before allowing subsequent
+original drawing to continue.
 
 Accepted captures are `tmp/m2-restorepalette-reference-next.log` and
 `tmp/m2-restorepalette-native-final.log`, both terminal exit zero. The seventh
-publication matches the restored palette and unchanged client; the eighth
-matches the reference state at the next CopyBits boundary. Run:
+publication matches the restored palette and unchanged client; the eighth matches the
+reference state at the next CopyBits boundary. Run:
 
 ```
 python3 tools/check_restorepalette.py tmp/m2-restorepalette-reference-next.log --status 0 --helper --native tmp/m2-restorepalette-native-final.log --native-status 0
 python3 tools/check_aga_capture.py startup tmp/m2-restorepalette-native-final.log --status 0
 ```
 
-Startup reaches COPYBITS, Misc2+$24D2, with original MDRV absent. Counts are
-128 windows, 463/463 services, 68 resource reads / 333,998 bytes, CODE mask $3FFB.
+Startup reaches COPYBITS, Misc2+$24D2, with original MDRV absent. Counts are 128
+windows, 463/463 services, 68 resource reads / 333,998 bytes, CODE mask $3FFB.
 Fresh-preference counts are derived (154 windows, 471/471 services).
 
 ## Reusing the presentation palette
 
-The later original Dark2+$20CC call reuses the palette that was restored above.
-The runtime now accepts the measured inactive, already-realized palette and
-reactivates it while preserving the existing ownership and layout guards.
+The later original Dark2+$20CC call reuses the palette that was restored above. The
+runtime now accepts the measured inactive, already-realized palette and reactivates it
+while preserving the existing ownership and layout guards.
 
 `tools/mac_palette_rebind.lua` captures the original first binding and default
-restoration, then invokes the real SetPalette trap on that same inactive
-presentation palette. `tmp/m2-palette-rebind-reference.log` exits 0. Its header
-stays $C003, state changes from 0 to 1, entry records remain unchanged, and a new
-seed reaches both the device table and private block. The default palette and
-its private data are preserved, as are all client pixels. For the three
-non-endpoint entries whose RGB already matches the device (1, 15 and 191),
-the original clears the explicit ownership flag to zero; changed RGB entries
-use $2000. This differs from initial realization and default restoration.
+restoration, then invokes the real SetPalette trap on that same inactive presentation
+palette. `tmp/m2-palette-rebind-reference.log` exits 0. Its header stays $C003, state
+changes from 0 to 1, entry records remain unchanged, and a new seed reaches both the
+device table and private block. The default palette and its private data are preserved,
+as are all client pixels. For the three non-endpoint entries whose RGB already matches
+the device (1, 15 and 191), the original clears the explicit ownership flag to zero;
+changed RGB entries use $2000. This differs from initial realization and default
+restoration.
 
-The explicit reactivation path in `Palette8::realize` reproduces the complete
-captured palette, CLUT and private block. Run:
+The explicit reactivation path in `Palette8::realize` reproduces the complete captured
+palette, CLUT and private block. Run:
 
 ```sh
 python3 tools/check_palette_rebind.py tmp/m2-palette-rebind-reference.log --status 0 --helper
@@ -476,9 +444,9 @@ python3 tools/check_palette8.py
 
 Both sanitizer-backed checks pass. Native integration also passes at the actual
 Dark2+$20CC call in `tmp/m2-pak-pointer-native-full.log` (exit 0), including ABI,
-complete palette/device state, renewed private seed and preserved client pixels.
-The same deterministic a4000-030 run completes both original PAK reads with
-exact payloads and 42,132 balanced services across 1,490 system windows.
+complete palette/device state, renewed private seed and preserved client pixels. The
+same deterministic a4000-030 run completes both original PAK reads with exact payloads
+and 42,132 balanced services across 1,490 system windows.
 
 ```sh
 python3 tools/check_palette_rebind.py tmp/m2-palette-rebind-reference.log --status 0 --helper --native tmp/m2-pak-pointer-native-full.log --native-status 0
@@ -486,7 +454,7 @@ python3 tools/check_pak_native.py tmp/m2-pak-pointer-native-full.log --status 0
 ```
 
 Reproduce with a clean `INTROSKIP=1 FIXEDRNG=1 PAKPROBE=1` build, then
-`AMIGA_CONFIG=a4000-030 GDBSCRIPT=pak_reads.gdb EXTRA_ARGS=--warp_mode=1 amiga/diag_run.sh 2400`.
-The observer requires both payloads and the intervening palette checkpoint
-before successful detach. Captures are archived locally in
+`AMIGA_CONFIG=a4000-030 GDBSCRIPT=pak_reads.gdb EXTRA_ARGS=--warp_mode=1
+amiga/diag_run.sh 2400`. The observer requires both payloads and the intervening palette
+checkpoint before successful detach. Captures are archived locally in
 `tmp/m2-pak-pointer-accepted/`; original game bytes remain untracked.

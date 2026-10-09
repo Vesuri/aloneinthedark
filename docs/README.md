@@ -1,12 +1,8 @@
 # Documentation
 
-Start with the [project README](../README.md). **M3.1–M3.3 are complete for
-the verified routes; M3.4 is in progress.**
-Use [open work](open-work.md) for current status and the
-[development checks](development.md) for evidence.
-Subsystem documents retain historical diagnostic checkpoints, explicitly
-separated from their current status. The M1.7b2 system-window rendered fixture
-remains deferred independently of M2.
+Start with the [project README](../README.md). Use [open work](open-work.md) for
+unresolved tasks; completed work and experiments are in Git history. Subsystem pages
+describe measured contracts and reusable fixtures.
 
 - [Design](design.md): the port plan: architecture, owner decisions,
   verification, phases and workflow.
@@ -37,9 +33,15 @@ remains deferred independently of M2.
 - [Window titles](window-title.md): hidden title ownership, measured advances and paired effects.
 - [Open work](open-work.md): the ordered work queue.
 
-The Vette! repository (`~/Projects/Vette/docs`) holds the complete versions of
-material this port inherits: frame pacing, WHDLoad, installer design, Macintosh
-display model and the regression approach.
+- [Testing](testing.md): host, native, installer/WHDLoad and gameplay regression procedures.
+- [Performance](performance.md): profiling methods and retained gameplay/menu baselines.
+- [Intro reference](intro-comparison.md): comparable 68030 scene/transition measurements.
+- [Audio regression](audio-regression.md): repeatable song and effect checks.
+- [Music coverage](music-resource-coverage.md): all eight song graphs and voice policy.
+- [First-room audio](audio-firstrooms.md): paired gameplay and ambient triggers.
+- [Picture drawing](picture-drawing.md): picture, polygon and mask contracts.
+- [Startup events](events.md): activation, update, keyboard and input contracts.
+- [Cursor](cursor.md): visibility, hardware sprites and inversion.
+- [Return-to-attic investigation](mac-stairs.md): evidence supporting MAC.1.
 
-- [Startup events](events.md): activation, update and idle-event contracts.
-- [Cursor obscuring](cursor.md): logical visibility, hide state and movement restoration.
+For inherited runtime rationale, see Vette `docs/amiga-arch.md`.

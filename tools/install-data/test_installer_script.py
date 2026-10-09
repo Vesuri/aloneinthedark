@@ -83,8 +83,9 @@ def main():
         (boot/"AloneInTheDark.slave").write_bytes(b"Installer slave copy fixture")
         shutil.copyfile(ROOT/"resources/overlay.rsrc",boot/"overlay.rsrc")
         (boot/"devs/Kickstarts").mkdir(parents=True)
-        for source in (SHARE/"Kickstarts/kick40063.A600",SHARE/"Kickstarts/kick40063.A600.RTB"):
-            shutil.copyfile(source,boot/"devs/Kickstarts"/source.name)
+        for source,name in ((Path(KICKSTART),Path(KICKSTART).name),
+                (Path(os.environ.get("KICKSTART_RTB",KICKSTART+".RTB")),Path(KICKSTART).name+".RTB")):
+            shutil.copyfile(source,boot/"devs/Kickstarts"/name)
         if release_archive:
             unpacked=base/'unpacked';unpacked.mkdir()
             subprocess.run(['lha','xq',str(release_archive)],cwd=unpacked,check=True)

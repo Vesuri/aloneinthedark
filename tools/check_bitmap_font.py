@@ -3,7 +3,7 @@
 import os
 from pathlib import Path
 import subprocess
-import tempfile
+import local_temp as tempfile
 from placeholder_font import build
 root=Path(__file__).resolve().parents[1]
 with tempfile.TemporaryDirectory(prefix='aitd-font-') as work:

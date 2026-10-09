@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Production polygon recorder: host edge cases and paired original/native calls."""
-import argparse, os, re, struct, subprocess, tempfile
+import argparse, os, re, struct, subprocess
+import local_temp as tempfile
 from pathlib import Path
 from check_driver22 import fields, one
 ROOT=Path(__file__).resolve().parents[1]

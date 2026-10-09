@@ -4,7 +4,7 @@ import argparse
 import os
 from pathlib import Path
 import subprocess
-import tempfile
+import local_temp as tempfile
 from placeholder_font import build
 parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--reference-dir',type=Path);args=parser.parse_args()
 root=Path(__file__).resolve().parents[1]

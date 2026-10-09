@@ -3,7 +3,7 @@
 import os
 from pathlib import Path
 import subprocess
-import tempfile
+import local_temp as tempfile
 import unittest
 
 ROOT=Path(__file__).resolve().parents[1]

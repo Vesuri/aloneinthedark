@@ -3,7 +3,7 @@
 import os
 from pathlib import Path
 import subprocess
-import tempfile
+import local_temp as tempfile
 from check_unionrect import check,pairs,ROOT
 text=(ROOT/'tmp/m2-unionrect-reference-final.log').read_text()
 print(check(text,0))

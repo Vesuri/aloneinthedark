@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Compare the compiled Times36 renderer with the original pause-draw capture."""
-import argparse,os,subprocess,tempfile
+import argparse, os, subprocess
+import local_temp as tempfile
 from pathlib import Path
 p=argparse.ArgumentParser(description=__doc__);p.add_argument('--reference-dir',type=Path,required=True);a=p.parse_args()
 root=Path(__file__).resolve().parents[1]

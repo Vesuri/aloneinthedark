@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Run the runtime cursor state helper against measured Mac transitions."""
-import argparse,os,re,subprocess,tempfile
+import argparse, os, re, subprocess
+import local_temp as tempfile
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 ROWS=['O 0 0 1 1','I 1 0 0 0','O 0 0 1 1','O 0 0 1 0','S 1 0 0 0',

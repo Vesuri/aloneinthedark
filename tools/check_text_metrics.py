@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Check compiled native text metrics, optionally against measured Mac fixtures."""
-import argparse,os,re,subprocess,tempfile
+import argparse, os, re, subprocess
+import local_temp as tempfile
 from pathlib import Path
 from check_textwidth import check
 root=Path(__file__).resolve().parents[1]

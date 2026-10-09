@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Reject missing evidence, timer stalls, late notes and corrupted stack guards."""
-import struct,tempfile,unittest
+import struct, unittest
+import local_temp as tempfile
 from pathlib import Path
 from check_m5_audit import check
 
