@@ -4,10 +4,11 @@
 Source amiga/env.sh first. ROMs and original data are local inputs, never shipped.
 Use QUITPROBE=1 for quit, FILEPROBE=1 for file-read, SAVELOAD=1 for save-load,
 and LOADONLY=1 for load-save; EXPLOREROUTE=1 INTROSKIP=1 for stairs;
-ESCAPEPROBE=1 for escape.
+ESCAPEPROBE=1 for escape; STAIRSSAVE=1 INTROSKIP=1 for walking.
 timed uses production. Always clean-build flags.
 """
 import argparse
+import configparser
 import platform
 import os
 from pathlib import Path
@@ -22,7 +23,7 @@ SHARE = Path.home()/'.local/share/amiga'
 
 def main():
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument('--mode', choices=('smoke', 'boot', 'load', 'quit', 'timed', 'stairs', 'escape', 'file-read', 'save-load', 'load-save'), default='quit')
+    p.add_argument('--mode', choices=('smoke', 'boot', 'load', 'quit', 'timed', 'stairs', 'escape', 'walking', 'file-read', 'save-load', 'load-save'), default='quit')
     p.add_argument('--whdload', type=Path,
                    default=Path(os.environ.get('WHDLOAD', SHARE/'WHDLoad'))/'C/WHDLoad')
     p.add_argument('--workbench', type=Path,
@@ -34,12 +35,16 @@ def main():
     p.add_argument('--seconds', type=int, default=90, help='host safety ceiling')
     p.add_argument('--ticks', type=int, default=1500, help='WHDLoad timeout in PAL fields')
     p.add_argument('--cpu', default='68030')
+    p.add_argument('--machine-config', type=Path, help='FS-UAE hardware settings only; guest disks and host paths stay isolated')
+    p.add_argument('--z3-memory-mb', type=int, choices=(0,16,32,64,128), default=0, help='additional Zorro III RAM for cache/timing comparisons')
     p.add_argument('--jit', action='store_true', help='enable JIT for explicit reproduction runs')
     p.add_argument('--no-warp', action='store_true', help='run at normal PAL field rate')
     p.add_argument('--save-source', type=Path, help='Saved Games drawer from a preceding run')
     p.add_argument('--no-preload', action='store_true')
     p.add_argument('--check-stack', action='store_true', help='require completed STACKPROBE report and 4 KB process stack')
     args = p.parse_args()
+    if args.mode == "walking" and not args.save_source:
+        p.error("walking requires --save-source")
     if args.rtb is None:
         args.rtb = Path(str(args.rom)+'.RTB')
     slave = {'smoke':'Smoke.slave', 'boot':'BootTest.slave', 'load':'LoadTest.slave'}.get(args.mode, 'AloneInTheDark.slave')
@@ -53,9 +58,9 @@ def main():
     if args.mode != 'smoke':
         shutil.copyfile(args.rom, boot/'devs/Kickstarts'/args.rom.name)
         shutil.copyfile(args.rtb, boot/'devs/Kickstarts'/(args.rom.name+'.RTB'))
-    if args.mode in ('load', 'quit', 'timed', 'stairs', 'escape', 'file-read', 'save-load', 'load-save'):
+    if args.mode in ('load', 'quit', 'timed', 'stairs', 'escape', 'walking', 'file-read', 'save-load', 'load-save'):
         shutil.copyfile(args.exe, game/'AloneInTheDark')
-    if args.mode in ('quit', 'timed', 'stairs', 'escape', 'file-read', 'save-load', 'load-save'):
+    if args.mode in ('quit', 'timed', 'stairs', 'escape', 'walking', 'file-read', 'save-load', 'load-save'):
         (game/'Saved Games').mkdir();(game/'prefs').mkdir()
         subprocess.run(['bash', '-c', '. ./stage_original_data.sh; stage_aitd_original_data "$1"',
                         'stage', str(game)], cwd=ROOT/'amiga', check=True)
@@ -67,7 +72,7 @@ def main():
         (game/'read-probe.bin').write_bytes(bytes((i*37+(i>>8))&255 for i in range(200003)))
     (boot/'s/WHDLoad.prefs').write_text('Expert\nReadDelay=0\n')
     preload = '' if args.no_preload else 'PRELOAD '
-    filelog = '' if args.mode in ('stairs', 'escape') else 'FILELOG '
+    filelog = '' if args.mode in ('stairs', 'escape', 'walking') else 'FILELOG '
     (boot/'s/startup-sequence').write_text(
         'DF0:C/Assign C: DF0:C\nDF0:C/Assign LIBS: DF0:Libs\n'
         'DF0:C/Assign DEVS: DH0:devs\nStack 16384\nFailAt 999\nC:Avail >DH0:memory\n'
@@ -76,10 +81,15 @@ def main():
     arm=SHARE/'fs-uae-arm/fs-uae'
     emulator=os.environ.get('FSUAE',str(arm) if platform.machine()=='arm64' and arm.exists() else 'fs-uae')
     with (base/'emulator.log').open('w') as log:
-        emu = subprocess.Popen([emulator, '--amiga_model=A4000', '--cpu='+args.cpu,
+        machine = ['--amiga_model=A4000', '--cpu='+args.cpu,
             '--uae_cpu_model='+args.cpu.split('-')[0], '--uae_cpu_24bit_addressing=false','--uae_mmu_model=0','--uae_fpu_model=0',
             '--uae_z3mapping=uae',
-            '--jit_compiler='+str(int(args.jit)), '--chip_memory=2048', '--fast_memory=8192','--uae_z3mem_size=0','--uae_a3000mem_size=0','--uae_cpu_speed=max',
+            '--jit_compiler='+str(int(args.jit)), '--chip_memory=2048', '--fast_memory=8192','--uae_z3mem_size='+str(args.z3_memory_mb),'--uae_a3000mem_size=0','--uae_cpu_speed=max']
+        if args.machine_config:
+            config=configparser.ConfigParser();config.read(args.machine_config)
+            hardware={'amiga_model','cpu','cpu_speed','cpu_frequency','jit_compiler','chip_memory','fast_memory','zorro_iii_memory','graphics_card','graphics_memory','ntsc_mode','accuracy'}
+            machine=['--'+k+'='+v for k,v in config['fs-uae'].items() if k in hardware]
+        emu = subprocess.Popen([emulator, *machine,
             '--kickstart_file='+str(args.host_rom),
             '--hard_drive_0='+str(boot), '--hard_drive_0_priority=10', '--hard_drive_1='+str(game),
             '--floppy_drive_0='+str(args.workbench),
@@ -95,7 +105,7 @@ def main():
             output = (boot/'result').open(errors='replace').read(512) if (boot/'result').exists() else ''
             report = (game/'.whdl_register').read_text(encoding='latin1') if (game/'.whdl_register').exists() else ''
             assert report, f'No WHDLoad core dump: {base}\n{output}'
-            if args.mode in ('timed', 'stairs', 'escape'):
+            if args.mode in ('timed', 'stairs', 'escape', 'walking'):
                 assert 'DEBUG caused.' in report, report + output
                 if args.mode == 'timed':
                     files = (game/'.whdl_log').read_text(encoding='latin1')
@@ -109,10 +119,27 @@ def main():
                 offset = memory.index(magic) + len(magic)
                 assert memory[offset:offset+2] == b'\0\2'
                 switches = int.from_bytes(memory[offset+2:offset+4], 'big')
-                assert switches > 0, 'WHDLoad return callback was not exercised'
+                if args.mode == 'timed' and args.no_preload:
+                    assert switches > 0, 'WHDLoad return callback was not exercised'
                 print('WHDLoad OS returns:', switches)
                 assert int.from_bytes(memory[offset+4:offset+8], 'big') != 0
                 print('PASS: WHDLoad resload ABI binding and embedded overlay verified')
+                if args.mode == 'walking':
+                    assert memory.count(b'AITDWALK') == 1, 'Expected walking trace'
+                    offset = memory.index(b'AITDWALK')+8
+                    count = struct.unpack_from('>I',memory,offset)[0]
+                    assert count <= 32, 'Invalid walking sample count'
+                    rows = [struct.unpack_from('>14i',memory,offset+8+i*56) for i in range(count)]
+                    for row in rows: print('WALKING:',row,flush=True)
+                    assert count == 32, 'Incomplete walking observation'
+                    assert all(row[13] == 0 for row in rows), 'Movement input held'
+                    for before,after in zip(rows,rows[1:]):
+                        elapsed=after[0]-before[0]
+                        frames=after[1]-before[1]
+                        assert elapsed>=60 and 0<frames<=elapsed+1, 'Unpaced or stalled scene updates'
+                    assert rows[0][8:11] == (1,6,3), 'Not loaded on automatic stairs'
+                    assert all(row[7:11] == (4,1,6,1) for row in rows[-5:]), 'No stable released manual landing'
+                    print('PASS: saved automatic descent followed by stable manual landing')
                 if args.mode == 'stairs':
                     assert memory.count(b'AITDSTRS') == 1, 'Expected stairs diagnostic report'
                     values = struct.unpack_from('>10I', memory, memory.index(b'AITDSTRS')+8)

@@ -886,6 +886,9 @@ void aitdInputExplore(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16_
         if(stage==10) {
             if(ticks-g_exploreRouteTick<30 || !exploreAligned(z,3920,4070,true,animation))return;
         }
+        // At 50/60 FPS the final eastward step coasts less than the old
+        // slower fixture. Align through ordinary steps before facing stairs.
+        if(stage==14 && !exploreAligned(x,6800,6920,true,animation))return;
         if(animation!=4 || ticks-g_exploreRouteTick<30)return;
         const uint8_t key=stage==2 || stage==6 ? 0x4f : stage==10 || stage==14 ? 0x4e : 0x4c;
         aitdInputInjectProbeKey(key,true);

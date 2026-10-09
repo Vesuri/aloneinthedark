@@ -422,6 +422,17 @@ void AitdScreen::updateMouseSprite()
 
 }
 
+void AitdScreen::paceFrame()
+{
+    extern volatile uint16_t g_vbiCount;
+    // No OS WaitTOF: the game owns VERTB. Waiting also lets the preceding
+    // complete picture publish before its inactive buffer is reused.
+    while(g_vbiCount==m_lastFrameField || m_framePending) {
+        __asm__ volatile("nop" ::: "memory");
+    }
+    m_lastFrameField=g_vbiCount;
+}
+
 int16_t AitdScreen::presentMacFrame(const uint8_t* chunky,const uint8_t* colorTable,
                                   const DirtyRect* dirtyRects,uint16_t dirtyRectCount,
                                   uint16_t cropLeft,uint16_t cropTop,bool mouseAllowed)

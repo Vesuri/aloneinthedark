@@ -53,7 +53,13 @@ specific to the proven book loops, not a generic QuickDraw end-of-frame signal.
 ## Timing and input
 
 The game clock is 60 Hz: PAL VBI adds six ticks per five fields; NTSC adds one per
-field. No game frame cap is applied. Original Core/Dark VBL tasks run at safe user-mode
+field. Complete frames are paced by real VBI fields (50 Hz PAL, approximately
+60 Hz NTSC), independently of the logical 60 Hz game clock. The display owner
+waits only if the preceding frame used the same field or still awaits publication.
+Scene/book batching supplies complete-frame boundaries, including scenes with no
+dirty pixels; unbatched screen updates use the same gate. Slower rendering adds no
+fixed delay. Interrupts continue servicing display, input and music while waiting.
+Original Core/Dark VBL tasks run at safe user-mode
 boundaries and preserve the original callback ABI. They never run inside the native VBI
 or music interrupt.
 

@@ -141,7 +141,7 @@ Changes to these decisions or original game behavior require the owner.
 | --- | --- |
 | D1 | No port-side preloading: read in bounded chunks and allow the OS to run when needed. |
 | D2 | 68020/no-FPU executable minimum; use fixed-clock 68030 for comparable-Mac intro measurements. Maximum-speed configurations are for functional diagnostics. |
-| D3 | No global frame cap unless a demonstrated gameplay bug requires one; investigate and approve such a change separately. The owner authorizes a sequence-specific VBlank wait for the overly fast Infogrames armadillo opening, after the stair fix. |
+| D3 | Global VBlank pacing, explicitly authorized by the owner after reproducing the high-speed stair reversal: at most one complete frame per PAL/NTSC field, including gameplay, publisher animation and book turns. Preserve original game logic and do not wait per polygon or drawing trap. |
 | D4 | No screen-size dialog; only 320×200. |
 | D5 | Replace reached Mac dialogs with measured in-game interfaces inside the viewport, preserving their choices and actions. |
 | D6 | Retain engine fonts; bundle raw bitmaps of the original Mac fonts for Mac-font text. |

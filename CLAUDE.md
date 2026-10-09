@@ -22,8 +22,8 @@ solutions already paid for. Read [README.md](README.md),
   add optional dialogs or guessed successes to hide a missing subsystem.
 - The game is 68020 code (see [static map](docs/static-map.md)); do not plan
   around a 68000 target.
-- Native presentation/input and maximum-rate pacing are intentional port
-  behavior; there is no frame cap (design.md D3). See
+- Native presentation/input and global VBlank frame pacing are intentional port
+  behavior (design.md D3). Pace completed frames, never individual drawing calls. See
   [architecture](docs/amiga-arch.md).
 
 ## Build and hardware

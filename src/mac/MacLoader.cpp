@@ -6581,7 +6581,7 @@ extern "C" void aitdVBLCallbackComplete()
         write32((uint8_t*)g_macTicksAddress, g_macTicks);
 }
 
-static void presentMacRuntime()
+static void presentMacRuntime(bool completedFrame=false)
 {
     AitdProfileScope profile(kProfilePresent);
 #ifdef AITD_INGAME
@@ -6600,7 +6600,11 @@ static void presentMacRuntime()
         return;
     }
     if (!s_loudStopScreen) return;
-    if(!s_screenDirty && !s_pixelsDirty)return;
+    if(!s_screenDirty && !s_pixelsDirty) {
+        // An unchanged scene still advances simulation and needs pacing.
+        if(completedFrame)s_loudStopScreen->paceFrame();
+        return;
+    }
     if(read16(s_windowManagerPixMap+32)!=8) {
         if(s_pixelsDirty) {loaderStop("DISPLAY DEPTH",0);showLoaderStop();}
         return;
@@ -6620,6 +6624,10 @@ static void presentMacRuntime()
     if(top<0 || left<0 || bottom>480 || right>640 || bottom-top!=200 || right-left!=320) {
         loaderStop("DISPLAY VIEWPORT GEOMETRY",0);showLoaderStop();
     }
+    // Only a validated display publication consumes a field. Startup keeps
+    // screenDirty set before an 8-bit game window exists; those service calls
+    // are initialization, not frames. Partial scene/book draws returned above.
+    s_loudStopScreen->paceFrame();
     int16_t result=s_loudStopScreen->presentMacFrame(s_colorScreen,s_windowManagerColors,
         s_dirtyRects,s_dirtyRectCount,left,top,true);
     if(result==-3) {loaderStop("CURSOR PALETTE",0);showLoaderStop();}
@@ -6685,7 +6693,7 @@ static void sceneFrameBoundary(uint16_t trap,uint32_t pc,const uint32_t* regs,co
                 loaderStop("SCENE FRAME PARTIAL",4);showLoaderStop();return;
             }
             g_macSceneFrameOwner=0;++g_macSceneFramesCompleted;
-            presentMacRuntime();
+            presentMacRuntime(true);
         }
     }
     if(trap!=0xab1d || !s_segments[4].begin
@@ -6796,7 +6804,7 @@ static void finishBookFrame(uint16_t mode,uint32_t owner)
         bookFrameStop("BOOK FRAME PARTIAL PUBLICATION");return;
     }
     g_macBookFrameActive=0;s_bookFrameOwner=0;++g_macBookFramesCompleted;
-    presentMacRuntime();
+    presentMacRuntime(true);
 }
 
 static void serviceMacRuntime()

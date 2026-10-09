@@ -58,6 +58,10 @@ public:
                          uint16_t cropLeft = kLoresLeft, uint16_t cropTop = 0,
                          bool mouseAllowed = false);
 
+    // User/trap context only, with interrupts enabled. At most one complete
+    // frame per video field; VBI input/display and CIA music keep running.
+    void paceFrame();
+
     bool matchesViewport(uint16_t left, uint16_t top) const {
         return m_cropLeft == left && m_cropTop == top;
     }
@@ -113,6 +117,7 @@ private:
     uint16_t  m_ptrIndex = 0;      // copper-list index of the first BPLxPT move
     uint32_t  m_nextPalette[256] = {0};
     volatile bool m_framePending = false;
+    uint16_t m_lastFrameField = 0xffff;
     uint16_t* m_mouseSprite = 0;
     uint16_t* m_emptySprite = 0;
     uint16_t  m_cursorImage[16] = {0};

@@ -7,30 +7,6 @@ cited below by § number; owner decisions D1–D8 are in design.md §5.
 
 Each item gives the **goal**, then the scope, then *done when*: the evidence required.
 
-## Reported stair bug
-
-- **MAC.1 Investigate the game's return-to-attic stair bug**, using
-  [issue #103](https://github.com/felixrieseberg/macintosh.js/issues/103) as
-  a symptom report, not evidence that Macintosh.js caused it. The owner
-  explicitly excludes running or testing Macintosh.js. Use the existing
-  original-Mac emulator and Amiga port to inspect the original stair track,
-  animation progression and timing; compare with M6.3's passing descent matrix.
-  See [initial original-code findings](mac-stairs.md).
-  The owner also reports immediate automatic return upstairs on unlimited
-  68040-NOMMU on macOS FS-UAE 3.2.35, launched through the WHDLoad icon,
-  without collecting any attic items. Disabling JIT did not resolve it.
-  The owner confirms this with Emily and recalls it with Carnby too, releasing
-  input during automatic descent; the Escape key fix
-  resolves menu reopening but does not resolve the stair reversal. Reproduce
-  this configuration and observe beyond the first manual-control frame.
-  Test the reported item-collection precondition and timing variants; determine
-  whether the original game can return to the attic and whether the port is affected. Fix a confirmed port defect; preserve the owner's approval
-  requirement for changes to original game behavior.
-
-  *Done when* the cause and port applicability have supported findings and any   fix has
-a regression check; if unreproduced, record the tested conditions and   remaining
-uncertainty without claiming that Macintosh.js is at fault.
-
 ## Saving and input after disk switches
 
 - **INPUT.2 Verify post-save keyboard recovery under WHDLoad.** The owner
@@ -51,19 +27,6 @@ uncertainty without claiming that Macintosh.js is at fault.
 
   *Done when* before/after switch counts and full save/load checks support the
   change, or document the remaining WHDLoad constraint.
-
-## Publisher animation pacing
-
-- **INTRO.1 Pace the Infogrames 3D armadillo animation**, after the stair bug
-  is fixed. The owner reports that the opening fly-by runs too quickly and
-  requests a VBlank wait between frames. Trace the sequence's frame production,
-  publication and existing waits; verify the original Mac cadence and add the
-  missing sequence-specific pacing. Do not impose a global gameplay cap.
-
-  *Done when* the complete opening is checked with warp off on the reference
-  68030 and unlimited CPU configurations, including JIT where available; guest
-  frame/VBlank counts show the intended cadence, with no skipped publication,
-  input regression or audio disruption. Record any untested JIT configuration.
 
 ## AITD 1 glitch audit
 

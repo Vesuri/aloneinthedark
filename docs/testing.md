@@ -76,13 +76,14 @@ branch.
 `test_amiga.py` runs the extraction helper with a real 4 KB stack and checks its
 watermark. `test_whdload.py --mode timed` uses production code, requires the expected
 WHDLoad timeout core, and verifies original resource reads, the embedded overlay and
-the resload ABI. This is an explicit bounded startup test, not normal game exit. The `stairs` and `escape` modes also inspect timeout cores; other modes require
+the resload ABI. This is an explicit bounded startup test, not normal game exit. The `stairs`, `walking` and `escape` modes also inspect timeout cores; other modes require
 a normal return:
 
 | WHDLoad mode | Required executable / meaning |
 | --- | --- |
 | `smoke`, `boot`, `load` | Separate slave fixtures for resload, Kickstart and process startup |
 | `stairs` | `EXPLOREROUTE=1 INTROSKIP=1`; fresh Carnby descent to manual floor 1 room 6 |
+| `walking` | `STAIRSSAVE=1 INTROSKIP=1`; load the supplied automatic-descent save and observe 31 seconds with movement keys released |
 | `escape` | `ESCAPEPROBE=1`; short and held Escape menu/resume cycles |
 | `quit` | `QUITPROBE=1 INTROSKIP=1`; original Quit and OS/resource cleanup |
 | `file-read` | `FILEPROBE=1`; exact read/seek/EOF/cache and bounded transfers |
@@ -90,9 +91,35 @@ a normal return:
 | `load-save` | `LOADONLY=1`; use `--save-source` from the prior run and `--no-preload` |
 
 For unlimited 68040 reproduction use `--cpu 68040-NOMMU`, optionally `--jit`
-and `--no-warp`. `FSUAE` selects the emulator executable. Stairs/Escape fixtures
+and `--no-warp`. `--z3-memory-mb 32` adds 32 MB Zorro III RAM.
+`--machine-config tmp/machine.fs-uae` instead imports the supplied hardware
+settings (CPU, model, memory, RTG and video timing), retaining isolated test
+disks, ROM overrides and output paths. `FSUAE` selects the emulator executable.
+Use the official emulator and warp off for the high-speed stairs case: warp
+changes the number of instructions executed per emulated field.
+Stairs/walking/Escape fixtures
 disable FILELOG to avoid its overhead and inject ordinary raw key states; they
 do not cover the physical keyboard handshake. A missing core is inconclusive.
+
+To reproduce the supplied automatic-descent case, keep the save and machine
+configuration local and run:
+
+```sh
+. amiga/env.sh
+make -C amiga clean
+make -C amiga -j4 STAIRSSAVE=1 INTROSKIP=1
+python3 tools/test_whdload.py --mode walking \
+  --save-source 'tmp/walking/Saved Games' --machine-config tmp/machine.fs-uae \
+  --no-warp --ticks 3500 --seconds 180
+```
+
+The fixture uses the original Load interface; it never rewrites actor state.
+Its trace records ticks, completed scenes, character, coordinates, heading,
+animation, floor, room, track mode/position, vertical step and held cursor keys.
+It requires a loaded automatic stair state, zero movement input throughout and
+five final idle/manual samples downstairs. Consecutive samples must also show
+scene progression bounded by the video rate. Zero OS returns is valid when the
+whole game fits WHDLoad's PRELOAD cache.
 
 Clean-build between flag sets. `--check-stack` additionally needs `STACKPROBE=1`. Use a
 diagnostic executable with a matching observer, not the production build for a
