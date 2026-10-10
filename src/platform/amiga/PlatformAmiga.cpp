@@ -134,7 +134,7 @@ static void initializeEmbeddedOverlay(ResourceFileSource& files) {
 // ⚠⚠ EVERY GLOBAL A COMMITTED .gdb SCRIPT READS MUST BE IN amiga/Makefile's PROBE_SYMS.
 // -Wl,--gc-sections drops an unreferenced counter, and gdb then resolves the name into
 // .text and prints INSTRUCTION BYTES as a value -- a fake measurement, not an obvious
-// zero.  `make probe-audit` enforces it on every link.  (CLAUDE.md)
+// zero.  `make probe-audit` enforces it on every link.  (AGENTS.md)
 //
 // Bootstrap diagnostics: field count, allocation status and chip-RAM checksum.
 extern "C" {
