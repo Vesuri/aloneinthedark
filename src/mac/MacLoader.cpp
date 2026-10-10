@@ -4969,6 +4969,18 @@ static __attribute__((noinline)) void packedLogicRowsC(
     }
 }
 
+#ifdef AITD_MASK_REJECT_PROBE
+// Disposable negative fixture. Real 68k stores are required: the shared
+// debugger does not implement guest memory writes. Never linked in releases.
+static __attribute__((noinline)) void corruptMaskProbe(uint8_t* mask,uint16_t size,
+                                                      uint8_t* pixels,uint32_t pixelBytes)
+{
+    __asm__ volatile("" : : "r"(pixels),"r"(pixelBytes) : "memory");
+    volatile uint8_t* tail=mask+size-2;
+    tail[0]=0;tail[1]=0;
+}
+#endif
+
 static bool copyPortBits8(const uint8_t* sourceBitmap,const uint8_t* destinationBitmap,
                             const uint8_t* from,const uint8_t* to,uint16_t mode,const uint8_t* mask)
 {
@@ -5097,10 +5109,19 @@ static bool copyPortBits8(const uint8_t* sourceBitmap,const uint8_t* destination
         if(hit)++g_probeCopyMapHits;else ++g_probeCopyMapMisses;
 #endif
     }
+    static RegionRows::ValidationCache maskCache;
+#ifdef AITD_MASK_REJECT_PROBE
+    static bool maskCorrupted=false;
+    if(maskBody && read16(maskBody)>10 && !maskCorrupted) {
+        if(!maskCache.validate(maskBody,maskBytes))return false;
+        maskCorrupted=true;
+        corruptMaskProbe(const_cast<uint8_t*>(maskBody),read16(maskBody),pixels,pixelBytes);
+    }
+#endif
     uint8_t drawn[8];
     if(!CopyBits8::copy(sourcePixels,sourceBytes,
         read16(sourceMap+4)&0x3fff,sourceMap+6,pixels,pixelBytes,
-        read16(map+4)&0x3fff,map+6,from,to,port+16,*vh+2,*ch+2,drawn,remap,maskBody,maskBytes))return false;
+        read16(map+4)&0x3fff,map+6,from,to,port+16,*vh+2,*ch+2,drawn,remap,maskBody,maskBytes,&maskCache))return false;
     if(window && read16(drawn)!=read16(drawn+4) && read16(drawn+2)!=read16(drawn+6))
         markDirtyBounds((int16_t)read16(drawn)-(int16_t)read16(map+6),
                         (int16_t)read16(drawn+2)-(int16_t)read16(map+8),

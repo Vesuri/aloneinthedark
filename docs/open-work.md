@@ -11,21 +11,9 @@ Each item gives the **goal**, then the scope, then *done when*: the evidence req
 
 Baselines are the
 [reference-68030 cycle profiles](performance.md#reference-68030-baseline):
-`amiga/aprof.sh book 2 50` (66.6 ms per fold step) and `amiga/aprof.sh gameplay 60 100`
-(85.5 ms per first-room frame). Each item's commit reports both runs before and after.
+`amiga/aprof.sh book 2 50` (66.5 ms per fold step) and `amiga/aprof.sh gameplay 60 100`
+(83.0 ms per first-room frame). Each item's commit reports both runs before and after.
 Original game instructions stay unchanged; these items reduce port cost only.
-
-- **PERF.3 Stop revalidating unchanged mask regions in CopyBits.**
-  `RegionRows::Cursor::begin` decodes and validates a whole QuickDraw region before
-  every masked copy: 5.2 ms per first-room frame for seven copies. Each call also
-  makes about five handle-size lookups. The original code can modify region handles
-  directly, so any reuse must detect changed bytes, size or handle. A malformed region
-  must still stop loudly before it is drawn.
-
-  *Done when* port time below `Dark+$30A8` in the attic run is at most 8 ms per frame
-  (baseline 13.3 ms). `RegionRows` takes at most 1.5 ms. The CopyBits, region and
-  corridor-mask checks and scene-frame comparisons pass, including a malformed-region
-  rejection case.
 
 - **PERF.4 Speed up native solid fills, lines and back-buffer synchronization.** Measure
   against the current profiles. One book-fold LineTo spends about 500 cycles per pixel

@@ -2,7 +2,7 @@ set pagination off
 set confirm off
 set width 0
 break AitdScreen::showLoudStop
-tbreak dispatchMacTrap if trap==0xa8ec
+tbreak copyPortBits8
 continue
 set $call=(unsigned long)s_segments[4].begin+0x346c
 if g_stageBState==3 || *(unsigned long*)($call-4)!=0x42672f0a || *(unsigned short*)$call!=0xa8ec
@@ -17,9 +17,9 @@ if $pc!=$call
  detach
  quit 1
 end
-tbreak dispatchMacTrap
+tbreak *aitd_line_a_trap_entry
 continue
-if g_stageBState==3 || trap!=0xa8ec
+if g_stageBState==3 || *(unsigned short*)$a3!=0xa8ec
  echo FAIL masked copy dispatch\n
  detach
  quit 1

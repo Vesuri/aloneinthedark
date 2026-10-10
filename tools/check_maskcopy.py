@@ -48,7 +48,7 @@ def run(log,status):
         changed=sum(a!=b for a,b in zip(before,after))
         if not copied or (index and not changed):raise ValueError('fixture cannot discriminate missing copy')
         print(f'PASS {prefix or "original-"}masked copy: {copied} covered pixels, {changed} changed; complete destination and preserved source/records')
-def check_native(log,status):
+def check_native(log,status,paired=True):
     t=log.read_text()
     if status or t.count('PASS native pond masked CopyBits')!=1 or t.count('COMPLETE native masked copy and continuation')!=1 or t.count('[Inferior 1 (Remote target) detached]')!=1 or re.search(r'FAIL|Error in|Program received signal|TIMEOUT',t):raise ValueError('native completion')
     records=[re.findall(r'^MASKCOPY_'+phase+r' (.*)$',t,re.M) for phase in ('ENTER','RETURN')]
@@ -59,13 +59,13 @@ def check_native(log,status):
         if e[key]!=r[key]:raise ValueError('native preserved '+key)
     args=re.findall(r'^MASKCOPY_ARGS mask=(\w+) mode=(\w+) destination=(\w+) expected=(\w+)$',t,re.M)
     if len(args)!=1 or not int(args[0][0],16) or int(args[0][1],16):raise ValueError('native mask/mode')
-    referenceRect=rect((ROOT/'tmp/maskcopy-reference-enter-from.bin').read_bytes())
+    referenceRect=rect((ROOT/'tmp/maskcopy-reference-enter-from.bin').read_bytes()) if paired else rect(bytes.fromhex(e['source']))
     if any(rect(bytes.fromhex(v))!=referenceRect for v in (e['source'],e['target'],r['source'],r['target'])):raise ValueError('native rectangles')
     def data(phase,name):return (ROOT/f'tmp/maskcopy-native-{phase}-{name}.bin').read_bytes()
     def ref(phase,name):return (ROOT/f'tmp/maskcopy-reference-{phase}-{name}.bin').read_bytes()
     for name in ('src-pm','dst-pm','src-pixels','src-clut','dst-clut','mask','port','vis','clip','inverse'):
         if data('enter',name)!=data('return',name):raise ValueError('native changed '+name)
-    if data('enter','mask')!=ref('enter','mask'):raise ValueError('paired mask')
+    if paired and data('enter','mask')!=ref('enter','mask'):raise ValueError('paired mask')
     for name in ('src-clut','dst-clut'):
         if data('enter',name)[4:]!=ref('enter',name)[4:]:raise ValueError('paired colours '+name)
     if data('enter','src-clut')[:4]!=data('enter','dst-clut')[:4]:raise ValueError('native colour environment')
@@ -81,7 +81,7 @@ def check_native(log,status):
         if not (referenceRect[0]<=y<referenceRect[2] and referenceRect[1]<=x<referenceRect[3] and st<=y<sb and sl<=x<sr and dt<=y<db and dl<=x<dr and all(a<=y<c and b<=x<d for a,b,c,d in bounds)):continue
         si=(y-st)*ss+x-sl;di=(y-dt)*ds+x-dl
         expected[di]=src[si];copied+=1
-        if src[si]!=original_source[si] or after[di]!=original_after[di]:raise ValueError('paired copied pixels')
+        if paired and (src[si]!=original_source[si] or after[di]!=original_after[di]):raise ValueError('paired copied pixels')
     if not copied or after!=expected:raise ValueError('native complete destination')
     if re.findall(r'^MASKCOPY_BOOK batches=(\d+)$',t,re.M)!=['0']:raise ValueError('book replay')
     for label in ('PUBLICATION','DIRTY'):
@@ -89,7 +89,7 @@ def check_native(log,status):
         if len(line)!=1 or any(a!=b for a,b in re.findall(r'=(\d+)/(\d+)',line[0])):raise ValueError('offscreen '+label)
     next_stop=re.findall(r'^MASKCOPY_NEXT trap=(\w+) segment=(\w+) offset=(\w+) routine=(.+)$',t,re.M)
     if len(next_stop)!=1 or next_stop[0][3]=='UNKNOWN TRAP' or tuple(int(x,16) for x in next_stop[0][:3])==(0xa8ec,4,0x346c):raise ValueError('named continuation')
-    print(f'PASS native masked copy: paired {copied} pixels, complete destination preservation, source/mask/records, ABI, no publication or book replay, named continuation')
+    print(f'PASS native masked copy: {"paired" if paired else "independently modeled"} {copied} pixels, complete destination preservation, source/mask/records, ABI, no publication or book replay, named continuation')
 
 def check_helper():
     with tempfile.TemporaryDirectory(prefix='aitd-maskcopy-') as directory:
@@ -99,7 +99,7 @@ def check_helper():
             subprocess.run([str(exe),str(ROOT/'tmp'),prefix],check=True,timeout=30)
 
 if __name__=='__main__':
-    p=argparse.ArgumentParser();p.add_argument('log',type=Path);p.add_argument('--status',type=int,required=True);p.add_argument('--native',type=Path);p.add_argument('--native-status',type=int);a=p.parse_args();run(a.log,a.status);check_helper()
+    p=argparse.ArgumentParser();p.add_argument('log',type=Path);p.add_argument('--status',type=int,required=True);p.add_argument('--native',type=Path);p.add_argument('--native-status',type=int);p.add_argument('--native-unpaired',action='store_true',help='Model the native pose independently; retain all ABI, full-buffer and record checks');a=p.parse_args();run(a.log,a.status);check_helper()
     if a.native:
         if a.native_status is None:p.error('--native requires --native-status')
-        check_native(a.native,a.native_status)
+        check_native(a.native,a.native_status,not a.native_unpaired)

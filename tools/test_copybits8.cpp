@@ -11,7 +11,48 @@ static std::vector<uint8_t> box(int t,int l,int b,int r) {
 static std::vector<uint8_t> read(const std::string& path) {
     std::ifstream in(path,std::ios::binary);assert(in.good());return {std::istreambuf_iterator<char>(in),{}};
 }
+static void testMaskCache() {
+    static RegionRows::ValidationCache cache;
+    const int16_t words[]={42,0,-2,8,12,0,-2,3,8,12,32767,4,3,8,32767,8,-2,12,32767,32767};
+    std::vector<uint8_t> original;
+    for(int16_t v:words){original.push_back(uint16_t(v)>>8);original.push_back(uint8_t(v));}
+    original[1]=uint8_t(original.size());
+    auto map=box(-10,-12,30,38),from=box(-2,-4,12,16),scaled=box(-2,-4,26,36);
+    std::vector<uint8_t> source(56*40),initial(source.size(),0xa5);
+    for(unsigned i=0;i<source.size();++i)source[i]=uint8_t(i*37+13);
+    auto check=[&](const std::vector<uint8_t>& region,uint16_t capacity) {
+        for(bool scale:{false,true}) {
+            auto expected=initial,actual=initial;uint8_t a[8]={},b[8]={};
+            const auto& to=scale?scaled:from;
+            bool reference=CopyBits8::copy(source.data(),source.size(),56,map.data(),expected.data(),expected.size(),56,map.data(),from.data(),to.data(),map.data(),map.data(),map.data(),a,nullptr,region.data(),capacity);
+            bool cached=CopyBits8::copy(source.data(),source.size(),56,map.data(),actual.data(),actual.size(),56,map.data(),from.data(),to.data(),map.data(),map.data(),map.data(),b,nullptr,region.data(),capacity,&cache);
+            assert(cached==reference && actual==expected);
+            if(cached)for(unsigned i=0;i<8;++i)assert(a[i]==b[i]);
+            else assert(actual==initial); // Malformed tails cannot partially draw.
+        }
+    };
+    check(original,original.size());check(original,original.size());
+    for(unsigned i=0;i<original.size();++i)for(uint8_t delta:{uint8_t(1),uint8_t(255)}) {
+        auto changed=original;changed[i]^=delta;
+        check(changed,changed.size());check(original,original.size());
+    }
+    // Warm content moved into new storage, truncated capacity, and slot reuse.
+    auto moved=original;check(moved,moved.size());check(moved,moved.size()-2);
+    for(unsigned i=0;i<20;++i) {auto changed=original;changed[5]=uint8_t(i);check(changed,changed.size());}
+    check(original,original.size());
+    // Valid but oversized streams take the uncached path; a bad final marker
+    // must be rejected there too. Empty transitions still require validation.
+    std::vector<uint8_t> large(10,0);
+    for(unsigned y=0;y<1100;++y)for(uint16_t v:{uint16_t(y),uint16_t(32767)}) {
+        large.push_back(v>>8);large.push_back(v);
+    }
+    large.push_back(127);large.push_back(255);
+    large[0]=large.size()>>8;large[1]=large.size();
+    check(large,large.size());large.back()=0;check(large,large.size());
+    puts("PASS mask cache: exact-content reuse, every-byte mutation, relocation, capacity, eviction, scaling and atomic rejection");
+}
 int main(int argc,char** argv) {
+    testMaskCache();
     // Exercise all longword alignments and tails, retaining sentinels on both
     // sides. This also checks zero-length copies without touching either side.
     for(unsigned si=0;si<4;++si)for(unsigned di=0;di<4;++di)

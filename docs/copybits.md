@@ -121,23 +121,21 @@ copy contract, not complete story/intro or rendered-window acceptance.
 ## Streaming masked copies
 
 CopyBits8 validates the complete mask before changing the destination, then uses a
-forward row cursor and copies clipped spans. It no longer decodes the whole region for
-every row or tests every uncovered pixel. Storage/port/clip limits, colour remapping and
-reported dirty bounds are unchanged. The cursor retains only scanline edges; there is no
-shadow framebuffer. Original game instructions are unchanged. Malformed tails fail
-before any destination write.
+forward row cursor and copies clipped spans. The native adapter owns an eight-entry
+validation cache for encoded regions up to 4096 bytes. Every lookup checks allocation
+capacity and compares all encoded bytes, including size and bounds. Identical content
+can reuse validation even after a handle moves; changed content must validate again.
+Rectangles and larger regions use the ordinary validator. Invalid streams never enter
+the cache, and malformed tails fail before any destination write.
 
-The complete host suite passes, including independent full-buffer copies, colour
-mapping, padding, malformed-mask rejection and skipped/repeated cursor rows. The matched
-Mac service fixture and unprofiled native call verify 399 covered pixels, every
-destination byte, preserved source/records, registers, stack and unchanged offscreen
-dirty/publication state. The distinctive Mac source fixture changes 398 pixels and also
-matches the host helper. The native observer now checks DisposeRgn's successful return
-instead of expecting its retired loud stop. Native link audits pass.
+The cache occupies about 32 KiB of static storage, off the supervisor stack. It stores
+region encodings, never framebuffer pixels. The cursor retains only scanline edges;
+port/clip limits, colour remapping and explicit dirty bounds are unchanged. Original
+game instructions are unchanged.
 
-Local evidence: `tmp/m2-later-profile-before-full.log`,
-`tmp/m2-mask-spans-profile-full.log`, `tmp/m2-mask-spans-final-reference.log`,
-`tmp/m2-mask-spans-sequence-full.log`, `tmp/m2-mask-spans-final-check.log` and
-`tmp/m2-mask-spans-sequence-check.log`. Earlier mismatched log/capture selection and an
-overstrict final-entrance track-position assertion are rejected; the final checks retain
-and report that state difference.
+Host fixtures compare entire destinations against independent pixel models and cover
+colour mapping, padding, scaling, every-byte mutations after cache hits, relocation,
+capacity changes, eviction and oversized regions. The original Mac service fixture
+also exercises a distinctive source image. Native observers check preserved source,
+records, registers, stack and unchanged offscreen dirty/publication state. See
+[testing](testing.md) for native mask and scene checks.

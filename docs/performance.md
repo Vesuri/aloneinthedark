@@ -41,15 +41,15 @@ call-tree noise from stack manipulation and task switches; flat PC times are exa
 
 | PAL, `a4000-030-reference` | Book fold, steps 2–52 | First room, scenes 60–160 |
 | --- | ---: | ---: |
-| Fields / steps | 166 / 50 | 426 / 100 |
-| Time per step | 66.6 ms | 85.5 ms |
-| Original game code | 0.5 ms | 53.4 ms |
-| C2P | 24.4 ms | 7.2 ms |
+| Fields / steps | 166 / 50 | 414 / 100 |
+| Time per step | 66.5 ms | 83.0 ms |
+| Original game code | 0.5 ms | 53.7 ms |
+| C2P | 24.4 ms | 7.7 ms |
 | QuickDraw fills, lines, regions | 16.8 ms | 3.0 ms |
-| QuickDraw CopyBits | 4.0 ms | 10.0 ms |
-| Trap entry/dispatch, state lookups, VBL polling | 13.8 ms | 9.0 ms |
-| Other presentation | 5.5 ms | 0.3 ms |
-| CPU Chip-bus accesses (included above) | 7.9 ms | 1.5 ms |
+| QuickDraw CopyBits | 4.0 ms | 4.7 ms |
+| Trap entry/dispatch, state lookups, VBL polling | 13.8 ms | 9.8 ms |
+| Other presentation | 5.4 ms | 0.3 ms |
+| CPU Chip-bus accesses (included above) | 7.8 ms | 1.9 ms |
 
 In the first room, original game code accounts for most of the frame. The model
 renderer (`Dark3+$1D50`, entered via jump-table entry 291) includes skeleton animation,
@@ -57,8 +57,9 @@ vertex transformation, edge/span filling and an O(n²) primitive depth sort. Its
 calls include RGBForeColor, PenMode, MoveTo and LineTo for each model line. Outermost
 PenMode and MoveTo now cost 36.9 and 36.8 µs respectively, including Line-A entry and
 return. The direct entries retain the full register image and service pending callbacks
-and completed frames. CopyBits still repeatedly validates mask regions; see the
-[remaining work](open-work.md).
+and completed frames. CopyBits checks exact mask bytes against previously validated regions. Mask validation
+costs 0.70 ms per frame; total port work below `(Dark, $30A8)` costs 4.24 ms.
+Fills, lines and back-buffer synchronization are the next [remaining work](open-work.md).
 
 The book uses 8 bitplanes at FMODE=3. Its coordinate-bounded C2P stores and CPU
 back-buffer synchronization still share Chip RAM bandwidth with display DMA; measured

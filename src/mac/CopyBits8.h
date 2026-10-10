@@ -41,7 +41,7 @@ inline bool copy(const uint8_t* src,uint32_t srcBytes,uint16_t srcStride,const u
                  uint8_t* dst,uint32_t dstBytes,uint16_t dstStride,const uint8_t* dstMap,
                  const uint8_t* from,const uint8_t* to,const uint8_t* port,
                  const uint8_t* vis,const uint8_t* clip,uint8_t* drawn,const uint8_t* colors=0,
-                 const uint8_t* mask=0,uint16_t maskBytes=0) {
+                 const uint8_t* mask=0,uint16_t maskBytes=0,RegionRows::ValidationCache* maskCache=nullptr) {
     if(!src || !dst || src==dst || !srcMap || !dstMap || !from || !to
        || !port || !vis || !clip || !drawn)return false;
     const uint8_t* maps[2]={srcMap,dstMap};uint32_t sizes[2]={srcBytes,dstBytes};
@@ -69,7 +69,7 @@ inline bool copy(const uint8_t* src,uint32_t srcBytes,uint16_t srcStride,const u
             limits[i]=bound;
         }
         RegionRows::Cursor rows;
-        if(mask && !rows.begin(mask,maskBytes))return false;
+        if(mask && !rows.begin(mask,maskBytes,maskCache))return false;
         if(mask)for(unsigned i=0;i<4;++i) {
             const int32_t value=coord(mask+2,i);
             limits[i]=i<2 ? (limits[i]>value?limits[i]:value) : (limits[i]<value?limits[i]:value);
@@ -112,7 +112,7 @@ inline bool copy(const uint8_t* src,uint32_t srcBytes,uint16_t srcStride,const u
         limits[i]=bound;
     }
     RegionRows::Cursor rows;
-    if(mask && !rows.begin(mask,maskBytes))return false;
+    if(mask && !rows.begin(mask,maskBytes,maskCache))return false;
     // Region bounds are in destination coordinates. Validate the complete
     // stream first, including empty intersections, then avoid traversing rows
     // that cannot contain any masked pixels (common for foreground polygons).

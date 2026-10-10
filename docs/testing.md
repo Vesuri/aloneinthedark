@@ -72,6 +72,36 @@ under real Workbench but is a protocol fixture, not an icon double-click. The st
 fixture verifies a 4096-byte game-process stack; it does not change the separate
 internal Mac or music stacks.
 
+## CopyBits masks
+
+`make host-tests` exercises cached and uncached CopyBits with every-byte region
+mutations, handle-storage relocation, truncated capacity, cache eviction and larger
+regions. Rejected copies must preserve the entire destination, including padding.
+`tools/check_maskcopy.py` also models the original Mac captures. Its native check pairs
+the original pose by default; `--native-unpaired` uses the native capture's own source,
+mask and rectangle when CPU speed changes the pose, while retaining full destination,
+ABI, source/record and publication checks.
+
+For native checks, clean-build with `INTROSKIP=1 FIXEDRNG=1`. Run `maskcopy.gdb`,
+`corridor_mask.gdb` and `scene_batches.gdb` through `amiga/diag_run.sh`; validate their
+captures with `tools/check_maskcopy.py`, `tools/check_corridor_masks.py` and
+`tools/check_scene_batches.py`. The corridor check pairs polygon geometry and exact
+region bytes with the Mac; the scene check decodes every captured AGA back buffer.
+
+The disposable negative fixture `mask_rejection.gdb` requires a clean build with
+`INTROSKIP=1 FIXEDRNG=1 MASKREJECTPROBE=1`. This diagnostic-only hook warms the cache
+with a real mask, then corrupts its terminating marker using guest instructions; the
+shared debugger does not implement memory writes. The observer verifies the mutation
+and requires a named CopyBits loud stop at `(Dark, $346C)` before any destination change:
+
+```sh
+GDBSCRIPT=mask_rejection.gdb DIAG_RUN_DIR=.run-mask-rejection amiga/diag_run.sh 600
+python3 tools/check_mask_rejection.py amiga/.run-mask-rejection/gdb-out.log tmp --status "$?"
+```
+
+Use disposable preferences/saves for diagnostic runs; never run the negative fixture
+in a live owner session. A timeout or interrupted run is a failure.
+
 ## Installer and WHDLoad
 
 Build a production archive before testing its installation:

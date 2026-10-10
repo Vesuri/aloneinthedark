@@ -43,6 +43,47 @@ inline bool row(const uint8_t* region,uint16_t capacity,int16_t y,Edges& result)
     }
     return false;
 }
+// Cache only validation, never pixels. Exact bytes, including size and bounds,
+// are the key: a recycled/moved handle cannot reuse stale geometry. Larger
+// regions retain the ordinary complete validator. Owned storage stays off the
+// small supervisor stack; callers keep the cache alive between copies.
+struct ValidationCache {
+    static constexpr uint16_t slots=8, maximumBytes=4096;
+    struct Entry { uint16_t size=0; uint8_t bytes[maximumBytes]; };
+    Entry entries[slots]{};
+    uint16_t next=0;
+    static bool same(const uint8_t* a,const uint8_t* b,uint16_t size) {
+#ifdef AITD_PLATFORM_AMIGA
+        struct __attribute__((packed,may_alias)) Word { uint32_t value; };
+        while(size>=4) {
+            uint32_t av,bv;
+            __asm__("move.l %1,%0" : "=d"(av) : "m"(*(const Word*)a) : "cc");
+            __asm__("move.l %1,%0" : "=d"(bv) : "m"(*(const Word*)b) : "cc");
+            if(av!=bv)return false;
+            a+=4;b+=4;size-=4;
+        }
+#endif
+        while(size--)if(*a++!=*b++)return false;
+        return true;
+    }
+    __attribute__((noinline)) bool validate(const uint8_t* bytes,uint16_t capacity) {
+        if(!bytes || capacity<10)return false;
+        const uint16_t size=uint16_t(get(bytes));
+        if(size<10 || size>capacity || (size&1))return false;
+        // Rectangles are cheaper to validate directly than to cache.
+        if(size>10 && size<=maximumBytes)
+            for(uint16_t i=0;i<slots;++i)
+                if(entries[i].size==size && same(entries[i].bytes,bytes,size))return true;
+        Edges checked{};
+        if(!row(bytes,capacity,0,checked))return false;
+        if(size>10 && size<=maximumBytes) {
+            Entry& entry=entries[next];next=(next+1)%slots;
+            for(uint16_t i=0;i<size;++i)entry.bytes[i]=bytes[i];
+            entry.size=size;
+        }
+        return true;
+    }
+};
 // Validate the complete stream once, then visit rows in ascending order.
 // The caller must keep the region unchanged for the cursor's lifetime.
 struct Cursor {
@@ -50,10 +91,10 @@ struct Cursor {
     uint16_t size=0,at=10;
     int32_t lastY=-32769;
     Edges edges{};
-    bool begin(const uint8_t* bytes,uint16_t capacity) {
+    bool begin(const uint8_t* bytes,uint16_t capacity,ValidationCache* cache=nullptr) {
         Edges checked{};
         region=nullptr;
-        if(!row(bytes,capacity,0,checked))return false;
+        if(cache ? !cache->validate(bytes,capacity) : !row(bytes,capacity,0,checked))return false;
         region=bytes;size=uint16_t(get(bytes));at=10;lastY=-32769;edges.count=0;
         return true;
     }
