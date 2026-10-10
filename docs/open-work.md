@@ -7,13 +7,6 @@ cited below by § number; owner decisions D1–D9 are in design.md §5.
 
 Each item gives the **goal**, then the scope, then *done when*: the evidence required.
 
-## Real hardware acceptance
-
-- **HW.1 Verify corrected WHDLoad startup on the owner's 68040/40 MMU A1200
-  with 32 MB Fast RAM.** Retest with the MMU enabled after the Line-A vector
-  and private file-control table corrections. *Done when* the owner reaches gameplay
-  and exits normally without an access fault; investigate any new dump before closing this item.
-
 ## AITD 1 glitch audit
 
 - **GLITCH.1 Check the Amiga port against the AITD 1 material in the

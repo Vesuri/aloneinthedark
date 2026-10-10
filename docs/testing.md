@@ -49,6 +49,9 @@ pointer or standalone MACPLAY frame. No historical splash frame numbers are assu
 AMIGA_CONFIG=a4000-030 amiga/regression.sh startup
 ```
 
+Owner-confirmed real hardware: A1200 with a 68040 at 40 MHz, MMU enabled and
+32 MB Fast RAM. The corrected 0.91 build runs on this configuration.
+
 Use `AMIGA_CONFIG=a1200-020` and `a4000-030-reference` for fixed-clock acceptance. The
 full intro observer verifies original state and then waits for the exact queued frame
 generation to reach the VBI. It must not assume a Toolbox return means a queued frame is
