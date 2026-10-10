@@ -1,6 +1,6 @@
 ; Based on WHDLoad 20.0 "Install Template/Xxx Install/Install".
 ; Adapted for a single StuffIt archive, following Vette's Installer V43 flow.
-; $VER: Install 0.90 (09.10.2026)
+; $VER: Install 0.91 (10.10.2026)
 (set @app-name "Alone in the Dark")
 (set #readme-file "ReadMe")
 (set #source (pathonly @icon))

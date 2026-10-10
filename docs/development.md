@@ -73,7 +73,7 @@ make release
 ```
 
 Outputs are `amiga/out/AloneInTheDark.exe`, `build/install-data/AitdInstallData.exe`,
-`build/whdload/AloneInTheDark.slave` and `dist/AloneInTheDark-0.90.lha`. Production
+`build/whdload/AloneInTheDark.slave` and `dist/AloneInTheDark-0.91.lha`. Production
 builds need no original game input. Always clean when changing build flags or widely
 included headers: make does not track those changes. Every link checks for unwanted
 floating-point helpers and missing debugger probe symbols. The executable targets 68020
