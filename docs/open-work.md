@@ -15,21 +15,6 @@ Baselines are the
 (103.3 ms per first-room frame). Each item's commit reports both runs before and after.
 Original game instructions stay unchanged; these items reduce port cost only.
 
-- **PERF.1 Fetch the 8-plane display with 64-bit AGA bitplane DMA (FMODE=3).**
-  With FMODE=0, bitplane DMA takes nearly every Chip slot on visible lines; book C2P
-  stores and back-buffer copies wait 26.5 ms per step. `AitdScreen` owns the change:
-  the FMODE bitplane bits (BLP32/BPAGEM), DDFSTRT/DDFSTOP for 64-bit fetches and
-  8-byte alignment of both bitplane buffers. The interleaved 40-byte plane stride and
-  280-byte modulo are already multiples of 8. Keep sprite width and data format
-  unchanged unless the cursor and empty sprites are converted and checked. Prove the
-  window position is unchanged in PAL and NTSC.
-
-  *Done when* the book run spends at most 13 ms per step in CPU Chip-bus accesses, with
-  lower total time per step. The `intro` C2P verification and `frame_pacing.gdb` pass,
-  and cursor/sprite fixtures pass. PAL and NTSC captures of the book, menu and first
-  room match pre-change captures. Fixed `a1200-020` and `a4000-030-reference` runs
-  complete.
-
 - **PERF.2 Reduce the fixed cost of every Toolbox trap.** Before its own work, any trap
   costs about 1,500–2,600 cycles. In the first room, trap entry/dispatch, state lookups
   and VBL polling take 21.2 ms per frame for about 127 traps. PenMode costs 102 µs

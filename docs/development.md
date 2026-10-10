@@ -12,8 +12,7 @@ unresolved work. Implementation history and old measurements are in Git.
 - LHa for UNIX with LH5 encoding, plus Lhasa's `lha` for independent decoding.
 - FS-UAE for Amiga tests; MAME for original Macintosh comparisons.
 - For the optional cycle profiler: Git, curl, autotools, pkg-config, glib, gettext, SDL2,
-  FreeType and libpng. `FSUAE_APROF_BUILD` and `FSUAE_APROF_DIR` move its space-free
-  build and install directories.
+   FreeType and libpng. AmigaXDev's `make setup` installs its space-free build.
 - `unar` and `hfsutils` for the independent Python data extractor; the standalone
   C installer helper does not need them.
 

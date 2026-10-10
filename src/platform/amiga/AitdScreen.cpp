@@ -80,12 +80,12 @@ static uint16_t beamLine()
     return (uint16_t)(((high & 1u) << 8) | (low >> 8));
 }
 
-// Centre the 200-line client in the selected PAL/NTSC window. FMODE is 1x.
+// Centre the 200-line client in the selected PAL/NTSC window. FMODE is 64-bit.
 #define VS_BPLCON0 0x0211 // BPU3, COLOR, ECSENA; no HAM/dual playfield
 #define VS_BPLCON2 0x0024
 static_assert(AitdScreen::kPlanes==8 && AitdScreen::kWidth==320, "eight-plane lores");
 static_assert(AitdScreen::kPictureBytes==Planar8::bytes, "planar layout");
-static_assert(0xd0==0x38+8*(AitdScreen::kWidth/16-1), "fetch width");
+static_assert(0x168==0x38+16*(AitdScreen::kWidth/16-1), "fetch width");
 #define VS_CL_PTRS 0
 #define VS_CL_SPRITES (VS_CL_PTRS+16)
 #define VS_CL_COLORS (VS_CL_SPRITES+16)
@@ -123,6 +123,9 @@ bool AitdScreen::initialize(const uint8_t* picture, const uint16_t* palette16)
     if (!m_chip) return false;
     m_back = (uint8_t*)M5_ALLOC_MEM(kPictureBytes, MEMF_CHIP);
     if (!m_back) { M5_FREE_MEM(m_chip, kPictureBytes); m_chip = 0; return false; }
+    static_assert((kPictureBytes & 7) == 0, "picture must be 8-byte aligned for FMODE=3");
+    if ((uint32_t)m_chip & 7) { shutdown(); return false; }
+    if ((uint32_t)m_back & 7) { shutdown(); return false; }
 
     m_mouseSprite = (uint16_t*)M5_ALLOC_MEM(2*kMouseSpriteBytes, MEMF_CHIP | MEMF_CLEAR);
     if (!m_mouseSprite) {
@@ -199,7 +202,7 @@ bool AitdScreen::initialize(const uint8_t* picture, const uint16_t* palette16)
 
 void AitdScreen::writeModeRegisters()
 {
-    *fmodePointer=0;
+    *fmodePointer=3;
     *bplcon0Pointer=VS_BPLCON0;
     *bplcon1Pointer=0;
     *bplcon2Pointer=VS_BPLCON2;
@@ -208,8 +211,8 @@ void AitdScreen::writeModeRegisters()
     *diwstrtPointer=(VideoTiming::startLine(g_videoPAL!=0)<<8)|0x81;
     *diwstopPointer=((VideoTiming::stopLine(g_videoPAL!=0)&255)<<8)|0xc1;
     *diwhighPointer=VideoTiming::diwHigh(g_videoPAL!=0);
-    *ddfstrtPointer=0x0038;
-    *ddfstopPointer=0x00d0;
+    *ddfstrtPointer=0x0020;
+    *ddfstopPointer=0x0098;
     *bpl1modPointer=kRowStride-kBytesPerRow;
     *bpl2modPointer=kRowStride-kBytesPerRow;
 }
