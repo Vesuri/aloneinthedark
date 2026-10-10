@@ -1,26 +1,28 @@
-set $ct_args=(unsigned long)userStack
-set $ct_ret=*(unsigned long*)(frame+2)+2
+mac-trap-args
+set $ct_args=(unsigned long)$mac_stack
+set $ct_ret=*(unsigned long*)($mac_frame+2)+2
 if $ct_ret!=(unsigned long)s_segments[5].begin+0x1fde
  echo FAIL clut129 caller\n
  detach
  quit 1
 end
 printf "CT129_NATIVE_BYTES %04X%04X%04X%04X\n",*(unsigned short*)($ct_ret-8),*(unsigned short*)($ct_ret-6),*(unsigned short*)($ct_ret-4),*(unsigned short*)($ct_ret-2)
-set $ct_reg0=regs[0]
-set $ct_reg1=regs[1]
-set $ct_reg2=regs[2]
-set $ct_reg3=regs[3]
-set $ct_reg4=regs[4]
-set $ct_reg5=regs[5]
-set $ct_reg6=regs[6]
-set $ct_reg7=regs[7]
-set $ct_reg8=regs[8]
-set $ct_reg9=regs[9]
-set $ct_reg10=regs[10]
-set $ct_reg11=regs[11]
-set $ct_reg12=regs[12]
-set $ct_reg13=regs[13]
-set $ct_reg14=regs[14]
+mac-trap-args
+set $ct_reg0=$mac_regs[0]
+set $ct_reg1=$mac_regs[1]
+set $ct_reg2=$mac_regs[2]
+set $ct_reg3=$mac_regs[3]
+set $ct_reg4=$mac_regs[4]
+set $ct_reg5=$mac_regs[5]
+set $ct_reg6=$mac_regs[6]
+set $ct_reg7=$mac_regs[7]
+set $ct_reg8=$mac_regs[8]
+set $ct_reg9=$mac_regs[9]
+set $ct_reg10=$mac_regs[10]
+set $ct_reg11=$mac_regs[11]
+set $ct_reg12=$mac_regs[12]
+set $ct_reg13=$mac_regs[13]
+set $ct_reg14=$mac_regs[14]
 tbreak *$ct_ret
 continue
 if $pc!=$ct_ret || $sp!=$ct_args+2

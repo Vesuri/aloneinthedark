@@ -1,5 +1,6 @@
-set $pw_args=(unsigned long)userStack
-set $pw_ret=*(unsigned long*)(frame+2)+2
+mac-trap-args
+set $pw_args=(unsigned long)$mac_stack
+set $pw_ret=*(unsigned long*)($mac_frame+2)+2
 set $pw_rect=*(unsigned long*)$pw_args
 set $pw_port=*(unsigned long*)s_qdThePort
 set $pw_pm=*(unsigned long*)(*(unsigned long*)($pw_port+2))
@@ -15,21 +16,22 @@ if $pw_ret!=(unsigned long)s_segments[5].begin+0x1e46
  quit 1
 end
 printf "PW_NATIVE_BYTES %04X%04X%04X\n",*(unsigned short*)($pw_ret-6),*(unsigned short*)($pw_ret-4),*(unsigned short*)($pw_ret-2)
-set $pw_reg0=regs[0]
-set $pw_reg1=regs[1]
-set $pw_reg2=regs[2]
-set $pw_reg3=regs[3]
-set $pw_reg4=regs[4]
-set $pw_reg5=regs[5]
-set $pw_reg6=regs[6]
-set $pw_reg7=regs[7]
-set $pw_reg8=regs[8]
-set $pw_reg9=regs[9]
-set $pw_reg10=regs[10]
-set $pw_reg11=regs[11]
-set $pw_reg12=regs[12]
-set $pw_reg13=regs[13]
-set $pw_reg14=regs[14]
+mac-trap-args
+set $pw_reg0=$mac_regs[0]
+set $pw_reg1=$mac_regs[1]
+set $pw_reg2=$mac_regs[2]
+set $pw_reg3=$mac_regs[3]
+set $pw_reg4=$mac_regs[4]
+set $pw_reg5=$mac_regs[5]
+set $pw_reg6=$mac_regs[6]
+set $pw_reg7=$mac_regs[7]
+set $pw_reg8=$mac_regs[8]
+set $pw_reg9=$mac_regs[9]
+set $pw_reg10=$mac_regs[10]
+set $pw_reg11=$mac_regs[11]
+set $pw_reg12=$mac_regs[12]
+set $pw_reg13=$mac_regs[13]
+set $pw_reg14=$mac_regs[14]
 dump binary memory ../tmp/paintworld-native-enter-port.bin (char*)($pw_port) (char*)($pw_port)+108
 dump binary memory ../tmp/paintworld-native-enter-pm.bin (char*)($pw_pm) (char*)($pw_pm)+50
 dump binary memory ../tmp/paintworld-native-enter-rect.bin (char*)($pw_rect-4) (char*)($pw_rect-4)+16

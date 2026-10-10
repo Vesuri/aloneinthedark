@@ -30,7 +30,8 @@ set $d15_a6=$a6
 # query dispatcher itself so song progression cannot masquerade as a mutation.
 tbreak dispatchMacTrap if trap==0xa0f8 && !inUserService && *(unsigned long*)(userStack+4)==15
 continue
-if trap!=0xa0f8 || inUserService || *(unsigned long*)(userStack+4)!=15
+mac-trap-args
+if trap!=0xa0f8 || inUserService || *(unsigned long*)($mac_stack+4)!=15
  echo FAIL driver15 query boundary\n
  detach
  quit 1

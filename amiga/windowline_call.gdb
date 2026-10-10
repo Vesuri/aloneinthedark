@@ -1,5 +1,6 @@
-set $line_args=(unsigned long)userStack
-set $line_ret=*(unsigned long*)(frame+2)+2
+mac-trap-args
+set $line_args=(unsigned long)$mac_stack
+set $line_ret=*(unsigned long*)($mac_frame+2)+2
 set $line_port=*(unsigned long*)s_qdThePort
 set $line_pm=*(unsigned long*)*(unsigned long*)($line_port+2)
 set $line_pixels=*(unsigned long*)$line_pm
@@ -14,20 +15,21 @@ if $line_ret!=(unsigned long)s_segments[13].begin+0xb5c || *(unsigned long*)($li
  detach
  quit 1
 end
-set $line_reg1=regs[1]
-set $line_reg2=regs[2]
-set $line_reg3=regs[3]
-set $line_reg4=regs[4]
-set $line_reg5=regs[5]
-set $line_reg6=regs[6]
-set $line_reg7=regs[7]
-set $line_reg8=regs[8]
-set $line_reg9=regs[9]
-set $line_reg10=regs[10]
-set $line_reg11=regs[11]
-set $line_reg12=regs[12]
-set $line_reg13=regs[13]
-set $line_reg14=regs[14]
+mac-trap-args
+set $line_reg1=$mac_regs[1]
+set $line_reg2=$mac_regs[2]
+set $line_reg3=$mac_regs[3]
+set $line_reg4=$mac_regs[4]
+set $line_reg5=$mac_regs[5]
+set $line_reg6=$mac_regs[6]
+set $line_reg7=$mac_regs[7]
+set $line_reg8=$mac_regs[8]
+set $line_reg9=$mac_regs[9]
+set $line_reg10=$mac_regs[10]
+set $line_reg11=$mac_regs[11]
+set $line_reg12=$mac_regs[12]
+set $line_reg13=$mac_regs[13]
+set $line_reg14=$mac_regs[14]
 dump binary memory ../tmp/windowline-native-enter-port.bin (char*)$line_port (char*)$line_port+108
 dump binary memory ../tmp/windowline-native-enter-pm.bin (char*)$line_pm (char*)$line_pm+50
 dump binary memory ../tmp/windowline-native-enter-pixels.bin (char*)$line_pixels (char*)$line_pixels+$line_size

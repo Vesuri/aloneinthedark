@@ -40,6 +40,7 @@ void MacHeap::reset()
 {
     arena_=0;bytes_=end_=freeBytes_=0;error_=0;freeMasters_=0;
     masterBlockCount_=0;masterBlocksOverflow_=false;
+    cachedMasterStart_=cachedMasterLength_=0;
 }
 bool MacHeap::init(uint8_t* arena, uint32_t bytes, uint16_t masters)
 {
@@ -60,11 +61,23 @@ uint8_t* MacHeap::masterFlags(uint32_t off, uint32_t pos) const
 {
     const Block& b=block(off);
     uint32_t count=b.owner, start=off+blockBytes, length=count*sizeof(uint8_t*);
-    if (pos>=start && pos-start<length && (pos-start)%sizeof(uint8_t*)==0)
+    if (pos>=start && pos-start<length && (pos-start)%sizeof(uint8_t*)==0) {
+        cachedMasterStart_=start;cachedMasterLength_=length;
         return arena_+start+length+(pos-start)/sizeof(uint8_t*);
+    }
     return 0;
 }
-uint8_t* MacHeap::flags(Handle handle) const
+inline __attribute__((always_inline)) uint8_t* MacHeap::flags(Handle handle) const
+{
+    // An unsigned address-range test also rejects pointers outside the zone;
+    // cached ranges belong to pinned master blocks and reset clears the length.
+    unsigned long relative=(unsigned long)handle-((unsigned long)arena_+cachedMasterStart_);
+    if(relative<cachedMasterLength_ && relative%sizeof(uint8_t*)==0)
+        return arena_+cachedMasterStart_+cachedMasterLength_+relative/sizeof(uint8_t*);
+    return flagsSlow(handle);
+}
+// Keep the master-block walk and its register/stack setup off cache hits.
+uint8_t* MacHeap::flagsSlow(Handle handle) const
 {
     if (!owns(handle)) return 0;
     uint32_t pos=(uint8_t*)handle-arena_;
@@ -84,7 +97,7 @@ bool MacHeap::isFreeHandleSlot(Handle handle) const { uint8_t* f=flags(handle);r
 // aligned boundary inside the zone and its owner is a master slot that holds
 // exactly this data pointer. Stale headers inside free or coalesced space
 // cannot pass, because no master pointer refers to them.
-uint32_t MacHeap::findHandleBlock(const uint8_t* ptr) const
+inline __attribute__((always_inline)) uint32_t MacHeap::findHandleBlock(const uint8_t* ptr, Handle validated) const
 {
     uint32_t pos=ptr-arena_;
     if (pos<headerBytes+blockBytes || (pos&7)) return 0;
@@ -92,7 +105,10 @@ uint32_t MacHeap::findHandleBlock(const uint8_t* ptr) const
     if (off>end_ || end_-off<minimumBlock) return 0;
     const Block& b=block(off);
     if (b.kind!=handleBlock || b.span<minimumBlock || (b.span&7) || b.span>end_-off) return 0;
-    if (b.owner>=end_ || !flags((Handle)(arena_+b.owner))) return 0;
+    if (b.owner>=end_) return 0;
+    if(validated) {
+        if(b.owner!=uint32_t((uint8_t*)validated-arena_))return 0;
+    } else if(!flags((Handle)(arena_+b.owner)))return 0;
     return *(Handle)(arena_+b.owner)==ptr ? off : 0;
 }
 uint32_t MacHeap::findPtr(const uint8_t* ptr, uint32_t kind) const
@@ -367,7 +383,9 @@ int16_t MacHeap::reallocateHandle(Handle h,uint32_t bytes)
 uint32_t MacHeap::handleSize(Handle h)
 {
     if(!isHandle(h) || !*h) { queryResult(nilHandleErr);return 0; }
-    uint32_t off=findPtr(*h,handleBlock);queryResult(off ? 0 : memWZErr);
+    // The caller's live master slot was just checked. Validate its block and
+    // back-pointer without looking up that identical master slot a second time.
+    uint32_t off=owns(*h) ? findHandleBlock(*h,h) : 0;queryResult(off ? 0 : memWZErr);
     return off ? block(off).logical : 0;
 }
 uint8_t MacHeap::state(Handle h)

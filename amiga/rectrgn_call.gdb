@@ -1,10 +1,11 @@
-set $rr_sp=(unsigned long)userStack
-set $rr_ret=*(unsigned long*)(frame+2)+2
+mac-trap-args
+set $rr_sp=(unsigned long)$mac_stack
+set $rr_ret=*(unsigned long*)($mac_frame+2)+2
 set $rr_rect=*(unsigned long*)$rr_sp
 set $rr_handle=*(unsigned long*)($rr_sp+4)
 set $rr_body=*(unsigned long*)$rr_handle
 set $rr_zone=(unsigned long)s_applicationZone.arena_
-if $rr_ret!=(unsigned long)s_segments[4].begin+0x3d48 || *(unsigned short*)($rr_ret-18)!=0x2f39 || *(unsigned long*)($rr_ret-16)!=regs[13]-0xbfcc || *(unsigned short*)($rr_ret-12)!=0x2079 || *(unsigned long*)($rr_ret-10)!=regs[13]-0xc24e || *(unsigned long*)($rr_ret-6)!=0x48680016 || *(unsigned short*)($rr_ret-2)!=0xa8df
+if $rr_ret!=(unsigned long)s_segments[4].begin+0x3d48 || *(unsigned short*)($rr_ret-18)!=0x2f39 || *(unsigned long*)($rr_ret-16)!=$mac_regs[13]-0xbfcc || *(unsigned short*)($rr_ret-12)!=0x2079 || *(unsigned long*)($rr_ret-10)!=$mac_regs[13]-0xc24e || *(unsigned long*)($rr_ret-6)!=0x48680016 || *(unsigned short*)($rr_ret-2)!=0xa8df
  echo FAIL RectRgn original relocated caller bytes\n
  detach
  quit 1
@@ -12,7 +13,8 @@ end
 dump binary memory ../tmp/rectrgn-native-caller.bin (char*)$rr_ret-18 (char*)$rr_ret
 dump binary memory ../tmp/rectrgn-native-enter-region.bin (char*)$rr_body (char*)$rr_body+10
 dump binary memory ../tmp/rectrgn-native-enter-rect.bin (char*)$rr_rect (char*)$rr_rect+8
-printf "RECTRGN_ENTER sp=%X handle=%X body=%X size=%X rect=%X zone=%X memerr=%X d0=%X d1=%X d2=%X d3=%X d4=%X d5=%X d6=%X d7=%X a0=%X a1=%X a2=%X a3=%X a4=%X a5=%X a6=%X\n",$rr_sp,$rr_handle,$rr_body,*(unsigned short*)$rr_body,$rr_rect,$rr_zone,s_memoryError,regs[0],regs[1],regs[2],regs[3],regs[4],regs[5],regs[6],regs[7],regs[8],regs[9],regs[10],regs[11],regs[12],regs[13],regs[14]
+mac-trap-args
+printf "RECTRGN_ENTER sp=%X handle=%X body=%X size=%X rect=%X zone=%X memerr=%X d0=%X d1=%X d2=%X d3=%X d4=%X d5=%X d6=%X d7=%X a0=%X a1=%X a2=%X a3=%X a4=%X a5=%X a6=%X\n",$rr_sp,$rr_handle,$rr_body,*(unsigned short*)$rr_body,$rr_rect,$rr_zone,s_memoryError,$mac_regs[0],$mac_regs[1],$mac_regs[2],$mac_regs[3],$mac_regs[4],$mac_regs[5],$mac_regs[6],$mac_regs[7],$mac_regs[8],$mac_regs[9],$mac_regs[10],$mac_regs[11],$mac_regs[12],$mac_regs[13],$mac_regs[14]
 tbreak *$rr_ret if $sp==$rr_sp+8
 continue
 if $pc!=$rr_ret || *(unsigned long*)$rr_handle!=$rr_body

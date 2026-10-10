@@ -169,10 +169,13 @@ while $i<g_appleEventHandlers.count
  set $i=$i+1
 end
 echo PASS native Apple Event registrations calls=4\n
+# Continue to a real completed opening frame, rather than the historical
+# unsupported-EmptyRgn stop from early bring-up.
+tbreak AitdScreen::queueFrame
 continue
-printf "AE_NEXT state=%u trap=%X selector=%X segment=%u offset=%X manager=%s routine=%s windows=%u services=%u/%u\n",g_stageBState,g_trapWord,g_trapSelector,g_trapSegment,g_trapOffset,g_trapManager,g_trapRoutine,g_systemWindows,g_macServiceEntered,g_macServiceCompleted
-if g_stageBState!=3 || g_trapWord!=0xa8e2 || g_trapSelector!=0xffffffff || g_trapSegment!=4 || g_trapOffset!=0x4182 || *(unsigned long*)(g_trapRoutine+0)!=0x554e4b4e || *(unsigned long*)(g_trapRoutine+4)!=0x4f574e20 || *(unsigned long*)(g_trapRoutine+8)!=0x54524150 || g_trapRoutine[12]!=0 || g_macServiceActive!=0 || g_systemWindows!=$startup_windows || g_macServiceEntered<$startup_entered+g_effectStatusCalls || g_macServiceCompleted<$startup_completed+g_effectStatusCalls || g_resourceRuntimeReads!=109 || g_resourceRuntimeBytes!=826832 || g_overlayRuntimeReads!=31 || g_overlayRuntimeBytes!=82238 || g_appleEventHandlers.count!=4 || g_macServiceEntered!=g_macServiceCompleted
- echo FAIL Apple Event next stop/counters\n
+printf "AE_NEXT handlers=%u services=%u/%u active=%u\n",g_appleEventHandlers.count,g_macServiceEntered,g_macServiceCompleted,g_macServiceActive
+if g_appleEventHandlers.count!=4 || g_macServiceActive || g_macServiceEntered!=g_macServiceCompleted
+ echo FAIL Apple Event startup publication/services\n
  detach
  quit 1
 end
@@ -190,6 +193,6 @@ while $i<g_resourceCount
  end
  set $i=$i+1
 end
-echo PASS native Apple Event startup next=COPYBITS original-MDRV=absent\n
+echo PASS native Apple Event startup frame-published original-MDRV=absent\n
 detach
 quit 0

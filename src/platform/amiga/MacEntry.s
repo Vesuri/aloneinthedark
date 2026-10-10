@@ -69,8 +69,7 @@ aitd_user_exit_trampoline:
 
 	.globl aitd_line_a_handler
 aitd_line_a_handler:
-	| Vette kept one high-frequency private trap ($AFFD) out of the C++
-	| dispatcher here.  Add such a fast path only for a measured hot hook.
+	| Every path shares the same complete register/CCR image and return ABI.
 	movem.l d0-d7/a0-a6,-(sp)
 	move.l sp,a0
 	lea 60(sp),a1
@@ -84,7 +83,39 @@ aitd_line_a_handler:
 	move.l a2,-(sp)
 	move.l a1,-(sp)
 	move.l a0,-(sp)
+.ifdef AITD_M5_AUDIT
+	jsr aitdAuditTrapEntry
+	| A C callee may reuse its argument slots for a tail call.
+	lea 12(sp),a0
+	move.l a0,(sp)
+	lea 60(a0),a1
+	move.l a1,4(sp)
+	move.l usp,a0
+	move.l a0,8(sp)
+.endif
+	.globl aitd_line_a_trap_entry
+aitd_line_a_trap_entry:
+	| The original opcode indexes the table: AFFE callable originals and
+	| patched traps have no quick entry. Callee-saved D7 retains trap class.
+	move.w (a3),d0
+	andi.l #0x0fff,d0
+	lea g_macQuickTraps,a4
+	move.l (a4,d0.w*4),a4
+	cmpa.l #0,a4
+	beq.s .general_dispatch
+	jsr (a4)
+	tst.l d0
+	bne.s .dispatch_done
+.general_dispatch:
+	| Restore the argument vector after any quick-entry fallback too.
+	lea 12(sp),a0
+	move.l a0,(sp)
+	lea 60(a0),a1
+	move.l a1,4(sp)
+	move.l usp,a0
+	move.l a0,8(sp)
 	jsr aitdLineADispatch
+.dispatch_done:
 	lea 12(sp),sp
 	cmpi.l #-1,d0
 	beq.w .defer_service

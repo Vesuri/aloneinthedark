@@ -17,6 +17,20 @@ Page 0. The VBI maintains Ticks and input shadows. MacHeap provides the
 application/system zones and movable handle semantics. The game has a separate 64 KB Mac
 stack, while the Amiga process needs the normal 4 KB stack.
 
+Common Toolbox calls use an opcode-indexed native entry table. Installing a trap patch
+removes its direct entry; restoring the callable original reinstates it. QuickDraw and
+controller transitions enable or disable the entries once, rather than
+rechecking stable eligibility on every call. Direct and general entries share the
+complete register save, Pascal stack cleanup, CCR handling and user-mode callback
+return. The bridge rebuilds C argument slots before fallback, because a tail call may
+reuse them.
+
+Drawing entries inspect pending ticks, effects, errors and the scene owner's saved
+frame identity before running shared services. Book boundary calls keep the general
+path. Heap lookup caches only pinned master-slot ranges: allocation flags, sizes and
+back-pointers remain live checks. Native word/long accesses preserve the big-endian
+68020 memory layout, including unaligned data.
+
 ## Display
 
 AitdScreen owns bitplanes, copper, sprites and registers. The logical Mac screen is
@@ -63,7 +77,8 @@ Original Core/Dark VBL tasks run at safe user-mode
 boundaries and preserve the original callback ABI. They never run inside the native VBI
 or music interrupt.
 
-Keyboard transitions and held states survive bounded OS windows. Game presentation
+After an OS window, held keys and queued edges are cleared because releases while
+the OS owns the keyboard cannot reach the game. Game presentation
 disables the mouse sprite and cursor inversion; retained interfaces use the keyboard.
 Mouse sampling and logical cursor services remain available to original code. See
 [events.md](events.md) and [cursor.md](cursor.md).

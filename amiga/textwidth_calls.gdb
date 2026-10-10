@@ -9,9 +9,10 @@ set $gc_n=0
 set $wrgb_captured=0
 set $paint_captured=0
 while $tw_finished==0
- tbreak aitdLineADispatch if ((*(unsigned short*)*(unsigned long*)(frame+2))==0xaa95 && (*(unsigned long*)(frame+2))==(unsigned long)s_segments[5].begin+0x20cc) || ((*(unsigned short*)*(unsigned long*)(frame+2))==0xaa91 && (*(unsigned long*)(frame+2))==(unsigned long)s_segments[5].begin+0x201c) || ((*(unsigned short*)*(unsigned long*)(frame+2))==0xaa18 && *(unsigned short*)userStack==129) || ($paint_captured==0 && (*(unsigned short*)*(unsigned long*)(frame+2))==0xa8a2) || ($wrgb_captured==0 && (*(unsigned short*)*(unsigned long*)(frame+2))==0xaa14 && (*(unsigned long*)(frame+2))==(unsigned long)s_segments[12].begin+0x624a) || ($gc_n<2 && ((*(unsigned short*)*(unsigned long*)(frame+2))==0xaa19 || (*(unsigned short*)*(unsigned long*)(frame+2))==0xaa1a)) || (*(unsigned short*)*(unsigned long*)(frame+2))==0xa856 || (*(unsigned short*)*(unsigned long*)(frame+2))==0xa860 || (*(unsigned short*)*(unsigned long*)(frame+2))==0xa886 || ((*(unsigned short*)*(unsigned long*)(frame+2))==0xab1d && (*(unsigned long*)(frame+2))==(unsigned long)s_segments[9].begin+0xe0a)
+ tbreak *aitd_line_a_trap_entry if ((*(unsigned short*)*(unsigned long*)((*(unsigned char**)($sp+4))+2))==0xaa95 && (*(unsigned long*)((*(unsigned char**)($sp+4))+2))==(unsigned long)s_segments[5].begin+0x20cc) || ((*(unsigned short*)*(unsigned long*)((*(unsigned char**)($sp+4))+2))==0xaa91 && (*(unsigned long*)((*(unsigned char**)($sp+4))+2))==(unsigned long)s_segments[5].begin+0x201c) || ((*(unsigned short*)*(unsigned long*)((*(unsigned char**)($sp+4))+2))==0xaa18 && *(unsigned short*)(*(unsigned char**)($sp+8))==129) || ($paint_captured==0 && (*(unsigned short*)*(unsigned long*)((*(unsigned char**)($sp+4))+2))==0xa8a2) || ($wrgb_captured==0 && (*(unsigned short*)*(unsigned long*)((*(unsigned char**)($sp+4))+2))==0xaa14 && (*(unsigned long*)((*(unsigned char**)($sp+4))+2))==(unsigned long)s_segments[12].begin+0x624a) || ($gc_n<2 && ((*(unsigned short*)*(unsigned long*)((*(unsigned char**)($sp+4))+2))==0xaa19 || (*(unsigned short*)*(unsigned long*)((*(unsigned char**)($sp+4))+2))==0xaa1a)) || (*(unsigned short*)*(unsigned long*)((*(unsigned char**)($sp+4))+2))==0xa856 || (*(unsigned short*)*(unsigned long*)((*(unsigned char**)($sp+4))+2))==0xa860 || (*(unsigned short*)*(unsigned long*)((*(unsigned char**)($sp+4))+2))==0xa886 || ((*(unsigned short*)*(unsigned long*)((*(unsigned char**)($sp+4))+2))==0xab1d && (*(unsigned long*)((*(unsigned char**)($sp+4))+2))==(unsigned long)s_segments[9].begin+0xe0a)
  continue
- set $startup_trap=*(unsigned short*)*(unsigned long*)(frame+2)
+ mac-trap-args
+ set $startup_trap=*(unsigned short*)*(unsigned long*)($mac_frame+2)
  if g_stageBState==3
   loop_break
  end
@@ -28,7 +29,7 @@ while $tw_finished==0
   tbreak dispatchMacTrap if trap==0xaa95 && *(unsigned long*)(frame+2)==(unsigned long)s_segments[5].begin+0x214c
   continue
   source restorepalette_call.gdb
-  tbreak dispatchMacTrap if trap==0xa8ec && *(unsigned long*)(frame+2)==(unsigned long)s_segments[10].begin+0x24d2
+  tbreak *aitd_line_a_trap_entry if (*(unsigned short*)*(unsigned long*)((*(unsigned char**)($sp+4))+2))==0xa8ec && *(unsigned long*)((*(unsigned char**)($sp+4))+2)==(unsigned long)s_segments[10].begin+0x24d2
   continue
   source copybits8_call.gdb
   if *(unsigned short*)(g_code3Base+0x1a74)!=0x4e90
@@ -110,7 +111,7 @@ while $tw_finished==0
   continue
   source dottext_call.gdb
   # Observe the original LineTo before either dispatcher path.
-  tbreak aitdLineADispatch if *(unsigned short*)*(unsigned long*)(frame+2)==0xa891
+  tbreak *aitd_line_a_trap_entry if *(unsigned short*)*(unsigned long*)((*(unsigned char**)($sp+4))+2)==0xa891
   continue
   source windowline_call.gdb
   tbreak *((unsigned long)s_segments[12].begin+0x346) if *(unsigned short*)$sp==4 && *(unsigned short*)($sp+2)==0 && *(unsigned long*)*(unsigned long*)($sp+4)==0x5961896c
@@ -130,9 +131,9 @@ while $tw_finished==0
   printf "INTRO_PROGRESS second-return d0=%u frames=%u ticks=%u\n",$d0,g_macFramesPresented,g_macTicks
   tbreak *((unsigned long)s_segments[13].begin+0x7fa)
   continue
-  tbreak dispatchMacTrap
+  tbreak *aitd_line_a_trap_entry
   continue
-  if trap!=0xa8ec
+  if *(unsigned short*)$a3!=0xa8ec
    echo FAIL post-intro CopyBits dispatch\n
    detach
    quit 1
@@ -165,7 +166,7 @@ while $tw_finished==0
   tbreak dispatchMacTrap if trap==0xa8df
   continue
   source rectrgn_call.gdb
-  tbreak aitdLineADispatch if (*(unsigned short*)*(unsigned long*)(frame+2))==0xa8e2
+  tbreak *aitd_line_a_trap_entry if (*(unsigned short*)*(unsigned long*)((*(unsigned char**)($sp+4))+2))==0xa8e2
   continue
   source emptyrgn_call.gdb
   tbreak *((unsigned long)s_segments[4].begin+0x1e4a)
@@ -175,7 +176,7 @@ while $tw_finished==0
    detach
    quit 1
   end
-  tbreak dispatchMacTrap
+  tbreak *aitd_line_a_trap_entry
   continue
   source stepcopy_call.gdb
   set $stepcopy_captured=1
@@ -222,8 +223,9 @@ while $tw_finished==0
   loop_continue
  end
  set $tw_n=$tw_n+1
- set $tw_args=(unsigned long)userStack
- set $tw_return=*(unsigned long*)(frame+2)+2
+ mac-trap-args
+ set $tw_args=(unsigned long)$mac_stack
+ set $tw_return=*(unsigned long*)($mac_frame+2)+2
  set $tw_port=*(unsigned long*)s_qdThePort
  set $tw_count=*(unsigned short*)$tw_args
  set $tw_first=*(unsigned short*)($tw_args+2)
@@ -232,21 +234,21 @@ while $tw_finished==0
  printf "TW_NATIVE_BYTES n=%u data=%04X%04X%04X\n",$tw_n,*(unsigned short*)($tw_return-6),*(unsigned short*)($tw_return-4),*(unsigned short*)($tw_return-2)
  eval "dump binary memory ../tmp/textwidth-native-%u-text.bin %u %u",$tw_n,$tw_text+$tw_first,$tw_text+$tw_first+$tw_count
  eval "dump binary memory ../tmp/textwidth-native-%u-before-port.bin %u %u",$tw_n,$tw_port,$tw_port+108
- set $tw_reg0=regs[0]
- set $tw_reg1=regs[1]
- set $tw_reg2=regs[2]
- set $tw_reg3=regs[3]
- set $tw_reg4=regs[4]
- set $tw_reg5=regs[5]
- set $tw_reg6=regs[6]
- set $tw_reg7=regs[7]
- set $tw_reg8=regs[8]
- set $tw_reg9=regs[9]
- set $tw_reg10=regs[10]
- set $tw_reg11=regs[11]
- set $tw_reg12=regs[12]
- set $tw_reg13=regs[13]
- set $tw_reg14=regs[14]
+ set $tw_reg0=$mac_regs[0]
+ set $tw_reg1=$mac_regs[1]
+ set $tw_reg2=$mac_regs[2]
+ set $tw_reg3=$mac_regs[3]
+ set $tw_reg4=$mac_regs[4]
+ set $tw_reg5=$mac_regs[5]
+ set $tw_reg6=$mac_regs[6]
+ set $tw_reg7=$mac_regs[7]
+ set $tw_reg8=$mac_regs[8]
+ set $tw_reg9=$mac_regs[9]
+ set $tw_reg10=$mac_regs[10]
+ set $tw_reg11=$mac_regs[11]
+ set $tw_reg12=$mac_regs[12]
+ set $tw_reg13=$mac_regs[13]
+ set $tw_reg14=$mac_regs[14]
  tbreak *$tw_return
  continue
  if g_stageBState==3

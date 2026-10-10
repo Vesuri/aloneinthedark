@@ -11,24 +11,9 @@ Each item gives the **goal**, then the scope, then *done when*: the evidence req
 
 Baselines are the
 [reference-68030 cycle profiles](performance.md#reference-68030-baseline):
-`amiga/aprof.sh book 2 50` (88.5 ms per fold step) and `amiga/aprof.sh gameplay 60 100`
-(103.3 ms per first-room frame). Each item's commit reports both runs before and after.
+`amiga/aprof.sh book 2 50` (66.6 ms per fold step) and `amiga/aprof.sh gameplay 60 100`
+(85.5 ms per first-room frame). Each item's commit reports both runs before and after.
 Original game instructions stay unchanged; these items reduce port cost only.
-
-- **PERF.2 Reduce the fixed cost of every Toolbox trap.** Before its own work, any trap
-  costs about 1,500–2,600 cycles. In the first room, trap entry/dispatch, state lookups
-  and VBL polling take 21.2 ms per frame for about 127 traps. PenMode costs 102 µs
-  per call, MoveTo 122 µs and RGBForeColor 345 µs; the model's 11 lines cost 11.7 ms.
-  Run per-trap housekeeping only when something is pending: VBL scheduling runs twice
-  per trap, plus effect polling, song-error checks and frame-boundary tests. Add fast
-  paths for the measured simple drawing-state traps. Preserve the Pascal ABI, live
-  registers and CCR, patched-trap routing, frame batching boundaries, and VBL callbacks
-  only at safe user-mode return points.
-
-  *Done when* the attic run spends at most 10 ms per frame in those three buckets.
-  Outermost PenMode and MoveTo calls cost at most 40 µs each. `frame_pacing.gdb`,
-  `scene_frame_verify.gdb`, `apple_events.gdb` and `m5_circuit.gdb` with
-  `check_m5_audit.py` pass, and the audit shows no added VBL callback or note lateness.
 
 - **PERF.3 Stop revalidating unchanged mask regions in CopyBits.**
   `RegionRows::Cursor::begin` decodes and validates a whole QuickDraw region before
@@ -43,15 +28,16 @@ Original game instructions stay unchanged; these items reduce port cost only.
   rejection case.
 
 - **PERF.4 Speed up native solid fills, lines and back-buffer synchronization.** Measure
-  after PERF.1. One book-fold LineTo spends about 500 cycles per pixel in `Line8::solid`
+  against the current profiles. One book-fold LineTo spends about 500 cycles per pixel
+  in `Line8::solid`
   (5.8 ms per step). Six PaintRects take 10.4 ms in `FillRect8::solid`, with
   stack-spilled row state. `presentMacFrame` copies prior dirty spans Chip-to-Chip with
-  the CPU (9.7 ms per step). Keep exact QuickDraw pen, pattern, clip and region
+  the CPU (about 5.5 ms of other presentation per step). Keep exact QuickDraw pen, pattern, clip and region
   semantics and explicit dirty rectangles. A blitter copy must complete before
   presentation and respect VBI display ownership.
 
   *Done when* the book run spends at most 8 ms per step in QuickDraw fills, lines and
-  regions (baseline 16.8 ms). Other presentation takes at most 3 ms (baseline 9.9 ms).
+  regions (baseline 16.8 ms). Other presentation takes at most 3 ms (current baseline 5.5 ms).
   The `Line8`/`FillRect8` host tests, book page and route observers, `frame_pacing.gdb`
   and the `intro` C2P verification pass.
 

@@ -146,7 +146,8 @@ void aitdInputFirstFloorCircuit(uint32_t ticks,uint32_t scenes,const uint8_t* wo
    {
     const int32_t dx=int32_t(signedword(npc+0x1c))-x,dz=int32_t(signedword(npc+0x20))-z;
     const uint32_t ax=dx<0 ? -dx : dx,az=dz<0 ? -dz : dz;
-    const uint16_t target=ax>az ? (dx>0 ? 256 : 768) : (dz>0 ? 512 : 0);
+    // Measured walking: beta 256 decreases X; beta 768 increases it.
+    const uint16_t target=ax>az ? (dx>0 ? 768 : 256) : (dz>0 ? 512 : 0);
     const uint16_t delta=(target-beta)&1023;
     if(delta>16 && delta<1008) {turnKey=delta>512 ? 0x4f : 0x4e;key(turnKey,true);phase=3;phaseScenes=target;return;}
    }

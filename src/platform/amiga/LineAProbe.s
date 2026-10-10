@@ -5,6 +5,7 @@
 aitd_line_a_probe:
 	move.l sp,g_lineAProbe
 	move.l a5,g_lineAProbe+4
+	jsr aitd_quick_trap_probe
 	move.l #0x12340000,d0
 	move.w #0x1f,ccr
 	.word 0xa055

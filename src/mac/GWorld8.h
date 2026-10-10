@@ -47,7 +47,16 @@ inline void port(uint8_t* p,uint32_t pm,uint32_t vars,uint32_t vis,uint32_t clip
     word(p+52,1);word(p+54,1);word(p+56,8);longword(p+58,pen);longword(p+62,fill);
     word(p+72,1);longword(p+80,255);
 }
-inline uint16_t readword(const uint8_t* p) { return uint16_t(uint16_t(p[0])<<8|p[1]); }
+inline uint16_t readword(const uint8_t* p) {
+#ifdef AITD_PLATFORM_AMIGA
+    struct __attribute__((packed, may_alias)) Word { uint16_t value; };
+    uint16_t value;
+    __asm__("move.w %1,%0" : "=d"(value) : "m"(*(const Word*)p) : "cc");
+    return value;
+#else
+    return uint16_t(uint16_t(p[0])<<8|p[1]);
+#endif
+}
 // The inverse cube picks a collision ring. System 7.5.5 refines that
 // ring by RGB16 Manhattan distance; equal distances retain the first entry.
 inline bool colorIndex(const uint8_t* colors,const uint8_t* inverseTable,

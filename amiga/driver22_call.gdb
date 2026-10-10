@@ -1,22 +1,23 @@
-set $d22_sp=(unsigned long)userStack
+mac-trap-args
+set $d22_sp=(unsigned long)$mac_stack
 set $d22_return=*(unsigned long*)$d22_sp
 set $d22_ignored=*(unsigned long*)($d22_sp+8)
 printf "DRIVER22_NATIVE_CALL selector=%X ignored=%X sp=%X return=%X\n",*(unsigned long*)($d22_sp+4),$d22_ignored,$d22_sp,$d22_return
 printf "DRIVER22_NATIVE_BYTES %04X%04X%04X%04X%04X%04X\n",*(unsigned short*)(g_code3Base+0x1a6c),*(unsigned short*)(g_code3Base+0x1a6e),*(unsigned short*)(g_code3Base+0x1a70),*(unsigned short*)(g_code3Base+0x1a72),*(unsigned short*)(g_code3Base+0x1a74),*(unsigned short*)(g_code3Base+0x1a76)
 dump binary memory ../tmp/driver22-native-enter-state.bin (char*)&g_soundDriver (char*)&g_soundDriver+sizeof(g_soundDriver)
-set $d22_reg2=regs[2]
-set $d22_reg3=regs[3]
-set $d22_reg4=regs[4]
-set $d22_reg5=regs[5]
-set $d22_reg6=regs[6]
-set $d22_reg7=regs[7]
-set $d22_reg8=regs[8]
-set $d22_reg9=regs[9]
-set $d22_reg10=regs[10]
-set $d22_reg11=regs[11]
-set $d22_reg12=regs[12]
-set $d22_reg13=regs[13]
-set $d22_reg14=regs[14]
+set $d22_reg2=$mac_regs[2]
+set $d22_reg3=$mac_regs[3]
+set $d22_reg4=$mac_regs[4]
+set $d22_reg5=$mac_regs[5]
+set $d22_reg6=$mac_regs[6]
+set $d22_reg7=$mac_regs[7]
+set $d22_reg8=$mac_regs[8]
+set $d22_reg9=$mac_regs[9]
+set $d22_reg10=$mac_regs[10]
+set $d22_reg11=$mac_regs[11]
+set $d22_reg12=$mac_regs[12]
+set $d22_reg13=$mac_regs[13]
+set $d22_reg14=$mac_regs[14]
 tbreak *$d22_return
 continue
 if $pc!=$d22_return || $sp!=$d22_sp+4 || $d0!=0 || $d1!=$d22_ignored

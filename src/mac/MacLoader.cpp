@@ -464,6 +464,8 @@ static uint8_t* s_textEditScrapMaster;
 static uint8_t s_trapBuiltins[4096][6] __attribute__((aligned(4)));
 static uint8_t* s_trapAddresses[4096];
 static uint8_t* s_qdThePort;
+static bool s_quickGrafReady=false,s_quickTrapsReady=false;
+static void refreshQuickTrapEntries();
 static MacHeap::Handle s_recordingPolygon;
 static uint8_t* s_polygonPort;
 static MacHeap::Handle s_recordingPicture;
@@ -793,12 +795,27 @@ struct Segment { uint8_t* begin; uint8_t* end; char name[24]; uint32_t size; Mac
 static Segment s_segments[kMaximumSegments];
 static uint16_t s_segmentCount;             // highest loaded CODE ID + 1
 
-static uint16_t read16(const uint8_t* p) { return (uint16_t)((p[0] << 8) | p[1]); }
+// The runtime targets big-endian 68020+, including its unaligned data accesses.
+// Explicit sized operations avoid byte-at-a-time reconstruction in every trap
+// and the compiler's previously observed byte-copy miscompilation.
+struct __attribute__((packed, may_alias)) MacWordAccess { uint16_t value; };
+struct __attribute__((packed, may_alias)) MacLongAccess { uint32_t value; };
+static uint16_t read16(const uint8_t* p)
+{
+    uint16_t value;
+    __asm__("move.w %1,%0" : "=d"(value) : "m"(*(const MacWordAccess*)p) : "cc");
+    return value;
+}
 static uint32_t read32(const uint8_t* p)
 {
-    return ((uint32_t)p[0] << 24) | ((uint32_t)p[1] << 16) | ((uint32_t)p[2] << 8) | p[3];
+    uint32_t value;
+    __asm__("move.l %1,%0" : "=d"(value) : "m"(*(const MacLongAccess*)p) : "cc");
+    return value;
 }
-static void write16(uint8_t* p, uint16_t v) { p[0] = (uint8_t)(v >> 8); p[1] = (uint8_t)v; }
+static void write16(uint8_t* p, uint16_t v)
+{
+    __asm__ volatile("move.w %1,%0" : "=m"(*(MacWordAccess*)p) : "d"(v) : "cc");
+}
 static int16_t resourceResult(int16_t error)
 {
     s_resourceError=error;write16(s_portLowMemory+140,(uint16_t)error);return error;
@@ -807,8 +824,7 @@ static int16_t memoryResult(int16_t error,bool refresh=true);
 static void writeBoolean(uint8_t* p, bool value) { p[0] = value ? 1 : 0; p[1] = 0; }
 static void write32(uint8_t* p, uint32_t v)
 {
-    p[0] = (uint8_t)(v >> 24); p[1] = (uint8_t)(v >> 16);
-    p[2] = (uint8_t)(v >> 8); p[3] = (uint8_t)v;
+    __asm__ volatile("move.l %1,%0" : "=m"(*(MacLongAccess*)p) : "d"(v) : "cc");
 }
 static void copyString(char* out, const char* in)
 {
@@ -1684,6 +1700,12 @@ static void serviceNativeEffects()
                 : (int32_t)(g_macTicks-g_effects[i].ends)>=0))stopNativeEffect(i);
 }
 
+static inline void pollNativeEffects()
+{
+    if(g_soundDriver.effects[0].active || g_soundDriver.effects[1].active)
+        serviceNativeEffects();
+}
+
 static bool effectRange(uint8_t* pointer,uint32_t bytes)
 {
     MacHeap* zone=pointerZone(pointer);
@@ -1717,7 +1739,7 @@ static const char* playNativeEffect(uint8_t* packet,uint32_t& scratch)
     const char* error=streamed ? SoundEffect::samplePeriod(rate,g_paulaClock,period)
         : SoundEffect::describe(sample,bytes,rate,0,0,layout,period,ticks,g_paulaClock);
     if(error)return error;
-    serviceNativeEffects();
+    pollNativeEffects();
     uint16_t index=0,age=0x7fff;
     bool replacing=false;
     // Original +$3524: stop at the first free slot; D1.W retains the
@@ -2385,7 +2407,7 @@ static const char* runNativeSongProbe()
     if(s_nativeSongPending || g_song.lastTick<deferredTick)return "SONG DEFERRED RELEASE";
     while(true) {
         if(g_macTicks-began>18000)return "SONG PROBE TIMEOUT";
-        serviceNativeEffects();
+        pollNativeEffects();
         if((error=serviceNativeSong()))return error;
         if(!effectStarted) {
             bool full=true;
@@ -2660,6 +2682,7 @@ static void initGraf(uint8_t* thePort)
     write16(screenBits + 12, kScreenWidth);          // bounds.right
     write32(thePort - 126, 1);               // randSeed
     write32(thePort, 0);                     // no current GrafPort until InitWindows/SetPort
+    s_quickGrafReady=true;refreshQuickTrapEntries();
 }
 
 static void initFonts()
@@ -4954,10 +4977,11 @@ static bool copyPortBits8(const uint8_t* sourceBitmap,const uint8_t* destination
     const uint8_t* maskBody=0;uint16_t maskBytes=0;
     if(mask) {
         MacHeap::Handle handle=(MacHeap::Handle)mask;
-        MacHeap* owner=handleZone(handle);
-        if(!owner || !*handle || owner->handleSize(handle)<10
-           || owner->handleSize(handle)>32766)return false;
-        maskBody=*handle;maskBytes=uint16_t(owner->handleSize(handle));
+        MacHeap* owner=pointerZone((uint8_t*)handle);
+        if(!owner)return false;
+        const uint32_t bytes=owner->handleSize(handle);
+        if(bytes<10 || bytes>32766)return false;
+        maskBody=*handle;maskBytes=uint16_t(bytes);
     }
     GWorldSlot* source=0;
     for(uint16_t i=0;i<sizeof(s_gworlds)/sizeof(s_gworlds[0]);++i)
@@ -6402,9 +6426,12 @@ static uint8_t* getToolTrapAddress(uint16_t trap)
     return getTrapAddress(trap);
 }
 
+static void updateQuickTrap(uint16_t trap);
+
 static void setTrapAddress(uint16_t trap, uint8_t* address)
 {
     s_trapAddresses[trapIndex(trap)] = address;
+    updateQuickTrap(trap);
 }
 
 static uint32_t routePatchedTrap(uint16_t trap, uint32_t* regs,
@@ -6613,6 +6640,12 @@ static void scheduleVBLTask()
 
         s_vblPassActive = false;
     }
+}
+
+static inline void pollVBLTask()
+{
+    if(s_vblLastTick!=g_macTicks || s_vblPendingTicks || s_vblPassActive)
+        scheduleVBLTask();
 }
 
 // Called in user mode after a Macintosh VBL callback returns.  A renderer can
@@ -6867,8 +6900,8 @@ static void finishBookFrame(uint16_t mode,uint32_t owner)
 
 static void serviceMacRuntime()
 {
-    serviceNativeEffects();
-    scheduleVBLTask();
+    pollNativeEffects();
+    pollVBLTask();
     presentMacRuntime();
 }
 
@@ -8024,9 +8057,16 @@ static bool rgbColor(uint16_t trap,uint32_t* regs,const uint8_t* userStack)
            && !makeITable(0,0,4))return false;
     }
     if(!GWorld8::colorIndex(colors,inverse,rgb,index))return false;
-    // Copy via the established byte primitive (m68k compiler copy defect).
+    // Sized native copies avoid the m68k compiler byte-copy defect.
     uint16_t colorOffset=trap==0xaa14 ? 36 : 42;
-    for(uint16_t i=0;i<6;++i)MenuRecords::copyByte(port+colorOffset+i,rgb+i);
+    uint8_t* destination=port+colorOffset;
+    if((uint32_t)destination+6<=(uint32_t)rgb || (uint32_t)rgb+6<=(uint32_t)destination
+       || destination==rgb) {
+        write32(destination,read32(rgb));write16(destination+4,read16(rgb+4));
+    } else {
+        // Keep the established byte order for partially overlapping inputs.
+        for(uint16_t i=0;i<6;++i)MenuRecords::copyByte(destination+i,rgb+i);
+    }
     uint16_t indexOffset=trap==0xaa14 ? 80 : 84;
     write32(port+indexOffset,index);
     regs[0]=regs[1]=index;regs[8]=(uint32_t)(port+indexOffset);
@@ -8117,11 +8157,59 @@ static uint32_t pointInRect(uint8_t* userStack)
     return 9;
 }
 
+static uint32_t findWindowTrap(uint8_t* userStack)
+{
+    uint8_t** resultWindow = (uint8_t**)read32(userStack);
+    int16_t vertical = (int16_t)read16(userStack + 4);
+    int16_t horizontal = (int16_t)read16(userStack + 6);
+    uint8_t* found;
+    int16_t part = findWindow(vertical, horizontal, found);
+    if (resultWindow) write32((uint8_t*)resultWindow, (uint32_t)found);
+    write16(userStack + 8, (uint16_t)part);
+    if (g_stageCDepth < 96) g_stageCDepth = 96;
+    return 9;
+}
+
+static uint32_t clipRectTrap(uint32_t* regs,uint8_t* userStack)
+{
+    if (clipRect((const uint8_t*)read32(userStack))) {
+        uint8_t* port=(uint8_t*)read32(s_qdThePort);
+        GWorldSlot* world=gWorldForPort(port);
+        if(world) { regs[0]=0;regs[8]=(uint32_t)world->handles[4];regs[9]=(uint32_t)*world->handles[4]; }
+        if (g_stageCDepth < 63) g_stageCDepth = 63;
+        return 5;
+    }
+    return 0;
+}
+
+static uint32_t obscureCursorTrap(uint32_t* regs)
+{
+    if(!s_cursor.initialized)return 0;
+    if(s_cursor.visibility.obscure())regs[0]=1;
+    publishMouseCursor();
+    return 1;
+}
+
+static uint32_t blockMoveTrap(uint32_t* regs)
+{
+#ifdef AITD_PROBE
+    uint32_t blockMoveStart = aitdProfileBeamEpoch();
+#endif
+    blockMove((uint8_t*)regs[8], (uint8_t*)regs[9], regs[0]);
+#ifdef AITD_PROBE
+    g_probeBlockMoveTicks += aitdProfileBeamEpoch() - blockMoveStart;
+    ++g_probeBlockMoveCalls;
+#endif
+    ++g_blockMoveCount;
+    return 1;
+}
+
 static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
                                uint8_t* frame, uint8_t* userStack, bool inUserService=false)
 {
 #if defined(AITD_INTRO_SKIP) && !defined(AITD_INGAME)
     aitdInputIntroSkip(trap, g_macTicks);
+    if(!s_quickTrapsReady)refreshQuickTrapEntries();
 #endif
     uint32_t pc = read32(frame + 2);
     if(!s_openingPictureReady && trap==0xa975 && s_segments[5].begin
@@ -8196,6 +8284,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
 #endif
     aitdInputInGame(trap,gameMenu,
         atPortraits,atStory,gameplay,g_macTicks);
+    if(!s_quickTrapsReady)refreshQuickTrapEntries();
 #ifdef AITD_FULL_PLAY
     if(inUserService && g_ingameStage==5 && s_a5WorldStorage && g_macFramesPresented &&
        (trap==0xa975 || trap==0xa976 || trap==0xa974 || trap==0xa970 || trap==0xa860))aitdInputFullPlay(g_macTicks,s_a5WorldStorage+75616-0xb292+160);
@@ -8564,11 +8653,11 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     }
     {
         AitdProfileScope profileEffects(kProfileEffectService);
-        serviceNativeEffects();
+        pollNativeEffects();
     }
     {
         AitdProfileScope profileSchedule(kProfileVBLSchedule);
-        scheduleVBLTask();
+        pollVBLTask();
     }
     presentMacRuntime();
     }
@@ -8936,16 +9025,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         return 1;
     }
     if (trap == 0xa02e) {                    // _BlockMove: A0, A1, D0; registers preserved
-#ifdef AITD_PROBE
-        uint32_t blockMoveStart = aitdProfileBeamEpoch();
-#endif
-        blockMove((uint8_t*)regs[8], (uint8_t*)regs[9], regs[0]);
-#ifdef AITD_PROBE
-        g_probeBlockMoveTicks += aitdProfileBeamEpoch() - blockMoveStart;
-        ++g_probeBlockMoveCalls;
-#endif
-        ++g_blockMoveCount;
-        return 1;
+        if(uint32_t result=blockMoveTrap(regs))return result;
     }
     if (trap == 0xa001) {                    // _Close: IOParam in A0, result in D0
         uint8_t* parameterBlock = (uint8_t*)regs[8];
@@ -9350,10 +9430,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         return 1;
     }
     if (trap == 0xa856) {                    // ObscureCursor(): restore on movement
-        if(!s_cursor.initialized)goto unsupportedTrap;
-        if(s_cursor.visibility.obscure())regs[0]=1;
-        publishMouseCursor();
-        return 1;
+        if(uint32_t result=obscureCursorTrap(regs))return result;
     }
     if (trap == 0xa852) {                    // HideCursor()
         if(!s_cursor.visibility.hide())goto unsupportedTrap;
@@ -9725,6 +9802,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         MacHeap::Handle polygon=newHandle(10,true);
         if(!polygon)goto unsupportedTrap;
         write16(*polygon,10);s_recordingPolygon=polygon;s_polygonPort=port;
+        refreshQuickTrapEntries();
         write16(port+66,0xffff);write32(port+100,1);
         write32(userStack,(uint32_t)polygon);
         regs[0]=1;regs[8]=(uint32_t)port;regs[9]=(uint32_t)*polygon+10;
@@ -9742,6 +9820,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         regs[8]=(uint32_t)port;
         write16(port+66,0);write32(port+100,0);
         s_recordingPolygon=0;s_polygonPort=0;
+        refreshQuickTrapEntries();
         return 1;
     }
     if(trap==0xa8cd) {                       // KillPoly: dispose a finished owned record
@@ -10322,15 +10401,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         return 13;
     }
     if (trap == 0xa92c) {                    // FindWindow(Point, WindowPtr*) -> part code
-        uint8_t** resultWindow = (uint8_t**)read32(userStack);
-        int16_t vertical = (int16_t)read16(userStack + 4);
-        int16_t horizontal = (int16_t)read16(userStack + 6);
-        uint8_t* found;
-        int16_t part = findWindow(vertical, horizontal, found);
-        if (resultWindow) write32((uint8_t*)resultWindow, (uint32_t)found);
-        write16(userStack + 8, (uint16_t)part);
-        if (g_stageCDepth < 96) g_stageCDepth = 96;
-        return 9;
+        if(uint32_t result=findWindowTrap(userStack))return result;
     }
     if (trap == 0xa91f) {                    // SelectWindow(window)
         uint8_t* window = (uint8_t*)read32(userStack);
@@ -10479,13 +10550,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         return 3;
     }
     if (trap == 0xa87b) {                    // ClipRect(Rect*)
-        if (clipRect((const uint8_t*)read32(userStack))) {
-            uint8_t* port=(uint8_t*)read32(s_qdThePort);
-            GWorldSlot* world=gWorldForPort(port);
-            if(world) { regs[0]=0;regs[8]=(uint32_t)world->handles[4];regs[9]=(uint32_t)*world->handles[4]; }
-            if (g_stageCDepth < 63) g_stageCDepth = 63;
-            return 5;
-        }
+        if(uint32_t result=clipRectTrap(regs,userStack))return result;
     }
     if (trap == 0xa974) {                    // Button() -> Boolean
         serviceMacRuntime();
@@ -10890,75 +10955,14 @@ extern "C" uint8_t* aitdUserServiceDispatch(uint8_t* parked)
 #if defined(AITD_INTRO_SKIP) && !defined(AITD_INGAME)
 extern "C" volatile uint16_t g_introSkipState;
 #endif
-// Pen, colour, GWorld and zone-selection traps are most of a gameplay frame's calls,
-// each a few field updates. The general dispatcher would reach them only
-// after every other manager's checks. They run the same per-trap services
-// (scene-frame end, effects, VBL tasks, presentation) and handlers; patched
-// traps, polygon recording and the measured book line take the general path,
-// as does any unsupported case, which reports its named stop there.
-static uint32_t dispatchFastTrap(uint16_t trap,uint32_t pc,uint32_t* regs,uint8_t* userStack)
+#ifdef AITD_M5_AUDIT
+extern "C" void aitdAuditTrapEntry(uint32_t*,uint8_t* frame,uint8_t* userStack)
 {
-    switch(trap) {
-    case 0xa8ad:
-    case 0xa893: case 0xa89b: case 0xa89c: case 0xa891: case 0xaa14:
-    case 0xa01b: case 0xa11a: case 0xaa15:
-    case 0xaa29: case 0xaa2b: case 0xaa2c: case 0xa8aa:
-    case 0xa870: case 0xa871: case 0xa8e2:
-#ifndef AITD_MASK_PROFILE
-    case 0xab1d: // its profile brackets observe GWorld calls
-#endif
-#ifndef AITD_POINT_LINE_PROBE
-    case 0xa892:
-#endif
-        break;
-    default: return 0;
-    }
-#if defined(AITD_INTRO_SKIP) && !defined(AITD_INGAME)
-    if(g_introSkipState<2)return 0; // its controller observes LineTo
-#endif
-#ifdef AITD_INGAME
-    if(g_ingameStage<5)return 0;    // likewise until gameplay is reached
-#endif
-    const uint16_t index=trapIndex(trap);
-    if(s_trapAddresses[index] && s_trapAddresses[index]!=s_trapBuiltins[index])return 0;
-    if(s_recordingPolygon || !s_qdThePort)return 0;
-    if(trap==0xaa14 && s_segments[13].begin && pc==(uint32_t)s_segments[13].begin+0xb46)return 0;
-    // QDExtensions: only GetGWorld/SetGWorld, with an 8-bit screen.
-    if(trap==0xab1d && ((uint16_t)regs[0]!=5 && (uint16_t)regs[0]!=6
-                        || read16(s_windowManagerPixMap+32)!=8))return 0;
-#ifdef AITD_PROFILE_FRAME
-    AitdTrapProfileScope trapProfile(trap);
-#endif
-#ifdef AITD_SCENE_FRAME_BATCH
-    // A scene frame begins only at a GWorld call.
-    if(g_macSceneFrameOwner || trap==0xab1d)sceneFrameBoundary(trap,pc,regs,userStack);
-#endif
-    if(s_songInterruptError) {
-        if(const char* error=serviceNativeSong()) {
-            loaderStop(error,3);showLoaderStop();
-        }
-    }
-    serviceNativeEffects();
-    scheduleVBLTask();
-    presentMacRuntime();
-    switch(trap) {
-    case 0xa8ad: return pointInRect(userStack);
-    case 0xa01b: case 0xa11a: return dispatchMemoryTrap(trap,regs) ? 1 : 0;
-    case 0xa893: penMoveTo(userStack);return 5;
-    case 0xa89b: penSize(userStack);return 5;
-    case 0xa89c: penMode(userStack);return 3;
-    case 0xa891: return penLineTo(regs,userStack) ? 5 : 0;
-    case 0xa892: return read32(s_qdThePort) && penLine(regs,userStack) ? 5 : 0;
-    case 0xaa14: case 0xaa15: return rgbColor(trap,regs,userStack) ? 5 : 0;
-    case 0xaa29: case 0xaa2b: case 0xaa2c: case 0xa8aa:
-    case 0xa870: case 0xa871: case 0xa8e2:
-        return graphicsQuery(trap,pc,regs,userStack);
-    case 0xab1d:
-        if((uint16_t)regs[0]==5)return getGWorld(userStack) ? 9 : 0;
-        return setGWorld(regs,userStack) ? 9 : 0;
-    }
-    return 0;
+    uint32_t pc=read32(frame+2);
+    uint16_t trap=read16((const uint8_t*)pc);
+    aitdM5Trap(trap==0xa0f8 ? read32(userStack)-2 : pc,trap,g_song.playing ? g_song.id : 0);
 }
+#endif
 
 // Private callable originals are AFFE, trap word, RTS. Validate their exact
 // range/alignment so original game bytes cannot masquerade as a port stub.
@@ -10966,9 +10970,6 @@ extern "C" uint32_t aitdLineADispatch(uint32_t* regs, uint8_t* frame, uint8_t* u
 {
     uint32_t pc = read32(frame + 2);
     uint16_t trap = read16((const uint8_t*)pc);
-#ifdef AITD_M5_AUDIT
-    aitdM5Trap(trap==0xa0f8 ? read32(userStack)-2 : pc,trap,g_song.playing ? g_song.id : 0);
-#endif
 #ifdef AITD_SERVICE_PROBE
     if(g_macServiceActive && trap==0xa055) {
         ++g_serviceProbe[0];g_serviceProbe[1]|=read16(frame)&0x2000;
@@ -10989,13 +10990,148 @@ extern "C" uint32_t aitdLineADispatch(uint32_t* regs, uint8_t* frame, uint8_t* u
             userStack += 4; // Pascal parameters lie beyond the native return PC
         }
     }
-    uint32_t result = builtin ? 0 : dispatchFastTrap(trap, pc, regs, userStack);
-    if (!result) result = dispatchMacTrap(trap, builtin, regs, frame, userStack);
+    uint32_t result = dispatchMacTrap(trap, builtin, regs, frame, userStack);
     if (builtin && (trap & 0x0800)) {
         if(result==0xffffffffUL)s_userService.toolboxReturn=returnPC;
         else write32(userStack - 4 + result - 1, returnPC);
     }
     return result;
+}
+
+typedef uint32_t (*QuickTrap)(uint32_t*,uint8_t*,uint8_t*);
+extern "C" { QuickTrap g_macQuickTraps[4096]; }
+
+// The selected QuickDraw entries still service every due callback and publish
+// ended frames. Keep that uncommon work out of each small specialized entry.
+static void serviceQuickTrap(uint16_t trap,uint32_t pc,uint32_t* regs,uint8_t* userStack)
+{
+#ifdef AITD_SCENE_FRAME_BATCH
+    sceneFrameBoundary(trap,pc,regs,userStack);
+#endif
+    if(s_songInterruptError) {
+        if(const char* error=serviceNativeSong()) {loaderStop(error,3);showLoaderStop();}
+    }
+    pollNativeEffects();pollVBLTask();presentMacRuntime();
+}
+
+// Specialize only the trap selection, not the service implementation. These
+// entries share the ordinary register image, rasterizers and Pascal return.
+// A due callback, dirty publication or frame edge runs the shared services.
+template<uint16_t trap>
+static uint32_t dispatchQuickTrap(uint32_t* regs,uint8_t* frame,uint8_t* userStack)
+{
+    // Only boundary guards and EmptyRgn's measured A1 result need the caller PC.
+    const uint32_t pc=(trap==0xa8ec || trap==0xaa14 || trap==0xab1d || trap==0xa8e2)
+        ? read32(frame+2) : 0;
+    if(trap==0xa8ec && (read16(s_windowManagerPixMap+32)!=8
+       || (s_segments[4].begin && pc==(uint32_t)s_segments[4].begin+0x1dbc)))return 0;
+    if(trap==0xaa14 && s_segments[13].begin && pc==(uint32_t)s_segments[13].begin+0xb46)return 0;
+    if(trap==0xab1d && ((uint16_t)regs[0]!=5 && (uint16_t)regs[0]!=6
+                       || read16(s_windowManagerPixMap+32)!=8))return 0;
+    bool service=s_vblLastTick!=g_macTicks || s_vblPendingTicks || s_vblPassActive
+        || s_songInterruptError || g_soundDriver.effects[0].active || g_soundDriver.effects[1].active;
+#ifdef AITD_SCENE_FRAME_BATCH
+    const uint32_t owner=g_macSceneFrameOwner;
+    if(owner) {
+        if((uint32_t)userStack>owner || read32((uint8_t*)owner)!=s_sceneFrameParent
+           || read32((uint8_t*)owner+4)!=s_sceneFrameReturn)service=true;
+    } else if(!g_macBookFrameActive && (s_screenDirty || s_pixelsDirty))service=true;
+    if(trap==0xab1d && s_segments[4].begin
+       && pc==(uint32_t)s_segments[4].begin+0x3ce8)service=true;
+#ifdef AITD_SCENE_FRAME_VERIFY
+    service=true; // Exercise the independent A6-chain walker on this path too.
+#endif
+#else
+    if(!g_macBookFrameActive && (s_screenDirty || s_pixelsDirty))service=true;
+#endif
+    if(service)serviceQuickTrap(trap,pc,regs,userStack);
+#ifdef AITD_PROFILE_FRAME
+    AitdTrapProfileScope trapProfile(trap);
+#endif
+    uint32_t result=0;
+    switch(trap) {
+    case 0xa92c: result=findWindowTrap(userStack);break;
+    case 0xa87b: result=clipRectTrap(regs,userStack);break;
+    case 0xa856: result=obscureCursorTrap(regs);break;
+    case 0xa02e: result=blockMoveTrap(regs);break;
+    case 0xa8ad: result=pointInRect(userStack);break;
+    case 0xa01b: case 0xa11a: result=dispatchMemoryTrap(trap,regs) ? 1 : 0;break;
+    case 0xa893: penMoveTo(userStack);result=5;break;
+    case 0xa89b: penSize(userStack);result=5;break;
+    case 0xa89c: penMode(userStack);result=3;break;
+    case 0xa891: result=penLineTo(regs,userStack) ? 5 : 0;break;
+    case 0xa892: result=read32(s_qdThePort) && penLine(regs,userStack) ? 5 : 0;break;
+    case 0xa8ec:
+        if(!copyPortBits8((const uint8_t*)read32(userStack+18),(const uint8_t*)read32(userStack+14),
+            (const uint8_t*)read32(userStack+10),(const uint8_t*)read32(userStack+6),
+            read16(userStack+4),(const uint8_t*)read32(userStack)))return 0;
+        regs[0]=0;result=23;break;
+    case 0xaa14: case 0xaa15: result=rgbColor(trap,regs,userStack) ? 5 : 0;break;
+    case 0xaa29: case 0xaa2b: case 0xaa2c: case 0xa8aa:
+    case 0xa870: case 0xa871: case 0xa8e2:
+        result=graphicsQuery(trap,pc,regs,userStack);break;
+    case 0xab1d:
+        result=((uint16_t)regs[0]==5 ? getGWorld(userStack) : setGWorld(regs,userStack)) ? 9 : 0;break;
+    }
+    return result;
+}
+
+static void updateQuickTrap(uint16_t trap)
+{
+    const uint16_t index=trapIndex(trap);
+    if(!s_quickTrapsReady || (s_trapAddresses[index] && s_trapAddresses[index]!=s_trapBuiltins[index])) {
+        g_macQuickTraps[index]=0;
+        if(index==0x1a)g_macQuickTraps[0x11a]=0;
+        return;
+    }
+    switch(0xa000|index) {
+    case 0xa92c: g_macQuickTraps[index]=dispatchQuickTrap<0xa92c>;break;
+    case 0xa87b: g_macQuickTraps[index]=dispatchQuickTrap<0xa87b>;break;
+    case 0xa856: g_macQuickTraps[index]=dispatchQuickTrap<0xa856>;break;
+    case 0xa02e: g_macQuickTraps[index]=dispatchQuickTrap<0xa02e>;break;
+    case 0xa8ad: g_macQuickTraps[index]=dispatchQuickTrap<0xa8ad>;break;
+    case 0xa01b: g_macQuickTraps[index]=dispatchQuickTrap<0xa01b>;break;
+    case 0xa01a: g_macQuickTraps[0x11a]=dispatchQuickTrap<0xa11a>;break;
+    case 0xa891: g_macQuickTraps[index]=dispatchQuickTrap<0xa891>;break;
+#ifndef AITD_POINT_LINE_PROBE
+    case 0xa892: g_macQuickTraps[index]=dispatchQuickTrap<0xa892>;break;
+#endif
+    case 0xa893: g_macQuickTraps[index]=dispatchQuickTrap<0xa893>;break;
+    case 0xa89b: g_macQuickTraps[index]=dispatchQuickTrap<0xa89b>;break;
+    case 0xa89c: g_macQuickTraps[index]=dispatchQuickTrap<0xa89c>;break;
+    case 0xa8ec: g_macQuickTraps[index]=dispatchQuickTrap<0xa8ec>;break;
+    case 0xaa14: g_macQuickTraps[index]=dispatchQuickTrap<0xaa14>;break;
+    case 0xaa15: g_macQuickTraps[index]=dispatchQuickTrap<0xaa15>;break;
+    case 0xaa29: g_macQuickTraps[index]=dispatchQuickTrap<0xaa29>;break;
+    case 0xaa2b: g_macQuickTraps[index]=dispatchQuickTrap<0xaa2b>;break;
+    case 0xaa2c: g_macQuickTraps[index]=dispatchQuickTrap<0xaa2c>;break;
+    case 0xa8aa: g_macQuickTraps[index]=dispatchQuickTrap<0xa8aa>;break;
+    case 0xa870: g_macQuickTraps[index]=dispatchQuickTrap<0xa870>;break;
+    case 0xa871: g_macQuickTraps[index]=dispatchQuickTrap<0xa871>;break;
+    case 0xa8e2: g_macQuickTraps[index]=dispatchQuickTrap<0xa8e2>;break;
+#ifndef AITD_MASK_PROFILE
+    case 0xab1d: g_macQuickTraps[index]=dispatchQuickTrap<0xab1d>;break;
+#endif
+    default: g_macQuickTraps[index]=0;break;
+    }
+}
+
+// Availability changes at manager/controller transitions, not on every pen call.
+// Patching an opcode independently invalidates its entry in updateQuickTrap.
+static void refreshQuickTrapEntries()
+{
+    bool ready=s_quickGrafReady && !s_recordingPolygon;
+#if defined(AITD_INTRO_SKIP) && !defined(AITD_INGAME)
+    ready=ready && g_introSkipState>=2;
+#endif
+#ifdef AITD_INGAME
+    ready=ready && g_ingameStage>=5;
+#endif
+    if(ready==s_quickTrapsReady)return;
+    s_quickTrapsReady=ready;
+    static const uint16_t quickTraps[]={0xa92c,0xa87b,0xa856,0xa02e,0xa8ad,0xa01b,0xa11a,0xa891,0xa892,0xa893,0xa89b,0xa89c,0xa8ec,0xaa14,0xaa15,
+        0xaa29,0xaa2b,0xaa2c,0xa8aa,0xa870,0xa871,0xa8e2,0xab1d};
+    for(uint16_t trap:quickTraps)updateQuickTrap(trap);
 }
 
 const char* MacLoader::preparationError() const { return s_preparationError; }
@@ -11010,6 +11146,8 @@ bool MacLoader::prepareResourceForks(const ResourceForks::Source& application,co
         write16(s_trapBuiltins[i] + 4, 0x4e75);
         s_trapAddresses[i] = 0;
     }
+    for(uint16_t i=0;i<4096;++i)g_macQuickTraps[i]=0;
+    s_quickGrafReady=s_quickTrapsReady=false;
     s_resourceForks.close();
     clearResidentSegments();
     g_resourceCount = 0;

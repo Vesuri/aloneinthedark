@@ -1,4 +1,5 @@
-set $d17_sp=(unsigned long)userStack
+mac-trap-args
+set $d17_sp=(unsigned long)$mac_stack
 set $d17_return=*(unsigned long*)$d17_sp
 set $d17_ignored=*(unsigned long*)($d17_sp+8)
 printf "DRIVER17_NATIVE_CALL selector=%X ignored=%X sp=%X return=%X\n",*(unsigned long*)($d17_sp+4),$d17_ignored,$d17_sp,$d17_return
@@ -7,19 +8,19 @@ set $d17_sample=*(unsigned long*)$d17_packet
 set $d17_size=*(unsigned long*)($d17_packet+4)
 eval "dump binary memory ../tmp/driver17-native-packet.bin %u %u",$d17_packet,$d17_packet+26
 eval "dump binary memory ../tmp/driver17-native-sample.bin %u %u",$d17_sample,$d17_sample+$d17_size
-set $d17_reg2=regs[2]
-set $d17_reg3=regs[3]
-set $d17_reg4=regs[4]
-set $d17_reg5=regs[5]
-set $d17_reg6=regs[6]
-set $d17_reg7=regs[7]
-set $d17_reg8=regs[8]
-set $d17_reg9=regs[9]
-set $d17_reg10=regs[10]
-set $d17_reg11=regs[11]
-set $d17_reg12=regs[12]
-set $d17_reg13=regs[13]
-set $d17_reg14=regs[14]
+set $d17_reg2=$mac_regs[2]
+set $d17_reg3=$mac_regs[3]
+set $d17_reg4=$mac_regs[4]
+set $d17_reg5=$mac_regs[5]
+set $d17_reg6=$mac_regs[6]
+set $d17_reg7=$mac_regs[7]
+set $d17_reg8=$mac_regs[8]
+set $d17_reg9=$mac_regs[9]
+set $d17_reg10=$mac_regs[10]
+set $d17_reg11=$mac_regs[11]
+set $d17_reg12=$mac_regs[12]
+set $d17_reg13=$mac_regs[13]
+set $d17_reg14=$mac_regs[14]
 # User-mode VBL callbacks can query the shared driver before this call returns.
 # Match this original caller and its stack, not the shared stub's first RTS.
 tbreak *$d17_return if $sp==$d17_sp+4

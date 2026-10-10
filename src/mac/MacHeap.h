@@ -52,13 +52,17 @@ private:
     uint32_t masterBlocks_[maxMasterBlocks];
     uint16_t masterBlockCount_ = 0;
     bool masterBlocksOverflow_ = false;
+    // Master blocks never move or shrink. Cache the last slot range, not its
+    // mutable allocation flags or pointees; disposal/reuse stays observable.
+    mutable uint32_t cachedMasterStart_ = 0, cachedMasterLength_ = 0;
     Block& block(uint32_t off) const { return *(Block*)(arena_+off); }
     static uint32_t physical(uint32_t logical);
     static void moveBytes(uint8_t* dst, const uint8_t* src, uint32_t bytes);
     static void reverseWords(uint8_t* first, uint8_t* last);
     uint8_t* flags(Handle handle) const;
+    uint8_t* flagsSlow(Handle handle) const;
     uint8_t* masterFlags(uint32_t off, uint32_t pos) const;
-    uint32_t findHandleBlock(const uint8_t* ptr) const;
+    uint32_t findHandleBlock(const uint8_t* ptr, Handle validated=0) const;
     uint32_t scanPtr(const uint8_t* ptr, uint32_t kind) const;
     uint32_t findPtr(const uint8_t* ptr, uint32_t kind) const;
     uint32_t findSpace(uint32_t bytes) const;

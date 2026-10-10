@@ -37,8 +37,10 @@ Its isolated directory receives the measured saved-preferences fixture: the firs
 path can omit the sound-effect calls that this observer pairs. Owner preferences and
 saves are restored afterward; ordinary boot checks still cover missing preferences.
 It deliberately runs the book because its text/line calls are part of the fixture.
-Read-only observations at `aitdLineADispatch` include traps handled by fast dispatch;
-user-mode service checks retain their separate dispatcher boundary. Capture validation
+Read-only observations at `aitd_line_a_trap_entry` include direct and general traps.
+`trap_args.gdb` provides `mac-trap-args` for the shared register, exception-frame and
+Pascal-stack view; `diag_run.sh` loads it automatically. User-mode service checks
+retain their separate dispatcher boundary. Capture validation
 checks RGB mutations/registers, font resources, text stacks/ports, and decoded AGA
 pixels/palettes. Publication checks follow queued generations and require no visible
 pointer or standalone MACPLAY frame. No historical splash frame numbers are assumed.
@@ -185,12 +187,22 @@ a released Enter; released input and matching focus are necessary when comparing
 frames. The game's preview pane can be at the same angle while labels differ because a
 different control has focus.
 
+`LINEAPROBE=1` with `quick_traps.gdb` checks direct MoveTo, PenSize and PenMode
+against all 15 input registers, CCR and Pascal stack cleanup, then installs a PenMode
+patch, calls through its original, and restores the direct entry. GetZone additionally
+checks patch installation through an OS alias and its A0 result. The fixture exits
+before the older `line_a.gdb` bring-up sequence.
+
 For endurance and profiling, use the ordinary first-floor save with `FIRSTFLOORLOAD=1
 INTROSKIP=1`; enable `FIRSTFLOORCIRCUIT=1` or `M5AUDIT=1` only when required by the
-observer. `gameplay_sample.gdb`, `sample_gameplay.py` and
+observer. `vbl_latency.gdb` uses `INGAME=1` and the reference 68030 to compare callback
+lateness over the same first-room scenes 60–160; it reads the callback's virtual Ticks
+shadow against the live clock. `gameplay_sample.gdb`, `sample_gameplay.py` and
 `summarize_gameplay_profile.py` provide sampled profiles; `amiga/aprof.sh` gives exact
 cycle profiles of book and first-room intervals. `m5_circuit.gdb` and
-`check_m5_audit.py` check memory, interrupts and completion. See
+`check_m5_audit.py` check memory, interrupts and completion. Use the saved-preferences
+fixture from `check_startup_prefs.py` so the session includes music and effects;
+protect existing preferences and saves with `regression_preferences.py`. See
 [performance](performance.md) for measurement interpretation.
 
 ## Display, cursor and audio

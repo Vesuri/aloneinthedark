@@ -547,7 +547,7 @@ PROBE_SYMS += g_loadedCodeMask g_code3Base g_applicationZoneBase g_systemZoneBas
 PROBE_SYMS += g_macLowMemory g_startupCode g_startupLowMemoryPatches
 PROBE_SYMS += SysBase g_macStackBase g_macLineAVectorAddress g_macSavedLineAVector g_macLineAInstalled g_macHostReturnSP
 ifeq ($(LINEAPROBE),1)
-PROBE_SYMS += g_lineAProbe
+PROBE_SYMS += g_lineAProbe g_quickTrapProbe
 endif
 PROBE_SYMS += $(PROBE_SYMS_ACTION) $(PROBE_SYMS_ACTION_NAV) $(PROBE_SYMS_POINT_LINE)
 ifeq ($(FIRSTFLOORLOAD),1)
@@ -603,7 +603,7 @@ PROBE_SYMS += g_macSceneFrameOwner g_macSceneFramesBegun g_macSceneFramesComplet
 endif
 PROBE_SYMS += g_beamPresentLine g_beamPresentMin g_beamPresentMax \
               g_beamPresents g_beamPresentsLate
-PROBE_SYMS += g_macVBLCallbackEntry g_macVBLCallbackTask g_macVBLCallbackA5 g_macVBLCallbackReturn
+PROBE_SYMS += g_macTicks g_macTicksAddress g_macVBLCallbackEntry g_macVBLCallbackTask g_macVBLCallbackA5 g_macVBLCallbackReturn
 ifneq ($(MAPPED_COPY_C),1)
 ifdef VERIFY
 PROBE_SYMS += g_mappedCopyAsmTicks g_mappedCopyCTicks g_mappedCopyVerifyCalls \
@@ -839,6 +839,7 @@ obj/KalmsC2P.o: $(AMIGA_SRC)/kalms/c2p1x1_8_c5_gen.s
 
 ifeq ($(M5AUDIT),1)
 EXTRA_DEFINES += -DAITD_M5_AUDIT
+ASFLAGS += --defsym AITD_M5_AUDIT=1
 PROBE_SYMS += g_m5Audit g_m5NoteLog g_m5SongPrepare
 endif
 

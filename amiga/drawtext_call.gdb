@@ -1,5 +1,6 @@
-set $dt_args=(unsigned long)userStack
-set $dt_ret=*(unsigned long*)(frame+2)+2
+mac-trap-args
+set $dt_args=(unsigned long)$mac_stack
+set $dt_ret=*(unsigned long*)($mac_frame+2)+2
 set $dt_port=*(unsigned long*)s_qdThePort
 set $dt_pm=*(unsigned long*)(*(unsigned long*)($dt_port+2))
 set $dt_vis=*(unsigned long*)(*(unsigned long*)($dt_port+24))
@@ -18,21 +19,22 @@ set $dt_first=*(short*)($dt_args+2)
 set $dt_text=*(unsigned long*)($dt_args+4)+$dt_first
 printf "DT_ARGUMENTS count=%u first=%u\n",$dt_count,$dt_first
 dump binary memory ../tmp/drawtext-native-string.bin $dt_text $dt_text+$dt_count
-set $dt_reg0=regs[0]
-set $dt_reg1=regs[1]
-set $dt_reg2=regs[2]
-set $dt_reg3=regs[3]
-set $dt_reg4=regs[4]
-set $dt_reg5=regs[5]
-set $dt_reg6=regs[6]
-set $dt_reg7=regs[7]
-set $dt_reg8=regs[8]
-set $dt_reg9=regs[9]
-set $dt_reg10=regs[10]
-set $dt_reg11=regs[11]
-set $dt_reg12=regs[12]
-set $dt_reg13=regs[13]
-set $dt_reg14=regs[14]
+mac-trap-args
+set $dt_reg0=$mac_regs[0]
+set $dt_reg1=$mac_regs[1]
+set $dt_reg2=$mac_regs[2]
+set $dt_reg3=$mac_regs[3]
+set $dt_reg4=$mac_regs[4]
+set $dt_reg5=$mac_regs[5]
+set $dt_reg6=$mac_regs[6]
+set $dt_reg7=$mac_regs[7]
+set $dt_reg8=$mac_regs[8]
+set $dt_reg9=$mac_regs[9]
+set $dt_reg10=$mac_regs[10]
+set $dt_reg11=$mac_regs[11]
+set $dt_reg12=$mac_regs[12]
+set $dt_reg13=$mac_regs[13]
+set $dt_reg14=$mac_regs[14]
 dump binary memory ../tmp/drawtext-native-enter-port.bin (char*)($dt_port) (char*)($dt_port)+108
 dump binary memory ../tmp/drawtext-native-enter-pm.bin (char*)($dt_pm) (char*)($dt_pm)+50
 dump binary memory ../tmp/drawtext-native-enter-vis.bin (char*)($dt_vis) (char*)($dt_vis)+10

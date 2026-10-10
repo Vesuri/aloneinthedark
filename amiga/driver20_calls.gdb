@@ -5,13 +5,14 @@ set $d20_n=0
 set $d20_active=0
 set $d20_finished=0
 while $d20_finished==0
- tbreak aitdLineADispatch if $line_seen==0 && *(unsigned short*)*(unsigned long*)(frame+2)==0xa891
+ tbreak *aitd_line_a_trap_entry if $line_seen==0 && *(unsigned short*)*(unsigned long*)((*(unsigned char**)($sp+4))+2)==0xa891
  set $d20_line_bp=$bpnum
  tbreak dispatchMacTrap if (trap==0xa0f8 && *(unsigned long*)(userStack+4)==20) || (trap==0xa8a2 && *(unsigned long*)(frame+2)==(unsigned long)s_segments[5].begin+0x1e44)
  set $d20_service_bp=$bpnum
  continue
  delete $d20_line_bp $d20_service_bp
- set $d20_trap=*(unsigned short*)*(unsigned long*)(frame+2)
+ mac-trap-args
+ set $d20_trap=*(unsigned short*)*(unsigned long*)($mac_frame+2)
  if g_stageBState==3
   echo FAIL driver20 unexpected drawing dependency\n
   detach
@@ -36,25 +37,27 @@ while $d20_finished==0
   loop_continue
  end
  set $d20_n=$d20_n+1
- set $d20_sp=(unsigned long)userStack
+ mac-trap-args
+ set $d20_sp=(unsigned long)$mac_stack
  set $d20_return=*(unsigned long*)$d20_sp
  set $d20_ignored=*(unsigned long*)($d20_sp+8)
  if $d20_n==1
   eval "dump binary memory ../tmp/driver20-native-packet.bin %u %u",$d20_ignored,$d20_ignored+26
  end
-set $d20_reg2=regs[2]
-set $d20_reg3=regs[3]
-set $d20_reg4=regs[4]
-set $d20_reg5=regs[5]
-set $d20_reg6=regs[6]
-set $d20_reg7=regs[7]
-set $d20_reg8=regs[8]
-set $d20_reg9=regs[9]
-set $d20_reg10=regs[10]
-set $d20_reg11=regs[11]
-set $d20_reg12=regs[12]
-set $d20_reg13=regs[13]
-set $d20_reg14=regs[14]
+mac-trap-args
+set $d20_reg2=$mac_regs[2]
+set $d20_reg3=$mac_regs[3]
+set $d20_reg4=$mac_regs[4]
+set $d20_reg5=$mac_regs[5]
+set $d20_reg6=$mac_regs[6]
+set $d20_reg7=$mac_regs[7]
+set $d20_reg8=$mac_regs[8]
+set $d20_reg9=$mac_regs[9]
+set $d20_reg10=$mac_regs[10]
+set $d20_reg11=$mac_regs[11]
+set $d20_reg12=$mac_regs[12]
+set $d20_reg13=$mac_regs[13]
+set $d20_reg14=$mac_regs[14]
 set $d20_scope_start=g_effectStatusCalls
 tbreak *$d20_return if $sp==$d20_sp+4
 continue

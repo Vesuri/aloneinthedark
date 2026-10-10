@@ -1,5 +1,6 @@
-set $bind_args=(unsigned long)userStack
-set $bind_ret=*(unsigned long*)(frame+2)+2
+mac-trap-args
+set $bind_args=(unsigned long)$mac_stack
+set $bind_ret=*(unsigned long*)($mac_frame+2)+2
 set $bind_window=*(unsigned long*)($bind_args+6)
 set $bind_palette=*(unsigned long*)($bind_args+2)
 set $bind_old=(unsigned long)s_activePalette
@@ -12,22 +13,23 @@ if $bind_slot==8
  detach
  quit 1
 end
-printf "RESTOREPAL_NATIVE_BYTES %04X%04X%04X%04X%04X%04X%04X%04X a5=%X\n",*(unsigned short*)($bind_ret-16),*(unsigned short*)($bind_ret-14),*(unsigned short*)($bind_ret-12),*(unsigned short*)($bind_ret-10),*(unsigned short*)($bind_ret-8),*(unsigned short*)($bind_ret-6),*(unsigned short*)($bind_ret-4),*(unsigned short*)($bind_ret-2),regs[13]
-set $bind_reg0=regs[0]
-set $bind_reg1=regs[1]
-set $bind_reg2=regs[2]
-set $bind_reg3=regs[3]
-set $bind_reg4=regs[4]
-set $bind_reg5=regs[5]
-set $bind_reg6=regs[6]
-set $bind_reg7=regs[7]
-set $bind_reg8=regs[8]
-set $bind_reg9=regs[9]
-set $bind_reg10=regs[10]
-set $bind_reg11=regs[11]
-set $bind_reg12=regs[12]
-set $bind_reg13=regs[13]
-set $bind_reg14=regs[14]
+mac-trap-args
+printf "RESTOREPAL_NATIVE_BYTES %04X%04X%04X%04X%04X%04X%04X%04X a5=%X\n",*(unsigned short*)($bind_ret-16),*(unsigned short*)($bind_ret-14),*(unsigned short*)($bind_ret-12),*(unsigned short*)($bind_ret-10),*(unsigned short*)($bind_ret-8),*(unsigned short*)($bind_ret-6),*(unsigned short*)($bind_ret-4),*(unsigned short*)($bind_ret-2),$mac_regs[13]
+set $bind_reg0=$mac_regs[0]
+set $bind_reg1=$mac_regs[1]
+set $bind_reg2=$mac_regs[2]
+set $bind_reg3=$mac_regs[3]
+set $bind_reg4=$mac_regs[4]
+set $bind_reg5=$mac_regs[5]
+set $bind_reg6=$mac_regs[6]
+set $bind_reg7=$mac_regs[7]
+set $bind_reg8=$mac_regs[8]
+set $bind_reg9=$mac_regs[9]
+set $bind_reg10=$mac_regs[10]
+set $bind_reg11=$mac_regs[11]
+set $bind_reg12=$mac_regs[12]
+set $bind_reg13=$mac_regs[13]
+set $bind_reg14=$mac_regs[14]
 printf "RESTOREPAL_NATIVE_STATE phase=enter window=%X palette=%X default=%X binding=%X active=%X updates=%u screenDirty=%u pixelDirty=%u rects=%u\n",$bind_window,$bind_palette,g_defaultPalette,s_windows[$bind_slot].palette,s_activePalette,s_windows[$bind_slot].paletteUpdates,s_screenDirty,s_pixelsDirty,s_dirtyRectCount
 set $bind_addr=(unsigned long)($bind_window)
 dump binary memory ../tmp/restorepal-native-enter-window.bin $bind_addr $bind_addr+156

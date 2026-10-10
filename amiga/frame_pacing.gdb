@@ -12,7 +12,8 @@ commands
  detach
  quit 1
 end
-tbreak dispatchMacTrap if trap==0xa8ec
+# The common raster entry observes both direct and general CopyBits dispatch.
+tbreak copyPortBits8
 continue
 set $dark2=(unsigned long)s_segments[5].begin
 set $dark=(unsigned long)s_segments[4].begin

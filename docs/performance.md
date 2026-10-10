@@ -41,29 +41,30 @@ call-tree noise from stack manipulation and task switches; flat PC times are exa
 
 | PAL, `a4000-030-reference` | Book fold, steps 2–52 | First room, scenes 60–160 |
 | --- | ---: | ---: |
-| Fields / steps | 220 / 50 | 516 / 100 |
-| Time per step | 88.5 ms | 103.3 ms |
-| Original game code | 0.6 ms | 53.8 ms |
-| C2P | 35.9 ms | 9.1 ms |
-| QuickDraw fills, lines, regions | 16.8 ms | 3.2 ms |
-| QuickDraw CopyBits | 4.0 ms | 10.1 ms |
-| Trap entry/dispatch, state lookups, VBL polling | 19.1 ms | 21.2 ms |
-| Other presentation | 9.9 ms | 0.6 ms |
-| CPU Chip-bus accesses (included above) | 26.5 ms | 6.4 ms |
+| Fields / steps | 166 / 50 | 426 / 100 |
+| Time per step | 66.6 ms | 85.5 ms |
+| Original game code | 0.5 ms | 53.4 ms |
+| C2P | 24.4 ms | 7.2 ms |
+| QuickDraw fills, lines, regions | 16.8 ms | 3.0 ms |
+| QuickDraw CopyBits | 4.0 ms | 10.0 ms |
+| Trap entry/dispatch, state lookups, VBL polling | 13.8 ms | 9.0 ms |
+| Other presentation | 5.5 ms | 0.3 ms |
+| CPU Chip-bus accesses (included above) | 7.9 ms | 1.5 ms |
 
-In the first room, the original model renderer (`Dark3+$1D50`, entered via jump-table
-entry 291) costs 43.8 ms. Skeleton animation and vertex transform account for 16.0 ms,
-and its own edge and span fill for 14.0 ms. Its O(n²) primitive depth sort costs about
-6.7 ms, and per-primitive dispatch 4.8 ms. The same call adds 14.3 ms of port time,
-mostly from the model's 11 lines: RGBForeColor, PenMode, MoveTo and LineTo are separate
-traps. Any trap costs roughly 1,500–2,600 cycles before its own work. That includes a
-~230-cycle Chip RAM exception-vector read, since VBR is 0. CopyBits from `Dark+$30A8`
-spends 5 ms per frame revalidating mask regions.
+In the first room, original game code accounts for most of the frame. The model
+renderer (`Dark3+$1D50`, entered via jump-table entry 291) includes skeleton animation,
+vertex transformation, edge/span filling and an O(n²) primitive depth sort. Its port
+calls include RGBForeColor, PenMode, MoveTo and LineTo for each model line. Outermost
+PenMode and MoveTo now cost 36.9 and 36.8 µs respectively, including Line-A entry and
+return. The direct entries retain the full register image and service pending callbacks
+and completed frames. CopyBits still repeatedly validates mask regions; see the
+[remaining work](open-work.md).
 
-The book has 8 bitplanes at FMODE=0, so bitplane DMA takes nearly every Chip slot on
-visible lines. C2P stores and the CPU back-buffer synchronization wait an average 32
-cycles per access. With the Kickstart CACR of $2001, the 68030 data cache is off.
-Enabling it with emulated data-cache timing did not speed up the first room.
+The book uses 8 bitplanes at FMODE=3. Its coordinate-bounded C2P stores and CPU
+back-buffer synchronization still share Chip RAM bandwidth with display DMA; measured
+CPU Chip-bus accesses average about 9.5 cycles. Fills and lines are the other large
+remaining port cost. These captures use the Kickstart CACR of $2001, with the 68030
+data cache off. Earlier profiles and before/after measurements are in Git history.
 
 ## Steady gameplay
 
