@@ -5,6 +5,28 @@
 #include "../src/mac/MacFiles.h"
 static unsigned vword(const unsigned char* p,unsigned o) { return (p[o]<<8)|p[o+1]; }
 static uint32_t vlong(const unsigned char* p,unsigned o) { return (uint32_t)vword(p,o)<<16|vword(p,o+2); }
+static void fcbTable() {
+    MacFiles c;c.reset();uint32_t id=c.add(2,"File","File",false,17,23);
+    uint8_t table[MacFiles::fcbTableSize+2];memset(table,0xcc,sizeof(table));
+    auto a=c.open(id,false,true),b=c.open(id,true,false);
+    assert(a==2 && b==96 && c.fcbTableDirty());c.advance(a,7);c.modified(a);
+    c.writeFCBTable(table,0x12345678);
+    assert(!c.fcbTableDirty() && vword(table,0)==MacFiles::fcbTableSize);
+    assert(vlong(table,a)==id && table[a+4]==129 && table[b+4]==2);
+    assert(vlong(table,a+8)==17 && vlong(table,b+8)==23 && vlong(table,a+16)==7);
+    assert(vlong(table,a+20)==0x12345678 && vlong(table,b+20)==0x12345678);
+    assert(vlong(table,a+58)==2 && table[a+62]==4 && !memcmp(table+a+63,"File",4));
+    assert(!c.close(a));c.writeFCBTable(table,0x12345678);
+    for(unsigned i=2;i<96;++i)assert(table[i]==0);
+    assert(vlong(table,b)==id && table[MacFiles::fcbTableSize]==0xcc);
+    assert(c.open(id,false,false)==2);
+    for(unsigned i=2;i<MacFiles::maxOpen;++i)assert(c.open(id,false,false)==(int16_t)(2+i*94));
+    assert(c.open(id,false,false)==-42);
+    c.writeFCBTable(table,0x12345678);
+    assert(vlong(table,2+(MacFiles::maxOpen-1)*94)==id);
+    c.reset();c.writeFCBTable(table,0x12345678);
+    for(unsigned i=2;i<MacFiles::fcbTableSize;++i)assert(table[i]==0);
+}
 static void volumeInfo() {
     MacFiles c;c.reset();c.application=c.add(2,"Game","PROGDIR:",true);
     c.system=c.add(2,"System Folder","",true);assert(!c.initializeDirectories());
@@ -147,6 +169,7 @@ static void catalogLifetime() {
     assert(c.planCreate(0,0x1234,"new",plan)==c.dirNFErr);
 }
 int main() {
+    fcbTable();
     volumeInfo();volumeParameters();indexedFiles();
     dualForks();
     catalogLifetime();

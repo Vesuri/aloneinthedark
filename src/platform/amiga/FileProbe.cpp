@@ -102,10 +102,10 @@ static bool run() {
     w(22,0xffff);
     if(!result(aitdProbeSetVol(pb),0) || g_systemWindows!=windows(10))return false;
     g_fileProbeStage=19;l(18,(uint32_t)volume);w(22,0);w(24,0);w(28,1);
-    if(!result(aitdProbeFCB(pb),0) || ((get(24)>>16)&65535)!=128
+    if(!result(aitdProbeFCB(pb),0) || ((get(24)>>16)&65535)!=2
        || get(40)!=1424934 || (get(36)>>16)!=0x300 || volume[0]!=17)return false;
     g_fileProbeStage=20;w(28,2);w(22,wd);
-    if(!result(aitdProbeFCB(pb),0) || ((get(24)>>16)&65535)!=129
+    if(!result(aitdProbeFCB(pb),0) || ((get(24)>>16)&65535)!=96
        || get(40)!=200003 || (get(36)>>16)!=0 || volume[0]!=14)return false;
     uint32_t fileID=get(32),parent=get(58);
     g_fileProbeStage=21;w(28,0);w(22,0x1234);l(18,0);

@@ -1,5 +1,25 @@
 # File Manager reference contract
 
+## Direct file-control records
+
+The port publishes an owned FCB table through the private `FCBSPtr` shadow
+($034E), with `FSFCBLen` ($03F6) set to 94. File references are the offsets
+`2 + 94 * slot`, following the table's length word. Records reflect the open-fork
+model: file ID, flags, logical/physical length, position, VCB pointer, Finder type,
+parent ID and Pascal filename. Closed records are cleared. The private VCB supplies
+the virtual HFS signature and volume reference; no Amiga vector memory is used.
+The layout follows [Inside Macintosh: Files, FCBs](https://dev.os9.ca/techpubs/mac/Files/Files-110.html)
+and its [assembly structure definitions](https://dev.os9.ca/techpubs/mac/Files/Files-301A.html).
+
+The original stdio close routine reads `fcbVPtr` at `(Misc3, $123A)` and
+`vcbVRefNum` at `(Misc3, $1240)` even on a read-only close. It also uses the
+signature, parent and filename for writable HFS files. Publish the table at A5
+initialization and after file-model changes in deferred services, before original
+code or completions resume. The host file-model tests cover offset allocation, independent fork records,
+position/flags, closure, slot reuse, full capacity and reset. MMU-enabled WHDLoad
+startup/quit and save/load tests exercise the original close path.
+
+
 Original PAK reads and measured file services pass M2. M3.2 verifies an original-game
 save named `m3test`, opening Load and clean shutdown. Paired save/move/load restores
 gameplay state on A1200/68020 (M3.5). An abrupt emulator power cycle immediately after

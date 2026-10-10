@@ -1442,6 +1442,9 @@ void aitdInputSaveLoad(uint32_t ticks,uint32_t scenes,int16_t x,int16_t z,uint16
         if(x!=g_saveLoadSavedX || z!=g_saveLoadSavedZ)return;
         aitdInputInjectProbeKey(0x4c,true);g_saveLoadStage=2;g_saveLoadTick=ticks;
     } else if(g_saveLoadStage==2) {
+        // A WHDLoad OS return clears synthetic held keys just like physical
+        // keys. Maintain the controller's requested level until movement ends.
+        aitdInputInjectProbeKey(0x4c,true);
         int32_t distance=int32_t(z)-g_saveLoadSavedZ;if(distance<0)distance=-distance;
         if(distance<300 || animation!=254)return;
         aitdInputInjectProbeKey(0x4c,false);g_saveLoadStage=3;g_saveLoadTick=ticks;

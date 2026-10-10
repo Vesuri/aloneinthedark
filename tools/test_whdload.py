@@ -10,6 +10,7 @@ timed uses production. Always clean-build flags.
 import argparse
 import configparser
 import platform
+import re
 import os
 from pathlib import Path
 import shutil
@@ -35,15 +36,19 @@ def main():
     p.add_argument('--seconds', type=int, default=90, help='host safety ceiling')
     p.add_argument('--ticks', type=int, default=1500, help='WHDLoad timeout in PAL fields')
     p.add_argument('--cpu', default='68030')
+    p.add_argument('--mmu', action='store_true', help='enable the 68040/68060 MMU and verify WHDLoad uses it')
     p.add_argument('--machine-config', type=Path, help='FS-UAE hardware settings only; guest disks and host paths stay isolated')
     p.add_argument('--z3-memory-mb', type=int, choices=(0,16,32,64,128), default=0, help='additional Zorro III RAM for cache/timing comparisons')
     p.add_argument('--jit', action='store_true', help='enable JIT for explicit reproduction runs')
     p.add_argument('--no-warp', action='store_true', help='run at normal PAL field rate')
     p.add_argument('--save-source', type=Path, help='Saved Games drawer from a preceding run')
     p.add_argument('--no-preload', action='store_true')
+    p.add_argument('--no-cache', action='store_true', help='disable WHDLoad CPU caches for diagnosis')
     p.add_argument('--no-filelog', action='store_true', help='disable WHDLoad FILELOG when measuring OS switches')
     p.add_argument('--check-stack', action='store_true', help='require completed STACKPROBE report and 4 KB process stack')
     args = p.parse_args()
+    if args.mmu and (args.cpu not in ('68040', '68060') or args.jit or args.machine_config):
+        p.error('--mmu requires --cpu 68040 or 68060, without JIT or machine-config')
     if args.mode == "walking" and not args.save_source:
         p.error("walking requires --save-source")
     if args.rtb is None:
@@ -73,6 +78,7 @@ def main():
         (game/'read-probe.bin').write_bytes(bytes((i*37+(i>>8))&255 for i in range(200003)))
     (boot/'s/WHDLoad.prefs').write_text('Expert\nReadDelay=0\n')
     preload = '' if args.no_preload else 'PRELOAD '
+    if args.no_cache: preload += 'NOCACHE '
     filelog = '' if args.no_filelog or args.mode in ('stairs', 'escape', 'walking') else 'FILELOG '
     (boot/'s/startup-sequence').write_text(
         'DF0:C/Assign C: DF0:C\nDF0:C/Assign LIBS: DF0:Libs\n'
@@ -83,7 +89,7 @@ def main():
     emulator=os.environ.get('FSUAE',str(arm) if platform.machine()=='arm64' and arm.exists() else 'fs-uae')
     with (base/'emulator.log').open('w') as log:
         machine = ['--amiga_model=A4000', '--cpu='+args.cpu,
-            '--uae_cpu_model='+args.cpu.split('-')[0], '--uae_cpu_24bit_addressing=false','--uae_mmu_model=0','--uae_fpu_model=0',
+            '--uae_cpu_model='+args.cpu.split('-')[0], '--uae_cpu_24bit_addressing=false','--uae_mmu_model='+ (args.cpu if args.mmu else '0'),'--uae_fpu_model=0',
             '--uae_z3mapping=uae',
             '--jit_compiler='+str(int(args.jit)), '--chip_memory=2048', '--fast_memory=8192','--uae_z3mem_size='+str(args.z3_memory_mb),'--uae_a3000mem_size=0','--uae_cpu_speed=max']
         if args.machine_config:
@@ -106,6 +112,9 @@ def main():
             output = (boot/'result').open(errors='replace').read(512) if (boot/'result').exists() else ''
             report = (game/'.whdl_register').read_text(encoding='latin1') if (game/'.whdl_register').exists() else ''
             assert report, f'No WHDLoad core dump: {base}\n{output}'
+            if args.mmu:
+                assert re.search(r'\bTC=8000\b', report), 'WHDLoad MMU translation not active: '+report
+                print('PASS: WHDLoad MMU translation enabled')
             if args.mode in ('timed', 'stairs', 'escape', 'walking'):
                 assert 'DEBUG caused.' in report, report + output
                 if args.mode == 'timed':

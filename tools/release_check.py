@@ -43,6 +43,7 @@ def main():
             run('bash','amiga/diag_run.sh','180',env=env,stdout=out,stderr=subprocess.STDOUT)
         run('python3','tools/regression_result.py','amiga/.run-release/gdb-out.log','--status','0')
         run('python3','tools/test_whdload.py','--mode','timed','--ticks','6000','--seconds','180')
+        run('python3','tools/test_whdload.py','--mode','timed','--cpu','68040','--mmu','--ticks','6000','--seconds','180')
     run('python3','tools/package_release.py',str(executable),'dist')
     archive=ROOT/'dist'/('AloneInTheDark-'+(ROOT/'VERSION').read_text().strip()+'.lha')
     run('python3','tools/check_release.py',str(archive))

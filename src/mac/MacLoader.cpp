@@ -408,6 +408,14 @@ static uint32_t s_jumpTableOffset;
 static AitdScreen* s_loudStopScreen;
 static ResourceForks s_resourceForks;
 static MacFiles s_files;
+// Private HFS compatibility records; never use Amiga Page 0 as Mac storage.
+static uint8_t s_fcbTable[MacFiles::fcbTableSize] __attribute__((aligned(4)));
+static uint8_t s_fileVCB[178] __attribute__((aligned(4)));
+static void publishFileControlBlocks()
+{
+    if(s_files.fcbTableDirty())
+        s_files.writeFCBTable(s_fcbTable,(uint32_t)s_fileVCB);
+}
 struct DataSource {
     uint32_t id=0,storedSize=0;bool resource=false;
     FileAccess::ReadStream* backing=0;
@@ -1134,6 +1142,14 @@ static bool buildA5World(uint8_t*& a5)
     write32(s_portLowMemory + kLowCurStackBase, (uint32_t)s_a5WorldStorage);
     write32(s_portLowMemory+80,(uint32_t)s_applicationLimit);
     write16(s_portLowMemory+100,(uint16_t)s_memoryError);
+    // The original stdio close routine reads fcbVPtr and vcbVRefNum even
+    // for read-only files (Misc3, $123A/$1240). HFS writes also read the
+    // volume signature, parent ID and Pascal filename before updating metadata.
+    write16(s_fileVCB+8,0x4244);
+    write16(s_fileVCB+78,MacFiles::volumeRef);
+    publishFileControlBlocks();
+    write32(s_portLowMemory+124,(uint32_t)s_fcbTable);
+    write16(s_portLowMemory+128,MacFiles::fcbLength);
     write16(s_portLowMemory+132,g_applicationFileRef); // CurApRefNum ($0900), Engine+$4092
     write16(s_portLowMemory+84,0x0755); // M1.6 System 7.5.5 reference
     // Logical Mac desktop geometry, even though D7 suppresses menu rendering.
@@ -10922,6 +10938,7 @@ extern "C" uint8_t* aitdUserServiceDispatch(uint8_t* parked)
     if(!result || result>0x7fff) {
         loaderStop("USER SERVICE RETURN ABI",0);showLoaderStop();
     }
+    publishFileControlBlocks();
     uint32_t cleanup=result-1;
     if(s_userService.builtin && (s_userService.trap&0x0800))
         write32(s_userService.arguments-4+cleanup,s_userService.toolboxReturn);
@@ -11297,7 +11314,11 @@ static void showLoaderStop()
 
 static void installLineAVector()
 {
-    g_macLineAVectorAddress = (uint32_t)AmigaHardware::getVBR() + 0x28;
+    // WHDLoad owns the real VBR table (MMU-protected on hardware).
+    // WHDLF_EmulLineA forwards traps through the guest vector at $28.
+    // Native execution still uses the OS's current vector base.
+    g_macLineAVectorAddress = FileAccess::resloadActive()
+        ? 0x28 : (uint32_t)AmigaHardware::getVBR() + 0x28;
     Disable();
     volatile uint32_t* vector = (volatile uint32_t*)g_macLineAVectorAddress;
     g_macSavedLineAVector = *vector;

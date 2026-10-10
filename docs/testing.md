@@ -113,7 +113,14 @@ python3 tools/install-data/test_installer_script.py --release=dist/AloneInTheDar
 python3 tools/install-data/test_installer_script.py --release=dist/AloneInTheDark-0.91.lha
 python3 tools/install-data/test_amiga.py
 python3 tools/test_whdload.py --mode timed --ticks 6000 --seconds 180
+python3 tools/test_whdload.py --mode timed --cpu 68040 --mmu --ticks 6000 --seconds 180
 ```
+
+The `--mmu` test requires a 68040 or 68060 without JIT or a custom machine
+configuration. It verifies that WHDLoad actually enabled MMU translation;
+a non-MMU run cannot check protection of WHDLoad's own exception table.
+For startup and normal vector restoration, clean-build with `QUITPROBE=1`
+and run `--mode quit --cpu 68040 --mmu --ticks 6000 --seconds 180`.
 
 The Installer fixture supplies deterministic requester answers to the real Installer,
 checks all extracted hashes and installed icons, and verifies preservation of saves and

@@ -179,6 +179,13 @@ and frame/trap capture. Always pass headless video/window options and explicit l
 cfg/nvram directories. Compare matching game state, not matching frame numbers. Do not
 run Macintosh.js for the stair investigation.
 
+## WHDLoad exception vectors
+
+WHDLoad owns the real VBR table, which its MMU protects. The runtime installs
+and restores Line-A at guest address `$28` when the resload binding is active;
+the slave's `WHDLF_EmulLineA` forwards exceptions there. Native execution uses
+the current OS VBR. Never write into WHDLoad's real VBR table.
+
 ## WHDLoad input ownership
 
 The slave/runtime binding is a 16-byte `AITDWHDR` block, ABI version 2:

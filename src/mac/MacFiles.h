@@ -7,6 +7,9 @@ class MacFiles {
 public:
     enum { maxEntries=128, maxOpen=16, maxWD=16, noErr=0, fnfErr=-43,
         paramErr=-50, rfNumErr=-51, nsvErr=-35, dirNFErr=-120, unsupported=-32760 };
+    enum { fcbLength=94, fcbTableSize=2+maxOpen*fcbLength };
+    void writeFCBTable(uint8_t* table,uint32_t volumeControlBlock);
+    bool fcbTableDirty() const { return fcbTableDirty_; }
     struct Entry {
         uint32_t id,parent,dataSize,resourceSize;
         bool directory,metadataKnown,metadataDirty,resourceIsBase;
@@ -60,6 +63,7 @@ public:
     bool applicationComplete=false;
     static const int16_t volumeRef=-1,applicationWD=-32000,systemWD=(int16_t)0x8053;
 private:
+    bool fcbTableDirty_=true;
     struct WD { int16_t ref; uint32_t directory,process; };
     Entry entries_[maxEntries]; Fork forks_[maxOpen]; WD wd_[maxWD];
     uint16_t count_=0,used_=0;

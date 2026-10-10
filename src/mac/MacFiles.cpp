@@ -14,6 +14,7 @@ static bool copy(char* out,const char* in,uint32_t capacity) {
     out[i]=0;return true;
 }
 void MacFiles::reset() {
+    fcbTableDirty_=true;
     applicationComplete=false;count_=used_=0;nextID_=2;defaultRef_=0;defaultDirectory_=0;application=system=preferences=saves=data=0;
     for(uint16_t i=0;i<maxOpen;++i)forks_[i].ref=0;
     for(uint16_t i=0;i<maxWD;++i)wd_[i].ref=0;
@@ -119,6 +120,7 @@ int16_t MacFiles::planCreate(int16_t volume,uint32_t directory,const char* path,
     planned.path[n]=0;candidate=planned;return noErr;
 }
 int16_t MacFiles::setMetadata(uint32_t id,const FileMetadata::Record& metadata,bool dirty) {
+    fcbTableDirty_=true;
     Entry* e=const_cast<Entry*>(entry(id));if(!e)return fnfErr;
     if(e->directory)return unsupported;
     e->metadata=metadata;e->metadataKnown=true;e->metadataDirty=dirty;return noErr;
@@ -193,9 +195,10 @@ int16_t MacFiles::resolve(int16_t volume,uint32_t directory,const char* path,uin
     id=base;return noErr;
 }
 int16_t MacFiles::open(uint32_t id,bool resource,bool writable) {
+    fcbTableDirty_=true;
     if(!entry(id) || entry(id)->directory)return fnfErr;
     for(uint16_t i=0;i<maxOpen;++i)if(!forks_[i].ref) {
-        forks_[i]={(int16_t)(128+i),id,0,resource,writable,false,false,false};return forks_[i].ref;
+        forks_[i]={(int16_t)(2+i*fcbLength),id,0,resource,writable,false,false,false};return forks_[i].ref;
     }
     return -42; // tmfoErr
 }
@@ -278,9 +281,11 @@ int16_t MacFiles::volumeInfo(uint32_t directory,const MacVolumeBacking& backing,
     return noErr;
 }
 void MacFiles::modified(int16_t ref) {
+    fcbTableDirty_=true;
     Fork* f=const_cast<Fork*>(fork(ref));if(f)f->modified=true;
 }
 void MacFiles::flushed(uint32_t id,bool resource) {
+    fcbTableDirty_=true;
     for(uint16_t i=0;i<maxOpen;++i)if(forks_[i].ref && forks_[i].id==id && forks_[i].resource==resource)forks_[i].modified=false;
 }
 const MacFiles::Fork* MacFiles::fork(int16_t ref) const {
@@ -300,6 +305,7 @@ int16_t MacFiles::queryFork(int16_t volume,int16_t index,int16_t ref,const Fork*
     return -38; // fnOpnErr, measured on System 7.5.5 for an exhausted index.
 }
 int16_t MacFiles::close(int16_t ref) {
+    fcbTableDirty_=true;
     for(uint16_t i=0;i<maxOpen;++i)if(forks_[i].ref && forks_[i].ref==ref) { forks_[i].ref=0;return noErr; }
     return rfNumErr;
 }
@@ -373,6 +379,7 @@ int16_t MacFiles::setHierarchicalDefault(int16_t ref,uint32_t directory,const ch
 }
 
 int16_t MacFiles::seek(int16_t ref,uint16_t mode,int32_t offset,bool writing) {
+    fcbTableDirty_=true;
     Fork* f=const_cast<Fork*>(fork(ref));
     if(!f)return rfNumErr;
     if(mode>3)return unsupported;
@@ -392,6 +399,7 @@ int16_t MacFiles::seek(int16_t ref,uint16_t mode,int32_t offset,bool writing) {
     return !writing && base>size ? -39 : noErr;
 }
 int16_t MacFiles::setSize(int16_t ref,uint32_t size,bool clampPosition) {
+    fcbTableDirty_=true;
     Fork* f=const_cast<Fork*>(fork(ref));
     if(!f)return rfNumErr;
     if(!f->writable)return -61;
@@ -403,6 +411,30 @@ int16_t MacFiles::setSize(int16_t ref,uint32_t size,bool clampPosition) {
     return noErr;
 }
 void MacFiles::advance(int16_t ref,uint32_t count) {
+    fcbTableDirty_=true;
     Fork* f=const_cast<Fork*>(fork(ref));
     if(f)f->position+=count; // Caller supplies the actual bounded transfer count.
+}
+
+// Inside Macintosh: Files, FCBRec. File references are byte offsets into
+// the table, following its two-byte length header; records must not overlap.
+void MacFiles::writeFCBTable(uint8_t* table,uint32_t volumeControlBlock) {
+    fcbTableDirty_=false;
+    for(uint16_t i=0;i<fcbTableSize;++i)table[i]=0;
+    auto word=[](uint8_t* p,uint16_t v) { p[0]=v>>8;p[1]=v; };
+    auto lng=[word](uint8_t* p,uint32_t v) { word(p,v>>16);word(p+2,v); };
+    word(table,fcbTableSize);
+    for(uint16_t i=0;i<maxOpen;++i) {
+        const Fork& f=forks_[i];if(!f.ref)continue;
+        const Entry* file=entry(f.id);uint8_t* p=table+f.ref;
+        lng(p,f.id);
+        p[4]=(f.writable?1:0)|(f.resource?2:0)|(f.shared?16:0)
+            |(f.locked?32:0)|(f.modified?128:0);
+        uint32_t length=f.resource?file->resourceSize:file->dataSize;
+        lng(p+8,length);lng(p+12,length);lng(p+16,f.position);
+        lng(p+20,volumeControlBlock);
+        for(uint16_t j=0;j<4;++j)p[50+j]=file->metadata.finder[j];
+        lng(p+58,file->parent);
+        uint8_t n=0;while(file->name[n]) {p[63+n]=file->name[n];++n;}p[62]=n;
+    }
 }
