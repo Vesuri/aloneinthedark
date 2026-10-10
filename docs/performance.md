@@ -41,15 +41,15 @@ call-tree noise from stack manipulation and task switches; flat PC times are exa
 
 | PAL, `a4000-030-reference` | Book fold, steps 2–52 | First room, scenes 60–160 |
 | --- | ---: | ---: |
-| Fields / steps | 166 / 50 | 414 / 100 |
-| Time per step | 66.5 ms | 83.0 ms |
-| Original game code | 0.5 ms | 53.7 ms |
-| C2P | 24.4 ms | 7.7 ms |
-| QuickDraw fills, lines, regions | 16.8 ms | 3.0 ms |
+| Fields / steps | 132 / 50 | 414 / 100 |
+| Time per step | 52.9 ms | 82.8 ms |
+| Original game code | 0.5 ms | 53.6 ms |
+| C2P | 24.4 ms | 7.6 ms |
+| QuickDraw fills, lines, regions | 6.1 ms | 2.7 ms |
 | QuickDraw CopyBits | 4.0 ms | 4.7 ms |
 | Trap entry/dispatch, state lookups, VBL polling | 13.8 ms | 9.8 ms |
-| Other presentation | 5.4 ms | 0.3 ms |
-| CPU Chip-bus accesses (included above) | 7.8 ms | 1.9 ms |
+| Other presentation | 2.9 ms | 0.3 ms |
+| CPU Chip-bus accesses (included above) | 7.3 ms | 1.9 ms |
 
 In the first room, original game code accounts for most of the frame. The model
 renderer (`Dark3+$1D50`, entered via jump-table entry 291) includes skeleton animation,
@@ -59,13 +59,14 @@ PenMode and MoveTo now cost 36.9 and 36.8 µs respectively, including Line-A ent
 return. The direct entries retain the full register image and service pending callbacks
 and completed frames. CopyBits checks exact mask bytes against previously validated regions. Mask validation
 costs 0.70 ms per frame; total port work below `(Dark, $30A8)` costs 4.24 ms.
-Fills, lines and back-buffer synchronization are the next [remaining work](open-work.md).
 
-The book uses 8 bitplanes at FMODE=3. Its coordinate-bounded C2P stores and CPU
-back-buffer synchronization still share Chip RAM bandwidth with display DMA; measured
-CPU Chip-bus accesses average about 9.5 cycles. Fills and lines are the other large
-remaining port cost. These captures use the Kickstart CACR of $2001, with the 68030
-data cache off. Earlier profiles and before/after measurements are in Git history.
+The book uses 8 bitplanes at FMODE=3. Its coordinate-bounded C2P costs 24.4 ms per
+step and is the largest remaining port cost. Solid fills and lines use row/span loops;
+back-buffer synchronization uses bounded blitter copies. The presentation bucket
+includes the complete blitter wait, not just CPU setup. CPU Chip-bus accesses average
+about 10.3 cycles, including polling while the blitter and display share Chip RAM.
+These captures use the Kickstart CACR of $2001, with the 68030 data cache off.
+Earlier profiles and before/after measurements are in Git history.
 
 ## Steady gameplay
 

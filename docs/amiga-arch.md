@@ -45,6 +45,20 @@ changes. There is no chunky shadow compare. Scene completion checks the original
 caller's stack/frame identity, with `SCENEFRAMEVERIFY=1` available as an independent
 diagnostic. Unexpected batching states stop loudly.
 
+Solid rectangles keep clipping and region decoding outside a small row-fill loop.
+Aligned strides reuse the same byte prefix, longword count and tail on every row;
+odd strides retain the general span filler. Solid 1×1 lines clip whole spans and update
+dirty bounds once per span. Horizontal and vertical lines use the rectangle loop,
+while other slopes retain the measured fixed-point stepping and endpoint rules.
+
+Before converting new dirty rectangles, the inactive bitmap receives the previous
+frame's converted rectangles unless a new rectangle replaces them completely. With no
+cursor pixels to undo, the blitter copies the eight interleaved planes as 40-byte rows,
+in chunks of at most 127 screen rows (1016 blitter rows). Each copy is drained before
+C2P, and all drawing finishes before queueing VBI publication. Cursor-enabled/inverted
+fixtures retain the guarded CPU path. This uses only explicit rectangle coordinates;
+no framebuffer comparison computes dirty areas.
+
 ### Book-step presentation
 
 The original Dan1 decreasing/increasing book loops build one page-fold position through

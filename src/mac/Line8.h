@@ -1,6 +1,7 @@
 #ifndef AITD_LINE8_H
 #define AITD_LINE8_H
 #include "RectBounds.h"
+#include "FillRect8.h"
 namespace Line8 {
 // Integer and fraction stay separate: signed endpoints can span 65535 pixels
 // without overflowing a signed 16.16 accumulator or requiring 64-bit division.
@@ -37,6 +38,21 @@ inline bool solid(uint8_t* pixels,uint32_t capacity,uint16_t stride,
     if(y1<y0) { int16_t t=x0;x0=x1;x1=t;t=y0;y0=y1;y1=t; }
     int32_t delta=int32_t(x1)-x0;
     uint32_t dx=uint32_t(delta<0?-delta:delta),dy=uint32_t(int32_t(y1)-y0);
+    if(!dx || !dy) {
+        int32_t l=delta<0 ? x1 : x0,r=(delta<0 ? x0 : x1)+1;
+        int32_t t=y0,b=int32_t(y1)+1;
+        if(l<left)l=left;if(r>right)r=right;
+        if(t<top)t=top;if(b>bottom)b=bottom;
+        if(l<r && t<b) {
+            FillRect8::fillRows(pixels+uint32_t(t-mt)*stride+l-ml,stride,
+                                uint16_t(r-l),uint16_t(b-t),color);
+            if(drawn) {
+                const int32_t ink[4]={t,l,b,r};
+                for(unsigned i=0;i<4;++i){drawn[i*2]=uint16_t(ink[i])>>8;drawn[i*2+1]=uint8_t(ink[i]);}
+            }
+        }
+        return true;
+    }
     uint32_t slope=dy ? (dx*65536u)/dy : 0;
     uint32_t start=32768u+slope/2;
     // Mirroring a half-open shallow span reverses which edge owns a tie.
@@ -58,16 +74,15 @@ inline bool solid(uint8_t* pixels,uint32_t capacity,uint16_t stride,
         if(begin<0)begin=0;
         if(end>int32_t(dx)+1)end=int32_t(dx)+1;
         if(y>=top && y<bottom) {
-            uint8_t* out=pixels+uint32_t(y-mt)*stride;
-            for(int32_t d=begin;d<end;++d) {
-                int32_t x=int32_t(x0)+(delta<0?-d:d);
-                if(x>=left && x<right) {
-                    out[x-ml]=color;
-                    if(drawn) {
-                        if(y<inkTop)inkTop=y;if(y+1>inkBottom)inkBottom=y+1;
-                        if(x<inkLeft)inkLeft=x;if(x+1>inkRight)inkRight=x+1;
-                    }
-                }
+            // Convert the half-open distance span to coordinates before
+            // clipping. Mirroring changes the exclusive edge, not its pixels.
+            int32_t l=delta<0 ? int32_t(x0)-end+1 : int32_t(x0)+begin;
+            int32_t r=delta<0 ? int32_t(x0)-begin+1 : int32_t(x0)+end;
+            if(l<left)l=left;if(r>right)r=right;
+            if(l<r) {
+                FillRect8::fillSpan(pixels+uint32_t(y-mt)*stride+l-ml,uint32_t(r-l),color);
+                if(y<inkTop)inkTop=y;inkBottom=y+1;
+                if(l<inkLeft)inkLeft=l;if(r>inkRight)inkRight=r;
             }
         }
         first.advance(slope);last.advance(slope);

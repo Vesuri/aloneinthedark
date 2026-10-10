@@ -9,7 +9,7 @@ commands
  detach
  quit 1
 end
-tbreak dispatchMacTrap if trap==0xa8ec
+tbreak copyPortBits8
 continue
 set $dark=(unsigned long)s_segments[4].begin
 if *(unsigned long*)($dark+0x5220)!=0x600001b8

@@ -482,6 +482,23 @@ int16_t AitdScreen::presentMacFrame(const uint8_t* chunky,const uint8_t* colorTa
     for(uint16_t i=0;i<m_syncCount;++i) {
         const Planar8::Rect& r=m_syncRects[i];
         if(!Planar8::syncNeeded(r,normalized,count))continue;
+        if(!m_mouseAllowed && !m_invertActive) {
+            // Interleaved planes are contiguous 40-byte blitter rows. No VBI
+            // writes pixels or swaps buffers before queueFrame. Split below
+            // the OCS BLTSIZE height limit and drain before C2P overwrites.
+            const uint16_t widthBytes=uint16_t(r.right-r.left)/8;
+            AmigaHardware::setDMAChannels(DMAF_BLITTER,true);
+            for(int16_t y=r.top;y<r.bottom;) {
+                const uint16_t lines=(r.bottom-y>127) ? 127 : r.bottom-y;
+                const uint32_t offset=uint32_t(y)*kRowStride+r.left/8;
+                AmigaHardware::blitterCopy((uint16_t*)(m_chip+offset),(uint16_t*)(m_back+offset),
+                    widthBytes/2,lines*kPlanes,kBytesPerRow-widthBytes,kBytesPerRow-widthBytes,
+                    0,0xffff,0xffff,0xffff);
+                AmigaHardware::blitterDrain();
+                y+=lines;
+            }
+            continue;
+        }
         const uint16_t firstByte=uint16_t(r.left)/8,longs=uint16_t(r.right-r.left)/32;
         for(int16_t y=r.top;y<r.bottom;++y) {
             const int16_t row=y-m_invertTop;

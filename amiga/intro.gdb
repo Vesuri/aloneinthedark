@@ -17,7 +17,7 @@ commands
  quit 1
 end
 # The original CODE segments have been loaded by the first CopyBits.
-tbreak dispatchMacTrap if trap==0xa8ec
+tbreak copyPortBits8
 continue
 define intro_frame
  if $pc!=$intro_target || g_stageBState==3 || s_pixelsDirty || s_dirtyRectCount

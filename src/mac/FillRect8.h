@@ -31,6 +31,40 @@ inline void fillSpan(uint8_t* out,uint32_t count,uint8_t color) {
     (void)word;
 #endif
 }
+// Keep rectangle loop state separate from clipping/region decoding. For aligned
+// strides every row has the same prefix, longword count and tail.
+__attribute__((noinline)) inline void fillRows(uint8_t* row,uint16_t stride,
+                                               uint16_t width,uint16_t height,uint8_t color) {
+    if(!width || !height)return;
+#ifdef AITD_PLATFORM_AMIGA
+    if(!(stride&3)) {
+        uint16_t prefix=uint16_t(-(unsigned long)row)&3;
+        if(prefix>width)prefix=width;
+        const uint32_t word=uint32_t(color)*0x01010101UL;
+        const uint16_t longs=(width-prefix)/4,tail=(width-prefix)&3;
+        uint8_t* out;uint16_t counter;
+        --height;
+        __asm__ volatile(
+            "1: move.l %[row],%[out]\n\t"
+            "move.w %[prefix],%[n]\n\tbra.s 3f\n"
+            "2: move.b %[ink],(%[out])+\n"
+            "3: dbra %[n],2b\n\t"
+            "move.w %[longs],%[n]\n\tbra.s 5f\n"
+            "4: move.l %[ink],(%[out])+\n"
+            "5: dbra %[n],4b\n\t"
+            "move.w %[tail],%[n]\n\tbra.s 7f\n"
+            "6: move.b %[ink],(%[out])+\n"
+            "7: dbra %[n],6b\n\t"
+            "adda.l %[stride],%[row]\n\tdbra %[height],1b"
+            : [row] "+&a"(row),[height] "+&d"(height),[out] "=&a"(out),[n] "=&d"(counter)
+            : [prefix] "d"(prefix),[longs] "d"(longs),
+              [tail] "d"(tail),[ink] "d"(word),[stride] "a"(uint32_t(stride))
+            : "cc","memory");
+        return;
+    }
+#endif
+    while(height--) {fillSpan(row,width,color);row+=stride;}
+}
 // All bounds use the selected port's signed local coordinates. The returned
 // rectangle is the actual write area, for conversion to display coordinates.
 inline bool solid(uint8_t* pixels,uint32_t capacity,uint16_t stride,
@@ -53,7 +87,7 @@ inline bool solid(uint8_t* pixels,uint32_t capacity,uint16_t stride,
     if(!mask) {
         uint8_t* row=pixels+uint32_t(top-mt)*stride+left-ml;
         const uint32_t width=uint32_t(right-left);
-        for(int32_t y=top;y<bottom;++y,row+=stride)fillSpan(row,width,color);
+        fillRows(row,stride,uint16_t(width),uint16_t(bottom-top),color);
         return true;
     }
     for(int32_t y=top;y<bottom;++y) {

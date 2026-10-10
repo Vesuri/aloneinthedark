@@ -276,6 +276,21 @@ The remaining return-to-attic and version-specific glitch questions are in [open
 work](open-work.md). Initial stair observations are in [mac-stairs.md](mac-stairs.md).
 Original Macintosh.js is excluded from that work.
 
+## Solid drawing and buffer synchronization
+
+`make host-tests` includes span/rectangle guard bytes for all alignments, aligned and
+odd strides, plus signed line clipping and dirty bounds. To compare the span rasterizer
+with the original Mac, capture `tools/mac_lineto.lua` using the documented headless
+reference command, then run `tools/check_line8.py --reference LOG --status STATUS`.
+The fixture covers 80 slope, clipping and reversal cases.
+
+`BOOKPAGES=1` with `book_pages.gdb` covers the ordinary book pickup/Read route and all
+pages in both directions; `tools/check_book_pages.py` compares complete Mac page
+artwork and text. `BOOKPROFILE=1` with `book_profile.gdb` captures a fixed opening-fold
+position for `tools/check_book_profile.py`, which compares an unchanged native build,
+the candidate, the original Mac and the decoded AGA publication. Use separate capture
+folders and retain the actual runner status for every check.
+
 ## Opening frame boundaries and dirty-area audit
 
 Use a clean ordinary build with `GDBSCRIPT=frame_pacing.gdb` and the bounded
