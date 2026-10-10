@@ -188,7 +188,8 @@ different control has focus.
 For endurance and profiling, use the ordinary first-floor save with `FIRSTFLOORLOAD=1
 INTROSKIP=1`; enable `FIRSTFLOORCIRCUIT=1` or `M5AUDIT=1` only when required by the
 observer. `gameplay_sample.gdb`, `sample_gameplay.py` and
-`summarize_gameplay_profile.py` provide sampled profiles; `m5_circuit.gdb` and
+`summarize_gameplay_profile.py` provide sampled profiles; `amiga/aprof.sh` gives exact
+cycle profiles of book and first-room intervals. `m5_circuit.gdb` and
 `check_m5_audit.py` check memory, interrupts and completion. See
 [performance](performance.md) for measurement interpretation.
 

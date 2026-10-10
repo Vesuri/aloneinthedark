@@ -7,6 +7,65 @@ emulator throughput. Warp speeds up a diagnostic without being a game benchmark.
 results. The following profiles describe retained measurement builds, not universal
 frame-rate guarantees.
 
+## Cycle profiler
+
+`amiga/aprof.sh` gives exact emulated cost, not samples. It runs a private FS-UAE
+built by `tools/build_fsuae_aprof.sh`: the same barto remote-debugger fork as the shared
+ARM emulator, plus `tools/fsuae_aprof.patch`. Between `monitor aprof start` and
+`monitor aprof stop FILE`, the cycle-exact 68020/68030 loop charges every instruction's
+cycle units, including wait states, to its PC. This covers original CODE segments,
+native code, Kickstart and interrupts. The patch also times every CPU Chip-bus access.
+A call tree follows JSR/BSR/RTS and exceptions; each Line-A exception is keyed by its
+trap word. Warp does not change emulated cycles. Other CPU loops (MMU, 040/060, fast
+mode) refuse to start, and timing matches the emulator's memory model, not proof of
+hardware timing.
+
+```sh
+. amiga/env.sh
+tools/build_fsuae_aprof.sh                  # once; FSUAE_APROF overrides the result
+amiga/aprof.sh book 2 50 book               # book steps 2..52, production build
+amiga/aprof.sh gameplay 60 100 attic        # INGAME scenes 60..160, first room
+python3 tools/aprof_report.py report attic
+python3 tools/aprof_report.py annotate attic RegionRows::row
+python3 tools/aprof_report.py subtree attic 'JT291->Dark3+$1D50'
+```
+
+`aprof.sh` clean-builds the matching executable and defaults to
+`a4000-030-reference`. It stops loudly if the interval is incomplete, the room or camera
+changes, or a CODE segment moves. Outputs go to ignored `tmp/aprof/`; the report also
+writes the call tree and the hottest instructions there. Original functions are named
+`Segment+$offset` from LINK prologues and observed call targets. `JTn->` marks a
+jump-table entry, resolved from the live table. Unmatched RTS/RTE counts measure
+call-tree noise from stack manipulation and task switches; flat PC times are exact.
+
+### Reference-68030 baseline
+
+| PAL, `a4000-030-reference` | Book fold, steps 2–52 | First room, scenes 60–160 |
+| --- | ---: | ---: |
+| Fields / steps | 220 / 50 | 516 / 100 |
+| Time per step | 88.5 ms | 103.3 ms |
+| Original game code | 0.6 ms | 53.8 ms |
+| C2P | 35.9 ms | 9.1 ms |
+| QuickDraw fills, lines, regions | 16.8 ms | 3.2 ms |
+| QuickDraw CopyBits | 4.0 ms | 10.1 ms |
+| Trap entry/dispatch, state lookups, VBL polling | 19.1 ms | 21.2 ms |
+| Other presentation | 9.9 ms | 0.6 ms |
+| CPU Chip-bus accesses (included above) | 26.5 ms | 6.4 ms |
+
+In the first room, the original model renderer (`Dark3+$1D50`, entered via jump-table
+entry 291) costs 43.8 ms. Skeleton animation and vertex transform account for 16.0 ms,
+and its own edge and span fill for 14.0 ms. Its O(n²) primitive depth sort costs about
+6.7 ms, and per-primitive dispatch 4.8 ms. The same call adds 14.3 ms of port time,
+mostly from the model's 11 lines: RGBForeColor, PenMode, MoveTo and LineTo are separate
+traps. Any trap costs roughly 1,500–2,600 cycles before its own work. That includes a
+~230-cycle Chip RAM exception-vector read, since VBR is 0. CopyBits from `Dark+$30A8`
+spends 5 ms per frame revalidating mask regions.
+
+The book has 8 bitplanes at FMODE=0, so bitplane DMA takes nearly every Chip slot on
+visible lines. C2P stores and the CPU back-buffer synchronization wait an average 32
+cycles per access. With the Kickstart CACR of $2001, the 68030 data cache is off.
+Enabling it with emulated data-cache timing did not speed up the first room.
+
 ## Steady gameplay
 
 Load the ordinary first-floor checkpoint with `FIRSTFLOORLOAD=1 INTROSKIP=1`, settle for
@@ -16,7 +75,9 @@ through dirty-only publication, palette seed caching, constant-time handle valid
 common-trap fast paths, CopyBits span/stride work and constant-time scene completion.
 These are diagnostic-build rates.
 
-`sample_gameplay.py` interrupts the debugger at randomized host intervals. Use
+The older statistical sampler remains for the first-floor checkpoint; prefer the cycle
+profiler for cost attribution. `sample_gameplay.py` interrupts the debugger at
+randomized host intervals. Use
 `gameplay_sample.gdb` after connecting at MacLoader::run with the matching ELF/save.
 Pass `--gdb`, `--elf`, `--connect`, `--setup`, `--out` and `--samples 2000`, from
 `amiga/`. `summarize_gameplay_profile.py` verifies the room and assigns each PC exactly
@@ -84,14 +145,10 @@ spans 145.74 seconds: 70.28 seconds within folds and 75.46 seconds in the 14
 page-transition gaps, including the 70 seconds of deliberate reading holds.
 These are emulated-field measurements, independent of host warp speed.
 
-A separate, instrumented mid-fold sample identifies C2P as the largest cost:
-about 31% of that step, versus 11% for six solid rectangle fills and 13% for
-general trap services. Profiling adds overhead; these percentages describe that
-sample, not every page. The original code also draws/copies strips and enters
-many Macintosh traps per step. This is more work than filling a few rectangles:
-the changed 8-bit pixels must be transposed into eight AGA bitplanes, with Chip
-RAM access costs. Completed-frame pacing adds no extra wait per drawing call;
-a 15.67 MHz CPU cannot sustain 50 FPS in this measured workload.
+The [cycle profile](#reference-68030-baseline) of a fold attributes 40.6% of each step
+to C2P, half of it Chip-bus waiting. Six PaintRects take 11.7% and one fold LineTo
+6.5%; the back-buffer copy in `presentMacFrame` takes 11.0%. Original code is 0.6%.
+Completed-frame pacing adds no extra wait per drawing call.
 
 Book dirty bounds are accumulated from the min/max coordinates of actual clipped
 fills, lines and copies. At frame completion, combine those bounds **before** C2P

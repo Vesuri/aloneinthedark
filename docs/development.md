@@ -11,6 +11,9 @@ unresolved work. Implementation history and old measurements are in Git.
 - Amiga NDK headers and WHDLoad SDK includes for the slave.
 - LHa for UNIX with LH5 encoding, plus Lhasa's `lha` for independent decoding.
 - FS-UAE for Amiga tests; MAME for original Macintosh comparisons.
+- For the optional cycle profiler: Git, curl, autotools, pkg-config, glib, gettext, SDL2,
+  FreeType and libpng. `FSUAE_APROF_BUILD` and `FSUAE_APROF_DIR` move its space-free
+  build and install directories.
 - `unar` and `hfsutils` for the independent Python data extractor; the standalone
   C installer helper does not need them.
 
@@ -35,6 +38,7 @@ none are tracked or packaged. Every common input has an override:
 | `FSUAE_COMMON` | `~/.local/share/amiga/fsuae_common.sh` | Shared launcher helper |
 | `FSUAE` | `fs-uae` on PATH, with the ARM selection below | Emulator executable |
 | `FSUAE_ARM` | `~/.local/share/amiga/fs-uae-arm/fs-uae` | Native ARM emulator for fast 68030 diagnostics |
+| `FSUAE_APROF` | `~/.local/share/amiga/fs-uae-aprof/fs-uae` | Cycle-profiling emulator from `tools/build_fsuae_aprof.sh` ([performance](performance.md#cycle-profiler)) |
 | `MAME` | `mame` on PATH | Original Mac audio regression emulator |
 | `GDB` | `m68k-amiga-elf-gdb` | Native diagnostic debugger |
 | `VASM` | `~/.local/vasmm68k_mot` | Slave assembler |

@@ -103,6 +103,7 @@ host-tests:
 	@python3 tools/test_video_config.py
 	@python3 tools/test_m5_audit.py
 	@python3 tools/test_gameplay_profile.py
+	@python3 tools/test_aprof_report.py
 	@python3 tools/test_compare_frames.py
 	@python3 tools/check_aga_cursor.py
 	@python3 tools/check_cursor_invert.py
