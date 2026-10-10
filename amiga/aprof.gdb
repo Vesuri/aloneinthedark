@@ -1,5 +1,5 @@
 # Template expanded by aprof.sh; see docs/performance.md. Needs the FS-UAE
-# built by tools/build_fsuae_aprof.sh (monitor aprof start/stop).
+# built by AmigaXDev (make setup; monitor aprof start/stop).
 # @START@ is the scene start condition, @COUNTER@ the completed-step counter,
 # @COUNT@ the interval length in steps and @OUT@ the output path prefix.
 set pagination off

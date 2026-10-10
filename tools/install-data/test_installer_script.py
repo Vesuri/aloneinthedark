@@ -15,7 +15,7 @@ import tempfile
 import time
 
 ROOT=Path(__file__).resolve().parents[2]
-SHARE=Path.home()/".local/share/amiga"
+SHARE=Path(os.environ.get("AMIGA_SHARE") or Path.home()/".local/share/amiga")
 INSTALLER=Path(os.environ.get("INSTALLER43",SHARE/"Installer43/Installer"))
 WHDLOAD=Path(os.environ.get("WHDLOAD",SHARE/"WHDLoad"))/"C/WHDLoad"
 WORKBENCH=Path(os.environ.get("WORKBENCH_ADF",SHARE/"Workbenchv2.04rev37.67Workbench.adf"))
@@ -116,7 +116,7 @@ def main():
         (boot/"s/startup-sequence").write_text('CD DH0:\nStack 16384\nIconTest\nDF0:C/Assign C: DF0:C\nDF0:C/Assign LIBS: DF0:Libs\nDF0:C/Assign DEVS: DH0:devs\nPath DH0: ADD\nC:LoadWB\nInstaller SCRIPT DH0:Install APPNAME "Alone in the Dark" MINUSER NOVICE DEFUSER NOVICE LOGFILE DH2:installer.log NOPRETEND >DH2:installer-console.log\n'
             + f'IconTest\nIf EXISTS "{temp_work}"\nEcho leftover >DH2:leftover\nEndIf\nEcho done >DH2:finished\n')
         with (ROOT/"tmp/installer-script-emulator.log").open("w") as log:
-            arm=SHARE/'fs-uae-arm/fs-uae'
+            arm=Path(os.environ.get('FSUAE_ARM') or SHARE/'fs-uae-arm/fs-uae')
             emulator=os.environ.get('FSUAE',str(arm) if platform.machine()=='arm64' and arm.exists() else 'fs-uae')
             emu=subprocess.Popen([emulator,"--amiga_model=A4000","--cpu=68030","--chip_memory=2048","--fast_memory=8192",
                 "--uae_cpu_model=68030","--uae_cpu_speed=max","--uae_cpu_24bit_addressing=false","--uae_z3mem_size="+("16" if temp_path in ("RAM:","T:") else "0"),

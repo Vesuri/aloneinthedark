@@ -13,8 +13,7 @@ cd "$(dirname "$0")"
 . ./stage_original_data.sh
 . ./config.sh || exit 1
 
-FSUAE="${FSUAE:-fs-uae}"
-ROM="${1:-${KICKSTART:-$HOME/.local/share/amiga/Kickstarts/kick40063.A600}}"
+ROM="${1:-$KICKSTART}"
 [ -f "$ROM" ] || { echo "Kickstart ROM not found: $ROM  (pass as \$1 or set \$KICKSTART)"; exit 1; }
 EXE="${AITD_EXE:-out/AloneInTheDark.exe}"
 [ -f "$EXE" ] || { echo "not found: $EXE  (build first: make, or set \$AITD_EXE)"; exit 1; }
@@ -40,12 +39,14 @@ mkdir -p "$SHOTS"
 export FSEMU_SCREENSHOTS_DIR="$SHOTS"
 
 fsuae_stop_previous
-# After the exec this shell IS fs-uae, so record $$ as the emulator pid.
-fsuae_track_self
+# Sound, window and DEBUG/RECORD: fsuae_options in $FSUAE_COMMON.  The pinned machine
+# arguments come first, so they win over its defaults (FS-UAE keeps the first value).
+NTSC="$aitd_ntsc"
+fsuae_options
 # Port 0 remains the real Amiga mouse.  Port 1 must be "nothing" (FS-UAE's
 # documented spelling), otherwise its keyboard-joystick fallback consumes the
 # host cursor keys before they can become Amiga keyboard events.
-exec "$FSUAE" \
+fsuae_exec \
   "${AITD_MACHINE_ARGS[@]}" \
   --logs_dir="$PWD/$RUN/logs" --kickstart_file="$ROM" \
   --hard_drive_0="$DH0" --hard_drive_1="$DH1" \

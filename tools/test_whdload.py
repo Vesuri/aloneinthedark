@@ -19,7 +19,7 @@ import local_temp as tempfile
 import time
 
 ROOT = Path(__file__).resolve().parents[1]
-SHARE = Path.home()/'.local/share/amiga'
+SHARE = Path(os.environ.get('AMIGA_SHARE') or Path.home()/'.local/share/amiga')
 
 def main():
     p = argparse.ArgumentParser(description=__doc__)
@@ -79,7 +79,7 @@ def main():
         'DF0:C/Assign DEVS: DH0:devs\nStack 16384\nFailAt 999\nC:Avail >DH0:memory\n'
         f'CD DH1:\nWHDLoad AloneInTheDark.slave {preload}SPLASHDELAY=0 NOREQ COREDUMP {filelog}TIMEOUT={args.ticks} >DH0:result\n'
         'If WARN\nEcho failed >DH0:failed\nElse\nEcho passed >DH0:passed\nEndIf\n')
-    arm=SHARE/'fs-uae-arm/fs-uae'
+    arm=Path(os.environ.get('FSUAE_ARM') or SHARE/'fs-uae-arm/fs-uae')
     emulator=os.environ.get('FSUAE',str(arm) if platform.machine()=='arm64' and arm.exists() else 'fs-uae')
     with (base/'emulator.log').open('w') as log:
         machine = ['--amiga_model=A4000', '--cpu='+args.cpu,

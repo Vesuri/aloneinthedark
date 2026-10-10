@@ -4,7 +4,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 source amiga/env.sh
 export AMIGA_CONFIG="${AMIGA_CONFIG:-a4000-030-reference}"
-export FSUAE="${FSUAE:-$HOME/.local/share/amiga/fs-uae-arm/fs-uae}"
+export FSUAE="${FSUAE:-$FSUAE_ARM}"
 export DEBUG_PORT="${DEBUG_PORT:-24391}"
 export DIAG_RUN_DIR="${DIAG_RUN_DIR:-.run}"
 MAME="${MAME:-mame}"

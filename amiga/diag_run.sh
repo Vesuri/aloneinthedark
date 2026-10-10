@@ -18,14 +18,12 @@ AMIGA_CONFIG="${AMIGA_CONFIG:-a4000-030}"
 # unattended maximum-speed 030 checks. Fixed-clock acceptance and explicit FSUAE
 # overrides retain their selected emulator; normal interactive launch does not
 # use this branch.
-FSUAE_ARM="${FSUAE_ARM:-$HOME/.local/share/amiga/fs-uae-arm/fs-uae}"
 if [[ -z "${FSUAE:-}" && "$AMIGA_CONFIG" == a4000-030 && "$(uname -m)" == arm64 && -x "$FSUAE_ARM" ]]; then
   FSUAE="$FSUAE_ARM"
   echo 'DIAG native ARM emulator (verified pilot)'
 fi
-FSUAE="${FSUAE:-fs-uae}"
 GDB="${GDB:-m68k-amiga-elf-gdb}"
-ROM="${KICKSTART:-$HOME/.local/share/amiga/Kickstarts/kick40063.A600}"
+ROM="$KICKSTART"
 DELAY="${1:-14}"
 [[ "$DELAY" =~ ^[1-9][0-9]*$ ]] || { echo 'DIAG / INVALID DEADLINE' >&2; exit 2; }
 GDB_PID=
@@ -44,10 +42,9 @@ trap 'exit 143' TERM
 # Unattended runs default to warp. Set EXTRA_ARGS=--warp_mode=0 for real-time
 # measurements; diagnostic options precede pinned machine flags.
 EXTRA_ARGS="${EXTRA_ARGS:---warp_mode=1}"
-audio_args=(--audio_driver=dummy)
 case "${DIAG_AUDIO:-0}" in
-  0) ;;
-  1) audio_args=() ;;
+  0) SOUND=0 ;;
+  1) SOUND=1 ;;
   *) echo 'DIAG / INVALID AUDIO OPTION (use 0 or 1)' >&2; exit 2 ;;
 esac
 
@@ -60,7 +57,6 @@ case "${DIAG_LAUNCH:-shell}" in
     printf 'Stack %s\ncd dh1:\nAloneInTheDark\n' "${DIAG_STACK:-4096}" > "$DH0/s/startup-sequence"
     ;;
   workbench)
-    WORKBENCH_ADF="${WORKBENCH_ADF:-$HOME/.local/share/amiga/Workbenchv2.04rev37.67Workbench.adf}"
     [[ -f "$WORKBENCH_ADF" ]] || { echo 'DIAG / MISSING WORKBENCH_ADF' >&2; exit 1; }
     m68k-amiga-elf-gcc -g -m68020 -msoft-float -Os -nostdlib -ffunction-sections -fdata-sections \
       -Wl,--emit-relocs,--gc-sections,-Ttext=0 ../tools/quit_workbench.c \
@@ -84,10 +80,13 @@ rm -f "$RUN"/state/*.uss
 
 fsuae_claim_port || exit 1
 # Default to silent host playback; DIAG_AUDIO=1 keeps the normal audio driver.
-# Emulated Paula/DMA remains active in either mode.
-"$FSUAE" \
-  "${audio_args[@]}" "${launch_args[@]}" \
-  $EXTRA_ARGS "${AITD_MACHINE_ARGS[@]}" \
+# Emulated Paula/DMA remains active in either mode.  The window opens behind the others.
+# fsuae_options in $FSUAE_COMMON; $EXTRA_ARGS goes first, then these arguments, then its
+# defaults (FS-UAE keeps the first value).
+NTSC="$aitd_ntsc" DEBUG=1
+fsuae_options
+FSUAE_LOG="$RUN/fsuae-dbg.log" fsuae_launch \
+  "${launch_args[@]}" "${AITD_MACHINE_ARGS[@]}" \
   --logs_dir="$PWD/$RUN/logs" --kickstart_file="$ROM" \
   --hard_drive_0="$DH0" --hard_drive_1="$DH1" \
   --joystick_port_0=mouse --joystick_port_1=nothing \
@@ -95,10 +94,8 @@ fsuae_claim_port || exit 1
   --keyboard_key_up=action_key_cursor_up --keyboard_key_down=action_key_cursor_down \
   --keyboard_key_left=action_key_cursor_left --keyboard_key_right=action_key_cursor_right \
   --automatic_input_grab=0 --fullscreen=0 --window_width=720 --window_height=568 \
-  --remote_debugger=20 --remote_debugger_port="$DEBUG_PORT" --remote_debugger_trigger=AloneInTheDark \
-  --state_dir="$RUN/state" > "$RUN/fsuae-dbg.log" 2>&1 &
-FSUAE_PID=$!
-fsuae_track "$FSUAE_PID"
+  --remote_debugger_trigger=AloneInTheDark \
+  --state_dir="$RUN/state"
 echo "FS-UAE pid=$FSUAE_PID; waiting for stub..."
 for i in $(seq 1 60); do
   kill -0 "$FSUAE_PID" 2>/dev/null || { echo "FS-UAE exited early; see $RUN/fsuae-dbg.log"; exit 1; }

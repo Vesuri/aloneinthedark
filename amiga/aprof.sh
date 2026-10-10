@@ -19,8 +19,8 @@ case "$scene" in
   gameplay) flags=(INGAME=1); counter=g_macSceneFramesCompleted; condition="g_ingameStage==5 \&\& $counter>=$start" ;;
   *) usage ;;
 esac
-FSUAE_APROF="${FSUAE_APROF:-$HOME/.local/share/amiga/fs-uae-aprof/fs-uae}"
-[[ -x "$FSUAE_APROF" ]] || { echo 'APROF / MISSING EMULATOR: run tools/build_fsuae_aprof.sh or set FSUAE_APROF' >&2; exit 1; }
+FSUAE_APROF="${FSUAE_APROF:-$AMIGA_SHARE/fs-uae-aprof/fs-uae}"
+[[ -x "$FSUAE_APROF" ]] || { echo 'APROF / MISSING EMULATOR: run make setup in AmigaXDev or set FSUAE_APROF' >&2; exit 1; }
 out=../tmp/aprof
 mkdir -p "$out"
 rm -f "$out/$name".*

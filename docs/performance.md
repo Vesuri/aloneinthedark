@@ -10,8 +10,8 @@ frame-rate guarantees.
 ## Cycle profiler
 
 `amiga/aprof.sh` gives exact emulated cost, not samples. It runs a private FS-UAE
-built by `tools/build_fsuae_aprof.sh`: the same barto remote-debugger fork as the shared
-ARM emulator, plus `tools/fsuae_aprof.patch`. Between `monitor aprof start` and
+that AmigaXDev builds (`make setup`): the same barto remote-debugger fork as the shared
+ARM emulator, plus its `patches/fsuae-aprof.patch`. Between `monitor aprof start` and
 `monitor aprof stop FILE`, the cycle-exact 68020/68030 loop charges every instruction's
 cycle units, including wait states, to its PC. This covers original CODE segments,
 native code, Kickstart and interrupts. The patch also times every CPU Chip-bus access.
@@ -22,7 +22,6 @@ hardware timing.
 
 ```sh
 . amiga/env.sh
-tools/build_fsuae_aprof.sh                  # once; FSUAE_APROF overrides the result
 amiga/aprof.sh book 2 50 book               # book steps 2..52, production build
 amiga/aprof.sh gameplay 60 100 attic        # INGAME scenes 60..160, first room
 python3 tools/aprof_report.py report attic

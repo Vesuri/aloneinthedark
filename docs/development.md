@@ -17,15 +17,20 @@ unresolved work. Implementation history and old measurements are in Git.
 - `unar` and `hfsutils` for the independent Python data extractor; the standalone
   C installer helper does not need them.
 
-`amiga/env.sh` adds the toolchain under `~/.local` to PATH. Adjust PATH for another
-installation. `VASM`, `NDK` and `WHDLOAD` override slave dependencies. All launchers
-source the shared `fsuae_common.sh` for PID-scoped process and port management. These
-tools are developer dependencies, not release contents.
+AmigaXDev (`make setup`) installs the toolchain under `~/.local` and the common Amiga
+files under `~/.local/share/amiga`. `amiga/env.sh` sources its shared `env.sh`, which puts
+the toolchain on PATH and sets the variables below; `amiga/env.sh` keeps WHDLoad 19.2 for
+the slave and its tests. `VASM`, `NDK` and `WHDLOAD` override slave dependencies. All
+launchers source the shared `fsuae_common.sh` for PID-scoped process and port management,
+and launch through its `fsuae_options`/`fsuae_launch`: the pinned machine arguments come
+first, debug and diagnostic runs are silent with the window behind the others (`WINDOW=front`
+or `none` to change it), and `run.sh` plays with sound in front. These tools are developer
+dependencies, not release contents.
 
 ## Shared files and environment overrides
 
-Common Amiga files live under `~/.local/share/amiga`. Supply your own ROMs and OS files;
-none are tracked or packaged. Every common input has an override:
+Common Amiga files live under `~/.local/share/amiga`; AmigaXDev installs them from the ROM
+and OS sources you supply. None are tracked or packaged. Every common input has an override:
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
@@ -38,7 +43,7 @@ none are tracked or packaged. Every common input has an override:
 | `FSUAE_COMMON` | `~/.local/share/amiga/fsuae_common.sh` | Shared launcher helper |
 | `FSUAE` | `fs-uae` on PATH, with the ARM selection below | Emulator executable |
 | `FSUAE_ARM` | `~/.local/share/amiga/fs-uae-arm/fs-uae` | Native ARM emulator for fast 68030 diagnostics |
-| `FSUAE_APROF` | `~/.local/share/amiga/fs-uae-aprof/fs-uae` | Cycle-profiling emulator from `tools/build_fsuae_aprof.sh` ([performance](performance.md#cycle-profiler)) |
+| `FSUAE_APROF` | `~/.local/share/amiga/fs-uae-aprof/fs-uae` | Cycle-profiling emulator that AmigaXDev builds ([performance](performance.md#cycle-profiler)) |
 | `MAME` | `mame` on PATH | Original Mac audio regression emulator |
 | `GDB` | `m68k-amiga-elf-gdb` | Native diagnostic debugger |
 | `VASM` | `~/.local/vasmm68k_mot` | Slave assembler |

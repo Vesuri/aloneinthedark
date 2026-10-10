@@ -35,6 +35,7 @@ class Checks(unittest.TestCase):
             root=Path(work)
             (root/'diag_run.sh').write_text((ROOT/'amiga/diag_run.sh').read_text())
             (root/'fsuae.sh').write_text((ROOT/'amiga/fsuae.sh').read_text())
+            (root/'env.sh').write_text((ROOT/'amiga/env.sh').read_text())
             (root/'stage_original_data.sh').write_text('')
             (root/'config.sh').write_text('')
             helper=root/'shared.sh'

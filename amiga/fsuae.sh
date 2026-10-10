@@ -1,8 +1,9 @@
-# Project-scoped debugger setup, sourced by the three launchers.
+# Project-scoped debugger setup, sourced by the three launchers (from amiga/).
 # Use a project-specific default; override when running concurrent checkouts.
 DEBUG_PORT="${DEBUG_PORT:-24377}"
 export DEBUG_PORT
-. "${FSUAE_COMMON:-$HOME/.local/share/amiga/fsuae_common.sh}"
+. ./env.sh
+. "$FSUAE_COMMON"
 
 # Only our recorded process can be reclaimed. An occupied port alone does not
 # establish ownership, even when its listener is another FS-UAE process.

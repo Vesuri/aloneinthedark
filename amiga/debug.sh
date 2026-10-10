@@ -9,9 +9,8 @@ cd "$(dirname "$0")"
 . ./stage_original_data.sh
 . ./config.sh || exit 1
 
-FSUAE="${FSUAE:-fs-uae}"
 GDB="${GDB:-m68k-amiga-elf-gdb}"
-ROM="${1:-${KICKSTART:-$HOME/.local/share/amiga/Kickstarts/kick40063.A600}}"
+ROM="${1:-$KICKSTART}"
 [ -f "$ROM" ] || { echo "Kickstart ROM not found: $ROM  (pass as \$1 or set \$KICKSTART)"; exit 1; }
 [ -f out/AloneInTheDark.elf ] || { echo "build first: make"; exit 1; }
 
@@ -22,9 +21,12 @@ cp -f out/AloneInTheDark.exe "$DH1/AloneInTheDark"
 stage_aitd_original_data "$DH1"
 
 fsuae_claim_port || exit 1
-# Silence host playback; emulated Paula/DMA remains active (as in Slicks).
-"$FSUAE" \
-  --audio_driver=dummy \
+# A debug run: host playback silent (emulated Paula/DMA remains active, as in Slicks), the
+# window behind the others; fsuae_options in $FSUAE_COMMON.  The pinned machine arguments
+# come first, so they win over its defaults (FS-UAE keeps the first value).
+NTSC="$aitd_ntsc" DEBUG=1
+fsuae_options
+FSUAE_LOG="$RUN/fsuae-dbg.log" fsuae_launch \
   "${AITD_MACHINE_ARGS[@]}" \
   --logs_dir="$PWD/$RUN/logs" --kickstart_file="$ROM" \
   --hard_drive_0="$DH0" --hard_drive_1="$DH1" \
@@ -33,10 +35,8 @@ fsuae_claim_port || exit 1
   --keyboard_key_up=action_key_cursor_up --keyboard_key_down=action_key_cursor_down \
   --keyboard_key_left=action_key_cursor_left --keyboard_key_right=action_key_cursor_right \
   --automatic_input_grab=0 --fullscreen=0 --window_width=720 --window_height=568 \
-  --remote_debugger=20 --remote_debugger_port="$DEBUG_PORT" --remote_debugger_trigger=AloneInTheDark \
-  --state_dir="$RUN/state" > "$RUN/fsuae-dbg.log" 2>&1 &
-FSUAE_PID=$!
-fsuae_track "$FSUAE_PID"
+  --remote_debugger_trigger=AloneInTheDark \
+  --state_dir="$RUN/state"
 echo "FS-UAE (gdb stub) pid=$FSUAE_PID; waiting for stub..."
 
 for i in $(seq 1 60); do
