@@ -11,8 +11,10 @@ class Checks(unittest.TestCase):
     def run_launcher(self,port=None,holder=''):
         with tempfile.TemporaryDirectory(prefix='aitd-launcher-') as work:
             helper=Path(work)/'shared.sh'
-            helper.write_text('fsuae_stop_previous() { echo OWNED_PROCESS_CHECK; }\n')
-            env=os.environ.copy();env.pop('DEBUG_PORT',None)
+            # The shared launcher, with the owned-process cleanup stubbed out.
+            common=os.environ.get('FSUAE_COMMON') or str(Path.home()/'.local/share/amiga/fsuae_common.sh')
+            helper.write_text('. "$REAL_COMMON"\nfsuae_stop_previous() { echo OWNED_PROCESS_CHECK; }\n')
+            env=os.environ.copy();env.pop('DEBUG_PORT',None);env['REAL_COMMON']=common
             env.update(FSUAE_COMMON=str(helper),MOCK_HOLDER=holder)
             if port is not None:env['DEBUG_PORT']=port
             script='lsof() { printf "%s" "$MOCK_HOLDER"; }; kill() { echo FORBIDDEN_KILL; }; . ./fsuae.sh; fsuae_claim_port'
@@ -27,7 +29,7 @@ class Checks(unittest.TestCase):
     def test_busy_port_does_not_kill_listener(self):
         result=self.run_launcher(holder='44215')
         self.assertEqual(result.returncode,1)
-        self.assertIn('DEBUG PORT BUSY: 24377 (pid 44215)',result.stderr)
+        self.assertIn('debug port 24377 is busy (pid 44215); no process stopped',result.stderr)
         self.assertNotIn('FORBIDDEN_KILL',result.stdout+result.stderr)
         self.assertNotIn('gdb stub port:',result.stdout)
     def test_diagnostic_pid_record_follows_private_run_directory(self):

@@ -5,6 +5,10 @@ Fractalus!, Revs and Vette ports. The immediate source was Vette
 `src/platform/amiga/framework`; its `VETTE_*` / `vette_*` identifiers were
 renamed to `AITD_*` / `aitd_*`. Preserve upstream attribution in the source.
 
+Framework base: AmigaXDev commit 2e02af5, the canonical tree in `$AMIGA_FRAMEWORK`. Compare
+with it and take fixes from it with `python3 -m amigaxdev.framework diff "Alone in the Dark"`
+(run from the directory above this repository).
+
 Included classes are AmigaHardware, Bitmap, CopperList, Sprite, Palette and
 Util, with SASCCompat and compatibility headers. The game uses its own
 GCCRuntime and main loop; production/part/demo orchestration and tracker

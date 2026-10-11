@@ -16,7 +16,8 @@ from capstone.m68k import (M68K_OP_BR_DISP, M68K_OP_MEM, M68K_OP_IMM, M68K_OP_RE
                            M68K_AM_PCI_DISP, M68K_AM_PCI_INDEX_8_BIT_DISP,
                            M68K_AM_ABSOLUTE_DATA_SHORT, M68K_AM_ABSOLUTE_DATA_LONG,
                            M68K_AM_REGI_ADDR_DISP)
-from m68k_sweep import is_020_only
+import _amigaxdev  # noqa: F401
+from amigaxdev.mac.m68k_sweep import is_020_only
 
 md = Cs(CS_ARCH_M68K, CS_MODE_M68K_040); md.detail = True
 NAMES = {}

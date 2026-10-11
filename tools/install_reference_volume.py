@@ -26,7 +26,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from extract_original_data import unpack_payload  # noqa: E402
-from macbin import encode  # noqa: E402
+import _amigaxdev  # noqa: E402,F401
+from amigaxdev.mac.macbin import encode  # noqa: E402
 from install_layout import installed_path
 
 FOLDER = "Alone in the Dark"

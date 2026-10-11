@@ -2,7 +2,7 @@
 """Write each resource of a raw classic-Mac resource fork to its own file.
 
 Files are named TYPE_ID[_name] (for example CODE_3_Core), the layout the
-m68k_sweep.py / m68k_lowmem.py flow scans and the Ghidra import expect.
+m68k_sweep / m68k_lowmem.py flow scans and the Ghidra import expect.
 Output is derived from the original game: keep it under ignored tmp/.
 
     python3 tools/dump_resources.py "tmp/runtime-data/Alone In The Dark" tmp/segments CODE

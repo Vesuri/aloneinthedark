@@ -5,6 +5,9 @@
 ARCHIVE ?= tmp/AloneInTheDark.img_.sit
 RUNTIME_DATA ?= tmp/runtime-data
 SEGMENTS ?= tmp/segments
+# AmigaXDev's shared Python package (the Mac helpers: python3 -m amigaxdev.mac.<tool>).
+AMIGA_PYLIB ?= $(HOME)/.local/share/amiga/pylib
+MACTOOL = PYTHONPATH='$(AMIGA_PYLIB)' python3 -m amigaxdev.mac.
 
 .PHONY: all help todo amiga extract-original-data segments m68k-sweep lowmem-scan entrypoints-check trap-census host-tests mac-trap-map regression a5world-check lowmem-check
 
@@ -48,14 +51,14 @@ segments:
 	@python3 tools/dump_resources.py '$(RUNTIME_DATA)/Alone In The Dark' '$(SEGMENTS)' CODE
 
 m68k-sweep:
-	@cd tools && python3 m68k_sweep.py --selftest >/dev/null && python3 m68k_sweep.py '../$(SEGMENTS)'
+	@$(MACTOOL)m68k_sweep --selftest >/dev/null && $(MACTOOL)m68k_sweep '$(SEGMENTS)'
 
 lowmem-scan:
 	@python3 tools/m68k_lowmem.py '$(RUNTIME_DATA)/Alone In The Dark'
 
 # cxmon names are generated locally, never vendored.
-tmp/trap_names.lua: tools/gen_trap_names.py
-	@python3 tools/gen_trap_names.py
+tmp/trap_names.lua:
+	@$(MACTOOL)gen_trap_names
 
 trap-census: tmp/trap_names.lua
 	@python3 tools/trap_census.py --selftest
@@ -166,7 +169,7 @@ host-tests:
 	@python3 tools/mac_trap_report.py --selftest
 	@python3 tools/trap_census.py --selftest
 	@python3 tools/m68k_lowmem.py --selftest
-	@python3 tools/m68k_sweep.py --selftest
+	@$(MACTOOL)m68k_sweep --selftest
 
 entrypoints-check:
 	@python3 tools/code0_entrypoints.py '$(SEGMENTS)/CODE_0' --check ghidra_scripts/entrypoints.csv

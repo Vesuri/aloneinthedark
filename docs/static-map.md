@@ -89,7 +89,7 @@ with CODE 1's own path.
 
 ## CPU requirements
 
-`tools/m68k_sweep.py` (recursive descent from all 468 entries, dual 68040/68000
+`make m68k-sweep` (AmigaXDev's `amigaxdev.mac.m68k_sweep`; recursive descent from all 468 entries, dual 68040/68000
 decode, 74.1% of CODE bytes reached) finds **319 68020-only instructions on
 reachable paths** in 12 of the 13 segments: `EXTB.L`, `MULU.L`, scaled-index and
 memory-indirect addressing, and bitfield instructions. The game requires a 68020

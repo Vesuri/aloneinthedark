@@ -169,10 +169,14 @@ make mac-trap-map
 ```
 
 Original-byte analyses require the extracted resource fork and segments. Trap names are
-generated from cxmon; `gen_trap_names.py` accepts a local `mon_atraps.h` for offline
-use. `disasm/symbols.csv` and `ghidra_scripts/entrypoints.csv` are curated; generated
+generated from cxmon by `make tmp/trap_names.lua` (AmigaXDev's
+`python3 -m amigaxdev.mac.gen_trap_names`, which accepts a local `mon_atraps.h` for offline
+use). `disasm/symbols.csv` and `ghidra_scripts/entrypoints.csv` are curated; generated
 disassembly stays local. Ghidra scripts use the shared installation through ignored
-`tools/ghidra`.
+`tools/ghidra`. The Mac scripts are AmigaXDev's (`MacMarkEntries`, which reads this repo's
+`ghidra_scripts/entrypoints.csv`, `MacApplyNames`, `MacDumpTraps`, `DumpCallGraph`,
+`ExportListing`): start the headless analyzer from the repository root with
+`-scriptPath "ghidra_scripts;$AMIGA_GHIDRA_SCRIPTS"`.
 
 Use [mac-reference-loop.md](mac-reference-loop.md) for MAME setup, deterministic input
 and frame/trap capture. Always pass headless video/window options and explicit local

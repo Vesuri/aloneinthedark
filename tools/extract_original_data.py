@@ -81,7 +81,7 @@ def unpack_payload(archive: Path, scratch: Path, visible: bool) -> Path:
     """Unpack the installer payload into scratch and return its root folder.
 
     visible=True writes resource forks as AppleDouble `*.rsrc` files; False
-    writes native macOS forks and Finder info (what tools/macbin.py reads).
+    writes native macOS forks and Finder info (what amigaxdev.mac.macbin reads).
     """
     for tool in ("unar", "lsar", "xattr", "hmount", "hcopy", "humount"):
         if not shutil.which(tool):
