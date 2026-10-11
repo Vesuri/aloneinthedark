@@ -58,9 +58,9 @@ has SHA-256 `0bc8cf92d9e21d071118abd77f76b13dc77bfa4f2df2c50a8ed51a50b24741d7`. 
 a default location must preserve the input bytes, verified by hash.
 
 Use repo-relative paths for project inputs and outputs. Do not put personal home paths
-or paths into other checkouts in tracked files. Other projects may be cited as, for
-example, Vette `docs/amiga-arch.md`. Template credits name the template, not its
-installation location.
+or paths into other checkouts in tracked files. Cite another project by name only (for
+example, Vette's architecture document); generic lessons are cited from AmigaXDev's docs.
+Template credits name the template, not its installation location.
 
 ## Build and original data
 

@@ -44,4 +44,5 @@ describe measured contracts and reusable fixtures.
 - [Cursor](cursor.md): visibility, hardware sprites and inversion.
 - [Return-to-attic investigation](mac-stairs.md): evidence supporting MAC.1.
 
-For inherited runtime rationale, see Vette `docs/amiga-arch.md`.
+For inherited runtime rationale, see Vette's architecture document; the generic rules for
+running original 68k code natively are in AmigaXDev `docs/playbooks/new-port-playbook.md` §7.

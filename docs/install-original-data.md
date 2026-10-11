@@ -72,8 +72,8 @@ collecting the loft items. That is a timing-sensitive original bug for the port 
 reproduce or pace around, not a reason to change game logic.
 
 A release installer will need the same chain without `unar`/`hfsutils`. Vette's
-standalone helper (Vette `tools/install-data`) already decodes StuffIt method 13 and is
-the intended starting point.
+standalone install-data helper already decodes StuffIt method 13 and is the intended
+starting point.
 
 Fresh and repeated extraction preserve the original fork bytes and archive-derived
 Finder metadata. Migration removes an old root ListBod2 file and its `.finfo` only when
