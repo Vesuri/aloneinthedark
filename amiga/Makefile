@@ -851,3 +851,8 @@ endif
 ifeq ($(STACKPROBE),1)
 PROBE_SYMS += g_stackReport
 endif
+
+.PHONY: shared-runtime-check
+shared-runtime-check:
+	@cd .. && shasum -a 256 -c manifest/shared-runtime.sha256
+$(OBJECTS): | shared-runtime-check

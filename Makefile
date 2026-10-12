@@ -81,7 +81,7 @@ a5world-check:
 lowmem-check:
 	@python3 tools/check_lowmem.py --resource "$(RUNTIME_DATA)/Alone In The Dark"
 
-host-tests:
+host-tests: shared-runtime-check
 	@python3 tools/times14_bitmap.py --check
 	@python3 tools/build_overlay.py --check
 	@python3 tools/check_bitmap_font.py
@@ -192,3 +192,7 @@ release:
 	@cd . && . amiga/env.sh && python3 tools/release_check.py --package-only
 release-check:
 	@cd . && . amiga/env.sh && python3 tools/release_check.py
+
+.PHONY: shared-runtime-check
+shared-runtime-check:
+	@shasum -a 256 -c manifest/shared-runtime.sha256
