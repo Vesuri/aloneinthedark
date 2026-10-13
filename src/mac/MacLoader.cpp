@@ -473,6 +473,7 @@ static uint8_t s_textEditScrap[1];
 static uint8_t* s_textEditScrapMaster;
 static uint8_t s_trapBuiltins[4096][6] __attribute__((aligned(4)));
 static uint8_t* s_trapAddresses[4096];
+static bool s_trapNeedsPublication[4096];
 static uint8_t* s_qdThePort;
 static bool s_quickGrafReady=false,s_quickTrapsReady=false;
 static void refreshQuickTrapEntries();
@@ -6463,7 +6464,9 @@ static void updateQuickTrap(uint16_t trap);
 
 static void setTrapAddress(uint16_t trap, uint8_t* address)
 {
-    s_trapAddresses[trapIndex(trap)] = address;
+    uint16_t index=trapIndex(trap);
+    s_trapAddresses[index] = address;
+    s_trapNeedsPublication[index] = true;
     updateQuickTrap(trap);
 }
 
@@ -6473,6 +6476,14 @@ static uint32_t routePatchedTrap(uint16_t trap, uint32_t* regs,
     uint16_t index = trapIndex(trap);
     uint8_t* address = s_trapAddresses[index];
     if (!address || address == s_trapBuiltins[index]) return 0;
+    // CODE 1 ($43e-$4a8) installs LoadSeg/UnloadSeg/ExitToShell entries before
+    // writing their trampoline instructions. Publish on first dispatch, after
+    // those writes, rather than at SetTrapAddress or on every subsequent call.
+    // Copyback data must reach memory before instruction fetch sees the entry.
+    if(s_trapNeedsPublication[index]) {
+        CacheClearU();
+        s_trapNeedsPublication[index]=false;
+    }
     uint32_t returnPC = read32(frame + 2) + 2;
     write32(frame + 2, (uint32_t)address - 2);
     if (trap & 0x0800) {
@@ -11158,6 +11169,7 @@ bool MacLoader::prepareResourceForks(const ResourceForks::Source& application,co
         write16(s_trapBuiltins[i] + 2, 0xa000 | i);
         write16(s_trapBuiltins[i] + 4, 0x4e75);
         s_trapAddresses[i] = 0;
+        s_trapNeedsPublication[i] = false;
     }
     for(uint16_t i=0;i<4096;++i)g_macQuickTraps[i]=0;
     s_quickGrafReady=s_quickTrapsReady=false;

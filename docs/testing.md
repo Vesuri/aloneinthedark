@@ -207,6 +207,8 @@ python3 tools/test_whdload.py --mode walking \
 ```
 
 The fixture uses the original Load interface; it never rewrites actor state.
+Its Enter retry waits for at least 10 KB of saved-state reads: the 5,172-byte
+preview alone must not advance the load-completion checkpoint.
 Its trace records ticks, completed scenes, character, coordinates, heading,
 animation, floor, room, track mode/position, vertical step and held cursor keys.
 It requires a loaded automatic stair state, zero movement input throughout and
@@ -218,6 +220,40 @@ Clean-build between flag sets. `--check-stack` additionally needs `STACKPROBE=1`
 diagnostic executable with a matching observer, not the production build for a
 probe-only completion check. WHDLoad tests keep their own volumes and core dumps under
 `tmp/whdload-test-*` and terminate only their emulator process.
+
+### WHDLoad cache validation
+
+Use the corrected AmigaXDev `FSUAE_MMU` build for copyback tests. The older
+FS-UAE MMU write-ATC bug can give Chip stores the wrong cache attributes; Wing
+Commander's CPU/DMA comparison established the correction. `--data-cache`
+selects that shared build (an explicit `FSUAE` wins), enables the compatible
+MMU core, data-cache emulation and `full+indirect` UAE board, then verifies the
+saved emulator configuration and both guest CACR enable bits. `--mmu` alone
+does **not** enable data-cache emulation. These are functional checks, not a
+calibrated 68040 benchmark.
+
+```sh
+. amiga/env.sh
+# Clean-build the executable flags from the mode table above before each run.
+make slave
+python3 tools/test_whdload.py --mode stairs --cpu 68040 --mmu --data-cache \
+  --ticks 10000 --seconds 240
+```
+
+Run Escape, saved automatic walking, save/load and a fresh process loading that
+save with the same cache flags. The monster audit uses `MONSTERAUDIT=1`
+and `--mode quit --startup-prefs --no-filelog --ticks 30000 --seconds 600`;
+its report must pass `check_monster_audit.py` with both CACR values `$80008000`.
+Run `C2PVERIFY=1` separately: its full-pixel oracle can change the encounter timing
+and invalidate the monster audit's scene-200 starting state. The oracle checks
+CPU-visible planar pixels, not an independent physical DMA view. Real-hardware
+visual acceptance remains separate.
+
+A regression control is the same corrected emulator with `--data-cache --no-cache`:
+it requires both guest enable bits clear. Before trap-entry publication was added,
+the cached production startup crashed before loading Core; this control passed.
+Do not use debugger stops in place of these uninterrupted runs, since cache flushes
+around stops can hide publication bugs.
 
 `make release-check` runs host/extractor tests, native and WHDLoad production startup,
 two clean executable builds, independent LHA CRC/member/icon/version validation and

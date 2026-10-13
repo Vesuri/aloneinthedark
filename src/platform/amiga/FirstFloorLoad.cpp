@@ -87,9 +87,10 @@ void aitdInputFirstFloorLoad(uint32_t ticks,uint32_t scenes,const uint8_t* world
   key(0x44,true);loadScenes=scenes;
  } else if(stage==3) {
   if(elapsed<8)return;
-  // Preview/resource disk windows can clear an injected edge. Retry ordinary
-  // press/release pairs until Load reads data, without an assumed draw time.
-  if(!g_firstFloorLoadReadBytes) {key(0x44,(elapsed%60)>=30);return;}
+  // Preview/resource disk windows can clear an injected edge. The preview
+  // itself reads 5172 bytes; it must not count as the saved-state load. Retry
+  // ordinary press/release pairs until the same >10 KB gate used below.
+  if(g_firstFloorLoadReadBytes<10000) {key(0x44,(elapsed%60)>=30);return;}
   key(0x44,false);
  } else {
 #ifdef AITD_STAIRS_SAVE

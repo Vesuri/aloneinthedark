@@ -34,16 +34,13 @@ are in that document; preserve matching game state when comparing changes.
   death/cleanup, low-memory and fragmented-heap regressions must pass with no new
   allocation failures. Real-Amiga benchmarks remain deferred.
 
-- **CACHE.1 Enable the 68040 data cache under WHDLoad.**
-  `whdload/AloneSlave.s` uses kickemu `CACHECHIP`, which enables only the instruction
-  cache. Use `CACHE` (Chip not cacheable, Fast copyback, instruction and data caches).
-  Audit code loading and the FlushInstructionCache/HWPriv path, CPU-written DMA buffers
-  and any CPU reads of blitter-written memory. FS-UAE does not model the benefit; only
-  hardware can measure it.
+- **CACHE.1 Verify WHDLoad copyback caches on hardware — deferred by the owner.**
+  Run the [cache validation](testing.md#whdload-cache-validation) on the owner's
+  68040 with both caches enabled. Record the effect against PERF.3 and inspect a
+  complete monster-to-death sequence for display/audio corruption.
 
-  *Done when* the WHDLoad smoke, stairs, walking, save/load and Escape modes pass, the
-  owner's PERF.3 run shows the effect, and no corruption appears in a complete
-  monster-to-death sequence on hardware.
+  *Done when* the hardware performance comparison and complete visual/audio run
+  are recorded. Corrected FS-UAE functional checks do not satisfy this hardware gate.
 
 - **CACHE.2 Document and check plain-AmigaOS cache state.**
   Record that the 68040/68060 library from SetPatch must enable both caches, and check

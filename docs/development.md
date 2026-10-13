@@ -42,6 +42,7 @@ and OS sources you supply. None are tracked or packaged. Every common input has 
 | `FSUAE_COMMON` | `~/.local/share/amiga/fsuae_common.sh` | Shared launcher helper |
 | `FSUAE` | `fs-uae` on PATH, with the ARM selection below | Emulator executable |
 | `FSUAE_ARM` | `~/.local/share/amiga/fs-uae-arm/fs-uae` | Native ARM emulator for fast 68030 diagnostics |
+| `FSUAE_MMU` | `~/.local/share/amiga/fs-uae-mmu-fixed/fs-uae` | Corrected 040/060 MMU/cache emulator for WHDLoad `--data-cache` checks |
 | `FSUAE_APROF` | `~/.local/share/amiga/fs-uae-aprof/fs-uae` | Cycle-profiling emulator that AmigaXDev builds ([performance](performance.md#cycle-profiler)) |
 | `MAME` | `mame` on PATH | Original Mac audio regression emulator |
 | `GDB` | `m68k-amiga-elf-gdb` | Native diagnostic debugger |
@@ -219,3 +220,26 @@ For the debugger-free monster encounter diagnostic, clean-build with
 The [performance workflow](performance.md#debugger-free-hardware-audit) covers
 isolated preferences, emulator checks, hardware launch and report decoding.
 Real-Amiga benchmarks are deferred; use emulator runs only to validate collection.
+
+## WHDLoad code and DMA cache policy
+
+The slave requests kickemu `CACHE`: Chip memory noncacheable, Fast/slave memory
+copyback, both CPU caches enabled. User WHDLoad cache overrides remain effective.
+Code publication uses Exec `CacheClearU`; kickemu routes its cache-control path
+to `resload_FlushCache`. The initial CODE/A5/trap stubs are published before entry.
+The original segment loader flushes after relocation and jump-table updates through
+`FlushInstructionCache` (`$A0BD`); supported `HWPriv` flush selectors use the same
+service. The executable Jnth resource is also flushed after MoveHHi.
+
+CODE 1 installs three trap addresses at `(CODE 1, $43e–$4a8)` before writing the
+LoadSeg, UnloadSeg and ExitToShell trampolines. The dispatcher therefore publishes
+a newly installed entry once, immediately before its first call, after those writes.
+Flushing only at SetTrapAddress is too early. Original instructions and registers
+remain unchanged; repeated calls do not add a flush.
+
+All Paula sample/stream buffers, bitplanes, copper lists and sprite buffers use
+`MEMF_CHIP`, so their CPU writes are visible to DMA under this policy. Planar
+synchronization drains the blitter before C2P or CPU reads reuse its destination.
+Fast-memory chunky pixels and software blitter-queue entries are CPU-only. No
+per-frame cache flush is needed. See [cache validation](testing.md#whdload-cache-validation)
+for the emulator gate; hardware performance and corruption checks remain deferred.

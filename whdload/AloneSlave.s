@@ -10,7 +10,7 @@ NUMDRIVES = 0
 WPDRIVES = 0
 BLACKSCREEN
 BOOTDOS
-CACHECHIP
+CACHE                           ; Chip uncached; Fast copyback; instruction/data caches
 HDINIT
 SEGTRACKER
 NO68020                         ; portable kickemu patches; game still needs 020

@@ -37,6 +37,7 @@ def main():
     p.add_argument('--ticks', type=int, default=1500, help='WHDLoad timeout in PAL fields')
     p.add_argument('--cpu', default='68030')
     p.add_argument('--mmu', action='store_true', help='enable the 68040/68060 MMU and verify WHDLoad uses it')
+    p.add_argument('--data-cache', action='store_true', help='exercise corrected 040/060 MMU data-cache emulation and verify guest cache state')
     p.add_argument('--machine-config', type=Path, help='FS-UAE hardware settings only; guest disks and host paths stay isolated')
     p.add_argument('--z3-memory-mb', type=int, choices=(0,16,32,64,128), default=0, help='additional Zorro III RAM for cache/timing comparisons')
     p.add_argument('--jit', action='store_true', help='enable JIT for explicit reproduction runs')
@@ -52,6 +53,8 @@ def main():
         p.error('--startup-prefs requires a gameplay mode')
     if args.mmu and (args.cpu not in ('68040', '68060') or args.jit or args.machine_config):
         p.error('--mmu requires --cpu 68040 or 68060, without JIT or machine-config')
+    if args.data_cache and (not args.mmu or args.mode == 'smoke'):
+        p.error('--data-cache requires --mmu and the game slave')
     if args.mode == "walking" and not args.save_source:
         p.error("walking requires --save-source")
     if args.rtb is None:
@@ -93,12 +96,19 @@ def main():
         f'CD DH1:\nWHDLoad AloneInTheDark.slave {preload}SPLASHDELAY=0 NOREQ COREDUMP {filelog}TIMEOUT={args.ticks} >DH0:result\n'
         'If WARN\nEcho failed >DH0:failed\nElse\nEcho passed >DH0:passed\nEndIf\n')
     arm=Path(os.environ.get('FSUAE_ARM') or SHARE/'fs-uae-arm/fs-uae')
-    emulator=os.environ.get('FSUAE',str(arm) if platform.machine()=='arm64' and arm.exists() else 'fs-uae')
+    if args.data_cache:
+        arm=Path(os.environ.get('FSUAE_MMU') or SHARE/'fs-uae-mmu-fixed/fs-uae')
+        if not arm.is_file() and not os.environ.get('FSUAE'):
+            p.error('Install AmigaXDev FSUAE_MMU or select a corrected emulator with FSUAE')
+    emulator=os.environ.get('FSUAE',str(arm) if (args.data_cache or platform.machine()=='arm64') and arm.exists() else 'fs-uae')
     with (base/'emulator.log').open('w') as log:
         machine = ['--amiga_model=A4000', '--cpu='+args.cpu,
             '--uae_cpu_model='+args.cpu.split('-')[0], '--uae_cpu_24bit_addressing=false','--uae_mmu_model='+ (args.cpu if args.mmu else '0'),'--uae_fpu_model=0',
             '--uae_z3mapping=uae',
             '--jit_compiler='+str(int(args.jit)), '--chip_memory=2048', '--fast_memory=8192','--uae_z3mem_size='+str(args.z3_memory_mb),'--uae_a3000mem_size=0','--uae_cpu_speed=max']
+        if args.data_cache:
+            machine += ['--uae_cpu_compatible=true', '--uae_cpu_data_cache=true',
+                        '--uae_cpu_cycle_exact=false', '--uae_uaeboard=full+indirect']
         if args.machine_config:
             config=configparser.ConfigParser();config.read(args.machine_config)
             hardware={'amiga_model','cpu','cpu_speed','cpu_frequency','jit_compiler','chip_memory','fast_memory','zorro_iii_memory','graphics_card','graphics_memory','ntsc_mode','accuracy'}
@@ -122,6 +132,17 @@ def main():
             if args.mmu:
                 assert re.search(r'\bTC=8000\b', report), 'WHDLoad MMU translation not active: '+report
                 print('PASS: WHDLoad MMU translation enabled')
+            if args.data_cache:
+                config=(base/'logs/debug.uae').read_text()
+                for setting in ('cpu_compatible=true', 'cpu_data_cache=true',
+                                'cpu_cycle_exact=false', 'uaeboard=full+indirect'):
+                    assert setting in config.splitlines(), 'Inactive cache model: '+setting
+                cacr=re.search(r'\bCACR=([0-9A-Fa-f]+)\b', report)
+                expected_caches=0 if args.no_cache else 0x80008000
+                assert cacr and int(cacr[1],16)&0x80008000 == expected_caches, 'Unexpected guest cache state: '+report
+                policy=re.search(r'\bsetcpu=([0-9A-Fa-f]+)\b', report)
+                assert policy and int(policy[1],16)&0x33f == 0x33d, 'Expected CACHE slave policy: '+report
+                print('PASS: emulated data cache active; guest CACR='+cacr[1]+'; Chip NC, Fast copyback requested')
             if args.mode in ('timed', 'stairs', 'escape', 'walking'):
                 assert 'DEBUG caused.' in report, report + output
                 if args.mode == 'timed':
