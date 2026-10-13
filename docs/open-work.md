@@ -22,27 +22,19 @@ are in that document; preserve matching game state when comparing changes.
   *Done when* both hardware results are recorded and later items quote their 68040
   effect against them. Emulator smoke tests do not satisfy this hardware gate.
 
-- **HEAP.2 Finish MoveHHi/song-start acceptance.**
-  Resolve the remaining 0.3-second song-start target using the
-  [current profile](performance.md#monster-to-death-cycle). Distinguish full frame
-  intervals from native audio preparation; resource reads, MIDI preparation and PCM
-  conversion contribute beyond heap movement. Prince of Persia 2 adoption is
-  deferred by the owner while work there is ongoing; retain the shared AmigaXDev
-  implementation for later adoption together with HEAP.1.
+- **HEAP.3 Reduce native song-start preparation cost.**
+  Optimize `startNativeSong`, including resource reads, `loadSongSample`, MIDI
+  preparation and `SongVoice::convert`, using the
+  [per-song baseline](performance.md#monster-to-death-cycle). Measure its complete
+  inclusive native preparation cost; exclude original game instructions and unrelated
+  drawing/presentation from the target. Preserve on-demand loading, original song
+  events, sample bytes, interrupt timing and resource ownership.
 
-  *Done when* MoveHHi matches the Macintosh reference cases, copying only the target
-  where the reference permits. Heap, `m5_low_memory`, `song136.gdb`,
-  `gameplay_music.gdb`, `gameplay_fight.gdb`, the death route and fragmented-heap
-  regressions pass. Each monster-profile song start costs ≤ 0.3 s, with no new
-  allocation failures. Do not close this item on the heap speedup alone.
-
-- **HEAP.3 Measure the remaining song-start cost.**
-  After HEAP.2, attribute `startNativeSong` (`loadSongSample`, `SongVoice::convert`,
-  resource reads). Queue a separate item with its own acceptance if one start still
-  exceeds 0.5 s.
-
-  *Done when* the remaining cost per song is recorded and either is ≤ 0.5 s or has a
-  queued item.
+  *Done when* each of songs 136, 132 and 131 takes ≤ 0.3 s in `startNativeSong`
+  on the pinned reference-68030 monster route, with repeatable event-boundary profiles.
+  Report full frame intervals separately. Song playback, gameplay music/fight,
+  death/cleanup, low-memory and fragmented-heap regressions must pass with no new
+  allocation failures. Real-Amiga benchmarks remain deferred.
 
 - **CACHE.1 Enable the 68040 data cache under WHDLoad.**
   `whdload/AloneSlave.s` uses kickemu `CACHECHIP`, which enables only the instruction
@@ -137,7 +129,9 @@ are in that document; preserve matching game state when comparing changes.
   logical size already matches the allocation. The latter walks the entire
   zone. Inspect the reached `SetHandleSize`/`SetPtrSize` and internal region
   callers; measure their frequency and cost before changing the allocator.
-  Reuse and consolidate the fix with Prince of Persia 2 through AmigaXDev.
+  Reuse and consolidate the fix through AmigaXDev. Prince of Persia 2 adoption,
+  including the shared MoveHHi implementation, is deferred by the owner while
+  work there is ongoing.
 
   *Done when* unchanged-size requests preserve errors, handle state, addresses,
   payloads and heap invariants without a whole-zone walk; grow/shrink and
