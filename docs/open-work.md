@@ -26,8 +26,9 @@ are in that document; preserve matching game state when comparing changes.
   Resolve the remaining 0.3-second song-start target using the
   [current profile](performance.md#monster-to-death-cycle). Distinguish full frame
   intervals from native audio preparation; resource reads, MIDI preparation and PCM
-  conversion contribute beyond heap movement. Adopt the shared allocator fix in
-  Prince of Persia 2 when its active worktree is clear, together with HEAP.1.
+  conversion contribute beyond heap movement. Prince of Persia 2 adoption is
+  deferred by the owner while work there is ongoing; retain the shared AmigaXDev
+  implementation for later adoption together with HEAP.1.
 
   *Done when* MoveHHi matches the Macintosh reference cases, copying only the target
   where the reference permits. Heap, `m5_low_memory`, `song136.gdb`,
