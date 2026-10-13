@@ -21,6 +21,22 @@ Each item gives the **goal**, then the scope, then *done when*: the evidence req
   fragmented-heap regressions pass, and matched native workloads on pinned
   CPU configurations establish the effect without changing original game state.
 
+## VBL service contracts
+
+- **VBL.1 Verify dormant countdowns and callback auto-removal.**
+  `scheduleVBLTask` decrements only positive counts and dispatches zero/negative
+  counts; `aitdVBLCallbackComplete` leaves a callback's zero-count task queued.
+  Prince of Persia 2's System 7.5.5 fixture instead observes modulo-16-bit
+  countdowns, dispatch only on reaching zero, and removal when a callback
+  returns without rearming. Reproduce these cases on this game's Macintosh
+  reference before changing the service; the shared `VBLPasses` helper only
+  owns queue-pass bookkeeping, not these task semantics.
+
+  *Done when* paired original/native fixtures cover initial counts 1, 2, 0 and
+  -1, rearming, automatic removal, subsequent `VRemove` results and queued
+  passes; confirmed deviations are corrected through the shared workflow,
+  callback ABI checks pass, and existing gameplay/VBL latency gates pass.
+
 ## AITD 1 glitch audit
 
 - **GLITCH.1 Check the Amiga port against the AITD 1 material in the
