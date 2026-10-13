@@ -5,6 +5,7 @@
 #include <hardware/dmabits.h>
 
 #include "MacLoader.h"
+#include "VBLPasses.h"
 #include "LowMemory.h"
 #include "MacHeap.h"
 #include "BitmapFont.h"
@@ -643,12 +644,7 @@ static void markDirty(const uint8_t* rectangle)
 // would give Line-A traps the wrong exception/USP context.
 static uint8_t* s_vblTasks[8];
 static uint16_t s_vblTaskCount;
-static uint16_t s_vblPassIndex;
-static uint16_t s_vblPassLimit;
-static uint32_t s_vblPendingTicks;
-static bool s_vblPassActive;
-static uint32_t s_vblLastTick;
-static uint32_t s_vblDispatchTick;
+static VBLPasses s_vblPass;
 
 #ifdef AITD_PROBE
 static uint32_t probeNonzeroBytes(const uint8_t* data, uint16_t bytes)
@@ -6569,12 +6565,7 @@ static int16_t installVBLTask(uint8_t* task)
     if (s_vblTaskCount) write32(s_vblTasks[s_vblTaskCount - 1], (uint32_t)task);
     s_vblTasks[s_vblTaskCount++] = task;
     if (firstTask) {
-        s_vblPassIndex = 0;
-        s_vblPassLimit = 0;
-        s_vblPendingTicks = 0;
-        s_vblPassActive = false;
-        s_vblLastTick = g_macTicks;
-        s_vblDispatchTick = g_macTicks;
+        s_vblPass.reset(g_macTicks);
     }
     return 0;
 }
@@ -6601,62 +6592,42 @@ static int16_t removeVBLTask(uint8_t* task)
         write32(s_vblTasks[i], i + 1 < s_vblTaskCount ? (uint32_t)s_vblTasks[i + 1] : 0);
     write32(task, 0);
 
-    if (s_vblPassActive) {
-        if (s_vblPassIndex > index) --s_vblPassIndex;
-        if (s_vblPassLimit > index) --s_vblPassLimit;
-        if (s_vblPassIndex >= s_vblPassLimit) s_vblPassActive = false;
-    }
+    s_vblPass.removed(index);
     if (!s_vblTaskCount) {
-        s_vblPassIndex = 0;
-        s_vblPassLimit = 0;
-        s_vblPendingTicks = 0;
-        s_vblPassActive = false;
-        s_vblLastTick = g_macTicks;
-        s_vblDispatchTick = g_macTicks;
+        s_vblPass.reset(g_macTicks);
     }
     return 0;
 }
 
 static void scheduleVBLTask()
 {
-    uint32_t now = g_macTicks;
-    uint32_t elapsed = now - s_vblLastTick;
-    if (elapsed) {
-        s_vblLastTick = now;
-        uint32_t room = 0xffffffffu - s_vblPendingTicks;
-        s_vblPendingTicks += elapsed < room ? elapsed : room;
-    }
+    s_vblPass.observe(g_macTicks);
 
     if (!s_vblTaskCount) {
-        s_vblPendingTicks = 0;
-        s_vblPassActive = false;
+        s_vblPass.pending = 0;
+        s_vblPass.active = false;
         if (g_macTicksAddress) write32((uint8_t*)g_macTicksAddress, g_macTicks);
         return;
     }
     if (g_macVBLCallbackEntry || g_macVBLCallbackActive || g_macFileCompletionDepth) return;
 
     for (;;) {
-        if (!s_vblPassActive) {
-            if (!s_vblPendingTicks) return;
-            --s_vblPendingTicks;
-            ++s_vblDispatchTick;
+        if (!s_vblPass.active) {
+            if (!s_vblPass.begin(s_vblTaskCount)) return;
 
             // A real Macintosh ages every queue entry once per vertical-retrace
             // pass, then calls each entry which became due in queue order.  PAL
             // fields sometimes advance g_macTicks by two, so preserve those as
             // two distinct passes: a one-tick task may rearm and run in both.
-            s_vblPassIndex = 0;
-            s_vblPassLimit = s_vblTaskCount;
-            for (uint16_t i = 0; i < s_vblPassLimit; ++i) {
+            for (uint16_t i = 0; i < s_vblPass.limit; ++i) {
                 uint8_t* task = s_vblTasks[i];
                 int16_t count = (int16_t)read16(task + 10);
                 if (count > 0) write16(task + 10, (uint16_t)(count - 1));
             }
-            s_vblPassActive = true;
         }
 
-        while (s_vblPassIndex < s_vblPassLimit) {
-            uint8_t* task = s_vblTasks[s_vblPassIndex++];
+        while (s_vblPass.index < s_vblPass.limit) {
+            uint8_t* task = s_vblTasks[s_vblPass.index++];
             if ((int16_t)read16(task + 10) > 0) continue;
 
             // MacEntry.s substitutes a user-mode trampoline for the normal
@@ -6670,17 +6641,17 @@ static void scheduleVBLTask()
             // callback must observe the tick of its virtual VBL pass, not the
             // later wall-clock tick at which a safe point finally drains it.
             if (g_macTicksAddress)
-                write32((uint8_t*)g_macTicksAddress, s_vblDispatchTick);
+                write32((uint8_t*)g_macTicksAddress, s_vblPass.tick);
             return;
         }
 
-        s_vblPassActive = false;
+        s_vblPass.active = false;
     }
 }
 
 static inline void pollVBLTask()
 {
-    if(s_vblLastTick!=g_macTicks || s_vblPendingTicks || s_vblPassActive)
+    if(s_vblPass.last!=g_macTicks || s_vblPass.pending || s_vblPass.active)
         scheduleVBLTask();
 }
 
@@ -11065,7 +11036,7 @@ static uint32_t dispatchQuickTrap(uint32_t* regs,uint8_t* frame,uint8_t* userSta
     if(trap==0xaa14 && s_segments[13].begin && pc==(uint32_t)s_segments[13].begin+0xb46)return 0;
     if(trap==0xab1d && ((uint16_t)regs[0]!=5 && (uint16_t)regs[0]!=6
                        || read16(s_windowManagerPixMap+32)!=8))return 0;
-    bool service=s_vblLastTick!=g_macTicks || s_vblPendingTicks || s_vblPassActive
+    bool service=s_vblPass.last!=g_macTicks || s_vblPass.pending || s_vblPass.active
         || s_songInterruptError || g_soundDriver.effects[0].active || g_soundDriver.effects[1].active;
 #ifdef AITD_SCENE_FRAME_BATCH
     const uint32_t owner=g_macSceneFrameOwner;
