@@ -712,6 +712,12 @@ ifeq ($(EMILY),1)
 EXTRA_DEFINES += -DAITD_EMILY
 endif
 
+ifeq ($(MONSTERPROFILE),1)
+INGAME=1
+EXTRA_DEFINES += -DAITD_MONSTER_PROFILE
+PROBE_SYMS += g_monsterFrames g_monsterCount g_monsterPhase
+endif
+
 ifeq ($(INGAME),1)
 STORYENTER=1
 EXTRA_DEFINES += -DAITD_INGAME

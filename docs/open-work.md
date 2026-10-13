@@ -9,25 +9,11 @@ Each item gives the **goal**, then the scope, then *done when*: the evidence req
 
 ## Monster sequence performance
 
-Baseline: an `INGAME=1` reference-68030 PAL run, idle in the attic, from scene 200 through
-MONSTER (song 136), the monster's entry, its first hit on Carnby (animation 237), FIGHT
-(132) and the death song (131). Steady frames take 4 fields in the empty attic, 10 while
-the monster approaches and 12.1 (250 ms of CPU) in the fight. About 100–128 ms of each
-fight frame is original code. Song starts freeze for 1.5–5 s each, and `MacHeap::moveHigh`
-accounts for about 12 of the 15 frozen seconds. Report each item's effect with PERF.2.
-
-- **PERF.2 Maintain the monster-to-death cycle profile.**
-  Add an `amiga/aprof.sh monster` scenario that writes one profile per phase
-  (attic → song 136, → monster animation active, → first Carnby hit, → song 131) and a
-  per-frame log of fields, song, effect count and both actors' animations. Boundaries
-  must be game events, not scene numbers: the hit scene varied from 742 to 752 between
-  runs. Do not create a save for this; a load changes the heap and the first-time
-  resource loads being measured. Extend `aprof_report.py` for the per-phase inputs and
-  for a steady-frame summary that excludes named one-off subtrees.
-
-  *Done when* two runs report the same phase states, fields within 2% and the same
-  stall list. The scenario, its stall table and steady fight costs are documented in
-  performance.md, and PERF.1's conclusion is applied to its per-frame stops.
+Use the maintained [monster-to-death profile](performance.md#monster-to-death-cycle)
+for each item's effect. Its deterministic reference-68030 PAL baseline takes 12.25
+fields per steady fight frame (246 ms adjusted CPU, 127 ms original code).
+The three song-start frame intervals are 3.94, 6.58 and 2.76 s; `MacHeap::moveHigh`
+accounts for 10.25 s across their loader subtrees.
 
 - **PERF.3 Record the owner's 68040 baseline.**
   Provide a `FRAMEAUDIT=1` build that reports fields per frame and stall lengths over
@@ -48,8 +34,8 @@ accounts for about 12 of the 15 frozen seconds. Report each item's effect with P
 
   *Done when* MoveHHi matches the reference cases, copying only the target. Heap,
   `m5_low_memory`, `song136.gdb`, `gameplay_music.gdb`, `gameplay_fight.gdb`, the
-  death route and fragmented-heap regressions pass. Each PERF.2 song start costs
-  ≤ 0.3 s (from 1.5–5 s), with no new allocation failures.
+  death route and fragmented-heap regressions pass. Each monster-profile song start costs
+  ≤ 0.3 s (from 2.76–6.58 s), with no new allocation failures.
 
 - **HEAP.3 Measure the remaining song-start cost.**
   After HEAP.2, attribute `startNativeSong` (`loadSongSample`, `SongVoice::convert`,
@@ -93,7 +79,7 @@ accounts for about 12 of the 15 frozen seconds. Report each item's effect with P
   keyed by the colour and inverse tables' seeds and contents identity plus the RGB value.
   Invalidate it on any table change.
 
-  *Done when* every call in a PERF.2 run returns the uncached index (checked by a
+  *Done when* every call in a monster-profile run returns the uncached index (checked by a
   verifying build), `rgb_colors_calls.gdb` and window colour fixtures pass, and a call
   costs ≤ 30 µs.
 

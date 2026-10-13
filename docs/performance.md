@@ -30,12 +30,103 @@ python3 tools/aprof_report.py subtree attic 'JT291->Dark3+$1D50'
 ```
 
 `aprof.sh` clean-builds the matching executable and defaults to
-`a4000-030-reference`. It stops loudly if the interval is incomplete, the room or camera
-changes, or a CODE segment moves. Outputs go to ignored `tmp/aprof/`; the report also
+`a4000-030-reference`. The report rejects incomplete intervals and CODE segment moves; it records room
+and camera changes for state pairing. Outputs go to ignored `tmp/aprof/`; the report also
 writes the call tree and the hottest instructions there. Original functions are named
 `Segment+$offset` from LINK prologues and observed call targets. `JTn->` marks a
 jump-table entry, resolved from the live table. Unmatched RTS/RTE counts measure
 call-tree noise from stack manipulation and task switches; flat PC times are exact.
+
+### Monster-to-death cycle
+
+```sh
+. amiga/env.sh
+amiga/aprof.sh monster monster-a
+amiga/aprof.sh monster monster-b
+python3 tools/aprof_report.py monster monster-b --compare monster-a
+python3 tools/aprof_report.py report monster-a-fight
+```
+
+This is a fresh Carnby game, idle in the attic, with `INGAME=1`, the existing
+`FIXEDRNG=1` diagnostic entropy fixture and `MONSTERPROFILE=1`. No save is loaded:
+loading would change the heap and first-time resource work. The launcher pins
+reference 68030/PAL and enables FS-UAE deterministic mode. In that mode filesystem
+packets complete on emulated hsync boundaries instead of a host worker's schedule;
+otherwise even fixed random input can produce different timed combat routes.
+These diagnostic timings are not measurements of physical disk latency.
+
+Start at completed scene 200. End each phase at the first queued frame showing:
+MONSTER song 136; actor slot 12 with an active animation; Carnby's first hit animation
+237; death song 131. Scene numbers are observations, never end conditions. The
+buffer records every intervening frame's fields, ticks, song, cumulative effect
+starts, both actor animations, monster record words `$1C`/`$20`, room and camera.
+The report rejects missing frames, wrong initial/event states and incomplete runs.
+
+`NAME-{attic,entry,approach,fight}.{prof,log,elf,jt.bin}` are ordinary report inputs.
+`NAME.frames.csv` is the per-frame log; `NAME.summary.json` contains phase states,
+ordered stalls and costs. Stalls are intervals of at least 25 PAL fields (0.5 s).
+The repeat check requires the same phase states and ordered stall identities, with
+each phase's fields within 2%; scene numbers may differ. Existing output names are
+rejected, so a new run cannot silently replace its baseline.
+
+The steady summary excludes complete call-tree subtrees for camera rebuilding
+`(Dark2, $5D30)` and the song-change wrapper `(Dan2, $1B22)`, including jump-table
+aliases and nested calls without double counting. It divides the remaining CPU
+cost by nonstall frames. This is a **subtree-adjusted estimate**: ordinary work
+inside stall frames remains in the numerator. The independently measured field
+cadence excludes whole stall intervals. Per-phase `report` retains all work.
+Custom exclusions are available with `aprof_report.py steady NAME --frames N
+--exclude LABEL` (repeat `--exclude` as needed).
+
+The normal observer buffers records in guest Fast RAM (84,028 bytes, diagnostic
+build only), performs no frame-time I/O and stops only at phase boundaries. A
+conditional startup breakpoint runs before profiling; no conditional breakpoint
+is used inside a measured phase. `APROF_FRAME_STOPS=1 amiga/aprof.sh monster
+monster-stops` deliberately restores per-frame stops for the observer-bias control.
+It is not an acceptance measurement. `WINDOW_FRAME_STOPS` records the count.
+The profiler stub accepts address breakpoints, not target-side GDB conditions;
+conditions in the older observer therefore stopped the guest at intermediate frames.
+This applies PERF.1's rule to this scenario; the separate book/gameplay observer
+still needs its queued PERF.1 audit.
+
+The A/B control used the identical executable and deterministic configuration:
+803 intermediate debugger stops versus zero produced byte-identical frame buffers
+and all four `.prof` files. Thus there is **no measured cycle/field bias in this
+pinned configuration**. This does not validate non-deterministic filesystem runs or
+other profiling windows; the maintained scenario keeps all stops at event boundaries.
+
+The retained deterministic reference baseline (`monster-det-a` / `monster-det-b`)
+repeated exactly: phase states, field/frame counts, stall list and CPU summaries
+all matched. This exceeds the 2% repeatability gate.
+
+| Phase end | Frames | PAL fields | Nonstall fields/frame | Adjusted CPU ms/frame |
+| --- | ---: | ---: | ---: | ---: |
+| MONSTER song 136 | 350 | 1,662 | 4.129 | 85.50 |
+| Monster animation active | 103 | 470 | 4.294 | 92.15 |
+| First Carnby hit (237) | 87 | 1,335 | 9.917 | 219.02 |
+| Death song 131 | 263 | 3,347 | 12.248 | 245.97 |
+
+The same seven stalls occurred in both runs. These are full inter-frame intervals;
+the observed event is not, by itself, proof of the cause of the whole interval.
+
+| Observed event | Scene (reference only) | Fields | Seconds |
+| --- | ---: | ---: | ---: |
+| Effect count 0 → 1 | 202 | 28 | 0.56 |
+| Song 137 → 136 | 550 | 197 | 3.94 |
+| Effect count 2 → 3, before monster activation | 652 | 32 | 0.64 |
+| Effect count 3 → 4 | 677 | 141 | 2.82 |
+| Song 136 → 132 | 701 | 329 | 6.58 |
+| Effect count 11 → 12, before first hit | 739 | 32 | 0.64 |
+| Song 132 → 131 | 1,003 | 138 | 2.76 |
+
+FIGHT starts before the first hit in this route; a phase must follow the actual
+hit event rather than assume song order. Steady fighting is about **4.08 FPS**.
+Of the 245.97 ms adjusted CPU estimate per fight frame, original code takes 127.39,
+CopyBits 25.69, trap entry/dispatch 18.31, port lookups 15.17, drawing/regions 14.42,
+and C2P 13.07 ms. The logger's measured exclusive cost is 0.025–0.026 ms/frame.
+The three `startNativeSong` subtrees total 12.06 s, of which `MacHeap::moveHigh`
+accounts for 10.25 s. Heap movement remains the main song-start target.
+These costs include diagnostic overhead; they are not a new shipping-build FPS claim.
 
 ### Reference-68030 baseline
 

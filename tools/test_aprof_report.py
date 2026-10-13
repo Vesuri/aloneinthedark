@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+import copy
+from types import SimpleNamespace
+from aprof_monster import FRAME, decode_frames, phases_from_log, compare
+from aprof_report import excluded_nodes
 import struct
 import unittest
 from aprof_report import bucket, call_tree, link_starts, parse_jump_table, parse_log, parse_profile, trap_name
@@ -76,6 +80,54 @@ class AprofReport(unittest.TestCase):
         self.assertEqual(bucket('NATIVE', 'aitdLineADispatch'), 'Trap entry and dispatch')
         self.assertEqual(bucket('NATIVE', 'unlistedHelper'), 'Other native')
         self.assertEqual(bucket('ROM', 'ROM $F81100'), 'Kickstart and other')
+
+
+class MonsterReport(unittest.TestCase):
+    def frames(self):
+        states = [(137,4,-1), (136,4,-1), (136,4,23), (136,237,22), (131,272,23)]
+        return decode_frames(b''.join(FRAME.pack(200+i, 100+i*6, i,
+            (65530+i*10)&65535, song, carnby, monster, 0, 100, 0, 0)
+            for i,(song,carnby,monster) in enumerate(states)))
+
+    def log(self):
+        phases = ('attic','entry','approach','fight')
+        return ''.join(f'PHASE_START {p} row={i}\nPHASE_END {p} row={i+1}\n'
+                       for i,p in enumerate(phases))+'COMPLETE\n'
+
+    def test_frame_wrap_and_phase_events(self):
+        rows = self.frames()
+        self.assertEqual(rows[1]['delta_fields'], 10)
+        self.assertEqual(len(phases_from_log(self.log(), rows)), 4)
+
+    def test_rejects_incomplete_or_wrong_state(self):
+        with self.assertRaises(ValueError):
+            decode_frames(b'bad')
+        with self.assertRaises(ValueError):
+            phases_from_log(self.log().replace('COMPLETE','TIMEOUT'), self.frames())
+        rows = self.frames(); rows[3]['carnby'] = 4
+        with self.assertRaises(ValueError):
+            phases_from_log(self.log(), rows)
+        with self.assertRaises(ValueError):
+            phases_from_log(self.log().replace('START fight row=3','START fight row=2'), self.frames())
+
+    def test_subtree_exclusion_is_not_double_counted(self):
+        p = SimpleNamespace(order=[0,1,2,3,4], labels={0:'root',1:'JT120->song',2:'camera',3:'child',4:'keep'},
+                            nodes={0:(0,),1:(0,),2:(1,),3:(2,),4:(0,)})
+        self.assertEqual(excluded_nodes(p, ['song','camera']), {1,2,3})
+
+    def test_repeatability_ignores_scene_numbers_but_checks_states(self):
+        phase = dict(phase='attic',start={'song':137},end={'song':136},fields=100,
+                     stalls=[dict(scene=300,fields=40,event='song',before={'song':137},after={'song':136})])
+        a = dict(config='PAL', phases=[copy.deepcopy(phase) for _ in range(4)])
+        b = copy.deepcopy(a); b['phases'][0]['fields']=102
+        b['phases'][0]['stalls'][0]['scene']=310
+        self.assertEqual(compare(a,b), [])
+        b['phases'][0]['fields']=103
+        self.assertTrue(compare(a,b))
+        b = copy.deepcopy(a); b['window_frame_stops']=100
+        self.assertTrue(compare(a,b))
+        b = copy.deepcopy(a); b['phases'][0]['stalls'][0]['after']['song']=132
+        self.assertTrue(compare(a,b))
 
 
 if __name__ == '__main__':

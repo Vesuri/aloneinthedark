@@ -4,6 +4,8 @@
   aprof_report.py report NAME              summary, buckets, chip bus, flat, call tree, traps
   aprof_report.py annotate NAME FUNCTION   hottest instructions of a native function
   aprof_report.py subtree NAME LABEL...    original/port time below call-tree labels
+  aprof_report.py monster NAME [--compare BASE]  split/report/check the monster cycle
+  aprof_report.py steady NAME --frames N --exclude LABEL  subtree-adjusted estimate
 
 Inputs are tmp/aprof/NAME.{prof,log,elf,jt.bin}. Original-code functions are named
 Segment+$offset (offsets include the CODE header); their starts are LINK A6 prologues
@@ -381,16 +383,68 @@ def subtree(p, labels):
               f'total {p.ms(original + port):6.2f} ms/step ({p.pct(original + port):.1f}%)')
 
 
+def excluded_nodes(p, labels):
+    excluded = set()
+    for n in p.order:
+        if (p.labels[n] in labels or re.sub(r'^JT\d+->', '', p.labels[n]) in labels
+                or (n and p.nodes[n][0] in excluded)):
+            excluded.add(n)
+    return excluded
+
+
+def steady(p, labels, frames):
+    """Subtree-adjusted CPU estimate; does not claim a per-frame CPU trace.
+
+    All remaining CPU work (including normal work in stall frames) is divided
+    by nonstall frames. The independently logged field summary excludes whole
+    stall intervals. Interrupt attribution follows the profiler's call tree.
+    """
+    if frames <= 0:
+        raise ValueError('no steady frames')
+    excluded = excluded_nodes(p, labels)
+    units = sum(p.nodes[n][3] for n in excluded)
+    buckets = collections.Counter()
+    for n in p.order:
+        if n in excluded:
+            continue
+        _, target, kind, self_units, _ = p.nodes[n]
+        key = p.classify(target) if kind == 0 and n else ('OTHER', 'exception/root')
+        buckets[bucket(*key)] += self_units
+    # Flat units include exception-entry/STOP gaps not always owned by a node.
+    residual = p.units - sum(v[3] for v in p.nodes.values())
+    buckets['Unattributed gaps'] += residual
+    ms = lambda u: u / p.units_per_ms / frames
+    result = dict(frames=frames, excluded_labels=list(labels), excluded_ms=units/p.units_per_ms,
+                  ms_per_frame=ms(p.units-units), buckets={k: ms(u) for k,u in buckets.most_common()})
+    print(f'{p.name}: subtree-adjusted CPU {result["ms_per_frame"]:.2f} ms/frame; '
+          f'excluded {result["excluded_ms"]:.1f} ms in named one-off subtrees')
+    for k, v in result['buckets'].items():
+        print(f'  {v:7.2f} ms  {k}')
+    return result
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest='command', required=True)
     r = sub.add_parser('report'); r.add_argument('name'); r.add_argument('--top', type=int, default=40)
     a = sub.add_parser('annotate'); a.add_argument('name'); a.add_argument('function'); a.add_argument('--top', type=int, default=25)
     s = sub.add_parser('subtree'); s.add_argument('name'); s.add_argument('labels', nargs='+')
+    m = sub.add_parser('monster'); m.add_argument('name'); m.add_argument('--compare')
+    t = sub.add_parser('steady'); t.add_argument('name'); t.add_argument('--frames', type=int, required=True)
+    t.add_argument('--exclude', action='append', required=True)
     args = ap.parse_args()
+    if args.command == 'monster':
+        from aprof_monster import run
+        try:
+            run(args.name, OUT, Profile, steady, args.compare)
+        except ValueError as error:
+            raise SystemExit(f'APROF / {error}')
+        return
     p = Profile(args.name)
     if args.command == 'report':
         report(p, args.top)
+    elif args.command == 'steady':
+        steady(p, args.exclude, args.frames)
     elif args.command == 'annotate':
         annotate(p, args.function, args.top)
     else:

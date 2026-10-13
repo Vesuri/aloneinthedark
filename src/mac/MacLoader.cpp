@@ -11450,3 +11450,39 @@ bool MacLoader::run(AitdScreen* screen)
     g_macExitState = 4;
     return true;
 }
+
+#ifdef AITD_MONSTER_PROFILE
+// Diagnostic only: record at the same queueFrame entry as the original GDB
+// observer. No I/O, allocation, input changes or debugger stops between events.
+// Actor records are 160 bytes at A5-$B292; Carnby is slot 1, monster slot 12.
+extern "C" {
+struct MonsterProfileFrame {
+    uint32_t scene, ticks, effects;
+    uint16_t fields, song;
+    int16_t carnby, monster, monster1c, monster20;
+    uint16_t room, camera;
+};
+static_assert(sizeof(MonsterProfileFrame)==28,"monster trace wire format");
+volatile MonsterProfileFrame g_monsterFrames[3001];
+volatile uint32_t g_monsterCount=0, g_monsterPhase=0;
+__attribute__((noinline)) void aitdMonsterCheckpoint() { __asm__ volatile("nop" ::: "memory"); }
+void aitdMonsterFrame() {
+    if(g_ingameStage!=5 || g_macSceneFramesCompleted<200 || g_monsterPhase>=5)return;
+    if(g_monsterCount>=3001) {g_monsterPhase=99;aitdMonsterCheckpoint();return;}
+    const uint8_t* c=s_currentA5-0xb292+160;
+    const uint8_t* m=s_currentA5-0xb292+12*160;
+    volatile MonsterProfileFrame& r=g_monsterFrames[g_monsterCount++];
+    r.scene=g_macSceneFramesCompleted;r.ticks=g_macTicks;r.effects=g_effectStarts;
+    r.fields=g_vbiCount;r.song=g_song.id;
+    r.carnby=read16(c+0x3e);r.monster=read16(m+0x3e);
+    r.monster1c=read16(m+0x1c);r.monster20=read16(m+0x20);
+    r.room=read16(s_currentA5-0xcd68);r.camera=read16(s_currentA5-0xcd70);
+    if(!g_monsterPhase || (g_monsterPhase==1 && r.song==136)
+       || (g_monsterPhase==2 && r.monster!=-1)
+       || (g_monsterPhase==3 && r.carnby==237)
+       || (g_monsterPhase==4 && r.song==131)) {
+        ++g_monsterPhase;aitdMonsterCheckpoint();
+    }
+}
+}
+#endif

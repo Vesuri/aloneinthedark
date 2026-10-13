@@ -217,8 +217,15 @@ void AitdScreen::writeModeRegisters()
     *bpl2modPointer=kRowStride-kBytesPerRow;
 }
 
+#ifdef AITD_MONSTER_PROFILE
+extern "C" void aitdMonsterFrame();
+#endif
+
 void AitdScreen::queueFrame(uint16_t left,uint16_t top,bool mouseAllowed)
 {
+#ifdef AITD_MONSTER_PROFILE
+    aitdMonsterFrame();
+#endif
     const uint16_t list=m_copper==m_copperAllocation ? 1 : 0;
     uint32_t* next=m_copperAllocation+list*VS_CL_LONGS;
     // Sprite pointers and the list end never change. The inactive list was
