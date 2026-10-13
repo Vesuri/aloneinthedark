@@ -41,12 +41,15 @@ def main():
     p.add_argument('--z3-memory-mb', type=int, choices=(0,16,32,64,128), default=0, help='additional Zorro III RAM for cache/timing comparisons')
     p.add_argument('--jit', action='store_true', help='enable JIT for explicit reproduction runs')
     p.add_argument('--no-warp', action='store_true', help='run at normal PAL field rate')
+    p.add_argument('--startup-prefs', action='store_true', help='stage explicit default preferences in this isolated fixture')
     p.add_argument('--save-source', type=Path, help='Saved Games drawer from a preceding run')
     p.add_argument('--no-preload', action='store_true')
     p.add_argument('--no-cache', action='store_true', help='disable WHDLoad CPU caches for diagnosis')
     p.add_argument('--no-filelog', action='store_true', help='disable WHDLoad FILELOG when measuring OS switches')
     p.add_argument('--check-stack', action='store_true', help='require completed STACKPROBE report and 4 KB process stack')
     args = p.parse_args()
+    if args.startup_prefs and args.mode in ('smoke','boot','load','file-read'):
+        p.error('--startup-prefs requires a gameplay mode')
     if args.mmu and (args.cpu not in ('68040', '68060') or args.jit or args.machine_config):
         p.error('--mmu requires --cpu 68040 or 68060, without JIT or machine-config')
     if args.mode == "walking" and not args.save_source:
@@ -70,6 +73,10 @@ def main():
         (game/'Saved Games').mkdir();(game/'prefs').mkdir()
         subprocess.run(['bash', '-c', '. ./stage_original_data.sh; stage_aitd_original_data "$1"',
                         'stage', str(game)], cwd=ROOT/'amiga', check=True)
+    if args.startup_prefs:
+        from check_startup_prefs import prepare
+        (game/'prefs').rmdir()  # Created empty above; never touches owner preferences.
+        prepare(game/'prefs')
     if args.save_source:
         for path in args.save_source.iterdir():
             if path.is_file() and not path.name.endswith('.uaem'):

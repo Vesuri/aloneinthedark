@@ -28,6 +28,7 @@ extern "C" {
 #include "framework/AmigaHardware.h"
 #include "framework/CopperList.h"
 #include "PlatformAmiga.h"
+#include "MonsterProfile.h"
 #include "MacInput.h"
 #include "FullPlayProbe.h"
 #include "SystemWindow.h"
@@ -427,6 +428,9 @@ bool PlatformAmiga::run()
 #ifdef AITD_AGA_PROBE
     if(ok)ok=aitdRunAgaProbe(&screen);
 #else
+#ifdef AITD_MONSTER_AUDIT
+    aitdMonsterAuditBegin();
+#endif
     if (ok) ok = loader.run(&screen);
 #endif
     resourceFiles.runtime=false;overlayFile.runtime=false;
@@ -503,6 +507,10 @@ bool PlatformAmiga::run()
 #ifdef AITD_RESOURCE_EXIT_PROBE
     g_resourceExitCleanupOK=filesClosed;
     aitdResourceExitCleanupFinished();
+#endif
+
+#ifdef AITD_MONSTER_AUDIT
+    if(!aitdMonsterAuditSave(filesClosed && ok))filesClosed=false;
 #endif
 
     // Closed here rather than in a destructor -- see the note in PlatformAmiga.h.  ⚠ AFTER

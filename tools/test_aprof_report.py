@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import copy
 from types import SimpleNamespace
+from check_monster_audit import HEADER, read_audit
 from aprof_monster import FRAME, decode_frames, phases_from_log, compare
 from aprof_report import excluded_nodes
 import struct
@@ -80,6 +81,43 @@ class AprofReport(unittest.TestCase):
         self.assertEqual(bucket('NATIVE', 'aitdLineADispatch'), 'Trap entry and dispatch')
         self.assertEqual(bucket('NATIVE', 'unlistedHelper'), 'Other native')
         self.assertEqual(bucket('ROM', 'ROM $F81100'), 'Kickstart and other')
+
+
+class MonsterAudit(unittest.TestCase):
+    def report(self, pal=1):
+        states = [(137,4,-1), (136,4,-1), (136,4,23), (136,237,22), (131,272,23)]
+        header = HEADER.pack(0x41495444,0x4d4f4e31,1,5,5,pal,1,15,0x80008000,0x80008000,1,0,1,2,3,4)
+        rows = b''.join(FRAME.pack(200+i,100+i*6,i,(65530+i*30)&65535,
+            song,carnby,monster,0,100,0,0) for i,(song,carnby,monster) in enumerate(states))
+        return header+rows
+
+    def test_complete_and_field_wrap(self):
+        result = read_audit(self.report())
+        self.assertEqual(result['backend'],'WHDLoad')
+        self.assertEqual(result['cacr_start'],0x80008000)
+        self.assertEqual(len(result['phases']),4)
+        self.assertEqual(result['phases'][0]['fields'],30)
+        self.assertEqual(result['phases'][0]['stalls'][0]['seconds'],0.6)
+        self.assertEqual(read_audit(self.report(0))['phases'][0]['stalls'][0]['seconds'],0.5)
+
+    def test_nonstall_cadence(self):
+        data=bytearray(self.report())
+        for i in range(5):
+            struct.pack_into('>H',data,HEADER.size+i*FRAME.size+12,100+i*5)
+        phase=read_audit(data)['phases'][3]
+        self.assertEqual(phase['steady_fields_per_frame'],5)
+        self.assertEqual(phase['steady_fps'],10)
+        self.assertEqual(phase['stalls'],[])
+
+    def test_rejects_incomplete_corrupt_and_bad_events(self):
+        data = self.report()
+        for broken in (data[:63],data[:-1],data+b'x'):
+            with self.assertRaises(ValueError): read_audit(broken)
+        for index,value in ((0,0),(2,2),(3,16385),(4,98),(5,2),(6,2),(10,0),(12,4)):
+            broken=bytearray(data);struct.pack_into('>I',broken,index*4,value)
+            with self.subTest(index=index),self.assertRaises(ValueError): read_audit(broken)
+        broken=bytearray(data);struct.pack_into('>H',broken,HEADER.size+FRAME.size+14,137)
+        with self.assertRaises(ValueError): read_audit(broken)
 
 
 class MonsterReport(unittest.TestCase):

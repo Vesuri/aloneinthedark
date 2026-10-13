@@ -128,6 +128,71 @@ The three `startNativeSong` subtrees total 12.06 s, of which `MacHeap::moveHigh`
 accounts for 10.25 s. Heap movement remains the main song-start target.
 These costs include diagnostic overhead; they are not a new shipping-build FPS claim.
 
+### Debugger-free hardware audit
+
+Real-Amiga benchmarks are deferred by the owner. The audit is ready for future
+runs; emulator verification establishes collection and cleanup, not 68040 speed.
+
+```sh
+. amiga/env.sh
+make -C amiga clean
+make -C amiga -j4 MONSTERAUDIT=1
+amiga/monster_audit_run.sh 600
+make slave
+python3 tools/test_whdload.py --mode quit --cpu 68040 --mmu --startup-prefs \
+  --no-filelog --ticks 30000 --seconds 600
+python3 tools/check_monster_audit.py path/to/monster-whd.bin --json tmp/monster-whd.json
+```
+
+`MONSTERAUDIT=1` enables `FRAMEAUDIT=1`, `INGAME=1` and `FIXEDRNG=1`.
+It uses the same scene-200 start and four event boundaries as the profile above,
+without GDB. Carnby remains idle; the game runs the encounter and death naturally.
+At the final boundary the next normal service return requests ExitToShell. Only
+**after restoring AmigaOS and closing game files** does the audit write its report
+beside the executable: `monster-whd.bin` or `monster-amigaos.bin`. Each filename is
+replaced on a subsequent run; retain separate copies for A/B comparisons.
+A bad initial state or full buffer also exits, with a report rejected as incomplete.
+
+Use a separate copy of the installed game for hardware testing. Replace its
+`AloneInTheDark` executable with the audit build and supply explicit default
+preferences in its `prefs` drawer, generated on the host with:
+
+```sh
+python3 tools/check_startup_prefs.py --prepare --folder tmp/monster-audit/prefs
+```
+
+The generator refuses to replace an existing directory. Preserve the user's normal
+preferences. First-launch preference creation is a different path and can enter
+this unattended route without music; a measured run must begin with song 137,
+Carnby animation 4 and no active monster. The emulator fixtures stage defaults
+explicitly. Run the installed WHDLoad icon, or launch the executable from an
+AmigaOS shell after SetPatch. Leave input alone; it quits automatically at death.
+Keep the same audit executable, default preferences, video and hardware settings
+for comparisons. Capture the CPU model/clock, Fast RAM, storage, SetPatch CPU
+library version and WHDLoad options alongside both reports. Existing caches are
+observed, never changed by the audit.
+
+The buffer occupies 458,752 bytes of Fast RAM and holds at most 16,384 frames;
+the observer adds no allocation, file I/O or debugger stop between measured events. The
+FRAMEAUDIT publication buffer is also enabled. Diagnostic memory and logging
+therefore differ from production: price later changes against the **same audit
+build configuration**, not directly against the smaller PERF.2 profile buffer.
+
+Wire format: a 64-byte big-endian header (`16I`), then PERF.2's 28-byte frame
+records. Header words are `AITD`, `MON1`, version 1, row count, terminal phase,
+PAL flag, WHDLoad flag, Exec AttnFlags, CACR before game entry, CACR after OS
+restoration, cleanup success, and five phase-boundary row indices. The decoder
+requires all four contiguous phases and valid event states, checks frame/field
+progression including the 16-bit field wrap, and reports fields/frame, nonstall
+FPS and stalls of at least 0.5 seconds. This is field cadence, not CPU-only time.
+CACR values describe the two capture points; they do not prove cache behavior
+throughout the run.
+
+Emulator coverage includes direct AmigaOS PAL/NTSC and WHDLoad 68040/MMU,
+normal return, report export and decoding. No physical-Amiga result is implied.
+Always clean-build production defaults again before packaging a release.
+
+
 ### Reference-68030 baseline
 
 | PAL, `a4000-030-reference` | Book fold, steps 2–52 | First room, scenes 60–160 |

@@ -5,6 +5,7 @@
 #include <hardware/dmabits.h>
 
 #include "MacLoader.h"
+#include "platform/amiga/MonsterProfile.h"
 #include "VBLPasses.h"
 #include "LowMemory.h"
 #include "MacHeap.h"
@@ -6506,6 +6507,10 @@ static void requestExitAfterTrap(uint8_t* frame)
 
 static bool exitChordPressed()
 {
+#ifdef AITD_MONSTER_AUDIT
+    // Diagnostic completion follows the existing normal ExitToShell route.
+    if(g_monsterPhase>=5)return true;
+#endif
     return AmigaHardware::isLeftMouseButtonPressed()
         && (aitdInputModifiers() & 0x1000) != 0;
 }
@@ -11451,24 +11456,17 @@ bool MacLoader::run(AitdScreen* screen)
     return true;
 }
 
-#ifdef AITD_MONSTER_PROFILE
+#if defined(AITD_MONSTER_PROFILE) || defined(AITD_MONSTER_AUDIT)
 // Diagnostic only: record at the same queueFrame entry as the original GDB
 // observer. No I/O, allocation, input changes or debugger stops between events.
 // Actor records are 160 bytes at A5-$B292; Carnby is slot 1, monster slot 12.
 extern "C" {
-struct MonsterProfileFrame {
-    uint32_t scene, ticks, effects;
-    uint16_t fields, song;
-    int16_t carnby, monster, monster1c, monster20;
-    uint16_t room, camera;
-};
-static_assert(sizeof(MonsterProfileFrame)==28,"monster trace wire format");
-volatile MonsterProfileFrame g_monsterFrames[3001];
+volatile MonsterProfileFrame g_monsterFrames[kMonsterFrameCapacity];
 volatile uint32_t g_monsterCount=0, g_monsterPhase=0;
 __attribute__((noinline)) void aitdMonsterCheckpoint() { __asm__ volatile("nop" ::: "memory"); }
 void aitdMonsterFrame() {
     if(g_ingameStage!=5 || g_macSceneFramesCompleted<200 || g_monsterPhase>=5)return;
-    if(g_monsterCount>=3001) {g_monsterPhase=99;aitdMonsterCheckpoint();return;}
+    if(g_monsterCount>=kMonsterFrameCapacity) {g_monsterPhase=99;aitdMonsterCheckpoint();return;}
     const uint8_t* c=s_currentA5-0xb292+160;
     const uint8_t* m=s_currentA5-0xb292+12*160;
     volatile MonsterProfileFrame& r=g_monsterFrames[g_monsterCount++];
@@ -11481,7 +11479,13 @@ void aitdMonsterFrame() {
        || (g_monsterPhase==2 && r.monster!=-1)
        || (g_monsterPhase==3 && r.carnby==237)
        || (g_monsterPhase==4 && r.song==131)) {
-        ++g_monsterPhase;aitdMonsterCheckpoint();
+        ++g_monsterPhase;
+#ifdef AITD_MONSTER_AUDIT
+        g_monsterAudit[10+g_monsterPhase]=g_monsterCount-1;
+        if(g_monsterPhase==1 && (r.song!=137 || r.carnby!=4 || r.monster!=-1 || r.room!=0))
+            g_monsterPhase=98;
+#endif
+        aitdMonsterCheckpoint();
     }
 }
 }

@@ -217,13 +217,13 @@ void AitdScreen::writeModeRegisters()
     *bpl2modPointer=kRowStride-kBytesPerRow;
 }
 
-#ifdef AITD_MONSTER_PROFILE
+#if defined(AITD_MONSTER_PROFILE) || defined(AITD_MONSTER_AUDIT)
 extern "C" void aitdMonsterFrame();
 #endif
 
 void AitdScreen::queueFrame(uint16_t left,uint16_t top,bool mouseAllowed)
 {
-#ifdef AITD_MONSTER_PROFILE
+#if defined(AITD_MONSTER_PROFILE) || defined(AITD_MONSTER_AUDIT)
     aitdMonsterFrame();
 #endif
     const uint16_t list=m_copper==m_copperAllocation ? 1 : 0;

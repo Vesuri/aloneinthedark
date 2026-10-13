@@ -15,13 +15,14 @@ fields per steady fight frame (246 ms adjusted CPU, 127 ms original code).
 The three song-start frame intervals are 3.94, 6.58 and 2.76 s; `MacHeap::moveHigh`
 accounts for 10.25 s across their loader subtrees.
 
-- **PERF.3 Record the owner's 68040 baseline.**
-  Provide a `FRAMEAUDIT=1` build that reports fields per frame and stall lengths over
-  the same sequence without GDB. The owner runs it on the 68040/40 under WHDLoad and
-  under plain AmigaOS with SetPatch.
+- **PERF.3 Record the owner's 68040 baseline — deferred by the owner.**
+  Real-Amiga benchmarks are deferred. When resumed, use the
+  [debugger-free monster audit](performance.md#debugger-free-hardware-audit)
+  on the 68040/40 under WHDLoad and plain AmigaOS with SetPatch. Preserve each
+  binary report and record memory, video, storage, library and WHDLoad settings.
 
   *Done when* both hardware results are recorded and later items quote their 68040
-  effect against them.
+  effect against them. Emulator smoke tests do not satisfy this hardware gate.
 
 - **HEAP.2 Implement MoveHHi without moving unrelated blocks.**
   `MacHeap::moveHigh` rotates every movable block between the target and the next

@@ -211,3 +211,11 @@ Update the canonical source and install through AmigaXDev before updating consum
 
 The loader’s big-endian word/longword accesses also use the canonical
 `BigEndianMemory.h`; their 68020 instructions and unaligned-access contract are unchanged.
+
+### Unattended hardware frame audit
+
+For the debugger-free monster encounter diagnostic, clean-build with
+`MONSTERAUDIT=1`; it enables `FRAMEAUDIT=1`, `INGAME=1` and `FIXEDRNG=1`.
+The [performance workflow](performance.md#debugger-free-hardware-audit) covers
+isolated preferences, emulator checks, hardware launch and report decoding.
+Real-Amiga benchmarks are deferred; use emulator runs only to validate collection.

@@ -23,6 +23,14 @@
 # Structure: explicit/wildcarded source lists mapped to objects in a flat obj/ (keyed by
 # basename — KEEP BASENAMES UNIQUE across the source trees), sources located via vpath.
 
+# Debugger-free monster benchmark, exported after normal OS restoration.
+ifeq ($(MONSTERAUDIT),1)
+FRAMEAUDIT=1
+INGAME=1
+FIXEDRNG=1
+EXTRA_DEFINES += -DAITD_MONSTER_AUDIT
+endif
+
 ifeq ($(STACKPROBE),1)
 PROBES=1
 EXTRA_DEFINES += -DAITD_STACK_PROBE
@@ -271,7 +279,7 @@ endif
 
 ifeq ($(FRAMEAUDIT),1)
 EXTRA_DEFINES += -DAITD_FRAME_AUDIT
-PROBE_SYMS += g_frameAudit
+PROBE_SYMS_FRAME = g_frameAudit
 endif
 
 ifeq ($(BOOKPROFILE),1)
@@ -534,6 +542,10 @@ PROBE_SYMS = g_macBookFrameActive g_macBookFramesBegun g_macBookFramesCompleted 
              g_stageBState g_trapWord g_trapSelector g_trapSegment g_trapOffset \
              g_trapPC g_trapRegisters g_trapUserStack g_resourceCount g_jumpEntryCount \
              g_blockMoveCount g_trapManager g_trapRoutine
+PROBE_SYMS += $(PROBE_SYMS_FRAME)
+ifeq ($(MONSTERAUDIT),1)
+PROBE_SYMS += g_monsterAudit g_monsterFrames g_monsterCount g_monsterPhase
+endif
 PROBE_SYMS += $(PROBE_SYMS_AGA) $(PROBE_SYMS_FILE) $(PROBE_SYMS_FILEWRITE) $(PROBE_SYMS_RESOURCEEXIT)
 PROBE_SYMS += $(PROBE_SYMS_AE) $(PROBE_SYMS_SONG) $(PROBE_SYMS_CLOCK) g_defaultPalette g_appleEventHandlers g_soundDriver g_soundDriverHandle g_soundDriverCalls g_song g_effects g_effectStarts g_effectStops g_effectStatusCalls
 ifeq ($(EFFECTLOOPPROBE),1)
