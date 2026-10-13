@@ -213,6 +213,23 @@ Update the canonical source and install through AmigaXDev before updating consum
 The loader’s big-endian word/longword accesses also use the canonical
 `BigEndianMemory.h`; their 68020 instructions and unaligned-access contract are unchanged.
 
+### Camera mask results
+
+FramePoly and InsetRgn retain up to 32 successful geometry results in a shared
+32 KiB FIFO byte arena (plus 260 bytes of metadata). Keys include the operation
+and every byte of the input record, including its length and bounds; handle
+addresses are never keys. Storage relocation, edits and arena reuse therefore
+cannot return a stale shape. Oversized/truncated inputs cannot hit. Misses use
+the unchanged polygon/region validators, including their named loud stops.
+Only successful results enter the cache; region ownership, resizing and trap
+register effects still execute on hits. This retains derived geometry only,
+not game assets or framebuffer pixels; no shadow comparison computes dirty areas.
+
+The shared `HeapResize.inc` merges only a newly split free tail with its next
+free neighbour. It requires the existing no-adjacent-free-block heap invariant,
+and preserves the previous layout, free-byte count and recovery paths. This
+removes whole-zone scans from polygon growth, CloseRgn and InsetRgn resizing.
+
 ### Unattended hardware frame audit
 
 For the debugger-free monster encounter diagnostic, clean-build with

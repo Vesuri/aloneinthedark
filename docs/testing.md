@@ -102,6 +102,21 @@ under real Workbench but is a protocol fixture, not an icon double-click. The st
 fixture verifies a 4096-byte game-process stack; it does not change the separate
 internal Mac or music stacks.
 
+## Region rebuilding
+
+`make host-tests` covers region geometry, cache keys, byte mutations, storage
+relocation, truncation, capacity and FIFO eviction under sanitizers. The heap
+suite mixes resizing with 2,500 fragmented allocation operations and checks
+payloads, flags, failures and the absence of adjacent free blocks.
+
+Run `region_variants.gdb` and `rectrgn_variants.gdb` with a clean `REGIONPROBE=1`
+build. That synthetic build exits after its cases: clean-build `INTROSKIP=1
+FIXEDRNG=1` separately for `regionrecord.gdb`, `insetrgn.gdb` and
+`corridor_mask.gdb`. Use their `check_regionrecord.py`, `check_insetrgn.py` and
+`check_corridor_masks.py` checkers with the original Mac captures and actual
+process statuses. Polygon checks include compiled stack headroom. The malformed
+mask fixture below uses its own clean diagnostic build.
+
 ## CopyBits masks
 
 `make host-tests` exercises cached and uncached CopyBits with every-byte region

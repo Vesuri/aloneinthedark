@@ -94,6 +94,7 @@ host-tests: shared-runtime-check
 	@python3 tools/check_regionrecord.py
 	@python3 tools/check_region_ops.py
 	@python3 tools/check_insetrgn.py
+	@python3 tools/check_region_result_cache.py
 	@python3 tools/check_copybits8_helper.py
 	@python3 tools/check_colormap8_cache.py
 	@python3 tools/test_driver_query_accounting.py

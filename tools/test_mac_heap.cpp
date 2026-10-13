@@ -18,6 +18,14 @@ static void freeChain(MacHeap& heap,uint8_t* arena,std::vector<MacHeap::Handle> 
     uint32_t head=0;for(unsigned i=8;i<12;++i)head=(head<<8)|arena[i];
     CHECK(head==uint32_t((unsigned long)previous));CHECK(heap.check());
 }
+static void checkCoalesced(const uint8_t* arena,uint32_t bytes) {
+    bool previousFree=false;
+    for(uint32_t at=64;at<bytes-16;) {
+        uint32_t span,kind;std::memcpy(&span,arena+at,4);std::memcpy(&kind,arena+at+12,4);
+        CHECK(span>=32 && at+span<=bytes-16);
+        CHECK(!(previousFree && kind==0));previousFree=kind==0;at+=span;
+    }
+}
 static void checkRegionCopy() {
     alignas(8) uint8_t arena[16384];MacHeap h;CHECK(h.init(arena,sizeof(arena)));
     auto dst=h.newHandle(10,true);auto barrier=h.newPtr(128,true);
@@ -244,11 +252,20 @@ int main() {
     unsigned sizes[48]={};
     for(unsigned step=0;step<2500;++step) {
         rng=rng*1664525U+1013904223U;unsigned slot=(rng>>16)%48;
-        if(handles[slot]) { CHECK(h.disposeHandle(handles[slot])==0);handles[slot]=nullptr; }
+        if(handles[slot] && step%3) {
+            unsigned n=(rng%900)+1,old=sizes[slot];
+            uint8_t state=h.state(handles[slot]);
+            int error=h.setHandleSize(handles[slot],n);
+            CHECK(error==0 || error==MacHeap::memFullErr);
+            CHECK(h.state(handles[slot])==state);
+            CHECK(patternIs(*handles[slot],error ? old : std::min(old,n),slot+1));
+            if(!error) {sizes[slot]=n;pattern(*handles[slot],n,slot+1);}
+        }
+        else if(handles[slot]) { CHECK(h.disposeHandle(handles[slot])==0);handles[slot]=nullptr; }
         else { unsigned n=(rng%700)+1;auto x=h.newHandle(n);if(x){handles[slot]=x;sizes[slot]=n;pattern(*x,n,slot+1);} }
         if(step%7==0)h.compact();
         if(step%11==0 && handles[slot])CHECK(h.moveHigh(handles[slot])==0);
-        CHECK(h.check());
+        CHECK(h.check());checkCoalesced(arena,sizeof(arena));
         for(unsigned i=0;i<48;++i)if(handles[i])CHECK(patternIs(*handles[i],sizes[i],i+1));
     }
     // Force many master blocks interleaved with data and holes.

@@ -45,16 +45,6 @@ are in that document; preserve matching game state when comparing changes.
   *Done when* the hardware performance comparison and complete visual/audio run
   are recorded. Corrected FS-UAE functional checks do not satisfy this hardware gate.
 
-- **REGION.1 Speed up camera-change mask rebuilding.**
-  A camera change (`JT254->Dark2+$5D30`) rebuilds masks below `JT187->Dark+$3694`.
-  InsetRgn costs about 28–40 ms per call (`RegionExpand::one`), FramePoly 14–19 ms
-  (`PolygonRegion::encode`), and CloseRgn and KillPoly about 2.7 ms each. The original
-  background decompression (`Dark+$2A78`/`$29FE`, about 0.8 s per change) is a fixed
-  floor. Keep exact region results and loud rejection of malformed regions.
-
-  *Done when* region-variant, InsetRgn, polygon, mask-rejection and corridor-mask
-  fixtures pass and port time below `Dark+$3694` falls by at least 60%.
-
 - **FRAME.1 Memoize RGBForeColor/RGBBackColor colour lookup.**
   A fight frame makes about 70 RGBForeColor calls at 179 µs each, mostly
   `gWorldForPort`, handle checks and `GWorld8::colorIndex`. Cache the result per port,
@@ -115,19 +105,15 @@ are in that document; preserve matching game state when comparing changes.
 
 ## Runtime overhead
 
-- **HEAP.1 Avoid heap-wide work for unchanged allocation sizes.**
-  `MacHeap::resizeInPlace` calls `split` and `coalesce` even when the requested
-  logical size already matches the allocation. The latter walks the entire
-  zone. Inspect the reached `SetHandleSize`/`SetPtrSize` and internal region
-  callers; measure their frequency and cost before changing the allocator.
-  Reuse and consolidate the fix through AmigaXDev. Prince of Persia 2 adoption,
-  including the shared MoveHHi implementation, is deferred by the owner while
-  work there is ongoing.
+- **HEAP.1 Adopt shared heap helpers in Prince of Persia 2 — deferred by the owner.**
+  Prince of Persia 2 work is ongoing elsewhere. When the owner resumes adoption,
+  use AmigaXDev's shared MoveHHi and in-place resize implementations instead of
+  forking allocator fixes. Preserve that port's placement, errors, handle state,
+  payloads and memory publication contracts.
 
-  *Done when* unchanged-size requests preserve errors, handle state, addresses,
-  payloads and heap invariants without a whole-zone walk; grow/shrink and
-  fragmented-heap regressions pass, and matched native workloads on pinned
-  CPU configurations establish the effect without changing original game state.
+  *Done when* the deferred consumer uses the canonical helpers and passes its
+  original/native placement, unchanged-size, grow/shrink, failure and fragmented
+  heap fixtures, with matched native workloads establishing the effect.
 
 ## VBL service contracts
 

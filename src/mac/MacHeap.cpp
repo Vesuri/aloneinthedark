@@ -310,18 +310,7 @@ uint32_t MacHeap::ptrSize(uint8_t* ptr)
     uint32_t off=findPtr(ptr,ptrBlock);queryResult(off ? 0 : memWZErr);
     return off ? block(off).logical : 0;
 }
-bool MacHeap::resizeInPlace(uint32_t off,uint32_t bytes)
-{
-    uint32_t needed=physical(bytes);if(!needed)return false;
-    Block saved=block(off);
-    if(needed>saved.span) {
-        uint32_t next=off+saved.span;
-        if(next>=end_ || block(next).kind!=freeBlock || saved.span+block(next).span<needed)return false;
-        freeBytes_-=block(next).span;
-        block(off).span+=block(next).span;
-    }
-    split(off,needed,bytes,saved.kind,saved.owner);coalesce();return true;
-}
+#include "HeapResize.inc"
 int16_t MacHeap::setPtrSize(uint8_t* ptr,uint32_t bytes)
 {
     uint32_t off=findPtr(ptr,ptrBlock);if(!off)return result(memWZErr);

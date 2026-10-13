@@ -29,6 +29,7 @@
 #include "CursorVisibility.h"
 #include "RegionRows.h"
 #include "RegionExpand.h"
+#include "RegionResultCache.h"
 #include "GWorld8.h"
 #include "SoundDriver.h"
 #include "SongTimeline.h"
@@ -486,6 +487,7 @@ static bool s_pictureHasPaint;
 static uint8_t s_pictureClip[RegionExpand::capacity];
 static uint8_t s_picturePaint[14]; // Rect and RGB, recorded without touching source pixels.
 static uint8_t s_regionRecord[PolygonRegion::capacity];
+static RegionResultCache::Cache s_regionResults;
 static uint8_t* s_regionPort;
 static bool s_regionHasContour;
 // Geometry services complete before original callbacks can run. Native VBI
@@ -9886,8 +9888,13 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
            || port!=s_regionPort || s_regionHasContour || read16(port+66)!=0xffff
            || read32(port+96)!=1 || read16(port+52)!=1 || read16(port+54)!=1)goto unsupportedTrap;
         // Keep contour edges and atomic staging off the shared system stack.
-        bool valid=PolygonRegion::encode(*polygon,owner->handleSize(polygon),s_regionRecord,
-            sizeof(s_regionRecord),bytes,s_regionWorkspace.polygon);
+        bool valid=s_regionResults.get(1,*polygon,owner->handleSize(polygon),
+            s_regionRecord,sizeof(s_regionRecord),bytes);
+        if(!valid) {
+            valid=PolygonRegion::encode(*polygon,owner->handleSize(polygon),s_regionRecord,
+                sizeof(s_regionRecord),bytes,s_regionWorkspace.polygon);
+            if(valid)s_regionResults.put(1,*polygon,s_regionRecord,bytes);
+        }
         if(!valid)goto unsupportedTrap;
         write32(port+48,read32(*polygon+read16(*polygon)-4));
         memoryResult(0,false);
@@ -9961,7 +9968,11 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         bool valid;
         {
             AitdProfileScope profile(kProfileRegionExpand);
-            valid=RegionExpand::one(*region,owner->handleSize(region),expanded,RegionExpand::capacity,size);
+            valid=s_regionResults.get(2,*region,owner->handleSize(region),expanded,RegionExpand::capacity,size);
+            if(!valid) {
+                valid=RegionExpand::one(*region,owner->handleSize(region),expanded,RegionExpand::capacity,size);
+                if(valid)s_regionResults.put(2,*region,expanded,size);
+            }
         }
         if(valid) {
             AitdProfileScope profile(kProfileRegionResize);

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """One-pixel region expansion: independent pixel oracle and original capture."""
-import argparse, os, re, struct, subprocess
+import argparse, os, random, re, struct, subprocess
 import local_temp as tempfile
 from pathlib import Path
 from check_driver22 import fields, one
@@ -67,6 +67,14 @@ return 0;}
                 # exercise forward decoding and the three-row expansion window.
                 {(x,y) for y in range(-100,200) for x in range(-8,12)
                  if y % 31 < 20 and (x < (y % 7)-5 or x > (y % 5)+5)}]
+        rng=random.Random(20261013)
+        for _ in range(100):
+            points=set()
+            for _ in range(rng.randrange(1,5)):
+                x,y=rng.randrange(-20,20),rng.randrange(-20,20)
+                w,h=rng.randrange(1,8),rng.randrange(1,12)
+                points.update((xx,yy) for xx in range(x,x+w) for yy in range(y,y+h))
+            shapes.append(points)
         for points in shapes:
             expected=encode({(x+dx,y+dy) for x,y in points for dx in (-1,0,1) for dy in (-1,0,1)})
             if model(encode(points))!=expected:raise ValueError('independent pixel oracle')

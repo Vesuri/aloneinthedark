@@ -95,18 +95,17 @@ and all four `.prof` files. Thus there is **no measured cycle/field bias in this
 pinned configuration**. This does not validate non-deterministic filesystem runs or
 other profiling windows; the maintained scenario keeps all stops at event boundaries.
 
-The current deterministic reference baseline (`heap2-tail` / `heap2-final`)
+The current deterministic reference baseline (`region1-retained` / `region1-repeat`)
 repeats exactly: phase states, field/frame counts, stall list and CPU summaries
-match, exceeding the 2% repeatability gate. Faster loading changes the natural
-timed encounter route; old and new whole-fight averages are not state-paired A/B
-measurements.
+match. Faster preparation changes the natural timed encounter route; whole-fight
+averages from different builds are not state-paired A/B measurements.
 
 | Phase end | Frames | PAL fields | Nonstall fields/frame | Adjusted CPU ms/frame |
 | --- | ---: | ---: | ---: | ---: |
-| MONSTER song 136 | 500 | 2,186 | 4.129 | 85.93 |
-| Monster animation active | 1 | 23 | 23.000 | 454.88 |
-| First Carnby hit (237) | 85 | 1,002 | 9.976 | 218.79 |
-| Death song 131 | 277 | 3,692 | 12.073 | 252.77 |
+| MONSTER song 136 | 502 | 2,150 | 4.112 | 83.98 |
+| Monster animation active | 1 | 17 | 17.000 | 342.35 |
+| First Carnby hit (237) | 91 | 979 | 9.315 | 204.00 |
+| Death song 131 | 274 | 3,696 | 12.317 | 255.02 |
 
 The one-frame entry phase is not a steady-state estimate. These are full
 inter-frame stall intervals; an observed event does not establish the cause of
@@ -114,21 +113,46 @@ the whole interval.
 
 | Observed event | Scene (reference only) | Fields | Seconds |
 | --- | ---: | ---: | ---: |
-| Effect count 0 → 1 | 532 | 34 | 0.68 |
-| Song 137 → 136 | 700 | 96 | 1.92 |
-| Effect count 2 → 3 | 725 | 142 | 2.84 |
-| Effect count 10 → 11 | 785 | 32 | 0.64 |
-| Song 136 → 132 | 798 | 82 | 1.64 |
-| Fight frame | 997 | 25 | 0.50 |
-| Room 0/camera 0 → room 6/camera 10 | 1,051 | 245 | 4.90 |
-| Song 132 → 131 | 1,063 | 44 | 0.88 |
+| Song 137 → 136 | 702 | 90 | 1.80 |
+| Effect count 1 → 2 | 736 | 119 | 2.38 |
+| Effect count 10 → 11 | 793 | 31 | 0.62 |
+| Song 136 → 132 | 808 | 70 | 1.40 |
+| Room 0/camera 0 → room 6/camera 10 | 1,056 | 244 | 4.88 |
+| Song 132 → 131 | 1,068 | 44 | 0.88 |
 
 FIGHT starts before the first hit in this route; a phase must follow the actual
-hit event rather than assume song order. Steady fighting is about **4.14 FPS**.
-Of the 252.77 ms adjusted CPU estimate per fight frame, original code takes 128.73,
-CopyBits 27.04, trap entry/dispatch 18.27, port lookups 15.23, drawing/regions 14.50,
-and C2P 13.60 ms. These costs include diagnostic overhead and are not a shipping
+hit event rather than assume song order. Nonstall fighting is about **4.06 FPS**.
+Of the 255.02 ms adjusted CPU estimate per fight frame, original code takes 128.53,
+CopyBits 27.16, trap entry/dispatch 18.20, port lookups 15.19, drawing/regions 14.47,
+and C2P 15.45 ms. These costs include diagnostic overhead and are not a shipping
 build FPS claim.
+
+#### Repeated camera masks
+
+The matched 12-mask rebuild below `(Dark, $3694)` in the approach phase costs
+**313.71 ms of port work**, versus 800.76 ms without geometry reuse/local heap
+merging: **60.8% less** (`region1-before-approach` / `region1-retained-approach`).
+The repeat yields identical counters and costs. Both calls issue 12 FramePoly,
+12 InsetRgn and 43 CopyBits calls; original rendering call counts match. Timed
+VBL callback/interrupt counts naturally fall with elapsed work. Original code
+within this subtree remains 120.6–120.8 ms; these are totals per rebuild, not
+per-frame averages printed by the generic subtree report.
+
+All 24 geometry transforms hit exact records computed earlier in the same run.
+The bounded cache removes repeated encoding/expansion; local-tail heap merging
+removes whole-zone scans during polygon/region resizing. First-seen geometry
+still uses the original validated helpers. The separate, mostly cold pair of
+rebuilds in the fight phase improves only 334.33 → 323.23 ms of port work; the
+60.8% result is **not** a claim for every camera transition. Original background
+decompression and other game work remain, so complete scene stalls can still
+last several seconds. No framebuffer shadow comparisons or game-code changes
+are involved. See [region validation](testing.md#region-rebuilding).
+
+#### Song-start attribution reference
+
+The separately pinned `heap2-tail` / `heap2-final` captures below are the
+attribution reference for AUDIO.1, not timings from the current region-cache
+build. Re-measure them when implementing audio changes.
 
 The three `startNativeSong` subtrees total **2.616 s**, including **0.508 s** in
 `MacHeap::moveHigh`. Their disjoint preparation costs, in milliseconds, are:
