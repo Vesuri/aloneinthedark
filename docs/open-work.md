@@ -67,3 +67,15 @@ Each item gives the **goal**, then the scope, then *done when*: the evidence req
 unresolved), reproducible steps and evidence; version-inapplicable cases   have reasons.
 File confirmed port defects as actionable open items. Report   inherited glitches
 separately without silently changing original game logic.
+
+## TickCount resolution
+
+- **TICK.1 Measure short waits against PAL field-only ticks.**
+  TickCount returns the field-updated shadow. The shared VideoTicks test shows
+  that repeated five-tick waits can lock onto six-tick intervals when observing
+  only the PAL sequence 0,1,2,3,4,6. This establishes the clock-resolution
+  limitation, not its effect on this game's routes. Measure the original and
+  state-paired native waits before changing the clock; investigate coherent
+  within-field sampling through the shared helper if affected.
+  Acceptance: matched original/native deadline and cadence evidence, with
+  monotonicity, rollover, pending-VBI and callback-time controls.
