@@ -37,6 +37,20 @@ Each item gives the **goal**, then the scope, then *done when*: the evidence req
   passes; confirmed deviations are corrected through the shared workflow,
   callback ABI checks pass, and existing gameplay/VBL latency gates pass.
 
+## Profiling validity
+
+- **PERF.1 Keep debugger stops outside the measured profile window.**
+  `amiga/aprof.gdb` installs a conditional `AitdScreen::queueFrame` breakpoint
+  after `monitor aprof start` and waits for a completed-step threshold. Verify
+  whether the remote stub evaluates that condition or GDB stops the guest at
+  intermediate frames. AmigaXDev's measurement method forbids debugger stops
+  inside the window because they can bias timing. Use a one-shot in-target
+  completion marker if intermediate stops occur; preserve normal game work.
+
+  *Done when* the measurement has only start/end stops, the interval has positive
+  completion and matching game state, and an A/B check establishes the effect
+  on existing profiles before any affected performance conclusions are reused.
+
 ## AITD 1 glitch audit
 
 - **GLITCH.1 Check the Amiga port against the AITD 1 material in the
