@@ -131,14 +131,24 @@ and C2P 13.60 ms. These costs include diagnostic overhead and are not a shipping
 build FPS claim.
 
 The three `startNativeSong` subtrees total **2.616 s**, including **0.508 s** in
-`MacHeap::moveHigh`. Song 136 takes 888 ms: sample loading 484 ms, metadata
-ownership 168 ms, PCM conversion 99 ms, MIDI preflight 59 ms and direct loader work
-60 ms. The loading totals include 186 ms of MoveHHi and about 362 ms of resource
-source reads; nested totals must not be added twice. Songs 132 and 131 together
-take 1.728 s, including 322 ms of MoveHHi. The full frame intervals above also
-contain original game work and presentation, not just native audio preparation.
-AUDIO.1 targets ≤ 0.3 s per native `startNativeSong` invocation; full frame intervals
-are reported separately.
+`MacHeap::moveHigh`. Their disjoint preparation costs, in milliseconds, are:
+
+| Song | Resource source reads | MoveHHi | MIDI decoding | PCM conversion | Remaining work | Total |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 136 | 357.34 | 185.65 | 59.08 | 98.71 | 187.41 | 888.19 |
+| 132 | 407.86 | 233.64 | 114.90 | 135.60 | 229.41 | 1121.41 |
+| 131 | 171.50 | 88.28 | 117.18 | 89.59 | 139.97 | 606.52 |
+
+Each named column includes its complete subtree, including interrupts during that
+work. The selected subtrees do not overlap; remaining work is the total minus those
+columns and includes loader logic, other heap/resource operations, clearing buffers
+and audio startup. `loadSongSample` takes 484.11, 575.74 and 204.19 ms for songs
+136, 132 and 131 respectively. Those inclusive sample-loading totals contain reads
+and heap movement already counted above and must not be added to them.
+
+All three native starts exceed 0.5 s. AUDIO.1 tracks implementation with a target of
+≤ 0.3 s per native `startNativeSong` invocation. Full frame intervals also contain
+original game work and presentation and are reported separately.
 
 Isolated, single-frame profiles (`heap2-single-136`, `-132`, `-131`) retain the
 same MONSTERPROFILE/FIXEDRNG executable and deterministic reference configuration.

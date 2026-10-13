@@ -22,18 +22,9 @@ are in that document; preserve matching game state when comparing changes.
   *Done when* both hardware results are recorded and later items quote their 68040
   effect against them. Emulator smoke tests do not satisfy this hardware gate.
 
-- **HEAP.3 Measure the remaining song-start cost.**
-  Attribute each `startNativeSong` invocation to resource reads, `loadSongSample`,
-  MIDI preparation, `SongVoice::convert`, heap movement and the remaining work.
-  Use the [per-song baseline](performance.md#monster-to-death-cycle); distinguish
-  inclusive and exclusive costs without counting nested work twice. This item is
-  measurement only; implementation belongs to AUDIO.1.
-
-  *Done when* the remaining cost per song is recorded and either is ≤ 0.5 s or has
-  a separate queued implementation item with its own acceptance.
-
 - **AUDIO.1 Reduce native song-start preparation cost.**
-  Use HEAP.3's attribution to optimize native song preparation. Preserve on-demand
+  Use the [per-song attribution](performance.md#monster-to-death-cycle) to optimize
+  native song preparation. Preserve on-demand
   loading, original song events, sample bytes, interrupt timing and resource ownership.
   Exclude original game instructions and unrelated drawing/presentation from the target.
 
