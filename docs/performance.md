@@ -214,6 +214,14 @@ for comparisons. Capture the CPU model/clock, Fast RAM, storage, SetPatch CPU
 library version and WHDLoad options alongside both reports. Existing caches are
 observed, never changed by the audit.
 
+For plain-AmigaOS 68040/68060 acceptance, require the instruction-cache enable
+bit `$00008000` and data-cache enable bit `$80000000` in both reported values:
+`(CACR & $80008000) == $80008000`. Record the full values and investigate any
+change in policy bits. Flushes may use transient control bits; equality of the
+two endpoints alone cannot prove that every intervening instruction preserved
+policy. The source audit is in [development](development.md#plain-amigaos-cache-ownership).
+A Kickstart-only emulator run without the CPU library does not satisfy this gate.
+
 The buffer occupies 458,752 bytes of Fast RAM and holds at most 16,384 frames;
 the observer adds no allocation, file I/O or debugger stop between measured events. The
 FRAMEAUDIT publication buffer is also enabled. Diagnostic memory and logging

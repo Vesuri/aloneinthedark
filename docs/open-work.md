@@ -18,6 +18,9 @@ are in that document; preserve matching game state when comparing changes.
   [debugger-free monster audit](performance.md#debugger-free-hardware-audit)
   on the 68040/40 under WHDLoad and plain AmigaOS with SetPatch. Preserve each
   binary report and record memory, video, storage, library and WHDLoad settings.
+  For plain AmigaOS, record the SetPatch/CPU-library versions and full CACR before
+  gameplay and after cleanup; both 040 cache-enable bits (`$80008000`) must be set.
+  Investigate any cache-policy change. The executable must retain OS cache ownership.
 
   *Done when* both hardware results are recorded and later items quote their 68040
   effect against them. Emulator smoke tests do not satisfy this hardware gate.
@@ -41,13 +44,6 @@ are in that document; preserve matching game state when comparing changes.
 
   *Done when* the hardware performance comparison and complete visual/audio run
   are recorded. Corrected FS-UAE functional checks do not satisfy this hardware gate.
-
-- **CACHE.2 Document and check plain-AmigaOS cache state.**
-  Record that the 68040/68060 library from SetPatch must enable both caches, and check
-  that the launch path never changes CACR.
-
-  *Done when* the README's requirements say so and a plain-AmigaOS PERF.3 run records
-  the observed CACR.
 
 - **REGION.1 Speed up camera-change mask rebuilding.**
   A camera change (`JT254->Dark2+$5D30`) rebuilds masks below `JT187->Dark+$3694`.

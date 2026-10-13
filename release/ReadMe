@@ -16,6 +16,9 @@
  -------------
  This install requires WHDLoad version 17.0 or better, an AGA Amiga and a
  68020 or better. A 68040 or better is strongly recommended.
+ For direct launch without WHDLoad on a 68040/68060, run SetPatch with the
+ matching CPU support library installed and both CPU caches enabled.
+
  Installation requires Installer V43 or later and 8 MB disk space for the
  game and original data.
 

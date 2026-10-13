@@ -18,6 +18,9 @@ Current Amiga release: **0.91 (10.10.2026)**.
 - **2 MB Chip RAM and 8 MB Fast RAM**; more Fast RAM permits more PRELOAD caching.
 - WHDLoad 17+, Installer 43+, and a supported Kickstart 3.1 image with its RTB.
 - 8 MB destination space and 24 MB temporary disk space.
+- For direct AmigaOS launch on 68040/68060: run SetPatch with the matching
+  CPU support library installed and both instruction and data caches enabled.
+  The executable preserves the OS cache policy; WHDLoad manages its own policy.
 
 Extract `AloneInTheDark-0.91.lha`, open its **Alone in the Dark Install** drawer
 and run **Install**. Select the destination, temporary drawer and the

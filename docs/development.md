@@ -243,3 +243,25 @@ synchronization drains the blitter before C2P or CPU reads reuse its destination
 Fast-memory chunky pixels and software blitter-queue entries are CPU-only. No
 per-frame cache flush is needed. See [cache validation](testing.md#whdload-cache-validation)
 for the emulator gate; hardware performance and corruption checks remain deferred.
+
+## Plain-AmigaOS cache ownership
+
+Direct launch requires the accelerator's matching 68040/68060 support library,
+initialized by SetPatch, with instruction and data caches enabled. The executable
+and its launch scripts do not write CACR or call CacheControl to select cache
+policy. Modified code is published through Exec CacheClearU; the CPU library owns
+the flush implementation and any transient cache-control operations it needs.
+This is preservation of cache policy, not a claim that flushing never touches CACR.
+
+The original CODE 1 loader can select a direct CACR fallback when the Macintosh
+cache-flush service is absent. Our GetOSTrapAddress exposes `$A0BD`, distinct from
+the unimplemented-trap entry, so the loader selects `(CODE 1, $26e)` and uses our
+Exec-backed flush service instead. Native audit code only reads CACR through
+Supervisor; hardware takeover/restoration does not change the cache policy.
+
+The disposable emulator launchers boot a minimal Kickstart environment without
+SetPatch or CPU libraries. They are functional fixtures, not the installed-system
+cache/performance reference. In particular, a plain 030 run with CACR `$2001`
+has its data cache disabled. Do not interpret it as a both-caches-enabled 040 run.
+The [hardware audit](performance.md#debugger-free-hardware-audit) records raw CACR
+before gameplay and after OS restoration; PERF.3 retains the physical-machine gate.
