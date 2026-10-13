@@ -137,7 +137,7 @@ ownership 168 ms, PCM conversion 99 ms, MIDI preflight 59 ms and direct loader w
 source reads; nested totals must not be added twice. Songs 132 and 131 together
 take 1.728 s, including 322 ms of MoveHHi. The full frame intervals above also
 contain original game work and presentation, not just native audio preparation.
-HEAP.3 targets ≤ 0.3 s per native `startNativeSong` invocation; full frame intervals
+AUDIO.1 targets ≤ 0.3 s per native `startNativeSong` invocation; full frame intervals
 are reported separately.
 
 Isolated, single-frame profiles (`heap2-single-136`, `-132`, `-131`) retain the
@@ -157,7 +157,7 @@ boundary fields. The first frame includes 156.11 ms in original decompression
 `(Dark, $2A78)` and `(Dark, $29FE)`, plus original rendering/game work. Its original
 instructions alone exceed 300 ms. Thus a 300 ms **whole-frame** gate on this matched
 workload cannot be established by reducing native heap or audio cost alone. The
-owner-approved HEAP.3 target therefore applies to native song preparation, excluding
+owner-approved separation of audio work therefore measures native song preparation, excluding
 original game work and unrelated drawing/presentation.
 
 ### Debugger-free hardware audit
