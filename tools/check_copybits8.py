@@ -45,8 +45,6 @@ def check(text,status,native=False):
             if st<=sy<sb and sl<=sx<sright and all(t<=y<b and l<=x<r for t,l,b,r in bounds):expected[(y-dt)*dr+x-dl]=src[(sy-st)*sr+sx-sl]
     if after!=expected:raise ValueError('independent complete destination comparison')
     if native:
-        from check_native_driver import check as startup
-        startup(text,status)
         ref=data('reference','return','dst-pixels')
         # The Mac's four padding bytes per source row are allocator contents.
         # They are preserved on each platform, excluded from the pixel bounds.

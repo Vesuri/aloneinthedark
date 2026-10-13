@@ -254,6 +254,23 @@ result. Misses tail-call the ordinary Line/LineTo handler. `SCENEFRAMEVERIFY=1`
 also runs the independent frame-end check on this entry. Pixel dirtiness remains
 coordinate-based and publication stays at the existing complete-frame boundary.
 
+### Actor mask copies
+
+CopyBits reuses owned GWorld pixel capacities and validates cached port-slot identities
+against each live request. Mask validation retains exact encoded bytes in a 32 KiB
+arena with 32 entries; moving a handle is harmless, while any byte edit requires
+validation again. Arena reuse evicts overlapping entries. No pixel buffers are cached.
+
+Unscaled copies reject disjoint mask bounds after validating the whole stream, then
+clip using signed coordinates. The scaler and direct row loop have separate compiled
+frames, keeping their bookkeeping out of mask setup. Native region keys use unaligned
+68020 word/longword reads and an exact CMPM comparison; the negative-mask diagnostic
+also tests that comparison independently. CopyBits also uses the shared
+unfinished-scene/service guard before tail-calling the same C drawing adapter. Due
+callbacks/effects and the original `(Dark, $1DBC)` publication exception retain
+the ordinary path; `SCENEFRAMEVERIFY=1` checks the fast entry independently. Frame
+publication and dirty bounds retain their existing contracts. See [CopyBits](copybits.md#streaming-masked-copies).
+
 ### Camera mask results
 
 FramePoly and InsetRgn retain up to 32 successful geometry results in a shared

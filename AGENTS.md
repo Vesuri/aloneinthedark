@@ -108,6 +108,8 @@ specific to this game in `docs/`.
 - Work [docs/open-work.md](docs/open-work.md) top down, one item at a time
   (design.md §8). Delete the item in the commit that completes it and add
   newly found work, with an ID and acceptance check, at its place in the queue.
+- Record scope ambiguities and distinct workloads as potential future work with an
+  ID and acceptance check; keep moving within the agreed task scope.
 - Owner decisions (design.md §5) and anything that changes game behaviour go
   to the owner; everything else proceeds on the documented defaults.
 - Commit directly to `main`, one verified cohesive change per commit.

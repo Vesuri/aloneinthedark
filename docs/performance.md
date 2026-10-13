@@ -44,6 +44,25 @@ workload, about 335/331 µs in this fight. See
 [implementation](development.md#solid-particle-pens) and
 [validation](testing.md#particle-rectangles).
 
+## Actor-mask copies
+
+On the pinned 15.6672 MHz reference 68030/PAL monster fight, actor-mask CopyBits
+at (Dark, $30A8) averages **347.59 µs**, down from **806.44 µs**:
+9,804 calls / 3,407.77 ms versus 9,482 / 7,646.66 ms. These are whole-trap
+inclusive costs. A clean repeat reproduced the phase states, frame/field counts
+and per-call cost exactly. The 57% reduction meets the owner's actor-mask scope for the
+350 µs target. Intermediate fight routes differ, so this is a per-call comparison,
+not a matched-state FPS claim or a real-hardware measurement.
+
+Exact-byte region validation uses 32 entries in the same 32 KiB storage budget;
+early mask-bound rejection, cached GWorld lookup, smaller copy setup and the
+shared guarded trap entry reduce repeated work. Full malformed-stream validation
+still precedes pixel writes. Larger unmasked copies are reported separately:
+(Dark, $1DE6) averages 657.87 µs and Misc2 copies 908.00 µs. The combined CopyBits
+average is 439.40 µs versus 832.23 µs before this change. See
+[implementation](development.md#actor-mask-copies) and
+[validation](testing.md#copybits-masks).
+
 ## Cycle profiler
 
 `amiga/aprof.sh` gives exact emulated cost, not samples. It runs a private FS-UAE

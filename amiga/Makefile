@@ -47,6 +47,7 @@ endif
 ifeq ($(MASKREJECTPROBE),1)
 PROBES=1
 EXTRA_DEFINES += -DAITD_MASK_REJECT_PROBE
+PROBE_SYMS_MASK_COMPARE = g_maskCompareChecks
 endif
 
 ifeq ($(SCENEFRAMEVERIFY),1)
@@ -542,7 +543,7 @@ PROBE_SYMS = g_macBookFrameActive g_macBookFramesBegun g_macBookFramesCompleted 
              g_stageBState g_trapWord g_trapSelector g_trapSegment g_trapOffset \
              g_trapPC g_trapRegisters g_trapUserStack g_resourceCount g_jumpEntryCount \
              g_blockMoveCount g_trapManager g_trapRoutine
-PROBE_SYMS += $(PROBE_SYMS_FRAME)
+PROBE_SYMS += $(PROBE_SYMS_FRAME) $(PROBE_SYMS_MASK_COMPARE)
 ifeq ($(MONSTERAUDIT),1)
 PROBE_SYMS += g_monsterAudit g_monsterFrames g_monsterCount g_monsterPhase
 endif
@@ -857,7 +858,7 @@ obj/gcc8_a_support.o : $(SUPPORT)/gcc8_a_support.s
 obj/EmbeddedOverlay.o: $(REPO)/resources/overlay.rsrc
 
 # Port-authored GAS assembly (68000 exception/trampoline code).
-obj/RGBQuick.o obj/LineQuick.o: $(AMIGA_SRC)/QuickSceneGuard.inc
+obj/RGBQuick.o obj/LineQuick.o obj/CopyBitsQuick.o: $(AMIGA_SRC)/QuickSceneGuard.inc
 
 obj/%.o : $(AMIGA_SRC)/%.s
 	$(info ASM  $<)

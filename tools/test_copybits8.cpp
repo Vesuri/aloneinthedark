@@ -38,7 +38,7 @@ static void testMaskCache() {
     }
     // Warm content moved into new storage, truncated capacity, and slot reuse.
     auto moved=original;check(moved,moved.size());check(moved,moved.size()-2);
-    for(unsigned i=0;i<20;++i) {auto changed=original;changed[5]=uint8_t(i);check(changed,changed.size());}
+    for(unsigned i=0;i<96;++i) {auto changed=original;changed[5]=uint8_t(i);check(changed,changed.size());}
     check(original,original.size());
     // Valid but oversized streams take the uncached path; a bad final marker
     // must be rejected there too. Empty transitions still require validation.
@@ -49,6 +49,19 @@ static void testMaskCache() {
     large.push_back(127);large.push_back(255);
     large[0]=large.size()>>8;large[1]=large.size();
     check(large,large.size());large.back()=0;check(large,large.size());
+    // Fill and wrap the bounded byte arena, then revisit keys whose old
+    // storage has been reused. Each malformed tail must still reject atomically.
+    large.resize(10);
+    for(unsigned y=0;y<800;++y)for(uint16_t v:{uint16_t(y),uint16_t(32767)}) {
+        large.push_back(v>>8);large.push_back(v);
+    }
+    large.push_back(127);large.push_back(255);
+    large[0]=large.size()>>8;large[1]=large.size();
+    for(unsigned round=0;round<3;++round)for(unsigned key=0;key<24;++key) {
+        large[5]=uint8_t(key);check(large,large.size());
+        large.back()=0;check(large,large.size());large.back()=255;
+    }
+    check(original,original.size());
     puts("PASS mask cache: exact-content reuse, every-byte mutation, relocation, capacity, eviction, scaling and atomic rejection");
 }
 int main(int argc,char** argv) {

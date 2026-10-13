@@ -180,12 +180,18 @@ mask fixture below uses its own clean diagnostic build.
 ## CopyBits masks
 
 `make host-tests` exercises cached and uncached CopyBits with every-byte region
-mutations, handle-storage relocation, truncated capacity, cache eviction and larger
+mutations, handle-storage relocation, truncated capacity, slot/arena eviction and larger
 regions. Rejected copies must preserve the entire destination, including padding.
 `tools/check_maskcopy.py` also models the original Mac captures. Its native check pairs
 the original pose by default; `--native-unpaired` uses the native capture's own source,
 mask and rectangle when CPU speed changes the pose, while retaining full destination,
 ABI, source/record and publication checks.
+
+The standalone `copybits8.gdb` checks the first intro copy in a production build.
+It stops directly at the CopyBits entry, verifies the original caller, captures the
+return and exits; `tools/check_copybits8.py --native` checks the complete buffers
+and original Mac palette/pixels. Startup service coverage remains in the combined
+startup observer.
 
 For native checks, clean-build with `INTROSKIP=1 FIXEDRNG=1`. Run `maskcopy.gdb`,
 `corridor_mask.gdb` and `scene_batches.gdb` through `amiga/diag_run.sh`; validate their
@@ -196,8 +202,10 @@ region bytes with the Mac; the scene check decodes every captured AGA back buffe
 The disposable negative fixture `mask_rejection.gdb` requires a clean build with
 `INTROSKIP=1 FIXEDRNG=1 MASKREJECTPROBE=1`. This diagnostic-only hook warms the cache
 with a real mask, then corrupts its terminating marker using guest instructions; the
-shared debugger does not implement memory writes. The observer verifies the mutation
-and requires a named CopyBits loud stop at `(Dark, $346C)` before any destination change:
+shared debugger does not implement memory writes. It first checks the native region
+comparison loop over 36,432 equality/mismatch cases (all four byte alignments, identical
+pointers, lengths 0–65 and every mismatch position). The observer requires that
+coverage counter, verifies the mutation and requires a named CopyBits loud stop at `(Dark, $346C)` before any destination change:
 
 ```sh
 GDBSCRIPT=mask_rejection.gdb DIAG_RUN_DIR=.run-mask-rejection amiga/diag_run.sh 600

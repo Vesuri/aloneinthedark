@@ -1,5 +1,5 @@
 # MONSTERPROFILE=1 FIXEDRNG=1 SCENEFRAMEVERIFY=1 RGBCACHEVERIFY=1 M5AUDIT=1.
-# Idle monster-to-death sequence: every RGB call, scene edges and audio together.
+# Idle monster-to-death: RGB/particle/CopyBits quick entries, scene edges and audio.
 source m5_snapshot.gdb
 set pagination off
 set confirm off

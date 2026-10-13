@@ -11,6 +11,8 @@ def check(log, directory, status):
             or text.count('[Inferior 1 (Remote target) detached]') != 1
             or re.search(r'FAIL|TIMEOUT|Error in|Program received signal', text)):
         raise ValueError('native rejection did not complete')
+    if re.findall(r'^MASK_COMPARE checks=(\d+)$', text, re.M) != ['36432']:
+        raise ValueError('native comparison coverage')
     matches = re.findall(r'^MASK_REJECTED trap=A8EC segment=4 offset=346C bytes=(\d+)$', text, re.M)
     if len(matches) != 1:
         raise ValueError('expected named CopyBits rejection')
@@ -18,7 +20,7 @@ def check(log, directory, status):
     after = (directory / 'mask-rejection-after.bin').read_bytes()
     if not before or len(before) != int(matches[0]) or before != after:
         raise ValueError('destination changed before rejection')
-    print(f'PASS native malformed mask: named rejection, all {len(before)} destination bytes unchanged')
+    print(f'PASS native region comparison: 36432 equal/mismatch cases; malformed mask named rejection, all {len(before)} destination bytes unchanged')
 
 
 if __name__ == '__main__':

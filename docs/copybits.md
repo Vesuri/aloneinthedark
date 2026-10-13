@@ -121,21 +121,22 @@ copy contract, not complete story/intro or rendered-window acceptance.
 ## Streaming masked copies
 
 CopyBits8 validates the complete mask before changing the destination, then uses a
-forward row cursor and copies clipped spans. The native adapter owns an eight-entry
+forward row cursor and copies clipped spans. The native adapter owns a 32-entry
 validation cache for encoded regions up to 4096 bytes. Every lookup checks allocation
 capacity and compares all encoded bytes, including size and bounds. Identical content
 can reuse validation even after a handle moves; changed content must validate again.
 Rectangles and larger regions use the ordinary validator. Invalid streams never enter
 the cache, and malformed tails fail before any destination write.
 
-The cache occupies about 32 KiB of static storage, off the supervisor stack. It stores
+The cache packs records in a 32 KiB FIFO byte arena, off the supervisor stack.
+Reusing arena storage evicts every overlapping entry. It stores
 region encodings, never framebuffer pixels. The cursor retains only scanline edges;
 port/clip limits, colour remapping and explicit dirty bounds are unchanged. Original
 game instructions are unchanged.
 
 Host fixtures compare entire destinations against independent pixel models and cover
 colour mapping, padding, scaling, every-byte mutations after cache hits, relocation,
-capacity changes, eviction and oversized regions. The original Mac service fixture
+capacity changes, slot eviction, arena wrap and oversized regions. The original Mac service fixture
 also exercises a distinctive source image. Native observers check preserved source,
 records, registers, stack and unchanged offscreen dirty/publication state. See
 [testing](testing.md) for native mask and scene checks.

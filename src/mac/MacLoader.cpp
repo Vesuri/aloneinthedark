@@ -4993,14 +4993,34 @@ static __attribute__((noinline)) void packedLogicRowsC(
 }
 
 #ifdef AITD_MASK_REJECT_PROBE
+extern "C" { volatile uint32_t g_maskCompareChecks=0; }
 // Disposable negative fixture. Real 68k stores are required: the shared
 // debugger does not implement guest memory writes. Never linked in releases.
-static __attribute__((noinline)) void corruptMaskProbe(uint8_t* mask,uint16_t size,
+static __attribute__((noinline)) bool corruptMaskProbe(uint8_t* mask,uint16_t size,
                                                       uint8_t* pixels,uint32_t pixelBytes)
 {
     __asm__ volatile("" : : "r"(pixels),"r"(pixelBytes) : "memory");
+    // Exercise the target CMPM/DBNE comparison, including every tail length,
+    // byte alignment and mismatch position. Failure leaves the real mask
+    // untouched, so the observer cannot mistake it for the intended rejection.
+    static uint8_t first[72],second[72];
+    for(uint16_t a=0;a<4;++a)for(uint16_t b=0;b<4;++b)
+        for(uint16_t length=0;length<=65;++length) {
+            for(uint16_t i=0;i<length;++i)first[a+i]=second[b+i]=uint8_t(i*37+13);
+            if(!RegionRows::ValidationCache::same(first+a,second+b,length))return false;
+            ++g_maskCompareChecks;
+            if(!RegionRows::ValidationCache::same(first+a,first+a,length))return false;
+            ++g_maskCompareChecks;
+            for(uint16_t i=0;i<length;++i) {
+                second[b+i]^=0x80;
+                if(RegionRows::ValidationCache::same(first+a,second+b,length))return false;
+                ++g_maskCompareChecks;
+                second[b+i]^=0x80;
+            }
+        }
     volatile uint8_t* tail=mask+size-2;
     tail[0]=0;tail[1]=0;
+    return true;
 }
 #endif
 
@@ -5018,9 +5038,14 @@ static bool copyPortBits8(const uint8_t* sourceBitmap,const uint8_t* destination
         if(bytes<10 || bytes>32766)return false;
         maskBody=*handle;maskBytes=uint16_t(bytes);
     }
-    GWorldSlot* source=0;
-    for(uint16_t i=0;i<sizeof(s_gworlds)/sizeof(s_gworlds[0]);++i)
-        if(s_gworlds[i].used && (sourceBitmap==s_gworlds[i].pixMap || sourceBitmap==s_gworlds[i].port+2))source=&s_gworlds[i];
+    static GWorldSlot* lastSource=0;
+    GWorldSlot* source=lastSource;
+    if(!source || !source->used || (sourceBitmap!=source->pixMap && sourceBitmap!=source->port+2)) {
+        source=0;
+        for(uint16_t i=0;i<sizeof(s_gworlds)/sizeof(s_gworlds[0]);++i)
+            if(s_gworlds[i].used && (sourceBitmap==s_gworlds[i].pixMap || sourceBitmap==s_gworlds[i].port+2)) {source=&s_gworlds[i];break;}
+        lastSource=source;
+    }
     WindowSlot* sourceWindow=0;
     if(!source)for(uint16_t i=0;i<sizeof(s_windows)/sizeof(s_windows[0]);++i)
         if(s_windows[i].used && (sourceBitmap==s_windows[i].window+2
@@ -5030,7 +5055,7 @@ static bool copyPortBits8(const uint8_t* sourceBitmap,const uint8_t* destination
     if(source) {
         if(!source->locked)return false;
         sourceMap=source->pixMap;sourceColors=source->colorTable;sourcePixels=source->pixels;
-        sourceBytes=source->owner->handleSize(source->handles[1]);
+        sourceBytes=source->pixelCapacity;
     } else {
         // Original pause preserves the visible window in an owned GWorld.
         if(!sourceWindow || sourceWindow->dialog || !sourceWindow->window[110])return false;
@@ -5039,7 +5064,10 @@ static bool copyPortBits8(const uint8_t* sourceBitmap,const uint8_t* destination
     }
     if(read16(sourceMap+32)!=8 || read32(sourceMap)!=(uint32_t)sourcePixels)return false;
     uint8_t* port=s_qdThePort ? (uint8_t*)read32(s_qdThePort) : 0;
-    GWorldSlot* destination=gWorldForPort(port);
+    static GWorldSlot* lastDestination=0;
+    GWorldSlot* destination=lastDestination;
+    if(!destination || !destination->used || destination->port!=port)
+        lastDestination=destination=gWorldForPort(port);
     WindowSlot* window=destination ? 0 : windowSlot(port);
     if(!port || (destinationBitmap!=port+2 && (!destination || destinationBitmap!=destination->pixMap)))return false;
     if(s_recordingPicture) {
@@ -5075,7 +5103,7 @@ static bool copyPortBits8(const uint8_t* sourceBitmap,const uint8_t* destination
         if(!destination->locked || read16(destination->pixMap+32)!=8
            || read32(destination->pixMap)!=(uint32_t)destination->pixels)return false;
         map=destination->pixMap;pixels=destination->pixels;
-        pixelBytes=destination->owner->handleSize(destination->handles[1]);
+        pixelBytes=destination->pixelCapacity;
         destinationColors=destination->colorTable;inverse=*destination->handles[26];
     } else {
         if(!window || window->dialog || !port[110] || read16(window->pixelMap+32)!=8
@@ -5138,7 +5166,7 @@ static bool copyPortBits8(const uint8_t* sourceBitmap,const uint8_t* destination
     if(maskBody && read16(maskBody)>10 && !maskCorrupted) {
         if(!maskCache.validate(maskBody,maskBytes))return false;
         maskCorrupted=true;
-        corruptMaskProbe(const_cast<uint8_t*>(maskBody),read16(maskBody),pixels,pixelBytes);
+        if(!corruptMaskProbe(const_cast<uint8_t*>(maskBody),read16(maskBody),pixels,pixelBytes))return false;
     }
 #endif
     uint8_t drawn[8];
@@ -8079,6 +8107,7 @@ RGBQuickEnvironment g_rgbQuick={&s_qdThePort,0,&s_vblPass,&s_songInterruptError,
     &s_sceneFrameParent,&s_sceneFrameReturn,&s_segments[13].begin};
 uint32_t aitdRGBQuick(uint32_t*,uint8_t*,uint8_t*);
 uint32_t aitdLineQuick(uint32_t*,uint8_t*,uint8_t*);
+uint32_t aitdCopyBitsQuick(uint32_t*,uint8_t*,uint8_t*);
 }
 #ifdef AITD_SCENE_FRAME_VERIFY
 extern "C" void aitdRGBSceneGuard(uint32_t* regs,uint8_t* frame,uint8_t* userStack)
@@ -11227,6 +11256,26 @@ extern "C" uint32_t aitdLineQuickMiss(uint32_t* regs,uint8_t* frame,uint8_t* use
         : dispatchQuickTrap<0xa892>(regs,frame,userStack);
 }
 
+extern "C" uint32_t aitdCopyBitsQuickMiss(uint32_t* regs,uint8_t* frame,uint8_t* userStack)
+{
+    return dispatchQuickTrap<0xa8ec>(regs,frame,userStack);
+}
+
+extern "C" uint32_t aitdCopyBitsQuickDraw(uint32_t* regs,uint8_t* frame,uint8_t* userStack)
+{
+    const uint32_t pc=read32(frame+2);
+    // Keep the original scene-publication exception on the general path.
+    if(read16(s_windowManagerPixMap+32)!=8
+       || (s_segments[4].begin && pc==(uint32_t)s_segments[4].begin+0x1dbc))return 0;
+#ifdef AITD_SCENE_FRAME_VERIFY
+    aitdRGBSceneGuard(regs,frame,userStack);
+#endif
+    if(!copyPortBits8((const uint8_t*)read32(userStack+18),(const uint8_t*)read32(userStack+14),
+        (const uint8_t*)read32(userStack+10),(const uint8_t*)read32(userStack+6),
+        read16(userStack+4),(const uint8_t*)read32(userStack)))return 0;
+    regs[0]=0;return 23;
+}
+
 static void updateQuickTrap(uint16_t trap)
 {
     const uint16_t index=trapIndex(trap);
@@ -11254,7 +11303,11 @@ static void updateQuickTrap(uint16_t trap)
     case 0xa893: g_macQuickTraps[index]=dispatchQuickTrap<0xa893>;break;
     case 0xa89b: g_macQuickTraps[index]=dispatchQuickTrap<0xa89b>;break;
     case 0xa89c: g_macQuickTraps[index]=dispatchQuickTrap<0xa89c>;break;
+#if defined(AITD_SCENE_FRAME_BATCH) && !defined(AITD_PROFILE_FRAME)
+    case 0xa8ec: g_macQuickTraps[index]=aitdCopyBitsQuick;break;
+#else
     case 0xa8ec: g_macQuickTraps[index]=dispatchQuickTrap<0xa8ec>;break;
+#endif
 #if defined(AITD_SCENE_FRAME_BATCH) && !defined(AITD_PROFILE_FRAME) && !defined(AITD_EFFECT_LOOP_PROBE)
     case 0xaa14: case 0xaa15: g_macQuickTraps[index]=aitdRGBQuick;break;
 #else

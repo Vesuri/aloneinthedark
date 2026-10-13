@@ -18,6 +18,12 @@ end
 dump binary memory ../tmp/mask-rejection-before.bin $pixels $pixels+$bytes
 break AitdScreen::showLoudStop
 continue
+printf "MASK_COMPARE checks=%u\n",g_maskCompareChecks
+if g_maskCompareChecks!=36432
+ echo FAIL native region comparison coverage\n
+ detach
+ quit 1
+end
 if *(unsigned short*)($body+$size-2)!=0
  echo FAIL mask mutation did not take effect\n
  detach

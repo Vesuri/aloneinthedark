@@ -97,7 +97,7 @@ aitd_line_a_handler:
 aitd_line_a_trap_entry:
 	| The original opcode indexes the table: AFFE callable originals and
 	| patched traps have no quick entry. All quick entries retain D7.
-	| RGBQuick and LineQuick use this saved-image ABI and may clobber native registers;
+	| RGBQuick, LineQuick and CopyBitsQuick use this saved-image ABI and may clobber native registers;
 	| game registers remain parked until the common return/fallback below.
 	move.w (a3),d0
 	andi.l #0x0fff,d0

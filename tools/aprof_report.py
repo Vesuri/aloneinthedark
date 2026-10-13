@@ -24,7 +24,7 @@ LINE_A = 10
 BUCKETS = [
     ('Presentation: C2P', ('c2p1x1_8_c5_gen', 'aitdKalmsC2PRect')),
     ('Presentation: other', ('AitdScreen::presentMacFrame', 'AitdScreen::queueFrame', 'Planar8', 'presentMacRuntime', 'AmigaHardware::blitter', '_blitter', 'AmigaHardware::setDMAChannels')),
-    ('QuickDraw: CopyBits', ('CopyBits8', 'RegionRows', 'copyPortBits8', 'memmove', 'memcpy', 'StepCopy', 'MaskCopy')),
+    ('QuickDraw: CopyBits', ('CopyBits8', 'RegionRows', 'copyPortBits8', 'aitdCopyBitsQuick', 'memmove', 'memcpy', 'StepCopy', 'MaskCopy')),
     ('QuickDraw: fills, lines, regions', ('FillRect8', 'Line8', 'lineGWorld', 'paintRect', 'penLine', 'Polygon',
                                           'RegionExpand', 'lineWindow', 'paintPort', 'FramePoly', 'markDirtyBounds')),
     ('Trap entry and dispatch', ('aitd_line_a_handler', 'aitd_line_a_trap_entry', 'aitdLineADispatch', 'aitdAuditTrapEntry', 'clipRectTrap', 'findWindowTrap', 'blockMoveTrap', 'obscureCursorTrap', 'serviceQuickTrap', 'dispatchMacTrap', 'isUserService',

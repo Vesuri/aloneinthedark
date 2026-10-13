@@ -66,17 +66,9 @@ are in that document; preserve matching game state when comparing changes.
   ≤ 80 µs per call in repeatable fight profiles. Preserve exact raster ties,
   dirty bounds and frame/callback service points.
 
-- **FRAME.3 Reduce per-call CopyBits cost for actor masks.**
-  `Dark+$30A8` makes about 43 CopyBits per fight frame (9 in the empty attic) at 814 µs
-  each: `CopyBits8::copy`, `RegionRows::ValidationCache::validate`, `RegionRows::row`,
-  `copyPortBits8` setup and heap lookups.
-
-  *Done when* copybits8, maskcopy, mask-rejection and corridor fixtures pass and
-  CopyBits averages ≤ 350 µs in the fight.
-
 - **FRAME.4 Extend quick-trap entry to fight-frame traps.**
   Thin Line/LineTo, PenSize and QDExtensions still pay general dispatch costs. Re-measure
-  the remaining entry/dispatch cost after the RGB and particle quick entries. Keep the register image, CCR, Pascal
+  the remaining entry/dispatch cost after the RGB, particle and CopyBits quick entries. Keep the register image, CCR, Pascal
   ABI, patched-trap fallback and frame/callback service points.
 
   *Done when* `quick_traps.gdb`, `frame_pacing.gdb`, `scene_frame_verify.gdb`,
@@ -104,6 +96,16 @@ are in that document; preserve matching game state when comparing changes.
 
   *Done when* `frame_pacing.gdb` and the C2P verification build pass and C2P is
   ≤ 10 ms per fight frame, or the bounds are shown to be already minimal.
+
+- **FRAME.9 Assess larger unmasked CopyBits calls.**
+  The actor-mask target excludes larger unmasked copies. The reference-68030
+  fight currently measures about 658 µs at (Dark, $1DE6) and 908 µs under Misc2.
+  Attribute setup, pixel movement and required services separately before
+  selecting another optimization; these costs do not establish a defect.
+
+  *Done when* repeatable profiles record call dimensions, total frame cost and
+  the dominant work, with a justified optimization proposal or a finding that
+  no further change is warranted. Preserve the original full-buffer comparisons.
 
 ## Runtime overhead
 
