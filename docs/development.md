@@ -208,3 +208,6 @@ Geometry, region, indexed copy/fill, GWorld and bitmap-font helpers come from
 AmigaXDev’s canonical `mac-runtime` sources. Vendored copies are hash-pinned in
 `manifest/shared-runtime.sha256` and checked before host tests and native builds.
 Update the canonical source and install through AmigaXDev before updating consumers.
+
+The loader’s big-endian word/longword accesses also use the canonical
+`BigEndianMemory.h`; their 68020 instructions and unaligned-access contract are unchanged.

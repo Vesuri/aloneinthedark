@@ -803,26 +803,25 @@ struct Segment { uint8_t* begin; uint8_t* end; char name[24]; uint32_t size; Mac
 static Segment s_segments[kMaximumSegments];
 static uint16_t s_segmentCount;             // highest loaded CODE ID + 1
 
-// The runtime targets big-endian 68020+, including its unaligned data accesses.
-// Explicit sized operations avoid byte-at-a-time reconstruction in every trap
-// and the compiler's previously observed byte-copy miscompilation.
-struct __attribute__((packed, may_alias)) MacWordAccess { uint16_t value; };
-struct __attribute__((packed, may_alias)) MacLongAccess { uint32_t value; };
+// Preserve legacy function ordering while using canonical access instructions.
+#define AMIGAXDEV_MEMORY_PRIMITIVES_ONLY
+#include "BigEndianMemory.h"
+#undef AMIGAXDEV_MEMORY_PRIMITIVES_ONLY
 static uint16_t read16(const uint8_t* p)
 {
     uint16_t value;
-    __asm__("move.w %1,%0" : "=d"(value) : "m"(*(const MacWordAccess*)p) : "cc");
+    AMIGAXDEV_MEMORY_READ16(p,value);
     return value;
 }
 static uint32_t read32(const uint8_t* p)
 {
     uint32_t value;
-    __asm__("move.l %1,%0" : "=d"(value) : "m"(*(const MacLongAccess*)p) : "cc");
+    AMIGAXDEV_MEMORY_READ32(p,value);
     return value;
 }
 static void write16(uint8_t* p, uint16_t v)
 {
-    __asm__ volatile("move.w %1,%0" : "=m"(*(MacWordAccess*)p) : "d"(v) : "cc");
+    AMIGAXDEV_MEMORY_WRITE16(p,v);
 }
 static int16_t resourceResult(int16_t error)
 {
@@ -832,7 +831,7 @@ static int16_t memoryResult(int16_t error,bool refresh=true);
 static void writeBoolean(uint8_t* p, bool value) { p[0] = value ? 1 : 0; p[1] = 0; }
 static void write32(uint8_t* p, uint32_t v)
 {
-    __asm__ volatile("move.l %1,%0" : "=m"(*(MacLongAccess*)p) : "d"(v) : "cc");
+    AMIGAXDEV_MEMORY_WRITE32(p,v);
 }
 static void copyString(char* out, const char* in)
 {
