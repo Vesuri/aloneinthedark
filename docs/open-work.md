@@ -45,15 +45,15 @@ are in that document; preserve matching game state when comparing changes.
   *Done when* the hardware performance comparison and complete visual/audio run
   are recorded. Corrected FS-UAE functional checks do not satisfy this hardware gate.
 
-- **FRAME.1 Memoize RGBForeColor/RGBBackColor colour lookup.**
-  A fight frame makes about 70 RGBForeColor calls at 179 µs each, mostly
-  `gWorldForPort`, handle checks and `GWorld8::colorIndex`. Cache the result per port,
-  keyed by the colour and inverse tables' seeds and contents identity plus the RGB value.
-  Invalidate it on any table change.
+- **TEST.2 Restore the continuous first-floor circuit fixture.**
+  With the original first-floor save, the maximum-speed 68030 run dies during the
+  bedroom fight (cycle 1, stage 35). Reproduced on unchanged `bee5b78` as well as
+  the RGB optimization. Diagnose the baseline failure and repair the controller
+  or establish a repeatable starting fixture; do not change production combat to make a test pass.
 
-  *Done when* every call in a monster-profile run returns the uncached index (checked by a
-  verifying build), `rgb_colors_calls.gdb` and window colour fixtures pass, and a call
-  costs ≤ 30 µs.
+  *Done when* `m5_circuit.gdb` and `scene_frame_verify.gdb` complete ten active
+  game minutes with no dropped input, and `check_m5_audit.py` passes. Preserve
+  the original save and report any fixture-state differences explicitly.
 
 - **FRAME.2 Draw thick-pen Line and LineTo directly.**
   `(Dan2, $3D08)` runs about twice per fight frame, drawing about 23 thick-pen lines
@@ -73,8 +73,8 @@ are in that document; preserve matching game state when comparing changes.
   CopyBits averages ≤ 350 µs in the fight.
 
 - **FRAME.4 Extend quick-trap entry to fight-frame traps.**
-  Line, RGBForeColor, PenSize and QDExtensions still pay full Line-A dispatch (trap
-  entry and dispatch about 18 ms per fight frame). Keep the register image, CCR, Pascal
+  Line, PenSize and QDExtensions still pay full Line-A dispatch. Re-measure the
+  remaining entry/dispatch cost after the RGB quick entry. Keep the register image, CCR, Pascal
   ABI, patched-trap fallback and frame/callback service points.
 
   *Done when* `quick_traps.gdb`, `frame_pacing.gdb`, `scene_frame_verify.gdb`,

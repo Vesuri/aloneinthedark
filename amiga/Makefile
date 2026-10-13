@@ -612,6 +612,7 @@ PROBE_SYMS += g_macFramesQueued g_macFramesPresented
 # Present completed original scene renders; 0 retains the diagnostic baseline.
 ifeq ($(SCENEFRAMEVERIFY),1)
 PROBE_SYMS += g_sceneFrameEndChecks g_sceneFrameEndFailures g_sceneFrameEndReused
+ASFLAGS += --defsym AITD_RGB_SCENE_VERIFY=1
 endif
 SCENEFRAMEBATCH ?= 1
 ifeq ($(SCENEFRAMEBATCH),1)
@@ -722,6 +723,19 @@ endif
 
 ifeq ($(EMILY),1)
 EXTRA_DEFINES += -DAITD_EMILY
+endif
+
+ifeq ($(RGBCACHESABOTAGE),1)
+RGBCACHEVERIFY=1
+ASFLAGS += --defsym AITD_RGB_CACHE_SABOTAGE=1
+endif
+ifeq ($(RGBCACHEVERIFY),1)
+EXTRA_DEFINES += -DAITD_RGB_CACHE_VERIFY
+PROBE_SYMS += g_rgbCacheChecks g_rgbCacheFailures g_rgbQuickHits
+ifeq ($(SCENEFRAMEBATCH),1)
+PROBE_SYMS += g_rgbQuick
+endif
+ASFLAGS += --defsym AITD_RGB_CACHE_VERIFY=1
 endif
 
 ifeq ($(MONSTERPROFILE),1)

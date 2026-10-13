@@ -100,6 +100,13 @@ printf "PHASE_END fight row=%u\n",g_monsterCount-1
 aprof_segments "SEGSTOP"
 dump binary memory @OUT@.frames.bin &g_monsterFrames[0] &g_monsterFrames[g_monsterCount]
 printf "WINDOW_FRAME_STOPS %u\n",$frameStops
+if @RGB_VERIFY@
+ printf "RGB_CACHE_VERIFY checks=%u failures=%u quick_hits=%u\n",g_rgbCacheChecks,g_rgbCacheFailures,g_rgbQuickHits
+ if g_rgbCacheChecks<1000 || g_rgbQuickHits<1000 || g_rgbCacheFailures
+  echo FAIL RGB cache verification\n
+  quit 1
+ end
+end
 echo COMPLETE\n
 detach
 quit 0

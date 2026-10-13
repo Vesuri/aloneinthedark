@@ -4,6 +4,48 @@ Source `amiga/env.sh` before native builds and runs. Shared file defaults and ov
 are listed in [development.md](development.md#shared-files-and-environment-overrides). Never distribute the
 original inputs, ROMs, reference captures or test saves.
 
+## RGB lookup memoization
+
+`make host-tests` runs the sanitizer-backed cache/oracle comparison, including
+random RGB values, collisions, relocated tables, independent seed/header changes,
+same-seed rebuild invalidation and rejection. Native verification keeps the
+uncached matcher as an independent per-call oracle:
+
+```sh
+. amiga/env.sh
+RGBCACHEVERIFY=1 amiga/aprof.sh monster rgb-verify
+make -C amiga clean
+make -C amiga -j4 RGBCACHEVERIFY=1
+GDBSCRIPT=menu_lifecycle.gdb amiga/diag_run.sh 600
+```
+
+The monster observer requires at least 1,000 verified calls, 1,000 assembly hits
+and no mismatches. The startup fixture includes `rgb_colors_calls.gdb` and
+`window_rgb_calls.gdb`, preserving the original callers, port mutations and ABI. Check its full native log with
+`check_rgb_colors.check` for offscreen calls and `tools/check_window_rgb.py` for
+window calls, against the stored original reference captures. Both need a zero
+runner status and positive completion markers. Restore a clean production build
+afterwards. Compare timing only between ordinary, non-verifying monster profiles.
+
+For the assembly hit ABI, clean-build `INGAME=1 RGBCACHEVERIFY=1`, run
+`rgb_cache_abi.gdb`, and pass the complete GDB log and `--status 0` to
+`tools/check_rgb_cache_abi.py`. It checks 64 real calls, both setters, exact port
+mutations, preserved registers/CCR and Pascal stack cleanup. The separate
+`INGAME=1 RGBCACHESABOTAGE=1` build with `rgb_cache_sabotage.gdb` flips one cached
+index in guest code (the debugger cannot write registers or RAM) and must reach
+`RGB CACHE MISMATCH`. These are correctness runs, not timing measurements.
+
+Dispatch changes also require `quick_traps.gdb` (`LINEAPROBE=1`), the ordinary
+`frame_pacing.gdb` and `apple_events.gdb`, plus the first-floor circuit with
+`SCENEFRAMEVERIFY=1 M5AUDIT=1` and its memory/audio audit. Keep the expensive RGB
+oracle out of the timed combat circuit; verify its calls in the monster run instead.
+The current circuit-controller failure is tracked as TEST.2. For a combined bounded
+check, clean-build `MONSTERPROFILE=1 FIXEDRNG=1 SCENEFRAMEVERIFY=1
+RGBCACHEVERIFY=1 M5AUDIT=1`, run `rgb_cache_services.gdb`, and use
+`check_m5_audit.py --completion "PASS RGB monster service audit"` with the
+complete log, `--folder tmp/m5 --status 0 --cpu 68030`. This verifies the idle
+monster-to-death route, not the ten-minute circuit.
+
 ## Original MoveHHi reference
 
 `tools/mac_movehhi.lua` calls original traps in a private 64 KiB zone on the

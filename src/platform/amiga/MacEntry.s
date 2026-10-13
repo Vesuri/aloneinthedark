@@ -96,7 +96,9 @@ aitd_line_a_handler:
 	.globl aitd_line_a_trap_entry
 aitd_line_a_trap_entry:
 	| The original opcode indexes the table: AFFE callable originals and
-	| patched traps have no quick entry. Callee-saved D7 retains trap class.
+	| patched traps have no quick entry. All quick entries retain D7.
+	| RGBQuick uses this saved-image ABI and may clobber other native registers;
+	| game registers remain parked until the common return/fallback below.
 	move.w (a3),d0
 	andi.l #0x0fff,d0
 	lea g_macQuickTraps,a4

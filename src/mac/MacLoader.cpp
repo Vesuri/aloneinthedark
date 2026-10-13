@@ -31,6 +31,7 @@
 #include "RegionExpand.h"
 #include "RegionResultCache.h"
 #include "GWorld8.h"
+#include "RGBColorCache.h"
 #include "SoundDriver.h"
 #include "SongTimeline.h"
 #include "SongVoice.h"
@@ -510,6 +511,7 @@ static bool s_mouseButtonDown;
 static uint8_t* s_mouseGlobalsA5;
 
 struct WindowSlot {
+    RGBColorCache::Cache rgbCache;
     uint8_t record[170];                    // WindowRecord plus DialogRecord tail
     uint8_t* window;
     uint8_t pixelMap[50];
@@ -660,6 +662,7 @@ static uint32_t probeNonzeroBytes(const uint8_t* data, uint16_t bytes)
 #endif
 
 struct GWorldSlot {
+    RGBColorCache::Cache rgbCache;
     uint8_t* port;
     uint8_t* pixMap;
     uint8_t* colorTable;
@@ -2817,6 +2820,7 @@ static bool makeITable(uint8_t** colorTableHandle, uint8_t** inverseTableHandle,
     if(!scratch)return false;
     uint16_t* workspace=(uint16_t*)scratch;
     s_mainDeviceITableValid=false;
+    for(unsigned i=0;i<8;++i)s_windows[i].rgbCache.invalidate();
     bool built=GWorld8::inverse(*colorTableHandle,4,*inverseTableHandle,workspace,workspace+5832);
     if(s_applicationZone.disposePtr(scratch)!=0)return false;
     s_mainDeviceITableValid=built;
@@ -3333,6 +3337,7 @@ static bool disposeWindow(uint8_t* window)
     if(slot->ownedTitle) {
         s_applicationZone.disposeHandle(slot->ownedTitle);slot->ownedTitle=0;
     }
+    slot->rgbCache.invalidate();
     slot->used = false;
     slot->activationPending = false;
     slot->window = 0;
@@ -5974,6 +5979,7 @@ static void activatePalette(uint8_t* window)
 
 static void releaseGWorld(GWorldSlot& world)
 {
+    world.rgbCache.invalidate();
     if(world.owner) {
         for(uint16_t i=0;i<27;++i)if(world.handles[i])world.owner->disposeHandle(world.handles[i]);
         if(world.port)world.owner->disposePtr(world.port);
@@ -8056,12 +8062,85 @@ static bool penLine(uint32_t* regs,const uint8_t* userStack)
     if(!(world ? lineGWorld(*world,x,y) : lineWindow(x,y)))return false;
     regs[0]=0;return true;
 }
+// Assembly quick entries use the MacEntry register-image ABI, not the C ABI.
+// These layout checks keep every native offset in RGBQuick.s build-checked.
+#ifdef AITD_SCENE_FRAME_BATCH
+struct RGBQuickEnvironment {
+    uint8_t** thePort;
+    GWorldSlot* world;
+    VBLPasses* passes;
+    const char* volatile* songError;
+    uint32_t* frameParent;
+    uint32_t* frameReturn;
+    uint8_t** dan2;
+};
+extern "C" {
+RGBQuickEnvironment g_rgbQuick={&s_qdThePort,0,&s_vblPass,&s_songInterruptError,
+    &s_sceneFrameParent,&s_sceneFrameReturn,&s_segments[13].begin};
+uint32_t aitdRGBQuick(uint32_t*,uint8_t*,uint8_t*);
+}
+#ifdef AITD_SCENE_FRAME_VERIFY
+extern "C" void aitdRGBSceneGuard(uint32_t* regs,uint8_t* frame,uint8_t* userStack)
+{
+    uint32_t owner=g_macSceneFrameOwner,pc=read32(frame+2);
+    sceneFrameBoundary(read16((const uint8_t*)pc),pc,regs,userStack);
+    if(!owner || owner!=g_macSceneFrameOwner) {
+        loaderStop("RGB QUICK FRAME GUARD",4);showLoaderStop();
+    }
+}
+#endif
+static_assert(__builtin_offsetof(GWorldSlot,port)==2070
+    && __builtin_offsetof(GWorldSlot,handles)==2086
+    && __builtin_offsetof(GWorldSlot,used)==2202,"RGB quick world layout");
+static_assert(sizeof(RGBQuickEnvironment)==28
+    && __builtin_offsetof(RGBQuickEnvironment,thePort)==0
+    && __builtin_offsetof(RGBQuickEnvironment,world)==4
+    && __builtin_offsetof(RGBQuickEnvironment,passes)==8
+    && __builtin_offsetof(RGBQuickEnvironment,songError)==12
+    && __builtin_offsetof(RGBQuickEnvironment,frameParent)==16
+    && __builtin_offsetof(RGBQuickEnvironment,frameReturn)==20
+    && __builtin_offsetof(RGBQuickEnvironment,dan2)==24,"RGB quick environment layout");
+static_assert(sizeof(RGBColorCache::Cache::Entry)==8,"RGB quick entry layout");
+static_assert(sizeof(RGBColorCache::Cache)==2070
+    && __builtin_offsetof(RGBColorCache::Cache,entries)==22
+    && __builtin_offsetof(RGBColorCache::Cache,colors)==0
+    && __builtin_offsetof(RGBColorCache::Cache,inverse)==4
+    && __builtin_offsetof(RGBColorCache::Cache,colorSeed)==8
+    && __builtin_offsetof(RGBColorCache::Cache,inverseSeed)==12
+    && __builtin_offsetof(RGBColorCache::Cache,header)==16
+    && __builtin_offsetof(RGBColorCache::Cache,resolution)==20,"RGB quick cache layout");
+static_assert(__builtin_offsetof(VBLPasses,last)==8
+    && __builtin_offsetof(VBLPasses,pending)==4
+    && __builtin_offsetof(VBLPasses,active)==16,"RGB quick VBL layout");
+static_assert(__builtin_offsetof(SoundDriver,effects)==66
+    && sizeof(SoundDriver::Voice)==8
+    && __builtin_offsetof(SoundDriver::Voice,active)==6,"RGB quick effect flags");
+static_assert(sizeof(NativeEffect)==36 && __builtin_offsetof(NativeEffect,stream)==0
+    && __builtin_offsetof(NativeEffect,ends)==24,
+    "RGB quick effect deadlines");
+#endif
+#ifdef AITD_RGB_CACHE_VERIFY
+extern "C" { volatile uint32_t g_rgbCacheChecks,g_rgbCacheFailures,g_rgbQuickHits; }
+extern "C" void aitdVerifyRGBHit(uint32_t index,const uint8_t* colors,
+                                const uint8_t* inverse,const uint8_t* rgb)
+{
+    uint16_t reference=0;++g_rgbCacheChecks;++g_rgbQuickHits;
+    if(!GWorld8::colorIndex(colors,inverse,rgb,reference) || index!=reference) {
+        ++g_rgbCacheFailures;loaderStop("RGB CACHE MISMATCH",0);showLoaderStop();
+    }
+}
+#endif
 // RGBForeColor / RGBBackColor: select the inverse-table index for the port.
-static bool rgbColor(uint16_t trap,uint32_t* regs,const uint8_t* userStack)
+template<uint16_t trap>
+static bool rgbColor(uint32_t* regs,const uint8_t* userStack)
 {
     AitdProfileScope profile(kProfileColorLookup);
     uint8_t* port=s_qdThePort ? (uint8_t*)read32(s_qdThePort) : 0;
-    GWorldSlot* world=gWorldForPort(port);
+    // A stable native slot, never a cached movable handle body.
+    static GWorldSlot* lastWorld;
+    GWorldSlot* world=lastWorld;
+    if(!world || !world->used || world->port!=port)lastWorld=world=gWorldForPort(port);
+    RGBColorCache::Cache* cache;
     const uint8_t* rgb=(const uint8_t*)read32(userStack);
     uint16_t index=0;
     uint8_t* inverse=0;const uint8_t* colors=0;
@@ -8070,6 +8149,10 @@ static bool rgbColor(uint16_t trap,uint32_t* regs,const uint8_t* userStack)
         if(read16(*world->handles[0]+32)!=8
            || read16(*world->handles[trap==0xaa14 ? 7 : 6])!=0)return false;
         colors=*world->handles[2];inverse=*world->handles[26];
+        cache=&world->rgbCache;
+#ifdef AITD_SCENE_FRAME_BATCH
+        g_rgbQuick.world=world;
+#endif
     } else {
         WindowSlot* window=windowSlot(port);
         if(!window || window->dialog || !port[110] || read16(port+6)!=0xc000
@@ -8077,11 +8160,22 @@ static bool rgbColor(uint16_t trap,uint32_t* regs,const uint8_t* userStack)
            || read32(window->pixelMap)!=(uint32_t)s_colorScreen
            || read32(window->pixelMap+42)!=(uint32_t)&s_windowManagerColorsMaster
            || read32(port+32) || read32(port+58) || read32(port+62))return false;
+        cache=&window->rgbCache;
         colors=s_windowManagerColors;inverse=s_mainDeviceITable;
         if((!s_mainDeviceITableValid || read32(inverse)!=read32(colors))
            && !makeITable(0,0,4))return false;
     }
-    if(!GWorld8::colorIndex(colors,inverse,rgb,index))return false;
+    bool valid=cache->lookup(colors,inverse,rgb,index);
+#ifdef AITD_RGB_CACHE_VERIFY
+    uint16_t reference=0;
+    bool referenceValid=GWorld8::colorIndex(colors,inverse,rgb,reference);
+    ++g_rgbCacheChecks;
+    if(valid!=referenceValid || (valid && index!=reference)) {
+        ++g_rgbCacheFailures;
+        loaderStop("RGB CACHE MISMATCH",0);showLoaderStop();
+    }
+#endif
+    if(!valid)return false;
     // Sized native copies avoid the m68k compiler byte-copy defect.
     uint16_t colorOffset=trap==0xaa14 ? 36 : 42;
     uint8_t* destination=port+colorOffset;
@@ -9568,7 +9662,8 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
         return 5;
     }
     if(trap==0xaa14 || trap==0xaa15) { // RGBForeColor / RGBBackColor
-        if(!rgbColor(trap,regs,userStack))goto unsupportedTrap;
+        if(!(trap==0xaa14 ? rgbColor<0xaa14>(regs,userStack)
+                         : rgbColor<0xaa15>(regs,userStack)))goto unsupportedTrap;
         return 5;
     }
     if(trap==0xa8ab) { // UnionRect(src1, src2, destination)
@@ -11101,7 +11196,7 @@ static uint32_t dispatchQuickTrap(uint32_t* regs,uint8_t* frame,uint8_t* userSta
             (const uint8_t*)read32(userStack+10),(const uint8_t*)read32(userStack+6),
             read16(userStack+4),(const uint8_t*)read32(userStack)))return 0;
         regs[0]=0;result=23;break;
-    case 0xaa14: case 0xaa15: result=rgbColor(trap,regs,userStack) ? 5 : 0;break;
+    case 0xaa14: case 0xaa15: result=rgbColor<trap>(regs,userStack) ? 5 : 0;break;
     case 0xaa29: case 0xaa2b: case 0xaa2c: case 0xa8aa:
     case 0xa870: case 0xa871: case 0xa8e2:
         result=graphicsQuery(trap,pc,regs,userStack);break;
@@ -11109,6 +11204,15 @@ static uint32_t dispatchQuickTrap(uint32_t* regs,uint8_t* frame,uint8_t* userSta
         result=((uint16_t)regs[0]==5 ? getGWorld(userStack) : setGWorld(regs,userStack)) ? 9 : 0;break;
     }
     return result;
+}
+
+// The assembly entry may have clobbered native scratch registers, but the
+// saved game image and the three C arguments are unchanged on its tail call.
+extern "C" uint32_t aitdRGBQuickMiss(uint32_t* regs,uint8_t* frame,uint8_t* userStack)
+{
+    return read16((const uint8_t*)read32(frame+2))==0xaa14
+        ? dispatchQuickTrap<0xaa14>(regs,frame,userStack)
+        : dispatchQuickTrap<0xaa15>(regs,frame,userStack);
 }
 
 static void updateQuickTrap(uint16_t trap)
@@ -11135,8 +11239,12 @@ static void updateQuickTrap(uint16_t trap)
     case 0xa89b: g_macQuickTraps[index]=dispatchQuickTrap<0xa89b>;break;
     case 0xa89c: g_macQuickTraps[index]=dispatchQuickTrap<0xa89c>;break;
     case 0xa8ec: g_macQuickTraps[index]=dispatchQuickTrap<0xa8ec>;break;
+#if defined(AITD_SCENE_FRAME_BATCH) && !defined(AITD_PROFILE_FRAME) && !defined(AITD_EFFECT_LOOP_PROBE)
+    case 0xaa14: case 0xaa15: g_macQuickTraps[index]=aitdRGBQuick;break;
+#else
     case 0xaa14: g_macQuickTraps[index]=dispatchQuickTrap<0xaa14>;break;
     case 0xaa15: g_macQuickTraps[index]=dispatchQuickTrap<0xaa15>;break;
+#endif
     case 0xaa29: g_macQuickTraps[index]=dispatchQuickTrap<0xaa29>;break;
     case 0xaa2b: g_macQuickTraps[index]=dispatchQuickTrap<0xaa2b>;break;
     case 0xaa2c: g_macQuickTraps[index]=dispatchQuickTrap<0xaa2c>;break;

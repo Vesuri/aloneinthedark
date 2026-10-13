@@ -33,6 +33,8 @@ if [[ "$scene" == monster && ( "${AMIGA_CONFIG:-a4000-030-reference}" != a4000-0
 fi
 FSUAE_APROF="${FSUAE_APROF:-$AMIGA_SHARE/fs-uae-aprof/fs-uae}"
 [[ -x "$FSUAE_APROF" ]] || { echo 'APROF / MISSING EMULATOR: run make setup in AmigaXDev or set FSUAE_APROF' >&2; exit 1; }
+rgb_verify=${RGBCACHEVERIFY:-0}
+[[ "$rgb_verify" == 0 || "$rgb_verify" == 1 ]] || usage
 frame_stops=${APROF_FRAME_STOPS:-0}
 [[ "$frame_stops" == 0 || ( "$scene" == monster && "$frame_stops" == 1 ) ]] || usage
 out=../tmp/aprof
@@ -42,7 +44,7 @@ mkdir -p "$out"
 make clean >/dev/null
 make -j4 $flags >"$out/$name.build.log" 2>&1 || { echo "APROF / BUILD FAILED: $out/$name.build.log" >&2; exit 1; }
 [[ "$scene" != monster ]] || template=aprof_monster.gdb
-sed -e "s/@START@/$condition/; s/@COUNTER@/$counter/g; s/@COUNT@/$count/; s#@OUT@#$out/$name#g; s/@FRAME_STOPS@/$frame_stops/g" "${template:-aprof.gdb}" > "$out/$name.gdb"
+sed -e "s/@START@/$condition/; s/@COUNTER@/$counter/g; s/@COUNT@/$count/; s#@OUT@#$out/$name#g; s/@FRAME_STOPS@/$frame_stops/g; s/@RGB_VERIFY@/$rgb_verify/g" "${template:-aprof.gdb}" > "$out/$name.gdb"
 # Fixed-clock reference timing by default; warp does not change emulated cycles.
 status=0
 extra_args=${EXTRA_ARGS:---warp_mode=1}

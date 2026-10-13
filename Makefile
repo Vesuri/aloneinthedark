@@ -145,6 +145,7 @@ host-tests: shared-runtime-check
 	@python3 tools/check_planar8.py
 	@python3 tools/check_window_geometry_helper.py
 	@python3 tools/check_gworld8.py
+	@python3 tools/check_rgb_cache.py
 	@python3 tools/check_aga_palette.py
 	@python3 tools/check_video_transfer.py
 	@python3 tools/check_palette8.py

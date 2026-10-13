@@ -213,6 +213,31 @@ Update the canonical source and install through AmigaXDev before updating consum
 The loader’s big-endian word/longword accesses also use the canonical
 `BigEndianMemory.h`; their 68020 instructions and unaligned-access contract are unchanged.
 
+### RGB colour lookup
+
+Each owned GWorld and window retains up to 256 RGB-to-index results in 2,070 bytes
+of native storage (33,120 bytes for all sixteen slots). The key includes all six
+RGB bytes, both table contents addresses and seeds, colour-table flags/size and
+inverse-table resolution. Moved bodies or changed table versions discard entries;
+port disposal and same-seed main-device inverse rebuilds invalidate explicitly.
+As with QuickDraw and the CopyBits colour-map cache, an edit to table contents must
+publish a new seed. No framebuffer is retained or compared.
+
+Misses use the unchanged `GWorld8::colorIndex` collision-ring matcher. Port checks,
+RGB/index field writes, overlap semantics, scratch registers and trap service
+boundaries remain unchanged. `RGBCACHEVERIFY=1` independently computes every index
+again, including assembly hits, and stops on any disagreement; use it for correctness,
+never timings.
+
+The RGB assembly entry uses MacEntry’s already-saved register image. It only handles
+an unchanged, live 8-bit GWorld with a solid pattern and an exact cache hit, inside
+an unfinished scene. Due VBL callbacks, pending work, song errors, streaming or
+completed effects, partial RGB overlap and unsupported state return to the ordinary
+quick handler before any mutation. The existing scene-owner stack stamps and
+`(Dan2, $B46)` exception retain the publication boundary. `SCENEFRAMEVERIFY=1`
+checks that claim with the independent frame walker on assembly hits too. Original
+callbacks still run only at the usual safe return points, never from an interrupt.
+
 ### Camera mask results
 
 FramePoly and InsetRgn retain up to 32 successful geometry results in a shared

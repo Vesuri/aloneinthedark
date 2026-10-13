@@ -7,6 +7,26 @@ emulator throughput. Warp speeds up a diagnostic without being a game benchmark.
 results. The following profiles describe retained measurement builds, not universal
 frame-rate guarantees.
 
+## RGB lookup and dispatch
+
+On the pinned 15.6672 MHz reference 68030/PAL monster fight, RGBForeColor averages
+**106.15 µs per call**, down from **179.52 µs**: 19,357 calls / 2,054.78 ms versus
+19,172 / 3,441.74 ms. These are whole-trap inclusive costs, including required
+callbacks, not just cache-hit timings. A clean repeat reproduced the phase states,
+frame/field counts and per-call cost exactly. The 41% reduction saves roughly 5 ms per
+fight frame at about 70 calls per frame. Different builds can take different
+intermediate combat routes; this is a per-call comparison, not a matched-state
+FPS claim or a real-hardware measurement.
+
+Per-port memoization removes almost all inverse-table searches; a guarded assembly
+entry also avoids repeated dispatch work when no services are due. The retained
+fight runs the original matcher only 17 times. The owner accepted this measured
+improvement in place of FRAME.1’s original 30 µs target. Remaining trap overhead is
+tracked separately. Cache storage is 33,120 native bytes across sixteen port slots.
+The implementation and correctness procedure are in
+[development](development.md#rgb-colour-lookup) and
+[testing](testing.md#rgb-lookup-memoization).
+
 ## Cycle profiler
 
 `amiga/aprof.sh` gives exact emulated cost, not samples. It runs a private FS-UAE
