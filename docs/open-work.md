@@ -7,6 +7,144 @@ cited below by § number; owner decisions D1–D9 are in design.md §5.
 
 Each item gives the **goal**, then the scope, then *done when*: the evidence required.
 
+## Monster sequence performance
+
+Baseline: an `INGAME=1` reference-68030 PAL run, idle in the attic, from scene 200 through
+MONSTER (song 136), the monster's entry, its first hit on Carnby (animation 237), FIGHT
+(132) and the death song (131). Steady frames take 4 fields in the empty attic, 10 while
+the monster approaches and 12.1 (250 ms of CPU) in the fight. About 100–128 ms of each
+fight frame is original code. Song starts freeze for 1.5–5 s each, and `MacHeap::moveHigh`
+accounts for about 12 of the 15 frozen seconds. Report each item's effect with PERF.2.
+
+- **PERF.2 Maintain the monster-to-death cycle profile.**
+  Add an `amiga/aprof.sh monster` scenario that writes one profile per phase
+  (attic → song 136, → monster animation active, → first Carnby hit, → song 131) and a
+  per-frame log of fields, song, effect count and both actors' animations. Boundaries
+  must be game events, not scene numbers: the hit scene varied from 742 to 752 between
+  runs. Do not create a save for this; a load changes the heap and the first-time
+  resource loads being measured. Extend `aprof_report.py` for the per-phase inputs and
+  for a steady-frame summary that excludes named one-off subtrees.
+
+  *Done when* two runs report the same phase states, fields within 2% and the same
+  stall list. The scenario, its stall table and steady fight costs are documented in
+  performance.md, and PERF.1's conclusion is applied to its per-frame stops.
+
+- **PERF.3 Record the owner's 68040 baseline.**
+  Provide a `FRAMEAUDIT=1` build that reports fields per frame and stall lengths over
+  the same sequence without GDB. The owner runs it on the 68040/40 under WHDLoad and
+  under plain AmigaOS with SetPatch.
+
+  *Done when* both hardware results are recorded and later items quote their 68040
+  effect against them.
+
+- **HEAP.2 Implement MoveHHi without moving unrelated blocks.**
+  `MacHeap::moveHigh` rotates every movable block between the target and the next
+  immovable block, in three `reverseWords` passes over the whole span. The native song
+  loader calls it for each owned resource (`ownSongResource`), so 21–33 calls freeze
+  each song start. Measure original MoveHHi on the Macintosh reference: free space
+  above, a locked block in the way, no room and purgeable neighbours. Establish whether
+  song resources need moving at all once their Paula variants are in Chip RAM. Share
+  the fix with Prince of Persia 2 through AmigaXDev, together with HEAP.1.
+
+  *Done when* MoveHHi matches the reference cases, copying only the target. Heap,
+  `m5_low_memory`, `song136.gdb`, `gameplay_music.gdb`, `gameplay_fight.gdb`, the
+  death route and fragmented-heap regressions pass. Each PERF.2 song start costs
+  ≤ 0.3 s (from 1.5–5 s), with no new allocation failures.
+
+- **HEAP.3 Measure the remaining song-start cost.**
+  After HEAP.2, attribute `startNativeSong` (`loadSongSample`, `SongVoice::convert`,
+  resource reads). Queue a separate item with its own acceptance if one start still
+  exceeds 0.5 s.
+
+  *Done when* the remaining cost per song is recorded and either is ≤ 0.5 s or has a
+  queued item.
+
+- **CACHE.1 Enable the 68040 data cache under WHDLoad.**
+  `whdload/AloneSlave.s` uses kickemu `CACHECHIP`, which enables only the instruction
+  cache. Use `CACHE` (Chip not cacheable, Fast copyback, instruction and data caches).
+  Audit code loading and the FlushInstructionCache/HWPriv path, CPU-written DMA buffers
+  and any CPU reads of blitter-written memory. FS-UAE does not model the benefit; only
+  hardware can measure it.
+
+  *Done when* the WHDLoad smoke, stairs, walking, save/load and Escape modes pass, the
+  owner's PERF.3 run shows the effect, and no corruption appears in a complete
+  monster-to-death sequence on hardware.
+
+- **CACHE.2 Document and check plain-AmigaOS cache state.**
+  Record that the 68040/68060 library from SetPatch must enable both caches, and check
+  that the launch path never changes CACR.
+
+  *Done when* the README's requirements say so and a plain-AmigaOS PERF.3 run records
+  the observed CACR.
+
+- **REGION.1 Speed up camera-change mask rebuilding.**
+  A camera change (`JT254->Dark2+$5D30`) rebuilds masks below `JT187->Dark+$3694`.
+  InsetRgn costs about 28–40 ms per call (`RegionExpand::one`), FramePoly 14–19 ms
+  (`PolygonRegion::encode`), and CloseRgn and KillPoly about 2.7 ms each. The original
+  background decompression (`Dark+$2A78`/`$29FE`, about 0.8 s per change) is a fixed
+  floor. Keep exact region results and loud rejection of malformed regions.
+
+  *Done when* region-variant, InsetRgn, polygon, mask-rejection and corridor-mask
+  fixtures pass and port time below `Dark+$3694` falls by at least 60%.
+
+- **FRAME.1 Memoize RGBForeColor/RGBBackColor colour lookup.**
+  A fight frame makes about 70 RGBForeColor calls at 179 µs each, mostly
+  `gWorldForPort`, handle checks and `GWorld8::colorIndex`. Cache the result per port,
+  keyed by the colour and inverse tables' seeds and contents identity plus the RGB value.
+  Invalidate it on any table change.
+
+  *Done when* every call in a PERF.2 run returns the uncached index (checked by a
+  verifying build), `rgb_colors_calls.gdb` and window colour fixtures pass, and a call
+  costs ≤ 30 µs.
+
+- **FRAME.2 Draw thick-pen Line and LineTo directly.**
+  `(Dan2, $3D08)` runs about twice per fight frame, drawing about 23 thick-pen lines
+  each with an RGBForeColor per line (36 ms per frame, 28 ms in the port). Line costs
+  317 µs per call, mostly `lineGWorld` → `FillRect8::solid` setup and a `handleSize`
+  lookup per call.
+
+  *Done when* pen-size/shape, relative-line, point-line and `lineto_call.gdb`
+  fixtures pass and Line/LineTo cost ≤ 80 µs per call in the fight.
+
+- **FRAME.3 Reduce per-call CopyBits cost for actor masks.**
+  `Dark+$30A8` makes about 43 CopyBits per fight frame (9 in the empty attic) at 814 µs
+  each: `CopyBits8::copy`, `RegionRows::ValidationCache::validate`, `RegionRows::row`,
+  `copyPortBits8` setup and heap lookups.
+
+  *Done when* copybits8, maskcopy, mask-rejection and corridor fixtures pass and
+  CopyBits averages ≤ 350 µs in the fight.
+
+- **FRAME.4 Extend quick-trap entry to fight-frame traps.**
+  Line, RGBForeColor, PenSize and QDExtensions still pay full Line-A dispatch (trap
+  entry and dispatch about 18 ms per fight frame). Keep the register image, CCR, Pascal
+  ABI, patched-trap fallback and frame/callback service points.
+
+  *Done when* `quick_traps.gdb`, `frame_pacing.gdb`, `scene_frame_verify.gdb`,
+  `apple_events.gdb` and `m5_circuit.gdb` + `check_m5_audit.py` pass with no added
+  lateness, and trap entry/dispatch is ≤ 9 ms per fight frame.
+
+- **FRAME.5 Speed up large BlockMove copies.**
+  `Dark+$1B7A` makes 39 large BlockMoves in the fight (1.15 ms each, 5.5 ms per frame).
+  Use aligned longword or MOVE16 paths with exact overlap semantics.
+
+  *Done when* overlap, odd-alignment and length-boundary host tests pass and BlockMove
+  costs ≤ 2 ms per fight frame.
+
+- **FRAME.6 Reduce effect start and polling cost.**
+  `playNativeEffect`, `serviceNativeEffects` and `waitPaulaDmaLines` cost about 5 ms per
+  fight frame; each start converts the sample into new Chip memory again. Reuse
+  converted immutable samples and avoid DMA waits for already quiet channels.
+
+  *Done when* effect slot, loop, DMA, fraction and replace fixtures pass, priorities
+  and audible timing are unchanged, and effect work is ≤ 1 ms per fight frame.
+
+- **FRAME.7 Check fight-frame C2P bounds.**
+  C2P takes 12.6 ms per fight frame. Verify that two-actor dirty bounds are the
+  combined clipped coordinates before alignment and that no conversion overlaps.
+
+  *Done when* `frame_pacing.gdb` and the C2P verification build pass and C2P is
+  ≤ 10 ms per fight frame, or the bounds are shown to be already minimal.
+
 ## Runtime overhead
 
 - **HEAP.1 Avoid heap-wide work for unchanged allocation sizes.**
