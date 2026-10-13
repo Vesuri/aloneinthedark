@@ -139,6 +139,26 @@ take 1.728 s, including 322 ms of MoveHHi. The full frame intervals above also
 contain original game work and presentation, not just native audio preparation.
 The 0.3-second song-start acceptance target remains unmet.
 
+Isolated, single-frame profiles (`heap2-single-136`, `-132`, `-131`) retain the
+same MONSTERPROFILE/FIXEDRNG executable and deterministic reference configuration.
+They start at queueFrame scenes 699, 797 and 1062 and end at the next unconditional
+queueFrame breakpoint, with no intermediate debugger stops. They reproduce the
+96/82/44-field intervals and the loader costs in the whole-route profile:
+
+| Song | Frame CPU ms | Original instructions ms | Native song preparation ms | MoveHHi ms (included) |
+| --- | ---: | ---: | ---: | ---: |
+| 136 | 1,920.20 | 383.18 | 888.19 | 185.65 |
+| 132 | 1,654.17 | 207.88 | 1,121.42 | 233.64 |
+| 131 | 885.37 | 102.91 | 606.52 | 88.28 |
+
+Field counts measure cadence; CPU intervals include the positions within their
+boundary fields. The first frame includes 156.11 ms in original decompression
+`(Dark, $2A78)` and `(Dark, $29FE)`, plus original rendering/game work. Its original
+instructions alone exceed 300 ms. Thus a 300 ms **whole-frame** gate on this matched
+workload cannot be established by reducing native heap or audio cost alone. Changing
+the acceptance to native preparation only requires an explicit scope decision;
+these measurements do not silently replace the existing gate.
+
 ### Debugger-free hardware audit
 
 Real-Amiga benchmarks are deferred by the owner. The audit is ready for future
