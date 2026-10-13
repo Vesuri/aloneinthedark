@@ -30,6 +30,7 @@ BUCKETS = [
     ('Trap entry and dispatch', ('aitd_line_a_handler', 'aitd_line_a_trap_entry', 'aitdLineADispatch', 'aitdAuditTrapEntry', 'clipRectTrap', 'findWindowTrap', 'blockMoveTrap', 'obscureCursorTrap', 'serviceQuickTrap', 'dispatchMacTrap', 'isUserService',
                                  'routePatchedTrap', 'dispatch', 'aitd_user', 'bookFrame', 'sceneFrameBoundary',
                                  'finishBookFrame', 'graphicsQuery')),
+    ('Particle rectangles and quick dispatch', ('PenRect8::', 'aitdLineQuick')),
     ('RGB lookup and quick dispatch', ('rgbColor', 'GWorld8::colorIndex', 'RGBColorCache::', 'aitdRGBQuick',)),
     ('Port state lookups', ('setGWorld', 'getGWorld', 'gWorldForPort', 'MacHeap',
                             'colorWindowFrame', 'windowSlot', 'handleZone')),

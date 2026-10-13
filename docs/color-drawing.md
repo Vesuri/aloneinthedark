@@ -169,9 +169,9 @@ the 648×401 map with stride 652. The complete 108-byte port remains unchanged. 
 returns zero, four argument bytes are removed, and D1–D7/A1–A6 are preserved; A0 is
 scratch.
 
-The native adapter uses the existing clipped solid rectangle helper for this
-zero-displacement pen. Other thick strokes, pen sizes and signed rectangle overflow
-retain named stops. `POINTLINEPROBE=1` replays the measured port and pixel inputs
+The native adapter uses direct clipped rectangle writes for this zero-displacement
+pen, including other nonnegative pen sizes within signed bounds. Other thick strokes
+and signed rectangle overflow retain named stops. `POINTLINEPROBE=1` replays the measured port and pixel inputs
 through the real trap and original CPU return; it stops before the game continues with
 fixture state. No original instruction is modified. `tools/mac_point_line.lua` captures
 both the natural original call and a paired fixture. `tools/check_point_line.py`

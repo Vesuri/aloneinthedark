@@ -46,6 +46,24 @@ RGBCACHEVERIFY=1 M5AUDIT=1`, run `rgb_cache_services.gdb`, and use
 complete log, `--folder tmp/m5 --status 0 --cpu 68030`. This verifies the idle
 monster-to-death route, not the ten-minute circuit.
 
+## Particle rectangles
+
+`make host-tests` includes 12,000 sanitizer-backed rectangle cases with a separate
+per-pixel oracle: pen sizes, zero dimensions, clipping on all four bounds, negative
+origins, row padding, capacity limits and atomic rejection. `POINTLINEPROBE=1` /
+`point_line.gdb` retains the paired original Mac 2×2 pixel and ABI check.
+
+For the assembly path, clean-build `INGAME=1`, create `tmp/line-points`, and run
+`GDBSCRIPT=line_points.gdb amiga/diag_run.sh 600`. Pass its complete GDB log and
+`--status 0` to `tools/check_line_points.py`. It observes 32 real particle calls,
+checks complete before/after buffers, ports and region records, and verifies the
+13 preserved registers, CCR and four-byte Pascal cleanup. The debugger only reads.
+Relative Line (`INTROSKIP=1` / `relative_line.gdb`) and the startup
+`menu_lifecycle.gdb` observer's `lineto_call.gdb` cover the fallback rasterizer.
+Use the paired-reference checkers `check_relative_line.py`, `check_point_line.py`
+and `check_line8.py`, retaining original captures and runner statuses.
+The combined RGB monster service audit also exercises particle frame-end guards.
+
 ## Original MoveHHi reference
 
 `tools/mac_movehhi.lua` calls original traps in a private 64 KiB zone on the

@@ -55,14 +55,16 @@ are in that document; preserve matching game state when comparing changes.
   game minutes with no dropped input, and `check_m5_audit.py` passes. Preserve
   the original save and report any fixture-state differences explicitly.
 
-- **FRAME.2 Draw thick-pen Line and LineTo directly.**
-  `(Dan2, $3D08)` runs about twice per fight frame, drawing about 23 thick-pen lines
-  each with an RGBForeColor per line (36 ms per frame, 28 ms in the port). Line costs
-  317 µs per call, mostly `lineGWorld` → `FillRect8::solid` setup and a `handleSize`
-  lookup per call.
+- **FRAME.8 Optimize ordinary thin-pen Line/LineTo strokes.**
+  The remaining 1×1 strokes in the reference-68030 fight average about 331 µs
+  for LineTo and 335 µs for relative Line. Profile validation, clipping and the
+  original rasterizer separately from the zero-displacement thick particle pens.
+  The owner chose to track this separately from FRAME.2.
 
-  *Done when* pen-size/shape, relative-line, point-line and `lineto_call.gdb`
-  fixtures pass and Line/LineTo cost ≤ 80 µs per call in the fight.
+  *Done when* original slope/reversal/clipping fixtures, relative-line and
+  `lineto_call.gdb` pixel/ABI comparisons pass, and thin-pen Line/LineTo costs
+  ≤ 80 µs per call in repeatable fight profiles. Preserve exact raster ties,
+  dirty bounds and frame/callback service points.
 
 - **FRAME.3 Reduce per-call CopyBits cost for actor masks.**
   `Dark+$30A8` makes about 43 CopyBits per fight frame (9 in the empty attic) at 814 µs
@@ -73,8 +75,8 @@ are in that document; preserve matching game state when comparing changes.
   CopyBits averages ≤ 350 µs in the fight.
 
 - **FRAME.4 Extend quick-trap entry to fight-frame traps.**
-  Line, PenSize and QDExtensions still pay full Line-A dispatch. Re-measure the
-  remaining entry/dispatch cost after the RGB quick entry. Keep the register image, CCR, Pascal
+  Thin Line/LineTo, PenSize and QDExtensions still pay general dispatch costs. Re-measure
+  the remaining entry/dispatch cost after the RGB and particle quick entries. Keep the register image, CCR, Pascal
   ABI, patched-trap fallback and frame/callback service points.
 
   *Done when* `quick_traps.gdb`, `frame_pacing.gdb`, `scene_frame_verify.gdb`,

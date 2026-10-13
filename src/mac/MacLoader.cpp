@@ -18,6 +18,7 @@
 #include "RectBounds.h"
 #include "FillRect8.h"
 #include "Line8.h"
+#include "PenRect8.h"
 #include "PolygonRecord.h"
 #include "PolygonRegion.h"
 #include "RegionCopy.h"
@@ -673,6 +674,7 @@ struct GWorldSlot {
     bool used;
     bool locked;
     bool purgeable;
+    uint32_t pixelCapacity; // Refreshed with all heap-derived views, never a guessed map size.
 };
 // Initialize can keep six offscreen worlds alive at once.  This is capacity,
 // not emulated heap exhaustion: a full slot table must never masquerade as a
@@ -1351,6 +1353,7 @@ static void refreshGWorldViews()
         if(!w.used)continue;
         w.pixMap=w.handles[0] ? *w.handles[0] : 0;
         w.pixels=w.handles[1] ? *w.handles[1] : 0;
+        w.pixelCapacity=w.pixels ? w.owner->handleSize(w.handles[1]) : 0;
         w.colorTable=w.handles[2] ? *w.handles[2] : 0;
         if(w.pixMap) {
             write32(w.pixMap,w.locked ? (uint32_t)w.pixels : (uint32_t)w.handles[1]);
@@ -6110,15 +6113,12 @@ static bool lineGWorld(GWorldSlot& w,int16_t horizontal,int16_t vertical)
         const int16_t x=int16_t(read16(w.port+50)),y=int16_t(read16(w.port+48));
         if(horizontal!=x || vertical!=y || penWidth>32767 || penHeight>32767
            || int32_t(x)+penWidth>32767 || int32_t(y)+penHeight>32767)return false;
-        uint8_t rectangle[8],drawn[8];
-        write16(rectangle,uint16_t(y));write16(rectangle+2,uint16_t(x));
-        write16(rectangle+4,uint16_t(y+penHeight));write16(rectangle+6,uint16_t(x+penWidth));
-        if(!FillRect8::solid(w.pixels,w.owner->handleSize(w.handles[1]),
+        if(!PenRect8::solid(w.pixels,w.pixelCapacity,
             read16(w.pixMap+4)&0x3fff,w.pixMap+6,w.port+16,vis+2,clip+2,
-            rectangle,uint8_t(read32(w.port+80)),drawn))return false;
+            x,y,penWidth,penHeight,uint8_t(read32(w.port+80))))return false;
     } else {
         if(penHeight!=1 || penWidth!=1)return false;
-        if(!Line8::solid(w.pixels,w.owner->handleSize(w.handles[1]),
+        if(!Line8::solid(w.pixels,w.pixelCapacity,
             read16(w.pixMap+4)&0x3fff,w.pixMap+6,w.port+16,vis+2,clip+2,
             int16_t(read16(w.port+50)),int16_t(read16(w.port+48)),
             horizontal,vertical,uint8_t(read32(w.port+80))))return false;
@@ -8078,6 +8078,7 @@ extern "C" {
 RGBQuickEnvironment g_rgbQuick={&s_qdThePort,0,&s_vblPass,&s_songInterruptError,
     &s_sceneFrameParent,&s_sceneFrameReturn,&s_segments[13].begin};
 uint32_t aitdRGBQuick(uint32_t*,uint8_t*,uint8_t*);
+uint32_t aitdLineQuick(uint32_t*,uint8_t*,uint8_t*);
 }
 #ifdef AITD_SCENE_FRAME_VERIFY
 extern "C" void aitdRGBSceneGuard(uint32_t* regs,uint8_t* frame,uint8_t* userStack)
@@ -8090,8 +8091,12 @@ extern "C" void aitdRGBSceneGuard(uint32_t* regs,uint8_t* frame,uint8_t* userSta
 }
 #endif
 static_assert(__builtin_offsetof(GWorldSlot,port)==2070
+    && __builtin_offsetof(GWorldSlot,pixMap)==2074
+    && __builtin_offsetof(GWorldSlot,pixels)==2082
     && __builtin_offsetof(GWorldSlot,handles)==2086
-    && __builtin_offsetof(GWorldSlot,used)==2202,"RGB quick world layout");
+    && __builtin_offsetof(GWorldSlot,used)==2202
+    && __builtin_offsetof(GWorldSlot,locked)==2203
+    && __builtin_offsetof(GWorldSlot,pixelCapacity)==2206,"RGB quick world layout");
 static_assert(sizeof(RGBQuickEnvironment)==28
     && __builtin_offsetof(RGBQuickEnvironment,thePort)==0
     && __builtin_offsetof(RGBQuickEnvironment,world)==4
@@ -11215,6 +11220,13 @@ extern "C" uint32_t aitdRGBQuickMiss(uint32_t* regs,uint8_t* frame,uint8_t* user
         : dispatchQuickTrap<0xaa15>(regs,frame,userStack);
 }
 
+extern "C" uint32_t aitdLineQuickMiss(uint32_t* regs,uint8_t* frame,uint8_t* userStack)
+{
+    return read16((const uint8_t*)read32(frame+2))==0xa891
+        ? dispatchQuickTrap<0xa891>(regs,frame,userStack)
+        : dispatchQuickTrap<0xa892>(regs,frame,userStack);
+}
+
 static void updateQuickTrap(uint16_t trap)
 {
     const uint16_t index=trapIndex(trap);
@@ -11231,9 +11243,13 @@ static void updateQuickTrap(uint16_t trap)
     case 0xa8ad: g_macQuickTraps[index]=dispatchQuickTrap<0xa8ad>;break;
     case 0xa01b: g_macQuickTraps[index]=dispatchQuickTrap<0xa01b>;break;
     case 0xa01a: g_macQuickTraps[0x11a]=dispatchQuickTrap<0xa11a>;break;
+#if defined(AITD_SCENE_FRAME_BATCH) && !defined(AITD_PROFILE_FRAME) && !defined(AITD_POINT_LINE_PROBE)
+    case 0xa891: case 0xa892: g_macQuickTraps[index]=aitdLineQuick;break;
+#else
     case 0xa891: g_macQuickTraps[index]=dispatchQuickTrap<0xa891>;break;
 #ifndef AITD_POINT_LINE_PROBE
     case 0xa892: g_macQuickTraps[index]=dispatchQuickTrap<0xa892>;break;
+#endif
 #endif
     case 0xa893: g_macQuickTraps[index]=dispatchQuickTrap<0xa893>;break;
     case 0xa89b: g_macQuickTraps[index]=dispatchQuickTrap<0xa89b>;break;

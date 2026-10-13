@@ -27,6 +27,23 @@ The implementation and correctness procedure are in
 [development](development.md#rgb-colour-lookup) and
 [testing](testing.md#rgb-lookup-memoization).
 
+## Solid particle pens
+
+On the pinned 15.6672 MHz reference 68030/PAL monster fight, the zero-displacement
+Line caller at (Dan2, $3D08) averages **77.59 µs**, down from **320.64 µs**:
+12,810 calls / 993.98 ms versus 12,913 / 4,140.40 ms. These are whole-trap
+inclusive costs. A clean repeat reproduced the per-call cost, phase states and
+frame/field counts exactly. The 76% reduction saves roughly 11 ms per fight frame
+at about 46 calls per frame; it is not a matched-state FPS claim or a hardware benchmark.
+
+Direct clipped pen rectangles and a guarded assembly entry remove generic rectangle
+setup and repeated dispatch work. Pixel capacity is refreshed with the heap-derived
+GWorld views. No framebuffer comparisons, frame pacing changes or game-code
+replacements are involved. Ordinary thin Line/LineTo strokes remain a separate
+workload, about 335/331 µs in this fight. See
+[implementation](development.md#solid-particle-pens) and
+[validation](testing.md#particle-rectangles).
+
 ## Cycle profiler
 
 `amiga/aprof.sh` gives exact emulated cost, not samples. It runs a private FS-UAE

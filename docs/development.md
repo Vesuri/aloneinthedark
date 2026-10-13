@@ -238,6 +238,22 @@ quick handler before any mutation. The existing scene-owner stack stamps and
 checks that claim with the independent frame walker on assembly hits too. Original
 callbacks still run only at the usual safe return points, never from an interrupt.
 
+### Solid particle pens
+
+Zero-displacement solid Line/LineTo pens draw their clipped half-open rectangles
+through `PenRect8`, without rebuilding rectangle records or looking up the pixel
+handle size per dot. GWorld pixel capacity is refreshed alongside its heap-derived
+addresses after memory changes and pixel locking, including in-place resizes.
+The adapter retains its depth, pattern, visibility, signed-overflow and rectangular
+region checks; unsupported thick strokes still stop explicitly.
+
+`LineQuick.s` handles owned locked GWorld points inside an unfinished scene when no
+services are due. It shares `QuickSceneGuard.inc` with the RGB entry, checks live
+port/region/pattern data and bounds before writing, and changes only the saved D0
+result. Misses tail-call the ordinary Line/LineTo handler. `SCENEFRAMEVERIFY=1`
+also runs the independent frame-end check on this entry. Pixel dirtiness remains
+coordinate-based and publication stays at the existing complete-frame boundary.
+
 ### Camera mask results
 
 FramePoly and InsetRgn retain up to 32 successful geometry results in a shared
