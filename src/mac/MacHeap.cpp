@@ -408,34 +408,7 @@ MacHeap::Handle MacHeap::recoverHandle(uint8_t* ptr)
     }
     queryResult(nilHandleErr);return 0;
 }
-int16_t MacHeap::moveHigh(Handle h)
-{
-    if(!isHandle(h) || !*h)return result(nilHandleErr);
-    if(*flags(h)&0x80)return result(memLockedErr);
-    uint32_t off=findPtr(*h,handleBlock);if(!off)return result(memWZErr);
-    uint32_t span=block(off).span,limit=off+span;
-    while(limit<end_ && (block(limit).kind==freeBlock || movable(limit)))limit+=block(limit).span;
-    uint32_t next=off+span;
-    if(next<limit && block(next).kind==freeBlock) {
-        // Swap past unused space without reading/copying its payload. Continue
-        // the same rotation through any live blocks beyond the hole, retaining
-        // their order and the target's final address before the next barrier.
-        uint32_t gap=block(next).span;
-        moveBytes(arena_+off+gap,arena_+off,span);
-        block(off)={gap,0,0,freeBlock,0,0};
-        off+=gap;
-    }
-    // Nothing follows the target after a free-gap swap: only publish its new
-    // master pointer; avoid reversing a potentially large sample twice.
-    if(off+span==limit) { *h=arena_+off+blockBytes;coalesce();return result(0); }
-    // Rotate blocks without allocating scratch memory; immovable barriers remain fixed.
-    reverseWords(arena_+off,arena_+off+span);
-    reverseWords(arena_+off+span,arena_+limit);
-    reverseWords(arena_+off,arena_+limit);
-    for(uint32_t at=off;at<limit;at+=block(at).span)
-        if(block(at).kind==handleBlock)*(Handle)(arena_+block(at).owner)=arena_+at+blockBytes;
-    coalesce();return result(0);
-}
+#include "HeapMoveHigh.inc"
 int16_t MacHeap::setHandleSize(Handle h,uint32_t bytes)
 {
     if(!isHandle(h) || !*h)return result(nilHandleErr);

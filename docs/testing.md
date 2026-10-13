@@ -1,8 +1,35 @@
 # Testing
 
 Source `amiga/env.sh` before native builds and runs. Shared file defaults and overrides
-are listed in [development.md](testing.md#gameplay-routes). Never distribute the
+are listed in [development.md](development.md#shared-files-and-environment-overrides). Never distribute the
 original inputs, ROMs, reference captures or test saves.
+
+## Original MoveHHi reference
+
+`tools/mac_movehhi.lua` calls original traps in a private 64 KiB zone on the
+System 7.5.5 Mac IIx reference. It verifies the dispatcher bytes before installing a
+RAM trampoline; game and OS instructions remain unchanged. Nine cases cover a free
+tail, locked barrier, no room, purgeable neighbours, fragmentation, interior holes
+and small gaps/tails. Every case checks payloads, free space and movement of the
+target and neighbours. Success ends with `PASS original MoveHHi cases=9`.
+
+```sh
+. amiga/env.sh
+SDL_VIDEODRIVER=dummy "${MAME:-mame}" maciix -rompath ref/mame/roms -nb9 mdc48 \
+  -ramsize 8M -hard ref/mame/hd/aitd_755.hd -video none -sound none -window \
+  -skip_gameinfo -nothrottle -seconds_to_run 240 \
+  -snapshot_directory ref/mame/snap -cfg_directory ref/mame/cfg \
+  -nvram_directory ref/mame/nvram -debug -debugger none -oslog \
+  -autoboot_script tools/mac_movehhi.lua
+python3 tools/check_mac_heap.py --sanitize
+```
+
+The native heap test checks the corresponding placement cases plus handle errors,
+flags, master blocks and deterministic fragmentation with all live payloads checked
+after every operation. Runtime allocator validation also includes `heap.gdb`,
+`m5_low_memory.gdb`, `song136.gdb`, `gameplay_music.gdb`, `gameplay_fight.gdb` and
+the maintained monster-to-death profile. For the 4 MiB rejection test, use
+`GDB_ENTRY=PlatformAmiga::run`: a rejected startup never reaches `MacLoader::run`.
 
 ## Host and native regression
 

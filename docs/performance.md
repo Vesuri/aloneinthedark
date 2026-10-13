@@ -95,38 +95,49 @@ and all four `.prof` files. Thus there is **no measured cycle/field bias in this
 pinned configuration**. This does not validate non-deterministic filesystem runs or
 other profiling windows; the maintained scenario keeps all stops at event boundaries.
 
-The retained deterministic reference baseline (`monster-det-a` / `monster-det-b`)
-repeated exactly: phase states, field/frame counts, stall list and CPU summaries
-all matched. This exceeds the 2% repeatability gate.
+The current deterministic reference baseline (`heap2-tail` / `heap2-final`)
+repeats exactly: phase states, field/frame counts, stall list and CPU summaries
+match, exceeding the 2% repeatability gate. Faster loading changes the natural
+timed encounter route; old and new whole-fight averages are not state-paired A/B
+measurements.
 
 | Phase end | Frames | PAL fields | Nonstall fields/frame | Adjusted CPU ms/frame |
 | --- | ---: | ---: | ---: | ---: |
-| MONSTER song 136 | 350 | 1,662 | 4.129 | 85.50 |
-| Monster animation active | 103 | 470 | 4.294 | 92.15 |
-| First Carnby hit (237) | 87 | 1,335 | 9.917 | 219.02 |
-| Death song 131 | 263 | 3,347 | 12.248 | 245.97 |
+| MONSTER song 136 | 500 | 2,186 | 4.129 | 85.93 |
+| Monster animation active | 1 | 23 | 23.000 | 454.88 |
+| First Carnby hit (237) | 85 | 1,002 | 9.976 | 218.79 |
+| Death song 131 | 277 | 3,692 | 12.073 | 252.77 |
 
-The same seven stalls occurred in both runs. These are full inter-frame intervals;
-the observed event is not, by itself, proof of the cause of the whole interval.
+The one-frame entry phase is not a steady-state estimate. These are full
+inter-frame stall intervals; an observed event does not establish the cause of
+the whole interval.
 
 | Observed event | Scene (reference only) | Fields | Seconds |
 | --- | ---: | ---: | ---: |
-| Effect count 0 → 1 | 202 | 28 | 0.56 |
-| Song 137 → 136 | 550 | 197 | 3.94 |
-| Effect count 2 → 3, before monster activation | 652 | 32 | 0.64 |
-| Effect count 3 → 4 | 677 | 141 | 2.82 |
-| Song 136 → 132 | 701 | 329 | 6.58 |
-| Effect count 11 → 12, before first hit | 739 | 32 | 0.64 |
-| Song 132 → 131 | 1,003 | 138 | 2.76 |
+| Effect count 0 → 1 | 532 | 34 | 0.68 |
+| Song 137 → 136 | 700 | 96 | 1.92 |
+| Effect count 2 → 3 | 725 | 142 | 2.84 |
+| Effect count 10 → 11 | 785 | 32 | 0.64 |
+| Song 136 → 132 | 798 | 82 | 1.64 |
+| Fight frame | 997 | 25 | 0.50 |
+| Room 0/camera 0 → room 6/camera 10 | 1,051 | 245 | 4.90 |
+| Song 132 → 131 | 1,063 | 44 | 0.88 |
 
 FIGHT starts before the first hit in this route; a phase must follow the actual
-hit event rather than assume song order. Steady fighting is about **4.08 FPS**.
-Of the 245.97 ms adjusted CPU estimate per fight frame, original code takes 127.39,
-CopyBits 25.69, trap entry/dispatch 18.31, port lookups 15.17, drawing/regions 14.42,
-and C2P 13.07 ms. The logger's measured exclusive cost is 0.025–0.026 ms/frame.
-The three `startNativeSong` subtrees total 12.06 s, of which `MacHeap::moveHigh`
-accounts for 10.25 s. Heap movement remains the main song-start target.
-These costs include diagnostic overhead; they are not a new shipping-build FPS claim.
+hit event rather than assume song order. Steady fighting is about **4.14 FPS**.
+Of the 252.77 ms adjusted CPU estimate per fight frame, original code takes 128.73,
+CopyBits 27.04, trap entry/dispatch 18.27, port lookups 15.23, drawing/regions 14.50,
+and C2P 13.60 ms. These costs include diagnostic overhead and are not a shipping
+build FPS claim.
+
+The three `startNativeSong` subtrees total **2.616 s**, including **0.508 s** in
+`MacHeap::moveHigh`. Song 136 takes 888 ms: sample loading 484 ms, metadata
+ownership 168 ms, PCM conversion 99 ms, MIDI preflight 59 ms and direct loader work
+60 ms. The loading totals include 186 ms of MoveHHi and about 362 ms of resource
+source reads; nested totals must not be added twice. Songs 132 and 131 together
+take 1.728 s, including 322 ms of MoveHHi. The full frame intervals above also
+contain original game work and presentation, not just native audio preparation.
+The 0.3-second song-start acceptance target remains unmet.
 
 ### Debugger-free hardware audit
 

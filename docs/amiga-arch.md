@@ -31,6 +31,22 @@ path. Heap lookup caches only pinned master-slot ranges: allocation flags, sizes
 back-pointers remain live checks. Native word/long accesses preserve the big-endian
 68020 memory layout, including unaligned data.
 
+## MoveHHi placement
+
+`HeapMoveHigh.inc` is shared through AmigaXDev. The System 7.5.5 reference
+moves only the target when a free tail before the next pinned block can hold it.
+An interior hole alone does not qualify: with an insufficient tail, the original
+compacts unlocked neighbours below the high target. Locked handles, pointer blocks
+and master blocks bound that interval; purgeable neighbours are retained. The native
+fallback preserves this placement without allocating scratch memory. A tiny tail
+remainder is absorbed into the physical block without changing its logical size.
+
+Native song resources are moved before locking to avoid pinning many allocations
+low in the heap. Paula plays converted Chip buffers, but the MIDI timeline still
+reads its retained raw resource during playback. A high address is not required by
+the audio hardware; stable ownership and locking remain necessary. The native loader
+retains this placement policy rather than bypassing the Memory Manager operation.
+
 ## Display
 
 AitdScreen owns bitplanes, copper, sprites and registers. The logical Mac screen is

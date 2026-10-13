@@ -10,10 +10,8 @@ Each item gives the **goal**, then the scope, then *done when*: the evidence req
 ## Monster sequence performance
 
 Use the maintained [monster-to-death profile](performance.md#monster-to-death-cycle)
-for each item's effect. Its deterministic reference-68030 PAL baseline takes 12.25
-fields per steady fight frame (246 ms adjusted CPU, 127 ms original code).
-The three song-start frame intervals are 3.94, 6.58 and 2.76 s; `MacHeap::moveHigh`
-accounts for 10.25 s across their loader subtrees.
+for each item's effect. The current reference-68030 baseline and per-phase costs
+are in that document; preserve matching game state when comparing changes.
 
 - **PERF.3 Record the owner's 68040 baseline — deferred by the owner.**
   Real-Amiga benchmarks are deferred. When resumed, use the
@@ -24,19 +22,18 @@ accounts for 10.25 s across their loader subtrees.
   *Done when* both hardware results are recorded and later items quote their 68040
   effect against them. Emulator smoke tests do not satisfy this hardware gate.
 
-- **HEAP.2 Implement MoveHHi without moving unrelated blocks.**
-  `MacHeap::moveHigh` rotates every movable block between the target and the next
-  immovable block, in three `reverseWords` passes over the whole span. The native song
-  loader calls it for each owned resource (`ownSongResource`), so 21–33 calls freeze
-  each song start. Measure original MoveHHi on the Macintosh reference: free space
-  above, a locked block in the way, no room and purgeable neighbours. Establish whether
-  song resources need moving at all once their Paula variants are in Chip RAM. Share
-  the fix with Prince of Persia 2 through AmigaXDev, together with HEAP.1.
+- **HEAP.2 Finish MoveHHi/song-start acceptance.**
+  Resolve the remaining 0.3-second song-start target using the
+  [current profile](performance.md#monster-to-death-cycle). Distinguish full frame
+  intervals from native audio preparation; resource reads, MIDI preparation and PCM
+  conversion contribute beyond heap movement. Adopt the shared allocator fix in
+  Prince of Persia 2 when its active worktree is clear, together with HEAP.1.
 
-  *Done when* MoveHHi matches the reference cases, copying only the target. Heap,
-  `m5_low_memory`, `song136.gdb`, `gameplay_music.gdb`, `gameplay_fight.gdb`, the
-  death route and fragmented-heap regressions pass. Each monster-profile song start costs
-  ≤ 0.3 s (from 2.76–6.58 s), with no new allocation failures.
+  *Done when* MoveHHi matches the Macintosh reference cases, copying only the target
+  where the reference permits. Heap, `m5_low_memory`, `song136.gdb`,
+  `gameplay_music.gdb`, `gameplay_fight.gdb`, the death route and fragmented-heap
+  regressions pass. Each monster-profile song start costs ≤ 0.3 s, with no new
+  allocation failures. Do not close this item on the heap speedup alone.
 
 - **HEAP.3 Measure the remaining song-start cost.**
   After HEAP.2, attribute `startNativeSong` (`loadSongSample`, `SongVoice::convert`,

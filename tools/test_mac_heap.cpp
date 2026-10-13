@@ -190,14 +190,54 @@ int main() {
         auto barrier=h.newHandle(128);CHECK(a&&b&&hole&&barrier);
         pattern(*a,1024,0x6d);pattern(*b,512,0x42);pattern(*barrier,128,0x91);
         CHECK(h.setState(barrier,0x80)==0);auto fixed=*barrier;before=*a;
-        auto middle=*b;auto targetSpan=*hole-before;
+        auto middle=*b;
         auto middleSpan=*barrier-middle;auto freeBefore=h.freeBytes();
         CHECK(h.disposeHandle(hole)==0);auto gapSpan=h.freeBytes()-freeBefore;
         auto freeAfter=h.freeBytes();CHECK(h.moveHigh(a)==0);
-        CHECK(*a==before+gapSpan+middleSpan && *b==middle-targetSpan);
+        CHECK(*a==before+gapSpan+middleSpan && *b==before);
         CHECK(patternIs(*a,1024,0x6d) && patternIs(*b,512,0x42));
         CHECK(*barrier==fixed && patternIs(*barrier,128,0x91));
         CHECK(h.state(barrier)==0x80 && h.freeBytes()==freeAfter && h.check());
+    }
+    // Original MoveHHi with a free tail: only the target moves. Locked
+    // barriers bound the search; purgeable neighbours are retained.
+    for(unsigned state: {0u,0x40u}) {
+        CHECK(h.init(arena,sizeof(arena)));
+        a=h.newHandle(1024);b=h.newHandle(512);auto hole=h.newHandle(8192);
+        auto barrier=h.newHandle(512);CHECK(a&&b&&hole&&barrier);
+        CHECK(h.setState(b,state)==0 && h.setState(barrier,0x80)==0);
+        pattern(*a,1024,0x17);pattern(*b,512,0x31);pattern(*barrier,512,0x51);
+        auto oldA=*a,oldB=*b,oldBarrier=*barrier;auto targetSpan=*b-*a;
+        CHECK(h.disposeHandle(hole)==0);auto free=h.freeBytes();
+        CHECK(h.moveHigh(a)==0 && *a==oldBarrier-targetSpan && *a>oldA);
+        CHECK(*b==oldB && *barrier==oldBarrier && h.freeBytes()==free);
+        CHECK(patternIs(*a,1024,0x17) && patternIs(*b,512,0x31));
+        CHECK(patternIs(*barrier,512,0x51) && h.state(b)==state && h.check());
+    }
+    // Original no-room case still succeeds by moving the unlocked neighbour;
+    // a purgeable neighbour is moved, not purged. A locked one blocks the move.
+    for(unsigned state: {0u,0x40u,0x80u}) {
+        CHECK(h.init(arena,sizeof(arena)));
+        a=h.newHandle(1024);b=h.newHandle(512);
+        auto rest=h.newHandle(h.largestBlock());CHECK(a&&b&&rest);
+        CHECK(h.setState(rest,0x80)==0 && h.setState(b,state)==0);
+        auto oldA=*a,oldB=*b;pattern(*a,1024,0x17);pattern(*b,512,0x31);
+        CHECK(h.freeBytes()==0 && h.moveHigh(a)==0 && h.freeBytes()==0);
+        if(state==0x80)CHECK(*a==oldA && *b==oldB);
+        else CHECK(*a>oldA && *b==oldA);
+        CHECK(h.state(b)==state && patternIs(*a,1024,0x17));
+        CHECK(patternIs(*b,512,0x31) && h.check());
+    }
+    // Exact fit and a tail remainder too small for a free-block header.
+    for(unsigned extra: {0u,8u,16u,24u,32u}) {
+        CHECK(h.init(arena,sizeof(arena)));
+        a=h.newHandle(1024);b=h.newHandle(512);auto hole=h.newHandle(1024+extra);
+        auto barrier=h.newHandle(512);CHECK(a&&b&&hole&&barrier);
+        CHECK(h.setState(barrier,0x80)==0);auto oldB=*b;
+        pattern(*a,1024,0x17);CHECK(h.disposeHandle(hole)==0);
+        CHECK(h.moveHigh(a)==0 && *b==oldB && h.handleSize(a)==1024);
+        CHECK(patternIs(*a,1024,0x17) && h.check());
+        CHECK(h.disposeHandle(a)==0 && h.disposeHandle(b)==0 && h.check());
     }
     // Deterministic fragmentation: validate every surviving payload after every operation.
     CHECK(h.init(arena,sizeof(arena)));handles.assign(48,nullptr);uint32_t rng=1;
