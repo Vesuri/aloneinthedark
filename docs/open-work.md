@@ -7,6 +7,20 @@ cited below by § number; owner decisions D1–D9 are in design.md §5.
 
 Each item gives the **goal**, then the scope, then *done when*: the evidence required.
 
+## Runtime overhead
+
+- **HEAP.1 Avoid heap-wide work for unchanged allocation sizes.**
+  `MacHeap::resizeInPlace` calls `split` and `coalesce` even when the requested
+  logical size already matches the allocation. The latter walks the entire
+  zone. Inspect the reached `SetHandleSize`/`SetPtrSize` and internal region
+  callers; measure their frequency and cost before changing the allocator.
+  Reuse and consolidate the fix with Prince of Persia 2 through AmigaXDev.
+
+  *Done when* unchanged-size requests preserve errors, handle state, addresses,
+  payloads and heap invariants without a whole-zone walk; grow/shrink and
+  fragmented-heap regressions pass, and matched native workloads on pinned
+  CPU configurations establish the effect without changing original game state.
+
 ## AITD 1 glitch audit
 
 - **GLITCH.1 Check the Amiga port against the AITD 1 material in the
