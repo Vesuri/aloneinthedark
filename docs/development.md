@@ -201,3 +201,10 @@ changed epoch. Since physical releases during host OS ownership cannot reach
 the game's CIA handler, it clears held keys, the Mac KeyMap, and stale queued
 edges. Calls satisfied without an OS switch preserve input. Update both the
 slave and executable together; mismatched ABI versions are rejected.
+
+## Shared Macintosh helpers
+
+Geometry, region, indexed copy/fill, GWorld and bitmap-font helpers come from
+AmigaXDev’s canonical `mac-runtime` sources. Vendored copies are hash-pinned in
+`manifest/shared-runtime.sha256` and checked before host tests and native builds.
+Update the canonical source and install through AmigaXDev before updating consumers.

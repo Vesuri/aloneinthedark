@@ -1,6 +1,6 @@
-#ifndef AITD_WINDOW_GEOMETRY_H
-#define AITD_WINDOW_GEOMETRY_H
-#ifndef AITD_PLATFORM_AMIGA
+#ifndef AMIGAXDEV_WINDOW_GEOMETRY_H
+#define AMIGAXDEV_WINDOW_GEOMETRY_H
+#ifndef __mc68000__
 #include <stdint.h>
 #endif
 namespace WindowGeometry {
