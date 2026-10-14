@@ -145,6 +145,7 @@ uint32_t g_paulaClock=3546895;
 volatile uint32_t g_planeChecksum = 0;   // of the blob IN CHIP RAM (AitdScreen)
 volatile uint16_t g_screenReady   = 0;   // 0 = allocation failed, 1 = displaying
 extern volatile uint32_t g_macTicks;
+extern volatile uint16_t g_quickServiceValid;
 extern volatile uint32_t* g_macTicksAddress;
 extern volatile uint32_t* g_macRndSeedAddress;
 #ifdef AITD_PROBE
@@ -214,6 +215,7 @@ static uint32_t vbiHandler()
     // PAL fields need the 50-to-60 Hz conversion; NTSC advances one Mac tick.
     uint16_t tickDelta=VideoTiming::tickDelta(g_videoPAL!=0,s_macTickRemainder);
     g_macTicks += tickDelta;
+    g_quickServiceValid=0; // Any elapsed tick expires the user-mode service certificate.
 #ifdef AITD_FULL_PLAY
     aitdInputFullPlayVBI(g_macTicks);
 #endif

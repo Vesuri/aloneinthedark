@@ -118,6 +118,8 @@ specific to this game in `docs/`.
   Keep remote/authentication overrides local to this repository or one command;
   never change global Git settings for this project.
 - Validate in proportion to the change: host checks for pure helpers; original
-  byte checks and bounded Amiga runs for runtime changes.
+  byte checks and bounded Amiga runs for runtime changes. Keep tests short and
+  targeted by default. Reserve long endurance runs for changes that justify them;
+  do not repeat or broaden passing checks without a specific unresolved concern.
 - Keep documentation current and concise. Historical experiments and removed
   development stages can be recovered from Git history.

@@ -56,20 +56,6 @@ are in that document; preserve matching game state when comparing changes.
   ≤ 80 µs per call in repeatable fight profiles. Preserve exact raster ties,
   dirty bounds and frame/callback service points.
 
-- **FRAME.4 Extend quick-trap entry to fight-frame traps.**
-  Reduce the remaining common entry/dispatch overhead using the pinned fight
-  profile. Preserve the register image, CCR, Pascal ABI, patched-trap fallback
-  and frame/callback service points; keep service-body work in its own bucket.
-
-  *Done when* `quick_traps.gdb`, `frame_pacing.gdb`, `scene_frame_verify.gdb`,
-  `apple_events.gdb` and `m5_circuit.gdb` + `check_m5_audit.py` pass with no added
-  lateness, and full-phase instruction-PC trap entry/dispatch is ≤ 9 ms per fight frame.
-
-  Acceptance includes CPU exception entry, native entry/dispatch, common return,
-  and dispatch guards moved into drawing wrappers. Service bodies remain separate.
-  Use full-phase instruction-PC accounting; adjusted call-tree categories are
-  unavailable and cannot establish this gate. Correcting attribution is not a speedup.
-
 - **FRAME.5 Speed up large BlockMove copies.**
   `Dark+$1B7A` makes 39 large BlockMoves in the fight (1.15 ms each, 5.5 ms per frame).
   Use aligned longword or MOVE16 paths with exact overlap semantics.
@@ -131,18 +117,6 @@ are in that document; preserve matching game state when comparing changes.
   callback ABI checks pass, and existing gameplay/VBL latency gates pass.
 
 ## Profiling validity
-
-- **TEST.6 Make the circuit’s room-4 exit independent of release overshoot.**
-  A faster experimental build reached stage 59 in room 4 on lap 10, then
-  timed out walking against the boundary: HP remained positive and no input
-  was dropped. Stage 58 presses Space whenever the actor remains in room 4;
-  whether this closes an already open door is unverified. Inspect the original
-  door state and route before changing the controller or blaming the runtime.
-
-  *Done when* ordinary input reliably exits room 4 both before and after the
-  door has been opened, including small heading/waypoint differences. The
-  independent scene verifier and normal audio/memory circuit must both finish
-  ten active minutes. Do not skip the exit or patch original game state.
 
 - **MEASURE.3 Verify debugger-injected negative controls reach the CPU.**
   A compiled wrong-tick injection trips the service-cache oracle immediately;

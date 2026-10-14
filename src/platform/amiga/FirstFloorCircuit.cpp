@@ -29,7 +29,10 @@ static const Step steps[]={
  {Action,64,0,0},{Face,512,0,0},{RoomOrZ,1,1600,1},{SpaceUnlessRoom,1,0,0},{Room,1,0,0},
  {Face,256,0,0},{AlignX,1,2800,2900},{Face,512,0,0},{Room,5,0,0},{GreaterZ,-1200,0,0},{Face,256,0,0},{GreaterX,-1800,0,0},{AlignX,1,-1700,-1550},
  {Face,512,0,0},{GreaterZ,650,0,0},{AlignZ,1,650,850},{Face,768,0,0},{Room,4,0,0},
- {LessX,100,0,0},{AlignX,0,-200,100},{Face,0,0,0},{RoomOrZ,1,-1600,0},{SpaceUnlessRoom,1,0,0},
+ {LessX,100,0,0},{AlignX,0,-200,100},{Face,0,0,0},
+ // Realign near the doorway: a small heading error across the whole room
+ // can put the actor outside either side of the original entrance trigger.
+ {LessZ,-1000,0,0},{Face,768,0,0},{AlignX,0,-250,-150},{Face,0,0,0},{RoomOrZ,1,-1600,0},{SpaceUnlessRoom,1,0,0},
  {Room,1,0,0},{WesternHall,0,0,0},{Face,0,0,0},{RoomAndZ,1,0,0},{AlignZ,0,-150,0},
  {Face,768,0,0},{LessX,-650,0,0},{AlignX,0,-900,-700},{Face,0,0,0},{RoomOrZ,3,-850,0},
  {SpaceUnlessRoom,3,0,0},{Room,3,0,0},{Bathroom,0,0,0},{Finish,0,0,0}

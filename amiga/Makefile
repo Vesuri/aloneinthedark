@@ -544,6 +544,9 @@ PROBE_SYMS = g_macBookFrameActive g_macBookFramesBegun g_macBookFramesCompleted 
              g_trapPC g_trapRegisters g_trapUserStack g_resourceCount g_jumpEntryCount \
              g_blockMoveCount g_trapManager g_trapRoutine
 PROBE_SYMS += $(PROBE_SYMS_FRAME) $(PROBE_SYMS_MASK_COMPARE)
+ifeq ($(SCENEFRAMEVERIFY),1)
+PROBE_SYMS += g_quickServiceChecks g_quickServiceTick g_quickServiceValid
+endif
 ifeq ($(MONSTERAUDIT),1)
 PROBE_SYMS += g_monsterAudit g_monsterFrames g_monsterCount g_monsterPhase
 endif

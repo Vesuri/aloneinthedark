@@ -199,6 +199,10 @@ static uint32_t nativeMusicClock()
 static volatile uint16_t s_nativeAudioBusy=0;
 static volatile uint16_t s_nativeSongPending=0;
 static const char* volatile s_songInterruptError=0;
+// A successful assembly service check is reusable only at that same tick.
+// Service mutations, tick advancement and asynchronous song errors invalidate it.
+extern "C" { volatile uint32_t g_quickServiceTick=0; volatile uint16_t g_quickServiceValid=0; }
+static inline void invalidateQuickServices() { g_quickServiceValid=0; }
 extern "C" void aitd_song_deferred();
 class NativeAudioGuard {
 public:
@@ -1622,6 +1626,7 @@ static void startPaulaSample(uint8_t* data, const PaulaSample::Layout& layout,
 
 static void stopNativeEffect(uint16_t index)
 {
+    invalidateQuickServices();
     NativeAudioGuard guard;
     SoundDriver::Voice& voice=g_soundDriver.effects[index];
     NativeEffect& effect=g_effects[index];
@@ -1743,6 +1748,7 @@ extern "C" __attribute__((noinline)) void aitdEffectFractionReady(uint32_t* regs
 
 static const char* playNativeEffect(uint8_t* packet,uint32_t& scratch)
 {
+    invalidateQuickServices();
     AitdProfileScope profile(kProfileAudio);
     if(!g_soundDriver.initialized)return "NOT INITIALIZED";
     if(((uint32_t)packet&1) || !effectRange(packet,26))return "EFFECT PACKET";
@@ -2309,7 +2315,7 @@ static void advanceOwnedNativeSong()
     uint32_t began=songLineClock(),events=g_song.events;
 #endif
     const char* error=advanceNativeSong();
-    if(error) {s_songInterruptError=error;g_song.playing=0;}
+    if(error) {invalidateQuickServices();s_songInterruptError=error;g_song.playing=0;}
 #ifdef AITD_SONG_PROBE
     uint32_t lines=(songLineClock()-began)&0xffffff;
     ++g_songTiming[0];g_songTiming[1]+=lines;
@@ -6605,6 +6611,7 @@ static int16_t pointerAndHandle(const uint8_t* source,uint8_t** handle,uint32_t 
 }
 static int16_t installVBLTask(uint8_t* task)
 {
+    invalidateQuickServices();
     if (!task) return -50;                   // paramErr
     for (uint16_t i = 0; i < s_vblTaskCount; ++i)
         if (s_vblTasks[i] == task) return -94; // vTypErr: already installed
@@ -6624,6 +6631,7 @@ static int16_t installVBLTask(uint8_t* task)
 
 static int16_t removeVBLTask(uint8_t* task)
 {
+    invalidateQuickServices();
     if (!task) return -50;                   // paramErr
     if (read16(task + 4) != 1) return -2;   // vTypErr
 
@@ -6653,6 +6661,7 @@ static int16_t removeVBLTask(uint8_t* task)
 
 static void scheduleVBLTask()
 {
+    invalidateQuickServices();
     s_vblPass.observe(g_macTicks);
 
     if (!s_vblTaskCount) {
@@ -8111,8 +8120,21 @@ uint32_t aitdCopyBitsQuick(uint32_t*,uint8_t*,uint8_t*);
 uint32_t aitdStateQuick(uint32_t*,uint8_t*,uint8_t*);
 }
 #ifdef AITD_SCENE_FRAME_VERIFY
+extern "C" { volatile uint32_t g_quickServiceChecks=0; }
 extern "C" void aitdRGBSceneGuard(uint32_t* regs,uint8_t* frame,uint8_t* userStack)
 {
+    // Re-evaluate at the certified tick: a VBI may have advanced wall time
+    // since the assembly guard. Tick and song-error interrupts expire the certificate.
+    const uint32_t liveTick=g_macTicks;
+    if(g_quickServiceValid) {
+        ++g_quickServiceChecks;
+        const uint32_t tick=g_quickServiceTick;
+        bool stale=tick!=liveTick || s_vblPass.last!=tick || s_vblPass.pending || s_vblPass.active;
+        for(uint16_t i=0;i<2;++i)
+            stale=stale || (g_soundDriver.effects[i].active && (g_effects[i].stream
+                || (int32_t)(tick-g_effects[i].ends)>=0));
+        if(stale) {loaderStop("QUICK SERVICE CACHE",4);showLoaderStop();}
+    }
     uint32_t owner=g_macSceneFrameOwner,pc=read32(frame+2);
     sceneFrameBoundary(read16((const uint8_t*)pc),pc,regs,userStack);
     if(!owner || owner!=g_macSceneFrameOwner) {
@@ -8427,6 +8449,7 @@ static bool soundDriverEntryValid(uint32_t pc)
 static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
                                uint8_t* frame, uint8_t* userStack, bool inUserService=false)
 {
+    invalidateQuickServices();
 #if defined(AITD_INTRO_SKIP) && !defined(AITD_INGAME)
     aitdInputIntroSkip(trap, g_macTicks);
     if(!s_quickTrapsReady)refreshQuickTrapEntries();
@@ -11223,13 +11246,13 @@ static uint32_t dispatchQuickTrap(uint32_t* regs,uint8_t* frame,uint8_t* userSta
     if(!sceneGuarded) {
         // A running callback prevents the scheduler from dispatching another
         // task. Still observe new ticks, and retain the empty-queue cleanup.
-        bool service=s_vblPass.last!=g_macTicks
+        const bool cached=g_quickServiceValid;
+        bool service=!cached && (s_songInterruptError || s_vblPass.last!=g_macTicks
             || ((s_vblPass.pending || s_vblPass.active)
-                && !(g_macVBLCallbackActive && s_vblTaskCount))
-            || s_songInterruptError;
+                && !(g_macVBLCallbackActive && s_vblTaskCount)));
         // Match the assembly guard: an ordinary sample cannot need cleanup
         // before its deadline. Streams retain their normal DMA polling.
-        for(uint16_t i=0;!service && i<2;++i)
+        for(uint16_t i=0;!cached && !service && i<2;++i)
             service=g_soundDriver.effects[i].active && (g_effects[i].stream
                 || (int32_t)(g_macTicks-g_effects[i].ends)>=0);
 #ifdef AITD_SCENE_FRAME_BATCH

@@ -40,16 +40,29 @@ excluded work and must not be substituted for adjusted categories. Different bui
 can take different intermediate combat routes: these
 averages do not establish a matched-state FPS improvement or a hardware result.
 
-FRAME.4 requires **≤9 ms per fight frame including CPU exception entry and
-return**, plus dispatch guards moved into drawing wrappers; service bodies remain
-separate. Zero-byte assembly guard/body labels permit the separation without
-changing the executable. Re-symbolizing the retained profile with a byte-identical
-measurement build yields the table above: guards and C argument marshalling move
-into dispatch, while pen-state and standalone service bodies move out. Its **16.56 ms**
-is a conservative bound: mixed C dispatch functions still contain some service
-work. The earlier 14.89 ms function-name bucket omitted drawing-wrapper guards;
-these are accounting corrections, not changes in execution speed. The target
-remains unmet. Old profile ELFs without the boundary symbols retain coarse buckets.
+FRAME.4's owner-accepted dispatch result is **14.40 ms per fight frame**, down
+from the corrected **16.56 ms** baseline. This includes CPU exception entry,
+return and guards moved into drawing wrappers; service bodies remain separate.
+The `frame4-irq-certificate` profile and its repeat both measure 14.3950108 ms,
+with byte-identical frame/state traces (328 fight frames, 3,438 fields). The full
+frame average is 209.99 ms; different intermediate combat routes prevent a
+matched-state total-frame speedup claim. Quick-trap register/CCR/ABI, frame-pacing
+and Apple Event startup checks pass. Callback latency remains bounded at three
+Mac ticks on the reference machine. The independent scene verifier and normal
+audio/memory circuit both complete ten active gameplay minutes without dropped
+input, scene failures, allocation errors or late music notes.
+
+A successful service check is reused within a Mac tick. VBI tick advancement,
+service-state mutations and asynchronous song errors invalidate it. Publication
+rechecks the tick and song error so an interrupt during validation cannot leave
+an obsolete result cached. Frame-owner and stack checks still run for every call.
+
+Zero-byte assembly guard/body labels separate dispatch from drawing without
+changing executable bytes. The baseline was re-symbolized with a byte-identical
+measurement build: guards and C argument marshalling count as dispatch, while
+pen-state and standalone service bodies do not. Mixed C functions still contain
+some service work, making this a conservative dispatch bound. Old profile ELFs
+without the boundary symbols retain coarse buckets.
 
 ## RGB lookup and dispatch
 
