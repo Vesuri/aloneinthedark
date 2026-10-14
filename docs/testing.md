@@ -39,8 +39,7 @@ Dispatch changes also require `quick_traps.gdb` (`LINEAPROBE=1`), the ordinary
 `frame_pacing.gdb` and `apple_events.gdb`, plus the first-floor circuit with
 `SCENEFRAMEVERIFY=1 M5AUDIT=1` and its memory/audio audit. Keep the expensive RGB
 oracle out of the timed combat circuit; verify its calls in the monster run instead.
-The current circuit-controller failure is tracked as TEST.2. For a combined bounded
-check, clean-build `MONSTERPROFILE=1 FIXEDRNG=1 SCENEFRAMEVERIFY=1
+For a separate bounded monster check, clean-build `MONSTERPROFILE=1 FIXEDRNG=1 SCENEFRAMEVERIFY=1
 RGBCACHEVERIFY=1 M5AUDIT=1`, run `rgb_cache_services.gdb`, and use
 `check_m5_audit.py --completion "PASS RGB monster service audit"` with the
 complete log, `--folder tmp/m5 --status 0 --cpu 68030`. This verifies the idle
@@ -379,9 +378,15 @@ patch, calls through its original, and restores the direct entry. GetZone additi
 checks patch installation through an OS alias and its A0 result. The fixture exits
 before the older `line_a.gdb` bring-up sequence.
 
-For endurance and profiling, use the ordinary first-floor save with `FIRSTFLOORLOAD=1
-INTROSKIP=1`; enable `FIRSTFLOORCIRCUIT=1` or `M5AUDIT=1` only when required by the
-observer. `vbl_latency.gdb` uses `INGAME=1` and the reference 68030 to compare callback
+For continuous endurance checks, clean-build `FIRSTFLOORLOAD=1
+FIRSTFLOORCIRCUIT=1 INTROSKIP=1 FIXEDRNG=1 SCENEFRAMEVERIFY=1 M5AUDIT=1`.
+Use the unmodified first-floor save and run both `m5_circuit.gdb` and
+`scene_frame_verify.gdb` on maximum-speed `a4000-030`. Each must finish ten
+active game minutes without dropped input; pass the memory/audio captures to
+`check_m5_audit.py`. `FIXEDRNG` supplies the documented fixed seed and zero clock
+contribution; it does not alter the save. The controller holds the normal kick
+input until the bedroom enemy dies, then waits for the original cleanup.
+For other save-based diagnostics, enable only the observer's required flags. `vbl_latency.gdb` uses `INGAME=1` and the reference 68030 to compare callback
 lateness over the same first-room scenes 60–160; it reads the callback's virtual Ticks
 shadow against the live clock. `gameplay_sample.gdb`, `sample_gameplay.py` and
 `summarize_gameplay_profile.py` provide sampled profiles; `amiga/aprof.sh` gives exact

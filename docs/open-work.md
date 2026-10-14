@@ -45,16 +45,6 @@ are in that document; preserve matching game state when comparing changes.
   *Done when* the hardware performance comparison and complete visual/audio run
   are recorded. Corrected FS-UAE functional checks do not satisfy this hardware gate.
 
-- **TEST.2 Restore the continuous first-floor circuit fixture.**
-  With the original first-floor save, the maximum-speed 68030 run dies during the
-  bedroom fight (cycle 1, stage 35). Reproduced on unchanged `bee5b78` as well as
-  the RGB optimization. Diagnose the baseline failure and repair the controller
-  or establish a repeatable starting fixture; do not change production combat to make a test pass.
-
-  *Done when* `m5_circuit.gdb` and `scene_frame_verify.gdb` complete ten active
-  game minutes with no dropped input, and `check_m5_audit.py` passes. Preserve
-  the original save and report any fixture-state differences explicitly.
-
 - **FRAME.8 Optimize ordinary thin-pen Line/LineTo strokes.**
   The remaining 1×1 strokes in the reference-68030 fight average about 331 µs
   for LineTo and 335 µs for relative Line. Profile validation, clipping and the

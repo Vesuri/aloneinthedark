@@ -163,9 +163,11 @@ void aitdInputFirstFloorCircuit(uint32_t ticks,uint32_t scenes,const uint8_t* wo
    if(++g_circuitAttempts>32) {fail();return;}
    key(0x40,true);key(0x4c,true);phase=5;phaseTick=ticks;return;
   }
-  if(phase==5) {if(ticks-phaseTick<180)return;key(0x4c,false);key(0x40,false);phase=6;phaseTick=ticks;return;}
-  if(!manual || ticks-phaseTick<30)return;
-  phase=2;phaseTick=ticks-30;return;
+  // Keep attacking until the original enemy dies. The room-four recovery
+  // fixture uses the same ordinary-input strategy: repeated release/idle
+  // intervals let the enemy knock Carnby out of range before the next kick.
+  // The death branch above releases the keys and waits for normal cleanup.
+  return;
  }
  bool reached=false;
  if(s.kind==GreaterX)reached=x>=s.arg;
