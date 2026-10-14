@@ -67,7 +67,8 @@ are in that document; preserve matching game state when comparing changes.
 
   Measurement ambiguity: the target was derived from an adjusted call-tree bucket,
   which excludes some exception/assembly work and cannot reliably attribute the
-  new tail-jump paths (MEASURE.1). Reconcile the original and current accounting
+  new tail-jump paths. Adjusted categories are unavailable; reconcile the original
+  and current accounting
   before accepting the numerical gate; include dispatch guards moved into drawing
   wrappers. A smaller reported bucket alone does not establish a speedup.
 
@@ -166,17 +167,6 @@ are in that document; preserve matching game state when comparing changes.
   initial state with byte-identical prepared preferences, a clean repeat passes
   the profile's state/field checks, and original preferences are restored on
   success and failure. Preserve the explicit initial-state diagnostic.
-
-- **MEASURE.1 Correct adjusted-profile bucket attribution.**
-  `aprof_report.py steady` groups call-tree self time by the call target. Native
-  tail jumps stay in the caller's node, and exception nodes are grouped as
-  Kickstart/other, so these buckets differ from instruction-PC attribution.
-  Do not use them as an entry/dispatch acceptance metric. The full phase's flat
-  PC buckets remain available; the adjusted total is a separate estimate.
-
-  *Done when* adjusted output either attributes instructions within the excluded
-  subtrees correctly or explicitly reports that breakdown as unavailable. Test
-  direct calls, tail jumps and exceptions, and update affected documentation.
 
 - **MEASURE.2 Preserve the executed PC across CPU exceptions.**
   The profiler reads `instruction_pc` after the CPU instruction returns, but

@@ -405,23 +405,20 @@ def steady(p, labels, frames):
         raise ValueError('no steady frames')
     excluded = excluded_nodes(p, labels)
     units = sum(p.nodes[n][3] for n in excluded)
-    buckets = collections.Counter()
-    for n in p.order:
-        if n in excluded:
-            continue
-        _, target, kind, self_units, _ = p.nodes[n]
-        key = p.classify(target) if kind == 0 and n else ('OTHER', 'exception/root')
-        buckets[bucket(*key)] += self_units
-    # Flat units include exception-entry/STOP gaps not always owned by a node.
-    residual = p.units - sum(v[3] for v in p.nodes.values())
-    buckets['Unattributed gaps'] += residual
+    # Version 1 stores phase-wide PC totals and call-tree node totals separately.
+    # It does not associate PCs with nodes. A node may execute several functions
+    # through tail jumps, and an exception node includes native handler work.
+    # Classifying a node by its entry target therefore invents a breakdown that
+    # cannot be recovered after removing subtrees. Retain unattributed gaps in
+    # the total, but do not present invented categories (including zeroes).
     ms = lambda u: u / p.units_per_ms / frames
     result = dict(frames=frames, excluded_labels=list(labels), excluded_ms=units/p.units_per_ms,
-                  ms_per_frame=ms(p.units-units), buckets={k: ms(u) for k,u in buckets.most_common()})
+                  ms_per_frame=ms(p.units-units), buckets=None,
+                  bucket_status='unavailable: profile has no per-node instruction-PC attribution')
     print(f'{p.name}: subtree-adjusted CPU {result["ms_per_frame"]:.2f} ms/frame; '
           f'excluded {result["excluded_ms"]:.1f} ms in named one-off subtrees')
-    for k, v in result['buckets'].items():
-        print(f'  {v:7.2f} ms  {k}')
+    print(f'  Adjusted bucket breakdown {result["bucket_status"]}. '
+          'Use report for full-phase PC buckets; those include the excluded work.')
     return result
 
 

@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 import copy
+import contextlib
+import io
 from types import SimpleNamespace
 from check_monster_audit import HEADER, read_audit
 from aprof_monster import FRAME, decode_frames, phases_from_log, compare
-from aprof_report import excluded_nodes
+from aprof_report import excluded_nodes, steady
 import struct
 import unittest
 from aprof_report import bucket, call_tree, link_starts, parse_jump_table, parse_log, parse_profile, trap_name
@@ -152,6 +154,34 @@ class MonsterReport(unittest.TestCase):
         p = SimpleNamespace(order=[0,1,2,3,4], labels={0:'root',1:'JT120->song',2:'camera',3:'child',4:'keep'},
                             nodes={0:(0,),1:(0,),2:(1,),3:(2,),4:(0,)})
         self.assertEqual(excluded_nodes(p, ['song','camera']), {1,2,3})
+
+    def test_adjusted_total_does_not_invent_pc_buckets(self):
+        # The retained direct-call node may tail-jump to a drawing body; the
+        # exception node may run native dispatch. Neither node has per-PC data.
+        # The excluded camera and its child cost 400 units; 100 gap units remain.
+        p = SimpleNamespace(name='fixture', units=1000, units_per_ms=10,
+            order=[0,1,2,3,4], labels={0:'root',1:'dispatch',2:'camera',3:'child',4:'Line-A'},
+            nodes={0:(0,0,0,50,0), 1:(0,0x1000,0,200,1),
+                   2:(1,0x2000,0,300,1), 3:(2,0x3000,0,100,1),
+                   4:(1,0xa000a891,10,250,1)})
+        for distribution in ('direct', 'tail-jump', 'exception'):
+            with self.subTest(distribution=distribution):
+                # These phase-wide distributions cannot identify PCs belonging
+                # to the removed camera subtree. They must not become adjusted
+                # categories, regardless of the apparent entry-point names.
+                address = {'direct':0x1000, 'tail-jump':0x1100, 'exception':0x4000}[distribution]
+                p.pcs = {address:(900,10,0,0)}
+                output = io.StringIO()
+                with contextlib.redirect_stdout(output):
+                    result = steady(p, ['camera','child'], 10)
+                self.assertEqual(result['excluded_ms'],40)
+                self.assertEqual(result['ms_per_frame'],6)
+                self.assertIsNone(result['buckets'])
+                self.assertIn('unavailable',result['bucket_status'])
+                self.assertIn('include the excluded work',output.getvalue())
+                self.assertNotIn('Trap entry and dispatch',output.getvalue())
+        with self.assertRaises(ValueError):
+            steady(p, ['camera'], 0)
 
     def test_repeatability_ignores_scene_numbers_but_checks_states(self):
         phase = dict(phase='attic',start={'song':137},end={'song':136},fields=100,

@@ -31,10 +31,13 @@ Use the full-phase PC bucket for the dispatch budget. CPU exception entry is
 currently charged to the first native handler instruction, inflating that
 instruction's count and apparent cost (MEASURE.2). The dispatch total includes
 that entry cost; do not treat it all as removable register-save work. The
-subtree-adjusted report's
-bucket breakdown follows call targets, so tail jumps and exception nodes can be
-misattributed; MEASURE.1 tracks that limitation. Its adjusted **total** is a separate
-estimate. Different builds can take different intermediate combat routes: these
+subtree-adjusted report supplies only a **total** estimate, with `buckets: null`
+and an explicit unavailable status in JSON. The profile format does not associate
+instruction PCs with call-tree nodes, so it cannot recover a faithful category
+breakdown after excluding subtrees. Tail jumps and native exception handlers make
+classification by node entry target misleading. Full-phase PC buckets include the
+excluded work and must not be substituted for adjusted categories. Different builds
+can take different intermediate combat routes: these
 averages do not establish a matched-state FPS improvement or a hardware result.
 
 FRAME.4’s original 18.31 ms baseline and 9 ms target used the adjusted call-tree
