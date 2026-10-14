@@ -77,8 +77,20 @@ void aitdInputFirstFloorCircuit(uint32_t ticks,uint32_t scenes,const uint8_t* wo
  const Step& s=steps[g_circuitStage];
  if(ticks-g_circuitTick>(s.kind==Battle ? 36000UL : 3600UL)) {fail();return;}
  if(s.kind==SkipDead) {
-  if(enemyHp<=0 && enemySlot<0 && !word(vars+40)) {advance(ticks,scenes,s.arg+1);return;}
-  if(enemySlot<0)return;
+  if(enemyHp<=0 && enemySlot<0 && !word(vars+40)) {
+   if(phase)key(0x4c,false);
+   advance(ticks,scenes,s.arg+1);return;
+  }
+  if(enemySlot<0) {
+   if(enemyHp<=0)return; // Original death cleanup remains authoritative.
+   if(room!=2) {fail();return;}
+   // A faster renderer may stop short of the bedroom's spawn trigger.
+   // Continue ordinary walking until the original actor exists, rather
+   // than depending on how far key release overshoots the waypoint.
+   if(!phase) {if(!manual)return;key(0x4c,true);phase=1;}
+   return;
+  }
+  if(phase)key(0x4c,false);
   advance(ticks,scenes);return;
  }
  if(s.kind==Finish) {

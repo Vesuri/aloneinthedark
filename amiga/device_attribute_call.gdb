@@ -1,4 +1,4 @@
-tbreak *aitd_line_a_trap_entry if (*(unsigned short*)*(unsigned long*)((*(unsigned char**)($sp+4))+2))==0xaa2c
+tbreak *aitd_line_a_trap_entry if (*(unsigned short*)*(unsigned long*)(((unsigned char*)($sp+60))+2))==0xaa2c
 continue
 mac-trap-args
 set $da_args=(unsigned long)$mac_stack

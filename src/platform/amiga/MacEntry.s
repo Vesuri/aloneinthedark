@@ -75,40 +75,55 @@ aitd_line_a_handler:
 	lea 60(sp),a1
 	move.l 2(a1),a3
 	move.w (a3),d7	| Original trap word; C ABI preserves D7.
-	cmpi.w #0xaffe,d7
-	bne.s 5f
-	move.w 2(a3),d7	| Private callable-original stub's trap class.
-5:
+	move.l usp,a2
+	| C arguments are materialized only for a C service or audit call.
+.ifdef AITD_M5_AUDIT
+	move.l a2,-(sp)
+	move.l a1,-(sp)
+	move.l a0,-(sp)
+	jsr aitdAuditTrapEntry
+	lea 12(sp),sp
+.endif
+	.globl aitd_line_a_trap_entry
+aitd_line_a_trap_entry:
+	| SP is the complete 15-register image, SP+60 the exception frame,
+	| and A2 the original USP. Odd table entries denote our assembly ABI.
+	move.l d7,d0
+	andi.l #0x0fff,d0
+	lea g_macQuickTraps,a4
+	move.l (a4,d0.w*4),d0
+	beq.s .general_arguments
+	bclr #0,d0
+	move.l d0,a4
+	bne.s .native_quick
+	.globl aitdQuickCBridge
+aitdQuickCBridge:
+	move.l sp,a0
+	lea 60(sp),a1
 	move.l usp,a2
 	move.l a2,-(sp)
 	move.l a1,-(sp)
 	move.l a0,-(sp)
-.ifdef AITD_M5_AUDIT
-	jsr aitdAuditTrapEntry
-	| A C callee may reuse its argument slots for a tail call.
-	lea 12(sp),a0
-	move.l a0,(sp)
-	lea 60(a0),a1
-	move.l a1,4(sp)
-	move.l usp,a0
-	move.l a0,8(sp)
-.endif
-	.globl aitd_line_a_trap_entry
-aitd_line_a_trap_entry:
-	| The original opcode indexes the table: AFFE callable originals and
-	| patched traps have no quick entry. All quick entries retain D7.
-	| RGBQuick, LineQuick and CopyBitsQuick use this saved-image ABI and may clobber native registers;
-	| game registers remain parked until the common return/fallback below.
-	move.w (a3),d0
-	andi.l #0x0fff,d0
-	lea g_macQuickTraps,a4
-	move.l (a4,d0.w*4),a4
-	cmpa.l #0,a4
-	beq.s .general_dispatch
 	jsr (a4)
 	tst.l d0
-	bne.s .dispatch_done
+	bne.s .quick_done
+	bra.s .general_dispatch
+.native_quick:
+	jmp (a4)
+.general_arguments:
+	move.l sp,a0
+	lea 60(sp),a1
+	move.l usp,a2
+	move.l a2,-(sp)
+	move.l a1,-(sp)
+	move.l a0,-(sp)
 .general_dispatch:
+	cmpi.w #0xaffe,d7
+	bne.s 5f
+	lea 72(sp),a0
+	move.l 2(a0),a0
+	move.w 2(a0),d7	| Private callable-original stub's trap class.
+5:
 	| Restore the argument vector after any quick-entry fallback too.
 	lea 12(sp),a0
 	move.l a0,(sp)
@@ -117,6 +132,21 @@ aitd_line_a_trap_entry:
 	move.l usp,a0
 	move.l a0,8(sp)
 	jsr aitdLineADispatch
+	bra.s .dispatch_done
+.quick_done:
+	| Quick Toolbox services return a positive Pascal cleanup count; they
+	| cannot defer to user mode or publish OS-result CCR. Preserve all saved
+	| registers and the common callback/return path.
+	btst #11,d7
+	beq.s .dispatch_done
+	lea 12(sp),sp
+	.globl aitdQuickNativeDone
+aitdQuickNativeDone:
+	subq.l #1,d0
+	move.l usp,a0
+	adda.w d0,a0
+	move.l a0,usp
+	bra.s 3f
 .dispatch_done:
 	lea 12(sp),sp
 	cmpi.l #-1,d0
@@ -143,12 +173,12 @@ aitd_line_a_trap_entry:
 3:
 	movem.l (sp)+,d0-d7/a0-a6
 	addq.l #2,2(sp)
+	tst.l g_macVBLCallbackEntry
+	beq.s 2f
 	tst.w g_macServiceActive
 	bne.s 2f
 	tst.w g_macFileCompletionDepth
 	bne.s 2f
-	tst.l g_macVBLCallbackEntry
-	beq.s 2f
 	move.l 2(sp),g_macVBLCallbackReturn
 	move.l #aitd_user_vbl_trampoline,2(sp)
 2:

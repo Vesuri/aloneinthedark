@@ -1,5 +1,5 @@
 set $sr_n=$sr_n+1
-tbreak *aitd_line_a_trap_entry if (*(unsigned short*)*(unsigned long*)((*(unsigned char**)($sp+4))+2))==0xa8aa
+tbreak *aitd_line_a_trap_entry if (*(unsigned short*)*(unsigned long*)(((unsigned char*)($sp+60))+2))==0xa8aa
 continue
 mac-trap-args
 set $sr_args=(unsigned long)$mac_stack

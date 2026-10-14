@@ -22,12 +22,20 @@ removes its direct entry; restoring the callable original reinstates it. QuickDr
 controller transitions enable or disable the entries once, rather than
 rechecking stable eligibility on every call. Direct and general entries share the
 complete register save, Pascal stack cleanup, CCR handling and user-mode callback
-return. The bridge rebuilds C argument slots before fallback, because a tail call may
-reuse them.
+return. The complete fifteen-register image is saved before dispatch, followed by
+the original exception frame. Assembly quick entries use that image directly;
+bit zero of the native entry-table pointer selects this private ABI and is cleared
+before execution. Only C entries materialize the three C arguments. The bridge
+rebuilds these argument slots before fallback, because a tail call may reuse them.
+`trap_args.gdb` exposes both layouts to read-only observers.
 
 Drawing entries inspect pending ticks, effects, errors and the scene owner's saved
 frame identity before running shared services. Book boundary calls keep the general
-path. Heap lookup caches only pinned master-slot ranges: allocation flags, sizes and
+path. Read-only sound status queries can bypass general dispatch only inside an
+original VBL callback with an unchanged tick, no due effect/error work, and presentation deferred by an active frame or already
+clean. Driver-handle validation and selector-specific CCR remain unchanged.
+Random uses its original implementation behind the ordinary service guard.
+Heap lookup caches only pinned master-slot ranges: allocation flags, sizes and
 back-pointers remain live checks. Native word/long accesses preserve the big-endian
 68020 memory layout, including unaligned data.
 

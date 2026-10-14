@@ -7,14 +7,24 @@ commands
  detach
  quit 1
 end
+break *aitdLineQuick
 set $n=0
 while $n<32
  tbreak *aitdLineQuickPoint
  continue
+ while $pc==(unsigned long)aitdLineQuick
+  set $line_stack=(unsigned long)$a2
+  continue
+ end
+ if $pc!=(unsigned long)aitdLineQuickPoint
+  echo FAIL line points checkpoint\n
+  detach
+  quit 1
+ end
  set $n=$n+1
- set $regs=*(unsigned long*)($sp+4)
- set $frame=*(unsigned long*)($sp+8)
- set $stack=*(unsigned long*)($sp+12)
+ set $regs=(unsigned long)$sp
+ set $frame=(unsigned long)$sp+60
+ set $stack=$line_stack
  set $ret=*(unsigned long*)($frame+2)+2
  set $port=(unsigned long)$a0
  set $pm=(unsigned long)$a2

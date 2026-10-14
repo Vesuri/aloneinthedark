@@ -858,7 +858,7 @@ obj/gcc8_a_support.o : $(SUPPORT)/gcc8_a_support.s
 obj/EmbeddedOverlay.o: $(REPO)/resources/overlay.rsrc
 
 # Port-authored GAS assembly (68000 exception/trampoline code).
-obj/RGBQuick.o obj/LineQuick.o obj/CopyBitsQuick.o: $(AMIGA_SRC)/QuickSceneGuard.inc
+obj/RGBQuick.o obj/LineQuick.o obj/CopyBitsQuick.o obj/StateQuick.o: $(AMIGA_SRC)/QuickSceneGuard.inc
 
 obj/%.o : $(AMIGA_SRC)/%.s
 	$(info ASM  $<)

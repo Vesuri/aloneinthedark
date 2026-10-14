@@ -1,4 +1,4 @@
-tbreak *aitd_line_a_trap_entry if (*(unsigned short*)*(unsigned long*)((*(unsigned char**)($sp+4))+2))==0xaa14
+tbreak *aitd_line_a_trap_entry if (*(unsigned short*)*(unsigned long*)(((unsigned char*)($sp+60))+2))==0xaa14
 continue
 mac-trap-args
 set $rgb_args=(unsigned long)$mac_stack
@@ -35,7 +35,7 @@ set $rgb_pat=*(unsigned long*)*(unsigned long*)($rgb_port+58)
 dump binary memory ../tmp/rgb-native-1-return-pen.bin (char*)$rgb_pat (char*)$rgb_pat+28
 set $rgb_pat=*(unsigned long*)*(unsigned long*)($rgb_port+62)
 dump binary memory ../tmp/rgb-native-1-return-fill.bin (char*)$rgb_pat (char*)$rgb_pat+28
-tbreak *aitd_line_a_trap_entry if (*(unsigned short*)*(unsigned long*)((*(unsigned char**)($sp+4))+2))==0xaa15
+tbreak *aitd_line_a_trap_entry if (*(unsigned short*)*(unsigned long*)(((unsigned char*)($sp+60))+2))==0xaa15
 continue
 mac-trap-args
 set $rgb_args=(unsigned long)$mac_stack

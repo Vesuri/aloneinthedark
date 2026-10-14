@@ -57,13 +57,13 @@ are in that document; preserve matching game state when comparing changes.
   dirty bounds and frame/callback service points.
 
 - **FRAME.4 Extend quick-trap entry to fight-frame traps.**
-  Thin Line/LineTo, PenSize and QDExtensions still pay general dispatch costs. Re-measure
-  the remaining entry/dispatch cost after the RGB, particle and CopyBits quick entries. Keep the register image, CCR, Pascal
-  ABI, patched-trap fallback and frame/callback service points.
+  Reduce the remaining common entry/dispatch overhead using the pinned fight
+  profile. Preserve the register image, CCR, Pascal ABI, patched-trap fallback
+  and frame/callback service points; keep service-body work in its own bucket.
 
   *Done when* `quick_traps.gdb`, `frame_pacing.gdb`, `scene_frame_verify.gdb`,
   `apple_events.gdb` and `m5_circuit.gdb` + `check_m5_audit.py` pass with no added
-  lateness, and trap entry/dispatch is ≤ 9 ms per fight frame.
+  lateness, and full-phase instruction-PC trap entry/dispatch is ≤ 9 ms per fight frame.
 
 - **FRAME.5 Speed up large BlockMove copies.**
   `Dark+$1B7A` makes 39 large BlockMoves in the fight (1.15 ms each, 5.5 ms per frame).
@@ -126,6 +126,17 @@ are in that document; preserve matching game state when comparing changes.
   callback ABI checks pass, and existing gameplay/VBL latency gates pass.
 
 ## Profiling validity
+
+- **MEASURE.1 Correct adjusted-profile bucket attribution.**
+  `aprof_report.py steady` groups call-tree self time by the call target. Native
+  tail jumps stay in the caller's node, and exception nodes are grouped as
+  Kickstart/other, so these buckets differ from instruction-PC attribution.
+  Do not use them as an entry/dispatch acceptance metric. The full phase's flat
+  PC buckets remain available; the adjusted total is a separate estimate.
+
+  *Done when* adjusted output either attributes instructions within the excluded
+  subtrees correctly or explicitly reports that breakdown as unavailable. Test
+  direct calls, tail jumps and exceptions, and update affected documentation.
 
 - **PERF.1 Keep debugger stops outside the measured profile window.**
   `amiga/aprof.gdb` installs a conditional `AitdScreen::queueFrame` breakpoint

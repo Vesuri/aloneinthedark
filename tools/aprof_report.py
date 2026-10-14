@@ -27,7 +27,7 @@ BUCKETS = [
     ('QuickDraw: CopyBits', ('CopyBits8', 'RegionRows', 'copyPortBits8', 'aitdCopyBitsQuick', 'memmove', 'memcpy', 'StepCopy', 'MaskCopy')),
     ('QuickDraw: fills, lines, regions', ('FillRect8', 'Line8', 'lineGWorld', 'paintRect', 'penLine', 'Polygon',
                                           'RegionExpand', 'lineWindow', 'paintPort', 'FramePoly', 'markDirtyBounds')),
-    ('Trap entry and dispatch', ('aitd_line_a_handler', 'aitd_line_a_trap_entry', 'aitdLineADispatch', 'aitdAuditTrapEntry', 'clipRectTrap', 'findWindowTrap', 'blockMoveTrap', 'obscureCursorTrap', 'serviceQuickTrap', 'dispatchMacTrap', 'isUserService',
+    ('Trap entry and dispatch', ('aitd_line_a_handler', 'aitd_line_a_trap_entry', 'aitdQuickCBridge', 'aitdQuickNativeDone', 'aitdLineADispatch', 'aitdAuditTrapEntry', 'aitdStateQuick', 'stateQuick', 'randomTrap', 'aitdDriverQueryQuick', 'soundDriverEntryValid', 'clipRectTrap', 'findWindowTrap', 'blockMoveTrap', 'obscureCursorTrap', 'serviceQuickTrap', 'dispatchMacTrap', 'isUserService',
                                  'routePatchedTrap', 'dispatch', 'aitd_user', 'bookFrame', 'sceneFrameBoundary',
                                  'finishBookFrame', 'graphicsQuery')),
     ('Particle rectangles and quick dispatch', ('PenRect8::', 'aitdLineQuick')),

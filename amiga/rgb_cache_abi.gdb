@@ -9,12 +9,12 @@ commands
 end
 set $rgb_n=0
 while $rgb_n<64
- tbreak aitdRGBQuick
+ tbreak *aitdRGBQuick
  continue
  set $rgb_n=$rgb_n+1
- set $rgb_regs=*(unsigned long*)($sp+4)
- set $rgb_frame=*(unsigned long*)($sp+8)
- set $rgb_stack=*(unsigned long*)($sp+12)
+ set $rgb_regs=(unsigned long)$sp
+ set $rgb_frame=(unsigned long)$sp+60
+ set $rgb_stack=(unsigned long)$a2
  set $rgb_pc=*(unsigned long*)($rgb_frame+2)
  set $rgb_op=*(unsigned short*)$rgb_pc
  set $rgb_return=$rgb_pc+2

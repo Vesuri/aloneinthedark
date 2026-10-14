@@ -5,9 +5,9 @@ set $d20_n=0
 set $d20_active=0
 set $d20_finished=0
 while $d20_finished==0
- tbreak *aitd_line_a_trap_entry if $line_seen==0 && *(unsigned short*)*(unsigned long*)((*(unsigned char**)($sp+4))+2)==0xa891
+ tbreak *aitd_line_a_trap_entry if $line_seen==0 && *(unsigned short*)*(unsigned long*)(((unsigned char*)($sp+60))+2)==0xa891
  set $d20_line_bp=$bpnum
- tbreak dispatchMacTrap if (trap==0xa0f8 && *(unsigned long*)(userStack+4)==20) || (trap==0xa8a2 && *(unsigned long*)(frame+2)==(unsigned long)s_segments[5].begin+0x1e44)
+ tbreak *aitd_line_a_trap_entry if (($d7&0xffff)==0xa0f8 && *(unsigned long*)($a2+4)==20) || (($d7&0xffff)==0xa8a2 && $a3==(unsigned long)s_segments[5].begin+0x1e44)
  set $d20_service_bp=$bpnum
  continue
  delete $d20_line_bp $d20_service_bp

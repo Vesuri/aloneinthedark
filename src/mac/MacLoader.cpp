@@ -8108,6 +8108,7 @@ RGBQuickEnvironment g_rgbQuick={&s_qdThePort,0,&s_vblPass,&s_songInterruptError,
 uint32_t aitdRGBQuick(uint32_t*,uint8_t*,uint8_t*);
 uint32_t aitdLineQuick(uint32_t*,uint8_t*,uint8_t*);
 uint32_t aitdCopyBitsQuick(uint32_t*,uint8_t*,uint8_t*);
+uint32_t aitdStateQuick(uint32_t*,uint8_t*,uint8_t*);
 }
 #ifdef AITD_SCENE_FRAME_VERIFY
 extern "C" void aitdRGBSceneGuard(uint32_t* regs,uint8_t* frame,uint8_t* userStack)
@@ -8355,6 +8356,72 @@ static uint32_t blockMoveTrap(uint32_t* regs)
 #endif
     ++g_blockMoveCount;
     return 1;
+}
+
+static uint32_t randomTrap(bool builtin,uint32_t pc,uint32_t* regs,uint8_t* userStack)
+{
+#ifdef AITD_PROBE
+    s_randomTrapPC = pc;
+#endif
+#ifdef AITD_FIXED_GAME_RANDOM
+    const uint8_t* engine=s_segments[7].begin;
+    uint8_t* mixed=(uint8_t*)regs[13]-0x1078;
+    if(builtin || !s_qdThePort || !engine || pc!=(uint32_t)engine+0x4a32
+       || read32(engine+0x4a30)!=0x4267a861UL
+       || read16(engine+0x4a36)!=0xb179
+       || read32(engine+0x4a38)!=(uint32_t)mixed
+       || g_fixedRandomCalls==0xffffffffUL)return 0;
+    // Supply a zero clock contribution and fixed initial seeds. Subsequent
+    // state comes from the real service result, not a replacement RNG.
+    uint32_t inputSeed=g_fixedRandomSeed;
+    uint16_t inputMixed=g_fixedRandomMixed;
+    write32(s_qdThePort-126,inputSeed);
+    write16(mixed,inputMixed);
+#endif
+#ifdef AITD_AMBIENT_CASE
+    // Authorized isolated entropy fixture: the original wrapper, modulo,
+    // life script and sample loading still execute. No code/register edits.
+    if(s_qdThePort && s_segments[7].begin && s_segments[5].begin
+       && pc==(uint32_t)s_segments[7].begin+0x4a32
+       && read32((uint8_t*)regs[14]+4)==(uint32_t)s_segments[5].begin+0x25f6
+       && read16((uint8_t*)read32((uint8_t*)regs[13]-0xb29c))==300) {
+        const uint16_t choice=g_ambientProbeSelected ? 299 : AITD_AMBIENT_CASE;
+        write32(s_qdThePort-126,1);
+        write16((uint8_t*)regs[13]-0x1078,16807^choice);
+        if(!g_ambientProbeSelected)g_ambientProbeSelected=1;
+    }
+#endif
+    uint16_t randomResult=(uint16_t)quickDrawRandom();
+    write16(userStack,randomResult);
+#ifdef AITD_FIXED_GAME_RANDOM
+    g_fixedRandomSeed=read32(s_qdThePort-126);
+    g_fixedRandomMixed=(inputMixed^randomResult)&0x7fff;
+    uint32_t row=g_fixedRandomCalls++;
+    if(row<64) {
+        uint32_t caller=read32((uint8_t*)regs[14]+4);
+        uint16_t segment=0xffff;uint32_t offset=0xffffffffUL;
+        for(uint16_t i=1;i<s_segmentCount;++i)
+            if(caller>=(uint32_t)s_segments[i].begin && caller<(uint32_t)s_segments[i].end) {
+                segment=i;offset=caller-(uint32_t)s_segments[i].begin;break;
+            }
+        g_fixedRandomRows[row][0]=inputSeed;
+        g_fixedRandomRows[row][1]=inputMixed;
+        g_fixedRandomRows[row][2]=randomResult;
+        g_fixedRandomRows[row][3]=g_fixedRandomSeed;
+        g_fixedRandomRows[row][4]=segment;
+        g_fixedRandomRows[row][5]=offset;
+    }
+    if(g_fixedRandomCalls==64)aitdFixedRandomCheckpoint();
+#endif
+    if (g_stageCDepth < 90) g_stageCDepth = 90;
+    return 1;
+}
+
+static bool soundDriverEntryValid(uint32_t pc)
+{
+    MacHeap* zone=handleZone(g_soundDriverHandle);
+    return zone && zone->handleSize(g_soundDriverHandle)==4 && *g_soundDriverHandle
+        && pc==(uint32_t)*g_soundDriverHandle && read32(*g_soundDriverHandle)==0xa0f84e75UL;
 }
 
 static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
@@ -8879,9 +8946,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     }
 #endif
     if(trap==0xa0f8) {
-        MacHeap* zone=handleZone(g_soundDriverHandle);
-        if(!zone || zone->handleSize(g_soundDriverHandle)!=4 || !*g_soundDriverHandle
-            || pc!=(uint32_t)*g_soundDriverHandle || read32(*g_soundDriverHandle)!=0xa0f84e75UL) {
+        if(!soundDriverEntryValid(pc)) {
             driverStop="ENTRY";
         } else {
 #if defined(AITD_EFFECT_LOOP_PROBE) && AITD_EFFECT_LOOP_ACTION!=0
@@ -9200,62 +9265,9 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
             return 1;
         }
     }
-    if (trap == 0xa861) {                    // Random() -> signed Integer
-#ifdef AITD_PROBE
-        s_randomTrapPC = pc;
-#endif
-#ifdef AITD_FIXED_GAME_RANDOM
-        const uint8_t* engine=s_segments[7].begin;
-        uint8_t* mixed=(uint8_t*)regs[13]-0x1078;
-        if(builtin || !s_qdThePort || !engine || pc!=(uint32_t)engine+0x4a32
-           || read32(engine+0x4a30)!=0x4267a861UL
-           || read16(engine+0x4a36)!=0xb179
-           || read32(engine+0x4a38)!=(uint32_t)mixed
-           || g_fixedRandomCalls==0xffffffffUL)goto unsupportedTrap;
-        // Supply a zero clock contribution and fixed initial seeds. Subsequent
-        // state comes from the real service result, not a replacement RNG.
-        uint32_t inputSeed=g_fixedRandomSeed;
-        uint16_t inputMixed=g_fixedRandomMixed;
-        write32(s_qdThePort-126,inputSeed);
-        write16(mixed,inputMixed);
-#endif
-#ifdef AITD_AMBIENT_CASE
-        // Authorized isolated entropy fixture: the original wrapper, modulo,
-        // life script and sample loading still execute. No code/register edits.
-        if(s_qdThePort && s_segments[7].begin && s_segments[5].begin
-           && pc==(uint32_t)s_segments[7].begin+0x4a32
-           && read32((uint8_t*)regs[14]+4)==(uint32_t)s_segments[5].begin+0x25f6
-           && read16((uint8_t*)read32((uint8_t*)regs[13]-0xb29c))==300) {
-            const uint16_t choice=g_ambientProbeSelected ? 299 : AITD_AMBIENT_CASE;
-            write32(s_qdThePort-126,1);
-            write16((uint8_t*)regs[13]-0x1078,16807^choice);
-            if(!g_ambientProbeSelected)g_ambientProbeSelected=1;
-        }
-#endif
-        uint16_t randomResult=(uint16_t)quickDrawRandom();
-        write16(userStack,randomResult);
-#ifdef AITD_FIXED_GAME_RANDOM
-        g_fixedRandomSeed=read32(s_qdThePort-126);
-        g_fixedRandomMixed=(inputMixed^randomResult)&0x7fff;
-        uint32_t row=g_fixedRandomCalls++;
-        if(row<64) {
-            uint32_t caller=read32((uint8_t*)regs[14]+4);
-            uint16_t segment=0xffff;uint32_t offset=0xffffffffUL;
-            for(uint16_t i=1;i<s_segmentCount;++i)
-                if(caller>=(uint32_t)s_segments[i].begin && caller<(uint32_t)s_segments[i].end) {
-                    segment=i;offset=caller-(uint32_t)s_segments[i].begin;break;
-                }
-            g_fixedRandomRows[row][0]=inputSeed;
-            g_fixedRandomRows[row][1]=inputMixed;
-            g_fixedRandomRows[row][2]=randomResult;
-            g_fixedRandomRows[row][3]=g_fixedRandomSeed;
-            g_fixedRandomRows[row][4]=segment;
-            g_fixedRandomRows[row][5]=offset;
-        }
-        if(g_fixedRandomCalls==64)aitdFixedRandomCheckpoint();
-#endif
-        if (g_stageCDepth < 90) g_stageCDepth = 90;
-        return 1;
+    if (trap == 0xa861) {
+        if(randomTrap(builtin,pc,regs,userStack))return 1;
+        goto unsupportedTrap;
     }
     if (trap == 0xa9f1) {                    // _UnLoadSeg(Ptr), deliberately kept resident
         if (g_stageCDepth < 2) g_stageCDepth = 2;
@@ -11165,6 +11177,14 @@ extern "C" uint32_t aitdLineADispatch(uint32_t* regs, uint8_t* frame, uint8_t* u
 typedef uint32_t (*QuickTrap)(uint32_t*,uint8_t*,uint8_t*);
 extern "C" { QuickTrap g_macQuickTraps[4096]; }
 
+// 68k code addresses are even. Bit zero selects the private assembly ABI:
+// full saved register image at SP, with the exception frame immediately after.
+// MacEntry clears the tag before jumping; patched traps still invalidate it.
+static QuickTrap nativeQuick(QuickTrap entry)
+{
+    return (QuickTrap)((uint32_t)entry|1UL);
+}
+
 // The selected QuickDraw entries still service every due callback and publish
 // ended frames. Keep that uncommon work out of each small specialized entry.
 static void serviceQuickTrap(uint16_t trap,uint32_t pc,uint32_t* regs,uint8_t* userStack)
@@ -11181,39 +11201,50 @@ static void serviceQuickTrap(uint16_t trap,uint32_t pc,uint32_t* regs,uint8_t* u
 // Specialize only the trap selection, not the service implementation. These
 // entries share the ordinary register image, rasterizers and Pascal return.
 // A due callback, dirty publication or frame edge runs the shared services.
-template<uint16_t trap>
+template<uint16_t trap,bool sceneGuarded=false>
 static uint32_t dispatchQuickTrap(uint32_t* regs,uint8_t* frame,uint8_t* userStack)
 {
-    // Only boundary guards and EmptyRgn's measured A1 result need the caller PC.
-    const uint32_t pc=(trap==0xa8ec || trap==0xaa14 || trap==0xab1d || trap==0xa8e2)
+    // Boundary guards, Random diagnostics and EmptyRgn's A1 result need the caller PC.
+    const uint32_t pc=(trap==0xa8ec || trap==0xaa14 || trap==0xab1d || trap==0xa8e2 || trap==0xa861)
         ? read32(frame+2) : 0;
     if(trap==0xa8ec && (read16(s_windowManagerPixMap+32)!=8
        || (s_segments[4].begin && pc==(uint32_t)s_segments[4].begin+0x1dbc)))return 0;
     if(trap==0xaa14 && s_segments[13].begin && pc==(uint32_t)s_segments[13].begin+0xb46)return 0;
     if(trap==0xab1d && ((uint16_t)regs[0]!=5 && (uint16_t)regs[0]!=6
                        || read16(s_windowManagerPixMap+32)!=8))return 0;
-    bool service=s_vblPass.last!=g_macTicks || s_vblPass.pending || s_vblPass.active
-        || s_songInterruptError || g_soundDriver.effects[0].active || g_soundDriver.effects[1].active;
-#ifdef AITD_SCENE_FRAME_BATCH
-    const uint32_t owner=g_macSceneFrameOwner;
-    if(owner) {
-        if((uint32_t)userStack>owner || read32((uint8_t*)owner)!=s_sceneFrameParent
-           || read32((uint8_t*)owner+4)!=s_sceneFrameReturn)service=true;
-    } else if(!g_macBookFrameActive && (s_screenDirty || s_pixelsDirty))service=true;
-    if(trap==0xab1d && s_segments[4].begin
-       && pc==(uint32_t)s_segments[4].begin+0x3ce8)service=true;
+    // Guarded entries have already proved an unfinished scene and no due
+    // services. GetGWorld's scene-begin caller still needs its normal boundary.
+    if(sceneGuarded && trap==0xab1d && s_segments[4].begin
+       && pc==(uint32_t)s_segments[4].begin+0x3ce8)
+        return dispatchQuickTrap<trap>(regs,frame,userStack);
 #ifdef AITD_SCENE_FRAME_VERIFY
-    service=true; // Exercise the independent A6-chain walker on this path too.
+    if(sceneGuarded)aitdRGBSceneGuard(regs,frame,userStack);
+#endif
+    if(!sceneGuarded) {
+        bool service=s_vblPass.last!=g_macTicks || s_vblPass.pending || s_vblPass.active
+            || s_songInterruptError || g_soundDriver.effects[0].active || g_soundDriver.effects[1].active;
+#ifdef AITD_SCENE_FRAME_BATCH
+        const uint32_t owner=g_macSceneFrameOwner;
+        if(owner) {
+            if((uint32_t)userStack>owner || read32((uint8_t*)owner)!=s_sceneFrameParent
+               || read32((uint8_t*)owner+4)!=s_sceneFrameReturn)service=true;
+        } else if(!g_macBookFrameActive && (s_screenDirty || s_pixelsDirty))service=true;
+        if(trap==0xab1d && s_segments[4].begin
+           && pc==(uint32_t)s_segments[4].begin+0x3ce8)service=true;
+#ifdef AITD_SCENE_FRAME_VERIFY
+        service=true; // Exercise the independent A6-chain walker on this path too.
 #endif
 #else
-    if(!g_macBookFrameActive && (s_screenDirty || s_pixelsDirty))service=true;
+        if(!g_macBookFrameActive && (s_screenDirty || s_pixelsDirty))service=true;
 #endif
-    if(service)serviceQuickTrap(trap,pc,regs,userStack);
+        if(service)serviceQuickTrap(trap,pc,regs,userStack);
+    }
 #ifdef AITD_PROFILE_FRAME
     AitdTrapProfileScope trapProfile(trap);
 #endif
     uint32_t result=0;
     switch(trap) {
+    case 0xa861: result=randomTrap(false,pc,regs,userStack);break;
     case 0xa92c: result=findWindowTrap(userStack);break;
     case 0xa87b: result=clipRectTrap(regs,userStack);break;
     case 0xa856: result=obscureCursorTrap(regs);break;
@@ -11241,7 +11272,7 @@ static uint32_t dispatchQuickTrap(uint32_t* regs,uint8_t* frame,uint8_t* userSta
 }
 
 // The assembly entry may have clobbered native scratch registers, but the
-// saved game image and the three C arguments are unchanged on its tail call.
+// C bridge materializes arguments from the unchanged saved game image.
 extern "C" uint32_t aitdRGBQuickMiss(uint32_t* regs,uint8_t* frame,uint8_t* userStack)
 {
     return read16((const uint8_t*)read32(frame+2))==0xaa14
@@ -11254,6 +11285,30 @@ extern "C" uint32_t aitdLineQuickMiss(uint32_t* regs,uint8_t* frame,uint8_t* use
     return read16((const uint8_t*)read32(frame+2))==0xa891
         ? dispatchQuickTrap<0xa891>(regs,frame,userStack)
         : dispatchQuickTrap<0xa892>(regs,frame,userStack);
+}
+
+// State changes and non-particle lines retain their existing service bodies.
+// The guarded invocation follows the shared assembly service/frame checks.
+template<bool guarded>
+static uint32_t stateQuick(uint32_t* regs,uint8_t* frame,uint8_t* userStack)
+{
+    switch(read16((const uint8_t*)read32(frame+2))) {
+    case 0xa891: return dispatchQuickTrap<0xa891,guarded>(regs,frame,userStack);
+    case 0xa892: return dispatchQuickTrap<0xa892,guarded>(regs,frame,userStack);
+    case 0xa893: return dispatchQuickTrap<0xa893,guarded>(regs,frame,userStack);
+    case 0xa89b: return dispatchQuickTrap<0xa89b,guarded>(regs,frame,userStack);
+    case 0xa89c: return dispatchQuickTrap<0xa89c,guarded>(regs,frame,userStack);
+    case 0xab1d: return dispatchQuickTrap<0xab1d,guarded>(regs,frame,userStack);
+    default: return 0;
+    }
+}
+extern "C" uint32_t aitdStateQuickDraw(uint32_t* regs,uint8_t* frame,uint8_t* userStack)
+{
+    return stateQuick<true>(regs,frame,userStack);
+}
+extern "C" uint32_t aitdStateQuickMiss(uint32_t* regs,uint8_t* frame,uint8_t* userStack)
+{
+    return stateQuick<false>(regs,frame,userStack);
 }
 
 extern "C" uint32_t aitdCopyBitsQuickMiss(uint32_t* regs,uint8_t* frame,uint8_t* userStack)
@@ -11276,6 +11331,44 @@ extern "C" uint32_t aitdCopyBitsQuickDraw(uint32_t* regs,uint8_t* frame,uint8_t*
     regs[0]=0;return 23;
 }
 
+// Read-only sound queries inside a running original VBL callback cannot schedule a
+// second callback or end a scene. Only skip services when the tick is unchanged,
+// effects need no work, and presentation would be deferred or already clean.
+extern "C" uint32_t aitdDriverQueryQuick(uint32_t* regs,uint8_t* frame,uint8_t* userStack)
+{
+    if(!g_macVBLCallbackActive || g_macServiceActive || s_vblPass.last!=g_macTicks
+       || s_songInterruptError)return 0;
+    const uint32_t selector=read32(userStack+4);
+    if(selector!=4 && selector!=20)return 0;
+#ifdef AITD_DRIVER6_PROBE
+    if(selector==4 && !g_driver6ProbeStage)return 0;
+#endif
+    if(!g_macSceneFrameOwner && !g_macBookFrameActive && (s_screenDirty || s_pixelsDirty))return 0;
+    for(uint16_t i=0;i<2;++i)
+        if(g_soundDriver.effects[i].active && (g_effects[i].stream
+           || (int32_t)(g_macTicks-g_effects[i].ends)>=0))return 0;
+    if(!soundDriverEntryValid(read32(frame+2)))return 0;
+    const uint32_t argument=read32(userStack+8);
+    uint32_t scratch=argument;
+    uint16_t status=0;
+    if(selector==4) {
+        if(g_soundDriver.songStatus(g_song.description.data!=0,
+            g_song.timeline.active ? 1 : 0,status,scratch))return 0;
+    } else {
+        uint8_t* packet=(uint8_t*)argument;
+        if((argument&1) || !effectRange(packet,26)
+           || g_soundDriver.effectStatus(read16(packet+24),status))return 0;
+        ++g_effectStatusCalls;
+    }
+    ++g_soundDriverCalls;
+    regs[0]=status;regs[1]=scratch;
+    uint16_t ccr=read16(frame);
+    if(selector==4)ccr=(ccr&0xffe0)|SoundDriver::songStatusCCR(status);
+    else ccr=(ccr&0xfff0)|(status ? ((int16_t)status<0 ? 8 : 0) : 4);
+    write16(frame,ccr);
+    return 1;
+}
+
 static void updateQuickTrap(uint16_t trap)
 {
     const uint16_t index=trapIndex(trap);
@@ -11285,6 +11378,10 @@ static void updateQuickTrap(uint16_t trap)
         return;
     }
     switch(0xa000|index) {
+#if defined(AITD_SCENE_FRAME_BATCH) && !defined(AITD_PROFILE_FRAME)
+    case 0xa0f8: g_macQuickTraps[index]=aitdDriverQueryQuick;break;
+#endif
+    case 0xa861: g_macQuickTraps[index]=dispatchQuickTrap<0xa861>;break;
     case 0xa92c: g_macQuickTraps[index]=dispatchQuickTrap<0xa92c>;break;
     case 0xa87b: g_macQuickTraps[index]=dispatchQuickTrap<0xa87b>;break;
     case 0xa856: g_macQuickTraps[index]=dispatchQuickTrap<0xa856>;break;
@@ -11293,23 +11390,27 @@ static void updateQuickTrap(uint16_t trap)
     case 0xa01b: g_macQuickTraps[index]=dispatchQuickTrap<0xa01b>;break;
     case 0xa01a: g_macQuickTraps[0x11a]=dispatchQuickTrap<0xa11a>;break;
 #if defined(AITD_SCENE_FRAME_BATCH) && !defined(AITD_PROFILE_FRAME) && !defined(AITD_POINT_LINE_PROBE)
-    case 0xa891: case 0xa892: g_macQuickTraps[index]=aitdLineQuick;break;
+    case 0xa891: case 0xa892: g_macQuickTraps[index]=nativeQuick(aitdLineQuick);break;
 #else
     case 0xa891: g_macQuickTraps[index]=dispatchQuickTrap<0xa891>;break;
 #ifndef AITD_POINT_LINE_PROBE
     case 0xa892: g_macQuickTraps[index]=dispatchQuickTrap<0xa892>;break;
 #endif
 #endif
+#if defined(AITD_SCENE_FRAME_BATCH) && !defined(AITD_PROFILE_FRAME)
+    case 0xa893: case 0xa89b: case 0xa89c: g_macQuickTraps[index]=nativeQuick(aitdStateQuick);break;
+#else
     case 0xa893: g_macQuickTraps[index]=dispatchQuickTrap<0xa893>;break;
     case 0xa89b: g_macQuickTraps[index]=dispatchQuickTrap<0xa89b>;break;
     case 0xa89c: g_macQuickTraps[index]=dispatchQuickTrap<0xa89c>;break;
+#endif
 #if defined(AITD_SCENE_FRAME_BATCH) && !defined(AITD_PROFILE_FRAME)
     case 0xa8ec: g_macQuickTraps[index]=aitdCopyBitsQuick;break;
 #else
     case 0xa8ec: g_macQuickTraps[index]=dispatchQuickTrap<0xa8ec>;break;
 #endif
 #if defined(AITD_SCENE_FRAME_BATCH) && !defined(AITD_PROFILE_FRAME) && !defined(AITD_EFFECT_LOOP_PROBE)
-    case 0xaa14: case 0xaa15: g_macQuickTraps[index]=aitdRGBQuick;break;
+    case 0xaa14: case 0xaa15: g_macQuickTraps[index]=nativeQuick(aitdRGBQuick);break;
 #else
     case 0xaa14: g_macQuickTraps[index]=dispatchQuickTrap<0xaa14>;break;
     case 0xaa15: g_macQuickTraps[index]=dispatchQuickTrap<0xaa15>;break;
@@ -11322,7 +11423,11 @@ static void updateQuickTrap(uint16_t trap)
     case 0xa871: g_macQuickTraps[index]=dispatchQuickTrap<0xa871>;break;
     case 0xa8e2: g_macQuickTraps[index]=dispatchQuickTrap<0xa8e2>;break;
 #ifndef AITD_MASK_PROFILE
+#if defined(AITD_SCENE_FRAME_BATCH) && !defined(AITD_PROFILE_FRAME)
+    case 0xab1d: g_macQuickTraps[index]=nativeQuick(aitdStateQuick);break;
+#else
     case 0xab1d: g_macQuickTraps[index]=dispatchQuickTrap<0xab1d>;break;
+#endif
 #endif
     default: g_macQuickTraps[index]=0;break;
     }
@@ -11341,7 +11446,7 @@ static void refreshQuickTrapEntries()
 #endif
     if(ready==s_quickTrapsReady)return;
     s_quickTrapsReady=ready;
-    static const uint16_t quickTraps[]={0xa92c,0xa87b,0xa856,0xa02e,0xa8ad,0xa01b,0xa11a,0xa891,0xa892,0xa893,0xa89b,0xa89c,0xa8ec,0xaa14,0xaa15,
+    static const uint16_t quickTraps[]={0xa861,0xa0f8,0xa92c,0xa87b,0xa856,0xa02e,0xa8ad,0xa01b,0xa11a,0xa891,0xa892,0xa893,0xa89b,0xa89c,0xa8ec,0xaa14,0xaa15,
         0xaa29,0xaa2b,0xaa2c,0xa8aa,0xa870,0xa871,0xa8e2,0xab1d};
     for(uint16_t trap:quickTraps)updateQuickTrap(trap);
 }

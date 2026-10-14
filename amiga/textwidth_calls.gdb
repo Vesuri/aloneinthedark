@@ -9,7 +9,7 @@ set $gc_n=0
 set $wrgb_captured=0
 set $paint_captured=0
 while $tw_finished==0
- tbreak *aitd_line_a_trap_entry if ((*(unsigned short*)*(unsigned long*)((*(unsigned char**)($sp+4))+2))==0xaa95 && (*(unsigned long*)((*(unsigned char**)($sp+4))+2))==(unsigned long)s_segments[5].begin+0x20cc) || ((*(unsigned short*)*(unsigned long*)((*(unsigned char**)($sp+4))+2))==0xaa91 && (*(unsigned long*)((*(unsigned char**)($sp+4))+2))==(unsigned long)s_segments[5].begin+0x201c) || ((*(unsigned short*)*(unsigned long*)((*(unsigned char**)($sp+4))+2))==0xaa18 && *(unsigned short*)(*(unsigned char**)($sp+8))==129) || ($paint_captured==0 && (*(unsigned short*)*(unsigned long*)((*(unsigned char**)($sp+4))+2))==0xa8a2) || ($wrgb_captured==0 && (*(unsigned short*)*(unsigned long*)((*(unsigned char**)($sp+4))+2))==0xaa14 && (*(unsigned long*)((*(unsigned char**)($sp+4))+2))==(unsigned long)s_segments[12].begin+0x624a) || ($gc_n<2 && ((*(unsigned short*)*(unsigned long*)((*(unsigned char**)($sp+4))+2))==0xaa19 || (*(unsigned short*)*(unsigned long*)((*(unsigned char**)($sp+4))+2))==0xaa1a)) || (*(unsigned short*)*(unsigned long*)((*(unsigned char**)($sp+4))+2))==0xa856 || (*(unsigned short*)*(unsigned long*)((*(unsigned char**)($sp+4))+2))==0xa860 || (*(unsigned short*)*(unsigned long*)((*(unsigned char**)($sp+4))+2))==0xa886 || ((*(unsigned short*)*(unsigned long*)((*(unsigned char**)($sp+4))+2))==0xab1d && (*(unsigned long*)((*(unsigned char**)($sp+4))+2))==(unsigned long)s_segments[9].begin+0xe0a)
+ tbreak *aitd_line_a_trap_entry if ((*(unsigned short*)*(unsigned long*)(((unsigned char*)($sp+60))+2))==0xaa95 && (*(unsigned long*)(((unsigned char*)($sp+60))+2))==(unsigned long)s_segments[5].begin+0x20cc) || ((*(unsigned short*)*(unsigned long*)(((unsigned char*)($sp+60))+2))==0xaa91 && (*(unsigned long*)(((unsigned char*)($sp+60))+2))==(unsigned long)s_segments[5].begin+0x201c) || ((*(unsigned short*)*(unsigned long*)(((unsigned char*)($sp+60))+2))==0xaa18 && *(unsigned short*)((unsigned char*)$a2)==129) || ($paint_captured==0 && (*(unsigned short*)*(unsigned long*)(((unsigned char*)($sp+60))+2))==0xa8a2) || ($wrgb_captured==0 && (*(unsigned short*)*(unsigned long*)(((unsigned char*)($sp+60))+2))==0xaa14 && (*(unsigned long*)(((unsigned char*)($sp+60))+2))==(unsigned long)s_segments[12].begin+0x624a) || ($gc_n<2 && ((*(unsigned short*)*(unsigned long*)(((unsigned char*)($sp+60))+2))==0xaa19 || (*(unsigned short*)*(unsigned long*)(((unsigned char*)($sp+60))+2))==0xaa1a)) || (*(unsigned short*)*(unsigned long*)(((unsigned char*)($sp+60))+2))==0xa856 || (*(unsigned short*)*(unsigned long*)(((unsigned char*)($sp+60))+2))==0xa860 || (*(unsigned short*)*(unsigned long*)(((unsigned char*)($sp+60))+2))==0xa886 || ((*(unsigned short*)*(unsigned long*)(((unsigned char*)($sp+60))+2))==0xab1d && (*(unsigned long*)(((unsigned char*)($sp+60))+2))==(unsigned long)s_segments[9].begin+0xe0a)
  continue
  mac-trap-args
  set $startup_trap=*(unsigned short*)*(unsigned long*)($mac_frame+2)
@@ -29,7 +29,7 @@ while $tw_finished==0
   tbreak dispatchMacTrap if trap==0xaa95 && *(unsigned long*)(frame+2)==(unsigned long)s_segments[5].begin+0x214c
   continue
   source restorepalette_call.gdb
-  tbreak *aitd_line_a_trap_entry if (*(unsigned short*)*(unsigned long*)((*(unsigned char**)($sp+4))+2))==0xa8ec && *(unsigned long*)((*(unsigned char**)($sp+4))+2)==(unsigned long)s_segments[10].begin+0x24d2
+  tbreak *aitd_line_a_trap_entry if (*(unsigned short*)*(unsigned long*)(((unsigned char*)($sp+60))+2))==0xa8ec && *(unsigned long*)(((unsigned char*)($sp+60))+2)==(unsigned long)s_segments[10].begin+0x24d2
   continue
   source copybits8_call.gdb
   if *(unsigned short*)(g_code3Base+0x1a74)!=0x4e90
@@ -111,7 +111,7 @@ while $tw_finished==0
   continue
   source dottext_call.gdb
   # Observe the original LineTo before either dispatcher path.
-  tbreak *aitd_line_a_trap_entry if *(unsigned short*)*(unsigned long*)((*(unsigned char**)($sp+4))+2)==0xa891
+  tbreak *aitd_line_a_trap_entry if *(unsigned short*)*(unsigned long*)(((unsigned char*)($sp+60))+2)==0xa891
   continue
   source windowline_call.gdb
   tbreak *((unsigned long)s_segments[12].begin+0x346) if *(unsigned short*)$sp==4 && *(unsigned short*)($sp+2)==0 && *(unsigned long*)*(unsigned long*)($sp+4)==0x5961896c
@@ -166,7 +166,7 @@ while $tw_finished==0
   tbreak dispatchMacTrap if trap==0xa8df
   continue
   source rectrgn_call.gdb
-  tbreak *aitd_line_a_trap_entry if (*(unsigned short*)*(unsigned long*)((*(unsigned char**)($sp+4))+2))==0xa8e2
+  tbreak *aitd_line_a_trap_entry if (*(unsigned short*)*(unsigned long*)(((unsigned char*)($sp+60))+2))==0xa8e2
   continue
   source emptyrgn_call.gdb
   tbreak *((unsigned long)s_segments[4].begin+0x1e4a)

@@ -7,61 +7,57 @@ emulator throughput. Warp speeds up a diagnostic without being a game benchmark.
 results. The following profiles describe retained measurement builds, not universal
 frame-rate guarantees.
 
+## Fight-frame service costs
+
+The pinned 15.6672 MHz reference 68030/PAL monster fight records 314 completed
+frames and 3,406 fields (`frame4-random-quick`). A clean repeat (`frame4-repeat`)
+reproduces the full frame/state trace, phase counts and dispatch cost exactly.
+Its full-phase instruction-PC
+profile averages **217.33 ms per frame**, including transitions and required
+callbacks. Selected exclusive costs are:
+
+| Work | ms/frame |
+| --- | ---: |
+| Original Macintosh instructions | 128.60 |
+| Trap entry and dispatch | 15.97 |
+| CopyBits | 14.95 |
+| C2P | 13.37 |
+| Port state lookups | 5.11 |
+| Fills, lines and regions | 3.79 |
+| RGB lookup and quick dispatch | 3.33 |
+| Particle rectangles and quick dispatch | 2.50 |
+
+Use the full-phase PC bucket for the dispatch budget. The subtree-adjusted report's
+bucket breakdown follows call targets, so tail jumps and exception nodes can be
+misattributed; MEASURE.1 tracks that limitation. Its adjusted **total** is a separate
+estimate. Different builds can take different intermediate combat routes: these
+averages do not establish a matched-state FPS improvement or a hardware result.
+
 ## RGB lookup and dispatch
 
-On the pinned 15.6672 MHz reference 68030/PAL monster fight, RGBForeColor averages
-**106.15 µs per call**, down from **179.52 µs**: 19,357 calls / 2,054.78 ms versus
-19,172 / 3,441.74 ms. These are whole-trap inclusive costs, including required
-callbacks, not just cache-hit timings. A clean repeat reproduced the phase states,
-frame/field counts and per-call cost exactly. The 41% reduction saves roughly 5 ms per
-fight frame at about 70 calls per frame. Different builds can take different
-intermediate combat routes; this is a per-call comparison, not a matched-state
-FPS claim or a real-hardware measurement.
-
-Per-port memoization removes almost all inverse-table searches; a guarded assembly
-entry also avoids repeated dispatch work when no services are due. The retained
-fight runs the original matcher only 17 times. The owner accepted this measured
-improvement in place of FRAME.1’s original 30 µs target. Remaining trap overhead is
-tracked separately. Cache storage is 33,120 native bytes across sixteen port slots.
-The implementation and correctness procedure are in
-[development](development.md#rgb-colour-lookup) and
-[testing](testing.md#rgb-lookup-memoization).
+Per-port memoization removes almost all inverse-table searches. A guarded assembly
+entry avoids repeated services when none are due, while the original matcher remains
+the fallback. Cache storage is 33,120 native bytes across sixteen port slots. Current
+whole-trap RGBForeColor cost is about **89.6 µs per call**, including required callbacks.
+See [development](development.md#rgb-colour-lookup) and
+[testing](testing.md#rgb-lookup-memoization) for the exact-byte/ABI checks.
 
 ## Solid particle pens
 
-On the pinned 15.6672 MHz reference 68030/PAL monster fight, the zero-displacement
-Line caller at (Dan2, $3D08) averages **77.59 µs**, down from **320.64 µs**:
-12,810 calls / 993.98 ms versus 12,913 / 4,140.40 ms. These are whole-trap
-inclusive costs. A clean repeat reproduced the per-call cost, phase states and
-frame/field counts exactly. The 76% reduction saves roughly 11 ms per fight frame
-at about 46 calls per frame; it is not a matched-state FPS claim or a hardware benchmark.
-
-Direct clipped pen rectangles and a guarded assembly entry remove generic rectangle
-setup and repeated dispatch work. Pixel capacity is refreshed with the heap-derived
-GWorld views. No framebuffer comparisons, frame pacing changes or game-code
-replacements are involved. Ordinary thin Line/LineTo strokes remain a separate
-workload, about 335/331 µs in this fight. See
-[implementation](development.md#solid-particle-pens) and
+Direct clipped pen rectangles and a guarded assembly entry avoid generic rectangle
+setup. Pixel capacity is refreshed with heap-derived GWorld views. Ordinary thin
+Line/LineTo strokes retain the original rasterizer and remain a separate workload.
+No framebuffer comparisons, pacing changes or game-code replacements are involved.
+See [implementation](development.md#solid-particle-pens) and
 [validation](testing.md#particle-rectangles).
 
 ## Actor-mask copies
 
-On the pinned 15.6672 MHz reference 68030/PAL monster fight, actor-mask CopyBits
-at (Dark, $30A8) averages **347.59 µs**, down from **806.44 µs**:
-9,804 calls / 3,407.77 ms versus 9,482 / 7,646.66 ms. These are whole-trap
-inclusive costs. A clean repeat reproduced the phase states, frame/field counts
-and per-call cost exactly. The 57% reduction meets the owner's actor-mask scope for the
-350 µs target. Intermediate fight routes differ, so this is a per-call comparison,
-not a matched-state FPS claim or a real-hardware measurement.
-
-Exact-byte region validation uses 32 entries in the same 32 KiB storage budget;
-early mask-bound rejection, cached GWorld lookup, smaller copy setup and the
-shared guarded trap entry reduce repeated work. Full malformed-stream validation
-still precedes pixel writes. Larger unmasked copies are reported separately:
-(Dark, $1DE6) averages 657.87 µs and Misc2 copies 908.00 µs. The combined CopyBits
-average is 439.40 µs versus 832.23 µs before this change. See
-[implementation](development.md#actor-mask-copies) and
-[validation](testing.md#copybits-masks).
+Exact-byte region validation uses 32 entries within 32 KiB. Early mask-bound rejection,
+cached GWorld lookup, smaller copy setup and guarded dispatch reduce repeated work.
+Full malformed-stream validation still precedes pixel writes. Larger unmasked copies
+remain a separate workload. See [implementation](development.md#actor-mask-copies)
+and [validation](testing.md#copybits-masks).
 
 ## Cycle profiler
 
@@ -151,37 +147,36 @@ and all four `.prof` files. Thus there is **no measured cycle/field bias in this
 pinned configuration**. This does not validate non-deterministic filesystem runs or
 other profiling windows; the maintained scenario keeps all stops at event boundaries.
 
-The current deterministic reference baseline (`region1-retained` / `region1-repeat`)
-repeats exactly: phase states, field/frame counts, stall list and CPU summaries
-match. Faster preparation changes the natural timed encounter route; whole-fight
-averages from different builds are not state-paired A/B measurements.
+The deterministic reference uses event boundaries, not fixed frame numbers. Faster
+service work changes the natural timed encounter route; whole-fight averages from
+different builds are not state-paired A/B measurements. The current profile is
+`frame4-random-quick`:
 
 | Phase end | Frames | PAL fields | Nonstall fields/frame | Adjusted CPU ms/frame |
 | --- | ---: | ---: | ---: | ---: |
-| MONSTER song 136 | 502 | 2,150 | 4.112 | 83.98 |
-| Monster animation active | 1 | 17 | 17.000 | 342.35 |
-| First Carnby hit (237) | 91 | 979 | 9.315 | 204.00 |
-| Death song 131 | 274 | 3,696 | 12.317 | 255.02 |
+| MONSTER song 136 | 538 | 2,201 | 3.940 | 80.26 |
+| Monster animation active | 1 | 15 | 15.000 | 304.57 |
+| First Carnby hit (237) | 106 | 965 | 7.885 | 172.47 |
+| Death song 131 | 314 | 3,406 | 9.801 | 203.50 |
 
 The one-frame entry phase is not a steady-state estimate. These are full
-inter-frame stall intervals; an observed event does not establish the cause of
+inter-frame stall intervals; the observed event does not establish the cause of
 the whole interval.
 
 | Observed event | Scene (reference only) | Fields | Seconds |
 | --- | ---: | ---: | ---: |
-| Song 137 → 136 | 702 | 90 | 1.80 |
-| Effect count 1 → 2 | 736 | 119 | 2.38 |
-| Effect count 10 → 11 | 793 | 31 | 0.62 |
-| Song 136 → 132 | 808 | 70 | 1.40 |
-| Room 0/camera 0 → room 6/camera 10 | 1,056 | 244 | 4.88 |
-| Song 132 → 131 | 1,068 | 44 | 0.88 |
+| Song 137 → 136 | 738 | 85 | 1.70 |
+| Effect count 1 → 2 | 781 | 115 | 2.30 |
+| Effect count 9 → 10 | 844 | 30 | 0.60 |
+| Song 136 → 132 | 864 | 68 | 1.36 |
+| Room 0/camera 0 → room 6/camera 10 | 1,147 | 246 | 4.92 |
+| Song 132 → 131 | 1,159 | 44 | 0.88 |
 
-FIGHT starts before the first hit in this route; a phase must follow the actual
-hit event rather than assume song order. Nonstall fighting is about **4.06 FPS**.
-Of the 255.02 ms adjusted CPU estimate per fight frame, original code takes 128.53,
-CopyBits 27.16, trap entry/dispatch 18.20, port lookups 15.19, drawing/regions 14.47,
-and C2P 15.45 ms. These costs include diagnostic overhead and are not a shipping
-build FPS claim.
+Song 132 starts before the first hit in this route; follow the hit event for the
+fight-phase boundary rather than assuming song order. Nonstall fighting is about **5.10 FPS** in this instrumented
+reference run. The adjusted CPU total excludes named one-off subtrees; use the
+full-phase PC costs above for subsystem attribution. Neither is a shipping-build
+or real-hardware FPS claim.
 
 #### Repeated camera masks
 

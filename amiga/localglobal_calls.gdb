@@ -1,6 +1,6 @@
 set $lg_n=1
 while $lg_n<=2
- tbreak *aitd_line_a_trap_entry if (*(unsigned short*)*(unsigned long*)((*(unsigned char**)($sp+4))+2))==0xa870
+ tbreak *aitd_line_a_trap_entry if (*(unsigned short*)*(unsigned long*)(((unsigned char*)($sp+60))+2))==0xa870
  continue
  mac-trap-args
  set $lg_args=(unsigned long)$mac_stack

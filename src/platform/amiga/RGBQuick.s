@@ -1,7 +1,8 @@
 | RGB cache hit within an unfinished scene, with no due services.
 | Called ONLY by MacEntry.s after saving the full game register/CCR image.
 | Unlike C entries this may clobber native D2-D6/A2-A6; D7 retains the trap.
-| Tail-call the ordinary quick handler before any mutation on a miss, or return 5.
+| SP holds the full saved image; SP+60 holds the exception frame.
+| The C bridge handles misses; successful Pascal returns use the common epilogue.
 | Native layout offsets are asserted in MacLoader.cpp. No game code is patched.
 	.section .text.aitdRGBQuick,"ax"
 	.even
@@ -16,7 +17,7 @@ aitdRGBQuick:
 	move.l (a0),d0
 	beq.s 3f
 	addi.l #0xb46,d0
-	move.l 8(sp),a0
+	lea 60(sp),a0
 	cmp.l 2(a0),d0
 	beq.w .miss
 3:	move.l (a6),a0
@@ -44,7 +45,7 @@ aitdRGBQuick:
 4:	move.l (a1),a1
 	tst.w (a1)
 	bne.w .miss
-	move.l 12(sp),a2
+	move.l usp,a2
 	move.l (a2),a2
 	cmpa.l #0,a2
 	beq.w .miss
@@ -100,7 +101,7 @@ aitdRGBQuick:
 	cmp.w 4(a4),d4
 	bne.s .miss
 	subq.w #1,d5
-	move.l 4(sp),a5
+	move.l sp,a5
 .ifdef AITD_RGB_CACHE_VERIFY
 .ifdef AITD_RGB_CACHE_SABOTAGE
 	eori.l #1,d5
@@ -116,8 +117,9 @@ aitdRGBQuick:
 .endif
 .ifdef AITD_RGB_SCENE_VERIFY
 	move.l a0,-(sp)
-	move.l 16(sp),-(sp)
-	move.l 16(sp),-(sp)
+	move.l usp,a1
+	move.l a1,-(sp)
+	pea 60(a5)
 	move.l a5,-(sp)
 	jsr aitdRGBSceneGuard
 	lea 12(sp),sp
@@ -142,7 +144,8 @@ aitdRGBQuick:
 	lea 6(a3,d1.l),a1
 	move.l a1,36(a5)
 	moveq #5,d0
-	rts
+	jmp aitdQuickNativeDone
 .miss:
-	jmp aitdRGBQuickMiss
+	lea aitdRGBQuickMiss,a4
+	jmp aitdQuickCBridge
 	.size aitdRGBQuick,.-aitdRGBQuick

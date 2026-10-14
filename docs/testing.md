@@ -45,6 +45,22 @@ RGBCACHEVERIFY=1 M5AUDIT=1`, run `rgb_cache_services.gdb`, and use
 complete log, `--folder tmp/m5 --status 0 --cpu 68030`. This verifies the idle
 monster-to-death route, not the ten-minute circuit.
 
+## Guarded state and callback dispatch
+
+`MONSTERPROFILE=1 FIXEDRNG=1 SCENEFRAMEVERIFY=1` with
+`quick_pen_state.gdb` checks actual MoveTo, PenSize and PenMode assembly hits.
+Create `tmp/quick-pen-state` before running; pass the full log and capture directory
+with `--status 0` to `tools/check_quick_pen_state.py`. The observer checks all 15
+registers, CCR and Pascal stack cleanup; the checker compares every port byte
+against the documented field updates. Each opcode must have at least eight hits.
+
+`MONSTERPROFILE=1 FIXEDRNG=1` with `quick_driver_queries.gdb` checks read-only
+song/effect status queries inside original VBL callbacks. It requires both selectors,
+checks the full register image, selector-specific CCR and unchanged C argument stack,
+and observes both fallback and successful returns. These diagnostics supplement the
+patched-trap, frame-pacing, scene-end and memory/audio checks above; they are not
+performance measurements.
+
 ## Particle rectangles
 
 `make host-tests` includes 12,000 sanitizer-backed rectangle cases with a separate

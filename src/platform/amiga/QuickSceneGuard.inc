@@ -28,7 +28,8 @@
 	bpl.w .miss
 2:	move.l g_macSceneFrameOwner,d0
 	beq.w .miss
-	cmp.l 12(sp),d0
+	move.l usp,a1
+	cmp.l a1,d0
 	bcs.w .miss
 	move.l d0,a0
 	move.l 16(a6),a1
