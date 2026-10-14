@@ -128,6 +128,70 @@ Full malformed-stream validation still precedes pixel writes. Larger unmasked co
 remain a separate workload. See [implementation](development.md#actor-mask-copies)
 and [validation](testing.md#copybits-masks).
 
+## Larger unmasked copies
+
+`frame9-assess` and `frame8-final` use the same runtime and reproduce identical
+frame/state traces and caller costs: 366 fight frames, 3,587 fields, 196.306 ms
+of full-phase CPU work per frame. Settings are reference 68030 at 15.6672 MHz,
+PAL, CACR `$2001`, fixed RNG and deterministic filesystem scheduling. There are
+no debugger stops inside timed windows; both routes complete through death.
+
+| Workload (owning function; actual CopyBits site) | Calls | µs/call | ms/fight frame |
+| --- | ---: | ---: | ---: |
+| (Dark, $1DE6); (Dark, $1E4A) | 1,392 | 662.66 | 2.520 |
+| (Misc2, $23C8); (Misc2, $24D2) | 1,451 | 920.17 | 3.648 |
+
+The Misc2 total includes one 10.55 ms copy; the other 1,450 average 913.53 µs.
+Do not silently discard the larger call. The full fight totals above include it.
+An independent, **untimed** early-fight sample captures 64 calls from each site:
+
+| Site | Effective width × height ranges | Bytes/call range | Source → destination stride |
+| --- | --- | ---: | --- |
+| Dark | 16–52 × 8–119 | 128–5,424 | 652 → 652 |
+| Misc2 | 11–52 × 9–119 | 108–5,198 | 652 → 640 |
+
+Width and height ranges are independent extrema, not one rectangle. These are
+sample ranges, not bounds for the entire fight. All 128 calls use srcCopy, no
+mask, equal source/destination dimensions and direct rows. Dark restores an
+owned offscreen buffer; Misc2 copies to the visible window. These sampled calls
+copy their rectangles; C2P is separate and retains its complete-frame boundary.
+
+Exclusive call-tree costs partition the complete trap subtrees without overlap:
+
+| Work (ms/fight frame) | Dark | Misc2 |
+| --- | ---: | ---: |
+| Pixel row loop, excluding interrupts | 1.5766 | 2.3969 |
+| Adapter validation and copy setup | 0.7313 | 0.8915 |
+| Coordinate dirty bounds | 0 | 0.1116 |
+| Interrupts and identifiable original callbacks | 0.0654 | 0.0892 |
+| Dispatch, guards and remaining services | 0.1470 | 0.1588 |
+
+The last category includes inlined service work: the profile cannot separate its
+instruction PCs by caller. It is not all removable dispatch overhead. Interrupt
+subtrees are separated even when they interrupt pixel movement. Full-phase PC
+attribution places `directRows` at about 2% of CPU work; roughly 1.2 percentage
+points are actual pixel MOVE instructions. Eliminating **all** its other instructions
+would save less than 1% of total CPU work, an unattainable upper bound for loop
+unrolling or hoisting per-row tail calculations. The two complete workloads
+account for only 3.14% of the fight CPU budget.
+
+**Assessment:** no further renderer change is warranted now. These are bounded
+copies using longword spans, not evidence of a defect. Larger unrolling could
+save some loop overhead, but the measured ceiling is small; prioritize the
+separate song-preparation work. This finding makes no hardware speed claim.
+Original complete-buffer/ABI references for intro, palette-remapped intro,
+post-intro and direct-PixMap copies still pass. Runtime and shared helpers are
+unchanged by this assessment.
+
+Reproduce with `amiga/aprof.sh monster NAME 600`, then
+`python3 tools/report_unmasked_copies.py NAME-fight`. The report conserves total
+cycles and keeps interrupts out of pixel-row cost. For geometry, reuse the
+measurement build and private prepared monster preferences, run
+`copy_dimensions.gdb` with the same profiling emulator, reference CPU and
+`--deterministic=1 --warp_mode=1`. Read the complete `gdb-out.log`, not the
+launcher's truncated tail. This observer deliberately stops at calls and must
+never supply timing. See [testing](testing.md#unmasked-copy-assessment).
+
 ## Large BlockMove copies
 
 The reference-68030 `frame5-final` monster profile records **3.38 ms per fight

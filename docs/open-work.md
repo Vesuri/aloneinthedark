@@ -54,16 +54,6 @@ are in that document; preserve matching game state when comparing changes.
   cost and memory use, with a justified optimization proposal or a finding that
   no change is warranted. Preserve loop counters, tails, replacement and DMA timing.
 
-- **FRAME.9 Assess larger unmasked CopyBits calls.**
-  The actor-mask target excludes larger unmasked copies. The reference-68030
-  fight currently measures about 658 µs at (Dark, $1DE6) and 908 µs under Misc2.
-  Attribute setup, pixel movement and required services separately before
-  selecting another optimization; these costs do not establish a defect.
-
-  *Done when* repeatable profiles record call dimensions, total frame cost and
-  the dominant work, with a justified optimization proposal or a finding that
-  no further change is warranted. Preserve the original full-buffer comparisons.
-
 ## Runtime overhead
 
 - **HEAP.1 Adopt shared heap helpers in Prince of Persia 2 — deferred by the owner.**

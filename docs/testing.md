@@ -278,6 +278,29 @@ python3 tools/check_mask_rejection.py amiga/.run-mask-rejection/gdb-out.log tmp 
 Use disposable preferences/saves for diagnostic runs; never run the negative fixture
 in a live owner session. A timeout or interrupted run is a failure.
 
+## Unmasked-copy assessment
+
+Clean-build `MONSTERPROFILE=1 FIXEDRNG=1` (or reuse `aprof.sh`'s build).
+`copy_dimensions.gdb` observes 128 unmasked Dark/Misc2 calls after the fight
+checkpoint and logs requested rectangles plus effective direct-row dimensions
+and strides. Use the same prepared private preferences as the monster profile:
+
+```sh
+. amiga/env.sh
+FSUAE="$AMIGA_SHARE/fs-uae-aprof/fs-uae" AMIGA_CONFIG=a4000-030-reference \
+  EXTRA_ARGS='--deterministic=1 --warp_mode=1' DIAG_RUN_DIR=.run-aprof \
+  GDBSCRIPT=copy_dimensions.gdb amiga/diag_run.sh 180
+```
+
+Require exit zero and `PASS unmasked copy dimensions calls=128 rows=128` in the
+complete `amiga/.run-aprof/gdb-out.log`, with both sites represented. This is an
+untimed geometry sample; never use breakpoint intervals as performance evidence.
+Measure separately with the ordinary monster profiler and analyze using
+`tools/report_unmasked_copies.py`. Its host tests verify cycle conservation,
+interrupt-descendant separation and rejection of absent callers.
+The existing CopyBits original/native full-buffer checkers remain authoritative
+for pixels and ABI. Restore a clean production build after diagnostics.
+
 ## Installer and WHDLoad
 
 Build a production archive before testing its installation:
