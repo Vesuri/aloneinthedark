@@ -37,6 +37,14 @@ misattributed; MEASURE.1 tracks that limitation. Its adjusted **total** is a sep
 estimate. Different builds can take different intermediate combat routes: these
 averages do not establish a matched-state FPS improvement or a hardware result.
 
+FRAME.4’s original 18.31 ms baseline and 9 ms target used the adjusted call-tree
+bucket, not the full-phase PC bucket above. These are not interchangeable: common
+exception/assembly work can be outside the former, while native guard instructions
+now sit inside drawing wrappers. Acceptance accounting must reconcile both changes;
+neither the adjusted bucket nor subtraction of common entry code alone proves the
+9 ms target. The full-phase dispatch bucket fell from 20.34 to 14.89 ms with the
+retained changes; the numerical acceptance gate remains unresolved.
+
 ## RGB lookup and dispatch
 
 Per-port memoization removes almost all inverse-table searches. A guarded assembly
