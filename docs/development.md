@@ -213,6 +213,16 @@ Update the canonical source and install through AmigaXDev before updating consum
 The loader’s big-endian word/longword accesses also use the canonical
 `BigEndianMemory.h`; their 68020 instructions and unaligned-access contract are unchanged.
 
+### BlockMove copies
+
+`BlockMoveBytes` copies 128 bytes per loop with 32 68020 `MOVE.L`
+instructions. Each longword is read before it is written; backwards overlap
+copies traverse from the end. A byte prefix aligns the source, unaligned
+longword destinations remain supported, and exact longword/byte tails never
+read outside the requested interval. Zero length and identical pointers return
+without touching memory. The adapter retains coordinate-based direct-screen
+dirtiness (including self-copies) and the existing trap/callback service boundaries.
+
 ### RGB colour lookup
 
 Each owned GWorld and window retains up to 256 RGB-to-index results in 2,070 bytes

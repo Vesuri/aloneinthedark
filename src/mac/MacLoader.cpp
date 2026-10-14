@@ -5,6 +5,14 @@
 #include <hardware/dmabits.h>
 
 #include "MacLoader.h"
+#include "BlockMoveBytes.h"
+#ifdef AITD_BLOCK_MOVE_PROBE
+#include "BlockMoveChecks.h"
+extern "C" {
+volatile uint32_t g_blockMoveChecks=0;
+__attribute__((noinline)) void aitdBlockMoveProbeComplete() { __asm__ volatile("" ::: "memory"); }
+}
+#endif
 #include "platform/amiga/MonsterProfile.h"
 #include "VBLPasses.h"
 #include "LowMemory.h"
@@ -1191,6 +1199,7 @@ static bool buildA5World(uint8_t*& a5)
 
 static void blockMove(const uint8_t* source, uint8_t* destination, uint32_t count)
 {
+    if (!count) return;
     // Direct screen writes bypass QuickDraw rectangle calls. Convert the
     // touched eight-bit byte span to a conservative screen-space rectangle.
     uint8_t* screenEnd = s_colorScreen + sizeof(s_colorScreen);
@@ -1210,45 +1219,7 @@ static void blockMove(const uint8_t* source, uint8_t* destination, uint32_t coun
         }
         markDirtyBounds(top, left, bottom, right);
     }
-    if (destination > source && destination < source + count) {
-        source += count;
-        destination += count;
-        if (((uint32_t)source ^ (uint32_t)destination) & 1) {
-            while (count) { --source; --destination; *destination = *source; --count; }
-            return;
-        }
-        if ((uint32_t)source & 1) {
-            --source; --destination; *destination = *source; --count;
-        }
-        while (count >= 4) {
-            source -= 4; destination -= 4;
-            *(uint32_t*)destination = *(const uint32_t*)source;
-            count -= 4;
-        }
-        while (count >= 2) {
-            source -= 2; destination -= 2;
-            *(uint16_t*)destination = *(const uint16_t*)source;
-            count -= 2;
-        }
-        if (count) { --source; --destination; *destination = *source; }
-    } else {
-        if (((uint32_t)source ^ (uint32_t)destination) & 1) {
-            while (count--) *destination++ = *source++;
-            return;
-        }
-        if ((uint32_t)source & 1) {
-            *destination++ = *source++; --count;
-        }
-        while (count >= 4) {
-            *(uint32_t*)destination = *(const uint32_t*)source;
-            source += 4; destination += 4; count -= 4;
-        }
-        while (count >= 2) {
-            *(uint16_t*)destination = *(const uint16_t*)source;
-            source += 2; destination += 2; count -= 2;
-        }
-        if (count) *destination = *source;
-    }
+    BlockMoveBytes::move(source, destination, count);
 }
 
 static __attribute__((noinline)) void mappedCopyRowsC(const uint8_t* source,
@@ -11657,6 +11628,11 @@ void aitdMacResumeLineA() { installLineAVector(); }
 bool MacLoader::run(AitdScreen* screen)
 {
     s_loudStopScreen = screen;
+#ifdef AITD_BLOCK_MOVE_PROBE
+    g_blockMoveChecks=BlockMoveChecks::run(blockMove);
+    aitdBlockMoveProbeComplete();
+    return g_blockMoveChecks != 0;
+#endif
     if (!s_resourceForks.resourceCount()) return false;
 
     if (!g_macStackBase) {

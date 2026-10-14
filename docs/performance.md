@@ -90,6 +90,36 @@ Full malformed-stream validation still precedes pixel writes. Larger unmasked co
 remain a separate workload. See [implementation](development.md#actor-mask-copies)
 and [validation](testing.md#copybits-masks).
 
+## Large BlockMove copies
+
+The reference-68030 `frame5-final` monster profile records **3.38 ms per fight
+frame** in all BlockMove trap subtrees (dispatch and required services included),
+versus **4.23 ms** in `frame4-irq-certificate`. Copy-adapter subtrees alone take
+3.04 versus 3.86 ms. The large `(Dark, $1B7A)` caller takes 2.76 versus 3.37 ms
+per frame, averaging 24.3 versus 29.1 ms per call. Its observed buffers are
+longword aligned, with 261,452-byte copies; the earlier queue estimate of
+1.15 ms per call was incorrect.
+
+The encounters contain 352/328 fight frames and 40/38 large calls respectively;
+these are workload averages, not a matched-state total-FPS claim. An isolated
+same-buffer test confirms the throughput improvement: four aligned 260,480-byte
+copies take 375,494 beam units with the 128-byte loop versus 453,083 with the
+single-longword loop (17% less). Both use the same pinned CPU/cache policy.
+
+The retained loop uses 32 `MOVE.L` instructions per iteration, with exact
+backwards overlap and small tails. A 32-byte `MOVEM` candidate and a C-wrapped
+unrolled candidate did not improve the encounter and were discarded. Most
+remaining cost is in the actual data-movement instructions. The owner accepted
+this verified improvement in place of the original 2 ms per-frame gate, which
+was not met. `MOVE16` is unavailable on the reference 68030; a CPU-specific
+040/060 path would require separate validation. The executable continues to
+preserve OS/WHDLoad cache ownership.
+
+All 28,388 [copy checks](testing.md#blockmove-copies) pass on both the host
+(ASan/UBSan) and native 68030. The bounded monster run completes through death;
+production no-float/probe audits pass. Zero-byte copies now also avoid the old
+odd-address count underflow. No endurance circuit was needed.
+
 ## Cycle profiler
 
 `amiga/aprof.sh` gives exact emulated cost, not samples. It runs a private FS-UAE

@@ -56,13 +56,6 @@ are in that document; preserve matching game state when comparing changes.
   ≤ 80 µs per call in repeatable fight profiles. Preserve exact raster ties,
   dirty bounds and frame/callback service points.
 
-- **FRAME.5 Speed up large BlockMove copies.**
-  `Dark+$1B7A` makes 39 large BlockMoves in the fight (1.15 ms each, 5.5 ms per frame).
-  Use aligned longword or MOVE16 paths with exact overlap semantics.
-
-  *Done when* overlap, odd-alignment and length-boundary host tests pass and BlockMove
-  costs ≤ 2 ms per fight frame.
-
 - **FRAME.6 Reduce effect start and polling cost.**
   `playNativeEffect`, `serviceNativeEffects` and `waitPaulaDmaLines` cost about 5 ms per
   fight frame; each start converts the sample into new Chip memory again. Reuse

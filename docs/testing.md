@@ -4,6 +4,25 @@ Source `amiga/env.sh` before native builds and runs. Shared file defaults and ov
 are listed in [development.md](development.md#shared-files-and-environment-overrides). Never distribute the
 original inputs, ROMs, reference captures or test saves.
 
+## BlockMove copies
+
+`python3 tools/check_block_move.py` (also in `make host-tests`) checks overlap in
+both directions, identical addresses, every alignment, zero lengths, 4/128-byte
+chunk boundaries and lengths through 307,200 bytes under ASan/UBSan. The same
+28,388 cases run through the actual 68020 copy instructions in a bounded native
+fixture; all buffers and canaries are compared with an independent byte loop:
+
+```sh
+. amiga/env.sh
+make -C amiga clean
+make -C amiga -j4 BLOCKMOVEPROBE=1
+GDBSCRIPT=block_move.gdb DIAG_RUN_DIR=.run-block-move amiga/diag_run.sh 180
+```
+
+Require exit zero and `PASS BlockMove checks=28388`. Fixture buffers are static,
+not on the trap stack. Measure with the ordinary monster profile, without this
+fixture flag. No endurance circuit is needed for this copy-only change.
+
 ## RGB lookup memoization
 
 `make host-tests` runs the sanitizer-backed cache/oracle comparison, including

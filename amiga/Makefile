@@ -37,6 +37,11 @@ EXTRA_DEFINES += -DAITD_STACK_PROBE
 endif
 
 # Diagnostic feature flags must enable probes before conditional symbol groups.
+ifeq ($(BLOCKMOVEPROBE),1)
+PROBES=1
+EXTRA_DEFINES += -DAITD_BLOCK_MOVE_PROBE
+PROBE_SYMS_BLOCKMOVE = g_blockMoveChecks
+endif
 ifeq ($(QUITPROBE),1)
 MENUPROBE=1
 M5AUDIT=1
@@ -543,7 +548,7 @@ PROBE_SYMS = g_macBookFrameActive g_macBookFramesBegun g_macBookFramesCompleted 
              g_stageBState g_trapWord g_trapSelector g_trapSegment g_trapOffset \
              g_trapPC g_trapRegisters g_trapUserStack g_resourceCount g_jumpEntryCount \
              g_blockMoveCount g_trapManager g_trapRoutine
-PROBE_SYMS += $(PROBE_SYMS_FRAME) $(PROBE_SYMS_MASK_COMPARE)
+PROBE_SYMS += $(PROBE_SYMS_BLOCKMOVE) $(PROBE_SYMS_FRAME) $(PROBE_SYMS_MASK_COMPARE)
 ifeq ($(SCENEFRAMEVERIFY),1)
 PROBE_SYMS += g_quickServiceChecks g_quickServiceTick g_quickServiceValid
 endif
