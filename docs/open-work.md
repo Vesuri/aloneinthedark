@@ -127,6 +127,17 @@ are in that document; preserve matching game state when comparing changes.
 
 ## Profiling validity
 
+- **TEST.5 Make monster-profile startup preferences reproducible.**
+  A fresh private run directory can fail the initial monster-state check while
+  a repeat with the generated preferences passes. Determine which initial
+  fields differ and isolate the measured preference fixture before launch;
+  do not silently inherit or overwrite owner preferences.
+
+  *Done when* fresh and existing run directories both reach the specified
+  initial state with byte-identical prepared preferences, a clean repeat passes
+  the profile's state/field checks, and original preferences are restored on
+  success and failure. Preserve the explicit initial-state diagnostic.
+
 - **MEASURE.1 Correct adjusted-profile bucket attribution.**
   `aprof_report.py steady` groups call-tree self time by the call target. Native
   tail jumps stay in the caller's node, and exception nodes are grouped as

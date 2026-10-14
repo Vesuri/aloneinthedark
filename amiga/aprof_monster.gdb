@@ -28,6 +28,7 @@ continue
 delete $bpnum
 break aitdMonsterCheckpoint
 continue
+printf "INITIAL phase=%u count=%u song=%u carnby=%d monster=%d\n",g_monsterPhase,g_monsterCount,g_monsterFrames[0].song,g_monsterFrames[0].carnby,g_monsterFrames[0].monster
 if g_monsterPhase!=1 || g_monsterFrames[0].song!=137 || g_monsterFrames[0].carnby!=4 || g_monsterFrames[0].monster!=-1
  echo FAIL monster start\n
  quit 1
