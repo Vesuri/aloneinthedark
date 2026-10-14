@@ -306,6 +306,27 @@ The [performance workflow](performance.md#debugger-free-hardware-audit) covers
 isolated preferences, emulator checks, hardware launch and report decoding.
 Real-Amiga benchmarks are deferred; use emulator runs only to validate collection.
 
+## Converted effect samples
+
+One-shot effects share up to four immutable Paula buffers, capped at 128 KiB
+of Chip PCM plus allocator rounding, with up to 128 KiB of original-byte
+snapshots in Fast RAM.
+The cache compares every source byte before reuse; neither a sample ID nor a
+reused game pointer establishes identity. Rate, volume, duration and slot/channel
+selection are evaluated per call. Active voices pin entries until DMA is stopped.
+Misses convert with 68020 longword loads/XOR/stores and exact byte tails.
+
+Idle entries are evicted when needed and cleared before song/stream preparation,
+on stop-all effects and on shutdown. If optional cache allocation fails, playback
+uses the existing uncached allocation path. Looping/long effects keep their
+independent streamed buffers and counter semantics.
+
+Paula channels skip repeat shutdown waits only after the complete DMA-off and
+DAC-zero handshake has established silence. Starting either ordinary or streamed
+DMA invalidates that state. Initial unknown hardware and active channels retain
+the conservative two-sample-period wait; attack-to-reload latching still waits
+two raster transitions. Stream periods also update the shared period ceiling.
+
 ## WHDLoad code and DMA cache policy
 
 The slave requests kickemu `CACHE`: Chip memory noncacheable, Fast/slave memory

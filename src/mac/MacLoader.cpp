@@ -71,6 +71,7 @@ extern "C" void aitdDriverClockProbe();
 #include "platform/amiga/framework/AmigaHardware.h"
 #include "PaulaSample.h"
 #include "SoundEffect.h"
+#include "EffectSampleCache.h"
 #include "platform/amiga/EffectDmaStream.h"
 
 extern "C" {
@@ -153,6 +154,14 @@ volatile uint16_t g_driver6ProbeStage=0;
 __attribute__((noinline)) void aitdDriver6Ready(uint32_t* regs,uint8_t* userStack)
 { asm volatile("" : : "r"(regs),"r"(userStack) : "memory"); }
 #endif
+
+struct EffectSampleMemory {
+    static uint8_t* fast(uint32_t n) {return (uint8_t*)M5_ALLOC_MEM(n,MEMF_FAST);}
+    static uint8_t* chip(uint32_t n) {return (uint8_t*)M5_ALLOC_MEM(n,MEMF_CHIP);}
+    static void free(uint8_t* p,uint32_t n) {M5_FREE_MEM(p,n);}
+};
+EffectSampleCache<EffectSampleMemory> g_effectSampleCache;
+static EffectSampleCache<EffectSampleMemory>::Entry* s_effectCached[2]={};
 
 struct NativeEffect {
     EffectDma::Stream* stream;
@@ -1503,6 +1512,9 @@ static void waitPaulaDmaLines(uint16_t lines)
 // AUDxPER is write-only and its current countdown can still use an older
 // value after a pitch change. Keep a conservative ceiling until DMA stops.
 static uint16_t s_paulaPeriodCeiling[4] = {65535, 65535, 65535, 65535};
+// True only after our complete DMA-off/DAC-zero handshake. Unknown initial
+// hardware and streamed channels always take the conservative path.
+static bool s_paulaQuiet[4]={};
 
 static void setPaulaPeriod(uint16_t channel, uint16_t period)
 {
@@ -1512,6 +1524,7 @@ static void setPaulaPeriod(uint16_t channel, uint16_t period)
 
 static void disablePaulaChannel(uint16_t channel)
 {
+    if(s_paulaQuiet[channel])return;
     *dmaconPointer = (uint16_t)(DMAF_AUD0 << channel);
     // RKM 5-2-7: DMA must remain off for at least two SAMPLE periods.
     // PAL lines contain at least 227 colour clocks. Add a full line because
@@ -1523,7 +1536,7 @@ static void disablePaulaChannel(uint16_t channel)
 
 static void quiescePaulaChannel(uint16_t channel)
 {
-    if (channel > 3) return;
+    if (channel > 3 || s_paulaQuiet[channel]) return;
     volatile uint8_t* audio = (volatile uint8_t*)(0xdff0a0UL + channel * 16);
 
     // DMA-off and volume zero merely mute a Paula channel: they do not clear
@@ -1541,6 +1554,7 @@ static void quiescePaulaChannel(uint16_t channel)
     *intreqPointer = (uint16_t)(0x0080U << channel);
     *(volatile uint16_t*)(audio + 10) = 0;
     waitPaulaDmaLines(3);
+    s_paulaQuiet[channel]=true;
 #ifdef AITD_PROBE
     g_probePaulaZeroedMask |= (uint16_t)(1U << channel);
 #endif
@@ -1575,6 +1589,7 @@ static void startPaulaSample(uint8_t* data, const PaulaSample::Layout& layout,
 #ifdef AITD_EFFECT_DMA_PROBE
     if(g_effectStarts==1 && g_soundDriver.channels[channel]>=6)aitdEffectDmaProbeBegin(channel);
 #endif
+    s_paulaQuiet[channel]=false;
     *dmaconPointer = (uint16_t)(DMAF_SETCLR | DMAF_MASTER | dma);
 #ifdef AITD_SONG_HARDWARE_PROBE
     uint32_t after=s_songHardwareNote ? songHardwareClock() : 0;
@@ -1616,7 +1631,9 @@ static void stopNativeEffect(uint16_t index)
     }
     voice.active=0;
     if(effect.stream) {EffectDma::dispose(effect.stream);effect.stream=0;}
+    else if(s_effectCached[index])g_effectSampleCache.release(s_effectCached[index]);
     else if(effect.chip)M5_FREE_MEM(effect.chip,effect.allocated);
+    s_effectCached[index]=0;
     effect.chip=0;effect.allocated=0;
 }
 
@@ -1752,27 +1769,32 @@ static const char* playNativeEffect(uint8_t* packet,uint32_t& scratch)
         if(candidate<=age) {age=candidate;index=i;}
         replacing=true;
     }
+    if(streamed)g_effectSampleCache.clearUnused();
     EffectDma::Stream* stream=streamed ? EffectDma::prepare(sample,bytes,loopStart,loopEnd,counter,error) : 0;
     if(streamed && !stream)return error;
-    uint8_t* chip=streamed ? EffectDma::chip(stream) : (uint8_t*)M5_ALLOC_MEM(layout.allocated,MEMF_CHIP);
+    auto* cached=streamed ? nullptr : g_effectSampleCache.acquire(sample,bytes);
+    uint8_t* chip=streamed ? EffectDma::chip(stream) : cached ? cached->chip
+        : (uint8_t*)M5_ALLOC_MEM(layout.allocated,MEMF_CHIP);
     if(!chip)return "EFFECT CHIP MEMORY";
-    if(!streamed)PaulaSample::convert(layout,chip);
+    if(!streamed && !cached)PaulaSample::convert(layout,chip);
     NativeAudioGuard guard;
     // A replacement retains its Paula channel; music ownership is untouched.
     int16_t channel=replacing ? g_soundDriver.effects[index].channel : -1;
     if(replacing && (channel<0 || channel>3 || g_soundDriver.channels[channel]!=6+index)) {
-        if(stream)EffectDma::dispose(stream);else M5_FREE_MEM(chip,layout.allocated);
+        if(stream)EffectDma::dispose(stream);
+        else if(cached)g_effectSampleCache.release(cached);else M5_FREE_MEM(chip,layout.allocated);
         return "EFFECT REPLACEMENT CHANNEL";
     }
     if(!replacing)for(uint16_t i=0;i<4;++i)if(g_soundDriver.channels[i]<0) {channel=i;break;}
     if(channel<0)channel=stealSongChannel();
     if(channel<0) {
-        if(stream)EffectDma::dispose(stream);else M5_FREE_MEM(chip,layout.allocated);
+        if(stream)EffectDma::dispose(stream);
+        else if(cached)g_effectSampleCache.release(cached);else M5_FREE_MEM(chip,layout.allocated);
         return "EFFECT CHANNEL STEAL";
     }
     if(replacing)stopNativeEffect(index); // DMA off before releasing the old sample.
     NativeEffect& effect=g_effects[index];
-    effect.stream=stream;effect.chip=chip;effect.allocated=streamed ? 256 : layout.allocated;
+    s_effectCached[index]=cached;effect.stream=stream;effect.chip=chip;effect.allocated=streamed ? 256 : layout.allocated;
     effect.size=bytes;effect.rate=rate;
     effect.period=period;effect.id=read16(packet+24);effect.serial=++g_effectStarts;
     g_soundDriver.effectIds[index]=effect.id;
@@ -1781,6 +1803,8 @@ static const char* playNativeEffect(uint8_t* packet,uint32_t& scratch)
     g_soundDriver.channels[channel]=6+index;
     if(stream) {
         disablePaulaChannel(channel);
+        setPaulaPeriod(channel,period); // Streaming writes AUDxPER too: retain its ceiling.
+        s_paulaQuiet[channel]=false;
         EffectDma::start(stream,channel,period,g_soundDriver.paulaVolume(64));
     } else startPaulaSample(chip,layout,channel,period,64);
     effect.started=g_macTicks;effect.ends=effect.started+ticks+1; // Full duration after DMA latches.
@@ -1811,7 +1835,22 @@ static const char* runEffectSlotsFixture(uint8_t* packet,uint32_t& scratch)
         if(error)return error;
         aitdEffectSlotsCheckpoint(stage,scratch);
     }
+    // Reuse the same game address with edited PCM while the old bytes are
+    // still playing. The exact-content key must create a separate immutable
+    // buffer, never overwrite the other voice's DMA sample.
+    uint8_t* source=(uint8_t*)read32(packet);
+    uint8_t* originalChip=g_effects[0].chip;
+    source[2047]^=1;
+    const char* error=playNativeEffect(packet,scratch);
+    source[2047]^=1;
+    if(error)return error;
+    uint8_t* changedChip=g_effects[g_effects[0].serial==5 ? 0 : 1].chip;
+    if(changedChip==originalChip)return "SLOTS CACHE MUTATION HIT";
+    for(uint32_t i=0;i<4096;++i)
+        if(originalChip[i]!=(source[i]^0x80)
+           || changedChip[i]!=(source[i]^0x80^(i==2047 ? 1 : 0)))return "SLOTS CACHE PCM";
     stopNativeEffect(0);stopNativeEffect(1);
+    g_effectSampleCache.clearUnused();
     aitdEffectSlotsCheckpoint(9,scratch);
     return "SLOTS PROBE END";
 }
@@ -1961,6 +2000,7 @@ static int16_t stealSongChannel()
 }
 static void releaseNativeSong()
 {
+    g_effectSampleCache.clearUnused();
 #ifdef AITD_CIA_MUSIC
     aitdMusicTimerStop();
 #endif
@@ -2059,6 +2099,7 @@ static const char* startNativeSong(uint32_t argument)
     if(!g_soundDriver.initialized)return "NOT INITIALIZED";
     if(g_song.ownedCount)return "SONG REPLACEMENT";
     if(argument<130 || argument>137)return "SONG UNMEASURED";
+    g_effectSampleCache.clearUnused(); // Do not reserve idle Chip samples across song loads.
     const char* error=0;MacHeap::Handle song=0,midi=0;
     if((error=ownSongResource(0x534f4e47UL,(uint16_t)argument,song)))return error;
     if((error=g_song.description.parse(*song,handleZone(song)->handleSize(song))))return error;
@@ -9072,6 +9113,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
                 audioStopProbeCall(regs,userStack);
 #endif
                 if(g_soundDriver.initialized)for(uint16_t i=0;i<2;++i)stopNativeEffect(i);
+                g_effectSampleCache.clearUnused();
                 driverStop=g_soundDriver.stopEffects();
             }
             else if(selector==13)driverStop=g_soundDriver.setSongControl(argument);
@@ -9109,6 +9151,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
                     // handle itself immediately after this call returns.
                     releaseNativeSong();
                     for(uint16_t i=0;i<2;++i)stopNativeEffect(i);
+                    g_effectSampleCache.clearUnused();
                     for(uint16_t i=0;i<4;++i)quiescePaulaChannel(i);
                     g_soundDriver.initialized=0;scratch=1;
                 }
@@ -11764,6 +11807,7 @@ bool MacLoader::run(AitdScreen* screen)
     // restores the operating system, whichever exit route was taken.
     releaseNativeSong();
     for(uint16_t i=0;i<2;++i)stopNativeEffect(i);
+    g_effectSampleCache.clearUnused();
     for (uint16_t channel = 0; channel < 4; ++channel) quiescePaulaChannel(channel);
     g_macExitState = 4;
     return true;

@@ -1,4 +1,12 @@
-mac-trap-args
+# Marker helpers expose regs/userStack but have no exception-frame argument.
+# This fixture needs only the register image and original C caller stack.
+if $pc==(unsigned long)aitd_line_a_trap_entry
+ set $mac_regs=(unsigned long*)$sp
+ set $mac_stack=(unsigned char*)$a2
+else
+ set $mac_regs=regs
+ set $mac_stack=userStack
+end
 set $d17_sp=(unsigned long)$mac_stack
 set $d17_return=*(unsigned long*)$d17_sp
 set $d17_ignored=*(unsigned long*)($d17_sp+8)

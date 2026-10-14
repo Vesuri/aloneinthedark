@@ -120,6 +120,34 @@ All 28,388 [copy checks](testing.md#blockmove-copies) pass on both the host
 production no-float/probe audits pass. Zero-byte copies now also avoid the old
 odd-address count underflow. No endurance circuit was needed.
 
+## Effect preparation and polling
+
+Fresh reference-68030/PAL monster profiles `frame6-before` and `frame6-after`
+measure **1.50 → 0.52 ms per fight frame** in the union of effect start,
+polling and stop subtrees, including their DMA waits. This meets the 1 ms gate.
+Starts alone fall from 1.37 to 0.39 ms; polling stays at 0.13 ms. The older
+5 ms queue estimate is superseded. Shared `waitPaulaDmaLines` also serves music:
+its music calls are outside this effect budget, and nested waits are not counted
+twice. Effect-owned waits measure 0.071/0.073 ms per frame.
+
+Both runs use `MONSTERPROFILE=1 FIXEDRNG=1`, deterministic execution, the pinned
+15.6672 MHz 68030 and unchanged OS cache policy. They complete through death
+without intermediate debugger stops. Before/after contain 352/342 fight frames,
+35/37 effect starts and 3,512/3,505 fields. The changed intermediate trajectory
+precludes a matched-state whole-game FPS claim; these are effect workload costs.
+
+[Converted PCM reuse](development.md#converted-effect-samples) removes repeated
+Chip allocation/conversion without changing sample bytes, pitch, priority or
+playback deadlines. The slot fixture checks shared buffers, same-address source
+mutation while the old sample remains active, and complete cache release. Host
+checks cover odd/aligned sources, byte tails, pinning, eviction, the memory cap
+and allocation failure. All seven loop/long/stop/replacement cases and the
+fractional-pitch/attack/silent-reload DMA fixture pass against retained Mac
+references. SONG 136 passes all 602 timed events, independent channel allocation,
+trapless interrupt progress, effect priority and cleanup. The observer's shared
+selector-17 reader now accepts helper markers without an exception-frame local.
+Physical Amiga performance remains deferred.
+
 ## Cycle profiler
 
 `amiga/aprof.sh` gives exact emulated cost, not samples. It runs a private FS-UAE

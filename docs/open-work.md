@@ -56,13 +56,14 @@ are in that document; preserve matching game state when comparing changes.
   ≤ 80 µs per call in repeatable fight profiles. Preserve exact raster ties,
   dirty bounds and frame/callback service points.
 
-- **FRAME.6 Reduce effect start and polling cost.**
-  `playNativeEffect`, `serviceNativeEffects` and `waitPaulaDmaLines` cost about 5 ms per
-  fight frame; each start converts the sample into new Chip memory again. Reuse
-  converted immutable samples and avoid DMA waits for already quiet channels.
+- **FRAME.10 Assess repeated streamed-effect preparation.**
+  The fight-frame effect target measures one-shot playback. Looping effects and
+  samples over 131,070 bytes use separate stream conversion/storage and do not
+  reuse the one-shot cache. This is a distinct workload, not evidence of a defect.
 
-  *Done when* effect slot, loop, DMA, fraction and replace fixtures pass, priorities
-  and audible timing are unchanged, and effect work is ≤ 1 ms per fight frame.
+  *Done when* a bounded repeated-loop/long-sample profile establishes preparation
+  cost and memory use, with a justified optimization proposal or a finding that
+  no change is warranted. Preserve loop counters, tails, replacement and DMA timing.
 
 - **FRAME.7 Check fight-frame C2P bounds.**
   C2P takes 12.6 ms per fight frame. Verify that two-actor dirty bounds are the

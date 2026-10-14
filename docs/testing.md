@@ -444,7 +444,12 @@ original/native capture pairs separate.
 
 [Audio regression](audio-regression.md) documents fresh song capture, sample fixtures
 and retained-reference prerequisites. `CIAMUSIC=1` is the default; `CIAMUSIC=0` is a VBI
-scheduling diagnostic. `effect_loop_matrix.sh` covers zero/finite/infinite loop counters
+scheduling diagnostic. `check_effect_sample_cache.py` runs sanitized cache
+content/ownership/budget/failure checks. `EFFECTSLOTSPROBE=1 M5AUDIT=1` with
+`effect_slots.gdb` checks two voices sharing converted PCM, ordinary slot
+replacement, an edited source at the same address while old PCM remains active,
+and complete cache cleanup. Its original four-call comparison remains unchanged;
+the extra mutation call tests the native cache only. `effect_loop_matrix.sh` covers zero/finite/infinite loop counters
 and native DMA boundary behavior. Fixtures that write guest RAM establish driver
 contracts, not ordinary gameplay coverage.
 

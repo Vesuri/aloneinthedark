@@ -83,6 +83,7 @@ lowmem-check:
 
 host-tests: shared-runtime-check
 	@python3 tools/check_block_move.py
+	@python3 tools/check_effect_sample_cache.py
 	@python3 tools/times14_bitmap.py --check
 	@python3 tools/build_overlay.py --check
 	@python3 tools/check_bitmap_font.py

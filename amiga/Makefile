@@ -556,7 +556,7 @@ ifeq ($(MONSTERAUDIT),1)
 PROBE_SYMS += g_monsterAudit g_monsterFrames g_monsterCount g_monsterPhase
 endif
 PROBE_SYMS += $(PROBE_SYMS_AGA) $(PROBE_SYMS_FILE) $(PROBE_SYMS_FILEWRITE) $(PROBE_SYMS_RESOURCEEXIT)
-PROBE_SYMS += $(PROBE_SYMS_AE) $(PROBE_SYMS_SONG) $(PROBE_SYMS_CLOCK) g_defaultPalette g_appleEventHandlers g_soundDriver g_soundDriverHandle g_soundDriverCalls g_song g_effects g_effectStarts g_effectStops g_effectStatusCalls
+PROBE_SYMS += $(PROBE_SYMS_AE) $(PROBE_SYMS_SONG) $(PROBE_SYMS_CLOCK) g_defaultPalette g_appleEventHandlers g_soundDriver g_soundDriverHandle g_soundDriverCalls g_song g_effects g_effectSampleCache g_effectStarts g_effectStops g_effectStatusCalls
 ifeq ($(EFFECTLOOPPROBE),1)
 PROBE_SYMS += g_effectLoopProbeAction g_effectLoopProbePacket g_effectLoopProbeCounter g_effectLoopProbeReleaseTick g_effectStreamRecords g_effectStreamBytes g_effectStreamOverflow g_effectStreamTrace g_effectStreamPCM
 endif

@@ -64,8 +64,13 @@ while $slots_stage<=4
    set $slots_other_chip=g_effects[0].chip
   end
  end
- set $slots_count=stage==1 ? 1 : 2
- if g_m5Audit.liveChip!=$slots_base+4104*$slots_count || g_m5Audit.accountingErrors || g_effectStops!=(stage>2 ? stage-2 : 0)
+ # All four starts share immutable PCM; both live voices pin one allocation.
+ if !g_effectSampleCache.entries[0].chip || g_effectSampleCache.entries[0].users!=(stage==1 ? 1 : 2) || g_effects[0].chip!=g_effectSampleCache.entries[0].chip || (stage>1 && g_effects[1].chip!=g_effects[0].chip)
+  echo FAIL shared sample ownership\n
+  detach
+  quit 1
+ end
+ if g_m5Audit.liveChip!=$slots_base+4104 || g_m5Audit.accountingErrors || g_effectStops!=(stage>2 ? stage-2 : 0)
   echo FAIL replacement allocation ledger\n
   detach
   quit 1
@@ -75,12 +80,13 @@ while $slots_stage<=4
  set $slots_stage=$slots_stage+1
 end
 continue
-if stage!=9 || g_m5Audit.liveChip!=$slots_base || g_m5Audit.accountingErrors || g_effectStarts!=4 || g_effectStops!=4 || g_soundDriver.effects[0].active || g_soundDriver.effects[1].active || g_effects[0].chip || g_effects[1].chip || (*(unsigned short*)0xdff002&((1<<$slots_channel0)|(1<<$slots_channel1)))
+if stage!=9 || g_m5Audit.liveChip!=$slots_base || g_m5Audit.accountingErrors || g_effectStarts!=5 || g_effectStops!=5 || g_soundDriver.effects[0].active || g_soundDriver.effects[1].active || g_effects[0].chip || g_effects[1].chip || (*(unsigned short*)0xdff002&((1<<$slots_channel0)|(1<<$slots_channel1)))
  echo FAIL effect slots final cleanup\n
  detach
  quit 1
 end
 printf "EFFECT_SLOTS_CLEANUP live=%u baseline=%u errors=%u\n",g_m5Audit.liveChip,$slots_base,g_m5Audit.accountingErrors
+echo PASS native effect cache same-address mutation preserves active DMA bytes\n
 echo PASS native effect slots selection, replacement and cleanup\n
 detach
 quit 0

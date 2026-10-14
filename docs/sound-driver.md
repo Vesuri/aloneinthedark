@@ -932,8 +932,9 @@ accepted observation uses the verified state+$1880 callback clock. The new reque
 31,020 raw PCM bytes at 8 kHz, identifier $8000, without a loop. The complete driver
 state matches the independent replacement model, with unrelated music state unchanged.
 
-The Amiga path allocates/converts the new sample, quiesces the old effect's Paula
-channel before freeing its buffer, then reuses that channel. It derives age from the
+The Amiga path acquires converted PCM (reusing an exact-content cache hit),
+quiesces the old effect's Paula channel before releasing its buffer ownership,
+then reuses that channel. It derives age from the
 same native 60 Hz clock used by selector 15. At this checkpoint, multiple occupied slots
 and a free second slot remained named stops. The later [two-effect
 acceptance](#two-effect-slot-allocation--2026-10-07) replaces those stops with measured
@@ -1095,14 +1096,16 @@ The full original state and preserved ABI confirm:
 - Both occupied, ages $7FF0/$7FF5: replace slot 6, return $7FF0.
 - Both occupied with age $7FF0: replace the later slot 7, return $7FF0.
 
-Native selection now follows those rules. On the fixed 68030, all four sample buffers
-exactly match the original fixture PCM plus a silent word. Two active effects use
-separate channels; replacements retain their channel and preserve the unselected buffer.
-DMA is stopped before old buffers are freed. The ledger holds exactly two 4,104-byte
-rounded allocations, then returns from 140,856 to 132,648 Chip bytes with zero errors
-after both effects stop. `EFFECTSLOTSPROBE=1 M5AUDIT=1 PROBES=`,
+Native selection follows those rules. On the fixed 68030, all four starts
+exactly match the original fixture PCM plus a silent word and share one immutable
+4,104-byte rounded Chip allocation. Two active effects use separate channels;
+replacements retain their channel and preserve the unselected PCM. DMA stops before
+a voice releases its cache reference. An additional native-only mutation check
+changes a source byte at the same address and verifies separate new PCM while the
+old sample remains intact. After stopping both effects and clearing idle entries,
+the Chip ledger returns to its 132,648-byte baseline with zero errors. `EFFECTSLOTSPROBE=1 M5AUDIT=1 PROBES=`,
 `amiga/effect_slots.gdb` and `tools/check_effect_slots.py` reproduce this isolated
-acceptance. Evidence is `tmp/m4/effects/slots/`. One emulator startup stall is excluded.
+acceptance. Evidence is `tmp/m4/effects/slots/`.
 Starting a song uses the existing measured 6/3/1 configuration (one effect slot); the
 attempted two-effect music fixture correctly failed its configuration positive control
 and is not acceptance. Existing song fixtures cover effect priority there.

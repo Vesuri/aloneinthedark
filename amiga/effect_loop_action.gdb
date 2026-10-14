@@ -126,7 +126,7 @@ if $a6!=$action_reg14
  detach
  quit 1
 end
-if g_effects[0].stream || g_m5Audit.liveFast!=$action_fast-$action_fast_bytes || g_m5Audit.accountingErrors
+if g_effects[0].stream || g_m5Audit.liveFast!=$action_fast-$action_fast_bytes+($action==17 ? 4096 : 0) || g_m5Audit.accountingErrors
  echo FAIL action stream cleanup\n
  detach
  quit 1
@@ -153,10 +153,17 @@ if $action==17
  end
  finish
 end
-if g_effects[0].chip || g_soundDriver.effects[0].active || g_soundDriver.effects[0].channel!=-1 || (*(unsigned short*)0xdff002&(1<<$loop_channel)) || g_m5Audit.liveChip!=$action_chip-256 || g_m5Audit.accountingErrors
+if g_effects[0].chip || g_soundDriver.effects[0].active || g_soundDriver.effects[0].channel!=-1 || (*(unsigned short*)0xdff002&(1<<$loop_channel)) || g_m5Audit.liveChip!=$action_chip-256+($action==17 ? 4104 : 0) || g_m5Audit.accountingErrors
  echo FAIL action final DMA/memory cleanup\n
  detach
  quit 1
+end
+if $action==17
+ if g_effectSampleCache.retained!=4098 || g_effectSampleCache.entries[0].users || !g_effectSampleCache.entries[0].chip || !g_effectSampleCache.entries[0].original
+  echo FAIL replacement retained cache accounting\n
+  detach
+  quit 1
+ end
 end
 echo PASS native active loop action ABI, counter, interrupt restoration and DMA/memory cleanup\n
 detach

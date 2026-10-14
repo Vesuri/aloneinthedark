@@ -40,6 +40,7 @@ def check(folder,status,native=None,native_status=None):
         n=native.read_text()
         if native_status or re.search(r'FAIL|TIMEOUT|Error in|Program received signal',n) or n.count('PASS native effect slots selection, replacement and cleanup')!=1:
             raise ValueError('native fixture completion')
+        if n.count('PASS native effect cache same-address mutation preserves active DMA bytes')!=1:raise ValueError('native cache mutation control')
         records=re.findall(r'^EFFECT_SLOTS stage=(\d+) index=(\d+) age=(\w+) channel=(\d+) starts=(\d+) stops=(\d+) live=(\d+)$',n,re.M)
         if len(records)!=4:raise ValueError('four native allocations')
         pcm=(folder/'sample.bin').read_bytes();expected_pcm=bytes(v^128 for v in pcm)+b'\0\0'
