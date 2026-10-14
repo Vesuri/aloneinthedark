@@ -9069,6 +9069,11 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
                         if(!driverStop) {
                             write16(counter,(uint16_t)AITD_EFFECT_LOOP_COUNT);g_effectLoopProbeCounter=counter;
                             g_effectLoopProbePacket=packet;
+#ifdef AITD_EFFECT_PREP_PROBE
+                            if(!EffectDma::preparationProbe((uint8_t*)read32(packet),read32(packet+4))) {
+                                loaderStop("EFFECT PREPARATION PROBE",0);showLoaderStop();
+                            }
+#endif
                             aitdEffectLoopReady(regs,userStack);
                             driverStop=playNativeEffect(packet,scratch);
                         }

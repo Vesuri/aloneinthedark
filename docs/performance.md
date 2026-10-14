@@ -250,6 +250,48 @@ trapless interrupt progress, effect priority and cleanup. The observer's shared
 selector-17 reader now accepts helper markers without an exception-frame local.
 Physical Amiga performance remains deferred.
 
+### Streamed-effect preparation
+
+The bounded `frame10-final` fixture measures three successive preparations and
+releases of each source on the 15.6672 MHz 68030, PAL, 2 MB Chip/8 MB Fast,
+`CACR=$2001`, `EFFECTPREPPROBE=1 INTROSKIP=1`. Each timing window contains one
+`EffectDma::prepare` call, its interrupts and allocation accounting, plus the
+small marker/call overhead. Validation and disposal are outside the window;
+there are no interior debugger stops. This is preparation latency, not FPS or
+Mac-relative performance. Hardware benchmarks remain deferred.
+
+| Forced workload | Three preparation times | Fast RAM per live stream | Chip RAM |
+| --- | --- | --- | --- |
+| 4,096-byte loop, boundaries 512–1,024 | 1.426 / 1.409 / 1.419 ms | 4,176 bytes | 256 bytes |
+| 131,073-byte non-looping sample | 36.738 / 36.742 / 36.728 ms | 131,160 bytes | 256 bytes |
+
+The rounded state allocation is 80 bytes; remaining Fast RAM holds converted
+signed PCM; these figures exclude the caller-owned source in the Mac heap. Each release returns both memory ledgers exactly to baseline. These
+are aligned sources; the odd final byte of the long sample is checked explicitly.
+The native fixture checks all converted bytes and cursor/counter initialization.
+Separate original/native loop, long-tail and replacement fixtures check playback.
+
+Allocation plus its audit costs 0.257–0.273 ms per request. Instruction-PC
+attribution puts about 35.4 ms of the long request in the conversion loop:
+25.1 ms in loads, sign-bit XOR and stores, and 10.3 ms in loop bookkeeping.
+These are attribution estimates, not measured savings from an alternative.
+Conversion already happens once per request, never on each loop repetition or
+in the audio interrupt. Playback reuses the Fast PCM and alternates two
+128-byte Chip buffers.
+
+**Disposition: retain the current path.** The small looping sample costs about
+1.4 ms, and even the forced long sample takes under two PAL fields to prepare.
+The maintained `frame9-assess` fight profile has no streamed preparations;
+its repeated one-shot effects use the existing cache. These forced cases do not
+establish the frequency of long effects elsewhere in the game. A second cache
+would require content validation, retained memory and separate lifetime handling;
+there is no measured recurring gameplay cost here to justify it. Loop unrolling
+could remove only part of the roughly 10 ms bookkeeping in a long request and
+would not address song preparation. No production audio code changed.
+
+Reproduce with [the bounded fixture](testing.md#streamed-effect-preparation);
+`aprof_report.py annotate NAME-3 EffectDma::prepare` exposes the conversion PCs.
+
 ### Fight C2P coverage
 
 The reference-68030/PAL profiles `frame7-before` and `frame7-final` measure

@@ -505,6 +505,32 @@ the extra mutation call tests the native cache only. `effect_loop_matrix.sh` cov
 and native DMA boundary behavior. Fixtures that write guest RAM establish driver
 contracts, not ordinary gameplay coverage.
 
+### Streamed-effect preparation
+
+Run `. amiga/env.sh` then `amiga/effect_prepare.sh NAME`. It clean-builds
+`EFFECTPREPPROBE=1 INTROSKIP=1`, uses the fixed-clock 68030/PAL profiler and
+writes six `tmp/aprof/NAME-N.{prof,log,elf,report}` sets. Production is rebuilt
+on exit. Each interval contains one preparation, with no interior debugger
+stops; its “step” is one request, not a game frame. The private
+`.run-effect-prep` volume uses the audio fixtures' ordinary filesystem settings,
+with warp affecting only host duration.
+
+The fixture uses the existing long-effect source: 131,073 bytes repeated from
+the original 30,783-byte sample. It prepares/releases a 4,096-byte finite loop
+three times, then the long sample three times. Outside timing, it checks every
+converted byte, cursor initialization, unchanged counters, cleared DMA buffers,
+exact rounded Chip/Fast allocation deltas and return to baseline after release.
+Allocation accounting is enabled and included in the reported cost.
+
+It stops before playback because the additional work shifts the original event
+timeline. Check playback separately with
+`amiga/effect_loop_matrix.sh loop3 long action17` at its reference-68030 default;
+this pairs complete PCM, loop counters/tails, replacement, DMA timing and cleanup
+with retained original captures. Keep the forced long-sample check at reference
+speed: faster original intro progression can replace it before its tail finishes.
+The diagnostic changes neither production
+preparation nor playback. See [the assessment](performance.md#streamed-effect-preparation).
+
 ## Gameplay coverage
 
 The completed whole-game route covers all eight engine floors, representative rooms,

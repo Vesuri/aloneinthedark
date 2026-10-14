@@ -4,6 +4,9 @@ namespace EffectDma {
 struct Stream;
 Stream* prepare(const unsigned char* pcm,unsigned long bytes,unsigned long start,
                 unsigned long end,unsigned char* counter,const char*& error);
+#ifdef AITD_EFFECT_PREP_PROBE
+bool preparationProbe(const unsigned char* pcm,unsigned long bytes);
+#endif
 void start(Stream*,unsigned short channel,unsigned short period,unsigned short volume);
 void suspend(Stream*);
 void dispose(Stream*);

@@ -150,3 +150,42 @@ uint16_t age(const Stream* s,uint32_t tick)
 uint8_t* chip(Stream* s){return s->buffers;}
 uint32_t fastBytes(const Stream* s){return ((sizeof(Stream)+7)&~7UL)+((s->bytes+7)&~7UL);}
 }
+
+#ifdef AITD_EFFECT_PREP_PROBE
+// Isolated user-mode fixture: preparation only; never installs an IRQ or DMA.
+// GDB brackets each prepare call, excluding validation and disposal from timing.
+extern "C" {
+volatile uint32_t g_effectPrepCase=0;
+EffectDma::Stream* volatile g_effectPrepStream=0;
+__attribute__((noinline)) void aitdEffectPrepBegin(){asm volatile("" ::: "memory");}
+__attribute__((noinline)) void aitdEffectPrepEnd(){asm volatile("" ::: "memory");}
+__attribute__((noinline)) void aitdEffectPrepReleased(){asm volatile("" ::: "memory");}
+}
+bool EffectDma::preparationProbe(const uint8_t* pcm,uint32_t bytes)
+{
+    if(bytes!=131073)return false;
+    for(uint32_t n=0;n<6;++n) {
+        const uint32_t size=n<3 ? 4096 : bytes,begin=n<3 ? 512 : 0,end=n<3 ? 1024 : 0;
+        uint8_t counter[2]={0,3};const char* error=0;
+        g_effectPrepCase=n;
+        aitdEffectPrepBegin();
+        Stream* s=prepare(pcm,size,begin,end,counter,error);
+        g_effectPrepStream=s;
+        aitdEffectPrepEnd();
+        bool ok=s && !error;
+        if(ok) {
+            ok=fastBytes(s)==((sizeof(Stream)+7)&~7UL)+((size+7)&~7UL)
+               && s->cursor.size==size && s->cursor.loopStart==begin
+               && s->cursor.loopEnd==end && !s->installed
+               && !s->cursor.position && !s->cursor.boundaries
+               && counter[0]==0 && counter[1]==3;
+            for(uint32_t i=0;i<size;++i)if(s->converted[i]!=(pcm[i]^0x80))ok=false;
+            for(uint16_t i=0;i<fragment*2;++i)if(s->buffers[i])ok=false;
+        }
+        dispose(s);g_effectPrepStream=0;
+        aitdEffectPrepReleased();
+        if(!ok)return false;
+    }
+    return true;
+}
+#endif

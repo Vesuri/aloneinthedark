@@ -45,15 +45,6 @@ are in that document; preserve matching game state when comparing changes.
   *Done when* the hardware performance comparison and complete visual/audio run
   are recorded. Corrected FS-UAE functional checks do not satisfy this hardware gate.
 
-- **FRAME.10 Assess repeated streamed-effect preparation.**
-  The fight-frame effect target measures one-shot playback. Looping effects and
-  samples over 131,070 bytes use separate stream conversion/storage and do not
-  reuse the one-shot cache. This is a distinct workload, not evidence of a defect.
-
-  *Done when* a bounded repeated-loop/long-sample profile establishes preparation
-  cost and memory use, with a justified optimization proposal or a finding that
-  no change is warranted. Preserve loop counters, tails, replacement and DMA timing.
-
 ## Runtime overhead
 
 - **HEAP.1 Adopt shared heap helpers in Prince of Persia 2 — deferred by the owner.**
