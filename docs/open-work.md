@@ -159,3 +159,16 @@ separately without silently changing original game logic.
   callback time consistent, preserve rollover and completed-frame pacing, and
   leave original game instructions unchanged. A TickCount-only interpolation
   that can get ahead of the low-memory shadow is insufficient.
+
+## File information path preservation
+
+- **FILES.1 Preserve named GetFInfo paths.** `dispatchFileCatalog` currently
+  rewrites the caller's name buffer to the leaf name even for a named query.
+  Prince of Persia 2's original System 7 captures preserve `:Data:Prince.hof`
+  across GetFInfo; shortening that path makes its following SetFInfo fail with
+  file-not-found. Check the equivalent contract against this port's Macintosh
+  reference and callers before changing the adapter. Consult the shared workflow.
+
+  *Done when* paired named-path and indexed-query controls establish which name
+  buffers change, chained GetFInfo/SetFInfo still resolves the intended file,
+  and existing file catalog and persistence regressions pass.
