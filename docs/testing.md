@@ -127,6 +127,39 @@ Performance uses two uninstrumented `amiga/aprof.sh monster NAME` runs, with
 [caller-filtered reports](performance.md#thin-solid-lines). The differential and
 live-call observers are correctness checks, never timing measurements.
 
+## VBL task contracts
+
+`tools/mac_vbl.lua` calls original VInstall/VRemove on the System 7.5.5 Mac IIx
+reference at AitD's InitGraf return, using authored tasks in spare stack RAM.
+Use the headless command below, substituting this script for `mac_movehhi.lua`.
+Require normal emulator completion, `TIMING_VBL_COMPLETE removal=1`, and no
+`FAIL VBL`. The script asserts all four initial counts (1, 2, 0, -1), three
+rearmed callbacks for positive counts, modulo-16-bit dormant countdowns over
+thirty ticks, automatic removal, subsequent VRemove results and retained qLinks.
+It changes no original game or OS instruction.
+
+For the native counterpart:
+
+```sh
+. amiga/env.sh
+make -C amiga clean
+make -C amiga -j4 VBLPROBE=1 SERVICEPROBE=1 INTROSKIP=1
+AMIGA_CONFIG=a4000-030-reference DIAG_RUN_DIR=.run-vbl-contract \
+  GDBSCRIPT=vbl_contract.gdb amiga/diag_run.sh 90
+AMIGA_CONFIG=a4000-030-reference DIAG_RUN_DIR=.run-vbl-contract \
+  GDBSCRIPT=service.gdb amiga/diag_run.sh 90
+```
+
+Require normal zero-status completion and each observer's PASS. The native fixture
+checks seven cases through real traps and the user-mode callback trampoline,
+including two adjacent tasks deferred for six ticks. Both must drain three callbacks
+with identical consecutive virtual ticks before returning from the first safe trap;
+automatic removal must not skip the next entry. Explicit and automatic removal
+retain qLink. The service fixture checks registers, CCR, stack and user-mode entry.
+No debugger stop occurs within the contract fixture. Clean-build without these
+flags afterwards. Gameplay validation uses the bounded `vbl_latency.gdb` comparison
+and the debugger-free monster audit; these service tests alone do not prove gameplay.
+
 ## Original MoveHHi reference
 
 `tools/mac_movehhi.lua` calls original traps in a private 64 KiB zone on the

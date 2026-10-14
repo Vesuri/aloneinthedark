@@ -409,6 +409,11 @@ EXTRA_DEFINES += -DAITD_IDENTITY_PROBE
 PROBE_SYMS_IDENTITY = g_identityProbeStage
 endif
 
+ifeq ($(VBLPROBE),1)
+EXTRA_DEFINES += -DAITD_VBL_PROBE
+PROBE_SYMS_VBL = g_vblProbeDone g_vblProbeCases g_vblProbeTask
+endif
+
 ifeq ($(HEAPPROBE),1)
 EXTRA_DEFINES += -DAITD_HEAP_PROBE
 PROBE_SYMS_HEAP = g_heapProbeStage g_heapProbeDone
@@ -579,6 +584,7 @@ PROBE_SYMS += g_overlayChainVerified g_overlaySourceReads g_overlaySourceBytes g
 PROBE_SYMS += g_resourceSourceReads g_resourceSourceBytes g_resourceSourceMax g_resourceRuntimeReads g_resourceRuntimeBytes g_resourceSourceOpen g_resourceSourceCloseErrors
 PROBE_SYMS += g_systemWindows g_windowFields g_systemWindowActive $(PROBE_SYMS_WINDOW)
 PROBE_SYMS += g_macServiceActive g_macServiceEntered g_macServiceCompleted $(PROBE_SYMS_SERVICE)
+PROBE_SYMS += $(PROBE_SYMS_VBL)
 PROBE_SYMS += g_stageCDepth $(PROBE_SYMS_HEAP) $(PROBE_SYMS_IDENTITY)
 PROBE_SYMS += g_loadedCodeMask g_code3Base g_applicationZoneBase g_systemZoneBase g_heapFree g_heapSystemFree g_heapError g_lowMemoryValidatedSites g_lowMemoryAppliedSites
 PROBE_SYMS += g_macLowMemory g_startupCode g_startupLowMemoryPatches

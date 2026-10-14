@@ -352,6 +352,15 @@ void aitd_line_a_probe();
 void aitd_line_a_exit_probe();
 __attribute__((noinline)) void aitdLineAProbeComplete() { __asm__ volatile("" ::: "memory"); }
 #endif
+#ifdef AITD_VBL_PROBE
+volatile uint32_t g_vblProbeDone=0, g_vblProbeCases=0;
+uint8_t g_vblProbeTask[80] __attribute__((aligned(4))) = {};
+void aitd_vbl_probe_callback();
+int32_t aitd_vbl_probe_install(void*);
+int32_t aitd_vbl_probe_remove(void*);
+void aitd_vbl_probe_poll();
+__attribute__((noinline)) void aitdVBLProbeComplete() { __asm__ volatile("" ::: "memory"); }
+#endif
 #ifdef AITD_HEAP_PROBE
 volatile uint32_t g_heapProbeStage=0, g_heapProbeDone=0;
 void aitd_heap_probe();
@@ -6674,7 +6683,7 @@ static int16_t removeVBLTask(uint8_t* task)
     s_vblTasks[s_vblTaskCount] = 0;
     for (uint16_t i = 0; i < s_vblTaskCount; ++i)
         write32(s_vblTasks[i], i + 1 < s_vblTaskCount ? (uint32_t)s_vblTasks[i + 1] : 0);
-    write32(task, 0);
+    // Dequeue leaves the removed record's qLink unchanged on System 7.5.5.
 
     s_vblPass.removed(index);
     if (!s_vblTaskCount) {
@@ -6706,14 +6715,14 @@ static void scheduleVBLTask()
             // two distinct passes: a one-tick task may rearm and run in both.
             for (uint16_t i = 0; i < s_vblPass.limit; ++i) {
                 uint8_t* task = s_vblTasks[i];
-                int16_t count = (int16_t)read16(task + 10);
-                if (count > 0) write16(task + 10, (uint16_t)(count - 1));
+                uint16_t count = read16(task + 10);
+                write16(task + 10, (uint16_t)(count - 1));
             }
         }
 
         while (s_vblPass.index < s_vblPass.limit) {
             uint8_t* task = s_vblTasks[s_vblPass.index++];
-            if ((int16_t)read16(task + 10) > 0) continue;
+            if (read16(task + 10) != 0) continue;
 
             // MacEntry.s substitutes a user-mode trampoline for the normal
             // trap return PC.  Only one callback is dispatched at this safe
@@ -6747,10 +6756,84 @@ static inline void pollVBLTask()
 // is caught up, just as the Macintosh VBL interrupt dispatcher does.
 extern "C" void aitdVBLCallbackComplete()
 {
+    // System 7.5.5 removes an unrearmed task after its callback. Check queue
+    // membership before reading its record: a callback may remove itself.
+    uint8_t* task = (uint8_t*)g_macVBLCallbackTask;
+    g_macVBLCallbackTask = 0;
+    g_macVBLCallbackA5 = 0;
+    for (uint16_t i = 0; i < s_vblTaskCount; ++i) {
+        if (s_vblTasks[i] == task) {
+            if (read16(task + 10) == 0) removeVBLTask(task);
+            break;
+        }
+    }
     scheduleVBLTask();
     if (!g_macVBLCallbackEntry && g_macTicksAddress)
         write32((uint8_t*)g_macTicksAddress, g_macTicks);
 }
+
+#ifdef AITD_VBL_PROBE
+static void vblContractProbe()
+{
+    const uint16_t initial[]={1,2,0,0xffff,1};
+    for (uint16_t n=0;n<5;++n) {
+        for(uint16_t i=0;i<sizeof(g_vblProbeTask);++i)g_vblProbeTask[i]=0;
+        write16(g_vblProbeTask+4,1);
+        write32(g_vblProbeTask+6,(uint32_t)aitd_vbl_probe_callback);
+        write16(g_vblProbeTask+10,initial[n]);
+        if(aitd_vbl_probe_install(g_vblProbeTask)!=0) return;
+        uint32_t start=s_vblPass.last;
+        if(n==4) {
+            uint8_t* second=g_vblProbeTask+40;
+            write16(second+4,1);
+            write32(second+6,(uint32_t)aitd_vbl_probe_callback);
+            write16(second+10,1);
+            if(aitd_vbl_probe_install(second)!=0)return;
+            // No trap or callback safe point for six ticks. The next trap must
+            // drain all three rearmed invocations before returning to us.
+            while(uint32_t(g_macTicks-start)<6) {}
+            if(read16(g_vblProbeTask+16)!=0) return;
+            aitd_vbl_probe_poll();
+        } else {
+            do { aitd_vbl_probe_poll(); } while(uint32_t(g_macTicks-start)<30);
+        }
+        uint16_t calls=read16(g_vblProbeTask+16);
+        bool dormant=n==2 || n==3;
+        if(calls!=(dormant?0:3))return;
+        if(dormant) {
+            if(read16(g_vblProbeTask+10)!=(uint16_t)(initial[n]-(s_vblPass.tick-start)))return;
+        } else {
+            if(read16(g_vblProbeTask+10)!=0 || s_vblTaskCount!=0)return;
+            if(read32(g_vblProbeTask+28)-read32(g_vblProbeTask+24)!=1
+                || read32(g_vblProbeTask+32)-read32(g_vblProbeTask+28)!=1)return;
+        }
+        if(n==4) {
+            uint8_t* second=g_vblProbeTask+40;
+            if(read16(second+16)!=3 || read16(second+10)!=0)return;
+            if(read32(g_vblProbeTask)!=(uint32_t)second || read32(second)!=0)return;
+            for(uint16_t i=24;i<=32;i+=4)
+                if(read32(second+i)!=read32(g_vblProbeTask+i))return;
+            if(aitd_vbl_probe_remove(second)!=-1)return;
+            ++g_vblProbeCases;
+        }
+        if(aitd_vbl_probe_remove(g_vblProbeTask)!=(dormant?0:-1))return;
+        if(s_vblTaskCount || g_macVBLCallbackEntry || g_macVBLCallbackActive)return;
+        ++g_vblProbeCases;
+    }
+    // Explicit removal must retain the same qLink as automatic removal.
+    for(uint16_t i=0;i<sizeof(g_vblProbeTask);++i)g_vblProbeTask[i]=0;
+    for(uint16_t i=0;i<80;i+=40) {
+        write16(g_vblProbeTask+i+4,1);
+        write32(g_vblProbeTask+i+6,(uint32_t)aitd_vbl_probe_callback);
+        if(aitd_vbl_probe_install(g_vblProbeTask+i)!=0)return;
+    }
+    if(aitd_vbl_probe_remove(g_vblProbeTask)!=0
+        || read32(g_vblProbeTask)!=(uint32_t)(g_vblProbeTask+40)
+        || aitd_vbl_probe_remove(g_vblProbeTask+40)!=0 || s_vblTaskCount)return;
+    ++g_vblProbeCases;
+    g_vblProbeDone=1;
+}
+#endif
 
 static void presentMacRuntime(bool completedFrame=false)
 {
@@ -11780,6 +11863,13 @@ bool MacLoader::run(AitdScreen* screen)
     g_macRndSeedAddress = (volatile uint32_t*)(s_portLowMemory + kLowRndSeed);
     s_currentA5 = a5;
     Enable();
+#ifdef AITD_VBL_PROBE
+    installLineAVector();
+    aitd_call_mac_code((void*)vblContractProbe,a5,g_macStackBase+65536);
+    restoreLineAVector();
+    aitdVBLProbeComplete();
+    return g_vblProbeDone==1;
+#endif
 #ifdef AITD_WINDOW_PROBE
     installLineAVector();
     aitd_call_mac_code((void*)aitd_window_probe,a5,g_macStackBase+65536);

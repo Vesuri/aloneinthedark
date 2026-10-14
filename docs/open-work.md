@@ -57,22 +57,6 @@ are in that document; preserve matching game state when comparing changes.
   original/native placement, unchanged-size, grow/shrink, failure and fragmented
   heap fixtures, with matched native workloads establishing the effect.
 
-## VBL service contracts
-
-- **VBL.1 Verify dormant countdowns and callback auto-removal.**
-  `scheduleVBLTask` decrements only positive counts and dispatches zero/negative
-  counts; `aitdVBLCallbackComplete` leaves a callback's zero-count task queued.
-  Prince of Persia 2's System 7.5.5 fixture instead observes modulo-16-bit
-  countdowns, dispatch only on reaching zero, and removal when a callback
-  returns without rearming. Reproduce these cases on this game's Macintosh
-  reference before changing the service; the shared `VBLPasses` helper only
-  owns queue-pass bookkeeping, not these task semantics.
-
-  *Done when* paired original/native fixtures cover initial counts 1, 2, 0 and
-  -1, rearming, automatic removal, subsequent `VRemove` results and queued
-  passes; confirmed deviations are corrected through the shared workflow,
-  callback ABI checks pass, and existing gameplay/VBL latency gates pass.
-
 ## Profiling validity
 
 - **MEASURE.3 Verify debugger-injected negative controls reach the CPU.**
@@ -96,6 +80,17 @@ are in that document; preserve matching game state when comparing changes.
   initial state with byte-identical prepared preferences, a clean repeat passes
   the profile's state/field checks, and original preferences are restored on
   success and failure. Preserve the explicit initial-state diagnostic.
+
+- **TEST.6 Verify the standalone fight-song observer's setup.**
+  `gameplay_fight.gdb` with `INGAME=1` timed out on maximum-speed `a4000-030`
+  after installing its original Core caller breakpoints. The maintained
+  debugger-free monster audit reaches song 132 and normal cleanup. Determine
+  whether the standalone fixture lacks required setup or loses its live caller;
+  do not treat its timeout as evidence of a gameplay failure or a pass.
+
+  *Done when* its documented build/settings produce a bounded positive song-132
+  transition with caller-byte, register and resource checks, or the obsolete
+  observer is replaced by equivalent maintained coverage.
 
 - **MEASURE.2 Preserve the executed PC across CPU exceptions.**
   The profiler reads `instruction_pc` after the CPU instruction returns, but

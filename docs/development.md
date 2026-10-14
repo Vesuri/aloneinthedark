@@ -213,6 +213,19 @@ Update the canonical source and install through AmigaXDev before updating consum
 The loader’s big-endian word/longword accesses also use the canonical
 `BigEndianMemory.h`; their 68020 instructions and unaligned-access contract are unchanged.
 
+### VBL task lifetime
+
+Each virtual retrace decrements every queued task's 16-bit count modulo 65536;
+only a count reaching zero dispatches. A callback may rearm its task. If it leaves
+zero, completion removes it before continuing the same pass. Membership is checked
+before touching the returned task record, so a callback that removed itself is safe.
+Removal retains the record's qLink, as on the System 7.5.5 reference; VRemove returns
+qErr (-1) for an already removed task. Queue links of remaining tasks still update.
+
+The unchanged canonical `VBLPasses` helper owns elapsed-pass accounting and iterator
+adjustment on removal. Countdown and record lifetime remain in the adapter. Callbacks
+still execute only at user-mode safe points with the virtual pass's Ticks shadow.
+
 ### BlockMove copies
 
 `BlockMoveBytes` copies 128 bytes per loop with 32 68020 `MOVE.L`
