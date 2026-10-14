@@ -9,6 +9,8 @@
 	.globl aitdRGBQuick
 	.type aitdRGBQuick,@function
 aitdRGBQuick:
+	.globl aitdTrapGuardRGB
+aitdTrapGuardRGB:
 	.include "../src/platform/amiga/QuickSceneGuard.inc"
 	| The measured early foreground caller requires the general handler.
 	cmpi.w #0xaa14,d7
@@ -20,7 +22,10 @@ aitdRGBQuick:
 	lea 60(sp),a0
 	cmp.l 2(a0),d0
 	beq.w .miss
-3:	move.l (a6),a0
+3:
+	.globl aitdRGBQuickBody
+aitdRGBQuickBody:
+	move.l (a6),a0
 	move.l (a0),a0
 	cmpa.l #0,a0
 	beq.w .miss
@@ -146,6 +151,8 @@ aitdRGBQuick:
 	moveq #5,d0
 	jmp aitdQuickNativeDone
 .miss:
+	.globl aitdRGBQuickFallback
+aitdRGBQuickFallback:
 	lea aitdRGBQuickMiss,a4
 	jmp aitdQuickCBridge
 	.size aitdRGBQuick,.-aitdRGBQuick

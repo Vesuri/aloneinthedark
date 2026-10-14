@@ -65,12 +65,10 @@ are in that document; preserve matching game state when comparing changes.
   `apple_events.gdb` and `m5_circuit.gdb` + `check_m5_audit.py` pass with no added
   lateness, and full-phase instruction-PC trap entry/dispatch is ≤ 9 ms per fight frame.
 
-  Measurement ambiguity: the target was derived from an adjusted call-tree bucket,
-  which excludes some exception/assembly work and cannot reliably attribute the
-  new tail-jump paths. Adjusted categories are unavailable; reconcile the original
-  and current accounting
-  before accepting the numerical gate; include dispatch guards moved into drawing
-  wrappers. A smaller reported bucket alone does not establish a speedup.
+  Acceptance includes CPU exception entry, native entry/dispatch, common return,
+  and dispatch guards moved into drawing wrappers. Service bodies remain separate.
+  Use full-phase instruction-PC accounting; adjusted call-tree categories are
+  unavailable and cannot establish this gate. Correcting attribution is not a speedup.
 
 - **FRAME.5 Speed up large BlockMove copies.**
   `Dark+$1B7A` makes 39 large BlockMoves in the fight (1.15 ms each, 5.5 ms per frame).

@@ -64,6 +64,8 @@ aitdStateQuickPen:
 4:	moveq #3,d0
 	jmp aitdQuickNativeDone
 .body:
+	.globl aitdStateQuickFallback
+aitdStateQuickFallback:
 	lea aitdStateQuickDraw,a4
 	jmp aitdQuickCBridge
 .miss:

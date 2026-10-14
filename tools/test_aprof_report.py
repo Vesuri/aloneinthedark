@@ -85,6 +85,17 @@ class AprofReport(unittest.TestCase):
         self.assertEqual(bucket('ROM', 'ROM $F81100'), 'Kickstart and other')
 
 
+    def test_quick_guard_body_boundaries(self):
+        for name in ('aitdTrapGuardRGB', 'aitdTrapGuardLine', 'aitdCopyBitsQuick',
+                     'aitdRGBQuickFallback', 'aitdLineQuickFallback',
+                     'aitdStateQuickFallback', 'aitdCopyBitsQuickDraw'):
+            self.assertEqual(bucket('NATIVE', name), 'Trap entry and dispatch')
+        self.assertEqual(bucket('NATIVE', 'aitdRGBQuickBody'), 'RGB lookup and quick dispatch')
+        self.assertEqual(bucket('NATIVE', 'aitdLineQuickBody'), 'Particle rectangles and quick dispatch')
+        self.assertEqual(bucket('NATIVE', 'aitdStateQuickPen'), 'QuickDraw: pen state')
+        self.assertEqual(bucket('NATIVE', 'randomTrap(bool, unsigned long)'), 'Other trap service bodies')
+
+
 class MonsterAudit(unittest.TestCase):
     def report(self, pal=1):
         states = [(137,4,-1), (136,4,-1), (136,4,23), (136,237,22), (131,272,23)]

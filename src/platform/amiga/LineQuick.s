@@ -5,7 +5,11 @@
 	.globl aitdLineQuick
 	.type aitdLineQuick,@function
 aitdLineQuick:
+	.globl aitdTrapGuardLine
+aitdTrapGuardLine:
 	.include "../src/platform/amiga/QuickSceneGuard.inc"
+	.globl aitdLineQuickBody
+aitdLineQuickBody:
 	move.l (a6),a0
 	move.l (a0),a0
 	cmpa.l #0,a0
@@ -141,6 +145,8 @@ aitdLineQuickPoint:
 	move.w 6(a1),d3
 6:	rts
 .drawMiss:
+	.globl aitdLineQuickFallback
+aitdLineQuickFallback:
 	lea aitdStateQuickDraw,a4
 	jmp aitdQuickCBridge
 .miss:

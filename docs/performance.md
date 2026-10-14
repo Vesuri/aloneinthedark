@@ -19,13 +19,13 @@ callbacks. Selected exclusive costs are:
 | Work | ms/frame |
 | --- | ---: |
 | Original Macintosh instructions | 128.59 |
-| Trap entry and dispatch | 14.89 |
-| CopyBits | 14.74 |
+| Trap entry and dispatch (conservative) | 16.56 |
+| CopyBits | 13.72 |
 | C2P | 13.00 |
 | Port state lookups | 5.03 |
 | Fills, lines and regions | 3.77 |
-| RGB lookup and quick dispatch | 3.30 |
-| Particle rectangles and quick dispatch | 2.47 |
+| RGB lookup and quick dispatch | 2.19 |
+| Particle rectangles and quick dispatch | 1.86 |
 
 Use the full-phase PC bucket for the dispatch budget. CPU exception entry is
 currently charged to the first native handler instruction, inflating that
@@ -40,13 +40,16 @@ excluded work and must not be substituted for adjusted categories. Different bui
 can take different intermediate combat routes: these
 averages do not establish a matched-state FPS improvement or a hardware result.
 
-FRAME.4’s original 18.31 ms baseline and 9 ms target used the adjusted call-tree
-bucket, not the full-phase PC bucket above. These are not interchangeable: common
-exception/assembly work can be outside the former, while native guard instructions
-now sit inside drawing wrappers. Acceptance accounting must reconcile both changes;
-neither the adjusted bucket nor subtraction of common entry code alone proves the
-9 ms target. The full-phase dispatch bucket fell from 20.34 to 14.89 ms with the
-retained changes; the numerical acceptance gate remains unresolved.
+FRAME.4 requires **≤9 ms per fight frame including CPU exception entry and
+return**, plus dispatch guards moved into drawing wrappers; service bodies remain
+separate. Zero-byte assembly guard/body labels permit the separation without
+changing the executable. Re-symbolizing the retained profile with a byte-identical
+measurement build yields the table above: guards and C argument marshalling move
+into dispatch, while pen-state and standalone service bodies move out. Its **16.56 ms**
+is a conservative bound: mixed C dispatch functions still contain some service
+work. The earlier 14.89 ms function-name bucket omitted drawing-wrapper guards;
+these are accounting corrections, not changes in execution speed. The target
+remains unmet. Old profile ELFs without the boundary symbols retain coarse buckets.
 
 ## RGB lookup and dispatch
 

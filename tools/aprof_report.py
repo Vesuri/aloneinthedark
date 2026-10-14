@@ -134,6 +134,21 @@ def bucket(region, function):
         return 'Original Mac game code'
     if region != 'NATIVE':
         return 'Kickstart and other'
+    # Assembly guard/body boundaries are zero-byte symbols. Keep the complete
+    # common entry/return and moved guards in dispatch, including C marshalling.
+    # Older ELFs lack the boundaries and retain their coarse function buckets.
+    if function in ('aitdTrapGuardRGB', 'aitdTrapGuardLine', 'aitdCopyBitsQuick',
+                    'aitdRGBQuickFallback', 'aitdLineQuickFallback',
+                    'aitdStateQuickFallback'):
+        return 'Trap entry and dispatch'
+    if function.startswith(('aitdRGBQuickMiss', 'aitdLineQuickMiss',
+                            'aitdCopyBitsQuickDraw', 'aitdCopyBitsQuickMiss')):
+        return 'Trap entry and dispatch'
+    if function == 'aitdStateQuickPen':
+        return 'QuickDraw: pen state'
+    if function.startswith(('randomTrap(', 'graphicsQuery(', 'clipRectTrap(',
+                            'findWindowTrap(', 'blockMoveTrap(', 'obscureCursorTrap(')):
+        return 'Other trap service bodies'
     for name, keys in BUCKETS:
         if any(k in function for k in keys):
             return name
