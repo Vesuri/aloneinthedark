@@ -409,8 +409,8 @@ Build a production archive before testing its installation:
 ```sh
 . amiga/env.sh
 make release
-python3 tools/install-data/test_installer_script.py --release=dist/AloneInTheDark-0.91.lha --fresh
-python3 tools/install-data/test_installer_script.py --release=dist/AloneInTheDark-0.91.lha
+python3 tools/install-data/test_installer_script.py --release=dist/AloneInTheDark-0.92.lha --fresh
+python3 tools/install-data/test_installer_script.py --release=dist/AloneInTheDark-0.92.lha
 python3 tools/install-data/test_amiga.py
 python3 tools/test_whdload.py --mode timed --ticks 6000 --seconds 180
 python3 tools/test_whdload.py --mode timed --cpu 68040 --mmu --ticks 6000 --seconds 180

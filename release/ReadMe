@@ -98,6 +98,10 @@
 
  History:
  --------
+ version 0.92 (15.10.2026):
+ - smoother gameplay, especially during fights
+ - shorter pauses when music changes
+
  version 0.91 (10.10.2026):
  - faster book page turns and improved overall performance
  - fixed crashes on systems with an MMU

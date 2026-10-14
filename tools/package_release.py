@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 ICONS = ROOT/'release/icons'
 ORIGINAL_HASHES = set(re.findall(r'"([0-9a-f]{64})"', (ROOT/'tools/install-data/originals.h').read_text()))
 PREFIX = "Alone in the Dark Install"
-STAMP = release.dos_stamp(2026, 10, 10)
+STAMP = release.dos_stamp(2026, 10, 15)
 crc16 = release.crc16
 
 def installer_icon(game=False):

@@ -10,7 +10,7 @@ The game runs through the ending and
 returns to the title sequence. See the [coverage and limits](docs/testing.md#gameplay-coverage)
 and [open work](docs/open-work.md) for the remaining investigations.
 
-Current Amiga release: **0.91 (10.10.2026)**.
+Current Amiga release: **0.92 (15.10.2026)**.
 
 ## Requirements and installation
 
@@ -22,7 +22,7 @@ Current Amiga release: **0.91 (10.10.2026)**.
   CPU support library installed and both instruction and data caches enabled.
   The executable preserves the OS cache policy; WHDLoad manages its own policy.
 
-Extract `AloneInTheDark-0.91.lha`, open its **Alone in the Dark Install** drawer
+Extract `AloneInTheDark-0.92.lha`, open its **Alone in the Dark Install** drawer
 and run **Install**. Select the destination, temporary drawer and the
 [AloneInTheDark.img_.sit StuffIt archive](https://www.macintoshrepository.org/download.php?id=5338).
 Leave it compressed: the included helper extracts and verifies all 74 files.
@@ -66,7 +66,7 @@ Python 3, an LH5-capable LHa encoder and Lhasa's `lha` for independent validatio
 make release
 ```
 
-This builds `dist/AloneInTheDark-0.91.lha` without original game data. For a
+This builds `dist/AloneInTheDark-0.92.lha` without original game data. For a
 standalone executable, use `make -C amiga`. Tool paths, environment overrides,
 local data and emulator setup are in [development.md](docs/development.md).
 The [testing guide](docs/testing.md) covers regression and release checks.
