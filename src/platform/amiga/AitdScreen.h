@@ -18,9 +18,7 @@
 
 class AitdScreen {
 public:
-    struct DirtyRect {
-        int16_t top, left, bottom, right;
-    };
+    typedef Planar8::Rect DirtyRect;
     static const uint16_t kMaxDirtyRects = 32;
 
     // Fixed physical display; the logical Mac source remains 640x480.

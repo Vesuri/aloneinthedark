@@ -36,14 +36,15 @@ static void checkBufferSync() {
         for(const auto& r:dirty)for(int y=r.top;y<r.bottom;++y)for(int x=r.left;x<r.right;++x)
             source[y*640+x]=uint8_t(frame*37+x*13+y*71);
         Planar8::Rect converted[32];uint16_t convertedCount=0;
-        for(const auto& r:dirty) {
-            Planar8::Rect local;
-            assert(Planar8::normalize(viewport,r,local));
-            if(local.top<local.bottom && local.left<local.right)
-                Planar8::append(converted,convertedCount,32,local);
-        }
+        // Exercise the bounded planner, including >32 inputs by a caller fallback.
+        if(dirty.size()>32)dirty={viewport};
+        assert(Planar8::plan(viewport,dirty.data(),dirty.size(),converted,32,convertedCount));
         assert(convertedCount<=32);
-        merged+=dirty.size()-convertedCount;
+        merged+=dirty.size()>convertedCount;
+        for(unsigned i=0;i<convertedCount;++i)for(unsigned j=0;j<i;++j) {
+            const auto& a=converted[i];const auto& b=converted[j];
+            assert(a.top>=b.bottom || a.bottom<=b.top || a.left>=b.right || a.right<=b.left);
+        }
         // Converted rectangles cover every dirty pixel.
         for(const auto& r:dirty)for(int y=r.top;y<r.bottom;++y)for(int x=r.left;x<r.right;++x) {
             bool covered=false;
@@ -77,8 +78,54 @@ static void checkBufferSync() {
     assert(merged && skipped && copied);
     puts("PASS Planar8 dirty-rectangle synchronization: 400 alternating-buffer frames, merged/overlapping/full/empty/overflowing updates, exact frame verification");
 }
+// Independent dynamic program over the 20 word-aligned columns: each legal
+// conversion covers an even number of columns. It may cover clean columns but
+// never overlap another conversion. No production planner code is reused.
+static void checkMinimalRows() {
+    uint32_t seed=29;
+    for(unsigned trial=0;trial<4096;++trial) {
+        seed=seed*1664525u+1013904223u;
+        unsigned mask=seed&0xfffff;
+        Planar8::Rect dirty[20],out[32];uint16_t n=0,count=0;
+        for(int x=0;x<20;++x)if(mask&(1u<<x))
+            dirty[n++]={0,int16_t(x*16+7),1,int16_t(x*16+9)};
+        assert(Planar8::plan({0,0,200,320},dirty,n,out,32,count));
+        unsigned best[21];best[20]=0;
+        for(int x=19;x>=0;--x) {
+            best[x]=(mask&(1u<<x)) ? 100 : best[x+1];
+            for(int end=x+2;end<=20;end+=2)
+                best[x]=std::min(best[x],unsigned(end-x)+best[end]);
+        }
+        unsigned area=0;
+        for(unsigned i=0;i<count;++i)area+=out[i].right-out[i].left;
+        assert(area==best[0]*16);
+    }
+    puts("PASS Planar8 minimum row coverage: 4096 independent word-column optimizations");
+}
 int main() {
     checkBufferSync();
+    checkMinimalRows();
+    // Two-actor capture: overlapping aligned boxes must become disjoint bands.
+    Planar8::Rect input[]={{209,307,256,354},{150,295,265,339}};
+    Planar8::Rect bands[32];uint16_t n=0;
+    assert(Planar8::plan({150,160,350,480},input,2,bands,32,n));
+    assert(n==3);
+    assert(same(bands[0],{0,128,59,192}));
+    assert(same(bands[1],{59,128,106,224}));
+    assert(same(bands[2],{106,128,115,192}));
+    assert(Planar8::plan({150,160,350,480},input,2,bands,1,n));
+    assert(n==1 && same(bands[0],{0,128,115,224}));
+    Planar8::Rect nearby[]={{0,16,1,17},{0,32,1,33}};
+    assert(Planar8::plan({0,0,200,320},nearby,2,bands,32,n));
+    assert(n==1 && same(bands[0],{0,16,1,48}));
+    Planar8::Rect outside[]={{-32768,-32768,-32000,-32000},{400,500,32767,32767}};
+    assert(Planar8::plan({150,160,350,480},outside,2,bands,32,n) && !n);
+    Planar8::Rect huge={-32768,-32768,32767,32767};
+    assert(Planar8::plan({150,160,350,480},&huge,1,bands,32,n));
+    assert(n==1 && same(bands[0],{0,0,200,320}));
+    assert(!Planar8::plan({0,0,200,320},nullptr,1,bands,32,n));
+    assert(!Planar8::plan({0,0,200,320},input,33,bands,32,n));
+    assert(!Planar8::plan({0,0,200,320},input,2,bands,0,n));
     std::vector<uint8_t> source(640*480),storage(Planar8::bytes+64,0xa5);
     uint8_t* output=storage.data()+32;
     for(unsigned y=0;y<480;++y)for(unsigned x=0;x<640;++x)
@@ -127,12 +174,6 @@ int main() {
     }
     assert(Planar8::normalize(viewport,{150,338,286,360},partial));
     assert(same(partial,{0,176,136,208}));
-    Planar8::Rect overlapping[2];uint16_t overlapCount=0;
-    Planar8::append(overlapping,overlapCount,2,{0,16,1,48});
-    Planar8::append(overlapping,overlapCount,2,{0,32,1,64});
-    assert(overlapCount==2); // A 48-pixel union would violate Kalms' contract.
-    Planar8::append(overlapping,overlapCount,1,{0,32,1,64});
-    assert(overlapCount==1 && same(overlapping[0],{0,16,1,80}));
     assert(Planar8::normalize(viewport,{-32768,-32768,32767,32767},partial));
     assert(same(partial,full));
     assert(Planar8::normalize({151,161,351,481},{150,160,153,162},partial));

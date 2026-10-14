@@ -477,12 +477,8 @@ int16_t AitdScreen::presentMacFrame(const uint8_t* chunky,const uint8_t* colorTa
         // A newly exposed viewport converts completely and supersedes any
         // rectangles pending from the old one.
         normalized[count++]={0,0,200,320};m_syncCount=0;
-    } else for(uint16_t i=0;i<dirtyRectCount;++i) {
-        const DirtyRect& d=dirtyRects[i];Planar8::Rect local;
-        if(!Planar8::normalize(viewport,{d.top,d.left,d.bottom,d.right},local))return -1;
-        if(local.top<local.bottom && local.left<local.right)
-            Planar8::append(normalized,count,kMaxDirtyRects,local);
-    }
+    } else if(!Planar8::plan(viewport,dirtyRects,dirtyRectCount,
+                           normalized,kMaxDirtyRects,count))return -1;
     // Vette's explicit synchronization: bring the previous frame's converted
     // rectangles to the inactive bitmap unless this frame replaces them.
     { AitdProfileScope profile(kProfileSync);

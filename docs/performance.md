@@ -148,6 +148,37 @@ trapless interrupt progress, effect priority and cleanup. The observer's shared
 selector-17 reader now accepts helper markers without an exception-frame local.
 Physical Amiga performance remains deferred.
 
+### Fight C2P coverage
+
+The reference-68030/PAL profiles `frame7-before` and `frame7-final` measure
+**13.25 → 10.91 ms of C2P per fight frame** (17.7% less). Inclusive
+`presentMacFrame`, including planning and back-buffer synchronization, measures
+**15.33 → 12.70 ms/frame**. Both use `MONSTERPROFILE=1 FIXEDRNG=1`, deterministic
+execution, 15.6672 MHz, unchanged OS cache policy (`CACR=$2001`), and no debugger
+stops inside measured phases. They complete through death with 342/343 fight
+frames and 3,505/3,449 fields. Intermediate combat trajectories differ, so these
+are workload costs, not a matched-state whole-game FPS claim.
+
+Previously, independently aligned actor rectangles overlapped. The coordinate
+planner now combines clipped spans in horizontal bands before alignment and
+converts each pixel at most once. The remaining cost exceeds 10 ms; the
+minimum-area alternative is satisfied: an independent row optimizer confirms
+minimum legal aligned coverage for all 40 native publications captured from the
+first hit (33 have multiple dirty rectangles), as well as 4,096 host patterns.
+The native `C2PVERIFY` oracle checks all 187 publications through that bounded
+capture with zero mismatches, including pixels outside the dirty areas. These
+correctness runs are separate from timing. Capacity overflow retains a safe
+bounding-box fallback; no excess area was observed in the captured frames.
+
+The host fixture also checks 400 alternating-buffer frames, clipping, empty and
+extreme bounds, non-overlap and bounded-storage fallback. The planner's compiled
+scratch/saved-register frame is 444 bytes; together with the presentation
+caller's 352 bytes it remains below 1 KiB before arguments and outer
+service/interrupt frames (the dispatcher adds 372 bytes).
+The production `frame_pacing.gdb` check passes all 106 logo and 840 book steps,
+including one wait/publication per complete step and the exact aligned book bounds.
+No pixel shadows or game-instruction changes are involved.
+
 ## Cycle profiler
 
 `amiga/aprof.sh` gives exact emulated cost, not samples. It runs a private FS-UAE

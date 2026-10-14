@@ -306,6 +306,21 @@ The [performance workflow](performance.md#debugger-free-hardware-audit) covers
 isolated preferences, emulator checks, hardware launch and report decoding.
 Real-Amiga benchmarks are deferred; use emulator runs only to validate collection.
 
+## Dirty-area conversion
+
+At publication, `Planar8::plan` clips the accumulated drawing rectangles to the
+viewport, splits them at their vertical edges, and combines horizontal spans
+before Kalms alignment. Each span starts on a 16-pixel boundary and has a width
+divisible by 32. Alignment-induced overlaps merge; identical adjacent bands
+coalesce. Each output pixel is converted at most once. No framebuffer snapshots
+or pixel comparisons select dirty areas.
+
+The bounded planner retains at most 32 conversion rectangles. If fragmentation
+exceeds that capacity, one aligned bounding rectangle covers all clipped inputs,
+including bands not yet visited. A viewport change still converts the whole
+viewport. Previous-frame rectangles remain the source of double-buffer
+synchronization; the full-pixel diagnostic checks preserved pixels too.
+
 ## Converted effect samples
 
 One-shot effects share up to four immutable Paula buffers, capped at 128 KiB

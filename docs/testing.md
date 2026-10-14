@@ -494,6 +494,29 @@ position for `tools/check_book_profile.py`, which compares an unchanged native b
 the candidate, the original Mac and the decoded AGA publication. Use separate capture
 folders and retain the actual runner status for every check.
 
+## Fight C2P bounds
+
+`tools/check_planar8.py` checks full-buffer synchronization and disjoint conversion
+on 400 frames, clipping/extreme coordinates, the bounded-storage fallback, and
+4,096 row patterns against an independent minimum-area calculation.
+
+For a bounded native correctness check, clean-build with
+`MONSTERPROFILE=1 FIXEDRNG=1 C2PVERIFY=1`, then run:
+
+```sh
+GDBSCRIPT=fight_c2p.gdb GDBTAIL=600 amiga/diag_run.sh 360
+python3 tools/check_fight_c2p.py amiga/.run/gdb-out.log --status 0
+```
+
+Pass the actual runner status; zero above illustrates a successful run. The
+observer starts at Carnby’s first hit and stops after 40 publications, which may
+include the end of the encounter on the slower verification build. The checker requires multi-rectangle
+inputs, clipped coverage, no overlap, and minimum aligned area on every row.
+The native oracle decodes every pixel, including those outside the dirty bands.
+Use the default maximum-speed 68030 for this expensive correctness diagnostic;
+never quote its timings. Timing uses the ordinary reference-68030 monster profile.
+Also run the production opening-boundary check below after changing planning.
+
 ## Opening frame boundaries and dirty-area audit
 
 Use a clean ordinary build with `GDBSCRIPT=frame_pacing.gdb` and the bounded

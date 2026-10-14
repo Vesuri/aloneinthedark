@@ -65,13 +65,6 @@ are in that document; preserve matching game state when comparing changes.
   cost and memory use, with a justified optimization proposal or a finding that
   no change is warranted. Preserve loop counters, tails, replacement and DMA timing.
 
-- **FRAME.7 Check fight-frame C2P bounds.**
-  C2P takes 12.6 ms per fight frame. Verify that two-actor dirty bounds are the
-  combined clipped coordinates before alignment and that no conversion overlaps.
-
-  *Done when* `frame_pacing.gdb` and the C2P verification build pass and C2P is
-  ≤ 10 ms per fight frame, or the bounds are shown to be already minimal.
-
 - **FRAME.9 Assess larger unmasked CopyBits calls.**
   The actor-mask target excludes larger unmasked copies. The reference-68030
   fight currently measures about 658 µs at (Dark, $1DE6) and 908 µs under Misc2.
