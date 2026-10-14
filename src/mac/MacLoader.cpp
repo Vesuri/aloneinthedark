@@ -6700,6 +6700,13 @@ static int16_t removeVBLTask(uint8_t* task)
     return 0;
 }
 
+#if defined(AITD_TICK_ROUTE) || defined(AITD_TICK_PROBE)
+extern "C" {
+extern volatile uint32_t g_tickCount, g_tickRows[42][5];
+void aitdTickProbeComplete();
+}
+#endif
+
 static void scheduleVBLTask()
 {
     invalidateQuickServices();
@@ -6812,12 +6819,14 @@ static void vblContractProbe()
             if(read16(g_vblProbeTask+10)!=(uint16_t)(initial[n]-(s_vblPass.tick-start)))return;
         } else {
             if(read16(g_vblProbeTask+10)!=0 || s_vblTaskCount!=0)return;
+            if(read32(g_vblProbeTask+36)!=read32(g_vblProbeTask+32))return;
             if(read32(g_vblProbeTask+28)-read32(g_vblProbeTask+24)!=1
                 || read32(g_vblProbeTask+32)-read32(g_vblProbeTask+28)!=1)return;
         }
         if(n==4) {
             uint8_t* second=g_vblProbeTask+40;
-            if(read16(second+16)!=3 || read16(second+10)!=0)return;
+            if(read16(second+16)!=3 || read16(second+10)!=0
+                || read32(second+36)!=read32(second+32))return;
             if(read32(g_vblProbeTask)!=(uint32_t)second || read32(second)!=0)return;
             for(uint16_t i=24;i<=32;i+=4)
                 if(read32(second+i)!=read32(g_vblProbeTask+i))return;
@@ -9937,6 +9946,24 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     if(trap==0xa975) {                       // TickCount() -> unsigned long stack result
         if(!g_macTicksAddress)goto unsupportedTrap;
         write32(userStack,*g_macTicksAddress);
+#ifdef AITD_TICK_ROUTE
+        const uint8_t* dan=s_segments[12].begin;
+        if(dan && read32(frame+2)==(uint32_t)dan+0x4970) {
+            if(read32(dan+0x496e)!=0x42a7a975UL
+                || read32(dan+0x4972)!=0x201f90aeUL
+                || read32(dan+0x4976)!=0xfe4a0c80UL
+                || read32(dan+0x497a)!=300) {
+                loaderStop("TICK ROUTE ORIGINAL BYTES",12);showLoaderStop();
+            }
+            uint32_t start=read32((uint8_t*)regs[14]-438),end=read32(userStack);
+            if(end-start>=300 && g_tickCount<2) {
+                volatile uint32_t* row=g_tickRows[g_tickCount++];
+                row[0]=300;row[1]=start;row[2]=end;
+                row[3]=regs[7];row[4]=g_vbiCount;
+                if(g_tickCount==2)aitdTickProbeComplete();
+            }
+        }
+#endif
         regs[1]=0;regs[9]=(uint32_t)userStack;
         return 1;
     }
@@ -11871,6 +11898,25 @@ bool MacLoader::run(AitdScreen* screen)
     g_macRndSeedAddress = (volatile uint32_t*)(s_portLowMemory + kLowRndSeed);
     s_currentA5 = a5;
     Enable();
+#ifdef AITD_TICK_PROBE
+    extern void tickContractProbe(),tickPendingControl(),tickRolloverProbe();
+    tickPendingControl();
+    installLineAVector();
+    aitd_call_mac_code((void*)tickContractProbe,a5,g_macStackBase+65536);
+    Disable();
+    uint32_t tickSaved=g_macTicks;
+    g_macTicks=0xfffffff8UL;*g_macTicksAddress=g_macTicks;
+    s_vblPass.reset(g_macTicks);
+    Enable();
+    aitd_call_mac_code((void*)tickRolloverProbe,a5,g_macStackBase+65536);
+    Disable();
+    g_macTicks=tickSaved+uint32_t(g_macTicks-0xfffffff8UL);
+    *g_macTicksAddress=g_macTicks;s_vblPass.reset(g_macTicks);
+    Enable();
+    restoreLineAVector();
+    aitdTickProbeComplete();
+    return true;
+#endif
 #ifdef AITD_VBL_PROBE
     installLineAVector();
     aitd_call_mac_code((void*)vblContractProbe,a5,g_macStackBase+65536);

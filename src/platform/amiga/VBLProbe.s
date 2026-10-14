@@ -24,7 +24,10 @@ aitd_vbl_probe_callback:
     bhs.s 2f
     move.l g_macTicksAddress,a1
     move.l (a1),24(a0,d0.w*4)
-2:  cmp.w #3,16(a0)
+2:  clr.l -(sp)
+    .word 0xa975
+    move.l (sp)+,36(a0)
+    cmp.w #3,16(a0)
     bhs.s 1f
     move.w #1,10(a0)
 1:  moveq #-1,d0

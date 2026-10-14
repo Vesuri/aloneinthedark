@@ -127,6 +127,74 @@ Performance uses two uninstrumented `amiga/aprof.sh monster NAME` runs, with
 [caller-filtered reports](performance.md#thin-solid-lines). The differential and
 live-call observers are correctness checks, never timing measurements.
 
+## Tick resolution
+
+`TICKPROBE=1` runs 20 five-tick, 20 seven-tick and two 300-tick waits on the
+private Mac stack. It uses the original eight-byte absolute-deadline loop from
+(Dan2, $3364). Seven ticks is that dialog loop's authored delay; five is a
+stress control, **not a measured repeated gameplay wait**. `tools/mac_tick_waits.lua`
+executes the same loop in spare reference RAM at InitGraf. Neither fixture changes
+original instructions. Native collection has no debugger stops inside the waits.
+
+On the reference 15.6672 MHz 68030, the paired capture gives:
+
+| Requested ticks | Mac IIx | Amiga PAL | Amiga NTSC |
+| --- | --- | --- | --- |
+| 5 (20 waits) | 5 each | 5–6; mean 5.9, settled 6 | 5 each |
+| 7 (20 waits) | 7 each | 7–8; mean 7.2 | 7 each |
+| 300 (2 waits) | 300 each | 300 each | 300 each |
+
+A settled five-tick wait therefore takes five PAL fields (100 ms), versus five
+Mac ticks (about 83.3 ms). This is clock quantization, not rendering cost. The
+**first two real book holds**, observed at (Dan1, $4970) without skipping or input,
+finish at 300 ticks on both machines. Native start/end pairs are 2155/2455 and
+2632/2932; the reference pairs are 4398/4698 and 4831/5131. Different boot and drawing
+durations explain their different absolute clock values; the state pairing is the
+same first two authored holds, not equal timestamps.
+
+The production clock remains field-updated. These captures do not establish a
+repeated five-tick delay in gameplay. A finer TickCount result alone would get ahead
+of direct low-memory Ticks reads such as (Dark, $4200). The shared `VideoTicks`
+helper proves the nominal within-field arithmetic, but does not supply a coherent
+hardware snapshot or change callback scheduling. A gameplay clock redesign is the
+separate potential TICK.2 investigation.
+
+The native fixture also masks interrupts until VERTB is pending: the clock/shadow
+must remain unchanged until service, then advance by one or two ticks. A separate
+user-mode loop samples through unsigned 32-bit rollover, checks modular monotonicity,
+and restores the clock before cleanup. `VBLPROBE=1` additionally checks that
+TickCount inside callbacks equals their virtual-pass Ticks, including two tasks
+catching up after six ticks without a safe point; the original `mac_vbl.lua` checks
+TickCount against Ticks in real callbacks. The absolute-deadline wait itself is not
+claimed rollover-safe; the rollover control tests the clock, not altered game logic.
+
+```sh
+. amiga/env.sh
+make -C amiga clean
+make -C amiga -j4 TICKPROBE=1
+AMIGA_CONFIG=a4000-030-reference AMIGA_VIDEO=PAL DIAG_RUN_DIR=.run-tick \
+  GDBSCRIPT=tick_waits.gdb amiga/diag_run.sh 90
+cp amiga/.run-tick/gdb-out.log tmp/tick-pal.log
+AMIGA_CONFIG=a4000-030-reference AMIGA_VIDEO=NTSC DIAG_RUN_DIR=.run-tick \
+  GDBSCRIPT=tick_waits.gdb amiga/diag_run.sh 90
+cp amiga/.run-tick/gdb-out.log tmp/tick-ntsc.log
+make -C amiga clean
+make -C amiga -j4 TICKROUTE=1
+AMIGA_CONFIG=a4000-030-reference AMIGA_VIDEO=PAL DIAG_RUN_DIR=.run-tick \
+  GDBSCRIPT=tick_route.gdb amiga/diag_run.sh 120
+cp amiga/.run-tick/gdb-out.log tmp/tick-route.log
+```
+
+Run `tools/mac_tick_waits.lua` and `tools/mac_tick_route.lua` with the documented
+[headless reference command](mac-reference-loop.md#runtime-trap-evidence), using a
+disposable copy of the reference disk and separate cfg/nvram directories. Save full
+logs and actual exit statuses, then pass the five logs (Mac/PAL/NTSC isolated waits,
+Mac/native book route) and `--statuses` to `tools/check_tick_waits.py`. It checks
+original resource bytes, complete ordered rows, deadlines, field cadence and control
+completion. Missing rows, missing controls, changed requests, early deadlines and
+missing completion are rejected. A timeout is never a pass. Clean-build without
+these flags afterwards; no timing fixture belongs in a release.
+
 ## VBL task contracts
 
 `tools/mac_vbl.lua` calls original VInstall/VRemove on the System 7.5.5 Mac IIx
@@ -152,7 +220,7 @@ AMIGA_CONFIG=a4000-030-reference DIAG_RUN_DIR=.run-vbl-contract \
 
 Require normal zero-status completion and each observer's PASS. The native fixture
 checks seven cases through real traps and the user-mode callback trampoline,
-including two adjacent tasks deferred for six ticks. Both must drain three callbacks
+including TickCount/virtual-Ticks agreement and two adjacent tasks deferred for six ticks. Both must drain three callbacks
 with identical consecutive virtual ticks before returning from the first safe trap;
 automatic removal must not skip the next entry. Explicit and automatic removal
 retain qLink. The service fixture checks registers, CCR, stack and user-mode entry.

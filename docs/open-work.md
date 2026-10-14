@@ -147,12 +147,15 @@ separately without silently changing original game logic.
 
 ## TickCount resolution
 
-- **TICK.1 Measure short waits against PAL field-only ticks.**
-  TickCount returns the field-updated shadow. The shared VideoTicks test shows
-  that repeated five-tick waits can lock onto six-tick intervals when observing
-  only the PAL sequence 0,1,2,3,4,6. This establishes the clock-resolution
-  limitation, not its effect on this game's routes. Measure the original and
-  state-paired native waits before changing the clock; investigate coherent
-  within-field sampling through the shared helper if affected.
-  Acceptance: matched original/native deadline and cadence evidence, with
-  monotonicity, rollover, pending-VBI and callback-time controls.
+- **TICK.2 Evaluate sub-field timing for gameplay animation — potential follow-up.**
+  The isolated short-deadline comparison in [testing](testing.md#tick-resolution)
+  establishes PAL quantization, not a gameplay speed regression. The engine also
+  reads Ticks directly at (Dark, $4200), independently of TickCount. Measure a
+  matched actor-animation/input route before proposing a finer clock.
+
+  *Done when* a reachable short-deadline workload has original/native state and
+  cadence evidence, and a coherent clock change is either justified or rejected.
+  Any implementation must keep direct reads, TickCount, pending VBI and queued
+  callback time consistent, preserve rollover and completed-frame pacing, and
+  leave original game instructions unchanged. A TickCount-only interpolation
+  that can get ahead of the low-memory shadow is insufficient.

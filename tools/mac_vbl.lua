@@ -20,8 +20,8 @@ function M.start()
   put(data,string.rep('\0',32))
   put(task,string.pack('>I4I2I4I2I2',0,1,callback,count,0))
   -- Increment counter, capture Ticks, rearm for one tick until three callbacks.
-  put(callback,string.pack('>I2I4I2I4I4I2I2I4I2I2I2I4I2',
-   0x5279,data,0x23f9,0x16a,data+4,0x0c79,3,data,0x6408,0x33fc,1,task+10,0x4e75))
+  put(callback,string.pack('>I2I4I2I4I4I2I2I2I4I2I2I4I2I2I2I4I2',
+   0x5279,data,0x23f9,0x16a,data+4,0x42a7,0xa975,0x23df,data+12,0x0c79,3,data,0x6408,0x33fc,1,task+10,0x4e75))
   program=program..string.pack('>I2I4I2I2I4',0x207c,task,0xa033,0x33c0,data+2)
  end
  -- Wait thirty guest ticks, without executing a game frame or changing its timers.
@@ -55,6 +55,7 @@ function M.poll()
   assert(links[i]==(i<4 and base+2048+32*(i+1) or 0),'automatic removal qLink')
   assert(mem:readv_u16(data+2)==0,'VInstall result')
   assert(mem:readv_u16(data)==(i<=2 and 3 or 0),'callback count')
+  assert(mem:readv_u32(data+12)==mem:readv_u32(data+4),'callback TickCount equals Ticks')
   assert(mem:readv_u16(task+10)==(i<=2 and 0 or ((count-elapsed)&0xffff)),'countdown')
  end
  print('TIMING_VBL_OBSERVED elapsed='..elapsed)
