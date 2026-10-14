@@ -258,6 +258,11 @@ endif
 # `make PROBES=1` — the sub-frame timing accumulators, read via the gdb stub (amiga/diag_run.sh).
 # OFF by default: the probes read chip registers several times per iteration, which is exactly
 # what a framerate build must not do.  ⚠ NEVER quote a framerate from a PROBES build.
+ifeq ($(THINLINECHECKS),1)
+INTROSKIP=1
+EXTRA_DEFINES += -DAITD_THIN_LINE_CHECKS
+PROBE_SYMS_THIN_LINE = g_thinLineChecks g_thinLineFast g_thinLineRejected
+endif
 ifeq ($(POINTLINEPROBE),1)
 INGAME=1
 PROBES=1
@@ -615,6 +620,7 @@ EXTRA_DEFINES += -DAITD_SONG_COST_PROBE
 PROBE_SYMS += g_songCost
 endif
 PROBE_SYMS += g_videoPAL g_paulaClock
+PROBE_SYMS += $(PROBE_SYMS_THIN_LINE)
 PROBE_SYMS += $(PROBE_SYMS_PAK)
 PROBE_SYMS += $(PROBE_SYMS_C2P)
 PROBE_SYMS += g_macFramesQueued g_macFramesPresented

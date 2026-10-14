@@ -92,11 +92,40 @@ For the assembly path, clean-build `INGAME=1`, create `tmp/line-points`, and run
 `--status 0` to `tools/check_line_points.py`. It observes 32 real particle calls,
 checks complete before/after buffers, ports and region records, and verifies the
 13 preserved registers, CCR and four-byte Pascal cleanup. The debugger only reads.
-Relative Line (`INTROSKIP=1` / `relative_line.gdb`) and the startup
-`menu_lifecycle.gdb` observer's `lineto_call.gdb` cover the fallback rasterizer.
+Relative Line (`INTROSKIP=1` / `relative_line.gdb`) and `line_to.gdb` / `lineto_call.gdb` cover the ordinary service entry.
 Use the paired-reference checkers `check_relative_line.py`, `check_point_line.py`
 and `check_line8.py`, retaining original captures and runner statuses.
 The combined RGB monster service audit also exercises particle frame-end guards.
+
+## Thin solid lines
+
+Clean-build `THINLINECHECKS=1` and run `thin_line_checks.gdb`. Its 15,886 in-target
+cases compare the emitted assembly with the original-paired `Line8` raster:
+all signed slopes through ±31, reversed directions, shifted origins, clip edges,
+full exclusion, extreme endpoints and rejected state/capacity. Rejection must leave
+pixels and pen position untouched. Scratch buffers are owned Fast RAM, not stack.
+Require the exact case counts and normal observer completion.
+
+For real trap calls, clean-build `INGAME=1 SCENEFRAMEVERIFY=1`, create
+`tmp/thin-lines`, and run `thin_lines.gdb`. Pass the complete log and actual runner
+status to `tools/check_thin_lines.py LOG --status STATUS`. It observes 16 LineTo
+and 16 relative Line calls after the assembly guard, comparing complete buffers,
+port/region state, all 13 preserved registers, CCR and Pascal cleanup. It also
+requires positive frame/service verification counts with zero failures. Do not stop
+at the quick-entry guard: debugger pauses can force its due-service fallback.
+
+With `INTROSKIP=1`, `line_to.gdb` invokes `lineto_call.gdb` directly; use
+`check_line8.py --reference MAC_LOG --status MAC_STATUS --native NATIVE_LOG
+--native-status NATIVE_STATUS` for the original full-buffer/CLUT/ABI comparison
+and 80 slope/reversal/clipping fixtures. `relative_line.gdb` and
+`check_relative_line.py` retain the relative caller and continuation checks. If
+its initial undefined pen coordinates differ, capture a paired Mac reference with
+`AITD_LINE_NATIVE_FIXTURE=1` and `tools/mac_relative_line.lua` using the documented
+headless MAME command; only the starting pen coordinates are transferred.
+
+Performance uses two uninstrumented `amiga/aprof.sh monster NAME` runs, with
+[caller-filtered reports](performance.md#thin-solid-lines). The differential and
+live-call observers are correctness checks, never timing measurements.
 
 ## Original MoveHHi reference
 

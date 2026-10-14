@@ -45,17 +45,6 @@ are in that document; preserve matching game state when comparing changes.
   *Done when* the hardware performance comparison and complete visual/audio run
   are recorded. Corrected FS-UAE functional checks do not satisfy this hardware gate.
 
-- **FRAME.8 Optimize ordinary thin-pen Line/LineTo strokes.**
-  The remaining 1×1 strokes in the reference-68030 fight average about 331 µs
-  for LineTo and 335 µs for relative Line. Profile validation, clipping and the
-  original rasterizer separately from the zero-displacement thick particle pens.
-  The owner chose to track this separately from FRAME.2.
-
-  *Done when* original slope/reversal/clipping fixtures, relative-line and
-  `lineto_call.gdb` pixel/ABI comparisons pass, and thin-pen Line/LineTo costs
-  ≤ 80 µs per call in repeatable fight profiles. Preserve exact raster ties,
-  dirty bounds and frame/callback service points.
-
 - **FRAME.10 Assess repeated streamed-effect preparation.**
   The fight-frame effect target measures one-shot playback. Looping effects and
   samples over 131,070 bytes use separate stream conversion/storage and do not

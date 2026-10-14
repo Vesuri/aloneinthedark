@@ -3,6 +3,7 @@
 
   aprof_report.py report NAME              summary, buckets, chip bus, flat, call tree, traps
   aprof_report.py annotate NAME FUNCTION   hottest instructions of a native function
+  aprof_report.py calls NAME LABEL --parent LABEL  inclusive per-call cost by caller
   aprof_report.py subtree NAME LABEL...    original/port time below call-tree labels
   aprof_report.py monster NAME [--compare BASE]  split/report/check the monster cycle
   aprof_report.py steady NAME --frames N --exclude LABEL  subtree-adjusted estimate
@@ -30,7 +31,8 @@ BUCKETS = [
     ('Trap entry and dispatch', ('aitd_line_a_handler', 'aitd_line_a_trap_entry', 'aitdQuickCBridge', 'aitdQuickNativeDone', 'aitdLineADispatch', 'aitdAuditTrapEntry', 'aitdStateQuick', 'stateQuick', 'randomTrap', 'aitdDriverQueryQuick', 'soundDriverEntryValid', 'clipRectTrap', 'findWindowTrap', 'blockMoveTrap', 'obscureCursorTrap', 'serviceQuickTrap', 'dispatchMacTrap', 'isUserService',
                                  'routePatchedTrap', 'dispatch', 'aitd_user', 'bookFrame', 'sceneFrameBoundary',
                                  'finishBookFrame', 'graphicsQuery')),
-    ('Particle rectangles and quick dispatch', ('PenRect8::', 'aitdLineQuick')),
+    ('Solid pens and quick dispatch', ('PenRect8::', 'aitdLineQuick', 'aitdLineValidation',
+                                          'aitdLineClip', 'aitdLineDrawReturn', 'aitdSolidLine')),
     ('RGB lookup and quick dispatch', ('rgbColor', 'GWorld8::colorIndex', 'RGBColorCache::', 'aitdRGBQuick',)),
     ('Port state lookups', ('setGWorld', 'getGWorld', 'gWorldForPort', 'MacHeap',
                             'colorWindowFrame', 'windowSlot', 'handleZone')),
@@ -139,7 +141,7 @@ def bucket(region, function):
     # Older ELFs lack the boundaries and retain their coarse function buckets.
     if function in ('aitdTrapGuardRGB', 'aitdTrapGuardLine', 'aitdCopyBitsQuick',
                     'aitdRGBQuickFallback', 'aitdLineQuickFallback',
-                    'aitdStateQuickFallback'):
+                    'aitdStateQuickFallback', 'aitdLineNativeReturn'):
         return 'Trap entry and dispatch'
     if function.startswith(('aitdRGBQuickMiss', 'aitdLineQuickMiss',
                             'aitdCopyBitsQuickDraw', 'aitdCopyBitsQuickMiss')):
@@ -400,6 +402,19 @@ def subtree(p, labels):
               f'total {p.ms(original + port):6.2f} ms/step ({p.pct(original + port):.1f}%)')
 
 
+def calls(p, label, parent):
+    """Price whole call subtrees at one caller; do not mix different workloads."""
+    selected = [n for n in p.order if p.labels[n] == label
+                and (parent is None or p.labels[p.nodes[n][0]] == parent)]
+    count = sum(p.nodes[n][4] for n in selected)
+    if not count:
+        raise SystemExit('APROF / no matching calls')
+    units = sum(p.inclusive[n] for n in selected)
+    print(f'{label} under {parent or "all callers"}: {count} calls, '
+          f'{units / p.units_per_ms * 1000 / count:.2f} us/call, '
+          f'{p.ms(units):.3f} ms/frame (inclusive)')
+
+
 def excluded_nodes(p, labels):
     excluded = set()
     for n in p.order:
@@ -443,6 +458,7 @@ def main():
     r = sub.add_parser('report'); r.add_argument('name'); r.add_argument('--top', type=int, default=40)
     a = sub.add_parser('annotate'); a.add_argument('name'); a.add_argument('function'); a.add_argument('--top', type=int, default=25)
     s = sub.add_parser('subtree'); s.add_argument('name'); s.add_argument('labels', nargs='+')
+    c = sub.add_parser('calls'); c.add_argument('name'); c.add_argument('label'); c.add_argument('--parent')
     m = sub.add_parser('monster'); m.add_argument('name'); m.add_argument('--compare')
     t = sub.add_parser('steady'); t.add_argument('name'); t.add_argument('--frames', type=int, required=True)
     t.add_argument('--exclude', action='append', required=True)
@@ -457,6 +473,8 @@ def main():
     p = Profile(args.name)
     if args.command == 'report':
         report(p, args.top)
+    elif args.command == 'calls':
+        calls(p, args.label, args.parent)
     elif args.command == 'steady':
         steady(p, args.exclude, args.frames)
     elif args.command == 'annotate':

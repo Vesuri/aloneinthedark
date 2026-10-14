@@ -264,6 +264,26 @@ result. Misses tail-call the ordinary Line/LineTo handler. `SCENEFRAMEVERIFY=1`
 also runs the independent frame-end check on this entry. Pixel dirtiness remains
 coordinate-based and publication stays at the existing complete-frame boundary.
 
+### Thin solid lines
+
+`LineQuick.s` shares one validated raster between the native trap entry and
+`lineGWorld` after ordinary service dispatch. Fully contained 1×1 strokes use
+QuickDraw's truncated 16.16 slope, top-to-bottom normalization and descending
+half-open tie rule. Steep strokes advance the pixel pointer on fractional carry;
+shallow strokes fill successive spans. Horizontal and diagonal lines avoid division.
+
+The live PixMap, port, visibility and clip bounds prove containment before any
+write. Fully excluded strokes only update the pen position; partially clipped
+strokes and extreme distances retain `Line8::solid`. Relative endpoints retain
+16-bit wrapping. The fast path applies only to owned, locked eight-bit GWorlds
+with a visible solid patCopy pen and rectangular regions. It does not alter screen
+window dirty bounds, frame publication or callback service points.
+
+The direct entry uses 12 additional supervisor-stack bytes at most. The C entry
+saves 44 bytes of registers plus that bounded scratch; its `lineGWorld` caller
+uses 52 bytes plus arguments/return addresses. No raster-sized buffer is allocated
+in production. The diagnostic `THINLINECHECKS` fixture owns its scratch in Fast RAM.
+
 ### Actor mask copies
 
 CopyBits reuses owned GWorld pixel capacities and validates cached port-slot identities

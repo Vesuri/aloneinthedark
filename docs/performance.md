@@ -76,11 +76,49 @@ See [development](development.md#rgb-colour-lookup) and
 ## Solid particle pens
 
 Direct clipped pen rectangles and a guarded assembly entry avoid generic rectangle
-setup. Pixel capacity is refreshed with heap-derived GWorld views. Ordinary thin
-Line/LineTo strokes retain the original rasterizer and remain a separate workload.
+setup. Pixel capacity is refreshed with heap-derived GWorld views. Thin Line/LineTo strokes use the separate path described below.
 No framebuffer comparisons, pacing changes or game-code replacements are involved.
 See [implementation](development.md#solid-particle-pens) and
 [validation](testing.md#particle-rectangles).
+
+## Thin solid lines
+
+The pinned reference-68030/PAL profiles `frame8-shared` and `frame8-final`
+reproduce byte-identical frame/state traces and the same per-call costs. Both use
+15.6672 MHz, CACR `$2001`, deterministic filesystem scheduling, fixed RNG and no
+stops inside measured windows. Whole-trap subtrees include dispatch and due services:
+
+| Caller workload | Before (`frame7-final`) | Current | Current calls |
+| --- | ---: | ---: | ---: |
+| LineTo under (Dark3, $31FC) | 298.84 µs | **76.43 µs** | 3,772 |
+| Relative Line under (Dark3, $347C) | 307.05 µs | **66.88 µs** | 732 |
+
+Both meet the 80 µs gate. The two workloads together take 0.922 ms per fight
+frame, versus 3.685 ms before. The relative caller's strokes are wholly clipped;
+this is a bound-rejection result, not visible-line throughput. Zero-displacement
+thick particle calls are excluded from these averages.
+
+The generic Line8 path repeatedly decoded/intersected byte-packed rectangles
+and used the general raster loop. Containment validation avoids per-row clipping;
+sharing the drawing implementation after normal service dispatch also accelerates
+calls with due services. Current full-phase instruction-PC attribution separates
+thin endpoint/containment setup (0.163 ms/frame), thin raster/pen updates (0.096),
+and the point body/shared success return (0.619). Common validation (0.844) and the shared rectangle
+comparison helpers (0.332) include both pen workloads; they are not thin-only costs.
+
+The final fight has 366 frames and 3,587 fields; the baseline has 343 frames and
+3,449 fields. Different intermediate combat routes prevent a matched-state overall
+FPS claim. Original slope/reversal/clipping captures, native complete-buffer/ABI
+comparisons, and the native differential fixture establish raster fidelity; see
+[testing](testing.md#thin-solid-lines). Real-Amiga benchmarking remains deferred.
+
+Caller-specific reports avoid mixing particles into thin Line averages:
+
+```sh
+. amiga/env.sh
+python3 tools/aprof_report.py calls frame8-final-fight 'TRAP LineTo' --parent 'Dark3+$31FC'
+python3 tools/aprof_report.py calls frame8-final-fight 'TRAP Line' --parent 'Dark3+$347C'
+```
 
 ## Actor-mask copies
 

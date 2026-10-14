@@ -5,7 +5,7 @@ import io
 from types import SimpleNamespace
 from check_monster_audit import HEADER, read_audit
 from aprof_monster import FRAME, decode_frames, phases_from_log, compare
-from aprof_report import excluded_nodes, steady
+from aprof_report import excluded_nodes, steady, calls
 import struct
 import unittest
 from aprof_report import bucket, call_tree, link_starts, parse_jump_table, parse_log, parse_profile, trap_name
@@ -91,9 +91,21 @@ class AprofReport(unittest.TestCase):
                      'aitdStateQuickFallback', 'aitdCopyBitsQuickDraw'):
             self.assertEqual(bucket('NATIVE', name), 'Trap entry and dispatch')
         self.assertEqual(bucket('NATIVE', 'aitdRGBQuickBody'), 'RGB lookup and quick dispatch')
-        self.assertEqual(bucket('NATIVE', 'aitdLineQuickBody'), 'Particle rectangles and quick dispatch')
+        self.assertEqual(bucket('NATIVE', 'aitdLineQuickBody'), 'Solid pens and quick dispatch')
         self.assertEqual(bucket('NATIVE', 'aitdStateQuickPen'), 'QuickDraw: pen state')
         self.assertEqual(bucket('NATIVE', 'randomTrap(bool, unsigned long)'), 'Other trap service bodies')
+
+    def test_call_cost_keeps_workloads_separate(self):
+        p=SimpleNamespace(order=[0,1,2,3,4],labels={0:'root',1:'thin',2:'TRAP Line',3:'particles',4:'TRAP Line'},
+            nodes={0:(0,),1:(0,),2:(1,0,10,100,2),3:(0,),4:(3,0,10,900,30)},
+            inclusive={2:200,4:1200},units_per_ms=100,ms=lambda u:u/100/10)
+        out=io.StringIO()
+        with contextlib.redirect_stdout(out):calls(p,'TRAP Line','thin')
+        self.assertIn('2 calls, 1000.00 us/call, 0.200 ms/frame',out.getvalue())
+        with self.assertRaises(SystemExit):calls(p,'TRAP Line','missing')
+        for name in ('aitdLineValidation','aitdLineClipThin','aitdLineClipTest','aitdSolidLine'):
+            self.assertEqual(bucket('NATIVE',name),'Solid pens and quick dispatch')
+        self.assertEqual(bucket('NATIVE','aitdLineNativeReturn'),'Trap entry and dispatch')
 
 
 class MonsterAudit(unittest.TestCase):

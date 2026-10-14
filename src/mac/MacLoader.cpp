@@ -6143,8 +6143,20 @@ __attribute__((noinline)) void aitdPointLineAfter() {__asm__ volatile("" ::: "me
 }
 #endif
 
+#ifdef AITD_SCENE_FRAME_BATCH
+extern "C" bool aitdSolidLine(GWorldSlot*,uint32_t);
+#ifdef AITD_THIN_LINE_CHECKS
+#include "ThinLineChecks.h"
+#endif
+#endif
 static bool lineGWorld(GWorldSlot& w,int16_t horizontal,int16_t vertical)
 {
+#ifdef AITD_SCENE_FRAME_BATCH
+#ifdef AITD_THIN_LINE_CHECKS
+    if(!g_thinLineChecks)thinLineChecks();
+#endif
+    if(aitdSolidLine(&w,(uint32_t(uint16_t(vertical))<<16)|uint16_t(horizontal)))return true;
+#endif
     if(!w.locked || !w.pixels || read16(w.pixMap+32)!=8
        || read16(w.port+56)!=8 || read16(w.port+66)
        || read16(*w.handles[7])!=0 || read32(w.port+80)>255)return false;
