@@ -133,6 +133,29 @@ are in that document; preserve matching game state when comparing changes.
 
 ## Profiling validity
 
+- **TEST.6 Make the circuit’s room-4 exit independent of release overshoot.**
+  A faster experimental build reached stage 59 in room 4 on lap 10, then
+  timed out walking against the boundary: HP remained positive and no input
+  was dropped. Stage 58 presses Space whenever the actor remains in room 4;
+  whether this closes an already open door is unverified. Inspect the original
+  door state and route before changing the controller or blaming the runtime.
+
+  *Done when* ordinary input reliably exits room 4 both before and after the
+  door has been opened, including small heading/waypoint differences. The
+  independent scene verifier and normal audio/memory circuit must both finish
+  ten active minutes. Do not skip the exit or patch original game state.
+
+- **MEASURE.3 Verify debugger-injected negative controls reach the CPU.**
+  A compiled wrong-tick injection trips the service-cache oracle immediately;
+  debugger writes to a pending-pass field and to the compared tick register
+  did not trip it after resuming. The cause is unverified. Do not interpret
+  debugger readback alone as proof that the CPU consumed an injected fault.
+
+  *Done when* a minimal fixture checks memory and register writes across resume
+  on the selected FS-UAE builds, with an in-target observation and a compiled
+  negative control. Correct the fixture or emulator as indicated and identify
+  any existing regression claims affected by the result.
+
 - **TEST.5 Make monster-profile startup preferences reproducible.**
   A fresh private run directory can fail the initial monster-state check while
   a repeat with the generated preferences passes. Determine which initial

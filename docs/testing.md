@@ -404,7 +404,9 @@ contribution; it does not alter the save. The controller holds the normal kick
 input until the bedroom enemy dies, then waits for the original cleanup.
 For other save-based diagnostics, enable only the observer's required flags. `vbl_latency.gdb` uses `INGAME=1` and the reference 68030 to compare callback
 lateness over the same first-room scenes 60–160; it reads the callback's virtual Ticks
-shadow against the live clock. `gameplay_sample.gdb`, `sample_gameplay.py` and
+shadow against the live clock. Use `EXTRA_ARGS="--deterministic=1 --warp_mode=1"`
+for both baseline and candidate so host filesystem scheduling does not introduce
+an uncontrolled timing difference. `gameplay_sample.gdb`, `sample_gameplay.py` and
 `summarize_gameplay_profile.py` provide sampled profiles; `amiga/aprof.sh` gives exact
 cycle profiles of book and first-room intervals. `m5_circuit.gdb` and
 `check_m5_audit.py` check memory, interrupts and completion. Use the saved-preferences
