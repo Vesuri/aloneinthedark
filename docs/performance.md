@@ -464,51 +464,45 @@ decompression and other game work remain, so complete scene stalls can still
 last several seconds. No framebuffer shadow comparisons or game-code changes
 are involved. See [region validation](testing.md#region-rebuilding).
 
-#### Song-start attribution reference
+#### Song-start preparation
 
-The separately pinned `heap2-tail` / `heap2-final` captures below are the
-attribution reference for AUDIO.1, not timings from the current region-cache
-build. Re-measure them when implementing audio changes.
+The `audio1-baseline` and `audio1-retained` event-boundary profiles use the pinned
+15.6672 MHz reference 68030/PAL, 8 MB Fast RAM, deterministic filesystem,
+`MONSTERPROFILE=1 FIXEDRNG=1`, and no stops inside measured phases.
+The native `startNativeSong` subtrees include resource I/O and interrupted work;
+original game instructions and unrelated rendering are excluded.
 
-The three `startNativeSong` subtrees total **2.616 s**, including **0.508 s** in
-`MacHeap::moveHigh`. Their disjoint preparation costs, in milliseconds, are:
-
-| Song | Resource source reads | MoveHHi | MIDI decoding | PCM conversion | Remaining work | Total |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| 136 | 357.34 | 185.65 | 59.08 | 98.71 | 187.41 | 888.19 |
-| 132 | 407.86 | 233.64 | 114.90 | 135.60 | 229.41 | 1121.41 |
-| 131 | 171.50 | 88.28 | 117.18 | 89.59 | 139.97 | 606.52 |
-
-Each named column includes its complete subtree, including interrupts during that
-work. The selected subtrees do not overlap; remaining work is the total minus those
-columns and includes loader logic, other heap/resource operations, clearing buffers
-and audio startup. `loadSongSample` takes 484.11, 575.74 and 204.19 ms for songs
-136, 132 and 131 respectively. Those inclusive sample-loading totals contain reads
-and heap movement already counted above and must not be added to them.
-
-All three native starts exceed 0.5 s. AUDIO.1 tracks implementation with a target of
-≤ 0.3 s per native `startNativeSong` invocation. Full frame intervals also contain
-original game work and presentation and are reported separately.
-
-Isolated, single-frame profiles (`heap2-single-136`, `-132`, `-131`) retain the
-same MONSTERPROFILE/FIXEDRNG executable and deterministic reference configuration.
-They start at queueFrame scenes 699, 797 and 1062 and end at the next unconditional
-queueFrame breakpoint, with no intermediate debugger stops. They reproduce the
-96/82/44-field intervals and the loader costs in the whole-route profile:
-
-| Song | Frame CPU ms | Original instructions ms | Native song preparation ms | MoveHHi ms (included) |
+| Song | Before, ms | After, ms | Reduction | Full song-change frame before / after |
 | --- | ---: | ---: | ---: | ---: |
-| 136 | 1,920.20 | 383.18 | 888.19 | 185.65 |
-| 132 | 1,654.17 | 207.88 | 1,121.42 | 233.64 |
-| 131 | 885.37 | 102.91 | 606.52 | 88.28 |
+| 136 MONSTER | 891.02 | 566.49 | 36% | 1.66 / 1.32 s |
+| 132 FIGHT | 1122.01 | 760.30 | 32% | 1.36 / 1.00 s |
+| 131 H_END | 608.76 | 307.15 | 50% | 0.88 / 0.58 s |
 
-Field counts measure cadence; CPU intervals include the positions within their
-boundary fields. The first frame includes 156.11 ms in original decompression
-`(Dark, $2A78)` and `(Dark, $29FE)`, plus original rendering/game work. Its original
-instructions alone exceed 300 ms. Thus a 300 ms **whole-frame** gate on this matched
-workload cannot be established by reducing native heap or audio cost alone. The
-owner-approved separation of audio work therefore measures native song preparation, excluding
-original game work and unrelated drawing/presentation.
+The `audio1-repeat` run reproduces the same preparation costs, phase states and
+stall list. Native checks cover all eight songs, effect PCM/DMA and stop/replacement
+contracts, heap movement, resource/file bytes, low-memory rejection and normal
+death cleanup with zero live audited allocations.
+
+Full-frame intervals are measured in PAL fields and include original game work,
+resource release, rendering and presentation. The builds can take different
+intermediate combat routes; the table compares the same song transitions, not
+identical steady-fight frames. These are emulator measurements, not physical
+storage or 68040 benchmarks.
+
+Preparation validates MIDI once and prepares each unique note in first-use order.
+Heap and buffered copies use longword spans; pitch division visits significant
+quotient bits; PCM conversion uses an unrolled longword loop. Plain-AmigaOS
+resource requests reuse one on-demand 64 KiB file buffer. A two-range aligned
+buffer was slower on this route and was not retained. WHDLoad's resload path is
+unchanged. See [preparation contracts](development.md#song-preparation-and-resource-reads).
+
+The owner accepted this improvement in place of the 300 ms gate; remaining I/O
+work is tracked separately. The AmigaDOS wait subtrees alone cost
+about 200 / 307 / 57 ms for songs 136 / 132 / 131. PCM conversion costs about
+50 / 68 / 46 ms and MIDI decoding 29 / 56 / 58 ms. Other costs include heap
+ownership, resource lookup, buffer copies and audio startup. Further work must
+price resource I/O separately from preparation CPU work without dropping either
+from the complete transition interval.
 
 ### Debugger-free hardware audit
 

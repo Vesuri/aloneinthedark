@@ -375,6 +375,28 @@ DMA invalidates that state. Initial unknown hardware and active channels retain
 the conservative two-sample-period wait; attack-to-reload latching still waits
 two raster transitions. Stream periods also update the shared period ceiling.
 
+## Song preparation and resource reads
+
+Song preparation validates MIDI once, records the first-use index of each
+instrument/note pair, then prepares those unique pairs in the same order.
+Playback still decodes the original event stream on the CIA timer. Pitch division
+examines only significant quotient bits; host checks cover overflow and bit-length
+boundaries. The shared PCM converter unrolls eight longword sign-bit conversions
+per iteration, retaining exact byte tails, loop phase and decimation.
+
+The read-only application resource source uses one optional 64 KiB Fast RAM
+read-ahead buffer during plain-AmigaOS runtime reads, using the same bounded
+reader as data forks. A resource request triggers the fill; opening the source
+and parsing its map retain their existing reads. Resource handles are still
+loaded, moved high, locked and released on demand. The buffer retains raw file
+bytes, not live resource handles, and is freed when the source closes. Allocation
+failure falls back to direct reads. WHDLoad retains its existing resload path.
+
+Source counters report physical reads; `g_resourceRuntimeRequests` and
+`g_resourceRuntimeRequestedBytes` report logical requests independently, so the
+resource fixture can verify unchanged demand while allowing buffered reads.
+Heap movement and buffered copies use the overlap-safe `BlockMoveBytes` helper.
+
 ## WHDLoad code and DMA cache policy
 
 The slave requests kickemu `CACHE`: Chip memory noncacheable, Fast/slave memory

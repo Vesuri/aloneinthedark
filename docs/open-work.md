@@ -25,17 +25,18 @@ are in that document; preserve matching game state when comparing changes.
   *Done when* both hardware results are recorded and later items quote their 68040
   effect against them. Emulator smoke tests do not satisfy this hardware gate.
 
-- **AUDIO.1 Reduce native song-start preparation cost.**
-  Use the [per-song attribution](performance.md#monster-to-death-cycle) to optimize
-  native song preparation. Preserve on-demand
-  loading, original song events, sample bytes, interrupt timing and resource ownership.
-  Exclude original game instructions and unrelated drawing/presentation from the target.
+- **IO.1 Reduce remaining song-resource I/O latency.**
+  Profile the plain-AmigaOS resource reads separately from preparation CPU work
+  and compare the unchanged WHDLoad/resload path. Use the pinned reference-68030
+  MONSTER route and the current song-start figures in [performance](performance.md#song-start-preparation).
+  Preserve on-demand resource loading, bounded reads, error reporting and ownership;
+  do not preload other songs or trade the wait for unbounded memory use.
 
-  *Done when* each of songs 136, 132 and 131 takes ≤ 0.3 s in `startNativeSong`
-  on the pinned reference-68030 monster route, with repeatable event-boundary profiles.
-  Report full frame intervals separately. Song playback, gameplay music/fight,
-  death/cleanup, low-memory and fragmented-heap regressions must pass with no new
-  allocation failures. Real-Amiga benchmarks remain deferred.
+  *Done when* the remaining read/seek and scheduler-wait costs are attributed,
+  a bounded I/O improvement is measured and retained or rejected on that evidence,
+  and full transition intervals are reported separately. Retained changes must
+  pass resource-byte, playback, low-memory and normal-cleanup checks. Set any
+  latency target from those measurements; real-Amiga benchmarks remain deferred.
 
 - **CACHE.1 Verify WHDLoad copyback caches on hardware — deferred by the owner.**
   Run the [cache validation](testing.md#whdload-cache-validation) on the owner's
@@ -91,6 +92,17 @@ are in that document; preserve matching game state when comparing changes.
   *Done when* its documented build/settings produce a bounded positive song-132
   transition with caller-byte, register and resource checks, or the obsolete
   observer is replaced by equivalent maintained coverage.
+
+- **TEST.7 Enforce the long-effect fixture's timing requirements.**
+  The injected 131,073-byte effect needs about 16.37 seconds. On maximum-speed
+  `a4000-030`, original driver selector 22 stops it after about 10.8 seconds,
+  before the fixture's complete-stream assertion. The documented reference-68030
+  configuration passes the entire sample. This is an observer setup limitation,
+  not evidence that production should ignore the original stop command.
+
+  *Done when* the fixture rejects incompatible settings before running, or a
+  properly isolated fixture verifies the complete stream at those settings.
+  Preserve the separate original stop/replacement contracts and full PCM checks.
 
 - **MEASURE.2 Preserve the executed PC across CPU exceptions.**
   The profiler reads `instruction_pc` after the CPU instruction returns, but

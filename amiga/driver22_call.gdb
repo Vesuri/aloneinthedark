@@ -1,4 +1,12 @@
-mac-trap-args
+# This observer also runs at the active-stop checkpoint, which carries the
+# saved registers and user stack but has no exception-frame argument.
+if $pc==(unsigned long)aitd_line_a_trap_entry
+ set $mac_regs=(unsigned long*)$sp
+ set $mac_stack=(unsigned char*)$a2
+else
+ set $mac_regs=regs
+ set $mac_stack=userStack
+end
 set $d22_sp=(unsigned long)$mac_stack
 set $d22_return=*(unsigned long*)$d22_sp
 set $d22_ignored=*(unsigned long*)($d22_sp+8)

@@ -37,6 +37,8 @@ if g_effectLoopProbeReleaseTick
 end
 printf "EFFECT_LOOP_COMPLETE count=%u elapsed=%u counter=%u release=%u records=%u bytes=%u\n",$loop_count,g_macTicks-$loop_started,*(unsigned short*)g_effectLoopProbeCounter,$loop_release,g_effectStreamRecords,g_effectStreamBytes
 if g_effectStreamOverflow || *(unsigned short*)g_effectLoopProbeCounter || !g_effects[0].stream->complete
+ printf "STREAM_STOP complete=%u overflow=%u\n",g_effects[0].stream->complete,g_effectStreamOverflow
+ bt 8
  echo FAIL stream completion/counter\n
  detach
  quit 1

@@ -7,6 +7,11 @@ fixture disk. Original ROMs, extracted resource/data files, MAME and the Amiga c
 toolchain must already be installed as described in [development](development.md).
 Original resources and captures remain private.
 
+Keep the full suite on its documented reference CPU. The long-effect fixture
+continues original startup while its injected sample plays; maximum-speed startup
+can issue selector 22 (stop effects) before that sample finishes. Its early stop
+is not a complete-stream pass; see TEST.7 in [open work](open-work.md).
+
 The runner records a fresh output directory under `tmp/m4/audio-*`, including revision,
 working patch, actual process exit statuses, build logs, original captures and native
 binary traces. Preferences and saves in the selected `DIAG_RUN_DIR` (default `.run`) are

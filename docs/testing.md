@@ -527,6 +527,14 @@ NTSC, then run `tools/check_cursor_capture.py` with `--inversion`, `--video PAL|
 pointer clipping and inversion, movement without a new game frame, and release. Keep
 original/native capture pairs separate.
 
+For native allocation and normal death cleanup, clean-build with
+`MONSTERAUDIT=1 M5AUDIT=1` and run `m5_monster.gdb` through `diag_run.sh`
+on maximum-speed `a4000-030`. Use `DIAG_RUN_DIR=.run-monster-audit` with the
+[prepared default preferences](performance.md#debugger-free-hardware-audit).
+It must reach phase 5 and release all audited Chip/Fast allocations and resource
+sources without allocation failures or accounting errors. The separate
+`m5_low_memory.gdb` fixture retains the expected 4 MiB startup rejection.
+
 [Audio regression](audio-regression.md) documents fresh song capture, sample fixtures
 and retained-reference prerequisites. `CIAMUSIC=1` is the default; `CIAMUSIC=0` is a VBI
 scheduling diagnostic. `check_effect_sample_cache.py` runs sanitized cache

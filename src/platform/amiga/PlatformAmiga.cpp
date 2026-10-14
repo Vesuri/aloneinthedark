@@ -48,12 +48,14 @@ extern "C" void aitdAgaProbeRestored(uint16_t);
 #endif
 #include "PerfProbe.h"
 #include "mac/MacLoader.h"
+#include "mac/FileReadCache.h"
 
 extern struct GfxBase* GfxBase;         // opened below; the global lives in GCCRuntime.cpp
 
 extern "C" {
 volatile uint32_t g_resourceSourceReads=0,g_resourceSourceBytes=0,g_resourceSourceMax=0;
 volatile uint32_t g_resourceRuntimeReads=0,g_resourceRuntimeBytes=0,g_resourceSourceOpen=0,g_resourceSourceCloseErrors=0;
+volatile uint32_t g_resourceRuntimeRequests=0,g_resourceRuntimeRequestedBytes=0;
 volatile uint32_t g_overlaySourceReads=0,g_overlaySourceBytes=0,g_overlaySourceMax=0;
 volatile uint32_t g_overlayRuntimeReads=0,g_overlayRuntimeBytes=0,g_overlaySourceOpen=0,g_overlaySourceCloseErrors=0;
 extern volatile uint16_t g_macServiceActive;
@@ -65,6 +67,8 @@ struct ResourceFileSource {
     const uint8_t* memory;
     uint32_t size;
     bool runtime,overlay;
+    uint8_t* cacheBytes=0;
+    FileReadCache cache;
 };
 struct ResourceRead { ResourceFileSource* files;uint32_t offset;uint8_t* buffer;uint32_t bytes,actual; };
 static int32_t readResourceDOS(void* opaque) {
@@ -77,7 +81,7 @@ static int32_t readResourceDOS(void* opaque) {
     if(got<0)return -36;
     request.actual=got;return 0;
 }
-static int32_t readResourceSource(void* opaque,uint32_t offset,uint8_t* buffer,uint32_t bytes,uint32_t& actual) {
+static int32_t readResourceUncached(void* opaque,uint32_t offset,uint8_t* buffer,uint32_t bytes,uint32_t& actual) {
     ResourceFileSource& files=*(ResourceFileSource*)opaque;actual=0;
     if(bytes>65536 || offset>files.size || bytes>files.size-offset)return -50;
     if(files.memory) {
@@ -99,7 +103,30 @@ static int32_t readResourceSource(void* opaque,uint32_t offset,uint8_t* buffer,u
     int32_t error=files.runtime ? aitdSystemWindow(readResourceDOS,&request) : readResourceDOS(&request);
     actual=request.actual;return error;
 }
+static int32_t readResourceSource(void* opaque,uint32_t offset,uint8_t* buffer,uint32_t bytes,uint32_t& actual) {
+    ResourceFileSource& files=*(ResourceFileSource*)opaque;
+    actual=0;
+    if(bytes>65536 || offset>files.size || bytes>files.size-offset || (bytes && !buffer))return -50;
+    if(!files.memory && !files.handle)return -50;
+    if(files.runtime && !files.memory) {
+        ++g_resourceRuntimeRequests;g_resourceRuntimeRequestedBytes+=bytes;
+    }
+    if(files.runtime && !files.memory && !FileAccess::resloadActive()) {
+        if(!g_macServiceActive)return -32760;
+        // Same bounded read-ahead as data forks: fill only in response to a
+        // resource request. No song graph or resource handle is preloaded.
+        // WHDLoad already owns its read cache; keep its path unchanged.
+        if(!files.cacheBytes) {
+            files.cacheBytes=(uint8_t*)M5_ALLOC_MEM(FileReadCache::capacity,MEMF_FAST);
+            if(files.cacheBytes)files.cache.bind(files.cacheBytes,files.size,readResourceUncached,opaque);
+        }
+        if(files.cacheBytes)return files.cache.read(offset,buffer,bytes,actual);
+    }
+    return readResourceUncached(opaque,offset,buffer,bytes,actual);
+}
 static bool releaseResourceFile(ResourceFileSource& files) {
+    if(files.cacheBytes)M5_FREE_MEM(files.cacheBytes,FileReadCache::capacity);
+    files.cacheBytes=0;
     bool closed=!files.handle || Close(files.handle)!=0;
     if(files.overlay) { if(!closed)++g_overlaySourceCloseErrors;g_overlaySourceOpen=0; }
     else { if(!closed)++g_resourceSourceCloseErrors;g_resourceSourceOpen=0; }

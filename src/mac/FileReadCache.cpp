@@ -1,4 +1,5 @@
 #include "FileReadCache.h"
+#include "BlockMoveBytes.h"
 void FileReadCache::bind(uint8_t* buffer,uint32_t size,Reader reader,void* context) {
     buffer_=buffer;size_=size;reader_=reader;context_=context;start_=valid_=0;
 }
@@ -20,7 +21,7 @@ int32_t FileReadCache::read(uint32_t offset,uint8_t* out,uint32_t bytes,uint32_t
         if(position>=start_ && position-start_<valid_) {
             uint32_t count=valid_-(position-start_);
             if(count>wanted-actual)count=wanted-actual;
-            for(uint32_t i=0;i<count;++i)out[actual+i]=buffer_[position-start_+i];
+            BlockMoveBytes::move(buffer_+(position-start_),out+actual,count);
             actual+=count;continue;
         }
         uint32_t count=size_-position;
@@ -33,7 +34,7 @@ int32_t FileReadCache::read(uint32_t offset,uint8_t* out,uint32_t bytes,uint32_t
             // A failed fill is never reused. Preserve only bytes actually received.
             uint32_t copied=got;
             if(copied>wanted-actual)copied=wanted-actual;
-            for(uint32_t i=0;i<copied;++i)out[actual+i]=buffer_[i];
+            BlockMoveBytes::move(buffer_,out+actual,copied);
             actual+=copied;
             return error ? error : actual<bytes ? -39 : 0;
         }

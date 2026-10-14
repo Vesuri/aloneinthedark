@@ -6,6 +6,7 @@
 #endif
 #endif
 #include "MacHeap.h"
+#include "BlockMoveBytes.h"
 #include "../platform/amiga/PerfProbe.h"
 
 static void heapWrite32(uint8_t* at, uint32_t value)
@@ -23,8 +24,7 @@ uint32_t MacHeap::physical(uint32_t logical)
 }
 void MacHeap::moveBytes(uint8_t* dst, const uint8_t* src, uint32_t bytes)
 {
-    if (dst<src) for (uint32_t i=0;i<bytes;++i) dst[i]=src[i];
-    else if (dst>src) while (bytes) { --bytes;dst[bytes]=src[bytes]; }
+    BlockMoveBytes::move(src,dst,bytes);
 }
 void MacHeap::reverseWords(uint8_t* first, uint8_t* last)
 {

@@ -64,9 +64,12 @@ if !s_segments[10].begin || *(unsigned short*)($resource_end-2)!=0xa8ec || *(uns
 end
 tbreak *$resource_end
 continue
+# D9 omits the 16,358-byte PICT 1500 load; retain logical demand checks
+# independently of read-ahead backend traffic.
+printf "RESOURCE_REQUESTS calls=%u bytes=%u\n",g_resourceRuntimeRequests,g_resourceRuntimeRequestedBytes
 printf "RESOURCE_BOUNDARY pc=%X expected=%X app=%u/%u windows=%u services=%u/%u active=%u max=%u\n",$pc,$resource_end,g_resourceRuntimeReads,g_resourceRuntimeBytes,g_systemWindows,g_macServiceEntered,g_macServiceCompleted,g_macServiceActive,g_resourceSourceMax
-if $pc!=$resource_end || g_stageBState==3 || g_resourceRuntimeReads!=68 || g_resourceRuntimeBytes!=333998 || g_resourceSourceMax>65536 || !g_systemWindows || g_macServiceActive!=0 || g_macServiceEntered!=g_macServiceCompleted
- echo FAIL resource-read: positive boundary, service balance or bounded reads\n
+if $pc!=$resource_end || g_stageBState==3 || g_resourceRuntimeRequests!=67 || g_resourceRuntimeRequestedBytes!=317640 || !g_resourceRuntimeReads || g_resourceSourceMax>65536 || !g_systemWindows || g_macServiceActive!=0 || g_macServiceEntered!=g_macServiceCompleted
+ echo FAIL resource-read: positive boundary, requested bytes, service balance or bounded reads\n
  detach
  quit 1
 end
@@ -105,6 +108,6 @@ if $samples != 3
  detach
  quit 1
 end
-printf "PASS resource-read: maps=243 preparation=201058 runtime=68/333998 windows=%u samples=3 endpoint=Misc2+24D4\n",g_systemWindows
+printf "PASS resource-read: maps=243 preparation=201058 runtime=67/317640 windows=%u samples=3 endpoint=Misc2+24D4\n",g_systemWindows
 detach
 quit 0

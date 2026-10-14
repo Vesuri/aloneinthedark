@@ -10,16 +10,27 @@ namespace SongVoice {
 // 32-bit quotient using shifts/subtractions; never silently truncate overflow.
 inline bool divide(unsigned long long numerator,unsigned long long denominator,uint32_t& result) {
     if(!denominator)return false;
-    unsigned long long remainder=0;result=0;
-    for(int16_t bit=63;bit>=0;--bit) {
-        bool carry=(remainder>>63)!=0;
-        remainder=(remainder<<1)|(numerator>>63);numerator<<=1;
-        if(carry || remainder>=denominator) {
-            remainder-=denominator;
-            if(bit>=32)return false;
-            result|=1UL<<bit;
-        }
+    result=0;
+    if(numerator<denominator)return true;
+    uint32_t high=uint32_t(numerator>>32),low=uint32_t(numerator);
+    unsigned nbits=high ? 64-__builtin_clz(high) : 32-__builtin_clz(low);
+    high=uint32_t(denominator>>32);low=uint32_t(denominator);
+    unsigned dbits=high ? 64-__builtin_clz(high) : 32-__builtin_clz(low);
+    unsigned shift=nbits-dbits;
+    // A 32-bit quotient can still fit when the bit-length difference is 32;
+    // reject only when that actual quotient bit would be set.
+    if(shift>=32) {
+        if(shift>32 || numerator>=(denominator<<32))return false;
+        shift=31;
     }
+    if(shift)denominator=(static_cast<unsigned long long>((high<<shift)|(low>>(32-shift)))<<32)
+                         | uint32_t(low<<shift);
+    do {
+        if(numerator>=denominator) {
+            numerator-=denominator;result|=uint32_t(1)<<shift;
+        }
+        denominator>>=1;
+    } while(shift--);
     return true;
 }
 inline const char* select(const SongInputs::Instrument& instrument,uint16_t note,

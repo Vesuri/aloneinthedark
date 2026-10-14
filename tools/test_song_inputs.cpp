@@ -28,6 +28,17 @@ int main(int argc,char** argv) {
     uint32_t quotient=0;assert(!SongVoice::divide(1,0,quotient));
     assert(SongVoice::divide(0xffffffffffffffffULL,0xffffffffffffffffULL,quotient) && quotient==1);
     assert(!SongVoice::divide(0x100000000ULL,1,quotient));
+    for(unsigned n=0;n<64;++n)for(unsigned d=0;d<64;++d)
+        for(unsigned edge=0;edge<3;++edge) {
+            auto numerator=(1ULL<<n)-(edge==0 ? 1 : 0)+(edge==2 ? 1 : 0);
+            auto denominator=(1ULL<<d);
+            for(unsigned delta=0;delta<2;++delta) {
+                auto divisor=denominator+delta;
+                bool okay=SongVoice::divide(numerator,divisor,quotient);
+                assert(okay==(numerator/divisor<=0xffffffffULL));
+                if(okay)assert(quotient==numerator/divisor);
+            }
+        }
     uint8_t config[]={0,1,0,4,0,0,0,0,1,6,0,3,0x22,5,0,0,0,0};
     Song song;assert(!song.parse(config,sizeof(config)));
     Midi decoder;Event event;

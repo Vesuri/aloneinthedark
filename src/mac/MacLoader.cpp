@@ -2154,10 +2154,18 @@ static const char* startNativeSong(uint32_t argument)
             g_song.preparedCount*sizeof(NativeSong::PreparedNote),MEMF_FAST|MEMF_CLEAR);
         if(!g_song.prepared)return "SONG PREPARED MEMORY";
     }
-    if((error=preflight.begin(*midi,midiBytes,g_song.description)))return error;
-    while(!preflight.ended) {
-        if((error=songPrepareNext(preflight,event)))return error;
-        if(event.kind==SongInputs::Event::NoteOn && (error=prepareSongNote(event)))return error;
+    // The first pass already validated every event and assigned first-use
+    // indices. Recover those unique keys without decoding the MIDI again.
+    // sample is scratch until prepareSongNote replaces it with the sample ID.
+    for(uint16_t instrument=0;instrument<128;++instrument)if(used[instrument])
+        for(uint16_t note=0;note<128;++note) {
+            uint16_t index=g_song.preparedIndex[instrument][note];
+            if(index)g_song.prepared[index-1].sample=(instrument<<8)|note;
+        }
+    for(uint16_t index=0;index<g_song.preparedCount;++index) {
+        uint16_t key=g_song.prepared[index].sample;
+        event.instrument=key>>8;event.note=key&255;
+        if((error=prepareSongNote(event)))return error;
     }
     if((error=g_song.timeline.start(*midi,midiBytes,g_song.description)))return error;
     // Establish a bounded, known sample countdown before the first ISR note.
