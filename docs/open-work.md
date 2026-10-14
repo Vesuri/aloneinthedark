@@ -149,6 +149,18 @@ are in that document; preserve matching game state when comparing changes.
   subtrees correctly or explicitly reports that breakdown as unavailable. Test
   direct calls, tail jumps and exceptions, and update affected documentation.
 
+- **MEASURE.2 Preserve the executed PC across CPU exceptions.**
+  The profiler reads `instruction_pc` after the CPU instruction returns, but
+  FS-UAE's PC setter changes it during exception entry. Line-A entry is thus
+  charged to the first native handler instruction, whose count is doubled.
+  Preserve the pre-execution PC/opcode in the shared profiler; distinguish
+  native instruction cost from CPU exception entry when interpreting results.
+
+  *Done when* an isolated Line-A fixture counts the trap and first handler
+  instruction once each, JSR/RTS and interrupt controls pass, and total cycles
+  remain conserved. Re-measure affected profiles and keep CPU Line-A entry in
+  the dispatch budget explicitly; attribution changes alone are not speedups.
+
 - **PERF.1 Keep debugger stops outside the measured profile window.**
   `amiga/aprof.gdb` installs a conditional `AitdScreen::queueFrame` breakpoint
   after `monitor aprof start` and waits for a completed-step threshold. Verify

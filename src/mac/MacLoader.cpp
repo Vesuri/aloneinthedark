@@ -11221,8 +11221,17 @@ static uint32_t dispatchQuickTrap(uint32_t* regs,uint8_t* frame,uint8_t* userSta
     if(sceneGuarded)aitdRGBSceneGuard(regs,frame,userStack);
 #endif
     if(!sceneGuarded) {
-        bool service=s_vblPass.last!=g_macTicks || s_vblPass.pending || s_vblPass.active
-            || s_songInterruptError || g_soundDriver.effects[0].active || g_soundDriver.effects[1].active;
+        // A running callback prevents the scheduler from dispatching another
+        // task. Still observe new ticks, and retain the empty-queue cleanup.
+        bool service=s_vblPass.last!=g_macTicks
+            || ((s_vblPass.pending || s_vblPass.active)
+                && !(g_macVBLCallbackActive && s_vblTaskCount))
+            || s_songInterruptError;
+        // Match the assembly guard: an ordinary sample cannot need cleanup
+        // before its deadline. Streams retain their normal DMA polling.
+        for(uint16_t i=0;!service && i<2;++i)
+            service=g_soundDriver.effects[i].active && (g_effects[i].stream
+                || (int32_t)(g_macTicks-g_effects[i].ends)>=0);
 #ifdef AITD_SCENE_FRAME_BATCH
         const uint32_t owner=g_macSceneFrameOwner;
         if(owner) {

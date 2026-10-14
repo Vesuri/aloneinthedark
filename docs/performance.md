@@ -9,25 +9,29 @@ frame-rate guarantees.
 
 ## Fight-frame service costs
 
-The pinned 15.6672 MHz reference 68030/PAL monster fight records 314 completed
-frames and 3,406 fields (`frame4-random-quick`). A clean repeat (`frame4-repeat`)
+The pinned 15.6672 MHz reference 68030/PAL monster fight records 319 completed
+frames and 3,403 fields (`frame4-due-services`). A repeat (`frame4-due-services-repeat`)
 reproduces the full frame/state trace, phase counts and dispatch cost exactly.
 Its full-phase instruction-PC
-profile averages **217.33 ms per frame**, including transitions and required
+profile averages **213.71 ms per frame**, including transitions and required
 callbacks. Selected exclusive costs are:
 
 | Work | ms/frame |
 | --- | ---: |
-| Original Macintosh instructions | 128.60 |
-| Trap entry and dispatch | 15.97 |
-| CopyBits | 14.95 |
-| C2P | 13.37 |
-| Port state lookups | 5.11 |
-| Fills, lines and regions | 3.79 |
-| RGB lookup and quick dispatch | 3.33 |
-| Particle rectangles and quick dispatch | 2.50 |
+| Original Macintosh instructions | 128.59 |
+| Trap entry and dispatch | 14.89 |
+| CopyBits | 14.74 |
+| C2P | 13.00 |
+| Port state lookups | 5.03 |
+| Fills, lines and regions | 3.77 |
+| RGB lookup and quick dispatch | 3.30 |
+| Particle rectangles and quick dispatch | 2.47 |
 
-Use the full-phase PC bucket for the dispatch budget. The subtree-adjusted report's
+Use the full-phase PC bucket for the dispatch budget. CPU exception entry is
+currently charged to the first native handler instruction, inflating that
+instruction's count and apparent cost (MEASURE.2). The dispatch total includes
+that entry cost; do not treat it all as removable register-save work. The
+subtree-adjusted report's
 bucket breakdown follows call targets, so tail jumps and exception nodes can be
 misattributed; MEASURE.1 tracks that limitation. Its adjusted **total** is a separate
 estimate. Different builds can take different intermediate combat routes: these
@@ -38,7 +42,7 @@ averages do not establish a matched-state FPS improvement or a hardware result.
 Per-port memoization removes almost all inverse-table searches. A guarded assembly
 entry avoids repeated services when none are due, while the original matcher remains
 the fallback. Cache storage is 33,120 native bytes across sixteen port slots. Current
-whole-trap RGBForeColor cost is about **89.6 µs per call**, including required callbacks.
+whole-trap RGBForeColor cost is about **85.7 µs per call**, including required callbacks.
 See [development](development.md#rgb-colour-lookup) and
 [testing](testing.md#rgb-lookup-memoization) for the exact-byte/ABI checks.
 
@@ -150,14 +154,14 @@ other profiling windows; the maintained scenario keeps all stops at event bounda
 The deterministic reference uses event boundaries, not fixed frame numbers. Faster
 service work changes the natural timed encounter route; whole-fight averages from
 different builds are not state-paired A/B measurements. The current profile is
-`frame4-random-quick`:
+`frame4-due-services`:
 
 | Phase end | Frames | PAL fields | Nonstall fields/frame | Adjusted CPU ms/frame |
 | --- | ---: | ---: | ---: | ---: |
-| MONSTER song 136 | 538 | 2,201 | 3.940 | 80.26 |
-| Monster animation active | 1 | 15 | 15.000 | 304.57 |
-| First Carnby hit (237) | 106 | 965 | 7.885 | 172.47 |
-| Death song 131 | 314 | 3,406 | 9.801 | 203.50 |
+| MONSTER song 136 | 546 | 2,225 | 3.928 | 79.96 |
+| Monster animation active | 1 | 15 | 15.000 | 298.06 |
+| First Carnby hit (237) | 108 | 971 | 7.802 | 170.39 |
+| Death song 131 | 319 | 3,403 | 9.590 | 200.77 |
 
 The one-frame entry phase is not a steady-state estimate. These are full
 inter-frame stall intervals; the observed event does not establish the cause of
@@ -165,15 +169,16 @@ the whole interval.
 
 | Observed event | Scene (reference only) | Fields | Seconds |
 | --- | ---: | ---: | ---: |
-| Song 137 → 136 | 738 | 85 | 1.70 |
-| Effect count 1 → 2 | 781 | 115 | 2.30 |
-| Effect count 9 → 10 | 844 | 30 | 0.60 |
-| Song 136 → 132 | 864 | 68 | 1.36 |
-| Room 0/camera 0 → room 6/camera 10 | 1,147 | 246 | 4.92 |
-| Song 132 → 131 | 1,159 | 44 | 0.88 |
+| Song 137 → 136 | 746 | 84 | 1.68 |
+| Effect count 1 → 2 | 789 | 114 | 2.28 |
+| Effect count 9 → 10 | 854 | 30 | 0.60 |
+| Song 136 → 132 | 874 | 69 | 1.38 |
+| Effect count 41 → 42 | 1,132 | 25 | 0.50 |
+| Room 0/camera 0 → room 6/camera 10 | 1,162 | 244 | 4.88 |
+| Song 132 → 131 | 1,174 | 44 | 0.88 |
 
 Song 132 starts before the first hit in this route; follow the hit event for the
-fight-phase boundary rather than assuming song order. Nonstall fighting is about **5.10 FPS** in this instrumented
+fight-phase boundary rather than assuming song order. Nonstall fighting is about **5.21 FPS** in this instrumented
 reference run. The adjusted CPU total excludes named one-off subtrees; use the
 full-phase PC costs above for subsystem attribution. Neither is a shipping-build
 or real-hardware FPS claim.

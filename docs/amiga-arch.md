@@ -35,6 +35,10 @@ path. Read-only sound status queries can bypass general dispatch only inside an
 original VBL callback with an unchanged tick, no due effect/error work, and presentation deferred by an active frame or already
 clean. Driver-handle validation and selector-specific CCR remain unchanged.
 Random uses its original implementation behind the ordinary service guard.
+The C quick entries also skip ordinary-effect cleanup before the sample deadline,
+while streams keep their normal polling. Within a running VBL callback, they skip
+same-tick scheduler calls that cannot dispatch another task; new ticks and an
+empty task queue still receive their normal service.
 Heap lookup caches only pinned master-slot ranges: allocation flags, sizes and
 back-pointers remain live checks. Native word/long accesses preserve the big-endian
 68020 memory layout, including unaligned data.
