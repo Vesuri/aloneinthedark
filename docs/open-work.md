@@ -58,6 +58,17 @@ are in that document; preserve matching game state when comparing changes.
   original/native placement, unchanged-size, grow/shrink, failure and fragmented
   heap fixtures, with matched native workloads establishing the effect.
 
+- **HEAP.2 Repeated HLock validation and zone publication.** The current HLock
+  composition reads handle state and then sets it, repeating master-slot checks
+  and publishing unchanged zone-header fields. Prince of Persia 2's dispatch
+  work has prepared a shared `HeapLockHandle.inc` in AmigaXDev's isolated
+  development checkout. Inspect that helper when available in the canonical
+  tree; do not duplicate it or assume the other port's timings apply here.
+
+  *Done when* original-paired handle flags/errors and invalid-handle guards pass,
+  the entire heap image matches the existing operation, and matched native
+  measurements establish whether adoption is worthwhile.
+
 ## Profiling validity
 
 - **MEASURE.3 Verify debugger-injected negative controls reach the CPU.**
