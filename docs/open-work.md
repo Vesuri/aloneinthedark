@@ -64,6 +64,10 @@ are in that document; preserve matching game state when comparing changes.
   work has prepared a shared `HeapLockHandle.inc` in AmigaXDev's isolated
   development checkout. Inspect that helper when available in the canonical
   tree; do not duplicate it or assume the other port's timings apply here.
+  HGetState also validates the same master slot through both `isHandle` and
+  `flags`. Inspect AmigaXDev's shared `HeapReadHandleState.inc` (`030d3c1`,
+  `codex/dispatch-clock-helpers`) for a single validated lookup, preserving
+  read-only query errors and the zone header.
 
   *Done when* original-paired handle flags/errors and invalid-handle guards pass,
   the entire heap image matches the existing operation, and matched native
