@@ -73,6 +73,20 @@ are in that document; preserve matching game state when comparing changes.
   the entire heap image matches the existing operation, and matched native
   measurements establish whether adoption is worthwhile.
 
+- **HEAP.3 Measure allocation clearing and occupied-prefix searches.**
+  Source inspection shows NewHandle/NewPtr clearing one byte at a time, and
+  first-fit allocation scanning occupied blocks from the zone start. Inspect
+  the existing shared `FillRect8::fillSpan` and AmigaXDev's `HeapFindSpace.inc`
+  (`b09d897`, `codex/heap-search-start`), prepared for Prince of Persia 2 item
+  19.7. Preserve logical clear extents, first-fit placement, free-master order
+  and low-memory behavior; account for every topology invalidation. Do not
+  transfer Prince of Persia 2's timings to this port.
+
+  *Done when* matched monster/transition profiles establish the actual cost and
+  the candidate's benefit or rejection, with original-paired heap placement,
+  grow/shrink/failure, payload, save/load and cleanup gates passing. Reuse the
+  canonical helpers rather than creating another implementation.
+
 ## Profiling validity
 
 - **MEASURE.3 Verify debugger-injected negative controls reach the CPU.**
