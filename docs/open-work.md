@@ -48,16 +48,6 @@ are in that document; preserve matching game state when comparing changes.
 
 ## Runtime overhead
 
-- **HEAP.1 Adopt shared heap helpers in Prince of Persia 2 — deferred by the owner.**
-  Prince of Persia 2 work is ongoing elsewhere. When the owner resumes adoption,
-  use AmigaXDev's shared MoveHHi and in-place resize implementations instead of
-  forking allocator fixes. Preserve that port's placement, errors, handle state,
-  payloads and memory publication contracts.
-
-  *Done when* the deferred consumer uses the canonical helpers and passes its
-  original/native placement, unchanged-size, grow/shrink, failure and fragmented
-  heap fixtures, with matched native workloads establishing the effect.
-
 - **HEAP.2 Repeated HLock validation and zone publication.** The current HLock
   composition reads handle state and then sets it, repeating master-slot checks
   and publishing unchanged zone-header fields. Prince of Persia 2's dispatch
