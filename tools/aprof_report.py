@@ -13,7 +13,7 @@ Segment+$offset (offsets include the CODE header); their starts are LINK A6 prol
 in tmp/segments plus call targets seen in the profile. Times are emulated: the
 profiler counts FS-UAE cycle units for every instruction, so warp does not matter.
 """
-import argparse, bisect, collections, re, struct, subprocess, sys
+import argparse, bisect, collections, hashlib, re, struct, subprocess, sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -41,26 +41,11 @@ BUCKETS = [
 ]
 
 
-def parse_profile(text):
-    """Return (header, pcs, nodes): pcs[pc]=(units, executions, chip_units, chip_accesses),
-    nodes[id]=(parent, target, kind, self_units, calls). kind 0 is JSR/BSR, otherwise
-    the exception vector; Line-A targets are 0xA0000000 | trap word."""
-    header, pcs, nodes = {}, {}, {}
-    lines = text.splitlines()
-    if not lines or lines[0] != 'AITDPROF 1':
-        raise ValueError('not an AITDPROF 1 profile')
-    for line in lines[1:]:
-        f = line.split()
-        if f[0] == 'P':
-            chip = (int(f[4]), int(f[5])) if len(f) > 5 else (0, 0)
-            pcs[int(f[1], 16)] = (int(f[2]), int(f[3])) + chip
-        elif f[0] == 'N':
-            nodes[int(f[1])] = (int(f[2]), int(f[3], 16), int(f[4]), int(f[5]), int(f[6]))
-        elif len(f) == 2:
-            header[f[0]] = int(f[1], 16) if f[0] == 'cacr' else int(f[1])
-    if 0 not in nodes or 'units' not in header:
-        raise ValueError('incomplete profile')
-    return header, pcs, nodes
+from amigaxdev import aprof as shared_aprof
+_helper_pin=(ROOT/'manifest/profile-helpers.sha256').read_text().split()[0]
+if hashlib.sha256(Path(shared_aprof.__file__).read_bytes()).hexdigest()!=_helper_pin:
+    raise ValueError('APROF / SHARED PROFILE READER PIN')
+parse_profile, call_tree = shared_aprof.parse_profile, shared_aprof.call_tree
 
 
 def parse_log(text):
@@ -104,23 +89,6 @@ def parse_jump_table(data, a5):
 def link_starts(code):
     """Offsets of LINK A6 prologues in a CODE resource (header included)."""
     return {i for i in range(4, len(code) - 1, 2) if code[i] == 0x4E and code[i + 1] == 0x56}
-
-
-def call_tree(nodes):
-    """Children lists, depth-first order and inclusive units per node."""
-    children = collections.defaultdict(list)
-    for n, (parent, *_rest) in nodes.items():
-        if n:
-            children[parent].append(n)
-    order, stack = [], [0]
-    while stack:
-        n = stack.pop()
-        order.append(n)
-        stack.extend(children[n])
-    inclusive = {}
-    for n in reversed(order):
-        inclusive[n] = nodes[n][3] + sum(inclusive[c] for c in children[n])
-    return children, order, inclusive
 
 
 def trap_name(word, traps):

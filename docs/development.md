@@ -441,3 +441,24 @@ cache/performance reference. In particular, a plain 030 run with CACR `$2001`
 has its data cache disabled. Do not interpret it as a both-caches-enabled 040 run.
 The [hardware audit](performance.md#debugger-free-hardware-audit) records raw CACR
 before gameplay and after OS restoration; PERF.3 retains the physical-machine gate.
+
+## Shared planner and profile reader
+
+The coordinate-only dirty-band planner uses AmigaXDev's canonical
+`DirtyBandsAlign.inc` and `DirtyBandsPlan.inc`. The Planar8 adapter retains its
+existing function identities: clean ordinary executables before and after
+sharing are byte-identical. The 400-frame host planner checks and 4,096 minimum
+row controls pass. Native `.run-item19-c2p` checks 40 complete publications,
+including 38 multi-rectangle inputs, with 187 verified frames and no pixel
+failure. The ordinary `.run-item19-book` run passes all 106 logo and 840 book
+steps. These are correctness checks, not new performance measurements.
+`manifest/profile-sharing.sha256` pins the evidence; `shared-runtime.sha256`
+pins the canonical include bodies.
+
+The report tool imports `amigaxdev.aprof`, verified against
+`manifest/profile-helpers.sha256`. Symbols, bucket names and scenario accounting
+remain local. The retained attic capture produces identical parsed PC/node
+records and call-tree totals. Shared accounting now rejects malformed trees,
+overflow and inconsistent totals, and retains any bounded stop tail explicitly.
+Unmatched returns remain diagnostics; sharing does not promote approximate
+call-tree costs into exact measurements.
