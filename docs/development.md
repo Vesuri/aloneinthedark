@@ -380,8 +380,10 @@ two raster transitions. Stream periods also update the shared period ceiling.
 Song preparation validates MIDI once, records the first-use index of each
 instrument/note pair, then prepares those unique pairs in the same order.
 Playback still decodes the original event stream on the CIA timer. Pitch division
-examines only significant quotient bits; host checks cover overflow and bit-length
-boundaries. The shared PCM converter unrolls eight longword sign-bit conversions
+examines only significant quotient bits through AmigaXDev’s `UnsignedDivide.inc`;
+host checks cover overflow and bit-length boundaries. Sharing the existing body
+leaves clean ordinary executables byte-identical; `manifest/divide-sharing.sha256`
+pins both builds and their audits. The shared PCM converter unrolls eight longword sign-bit conversions
 per iteration, retaining exact byte tails, loop phase and decimation.
 
 The read-only application resource source uses one optional 64 KiB Fast RAM
