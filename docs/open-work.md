@@ -129,6 +129,11 @@ are in that document; preserve matching game state when comparing changes.
   charged to the first native handler instruction, whose count is doubled.
   Preserve the pre-execution PC/opcode in the shared profiler; distinguish
   native instruction cost from CPU exception entry when interpreting results.
+  Inspect AmigaXDev's `fsuae-native-service-scope.patch` at `cc09555` rather
+  than duplicating the fix. It freezes PC/opcode before execution (including
+  RTS), and supplies separately validated per-PC Line-A entry charges. Adopt
+  and pin the corrected instrument only after this port's controls below pass;
+  retain existing captures and do not treat changed attribution as a speedup.
 
   *Done when* an isolated Line-A fixture counts the trap and first handler
   instruction once each, JSR/RTS and interrupt controls pass, and total cycles
