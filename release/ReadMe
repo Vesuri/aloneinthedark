@@ -111,6 +111,12 @@
 
  History:
  --------
+ version 0.93 (30.10.2026):
+ - CD32 pad support
+ - Left-Amiga works as Space, for keyboards that drop Space + cursor keys
+ - sound effects and music are on from the very first launch
+ - CPU caches stay enabled under WHDLoad on a 68020 or 68030
+
  version 0.92 (15.10.2026):
  - smoother gameplay, especially during fights
  - shorter pauses when music changes
