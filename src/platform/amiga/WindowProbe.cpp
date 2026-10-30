@@ -83,7 +83,10 @@ static bool probeKeyMap()
     const Step steps[]={
         {0x20,1,0,1}, {0x40,1,6,2}, {0x20,0,0,0}, {0x40,0,6,0},
         {0x60,1,7,1}, {0x61,1,7,1}, {0x60,0,7,1}, {0x61,0,7,0},
-        {0x4f,1,15,8}, {0x4f,0,15,0}
+        {0x4f,1,15,8}, {0x4f,0,15,0},
+        // Left Amiga aliases Space (virtual key 49); Right Amiga alone is Command.
+        {0x66,1,6,2}, {0x40,1,6,2}, {0x66,0,6,2}, {0x40,0,6,0},
+        {0x67,1,6,0x80}, {0x66,1,6,0x82}, {0x66,0,6,0x80}, {0x67,0,6,0}
     };
     uint8_t expected[16]={0},guarded[24];
     if(aitdMacGetKeys(0))return false;
@@ -101,9 +104,12 @@ static bool probeKeyMap()
     }
     // Polling must leave the event queue available to GetNextEvent.
     uint8_t raw;bool down;uint16_t modifiers;
-    for(uint16_t i=0;i<sizeof(steps)/sizeof(steps[0]);++i)
+    bool command=false;
+    for(uint16_t i=0;i<sizeof(steps)/sizeof(steps[0]);++i) {
+        if(steps[i].raw==0x67)command=steps[i].down!=0;
         if(!aitdInputPopKey(raw,down,modifiers) || raw!=steps[i].raw
-           || down!=(steps[i].down!=0))return false;
+           || down!=(steps[i].down!=0) || ((modifiers&0x0100)!=0)!=command)return false;
+    }
     if(aitdInputPopKey(raw,down,modifiers))return false;
     return true;
 }

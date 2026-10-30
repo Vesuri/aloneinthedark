@@ -87,6 +87,7 @@
  Enter               action/inventory menu
  Escape              back/cancel where supported by the game
  Space + direction   perform the selected action
+                     (Left-Amiga also works as Space)
  S / M               toggle sound effects / music
  Right-Amiga + S     save game
  Right-Amiga + O     load game

@@ -29,7 +29,7 @@ def check(reference,status,native=None,native_status=None,probe=None,probe_statu
     if native is not None:
         complete(native,native_status,'PASS native original GetKeys calls=1','[Inferior 1 (Remote target) detached]');calls(native,True)
         if probe is None:raise ValueError('native key fixtures required')
-        complete(probe,probe_status,'PASS native KeyMap: 11 guarded released/held/multiple-key/alias snapshots; events not consumed','[Inferior 1 (Remote target) detached]')
+        complete(probe,probe_status,'PASS native KeyMap: 19 guarded released/held/multiple-key/alias snapshots; events not consumed','[Inferior 1 (Remote target) detached]')
     print('PASS GetKeys: original caller/ABI, exact 16-byte map and guards, released/held/released A'+('; native key levels, aliases and event preservation' if native is not None else ''))
 if __name__=='__main__':
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('reference',type=Path);p.add_argument('--status',type=int,required=True);p.add_argument('--native',type=Path);p.add_argument('--native-status',type=int);p.add_argument('--keys-probe',type=Path);p.add_argument('--keys-probe-status',type=int);a=p.parse_args()

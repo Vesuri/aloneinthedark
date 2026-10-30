@@ -7182,7 +7182,9 @@ static bool translateAmigaKey(uint8_t raw, KeyTranslation& key)
     case 0x38: key = {0x2b, ',', '<'}; return true;
     case 0x39: key = {0x2f, '.', '>'}; return true;
     case 0x3a: key = {0x2c, '/', '?'}; return true;
-    case 0x40: key = {0x31, ' ', ' '}; return true;
+    // Left Amiga is a second Space: A1200 matrix rollover can drop
+    // Space+cursor, while qualifier keys are wired outside the matrix.
+    case 0x40: case 0x66: key = {0x31, ' ', ' '}; return true;
     case 0x41: key = {0x33, 0x08, 0x08}; return true;
     case 0x42: key = {0x30, 0x09, 0x09}; return true;
     case 0x44: key = {0x24, 0x0d, 0x0d}; return true;
@@ -7207,7 +7209,7 @@ static bool translateAmigaKey(uint8_t raw, KeyTranslation& key)
     case 0x62: key = {0x39, 0, 0}; return true;
     case 0x63: key = {0x3b, 0, 0}; return true;
     case 0x64: case 0x65: key = {0x3a, 0, 0}; return true;
-    case 0x66: case 0x67: key = {0x37, 0, 0}; return true;
+    case 0x67: key = {0x37, 0, 0}; return true;
     default: return false;
     }
 }

@@ -101,7 +101,7 @@ rows and masks preserve original parity, signed bounds, clipping and aliasing. S
 VBI samples keyboard/mouse transitions. The game viewport has no visible pointer:
 its retained interfaces use the keyboard. Logical Mac hide/show/obscure state and
 mouse-button semantics remain implemented, independently of display visibility.
-Events and Command-key items use measured contracts; Right-Amiga maps Command.
+Events and Command-key items use measured contracts; Right-Amiga maps Command; Left-Amiga maps Space.
 The menu bar and screen-size chooser are suppressed. The startup menu says
 “Return to AmigaOS” in place of “Return to Finder”; its quit action is unchanged.
 The verified Escape-menu
@@ -150,7 +150,7 @@ Changes to these decisions or original game behavior require the owner.
 | D4 | No screen-size dialog; only 320×200. |
 | D5 | Replace reached Mac dialogs with measured in-game interfaces inside the viewport, preserving their choices and actions. |
 | D6 | Retain engine fonts; bundle raw bitmaps of the original Mac fonts for Mac-font text. |
-| D7 | No Mac menu bar or visible mouse pointer; keyboard controls and Right-Amiga Command shortcuts. Preserve original mouse-button/event semantics. |
+| D7 | No Mac menu bar or visible mouse pointer; keyboard controls, Left-Amiga as a second Space and Right-Amiga Command shortcuts. Preserve original mouse-button/event semantics. |
 | D8 | Native SoundMusicSys driver on Paula channels, rather than software mixing. |
 | D9 | Omit the standalone MACPLAY splash and its delay. First visible game picture is Infogrames; retain the book credits. |
 

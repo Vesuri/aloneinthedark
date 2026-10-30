@@ -32,7 +32,7 @@ static uint16_t currentModifiers()
     if (s_keyDown[0x60] || s_keyDown[0x61]) modifiers |= 0x0200; // shiftKey
     if (s_keyDown[0x63]) modifiers |= 0x1000;                    // controlKey
     if (s_keyDown[0x64] || s_keyDown[0x65]) modifiers |= 0x0800; // optionKey
-    if (s_keyDown[0x66] || s_keyDown[0x67]) modifiers |= 0x0100; // cmdKey
+    if (s_keyDown[0x67]) modifiers |= 0x0100;                    // cmdKey
     return modifiers;
 }
 

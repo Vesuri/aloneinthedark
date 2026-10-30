@@ -209,9 +209,11 @@ left/right Shift, and leaves queued events untouched. It does not consume events
 derive held state and does not change game instructions. A nil destination remains a
 named unsupported GetKeys call.
 
-The native window fixture now verifies eleven guarded snapshots: no keys, A, A+Space,
-releases, both Shift aliases with separate releases, and the left arrow. It then reads
-back all ten original press/release events in order.
+The native window fixture now verifies nineteen guarded snapshots: no keys, A, A+Space,
+releases, both Shift aliases with separate releases, the left arrow, Left Amiga as a
+Space alias, and Right Amiga alone as Command. It then reads back all eighteen
+press/release events in order, with the Command modifier only while Right Amiga is held.
+Left Amiga is an action key because A1200 matrix rollover can drop Space+cursor.
 `tmp/m2-getkeys-window-core-final.log` exits zero with the new checks and the existing 1
 MiB read, clock, Paula, DOS, save/readback and bitplane checks. The production build
 passes no-float and 82-symbol audits; the host suite and 95-script MAME literal audit

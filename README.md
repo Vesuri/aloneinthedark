@@ -45,7 +45,7 @@ installation instructions.
 | Shift + movement | Run |
 | Enter | Action/inventory menu |
 | Escape | Back/cancel where supported by the game |
-| Space + direction | Perform the selected action |
+| Space or Left-Amiga + direction | Perform the selected action |
 | S / M | Toggle effects / music |
 | Right-Amiga + S / O / Q | Save / Load / Quit normally |
 | F10 | Immediate WHDLoad exit, bypassing normal game cleanup |
