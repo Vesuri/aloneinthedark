@@ -6,6 +6,7 @@
 #include <cstring>
 #include <vector>
 #include <algorithm>
+#include <string>
 #define CHECK(x) do { if(!(x)){std::fprintf(stderr,"heap FAIL line %d: %s\n",__LINE__,#x);std::exit(1);} }while(0)
 static void pattern(uint8_t* p,unsigned n,uint8_t v) {std::memset(p,v,n);}
 static bool patternIs(uint8_t* p,unsigned n,uint8_t v) {for(unsigned i=0;i<n;++i)if(p[i]!=v)return false;return true;}
@@ -87,6 +88,63 @@ static void checkDirectLookup() {
     for(unsigned i=0;i<6;++i) {auto z=small.newHandle(64);CHECK(z && small.handleSize(z)==64);}
     CHECK(small.check());
 }
+// MEASURED on System 7.5.5 (Prince of Persia 2 ref masters-3): after
+// every free master is used, a new master block (implicit through NewHandle or
+// explicit through MoreMasters) or a NewPtr block goes to the lowest position
+// above pinned blocks, and an implicit handle's data follows it directly.
+struct MasterCase { const char* layout; char kind; const char* below; };
+static void checkMasterPlacement() {
+    const MasterCase cases[]={{"hhhh",'i',""},{"hgLhh",'i',""},{"hgLhh",'e',""},
+                              {"hgLhh",'p',""},{"Lghh",'i',"L1"},{"hgLLhgh",'i',""},
+                              {"hLLh",'i',""},{"hLLh",'p',""}};
+    for(const auto& c:cases) {
+        alignas(8) static uint8_t arena[65536];MacHeap h;CHECK(h.init(arena,sizeof(arena),8));
+        struct Item { std::string label;MacHeap::Handle handle; };
+        std::vector<Item> items;std::vector<MacHeap::Handle> holes;
+        for(const char* l=c.layout;*l;++l) {
+            auto handle=h.newHandle(2048);CHECK(handle);
+            if(*l=='g')holes.push_back(handle);
+            else {
+                if(*l=='L')CHECK(h.setState(handle,0x80)==0);
+                items.push_back({std::string(1,*l)+std::to_string(items.size()+1),handle});
+            }
+        }
+        for(auto hole:holes)CHECK(h.disposeHandle(hole)==0);
+        for(size_t used=items.size();used<8;++used)CHECK(h.newEmptyHandle());
+        uint8_t* block=nullptr;
+        if(c.kind=='i') {
+            auto handle=h.newHandle(512);CHECK(handle);block=(uint8_t*)handle;items.push_back({"d",handle});
+        } else if(c.kind=='e') {
+            CHECK(h.moreMasters()==0);auto handle=h.newEmptyHandle();CHECK(handle);block=(uint8_t*)handle;
+        } else {block=h.newPtr(256);CHECK(block);}
+        std::vector<std::pair<uint8_t*,std::string>> order{{block,"M"}};
+        for(auto& item:items)order.push_back({*item.handle,item.label});
+        std::sort(order.begin(),order.end());
+        std::string below;size_t at=0;
+        while(order[at].second!="M"){below+=order[at].second;++at;}
+        CHECK(below==c.below);
+        if(c.kind=='i')CHECK(order[at+1].second=="d");
+        CHECK(h.check());
+    }
+}
+// MEASURED (ref masters-3): an 11 KB request fits only by moving the low 8 KB
+// handle across a locked one into a 9 KB hole; a 13 KB request fails.
+static void checkRelocateAcrossLocked() {
+    for(uint32_t request: {11264u,13312u}) {
+        alignas(8) static uint8_t arena[65536];MacHeap h;CHECK(h.init(arena,sizeof(arena),8));
+        auto h1=h.newHandle(8192),g=h.newHandle(4096),l2=h.newHandle(1024);
+        CHECK(h1 && g && l2 && h.setState(l2,0x80)==0);pattern(*h1,8192,0x5a);
+        auto f=h.newHandle(9216),l3=h.newHandle(1024);CHECK(f && l3 && h.setState(l3,0x80)==0);
+        auto rest=h.newHandle(h.largestBlock());CHECK(rest && h.setState(rest,0x80)==0);
+        CHECK(h.disposeHandle(g)==0 && h.disposeHandle(f)==0);
+        auto before=*h1;auto lockedA=*l2,lockedB=*l3;
+        auto handle=h.newHandle(request);
+        if(request==11264) {
+            CHECK(handle && *handle<before+1 && *h1>*l2 && *h1<*l3 && patternIs(*h1,8192,0x5a));
+        } else CHECK(!handle && h.error()==MacHeap::memFullErr && *h1==before);
+        CHECK(*l2==lockedA && *l3==lockedB && h.check());
+    }
+}
 int main() {
     alignas(8) uint8_t arena[65536];MacHeap h;
     CHECK(h.init(arena,sizeof(arena)));CHECK(h.check());
@@ -105,6 +163,9 @@ int main() {
     CHECK(h.setHandleSize(b,24)==0);CHECK(patternIs(*b,24,0x45));CHECK(h.emptyHandle(b)==0);CHECK(*b==nullptr);
     CHECK(h.reallocateHandle(b,1000)==0);CHECK(h.state(b)==0);CHECK(h.handleSize(b)==1000);
     CHECK(h.disposeHandle(b)==0);CHECK(h.disposePtr(pin)==0);CHECK(h.freeBytes()==original);CHECK(h.check());
+    // MEASURED: System 7.5.5 DisposeHandle(nil) clears MemError and succeeds.
+    CHECK(h.reallocateHandle(nullptr,1)==MacHeap::nilHandleErr);
+    CHECK(h.disposeHandle(nullptr)==0);CHECK(h.error()==0);CHECK(h.freeBytes()==original);CHECK(h.check());
     // Failed reallocation retains the pointer, contents and state.
     a=h.newHandle(400,true);pattern(*a,400,0x37);before=*a;CHECK(h.setState(a,0x60)==0);
     CHECK(h.reallocateHandle(a,0xffffffff)==MacHeap::memFullErr);
@@ -177,8 +238,9 @@ int main() {
     CHECK(h.disposeHandle(a)==0);freeChain(h,arena,slots);
     // A later master block may occupy a lower hole. Keep both the published
     // descending chain and lowest-address allocation order across that insert.
+    // The locked handle keeps the first new master block above the hole.
     CHECK(h.init(arena,sizeof(arena),2));
-    a=h.newHandle(1024);b=h.newHandle(512);c=h.newEmptyHandle();
+    a=h.newHandle(1024);CHECK(a && h.setState(a,0x80)==0);b=h.newHandle(512);c=h.newEmptyHandle();
     CHECK(a&&b&&c);pattern(*b,512,0x71);
     CHECK(h.disposeHandle(a)==0);CHECK(h.moreMasters(2)==0);
     CHECK(h.newEmptyHandle()==a);
@@ -277,6 +339,10 @@ int main() {
     h.compact();CHECK(h.check());
     for(unsigned i=0;i<120;++i)if(handles[i])CHECK(patternIs(*handles[i],200,i+1));
     checkRegionCopy();
-    checkDirectLookup();
+    checkDirectLookup();checkMasterPlacement();checkRelocateAcrossLocked();
+    // Any relocation reports moved bytes once, so the platform can publish code.
+    CHECK(h.init(arena,sizeof(arena)));MacHeap::takeMoved();
+    a=h.newHandle(256);b=h.newHandle(256);CHECK(a&&b&&!MacHeap::takeMoved());
+    CHECK(h.disposeHandle(a)==0);h.compact();CHECK(MacHeap::takeMoved() && !MacHeap::takeMoved());
     std::puts("PASS mac-heap: direct-lookup allocation master-blocks lock purge compact resize move-high fragmentation=2500");
 }

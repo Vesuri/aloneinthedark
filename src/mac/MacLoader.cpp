@@ -3,12 +3,17 @@
 #include <proto/exec.h>
 #include <exec/memory.h>
 #include <hardware/dmabits.h>
+#include "MacHeap.h"
 
 // Publish loaded or patched code. CacheControl(0, 0) changes no setting and
 // clears all caches as its documented side effect. Under WHDLoad, KickEmu
 // routes CacheControl to resload_FlushCache, whereas the emulated ROM's
 // CacheClearU is not set up to push 68040/68060 copyback lines.
 static inline void publishCode() { CacheControl(0, 0); }
+// INFERRED: the original Memory Manager moves blocks with BlockMove, which
+// flushes the 68040 caches. A moved handle can hold code (the unlocked Jnth
+// stub), so publish once before original code resumes after any heap move.
+static inline void publishMovedCode() { if(MacHeap::takeMoved())publishCode(); }
 
 #include "MacLoader.h"
 #include "BlockMoveBytes.h"
@@ -7597,6 +7602,8 @@ static bool dispatchMemoryTrap(uint16_t trap,uint32_t* regs)
     case 0xa022:
         regs[8]=(uint32_t)zone->newHandle(regs[0],(trap&0x200)!=0);error=zone->error();break;
     case 0xa023:
+        // MEASURED: System 7.5.5 DisposeHandle(nil) clears MemError and succeeds.
+        if(!handle) { error=0;break; }
         owner=handleZone(handle);if(!owner)return false;
         error=owner->disposeHandle(handle);if(!error)forgetHandle(handle);break;
     case 0xa024:
@@ -11257,6 +11264,7 @@ extern "C" uint8_t* aitdUserServiceDispatch(uint8_t* parked)
         loaderStop("USER SERVICE RETURN ABI",0);showLoaderStop();
     }
     publishFileControlBlocks();
+    publishMovedCode();
     uint32_t cleanup=result-1;
     if(s_userService.builtin && (s_userService.trap&0x0800))
         write32(s_userService.arguments-4+cleanup,s_userService.toolboxReturn);
@@ -11347,6 +11355,7 @@ extern "C" uint32_t aitdLineADispatch(uint32_t* regs, uint8_t* frame, uint8_t* u
         }
     }
     uint32_t result = dispatchMacTrap(trap, builtin, regs, frame, userStack);
+    publishMovedCode();
     if (builtin && (trap & 0x0800)) {
         if(result==0xffffffffUL)s_userService.toolboxReturn=returnPC;
         else write32(userStack - 4 + result - 1, returnPC);
@@ -11376,6 +11385,7 @@ static void serviceQuickTrap(uint16_t trap,uint32_t pc,uint32_t* regs,uint8_t* u
         if(const char* error=serviceNativeSong()) {loaderStop(error,3);showLoaderStop();}
     }
     pollNativeEffects();pollVBLTask();presentMacRuntime();
+    publishMovedCode(); // Song ownership can move heap blocks.
 }
 
 // Specialize only the trap selection, not the service implementation. These

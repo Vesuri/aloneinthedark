@@ -59,6 +59,19 @@ reads its retained raw resource during playback. A high address is not required 
 the audio hardware; stable ownership and locking remain necessary. The native loader
 retains this placement policy rather than bypassing the Memory Manager operation.
 
+## Pointer, master-block and fallback placement
+
+Prince of Persia 2 measured these System 7.5.5 rules (its reference run `masters-3`);
+this port shares the same Memory Manager reference and adopts them. `NewPtr` and
+explicit or implicit `MoreMasters` place their block at the lowest run of free and
+movable blocks, relocating those handles first-fit elsewhere, even across locked
+ones. When compaction and purging cannot satisfy a relocatable request, the same
+relocation is the last resort. `DisposeHandle(nil)` clears MemError and succeeds.
+
+Moved blocks can hold code: the port-owned Jnth stub is an ordinary handle. The heap
+records any relocation, and the trap dispatcher, the user-mode service return and the
+quick-trap service path publish caches once before original code resumes.
+
 ## Display
 
 AitdScreen owns bitplanes, copper, sprites and registers. The logical Mac screen is

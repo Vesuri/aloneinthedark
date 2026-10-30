@@ -12,6 +12,9 @@ public:
     uint8_t* base() const { return arena_; }
     uint32_t capacity() const { return bytes_; }
     int16_t error() const { return error_; }
+    // Relocated blocks may hold code (the unlocked Jnth resource). The platform
+    // publishes moved bytes to instruction fetch before original code resumes.
+    static bool takeMoved() { bool moved=moved_;moved_=false;return moved; }
     bool owns(const void* address) const;
     uint8_t* newPtr(uint32_t bytes, bool clear=false);
     int16_t disposePtr(uint8_t* ptr);
@@ -52,6 +55,7 @@ private:
     uint32_t masterBlocks_[maxMasterBlocks];
     uint16_t masterBlockCount_ = 0;
     bool masterBlocksOverflow_ = false;
+    static inline bool moved_ = false;
     // Master blocks never move or shrink. Cache the last slot range, not its
     // mutable allocation flags or pointees; disposal/reuse stays observable.
     mutable uint32_t cachedMasterStart_ = 0, cachedMasterLength_ = 0;
@@ -67,6 +71,8 @@ private:
     uint32_t findPtr(const uint8_t* ptr, uint32_t kind) const;
     uint32_t findSpace(uint32_t bytes) const;
     uint32_t allocate(uint32_t bytes, uint32_t kind, uint32_t owner=0);
+    uint32_t allocateLow(uint32_t bytes, uint32_t kind);
+    uint32_t clearLow(uint32_t bytes);
     void split(uint32_t off, uint32_t span, uint32_t logical, uint32_t kind, uint32_t owner);
     void release(uint32_t off);
     void coalesce();
