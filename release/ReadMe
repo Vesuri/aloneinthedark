@@ -93,9 +93,8 @@
  Right-Amiga + O     load game
  Right-Amiga + Q     quit normally
 
- As in the original Macintosh game, the very first launch starts with sound
- effects and music off; press S and M to enable them. Later launches use the
- saved preferences, which default to both on. Music begins with the intro.
+ Sound effects and music start on, including on the very first launch (the
+ original Macintosh game starts that one silent). Music begins with the intro.
 
  If using an emulator, set port 0 to Mouse and port 1 to Nothing. Keyboard
  joystick emulation may otherwise consume the cursor keys.

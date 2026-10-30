@@ -24,9 +24,11 @@ Original bytes establish the following:
   effect and music enables, toggled with PREF bytes 4/5 at Dan2+$1B96 and
   Dark+$6780. Core+$01FA calls the defaults routine (Gloss+$0922) only after the
   load fails; it writes bytes 4–7 as one to the file but not to those globals,
-  which DATA/ZERO initialise to zero. The first launch without preferences thus
-  starts with effects and music off on the Mac and in the port; later launches
-  load them on.
+  which DATA/ZERO initialise to zero. The Mac's first launch without preferences
+  thus starts with effects and music off; later launches load them on. By D10 the
+  port's FindFolder service sets both enables when no Alone Prefs is catalogued;
+  Core+$4356 is its single caller, before the load. A native fresh run reads 1/1
+  at Core+$0502 (0/0 without D10); an existing PREF with music off stays 1/0.
 - Core+$0502–$0536 passes that flag to JT107 (Dan2+$30A6) unconditionally,
   then compares the returned word with the old flag and stores their equality
   as the new flag. No preference value skips the call.

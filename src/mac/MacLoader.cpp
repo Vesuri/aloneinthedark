@@ -9328,6 +9328,13 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
             write32((uint8_t*)read32(userStack),s_files.preferences);
             write16((uint8_t*)read32(userStack+4),MacFiles::volumeRef);
             write16(userStack+16,0);
+            // Owner decision: a first launch has effects and music on. Only a loaded PREF
+            // sets these zero-initialised enables (Gloss+$0860); the original's defaults
+            // path writes them on to the file only. Core+$4356 is the single caller,
+            // before that load; existing preferences keep their own values.
+            if(!s_files.child(s_files.preferences,"Alone Prefs")) {
+                write16(s_currentA5-0xcbb2,1);write16(s_currentA5-0xcbbe,1);
+            }
             return 17;
         }
     }

@@ -284,8 +284,8 @@ evidence only for that endpoint.
 The combined `startup` case uses the default `.run` directory, builds with
 `PROBES=1`, and follows the original
 font, menu, graphics and sound calls through the post-intro CopyBits return.
-Its isolated directory receives the measured saved-preferences fixture: the first-run
-path can omit the sound-effect calls that this observer pairs. Owner preferences and
+Its isolated directory receives the measured saved-preferences fixture, which keeps
+the original's service counts. Owner preferences and
 saves are restored afterward; ordinary boot checks still cover missing preferences.
 It deliberately runs the book because its text/line calls are part of the fixture.
 Read-only observations at `aitd_line_a_trap_entry` include direct and general traps.
