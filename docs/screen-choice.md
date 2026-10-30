@@ -19,6 +19,14 @@ Original bytes establish the following:
 - Gloss+$0820–$085E loads PREF 128, requires signature `$FF800001` and length
   ten, and copies it to the preference object's bytes 4–13. The size flag is
   PREF byte 7 (object byte 11). Defaults at Gloss+$0938–$096E set it to one.
+- Only that successful load (Gloss+$0860–$089C) copies PREF bytes 4, 5 and 8 to
+  the globals at A5−$CBB2, A5−$CBBE and A5−$CE7E; the first two are the sound
+  effect and music enables, toggled with PREF bytes 4/5 at Dan2+$1B96 and
+  Dark+$6780. Core+$01FA calls the defaults routine (Gloss+$0922) only after the
+  load fails; it writes bytes 4–7 as one to the file but not to those globals,
+  which DATA/ZERO initialise to zero. The first launch without preferences thus
+  starts with effects and music off on the Mac and in the port; later launches
+  load them on.
 - Core+$0502–$0536 passes that flag to JT107 (Dan2+$30A6) unconditionally,
   then compares the returned word with the old flag and stores their equality
   as the new flag. No preference value skips the call.

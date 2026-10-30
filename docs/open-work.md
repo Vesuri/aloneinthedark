@@ -21,16 +21,6 @@ Each item gives the **goal**, then the scope, then *done when*: the evidence req
   starts normally or stops with a visible, named reason; existing boot and WHDLoad
   regressions still pass.
 
-- **REPORT.2 Check the first-run sound state against the Macintosh.** Two users
-  report sound missing; one says effects and music start disabled. Music is
-  expected to be absent until the intro sequence. Compare a first run without a
-  preferences file and a run with saved preferences against the original Mac
-  game: effect/music flags, the S/M toggles and the first audible effect.
-
-  *Done when* the port's initial sound state matches the Mac in both cases, or a
-  measured difference is fixed or recorded; the ReadMe states the first-run
-  behaviour if users could otherwise mistake it for a fault.
-
 ## Monster sequence performance
 
 Use the maintained [monster-to-death profile](performance.md#monster-to-death-cycle)

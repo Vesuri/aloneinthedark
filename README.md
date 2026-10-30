@@ -55,6 +55,10 @@ chooser are suppressed; keyboard commands and the original engine interfaces
 provide the reached game actions. In FS-UAE, disable keyboard joystick
 emulation if it consumes the arrow keys; the supplied launchers do this.
 
+As on the Macintosh, the first launch without preferences starts with effects and
+music off; the preferences it writes default both on for later launches. Music
+begins with the intro. See [screen choice](docs/screen-choice.md) for the PREF code.
+
 ## Building
 
 The game uses `m68k-amiga-elf-gcc`, `elf2hunk` and vasm. The WHDLoad slave also
