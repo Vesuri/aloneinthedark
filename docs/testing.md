@@ -416,8 +416,8 @@ python3 tools/test_whdload.py --mode timed --ticks 6000 --seconds 180
 python3 tools/test_whdload.py --mode timed --cpu 68040 --mmu --ticks 6000 --seconds 180
 ```
 
-The `--mmu` test requires a 68040 or 68060 without JIT or a custom machine
-configuration. It verifies that WHDLoad actually enabled MMU translation;
+The `--mmu` test requires a 68030, 68040 or 68060 without JIT or a custom machine
+configuration. On a 68040/68060 it verifies that WHDLoad actually enabled MMU translation;
 a non-MMU run cannot check protection of WHDLoad's own exception table.
 For startup and normal vector restoration, clean-build with `QUITPROBE=1`
 and run `--mode quit --cpu 68040 --mmu --ticks 6000 --seconds 180`.
@@ -497,10 +497,20 @@ Use the corrected AmigaXDev `FSUAE_MMU` build for copyback tests. The older
 FS-UAE MMU write-ATC bug can give Chip stores the wrong cache attributes; Wing
 Commander's CPU/DMA comparison established the correction. `--data-cache`
 selects that shared build (an explicit `FSUAE` wins), enables the compatible
-MMU core, data-cache emulation and `full+indirect` UAE board, then verifies the
-saved emulator configuration and both guest CACR enable bits. `--mmu` alone
-does **not** enable data-cache emulation. These are functional checks, not a
-calibrated 68040 benchmark.
+core, data-cache emulation and `full+indirect` UAE board, then verifies the
+saved emulator configuration, the slave's `setcpu=` request and the guest CACR
+enable bits against the [per-CPU policy](development.md#whdload-code-and-dma-cache-policy).
+`--mmu` alone does **not** enable data-cache emulation; on a 68030 WHDLoad uses
+the MMU only with `--whdload-mmu`, and `--whdload-nommu` passes `NoMMU` to a 68040/68060. These are functional checks, not a calibrated
+68040 benchmark. Cover every policy with the production timed route:
+
+```sh
+for setup in "--cpu 68020" "--cpu 68030" "--cpu 68030 --mmu" \
+    "--cpu 68030 --mmu --whdload-mmu" "--cpu 68040 --mmu" "--cpu 68060 --mmu" \
+    "--cpu 68040 --mmu --whdload-nommu"; do
+  python3 tools/test_whdload.py --mode timed --data-cache --ticks 6000 --seconds 300 $setup
+done
+```
 
 ```sh
 . amiga/env.sh

@@ -4,6 +4,12 @@
 #include <exec/memory.h>
 #include <hardware/dmabits.h>
 
+// Publish loaded or patched code. CacheControl(0, 0) changes no setting and
+// clears all caches as its documented side effect. Under WHDLoad, KickEmu
+// routes CacheControl to resload_FlushCache, whereas the emulated ROM's
+// CacheClearU is not set up to push 68040/68060 copyback lines.
+static inline void publishCode() { CacheControl(0, 0); }
+
 #include "MacLoader.h"
 #include "BlockMoveBytes.h"
 #ifdef AITD_BLOCK_MOVE_PROBE
@@ -2388,7 +2394,7 @@ extern "C" __attribute__((noinline)) void aitdGainProbeComplete() {__asm__ volat
 extern "C" void aitdGainProbe() {
     uint32_t handle=aitdProbeClockDriverResource();
     if(!handle || handle!=(uint32_t)g_soundDriverHandle) {loaderStop("GAIN PROBE RESOURCE",3);showLoaderStop();}
-    CacheClearU();
+    publishCode();
     if(aitdProbeGainSong((uint32_t)*g_soundDriverHandle,0,136)) {loaderStop("GAIN PROBE SONG",3);showLoaderStop();}
     uint32_t began=g_macTicks;
     while(g_macTicks-began<180) {__asm__ volatile("nop" ::: "memory");}
@@ -6564,7 +6570,7 @@ static uint32_t routePatchedTrap(uint16_t trap, uint32_t* regs,
     // those writes, rather than at SetTrapAddress or on every subsequent call.
     // Copyback data must reach memory before instruction fetch sees the entry.
     if(s_trapNeedsPublication[index]) {
-        CacheClearU();
+        publishCode();
         s_trapNeedsPublication[index]=false;
     }
     uint32_t returnPC = read32(frame + 2) + 2;
@@ -7657,7 +7663,7 @@ static bool dispatchMemoryTrap(uint16_t trap,uint32_t* regs)
         error=owner->moveHigh(handle);
         // Jnth is executable port-owned code, published after the original
         // loader's MoveHHi. Its destination must not retain old instructions.
-        if(!error && handle==g_soundDriverHandle)CacheClearU();
+        if(!error && handle==g_soundDriverHandle)publishCode();
         break;
     case 0xa066: regs[8]=(uint32_t)zone->newEmptyHandle();error=zone->error();break;
     default: return false;
@@ -9373,7 +9379,7 @@ static uint32_t dispatchMacTrap(uint16_t trap, bool builtin, uint32_t* regs,
     }
     if ((trap & 0xfeff) == 0xa055) return 1; // StripAddress identity: native 32-bit pointers
     if (trap == 0xa0bd || (trap == 0xa198 && (regs[0] == 1 || regs[0] == 3))) {
-        CacheClearU();
+        publishCode();
         regs[0] = 0;
         return 1;
     }
@@ -11940,7 +11946,7 @@ bool MacLoader::run(AitdScreen* screen)
 #endif
 #ifdef AITD_GAIN_PROBE
     if(g_soundDriver.initialize(6,2,2,g_macTicks)) {loaderStop("GAIN PROBE SETUP",3);showLoaderStop();}
-    CacheClearU();installLineAVector();
+    publishCode();installLineAVector();
     aitd_call_mac_code((void*)aitdGainProbe,a5,g_macStackBase+65536);
     restoreLineAVector();return true;
 #endif
@@ -11948,7 +11954,7 @@ bool MacLoader::run(AitdScreen* screen)
     if(g_soundDriver.initialize(6,2,2,g_macTicks)) {
         loaderStop("DRIVER CLOCK PROBE SETUP",3);showLoaderStop();
     }
-    CacheClearU();
+    publishCode();
     installLineAVector();
     aitd_call_mac_code((void*)aitdDriverClockProbe,a5,g_macStackBase+65536);
     restoreLineAVector();
@@ -11960,8 +11966,8 @@ bool MacLoader::run(AitdScreen* screen)
     // These segments were loaded as data, then patched together with the A5
     // JMP table. Publish dirty data and discard stale instruction-cache lines
     // before executing any of them (Exec V37+, our OS 2.04 baseline).
-    // Do not disable caches: let Exec use the installed CPU support routines.
-    CacheClearU();
+    // Do not disable caches or change their settings.
+    publishCode();
     // Enter the original runtime, which expands DATA/DREL and installs LoadSeg.
     installLineAVector();
     aitd_call_mac_code(s_segments[1].begin + 0x14, a5, g_macStackBase + 65536);

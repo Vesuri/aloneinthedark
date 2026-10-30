@@ -77,11 +77,11 @@ extern "C" void aitdResourceExitFixture();
 void aitdInstallResourceExitProbe(uint8_t* core) {
     uint8_t* entry=core+0x3e4;
     if(lng(entry)!=0x4e56ff00 || lng(entry+4)!=0x4ebafd7c) { g_resourceExitError=0xfffe;return; }
-    originalMain=entry;w(entry,0x4ef9);l(entry+2,(uint32_t)aitdResourceExitFixture);CacheClearU();
+    originalMain=entry;w(entry,0x4ef9);l(entry+2,(uint32_t)aitdResourceExitFixture);CacheControl(0,0);
 }
 extern "C" void aitdResourceExitFixture() {
  if(!originalMain) { g_resourceExitError=0xfffd;aitdResourceExitFixtureFinished();return; }
- l(originalMain,0x4e56ff00);l(originalMain+4,0x4ebafd7c);CacheClearU();
+ l(originalMain,0x4e56ff00);l(originalMain+4,0x4ebafd7c);CacheControl(0,0);
  if(!checkOverlay()) { g_resourceExitError=0xfffc;aitdResourceExitFixtureFinished();return; }
  if(g_resourceExitPhase==4 || g_resourceExitPhase==5) {
   g_resourceExitPrepared=1;g_resourceExitStep=0x2000+g_resourceExitPhase;

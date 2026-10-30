@@ -79,6 +79,15 @@ are in that document; preserve matching game state when comparing changes.
 
 ## Profiling validity
 
+- **TEST.8 Restore the release-check gate.** `make release-check` stops at host
+  tests: `test_aprof_report.py` raises `APROF / PC/TREE ACCOUNTING` in
+  `test_inclusive_tree` and `test_profile_fields` on an unchanged tree. Its later
+  `tools/test_release.py` step imports `member` from `package_release`, which the
+  shared-archive migration no longer provides. Correct the fixtures or callers
+  against the current shared tools; do not weaken accounting or archive checks.
+
+  *Done when* both pass and an unmodified `make release-check` completes.
+
 - **MEASURE.3 Verify debugger-injected negative controls reach the CPU.**
   A compiled wrong-tick injection trips the service-cache oracle immediately;
   debugger writes to a pending-pass field and to the compared tick register

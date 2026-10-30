@@ -401,10 +401,28 @@ Heap movement and buffered copies use the overlap-safe `BlockMoveBytes` helper.
 
 ## WHDLoad code and DMA cache policy
 
-The slave requests kickemu `CACHE`: Chip memory noncacheable, Fast/slave memory
-copyback, both CPU caches enabled. User WHDLoad cache overrides remain effective.
-Code publication uses Exec `CacheClearU`; kickemu routes its cache-control path
-to `resload_FlushCache`. The initial CODE/A5/trap stubs are published before entry.
+The slave chooses caches per CPU and MMU use. KickEmu boots with `CACHE`: Chip
+memory noncacheable, Fast/slave memory copyback, both CPU caches enabled. That
+needs WHDLoad's MMU, which it uses on a 68040/68060 by default and on a 68030
+only with its `MMU` option; without it WHDLoad switches every cache off. When
+DOS is up, `_bootdos` reads CACR through Supervisor. With the instruction cache
+off, it requests the `CACHECHIPDATA` values on a 68020/68030 (write-through data
+cache; Amiga hardware inhibits 68030 caching of Chip and I/O accesses) and the
+`CACHECHIP` values on a 68040/68060, whose copyback data cache cannot exclude
+Chip DMA buffers without the MMU. User WHDLoad cache overrides remain effective.
+
+| Setup | Policy | Expected CACR enable bits |
+| --- | --- | --- |
+| 68020 | `CACHECHIPDATA` | IC (`$1`) |
+| 68030 | `CACHECHIPDATA` | IC and DC (`$101`) |
+| 68030 with WHDLoad `MMU` | `CACHE` | IC and DC (`$101`) |
+| 68040/68060 | `CACHE` | IC and DC (`$80008000`) |
+| 68040/68060 with `NoMMU` | `CACHECHIP` | IC only (`$8000`) |
+
+Code publication uses `CacheControl(0, 0)`, which changes no setting and clears
+all caches as its documented side effect. KickEmu routes CacheControl to
+`resload_FlushCache`; the emulated ROM's CacheClearU is not set up to push
+68040/68060 copyback lines. The initial CODE/A5/trap stubs are published before entry.
 The original segment loader flushes after relocation and jump-table updates through
 `FlushInstructionCache` (`$A0BD`); supported `HWPriv` flush selectors use the same
 service. The executable Jnth resource is also flushed after MoveHHi.
@@ -415,9 +433,17 @@ a newly installed entry once, immediately before its first call, after those wri
 Flushing only at SetTrapAddress is too early. Original instructions and registers
 remain unchanged; repeated calls do not add a flush.
 
+No original instruction is modified at run time. A byte scan of every CODE resource
+for `LEA d16(PC),An` followed by a store through `An` finds only data words: CODE 1
+stores its flush-routine pointer at `$22a` and globals at `$4`/`$8`, all read back
+through PC-relative loads. A copyback data cache therefore needs no extra flushes
+around original code.
+
 All Paula sample/stream buffers, bitplanes, copper lists and sprite buffers use
 `MEMF_CHIP`, so their CPU writes are visible to DMA under this policy. Planar
 synchronization drains the blitter before C2P or CPU reads reuse its destination.
+Blitter-written Chip memory later read by the CPU stays coherent because Chip is
+never data-cached: noncacheable through the MMU, or hardware-inhibited on a 68030.
 Fast-memory chunky pixels and software blitter-queue entries are CPU-only. No
 per-frame cache flush is needed. See [cache validation](testing.md#whdload-cache-validation)
 for the emulator gate; hardware performance and corruption checks remain deferred.
@@ -426,10 +452,11 @@ for the emulator gate; hardware performance and corruption checks remain deferre
 
 Direct launch requires the accelerator's matching 68040/68060 support library,
 initialized by SetPatch, with instruction and data caches enabled. The executable
-and its launch scripts do not write CACR or call CacheControl to select cache
-policy. Modified code is published through Exec CacheClearU; the CPU library owns
-the flush implementation and any transient cache-control operations it needs.
-This is preservation of cache policy, not a claim that flushing never touches CACR.
+and its launch scripts do not write CACR or select cache policy. Modified code is
+published through `CacheControl(0, 0)`, which leaves every setting unchanged;
+the CPU library owns the flush implementation and any transient cache-control
+operations it needs. This is preservation of cache policy, not a claim that
+flushing never touches CACR.
 
 The original CODE 1 loader can select a direct CACR fallback when the Macintosh
 cache-flush service is absent. Our GetOSTrapAddress exposes `$A0BD`, distinct from

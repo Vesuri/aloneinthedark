@@ -36,8 +36,10 @@ def main():
     p.add_argument('--seconds', type=int, default=90, help='host safety ceiling')
     p.add_argument('--ticks', type=int, default=1500, help='WHDLoad timeout in PAL fields')
     p.add_argument('--cpu', default='68030')
-    p.add_argument('--mmu', action='store_true', help='enable the 68040/68060 MMU and verify WHDLoad uses it')
-    p.add_argument('--data-cache', action='store_true', help='exercise corrected 040/060 MMU data-cache emulation and verify guest cache state')
+    p.add_argument('--mmu', action='store_true', help='enable the 68030/68040/68060 MMU (WHDLoad uses a 68030 MMU only with --whdload-mmu)')
+    p.add_argument('--whdload-mmu', action='store_true', help="pass WHDLoad's MMU option (68030)")
+    p.add_argument('--whdload-nommu', action='store_true', help="pass WHDLoad's NoMMU option (68040/68060)")
+    p.add_argument('--data-cache', action='store_true', help='exercise corrected data-cache emulation and verify the per-CPU guest cache policy')
     p.add_argument('--machine-config', type=Path, help='FS-UAE hardware settings only; guest disks and host paths stay isolated')
     p.add_argument('--z3-memory-mb', type=int, choices=(0,16,32,64,128), default=0, help='additional Zorro III RAM for cache/timing comparisons')
     p.add_argument('--jit', action='store_true', help='enable JIT for explicit reproduction runs')
@@ -51,10 +53,14 @@ def main():
     args = p.parse_args()
     if args.startup_prefs and args.mode in ('smoke','boot','load','file-read'):
         p.error('--startup-prefs requires a gameplay mode')
-    if args.mmu and (args.cpu not in ('68040', '68060') or args.jit or args.machine_config):
-        p.error('--mmu requires --cpu 68040 or 68060, without JIT or machine-config')
-    if args.data_cache and (not args.mmu or args.mode == 'smoke'):
-        p.error('--data-cache requires --mmu and the game slave')
+    if args.mmu and (args.cpu not in ('68030', '68040', '68060') or args.jit or args.machine_config):
+        p.error('--mmu requires --cpu 68030, 68040 or 68060, without JIT or machine-config')
+    if args.whdload_mmu and (args.cpu != '68030' or not args.mmu):
+        p.error('--whdload-mmu requires --cpu 68030 --mmu')
+    if args.whdload_nommu and (args.cpu not in ('68040', '68060') or not args.mmu):
+        p.error('--whdload-nommu requires --cpu 68040 or 68060 with --mmu')
+    if args.data_cache and (args.mode in ('smoke', 'boot', 'load') or args.jit or args.machine_config):
+        p.error('--data-cache requires the game slave, without JIT or machine-config')
     if args.mode == "walking" and not args.save_source:
         p.error("walking requires --save-source")
     if args.rtb is None:
@@ -89,6 +95,8 @@ def main():
     (boot/'s/WHDLoad.prefs').write_text('Expert\nReadDelay=0\n')
     preload = '' if args.no_preload else 'PRELOAD '
     if args.no_cache: preload += 'NOCACHE '
+    if args.whdload_mmu: preload += 'MMU '
+    if args.whdload_nommu: preload += 'NOMMU '
     filelog = '' if args.no_filelog or args.mode in ('stairs', 'escape', 'walking') else 'FILELOG '
     (boot/'s/startup-sequence').write_text(
         'DF0:C/Assign C: DF0:C\nDF0:C/Assign LIBS: DF0:Libs\n'
@@ -129,7 +137,9 @@ def main():
             output = (boot/'result').open(errors='replace').read(512) if (boot/'result').exists() else ''
             report = (game/'.whdl_register').read_text(encoding='latin1') if (game/'.whdl_register').exists() else ''
             assert report, f'No WHDLoad core dump: {base}\n{output}'
-            if args.mmu:
+            # WHDLoad uses the MMU on a 68040/68060 and, with its MMU option, a 68030.
+            whdload_mmu = args.mmu and not args.whdload_nommu and (args.cpu != '68030' or args.whdload_mmu)
+            if whdload_mmu and args.cpu != '68030':
                 assert re.search(r'\bTC=8000\b', report), 'WHDLoad MMU translation not active: '+report
                 print('PASS: WHDLoad MMU translation enabled')
             if args.data_cache:
@@ -137,12 +147,23 @@ def main():
                 for setting in ('cpu_compatible=true', 'cpu_data_cache=true',
                                 'cpu_cycle_exact=false', 'uaeboard=full+indirect'):
                     assert setting in config.splitlines(), 'Inactive cache model: '+setting
+                # The slave's per-CPU policy (docs/testing.md, WHDLoad cache validation):
+                # CACHE where WHDLoad uses the MMU, otherwise CACHECHIPDATA on a
+                # 68020/68030 and CACHECHIP on a 68040/68060. NOCACHE overrides it.
+                big = args.cpu in ('68040', '68060')
+                caches = {'68020': 0x0001, '68030': 0x0101}.get(args.cpu, 0x80008000)
+                if whdload_mmu and not args.no_cache:
+                    policy_name, expected_policy, expected_caches = 'CACHE', 0x33d, caches
+                elif big:
+                    policy_name, expected_policy, expected_caches = 'CACHECHIP', 0x13e, 0x8000
+                else:
+                    policy_name, expected_policy, expected_caches = 'CACHECHIPDATA', 0x33e, caches
+                if args.no_cache: expected_caches = 0
                 cacr=re.search(r'\bCACR=([0-9A-Fa-f]+)\b', report)
-                expected_caches=0 if args.no_cache else 0x80008000
-                assert cacr and int(cacr[1],16)&0x80008000 == expected_caches, 'Unexpected guest cache state: '+report
+                assert cacr and int(cacr[1],16)&caches == expected_caches, 'Unexpected guest cache state: '+report
                 policy=re.search(r'\bsetcpu=([0-9A-Fa-f]+)\b', report)
-                assert policy and int(policy[1],16)&0x33f == 0x33d, 'Expected CACHE slave policy: '+report
-                print('PASS: emulated data cache active; guest CACR='+cacr[1]+'; Chip NC, Fast copyback requested')
+                assert policy and int(policy[1],16)&0x33f == expected_policy, f'Expected {policy_name} slave policy: '+report
+                print(f'PASS: emulated data cache active; guest CACR={cacr[1]}; {policy_name} requested')
             if args.mode in ('timed', 'stairs', 'escape', 'walking'):
                 assert 'DEBUG caused.' in report, report + output
                 if args.mode == 'timed':
