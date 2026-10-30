@@ -7,6 +7,30 @@ cited below by § number; owner decisions D1–D9 are in design.md §5.
 
 Each item gives the **goal**, then the scope, then *done when*: the evidence required.
 
+## User reports on 0.92
+
+- **REPORT.1 Silent startup failure on 68060/RTG and Vampire V2.** Two users report
+  a black screen and a return to Workbench with no message: an A4000 with a TF4060
+  and RTG card (WHDLoad and direct CLI launch, with and without SetPatch), and an
+  A1200 with a Vampire V2 (68080, no MMU, SAGA). Reproduce the closest emulated
+  setups (68060 with and without MMU, an RTG Workbench screen, no FPU) on 0.92 and
+  current `main`. Identify the failing step and why its loud stop is not visible.
+  Do not hide a missing subsystem; an unsupported machine must say so.
+
+  *Done when* the cause is attributed for each reported setup, and each either
+  starts normally or stops with a visible, named reason; existing boot and WHDLoad
+  regressions still pass.
+
+- **REPORT.2 Check the first-run sound state against the Macintosh.** Two users
+  report sound missing; one says effects and music start disabled. Music is
+  expected to be absent until the intro sequence. Compare a first run without a
+  preferences file and a run with saved preferences against the original Mac
+  game: effect/music flags, the S/M toggles and the first audible effect.
+
+  *Done when* the port's initial sound state matches the Mac in both cases, or a
+  measured difference is fixed or recorded; the ReadMe states the first-run
+  behaviour if users could otherwise mistake it for a fault.
+
 ## Monster sequence performance
 
 Use the maintained [monster-to-death profile](performance.md#monster-to-death-cycle)
