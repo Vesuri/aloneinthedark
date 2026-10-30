@@ -135,6 +135,13 @@ or music interrupt.
 After an OS window, held keys and queued edges are cleared because releases while
 the OS owns the keyboard cannot reach the game. Game presentation
 disables the mouse sprite and cursor inversion; retained interfaces use the keyboard.
+A CD32 pad in port 2 (D11) is detected by the VBI during the 128 fields after
+input starts: three valid, agreeing reads, 8 fields apart. After that the VBI reads
+it each field (`Cd32Pad.s`, interrupts off, protocol delays kept verbatim from
+Rescue on Fractalus). Its stick and buttons become press and release edges of the
+mapped Amiga keys, through the same queue and KeyMap path as the keyboard; the
+keyboard handler disables interrupts around its queue update. Without a detected
+pad, port 2 is never driven. After an OS window, held pad buttons are pressed again.
 Mouse sampling and logical cursor services remain available to original code. See
 [events.md](events.md) and [cursor.md](cursor.md).
 

@@ -61,14 +61,85 @@ static uint32_t keyboardHandler()
     code = (uint8_t)((code >> 1) | (code << 7));
     uint8_t raw = (uint8_t)(code & 0x7f);
     bool down = (code & 0x80) == 0;
+    // The VBI's CD32 pad also records edges; keep the queue update whole.
+    Disable();
     recordKey(raw, down);
+    Enable();
     return 0;
+}
+
+// CD32 pad on port 1 (owner request). Its stick and buttons become the
+// keyboard keys of the documented controls, so the original's KeyMap and
+// keyDown paths are unchanged. The read clocks the fire pin and owns pin 9,
+// so it runs only after a pad is detected: three valid agreeing samples,
+// 8 VBIs apart, within the first 128 VBIs (Commodore's CD32 notes say the
+// first reads can be wrong). A pad connected later needs a restart.
+extern "C" uint16_t aitd_cd32_read();
+extern "C" { volatile uint16_t g_cd32Present=0; }
+// One pad state word: the read's button bits, and the stick in bits 12-15.
+static const struct { uint16_t mask; uint8_t raw; } kPadKeys[]={
+    {0x1000,0x4c},{0x2000,0x4d},{0x4000,0x4e},{0x8000,0x4f}, // stick: cursor keys
+    {0x0100,0x40},                                           // red: Space (action)
+    {0x0040,0x60},{0x0020,0x60},                             // green, forward: Shift (run)
+    {0x0080,0x44},                                           // yellow: Return (menu)
+    {0x0200,0x45},{0x0008,0x45},                             // blue, play: Escape
+};
+static uint16_t s_padProbes,s_padLast;
+static uint8_t s_padStreak,s_padHeld[sizeof(kPadKeys)/sizeof(kPadKeys[0])];
+
+static bool cd32Valid(uint16_t word)
+{
+    // An empty port or a plain joystick fails the markers or reads all held.
+    return (word&0x0003)==0x0003 && (word&0x03f8)!=0x03f8;
+}
+
+static uint16_t readCd32()
+{
+    Disable();
+    const uint16_t word=aitd_cd32_read();
+    Enable();
+    return word;
+}
+
+void aitdInputPadVBI()
+{
+    if(!g_cd32Present) {
+        if(!s_padProbes || (--s_padProbes&7))return;
+        const uint16_t word=readCd32(),buttons=uint16_t(word&0x03f8);
+        if(!cd32Valid(word))s_padStreak=0;
+        else if(s_padStreak && buttons==s_padLast) {
+            if(++s_padStreak<3)return;
+            // A button already held at detection is not a press.
+            for(uint16_t i=0;i<sizeof(kPadKeys)/sizeof(kPadKeys[0]);++i)
+                s_padHeld[i]=(buttons&kPadKeys[i].mask)!=0;
+            g_cd32Present=1;
+        }
+        else {s_padStreak=1;s_padLast=buttons;}
+        return;
+    }
+    const uint16_t word=readCd32(),joy=*joy1datPointer;
+    // JOY1DAT is crosswise quadrature: up = b8^b9, left = b9, down = b0^b1, right = b1.
+    uint16_t pad=cd32Valid(word) ? uint16_t(word&0x03f8) : 0;
+    if(((joy>>9)^(joy>>8))&1)pad|=0x1000;
+    if(((joy>>1)^joy)&1)pad|=0x2000;
+    if(joy&0x0002)pad|=0x4000;
+    if(joy&0x0200)pad|=0x8000;
+    for(uint16_t i=0;i<sizeof(kPadKeys)/sizeof(kPadKeys[0]);++i) {
+        const bool held=(pad&kPadKeys[i].mask)!=0;
+        if(held==(s_padHeld[i]!=0))continue;
+        s_padHeld[i]=held;
+        bool level=false;
+        for(uint16_t j=0;j<sizeof(kPadKeys)/sizeof(kPadKeys[0]);++j)
+            if(kPadKeys[j].raw==kPadKeys[i].raw && s_padHeld[j])level=true;
+        if((s_keyDown[kPadKeys[i].raw]!=0)!=level)recordKey(kPadKeys[i].raw,level);
+    }
 }
 
 bool aitdInputInitialize()
 {
     for (uint16_t i = 0; i < 128; ++i) s_keyDown[i] = 0;
     s_head = s_tail = 0;
+    s_padProbes = 128;
     s_ciaaBase = (struct Library*)OpenResource((CONST_STRPTR)CIAANAME);
     if (!s_ciaaBase) return false;
     s_keyboardInterrupt.is_Node.ln_Type = NT_INTERRUPT;
@@ -102,6 +173,7 @@ void aitdInputAfterOSSwitch()
     Disable();
     for(uint16_t i=0;i<128;++i)s_keyDown[i]=0;
     s_tail=s_head;
+    for(uint16_t i=0;i<sizeof(s_padHeld);++i)s_padHeld[i]=0;
     aitdMacReleaseKeys();
     Enable();
 }

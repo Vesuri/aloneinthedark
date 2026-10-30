@@ -93,11 +93,20 @@
  Right-Amiga + O     load game
  Right-Amiga + Q     quit normally
 
+ A CD32 pad in the joystick port is detected at startup (connect it first):
+
+ Stick               move and turn
+ Red                 perform the selected action; confirm in menus
+ Green or Forward    run
+ Yellow              action/inventory menu
+ Blue                cancel in menus (also opens the in-game menu)
+ Play                open or close the in-game menu
+
  Sound effects and music start on, including on the very first launch (the
  original Macintosh game starts that one silent). Music begins with the intro.
 
- If using an emulator, set port 0 to Mouse and port 1 to Nothing. Keyboard
- joystick emulation may otherwise consume the cursor keys.
+ If using an emulator, set port 0 to Mouse and port 1 to Nothing or a CD32
+ pad. Keyboard joystick emulation may otherwise consume the cursor keys.
 
 
  History:

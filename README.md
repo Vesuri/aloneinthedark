@@ -50,6 +50,12 @@ installation instructions.
 | Right-Amiga + S / O / Q | Save / Load / Quit normally |
 | F10 | Immediate WHDLoad exit, bypassing normal game cleanup |
 
+A CD32 pad in port 2 (the joystick port) is detected at startup and drives the
+same keys: stick = arrow keys, Red = Space (action; confirms in menus), Green or
+the right shoulder (Forward) = Shift (run), Yellow = Enter (action/inventory
+menu), Blue and Play = Escape (in-game menu; cancels in menus) (D11). Connect it
+before starting the game.
+
 The port displays the 320×200 game viewport. The Mac menu bar and screen-size
 chooser are suppressed; keyboard commands and the original engine interfaces
 provide the reached game actions. In FS-UAE, disable keyboard joystick

@@ -13,6 +13,7 @@
 #include "framework/AmigaHardware.h"
 #include "framework/CopperList.h"   /* copperMove() -- the list entries, nothing else */
 #include "AitdScreen.h"
+#include "MacInput.h"
 #include "Planar8.h"
 #include "AgaPalette.h"
 #include "AgaCursor.h"
@@ -322,6 +323,7 @@ void AitdScreen::vbiUpdate(bool install)
 #ifndef AITD_AGA_CURSOR_PROBE
     aitdMacMouseVBI();
 #endif
+    aitdInputPadVBI();
     updateMouseSprite();
     if(install)applyCursorInversion();
 #ifdef AITD_AGA_CURSOR_PROBE

@@ -3,7 +3,7 @@
 This is the work queue. Work it from the top, one item per commit; split an item only if
 it has independent parts. Delete an item in the commit that finishes it, because the Git
 log records finished work. The design and its rationale are in [design.md](design.md),
-cited below by § number; owner decisions D1–D10 are in design.md §5.
+cited below by § number; owner decisions D1–D11 are in design.md §5.
 
 Each item gives the **goal**, then the scope, then *done when*: the evidence required.
 
@@ -20,6 +20,16 @@ Each item gives the **goal**, then the scope, then *done when*: the evidence req
   *Done when* the cause is attributed for each reported setup, and each either
   starts normally or stops with a visible, named reason; existing boot and WHDLoad
   regressions still pass.
+
+- **INPUT.1 Verify the CD32 pad on hardware.** FS-UAE accepts a CD32 port mode
+  but its pad reads return 0000 (DATRY stays high), so the emulator cannot show
+  detection or the button map. On a real Amiga with a CD32 pad in port 2, check
+  detection at startup, every button and the stick in gameplay, the inventory and
+  in-game menus, and Run with Green and Forward. Also check that a plain joystick
+  or an empty port stays undetected.
+
+  *Done when* detection and each mapped key are confirmed on hardware, and the
+  CD32 read's VBI cost has been measured in raster lines.
 
 ## Monster sequence performance
 

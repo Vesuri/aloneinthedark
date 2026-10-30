@@ -8,6 +8,7 @@ bool aitdInputPopKey(uint8_t& rawKey, bool& down, uint16_t& modifiers);
 uint16_t aitdInputFlushKeys(uint16_t whichMask,uint16_t stopMask);
 bool aitdInputKeyDown(uint8_t rawKey);
 uint16_t aitdInputModifiers();
+void aitdInputPadVBI();
 #ifdef AITD_INTRO_SKIP
 void aitdInputIntroSkip(uint16_t trap, uint32_t ticks);
 #endif
