@@ -140,7 +140,9 @@ input starts: three valid, agreeing reads, 8 fields apart. After that the VBI re
 it each field (`Cd32Pad.s`, interrupts off, protocol delays kept verbatim from
 Rescue on Fractalus). Its stick and buttons become press and release edges of the
 mapped Amiga keys, through the same queue and KeyMap path as the keyboard; the
-keyboard handler disables interrupts around its queue update. Without a detected
+keyboard handler disables interrupts around its queue update. Red is Return
+when pressed in a menu (the original's Dan1+$61C8 sets A5−$11B4C to 2), because
+the title menu confirms only on Return. Without a detected
 pad, port 2 is never driven. After an OS window, held pad buttons are pressed again.
 Mouse sampling and logical cursor services remain available to original code. See
 [events.md](events.md) and [cursor.md](cursor.md).

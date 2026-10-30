@@ -76,15 +76,17 @@ static uint32_t keyboardHandler()
 // first reads can be wrong). A pad connected later needs a restart.
 extern "C" uint16_t aitd_cd32_read();
 extern "C" { volatile uint16_t g_cd32Present=0; }
-// One pad state word: the read's button bits, and the stick in bits 12-15.
+// One pad state word: the read's button bits, the stick in bits 12-15 and
+// bit 10 for Red in a menu.
 static const struct { uint16_t mask; uint8_t raw; } kPadKeys[]={
     {0x1000,0x4c},{0x2000,0x4d},{0x4000,0x4e},{0x8000,0x4f}, // stick: cursor keys
-    {0x0100,0x40},                                           // red: Space (action)
+    {0x0100,0x40},{0x0400,0x44},                             // red: Space, in menus Return
     {0x0040,0x60},{0x0020,0x60},                             // green, forward: Shift (run)
     {0x0080,0x44},                                           // yellow: Return (menu)
     {0x0200,0x45},{0x0008,0x45},                             // blue, play: Escape
 };
 static uint16_t s_padProbes,s_padLast;
+static bool s_redReturn;
 static uint8_t s_padStreak,s_padHeld[sizeof(kPadKeys)/sizeof(kPadKeys[0])];
 
 static bool cd32Valid(uint16_t word)
@@ -124,6 +126,11 @@ void aitdInputPadVBI()
     if(((joy>>1)^joy)&1)pad|=0x2000;
     if(joy&0x0002)pad|=0x4000;
     if(joy&0x0200)pad|=0x8000;
+    // The title menu confirms only on Return, so Red is Return in every menu.
+    // Its role is chosen on the press; a menu closing under it sends no Space.
+    if(!(pad&0x0100))s_redReturn=false;
+    else if(!s_padHeld[4] && !s_padHeld[5])s_redReturn=aitdMacInMenu();
+    if(s_redReturn)pad^=0x0500;
     for(uint16_t i=0;i<sizeof(kPadKeys)/sizeof(kPadKeys[0]);++i) {
         const bool held=(pad&kPadKeys[i].mask)!=0;
         if(held==(s_padHeld[i]!=0))continue;

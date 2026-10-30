@@ -7296,6 +7296,14 @@ static int16_t addClampedMouseDelta(int16_t value, int16_t delta, int16_t maximu
     return changed;
 }
 
+// Original Dan1+$61C8 saves this A5 byte and sets it to 2 for each Dan1 menu;
+// Dan1+$61F8 restores it (Dark sets 1 for play). Read-only, for the CD32 pad.
+extern "C" bool aitdMacInMenu()
+{
+    const uint8_t* world=s_a5WorldStorage;
+    return world && world[75616-0x11b4c]==2;
+}
+
 extern "C" void aitdMacMouseVBI()
 {
     uint16_t counters = *joy0datPointer;

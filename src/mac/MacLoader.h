@@ -33,6 +33,7 @@ extern "C" bool aitdMacGetKeys(uint8_t* destination);
 // by GetNextEvent.  The Amiga VBI calls this after the time-critical bitplane
 // pointer update and before sprite 0 is built for the upcoming field.
 extern "C" void aitdMacMouseVBI();
+extern "C" bool aitdMacInMenu();
 bool aitdMacSuspendLineA();
 void aitdMacResumeLineA();
 

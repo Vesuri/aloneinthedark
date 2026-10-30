@@ -51,7 +51,7 @@ installation instructions.
 | F10 | Immediate WHDLoad exit, bypassing normal game cleanup |
 
 A CD32 pad in port 2 (the joystick port) is detected at startup and drives the
-same keys: stick = arrow keys, Red = Space (action; confirms in menus), Green or
+same keys: stick = arrow keys, Red = Space (action), or Return in menus, Green or
 the right shoulder (Forward) = Shift (run), Yellow = Enter (action/inventory
 menu), Blue and Play = Escape (in-game menu; cancels in menus) (D11). Connect it
 before starting the game.

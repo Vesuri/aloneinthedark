@@ -154,7 +154,7 @@ Changes to these decisions or original game behavior require the owner.
 | D8 | Native SoundMusicSys driver on Paula channels, rather than software mixing. |
 | D9 | Omit the standalone MACPLAY splash and its delay. First visible game picture is Infogrames; retain the book credits. |
 | D10 | A first launch without preferences starts with sound effects and music on, as later launches do; the original enables them only after a saved PREF loads. |
-| D11 | A CD32 pad in port 2 is detected at startup and presented as keyboard keys: stick = arrows, Red = Space, Green and Forward = Shift, Yellow = Return, Blue and Play = Escape. |
+| D11 | A CD32 pad in port 2 is detected at startup and presented as keyboard keys: stick = arrows, Red = Space (Return in Dan1 menus, which the original marks with A5−$11B4C = 2), Green and Forward = Shift, Yellow = Return, Blue and Play = Escape. |
 
 ## 6. Verification
 
